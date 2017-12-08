@@ -1,5 +1,7 @@
 # go-filecoin
 
+[![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg)](https://circleci.com/gh/filecoin-project/go-filecoin)
+
 > Filecoin Implementation in Go
 
 ## Development
