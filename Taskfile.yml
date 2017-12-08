@@ -27,8 +27,8 @@ build:
 
 test:
   cmds:
-    - ginko
+    - ginkgo
 
 cover:
   cmds:
-    - ginko -cover
+    - ginkgo -cover
