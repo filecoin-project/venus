@@ -7,12 +7,16 @@
 ## Development
 
 ```sh
-# Install go-task
-> go get -u -v github.com/go-task/task/cmd/task
 # Install dependencies
-> task deps
+> go run ./build/*.go deps
 # Lint
-> task lint
+> go run ./build/*.go lint
 # Build
-> task build
+> go run ./build/*.go build
+# Test
+> go run ./build/*.go test
+# Coverage
+> go run ./build/*.go test -cover
+# Race
+> go run ./build/*.go test -race
 ```

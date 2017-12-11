@@ -29,6 +29,5 @@ build: false
 deploy: false
 
 test_script:
-  - go get -u -v github.com/go-task/task/cmd/task
-  - task deps
-  - task test
+  - go run build\main.go deps
+  - go run build\main.go test

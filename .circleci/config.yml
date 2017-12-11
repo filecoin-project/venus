@@ -8,7 +8,6 @@ jobs:
     steps:
       - checkout
 
-      - run: go get -u -v github.com/go-task/task/cmd/task
-      - run: task deps
-      - run: task lint
-      - run: task cover
+      - run: go run ./build/*.go deps
+      - run: go run ./build/*.go lint
+      - run: go run ./build/*.go test -cover
