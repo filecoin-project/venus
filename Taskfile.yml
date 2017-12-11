@@ -5,7 +5,6 @@ deps:
     - gx install
     - go get -u github.com/alecthomas/gometalinter
     - gometalinter --install
-    - go get -u github.com/onsi/ginkgo/ginkgo
     - go get -u github.com/onsi/gomega
 
 lint:
@@ -27,8 +26,8 @@ build:
 
 test:
   cmds:
-    - ginkgo
+    - go test ./
 
 cover:
   cmds:
-    - ginkgo -cover
+    - go test ./ -cover
