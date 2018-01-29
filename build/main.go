@@ -22,6 +22,11 @@ func init() {
 // `run("git status")`
 func run(name string) string {
 	args := strings.Split(name, " ")
+	return runParts(args...)
+}
+
+func runParts(args ...string) string {
+	name := strings.Join(args, " ")
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	log.Println(name)
 	out, err := cmd.CombinedOutput()
@@ -63,7 +68,13 @@ func build() {
 
 	commit := run("git log -n 1 --format=%h")
 
-	log.Println(run(fmt.Sprintf(`go build -ldflags='-X main.Version={{%s}}' -v -o go-filecoin .`, commit)))
+	log.Println(
+		runParts(
+			"go", "build",
+			fmt.Sprintf(`-ldflags="-X=main.Version=%s"`, commit),
+			"-v", "-o", "go-filecoin", ".",
+		),
+	)
 }
 
 // test executes tests and passes along all additonal arguments to `go test`.
@@ -75,6 +86,11 @@ func test(args []string) {
 
 func main() {
 	args := os.Args[1:]
+
+	if len(args) == 0 {
+		log.Fatalf("Missing command")
+	}
+
 	cmd := args[0]
 
 	switch cmd {
