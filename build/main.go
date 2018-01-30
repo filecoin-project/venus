@@ -48,7 +48,6 @@ func deps() {
 		"gx install",
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",
-		"go get -u github.com/onsi/gomega",
 		"go get -u github.com/stretchr/testify",
 	}
 
@@ -67,12 +66,12 @@ func lint() {
 func build() {
 	log.Println("Building...")
 
-	commit := run("git log -n 1 --format=%h")
+	commit := run("git log -n 1 --format=%H")
 
 	log.Println(
 		runParts(
 			"go", "build",
-			fmt.Sprintf(`-ldflags="-X=main.Version=%s"`, commit),
+			"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 			"-v", "-o", "go-filecoin", ".",
 		),
 	)
