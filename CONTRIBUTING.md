@@ -6,7 +6,7 @@ We track work items via the [Project board](https://github.com/orgs/filecoin-pro
 
 Presently (Q1'18) the minimum bar is:
  * Must be unittested
- * Must be code reviewed by all of {@phritz, @dignifiedquire, @whyareyousleeping}
+ * Must be code reviewed by all of {@phritz, @dignifiedquire, @whyrusleeping}
  * Must match a subset of the spec
  * Functionality should be _somehow_ user-visible (eg, via command line interface)
  * Should be bite-sized
