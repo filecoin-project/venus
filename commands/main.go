@@ -6,9 +6,9 @@ import (
 	"net"
 	"os"
 
-	cmds "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds"
-	cmdcli "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds/cli"
-	cmdhttp "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds/http"
+	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
+	cmdcli "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/cli"
+	cmdhttp "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
@@ -26,31 +26,35 @@ var (
 	ErrMissingDaemon = errors.New("daemon must be started before using this command")
 )
 
+func defaultApiAddr() string {
+	// Until we have a config file, we need an easy way to influence the API
+	// address for testing
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		return envapi
+	}
+
+	return ":3453"
+}
+
 var rootCmd = &cmds.Command{
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(":3453"),
+		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultApiAddr()),
 		cmds.OptionEncodingType,
 	},
 	Subcommands: make(map[string]*cmds.Command),
 }
 
-// All commands that require the daemon to be running
+// all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain": chainCmd,
-}
-
-// All commands that require the daemon _not_ to be running
-var rootSubcmdsNoDaemon = map[string]*cmds.Command{
+	"chain":   chainCmd,
 	"daemon":  daemonCmd,
+	"id":      IdCmd,
+	"swarm":   SwarmCmd,
 	"version": versionCmd,
 }
 
 func init() {
 	for k, v := range rootSubcmdsDaemon {
-		rootCmd.Subcommands[k] = v
-	}
-
-	for k, v := range rootSubcmdsNoDaemon {
 		rootCmd.Subcommands[k] = v
 	}
 }
@@ -84,12 +88,7 @@ func Run(args []string, stdin *os.File) (int, error) {
 }
 
 func requiresDaemon(req *cmds.Request) bool {
-	for _, v := range rootSubcmdsDaemon {
-		if req.Command == v {
-			return true
-		}
-	}
-	return false
+	return req.Command != daemonCmd
 }
 
 func dispatchRemoteCmd(req *cmds.Request, api string) (int, error) {

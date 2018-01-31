@@ -3,7 +3,9 @@
   "bugs": {
     "url": "https://github.com/filecoin-project/go-filecoin/issues"
   },
-  "gx": {},
+  "gx": {
+    "dvcsimport": "github.com/filecoin-project/go-filecoin"
+  },
   "gxDependencies": [
     {
       "author": "whyrusleeping",
@@ -30,14 +32,26 @@
       "version": "0.7.20"
     },
     {
-      "hash": "Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46",
+      "hash": "QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs",
       "name": "go-ipfs-cmds",
-      "version": "1.0.3"
+      "version": "1.0.6"
     },
     {
       "hash": "QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM",
       "name": "go-ipfs-cmdkit",
       "version": "1.0.0"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmT68EgyFbnSs5rbHkNkFZQwjdHfqrJiGr3R6rwcwnzYLc",
+      "name": "go-libp2p",
+      "version": "5.0.13"
+    },
+    {
+      "author": "why",
+      "hash": "QmPWejECnZ4a2eShmnMFBfaLQR7AjuNDPxiY7jmR4fPjg6",
+      "name": "go-ipfs-addr",
+      "version": "0.1.6"
     }
   ],
   "gxVersion": "0.12.1",
