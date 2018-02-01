@@ -4,6 +4,32 @@
     "url": "https://github.com/filecoin-project/go-filecoin/issues"
   },
   "gx": {},
+  "gxDependencies": [
+    {
+      "author": "whyrusleeping",
+      "hash": "QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU",
+      "name": "go-ipld-cbor",
+      "version": "1.3.0"
+    },
+    {
+      "author": "multiformats",
+      "hash": "QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua",
+      "name": "go-multihash",
+      "version": "1.0.7"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES",
+      "name": "go-ipld-format",
+      "version": "0.5.3"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY",
+      "name": "go-cid",
+      "version": "0.7.20"
+    }
+  ],
   "gxVersion": "0.12.1",
   "language": "go",
   "license": "",
