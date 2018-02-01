@@ -19,6 +19,9 @@ type Block struct {
 
 	// Height is the chain height of this block.
 	Height uint64
+
+	// Nonce is a temporary field used to differentiate blocks for testing
+	Nonce uint64
 }
 
 // Cid returns the content id of this block.
@@ -60,4 +63,12 @@ func DecodeBlock(b []byte) (*Block, error) {
 	}
 
 	return &out, nil
+}
+
+// Score returns the score of this block. Naively this will just return the
+// height. But in the future this will return a more sophisticated metric to be
+// used in the fork choice rule
+// Choosing height as the score gives us the same consensus rules as bitcoin
+func (b *Block) Score() uint64 {
+	return b.Height
 }
