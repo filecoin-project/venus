@@ -57,10 +57,46 @@ func deps() {
 }
 
 // lint runs linting using gometalinter
-func lint() {
-	log.Println("Linting...")
+func lint(packages []string) {
+	if len(packages) == 0 {
+		packages = []string{"./..."}
+	}
 
-	log.Println(run("gometalinter --config=metalint.json ./..."))
+	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
+
+	// Run fast linters batched together
+	configs := []string{
+		"gometalinter",
+		"--skip=sharness",
+		"--disable-all",
+	}
+
+	fastLinters := []string{
+		"--enable=vet",
+		"--enable=vetshadow",
+		"--enable=gofmt",
+		"--enable=misspell",
+		"--enable=goconst",
+		"--enable=golint",
+		"--enable=errcheck",
+		"--min-occurrences=6", // for goconst
+	}
+
+	log.Println(runParts(append(append(configs, fastLinters...), packages...)...))
+
+	slowLinters := []string{
+		"--deadline=10m",
+		"--enable=unconvert",
+		"--enable=gosimple",
+		"--enable=megacheck",
+		"--enable=dupl",
+		"--enable=varcheck",
+		"--enable=structcheck",
+		"--enable=dupl",
+		"--enable=deadcode",
+	}
+
+	log.Println(runParts(append(append(configs, slowLinters...), packages...)...))
 }
 
 func build() {
@@ -77,7 +113,7 @@ func build() {
 	)
 }
 
-// test executes tests and passes along all additonal arguments to `go test`.
+// test executes tests and passes along all additional arguments to `go test`.
 func test(args []string) {
 	log.Println("Testing...")
 
@@ -97,7 +133,7 @@ func main() {
 	case "deps":
 		deps()
 	case "lint":
-		lint()
+		lint(args[1:])
 	case "build":
 		build()
 	case "test":
