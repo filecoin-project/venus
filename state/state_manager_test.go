@@ -46,7 +46,7 @@ func TestBasicAddBlock(t *testing.T) {
 	cs := hamt.NewCborStore()
 	stm := NewStateManager(cs)
 
-	assert.NoError(stm.SetGenesisBlock(ctx, testGenesis))
+	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
 	assert.NoError(stm.ProcessNewBlock(ctx, block1))
 	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
@@ -61,13 +61,9 @@ func TestForkChoice(t *testing.T) {
 	cs := hamt.NewCborStore()
 	stm := NewStateManager(cs)
 
-	assert.NoError(stm.SetGenesisBlock(ctx, testGenesis))
+	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
 	assert.NoError(stm.ProcessNewBlock(ctx, block1))
-	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
-
-	// block with same height as our current should fail
-	assert.EqualError(stm.ProcessNewBlock(ctx, fork1), "validate block failed: new block is not better than our current block")
 	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
 
 	// progress to block1 block on our chain
@@ -86,4 +82,27 @@ func TestForkChoice(t *testing.T) {
 
 	assert.NoError(stm.ProcessNewBlock(ctx, fork3))
 	assert.Equal(stm.BestBlock.Cid(), fork3.Cid())
+}
+
+func TestRejectShorterChain(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	stm := NewStateManager(cs)
+
+	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
+
+	assert.NoError(stm.ProcessNewBlock(ctx, block1))
+	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+
+	assert.NoError(stm.ProcessNewBlock(ctx, block2))
+	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+
+	// block with same height as our current should fail
+	assert.EqualError(stm.ProcessNewBlock(ctx, fork1), "validate block failed: new block is not better than our current block")
+	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+
+	// block with same height as our current should fail
+	assert.EqualError(stm.ProcessNewBlock(ctx, fork2), "validate block failed: new block is not better than our current block")
+	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
 }
