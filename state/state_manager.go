@@ -17,17 +17,19 @@ var log = logging.Logger("state")
 
 // StateManager manages the current state of the chain and handles validating
 // and applying updates.
+// Should be safe for concurrent access (This may not yet be the case)
 type StateManager struct {
 	BestBlock *types.Block
 
 	// TODO: need some sync stuff here. Some of these fields get access in a
-	// racy way right now
+	// racy way right now. These fields need to be safe for concurrent access.
 	// TODO: this should probably be an LRU
 	KnownGoodBlocks *cid.Set
 
 	cs *hamt.CborIpldStore
 }
 
+// NewStateManager creates a new filecoin state manager
 func NewStateManager(cs *hamt.CborIpldStore) *StateManager {
 	return &StateManager{
 		KnownGoodBlocks: cid.NewSet(),
@@ -35,13 +37,20 @@ func NewStateManager(cs *hamt.CborIpldStore) *StateManager {
 	}
 }
 
-func (s *StateManager) SetGenesisBlock(ctx context.Context, b *types.Block) error {
-	s.BestBlock = b
+// SetGenesisBlock sets the genesis block
+func (s *StateManager) SetBestBlock(ctx context.Context, b *types.Block) error {
+	s.BestBlock = b // TODO: make a copy?
 	s.KnownGoodBlocks.Add(b.Cid())
 	_, err := s.cs.Put(ctx, b)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "failed to put block to disk")
+	}
+	return nil
 }
 
+// ProcessNewBlock sends a new block to the state manager. If the block is
+// better than our current best, it is accepted as our new best block.
+// Otherwise an error is returned explaining why it was not accepted
 func (s *StateManager) ProcessNewBlock(ctx context.Context, blk *types.Block) error {
 	if err := s.validateBlock(ctx, blk); err != nil {
 		return errors.Wrap(err, "validate block failed")
@@ -57,15 +66,9 @@ func (s *StateManager) ProcessNewBlock(ctx context.Context, blk *types.Block) er
 
 // acceptNewBlock sets the given block as our current 'best chain' block
 func (s *StateManager) acceptNewBlock(ctx context.Context, blk *types.Block) error {
-	_, err := s.cs.Put(ctx, blk)
-	if err != nil {
-		return errors.Wrap(err, "failed to put block to disk")
+	if err := s.SetBestBlock(ctx, blk); err != nil {
+		return err
 	}
-
-	// update our accounting of the 'best block'
-	s.KnownGoodBlocks.Add(blk.Cid())
-
-	s.BestBlock = blk // TODO: make a copy?
 
 	// TODO: when we have transactions, adjust the local transaction mempool to
 	// remove any transactions contained in our chosen chain, and if we dropped
@@ -88,7 +91,7 @@ func (s *StateManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 	return &blk, nil
 }
 
-// checkSingleBlock verifies that this block, on its own, is structurally and
+// checkBlockValid verifies that this block, on its own, is structurally and
 // cryptographically valid. This means checking that all of its fields are
 // properly filled out and its signature is correct. Checking the validity of
 // state changes must be done separately and only once the state of the
