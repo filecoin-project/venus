@@ -82,6 +82,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 	<-sigc
 	fmt.Println("Got interrupt, shutting down...")
 
+	// allow 5 seconds for clean shutdown. Ideally it would never take this long.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 

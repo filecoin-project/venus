@@ -64,5 +64,8 @@ func (node *Node) Start() error {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
+	if err := node.Host.Close(); err != nil {
+		fmt.Printf("error closing host: %s\n", err)
+	}
 	fmt.Println("stopping filecoin :(")
 }
