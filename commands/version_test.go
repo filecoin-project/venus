@@ -1,4 +1,4 @@
-package cmd
+package commands
 
 import (
 	"testing"
@@ -9,11 +9,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
-func TestCmd_Version(t *testing.T) {
+func TestVersion(t *testing.T) {
 	assert := assert.New(t)
 	flags.Commit = "12345"
 
-	out, err := testhelpers.RunCommand(versionCmd, []string{"version"})
+	env := Env{}
+	out, err := testhelpers.RunCommand(versionCmd, []string{"version"}, &env)
 	assert.NoError(err)
 
 	assert.Contains(out, "commit: 12345")

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
-// Env is the environment passed to commands.
+// Env is the environment passed to commands. Implements cmds.Environment.
 type Env struct {
 	ctx  context.Context
 	Node *node.Node
