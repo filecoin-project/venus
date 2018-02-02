@@ -18,15 +18,8 @@ type nopCloser struct{}
 
 func (c nopCloser) Close() error { return nil }
 
-type mockenv int
-
-func (e *mockenv) Context() context.Context {
-	return context.Background()
-}
-
 // RunCommand is used to simulate calls to the commands library
-func RunCommand(root *cmds.Command, args []string) (string, error) {
-	env := mockenv(42)
+func RunCommand(root *cmds.Command, args []string, env cmds.Environment) (string, error) {
 	req, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"version"}, nil, root)
 	if err != nil {
 		return "", err
@@ -36,7 +29,7 @@ func RunCommand(root *cmds.Command, args []string) (string, error) {
 	re := cmds.NewWriterResponseEmitter(wc{&buf, nopCloser{}}, req, cmds.Encoders[cmds.Text])
 
 	x := cmds.NewExecutor(root)
-	err = x.Execute(req, re, &env)
+	err = x.Execute(req, re, env)
 	if err != nil {
 		return "", err
 	}
