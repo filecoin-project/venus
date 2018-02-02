@@ -26,14 +26,14 @@ type StateManager struct {
 	// TODO: this should probably be an LRU
 	KnownGoodBlocks *cid.Set
 
-	cs *hamt.CborIpldStore
+	cstore *hamt.CborIpldStore
 }
 
 // NewStateManager creates a new filecoin state manager
 func NewStateManager(cs *hamt.CborIpldStore) *StateManager {
 	return &StateManager{
 		KnownGoodBlocks: cid.NewSet(),
-		cs:              cs,
+		cstore:          cs,
 	}
 }
 
@@ -41,7 +41,7 @@ func NewStateManager(cs *hamt.CborIpldStore) *StateManager {
 func (s *StateManager) SetBestBlock(ctx context.Context, b *types.Block) error {
 	s.BestBlock = b // TODO: make a copy?
 	s.KnownGoodBlocks.Add(b.Cid())
-	_, err := s.cs.Put(ctx, b)
+	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "failed to put block to disk")
 	}
@@ -84,7 +84,7 @@ func (s *StateManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 	defer cancel()
 
 	var blk types.Block
-	if err := s.cs.Get(ctx, c, &blk); err != nil {
+	if err := s.cstore.Get(ctx, c, &blk); err != nil {
 		return nil, err
 	}
 
@@ -96,14 +96,14 @@ func (s *StateManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // properly filled out and its signature is correct. Checking the validity of
 // state changes must be done separately and only once the state of the
 // previous block has been validated.
-func (s *StateManager) checkBlockValid(ctx context.Context, b *types.Block) error {
+func (s *StateManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
 // TODO: this method really needs to be thought through carefully. Probably one
 // of the most complicated bits of the system
 func (s *StateManager) validateBlock(ctx context.Context, b *types.Block) error {
-	if err := s.checkBlockValid(ctx, b); err != nil {
+	if err := s.validateBlockStructure(ctx, b); err != nil {
 		return errors.Wrap(err, "check block valid failed")
 	}
 
@@ -129,7 +129,7 @@ func (s *StateManager) validateBlock(ctx context.Context, b *types.Block) error 
 			return errors.Wrap(err, "fetch block failed")
 		}
 
-		if err := s.checkBlockValid(ctx, next); err != nil {
+		if err := s.validateBlockStructure(ctx, next); err != nil {
 			return err
 		}
 
