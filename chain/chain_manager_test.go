@@ -1,4 +1,4 @@
-package state
+package chain
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func TestBasicAddBlock(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewStateManager(cs)
+	stm := NewChainManager(cs)
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
@@ -59,7 +59,7 @@ func TestForkChoice(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewStateManager(cs)
+	stm := NewChainManager(cs)
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
@@ -88,7 +88,7 @@ func TestRejectShorterChain(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewStateManager(cs)
+	stm := NewChainManager(cs)
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
