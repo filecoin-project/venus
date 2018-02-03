@@ -1,4 +1,4 @@
-package state
+package chain
 
 import (
 	"context"
@@ -13,12 +13,12 @@ import (
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
-var log = logging.Logger("state")
+var log = logging.Logger("chain")
 
-// StateManager manages the current state of the chain and handles validating
+// ChainManager manages the current state of the chain and handles validating
 // and applying updates.
 // Should be safe for concurrent access (This may not yet be the case)
-type StateManager struct {
+type ChainManager struct {
 	BestBlock *types.Block
 
 	// TODO: need some sync stuff here. Some of these fields get access in a
@@ -29,16 +29,16 @@ type StateManager struct {
 	cstore *hamt.CborIpldStore
 }
 
-// NewStateManager creates a new filecoin state manager
-func NewStateManager(cs *hamt.CborIpldStore) *StateManager {
-	return &StateManager{
+// NewChainManager creates a new filecoin chain manager
+func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
+	return &ChainManager{
 		KnownGoodBlocks: cid.NewSet(),
 		cstore:          cs,
 	}
 }
 
 // SetGenesisBlock sets the genesis block
-func (s *StateManager) SetBestBlock(ctx context.Context, b *types.Block) error {
+func (s *ChainManager) SetBestBlock(ctx context.Context, b *types.Block) error {
 	s.BestBlock = b // TODO: make a copy?
 	s.KnownGoodBlocks.Add(b.Cid())
 	_, err := s.cstore.Put(ctx, b)
@@ -48,10 +48,10 @@ func (s *StateManager) SetBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
-// ProcessNewBlock sends a new block to the state manager. If the block is
+// ProcessNewBlock sends a new block to the chain manager. If the block is
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
-func (s *StateManager) ProcessNewBlock(ctx context.Context, blk *types.Block) error {
+func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) error {
 	if err := s.validateBlock(ctx, blk); err != nil {
 		return errors.Wrap(err, "validate block failed")
 	}
@@ -65,7 +65,7 @@ func (s *StateManager) ProcessNewBlock(ctx context.Context, blk *types.Block) er
 }
 
 // acceptNewBlock sets the given block as our current 'best chain' block
-func (s *StateManager) acceptNewBlock(ctx context.Context, blk *types.Block) error {
+func (s *ChainManager) acceptNewBlock(ctx context.Context, blk *types.Block) error {
 	if err := s.SetBestBlock(ctx, blk); err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (s *StateManager) acceptNewBlock(ctx context.Context, blk *types.Block) err
 	return nil
 }
 
-func (s *StateManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
+func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
@@ -96,13 +96,13 @@ func (s *StateManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // properly filled out and its signature is correct. Checking the validity of
 // state changes must be done separately and only once the state of the
 // previous block has been validated.
-func (s *StateManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
+func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
 // TODO: this method really needs to be thought through carefully. Probably one
 // of the most complicated bits of the system
-func (s *StateManager) validateBlock(ctx context.Context, b *types.Block) error {
+func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
 	if err := s.validateBlockStructure(ctx, b); err != nil {
 		return errors.Wrap(err, "check block valid failed")
 	}

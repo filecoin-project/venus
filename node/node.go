@@ -6,14 +6,21 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 
+	"gx/ipfs/QmSwABWvsucRwH7XVDbTE3aJgiVdtJUfeWjY8oejB4RmAA/go-hamt-ipld"
 	"gx/ipfs/QmT68EgyFbnSs5rbHkNkFZQwjdHfqrJiGr3R6rwcwnzYLc/go-libp2p"
 	"gx/ipfs/QmfCtHMCd9xFvehvHeVxtKVXJTMVTuHhyPRVHEXetn87vL/go-libp2p-host"
+
+	"github.com/filecoin-project/go-filecoin/chain"
 )
 
 // Node represents a full Filecoin node.
 type Node struct {
-	Host  host.Host
 	Block *types.Block
+	Host  host.Host
+
+	ChainMgr *chain.ChainManager
+
+	CborStore *hamt.CborIpldStore
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -51,9 +58,17 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	cst := hamt.NewCborStore()
+
+	chainMgr := chain.NewChainManager(cst)
+
+	// TODO: load state from disk
+	chainMgr.SetBestBlock(ctx, chain.GenesisBlock)
 
 	return &Node{
-		Host: host,
+		CborStore: cst,
+		Host:      host,
+		ChainMgr:  chainMgr,
 	}, nil
 }
 
