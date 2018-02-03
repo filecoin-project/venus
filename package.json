@@ -61,14 +61,26 @@
     },
     {
       "author": "why",
-      "hash": "QmSwABWvsucRwH7XVDbTE3aJgiVdtJUfeWjY8oejB4RmAA",
+      "hash": "QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q",
       "name": "go-hamt-ipld",
-      "version": "0.0.4"
+      "version": "0.0.5"
     },
     {
       "hash": "QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52",
       "name": "go-log",
       "version": "1.2.0"
+    },
+    {
+      "author": "jbenet",
+      "hash": "QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg",
+      "name": "go-datastore",
+      "version": "1.4.1"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmSjoxpBJV71bpSojnUY1K382Ly3Up55EspnDx6EKAmQX4",
+      "name": "go-libp2p-floodsub",
+      "version": "0.9.9"
     }
   ],
   "gxVersion": "0.12.1",

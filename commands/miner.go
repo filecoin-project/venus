@@ -28,7 +28,7 @@ var minerGenBlockCmd = &cmds.Command{
 			Height: cur.Height + 1,
 		}
 
-		if err := fcn.ChainMgr.ProcessNewBlock(req.Context, next); err != nil {
+		if err := fcn.AddNewBlock(req.Context, next); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
