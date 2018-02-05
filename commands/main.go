@@ -26,7 +26,7 @@ var (
 	ErrMissingDaemon = errors.New("daemon must be started before using this command")
 )
 
-func defaultApiAddr() string {
+func defaultAPIAddr() string {
 	// Until we have a config file, we need an easy way to influence the API
 	// address for testing
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
@@ -38,7 +38,7 @@ func defaultApiAddr() string {
 
 var rootCmd = &cmds.Command{
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultApiAddr()),
+		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
 		cmds.OptionEncodingType,
 	},
 	Subcommands: make(map[string]*cmds.Command),
@@ -48,7 +48,7 @@ var rootCmd = &cmds.Command{
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":   chainCmd,
 	"daemon":  daemonCmd,
-	"id":      IdCmd,
+	"id":      idCmd,
 	"swarm":   SwarmCmd,
 	"version": versionCmd,
 }

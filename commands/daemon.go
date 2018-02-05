@@ -34,18 +34,18 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		libp2p.ListenAddrStrings(req.Options["swarmlisten"].(string)),
 	)
 
-	node, err := node.New(req.Context, libp2pOpts)
+	fcn, err := node.New(req.Context, libp2pOpts)
 	if err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
 
-	fmt.Println("My peer ID is", node.Host.ID().Pretty())
-	for _, a := range node.Host.Addrs() {
+	fmt.Println("My peer ID is", fcn.Host.ID().Pretty())
+	for _, a := range fcn.Host.Addrs() {
 		fmt.Println("Swarm listening on", a)
 	}
 
-	if err := runAPIAndWait(req.Context, node, api); err != nil {
+	if err := runAPIAndWait(req.Context, fcn, api); err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
@@ -86,7 +86,9 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	apiserv.Shutdown(ctx)
+	if err := apiserv.Shutdown(ctx); err != nil {
+		fmt.Println("failed to shut down api server:", err)
+	}
 	node.Stop()
 
 	return nil
