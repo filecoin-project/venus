@@ -17,14 +17,19 @@ var log = logging.Logger("chain")
 
 // ChainManager manages the current state of the chain and handles validating
 // and applying updates.
-// Should be safe for concurrent access (This may not yet be the case)
+// currently not safe for concurrent access
+// TODO: make it safe for concurrent access
 type ChainManager struct {
-	BestBlock *types.Block
-
 	// TODO: need some sync stuff here. Some of these fields get access in a
 	// racy way right now. These fields need to be safe for concurrent access.
+	BestBlock *types.Block // needs sync
+
+	// KnownGoodBlocks is the set of 'good blocks'. It is a cache to prevent us
+	// from having to rescan parts of the blockchain when determining the
+	// validity of a given chain
+	// In the future we will need a more sophisticated mechanism here.
 	// TODO: this should probably be an LRU
-	KnownGoodBlocks *cid.Set
+	KnownGoodBlocks *cid.Set // needs sync
 
 	cstore *hamt.CborIpldStore
 }
@@ -37,14 +42,14 @@ func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	}
 }
 
-// SetGenesisBlock sets the genesis block
+// SetBestBlock sets the genesis block
 func (s *ChainManager) SetBestBlock(ctx context.Context, b *types.Block) error {
-	s.BestBlock = b // TODO: make a copy?
-	s.KnownGoodBlocks.Add(b.Cid())
 	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "failed to put block to disk")
 	}
+	s.BestBlock = b // TODO: make a copy?
+	s.KnownGoodBlocks.Add(b.Cid())
 	return nil
 }
 
@@ -57,15 +62,15 @@ func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) er
 	}
 
 	if blk.Score() > s.BestBlock.Score() {
-		return s.acceptNewBlock(ctx, blk)
+		return s.acceptNewBestBlock(ctx, blk)
 	}
 
 	return fmt.Errorf("new block not better than current block (%d <= %d)",
 		blk.Score(), s.BestBlock.Score())
 }
 
-// acceptNewBlock sets the given block as our current 'best chain' block
-func (s *ChainManager) acceptNewBlock(ctx context.Context, blk *types.Block) error {
+// acceptNewBestBlock sets the given block as our current 'best chain' block
+func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block) error {
 	if err := s.SetBestBlock(ctx, blk); err != nil {
 		return err
 	}
