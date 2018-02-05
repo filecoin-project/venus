@@ -15,12 +15,12 @@ func TestChainRun(t *testing.T) {
 	assert := assert.New(t)
 
 	// No node.
-	env := Env{Node: nil}
+	env := Env{node: nil}
 	_, err := testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
 	assert.NoError(err)
 
 	// No block.
-	env = Env{Node: &node.Node{Block: nil}}
+	env = Env{node: &node.Node{Block: nil}}
 	_, err = testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
 	assert.NoError(err)
 
@@ -30,7 +30,7 @@ func TestChainRun(t *testing.T) {
 	parent := &types.Block{Height: h - 1}
 	child.AddParent(*parent)
 	n := node.Node{Block: child}
-	env = Env{Node: &n}
+	env = Env{node: &n}
 
 	out, err := testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
 	assert.NoError(err)
