@@ -11,7 +11,7 @@ import (
 // Env is the environment passed to commands. Implements cmds.Environment.
 type Env struct {
 	ctx  context.Context
-	Node *node.Node
+	node *node.Node
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -21,8 +21,13 @@ func (ce *Env) Context() context.Context {
 	return ce.ctx
 }
 
+// Node returns the associated Filecoin node.
+func (ce *Env) Node() *node.Node {
+	return ce.node
+}
+
 // GetNode returns the Filecoin node of the environment.
 func GetNode(env cmds.Environment) *node.Node {
 	ce := env.(*Env)
-	return ce.Node
+	return ce.Node()
 }
