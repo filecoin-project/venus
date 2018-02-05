@@ -35,7 +35,9 @@ var rootCmd = &cmds.Command{
 }
 
 // All commands that require the daemon to be running
-var rootSubcmdsDaemon = map[string]*cmds.Command{}
+var rootSubcmdsDaemon = map[string]*cmds.Command{
+	"chain": chainCmd,
+}
 
 // All commands that require the daemon _not_ to be running
 var rootSubcmdsNoDaemon = map[string]*cmds.Command{

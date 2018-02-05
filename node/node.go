@@ -2,10 +2,14 @@ package node
 
 import (
 	"fmt"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Node represents a full Filecoin node.
-type Node struct{}
+type Node struct {
+	Block *types.Block
+}
 
 // New creates a new node.
 func New() *Node {
