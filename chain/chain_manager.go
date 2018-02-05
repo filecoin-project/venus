@@ -125,10 +125,15 @@ func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 
 // checkBlockValid verifies that this block, on its own, is structurally and
 // cryptographically valid. This means checking that all of its fields are
-// properly filled out and its signature is correct. Checking the validity of
+// properly filled out and its signatures are correct. Checking the validity of
 // state changes must be done separately and only once the state of the
 // previous block has been validated.
 func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
+	for _, tx := range b.Transactions {
+		if err := tx.ValidateSignature(); err != nil {
+			return errors.Wrap(err, "tranasction XXX is invalid")
+		}
+	}
 	return nil
 }
 
