@@ -17,8 +17,8 @@ import (
 
 // COPIED FROM go-ipfs core/commands/swarm.go
 
-// SwarmCmd contains swarm commands.
-var SwarmCmd = &cmds.Command{
+// swarmCmd contains swarm commands.
+var swarmCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Interact with the swarm.",
 		ShortDescription: `
