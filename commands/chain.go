@@ -18,15 +18,7 @@ var chainCmd = &cmds.Command{
 	Run:  chainRun,
 	Type: types.Block{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *types.Block) error {
-			marshaled, err := json.MarshalIndent(val, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-			_, err = w.Write(marshaled)
-			return err
-		}),
+		cmds.Text: cmds.MakeTypedEncoder(chainTextEncoder),
 	},
 }
 
@@ -40,4 +32,14 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 		// that Block implements https://golang.org/pkg/fmt/#Formatter or perhaps
 		// StateManager/Blockchain provides this service.
 	}
+}
+
+func chainTextEncoder(req *cmds.Request, w io.Writer, val *types.Block) error {
+	marshaled, err := json.MarshalIndent(val, "", "\t")
+	if err != nil {
+		return err
+	}
+	marshaled = append(marshaled, byte('\n'))
+	_, err = w.Write(marshaled)
+	return err
 }

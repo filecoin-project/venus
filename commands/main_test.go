@@ -5,7 +5,7 @@ import (
 	"net"
 	"testing"
 
-	cmds "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds"
+	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -13,10 +13,10 @@ import (
 func TestRequiresDaemon(t *testing.T) {
 	assert := assert.New(t)
 
-	reqWithDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"chain"}, nil, rootSubcmdsDaemon["chain"])
+	reqWithDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"chain"}, nil, chainCmd)
 	assert.NoError(err)
 
-	reqWithoutDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"daemon"}, nil, rootSubcmdsNoDaemon["daemon"])
+	reqWithoutDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"daemon"}, nil, daemonCmd)
 	assert.NoError(err)
 
 	assert.True(requiresDaemon(reqWithDaemon))
