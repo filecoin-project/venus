@@ -43,15 +43,15 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmT68EgyFbnSs5rbHkNkFZQwjdHfqrJiGr3R6rwcwnzYLc",
+      "hash": "QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp",
       "name": "go-libp2p",
-      "version": "5.0.13"
+      "version": "5.0.14"
     },
     {
       "author": "why",
-      "hash": "QmPWejECnZ4a2eShmnMFBfaLQR7AjuNDPxiY7jmR4fPjg6",
+      "hash": "QmQViVWBHbU6HmYjXcdNq7tVASCNgdg64ZGcauuDkLCivW",
       "name": "go-ipfs-addr",
-      "version": "0.1.6"
+      "version": "0.1.7"
     },
     {
       "author": "whyrusleeping",
@@ -78,9 +78,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmSjoxpBJV71bpSojnUY1K382Ly3Up55EspnDx6EKAmQX4",
+      "hash": "QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw",
       "name": "go-libp2p-floodsub",
-      "version": "0.9.9"
+      "version": "0.9.10"
     }
   ],
   "gxVersion": "0.12.1",
