@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/cmd"
+	"github.com/filecoin-project/go-filecoin/commands"
 )
 
 func main() {
-	code, err := cmd.Run(os.Args, os.Stdin)
+	code, err := commands.Run(os.Args, os.Stdin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
