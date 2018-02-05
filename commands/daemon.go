@@ -58,7 +58,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 
 	servenv := &Env{
 		ctx:  context.Background(),
-		Node: node,
+		node: node,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
