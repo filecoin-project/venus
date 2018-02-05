@@ -52,6 +52,23 @@
       "hash": "QmPWejECnZ4a2eShmnMFBfaLQR7AjuNDPxiY7jmR4fPjg6",
       "name": "go-ipfs-addr",
       "version": "0.1.6"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy",
+      "name": "errors",
+      "version": "0.0.1"
+    },
+    {
+      "author": "why",
+      "hash": "QmSwABWvsucRwH7XVDbTE3aJgiVdtJUfeWjY8oejB4RmAA",
+      "name": "go-hamt-ipld",
+      "version": "0.0.4"
+    },
+    {
+      "hash": "QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52",
+      "name": "go-log",
+      "version": "1.2.0"
     }
   ],
   "gxVersion": "0.12.1",
