@@ -50,9 +50,11 @@ func TestBasicAddBlock(t *testing.T) {
 
 	assert.NoError(stm.ProcessNewBlock(ctx, block1))
 	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
 
 	assert.NoError(stm.ProcessNewBlock(ctx, block2))
 	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
 }
 
 func TestForkChoice(t *testing.T) {
@@ -65,10 +67,12 @@ func TestForkChoice(t *testing.T) {
 
 	assert.NoError(stm.ProcessNewBlock(ctx, block1))
 	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
 
-	// progress to block1 block on our chain
+	// progress to block2 block on our chain
 	assert.NoError(stm.ProcessNewBlock(ctx, block2))
 	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
 
 	// Now, introduce a valid fork
 	_, err := cs.Put(ctx, fork1)
