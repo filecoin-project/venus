@@ -26,6 +26,10 @@ type Block struct {
 	// Transactions is the set of transactions included in this block
 	// TODO: should be a merkletree-ish thing
 	Transactions []Transaction
+
+	// StateRoot is a cid pointer to the state tree after application of the
+	// transactions state transitions.
+	StateRoot *cid.Cid
 }
 
 // Cid returns the content id of this block.
