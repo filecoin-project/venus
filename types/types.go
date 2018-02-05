@@ -2,8 +2,8 @@ package types
 
 import (
 	"fmt"
-	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 
+	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
@@ -22,6 +22,10 @@ type Block struct {
 
 	// Nonce is a temporary field used to differentiate blocks for testing
 	Nonce uint64
+
+	// Transactions is the set of transactions included in this block
+	// TODO: should be a merkletree-ish thing
+	Transactions []Transaction
 }
 
 // Cid returns the content id of this block.
