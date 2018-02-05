@@ -14,6 +14,8 @@ type Env struct {
 	Node *node.Node
 }
 
+var _ cmds.Environment = (*Env)(nil)
+
 // Context returns the context of the environment.
 func (ce *Env) Context() context.Context {
 	return ce.ctx
