@@ -1,14 +1,13 @@
-package types_test
+package types
 
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBlock_AddParent(t *testing.T) {
-	var p, c types.Block
+func TestBlockAddParent(t *testing.T) {
+	var p, c Block
 	assert.False(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
 
@@ -30,8 +29,8 @@ func TestBlock_AddParent(t *testing.T) {
 }
 
 func TestDecodeBlock(t *testing.T) {
-	before := types.Block{Height: 2}
-	after, err := types.DecodeBlock(before.ToNode().RawData())
+	before := Block{Height: 2}
+	after, err := DecodeBlock(before.ToNode().RawData())
 	if assert.NoError(t, err) {
 		assert.True(t, after.Cid().Equals(before.Cid()))
 	}
