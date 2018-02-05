@@ -11,13 +11,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var MinerCmd = &cmds.Command{
+var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"gen-block": MinerGenBlockCmd,
+		"gen-block": minerGenBlockCmd,
 	},
 }
 
-var MinerGenBlockCmd = &cmds.Command{
+var minerGenBlockCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 
