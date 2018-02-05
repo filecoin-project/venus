@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
-	cmds "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/Qmc5paX4ECBARnAKkcAmUYHBGor228Tkfxeya3Nu2KRL46/go-ipfs-cmds/http"
+	libp2p "gx/ipfs/QmT68EgyFbnSs5rbHkNkFZQwjdHfqrJiGr3R6rwcwnzYLc/go-libp2p"
+	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
+	cmdhttp "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/node"
@@ -18,20 +20,38 @@ var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "start the filecoin daemon",
 	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("swarmlisten").WithDefault("/ip4/127.0.0.1/tcp/6000"),
+	},
 	Run: daemonRun,
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 	api := req.Options[OptionAPI].(string)
 
-	node := node.New()
-	if err := startNode(node, api); err != nil {
+	// TODO: this should be passed in from a config file, not an api flag
+	libp2pOpts := node.Libp2pOptions(
+		libp2p.ListenAddrStrings(req.Options["swarmlisten"].(string)),
+	)
+
+	fcn, err := node.New(req.Context, libp2pOpts)
+	if err != nil {
+		re.SetError(err, cmdkit.ErrNormal)
+		return
+	}
+
+	fmt.Println("My peer ID is", fcn.Host.ID().Pretty())
+	for _, a := range fcn.Host.Addrs() {
+		fmt.Println("Swarm listening on", a)
+	}
+
+	if err := runAPIAndWait(req.Context, fcn, api); err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
 }
 
-func startNode(node *node.Node, api string) error {
+func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 	if err := node.Start(); err != nil {
 		return err
 	}
@@ -50,13 +70,26 @@ func startNode(node *node.Node, api string) error {
 	signal.Notify(sigc, os.Interrupt)
 	defer signal.Stop(sigc)
 
+	apiserv := http.Server{
+		Addr:    api,
+		Handler: handler,
+	}
+
 	go func() {
 		panic(http.ListenAndServe(api, handler))
 	}()
 
 	<-sigc
 	fmt.Println("Got interrupt, shutting down...")
-	go node.Stop()
+
+	// allow 5 seconds for clean shutdown. Ideally it would never take this long.
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	if err := apiserv.Shutdown(ctx); err != nil {
+		fmt.Println("failed to shut down api server:", err)
+	}
+	node.Stop()
 
 	return nil
 }
