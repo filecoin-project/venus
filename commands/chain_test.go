@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -38,4 +39,19 @@ func TestChainRun(t *testing.T) {
 	assert.Contains(out, fmt.Sprintf("%d", child.Height))
 	// TODO enable this test when we can walk the chain.
 	// assert.Contains(out, fmt.Sprintf("%d", parent.Height))
+}
+
+func TestChainTextEncoder(t *testing.T) {
+	assert := assert.New(t)
+
+	var a, b types.Block
+
+	b.Height = 1
+	assert.NoError(b.AddParent(a))
+
+	var buf bytes.Buffer
+	assert.NoError(chainTextEncoder(nil, &buf, &b))
+
+	// TODO: improve assertions once content is stabilized
+	assert.Contains(buf.String(), "zDPWYqFD4pM9w2M4hbH4rAxKSmwQ3hdEYm4ohGaBXLEfCuTDGsK1")
 }

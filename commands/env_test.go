@@ -13,7 +13,9 @@ func TestEnv(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := context.Background()
-	node := node.New()
+	node, err := node.New(ctx)
+	assert.NoError(err)
+
 	env := Env{ctx: ctx, node: node}
 
 	assert.Equal(env.Node(), node)
