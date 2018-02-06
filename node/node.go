@@ -63,7 +63,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	chainMgr := chain.NewChainManager(cst)
 
 	// TODO: load state from disk
-	chainMgr.SetBestBlock(ctx, chain.GenesisBlock)
+	if err := chainMgr.SetBestBlock(ctx, chain.GenesisBlock); err != nil {
+		return nil, err
+	}
 
 	return &Node{
 		CborStore: cst,
