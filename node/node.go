@@ -101,7 +101,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	chainMgr := chain.NewChainManager(cst)
 
 	// TODO: load state from disk
-	chainMgr.SetBestBlock(ctx, chain.GenesisBlock)
+	if err := chainMgr.SetBestBlock(ctx, chain.GenesisBlock); err != nil {
+		return nil, err
+	}
 
 	// make sure we have the genesis block stored
 	_, err = cst.Put(ctx, chain.GenesisBlock)
