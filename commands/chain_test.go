@@ -53,5 +53,5 @@ func TestChainTextEncoder(t *testing.T) {
 	assert.NoError(chainTextEncoder(nil, &buf, &b))
 
 	// TODO: improve assertions once content is stabilized
-	assert.Contains(buf.String(), "zDPWYqFD4pM9w2M4hbH4rAxKSmwQ3hdEYm4ohGaBXLEfCuTDGsK1")
+	assert.Contains(buf.String(), "zDPWYqFD7dM75R3hLV92mVNPjRX1dxiyUxuhKwBgVns5FRPC4Vak")
 }
