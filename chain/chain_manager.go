@@ -2,7 +2,7 @@ package chain
 
 import (
 	"context"
-	"fmt"
+	"sync"
 	"time"
 
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
@@ -17,62 +17,87 @@ var log = logging.Logger("chain")
 
 // ChainManager manages the current state of the chain and handles validating
 // and applying updates.
-// currently not safe for concurrent access
-// TODO: make it safe for concurrent access
+// Safe for concurrent access
 type ChainManager struct {
-	// TODO: need some sync stuff here. Some of these fields get access in a
-	// racy way right now. These fields need to be safe for concurrent access.
-	BestBlock *types.Block // needs sync
+	// bestBlock is the head block of the best known chain
+	bestBlock struct {
+		sync.Mutex
+		blk *types.Block
+	}
 
 	// KnownGoodBlocks is the set of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
-	// validity of a given chain
+	// validity of a given chain.
 	// In the future we will need a more sophisticated mechanism here.
-	// TODO: this should probably be an LRU
-	KnownGoodBlocks *cid.Set // needs sync
+	// TODO: this should probably be an LRU, needs more consideration.
+	// For example, the genesis block should always be considered a "good" block.
+	KnownGoodBlocks SyncCidSet
 
 	cstore *hamt.CborIpldStore
 }
 
 // NewChainManager creates a new filecoin chain manager
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
-	return &ChainManager{
-		KnownGoodBlocks: cid.NewSet(),
-		cstore:          cs,
+	cm := &ChainManager{
+		cstore: cs,
 	}
+	cm.KnownGoodBlocks.set = cid.NewSet()
+
+	return cm
 }
 
-// SetBestBlock sets the genesis block
+// SetBestBlock sets the best block. Should be used to either to set the
+// genesis block, or to manually set the current selected chain for testing.
 func (s *ChainManager) SetBestBlock(ctx context.Context, b *types.Block) error {
 	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "failed to put block to disk")
 	}
-	s.BestBlock = b // TODO: make a copy?
+	s.bestBlock.blk = b // TODO: make a copy?
 	s.KnownGoodBlocks.Add(b.Cid())
+
 	return nil
 }
+
+func (s *ChainManager) GetBestBlock() *types.Block {
+	s.bestBlock.Lock()
+	defer s.bestBlock.Unlock()
+	return s.bestBlock.blk // TODO: return immutable copy?
+}
+
+func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+	s.bestBlock.Lock()
+	defer s.bestBlock.Unlock()
+	if blk.Score() <= s.bestBlock.blk.Score() {
+		return ChainValid, nil
+	}
+
+	return s.acceptNewBestBlock(ctx, blk)
+}
+
+type BlockProcessResult int
+
+const (
+	Unknown = BlockProcessResult(iota)
+	ChainAccepted
+	ChainValid
+)
 
 // ProcessNewBlock sends a new block to the chain manager. If the block is
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
-func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) error {
+func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
 	if err := s.validateBlock(ctx, blk); err != nil {
-		return errors.Wrap(err, "validate block failed")
+		return Unknown, errors.Wrap(err, "validate block failed")
 	}
 
-	if blk.Score() > s.BestBlock.Score() {
-		return s.acceptNewBestBlock(ctx, blk)
-	}
-
-	return fmt.Errorf("new block not better than current block (%d <= %d)",
-		blk.Score(), s.BestBlock.Score())
+	return s.maybeAcceptBlock(ctx, blk)
 }
 
 // acceptNewBestBlock sets the given block as our current 'best chain' block
-func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block) error {
+func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
 	if err := s.SetBestBlock(ctx, blk); err != nil {
-		return err
+		return Unknown, err
 	}
 
 	// TODO: when we have transactions, adjust the local transaction mempool to
@@ -81,9 +106,10 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 	// the mempool
 
 	log.Infof("accepted new block, [s=%d, h=%s]", blk.Score(), blk.Cid())
-	return nil
+	return ChainAccepted, nil
 }
 
+// fetchBlock gets the requested block, either from disk or from the network.
 func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
@@ -112,10 +138,8 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		return errors.Wrap(err, "check block valid failed")
 	}
 
-	if b.Score() <= s.BestBlock.Score() {
-		// TODO: likely should still validate this chain and keep it around.
-		// Someone else could mine on top of it
-		return fmt.Errorf("new block is not better than our current block")
+	if _, err := s.cstore.Put(ctx, b); err != nil {
+		return errors.Wrap(err, "failed to store block")
 	}
 
 	// TODO: should be some sort of limit here

@@ -9,7 +9,7 @@ import (
 var BlocksTopic = "/fil/blocks"
 
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
-	if err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
+	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
 		return err
 	}
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
@@ -23,6 +23,7 @@ func (node *Node) handleBlockSubscription() {
 			log.Errorf("blocksub.Next(): %s", err)
 			return
 		}
+		log.Error("got a block!")
 
 		// ignore messages from ourself
 		if msg.GetFrom() == node.Host.ID() {
@@ -35,9 +36,11 @@ func (node *Node) handleBlockSubscription() {
 			continue
 		}
 
-		if err := node.ChainMgr.ProcessNewBlock(ctx, blk); err != nil {
+		if res, err := node.ChainMgr.ProcessNewBlock(ctx, blk); err != nil {
 			log.Errorf("processing block from network: %s", err)
 			continue
+		} else {
+			log.Error("process blocks returned: ", res)
 		}
 	}
 }

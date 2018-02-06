@@ -48,12 +48,16 @@ func TestBasicAddBlock(t *testing.T) {
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
-	assert.NoError(stm.ProcessNewBlock(ctx, block1))
-	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+	res, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block1.Cid())
 	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
 
-	assert.NoError(stm.ProcessNewBlock(ctx, block2))
-	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	res, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
 	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
 }
 
@@ -65,17 +69,21 @@ func TestForkChoice(t *testing.T) {
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
-	assert.NoError(stm.ProcessNewBlock(ctx, block1))
-	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+	res, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block1.Cid())
 	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
 
 	// progress to block2 block on our chain
-	assert.NoError(stm.ProcessNewBlock(ctx, block2))
-	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	res, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
 	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
 
 	// Now, introduce a valid fork
-	_, err := cs.Put(ctx, fork1)
+	_, err = cs.Put(ctx, fork1)
 	// TODO: when checking blocks, we should probably hold onto them for a
 	// period of time. For now we can be okay dropping them, but later this
 	// will be important.
@@ -84,8 +92,10 @@ func TestForkChoice(t *testing.T) {
 	_, err = cs.Put(ctx, fork2)
 	assert.NoError(err)
 
-	assert.NoError(stm.ProcessNewBlock(ctx, fork3))
-	assert.Equal(stm.BestBlock.Cid(), fork3.Cid())
+	res, err = stm.ProcessNewBlock(ctx, fork3)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), fork3.Cid())
 }
 
 func TestRejectShorterChain(t *testing.T) {
@@ -96,17 +106,25 @@ func TestRejectShorterChain(t *testing.T) {
 
 	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
 
-	assert.NoError(stm.ProcessNewBlock(ctx, block1))
-	assert.Equal(stm.BestBlock.Cid(), block1.Cid())
+	res, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block1.Cid())
 
-	assert.NoError(stm.ProcessNewBlock(ctx, block2))
-	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	res, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
+
+	// block with lower height than our current shouldnt fail, but it shouldnt be accepted as the best block
+	res, err = stm.ProcessNewBlock(ctx, fork1)
+	assert.NoError(err)
+	assert.Equal(ChainValid, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
 
 	// block with same height as our current should fail
-	assert.EqualError(stm.ProcessNewBlock(ctx, fork1), "validate block failed: new block is not better than our current block")
-	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
-
-	// block with same height as our current should fail
-	assert.EqualError(stm.ProcessNewBlock(ctx, fork2), "validate block failed: new block is not better than our current block")
-	assert.Equal(stm.BestBlock.Cid(), block2.Cid())
+	res, err = stm.ProcessNewBlock(ctx, fork2)
+	assert.NoError(err)
+	assert.Equal(ChainValid, res)
+	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
 }
