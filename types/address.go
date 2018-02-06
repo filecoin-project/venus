@@ -6,7 +6,8 @@ import (
 	"sync"
 )
 
-// TODO: make address a little more sophisticated
+// Address represents the address of a Filecoin actor.
+// TODO: correct address format
 type Address string
 
 func (a Address) String() string {

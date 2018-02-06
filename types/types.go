@@ -9,6 +9,9 @@ import (
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 )
 
+// DefaultHashFunction represents the default hashing function to use
+const DefaultHashFunction = mh.BLAKE2B_MIN + 31
+
 func init() {
 	cbor.RegisterCborType(Block{})
 }
@@ -55,7 +58,7 @@ func (b Block) IsParentOf(c Block) bool {
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
 	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	obj, err := cbor.WrapObject(b, mh.BLAKE2B_MIN+31, -1)
+	obj, err := cbor.WrapObject(b, DefaultHashFunction, -1)
 	if err != nil {
 		panic(err)
 	}
