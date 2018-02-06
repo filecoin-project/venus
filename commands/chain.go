@@ -12,6 +12,12 @@ import (
 )
 
 var chainCmd = &cmds.Command{
+	Subcommands: map[string]*cmds.Command{
+		"ls": chainLsCmd,
+	},
+}
+
+var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "dump full block chain",
 	},
@@ -24,13 +30,19 @@ var chainCmd = &cmds.Command{
 
 func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 	n := GetNode(env)
-	if n != nil && n.Block != nil {
-		if err := re.Emit(n.Block); err != nil {
-			panic(err)
+
+	blk := n.ChainMgr.GetBestBlock()
+	re.Emit(blk)
+
+	for blk.Parent != nil {
+		var next types.Block
+		if err := n.CborStore.Get(req.Context, blk.Parent, &next); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
-		// TODO Actually walk the chain. The actual thing that should happen could be
-		// that Block implements https://golang.org/pkg/fmt/#Formatter or perhaps
-		// StateManager/Blockchain provides this service.
+
+		re.Emit(&next)
+		blk = &next
 	}
 }
 

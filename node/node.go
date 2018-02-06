@@ -20,15 +20,13 @@ import (
 	nonerouting "github.com/ipfs/go-ipfs/routing/none"
 
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var log = logging.Logger("node")
 
 // Node represents a full Filecoin node.
 type Node struct {
-	Block *types.Block
-	Host  host.Host
+	Host host.Host
 
 	ChainMgr *chain.ChainManager
 
