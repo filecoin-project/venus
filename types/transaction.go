@@ -12,9 +12,6 @@ func init() {
 	cbor.RegisterCborType(Transaction{})
 }
 
-// TODO: make address a little more sophisticated
-type Address string
-
 type Transaction struct {
 	To    Address
 	From  Address
