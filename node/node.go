@@ -140,8 +140,10 @@ func (node *Node) Start() error {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
-	node.BlockSub.Cancel()
-	node.BlockSub = nil
+	if node.BlockSub != nil {
+		node.BlockSub.Cancel()
+		node.BlockSub = nil
+	}
 
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
