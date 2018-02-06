@@ -21,7 +21,7 @@ var minerGenBlockCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 
-		cur := fcn.ChainMgr.BestBlock
+		cur := fcn.ChainMgr.GetBestBlock()
 
 		next := &types.Block{
 			Parent: cur.Cid(),

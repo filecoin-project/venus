@@ -2,43 +2,45 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestChainRun(t *testing.T) {
+	ctx := context.Background()
 	assert := assert.New(t)
 
-	// No node.
-	env := Env{node: nil}
-	_, err := testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
-	assert.NoError(err)
-
-	// No block.
-	env = Env{node: &node.Node{Block: nil}}
-	_, err = testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
-	assert.NoError(err)
+	cst := hamt.NewCborStore()
+	nd := &node.Node{ChainMgr: chain.NewChainManager(cst), CborStore: cst}
 
 	// Chain of height two.
 	h := uint64(43)
 	child := &types.Block{Height: h}
 	parent := &types.Block{Height: h - 1}
 	child.AddParent(*parent)
-	n := node.Node{Block: child}
-	env = Env{node: &n}
 
-	out, err := testhelpers.RunCommand(chainCmd, []string{"chain"}, &env)
+	_, err := cst.Put(ctx, child)
+	assert.NoError(err)
+	_, err = cst.Put(ctx, parent)
+	assert.NoError(err)
+
+	assert.NoError(nd.ChainMgr.SetBestBlock(ctx, child))
+	env := &Env{node: nd}
+
+	out, err := testhelpers.RunCommand(chainLsCmd, []string{"chain", "ls"}, env)
 	assert.NoError(err)
 
 	assert.Contains(out, fmt.Sprintf("%d", child.Height))
-	// TODO enable this test when we can walk the chain.
-	// assert.Contains(out, fmt.Sprintf("%d", parent.Height))
+	assert.Contains(out, fmt.Sprintf("%d", parent.Height))
 }
 
 func TestChainTextEncoder(t *testing.T) {
@@ -53,5 +55,5 @@ func TestChainTextEncoder(t *testing.T) {
 	assert.NoError(chainTextEncoder(nil, &buf, &b))
 
 	// TODO: improve assertions once content is stabilized
-	assert.Contains(buf.String(), "zDPWYqFD4pM9w2M4hbH4rAxKSmwQ3hdEYm4ohGaBXLEfCuTDGsK1")
+	assert.Contains(buf.String(), "zDPWYqFD7dM75R3hLV92mVNPjRX1dxiyUxuhKwBgVns5FRPC4Vak")
 }
