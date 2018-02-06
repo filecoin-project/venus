@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	mh "github.com/multiformats/go-multihash"
+	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
