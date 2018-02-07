@@ -101,14 +101,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	chainMgr := chain.NewChainManager(cst)
 
 	// TODO: load state from disk
-	if err := chainMgr.SetBestBlock(ctx, chain.GenesisBlock); err != nil {
+	if err := chainMgr.Genesis(ctx, chain.InitGenesis); err != nil {
 		return nil, err
-	}
-
-	// make sure we have the genesis block stored
-	_, err = cst.Put(ctx, chain.GenesisBlock)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to add genesis block to local datastore")
 	}
 
 	// Set up libp2p pubsub
