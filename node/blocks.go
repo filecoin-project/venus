@@ -9,6 +9,8 @@ import (
 // BlocksTopic is the string topic for the blocks pubsub channel
 const BlocksTopic = "/fil/blocks"
 
+const MessageTopic = "/fil/msgs"
+
 // AddNewBlock adds a new locally crafted block and announces it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
@@ -45,4 +47,51 @@ func (node *Node) handleBlockSubscription() {
 			log.Error("process blocks returned: ", res)
 		}
 	}
+}
+
+func (node *Node) AddNewMessage(ctx context.Context, msg *types.Message) error {
+	if err := node.MsgPool.Add(msg); err != nil {
+		return err
+	}
+
+	msgdata, err := msg.Marshal()
+	if err != nil {
+		return err
+	}
+
+	return node.PubSub.Publish(MessageTopic, msgdata)
+}
+
+func (node *Node) handleMessageSubscription() {
+	ctx := context.TODO()
+	for {
+		msg, err := node.BlockSub.Next(ctx)
+		if err != nil {
+			log.Errorf("blocksub.Next(): %s", err)
+			return
+		}
+
+		// ignore messages from ourself
+		if msg.GetFrom() == node.Host.ID() {
+			continue
+		}
+
+		if err := node.handleMessage(msg.GetData()); err != nil {
+			log.Error(err)
+		}
+	}
+}
+
+func (node *Node) handleMessage(msgdata []byte) error {
+	var m types.Message
+	if err := m.Unmarshal(msgdata); err != nil {
+		return errors.Wrap(err, "got bad message data")
+	}
+
+	if res, err := node.MsgPool.Add(&m); err != nil {
+		return errors.Wrapf(err, "processing message from network")
+	} else {
+		log.Error("process message returned: ", res)
+	}
+	return nil
 }
