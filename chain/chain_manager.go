@@ -10,6 +10,8 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
+	core "github.com/filecoin-project/go-filecoin/core"
+	state "github.com/filecoin-project/go-filecoin/state"
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,6 +27,8 @@ type ChainManager struct {
 		blk *types.Block
 	}
 
+	processor core.Processor
+
 	// KnownGoodBlocks is the set of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
 	// validity of a given chain.
@@ -39,16 +43,26 @@ type ChainManager struct {
 // NewChainManager creates a new filecoin chain manager
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
-		cstore: cs,
+		cstore:    cs,
+		processor: core.ProcessBlock,
 	}
 	cm.KnownGoodBlocks.set = cid.NewSet()
 
 	return cm
 }
 
-// SetBestBlock sets the best block. Should be used to either to set the
+func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
+	genesis, err := gen(s.cstore)
+	if err != nil {
+		return err
+	}
+
+	return s.setBestBlock(ctx, genesis)
+}
+
+// setBestBlock sets the best block. Should be used to either to set the
 // genesis block, or to manually set the current selected chain for testing.
-func (s *ChainManager) SetBestBlock(ctx context.Context, b *types.Block) error {
+func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "failed to put block to disk")
@@ -96,7 +110,7 @@ func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (B
 
 // acceptNewBestBlock sets the given block as our current 'best chain' block
 func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
-	if err := s.SetBestBlock(ctx, blk); err != nil {
+	if err := s.setBestBlock(ctx, blk); err != nil {
 		return Unknown, err
 	}
 
@@ -128,11 +142,7 @@ func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // state changes must be done separately and only once the state of the
 // previous block has been validated.
 func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
-	for _, tx := range b.Transactions {
-		if err := tx.ValidateSignature(); err != nil {
-			return errors.Wrap(err, "tranasction XXX is invalid")
-		}
-	}
+	// TODO: validate signatures on messages
 	return nil
 }
 
@@ -147,6 +157,33 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		return errors.Wrap(err, "failed to store block")
 	}
 
+	baseBlk, chain, err := s.findKnownAncestor(ctx, b)
+	if err != nil {
+		return err
+	}
+
+	st, err := state.LoadTree(ctx, s.cstore, baseBlk.StateRoot)
+	if err != nil {
+		return err
+	}
+
+	for i := len(chain) - 1; i >= 0; i-- {
+		cur := chain[i]
+		if err := s.processor(ctx, cur, st); err != nil {
+			return err
+		}
+
+		// TODO: check that state transitions are valid once we have them
+		s.KnownGoodBlocks.Add(cur.Cid())
+	}
+
+	return nil
+}
+
+// findKnownAcestor walks backwards from the given block until it finds a block
+// that we know to be good. It then returns that known block, and the blocks
+// that form the chain back to it.
+func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (*types.Block, []*types.Block, error) {
 	// TODO: should be some sort of limit here
 	// Some implementations limit the length of a chain that can be swapped.
 	// Historically, bitcoin does not, this is purely for religious and
@@ -154,26 +191,21 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 	// be reverted, the system should opt to halt, not just happily switch over
 	// to an entirely different chain.
 	var validating []*types.Block
-	baseBlk := b
+	baseBlk := tip
 	for !s.KnownGoodBlocks.Has(baseBlk.Cid()) {
 		validating = append(validating, baseBlk)
 
 		next, err := s.fetchBlock(ctx, baseBlk.Parent)
 		if err != nil {
-			return errors.Wrap(err, "fetch block failed")
+			return nil, nil, errors.Wrap(err, "fetch block failed")
 		}
 
 		if err := s.validateBlockStructure(ctx, next); err != nil {
-			return err
+			return nil, nil, err
 		}
 
 		baseBlk = next
 	}
 
-	for i := len(validating) - 1; i >= 0; i-- {
-		// TODO: check that state transitions are valid once we have them
-		s.KnownGoodBlocks.Add(validating[i].Cid())
-	}
-
-	return nil
+	return baseBlk, validating, nil
 }

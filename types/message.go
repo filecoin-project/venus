@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
@@ -67,9 +66,8 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 		return Message{}, ErrInvalidMessageFromField
 	}
 
-	value, ok := x[2].(*big.Int)
+	valueB, ok := x[2].([]byte)
 	if !ok && x[2] != nil {
-		fmt.Printf("BAD TYPE: %T\n", x[2])
 		return Message{}, ErrInvalidMessageValueField
 	}
 
@@ -86,7 +84,7 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 	return Message{
 		To:     Address(to),
 		From:   Address(from),
-		Value:  value,
+		Value:  big.NewInt(0).SetBytes(valueB),
 		Method: method,
 		Params: params,
 	}, nil

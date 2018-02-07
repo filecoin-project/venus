@@ -11,34 +11,42 @@ import (
 )
 
 var (
-	testGenesis = &types.Block{}
-
-	block1 = &types.Block{
-		Parent: testGenesis.Cid(),
-		Height: 1,
-	}
-
-	block2 = &types.Block{
-		Parent: block1.Cid(),
-		Height: 2,
-	}
-
-	fork1 = &types.Block{
-		Parent: testGenesis.Cid(),
-		Height: 1,
-		Nonce:  1,
-	}
-
-	fork2 = &types.Block{
-		Parent: fork1.Cid(),
-		Height: 2,
-	}
-
-	fork3 = &types.Block{
-		Parent: fork2.Cid(),
-		Height: 3,
-	}
+	testGenesis, block1, block2, fork1, fork2, fork3 *types.Block
 )
+
+func init() {
+	cst := hamt.NewCborStore()
+	genesis, err := InitGenesis(cst)
+	if err != nil {
+		panic(err)
+	}
+	testGenesis = genesis
+
+	block1 = mkChild(testGenesis, 0)
+	block2 = mkChild(block1, 0)
+
+	fork1 = mkChild(testGenesis, 1)
+	fork2 = mkChild(fork1, 1)
+	fork3 = mkChild(fork2, 1)
+}
+
+func mkChild(blk *types.Block, nonce uint64) *types.Block {
+	return &types.Block{
+		Parent:    blk.Cid(),
+		Height:    blk.Height + 1,
+		Nonce:     nonce,
+		StateRoot: blk.StateRoot,
+	}
+}
+
+func addBlocks(t *testing.T, cs *hamt.CborIpldStore, blks ...*types.Block) {
+	for _, blk := range blks {
+		_, err := cs.Put(context.Background(), blk)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
 
 func TestBasicAddBlock(t *testing.T) {
 	assert := assert.New(t)
@@ -46,7 +54,7 @@ func TestBasicAddBlock(t *testing.T) {
 	cs := hamt.NewCborStore()
 	stm := NewChainManager(cs)
 
-	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
 	res, err := stm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
@@ -67,7 +75,7 @@ func TestForkChoice(t *testing.T) {
 	cs := hamt.NewCborStore()
 	stm := NewChainManager(cs)
 
-	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
 	res, err := stm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
@@ -83,14 +91,7 @@ func TestForkChoice(t *testing.T) {
 	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
 
 	// Now, introduce a valid fork
-	_, err = cs.Put(ctx, fork1)
-	// TODO: when checking blocks, we should probably hold onto them for a
-	// period of time. For now we can be okay dropping them, but later this
-	// will be important.
-	assert.NoError(err)
-
-	_, err = cs.Put(ctx, fork2)
-	assert.NoError(err)
+	addBlocks(t, cs, fork1, fork2)
 
 	res, err = stm.ProcessNewBlock(ctx, fork3)
 	assert.NoError(err)
@@ -104,7 +105,7 @@ func TestRejectShorterChain(t *testing.T) {
 	cs := hamt.NewCborStore()
 	stm := NewChainManager(cs)
 
-	assert.NoError(stm.SetBestBlock(ctx, testGenesis))
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
 	res, err := stm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
@@ -127,4 +128,26 @@ func TestRejectShorterChain(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(ChainValid, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
+}
+
+func TestKnownAncestor(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	stm := NewChainManager(cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	addBlocks(t, cs, block1)
+	res, err := stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+	assert.Equal(ChainAccepted, res)
+
+	addBlocks(t, cs, fork1, fork2)
+	base, chain, err := stm.findKnownAncestor(ctx, fork3)
+	assert.NoError(err)
+	assert.Equal(testGenesis, base)
+	assert.Len(chain, 3)
+	assert.Equal(fork3, chain[0])
+	assert.Equal(fork2, chain[1])
+	assert.Equal(fork1, chain[2])
 }

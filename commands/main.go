@@ -52,6 +52,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"miner":   minerCmd,
 	"swarm":   swarmCmd,
 	"version": versionCmd,
+	"wallet":  walletCmd,
 }
 
 func init() {
