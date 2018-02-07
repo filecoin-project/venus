@@ -2,7 +2,6 @@ package types
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
@@ -14,10 +13,15 @@ func TestStatePutGet(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	tree := NewEmptyTree(cst)
+	tree := NewEmptyStateTree(cst)
 
-	act1 := &Actor{Balance: big.NewInt(155), Nonce: 17}
-	act2 := &Actor{Balance: big.NewInt(1799), Nonce: 1}
+	act1 := NewActor(AccountActorCid)
+	act1.WriteStorage([]byte("hello"))
+	act1.IncNonce()
+	act2 := NewActor(AccountActorCid)
+	act2.WriteStorage([]byte("world"))
+	act2.IncNonce()
+	act2.IncNonce()
 
 	addr1 := Address("foo")
 	addr2 := Address("bar")

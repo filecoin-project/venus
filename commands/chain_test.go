@@ -5,8 +5,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -34,7 +35,8 @@ func TestChainRun(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Contains(out.Raw, "1337")
-	assert.Contains(out.Raw, "zDPWYqFCyJbt3rimt4hyXtwTg6Dkr3FLUisDXo4hLMjxLpsH5cx5")
+	assert.Contains(out.Raw, gen.Cid().String())
+	assert.Contains(out.Raw, child.Cid().String())
 }
 
 func TestChainTextEncoder(t *testing.T) {
@@ -49,5 +51,6 @@ func TestChainTextEncoder(t *testing.T) {
 	assert.NoError(chainTextEncoder(nil, &buf, &b))
 
 	// TODO: improve assertions once content is stabilized
-	assert.Contains(buf.String(), "zDPWYqFD5TSYHCyrHNXP7jxoL9RpCoQ4EHqQtandav8L1QZmKGDW")
+	assert.Contains(buf.String(), a.Cid().String())
+	assert.Contains(buf.String(), b.Cid().String())
 }

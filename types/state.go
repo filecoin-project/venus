@@ -4,14 +4,9 @@ import (
 	"context"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 )
-
-func init() {
-	cbor.RegisterCborType(Actor{})
-}
 
 type StateTree struct {
 	// root is the root of the state merklehamt
@@ -32,7 +27,7 @@ func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (
 	}, nil
 }
 
-func NewEmptyTree(store *hamt.CborIpldStore) *StateTree {
+func NewEmptyStateTree(store *hamt.CborIpldStore) *StateTree {
 	return &StateTree{
 		root:  hamt.NewNode(store),
 		store: store,
@@ -52,18 +47,35 @@ func (t *StateTree) GetActor(ctx context.Context, a Address) (*Actor, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var act Actor
-	if err := cbor.DecodeInto(data, &act); err != nil {
+	if err := act.Unmarshal(data); err != nil {
 		return nil, err
 	}
+
 	return &act, nil
 }
 
+func (t *StateTree) GetOrCreateActor(ctx context.Context, address Address) (*Actor, error) {
+	act, err := t.GetActor(ctx, address)
+	switch err {
+	default:
+		return nil, err
+	case hamt.ErrNotFound:
+		// TODO: better code default
+		act = NewActor(AccountActorCid)
+	case nil:
+	}
+
+	return act, nil
+}
+
 func (t *StateTree) SetActor(ctx context.Context, a Address, act *Actor) error {
-	data, err := cbor.DumpObject(act)
+	data, err := act.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "marshal actor failed")
 	}
+
 	if err := t.root.Set(ctx, string(a), data); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}

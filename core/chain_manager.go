@@ -142,7 +142,10 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 	// any blocks (reorg, longer chain choice) re-add any missing txs back into
 	// the mempool
 
+	// TODO: send notifications about a new block
+
 	log.Infof("accepted new block, [s=%d, h=%s]", blk.Score(), blk.Cid())
+
 	return ChainAccepted, nil
 }
 
@@ -196,8 +199,14 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 
 	for i := len(chain) - 1; i >= 0; i-- {
 		cur := chain[i]
-		if err := s.processor(ctx, cur, st); err != nil {
+		receipts, err := s.processor(ctx, cur, st)
+		if err != nil {
 			return err
+		}
+
+		// TODO: more sophisticated comparison
+		if len(receipts) != len(cur.MessageReceipts) {
+			return fmt.Errorf("found invalid message receipts")
 		}
 
 		// TODO: check that state transitions are valid once we have them
