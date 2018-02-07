@@ -26,9 +26,9 @@ type Block struct {
 	// Nonce is a temporary field used to differentiate blocks for testing
 	Nonce uint64
 
-	// Transactions is the set of transactions included in this block
+	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
-	Transactions []Transaction
+	Messages []*Message
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.

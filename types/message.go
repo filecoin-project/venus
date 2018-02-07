@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"math/big"
 
 	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -17,14 +18,16 @@ var (
 	ErrInvalidMessageLength      = errors.New("invalid message length")
 	ErrInvalidMessageToField     = errors.New("invalid message to field")
 	ErrInvalidMessageFromField   = errors.New("invalid message from field")
+	ErrInvalidMessageValueField  = errors.New("invalid message value field")
 	ErrInvalidMessageMethodField = errors.New("invalid message method field")
 	ErrInvalidMessageParamsField = errors.New("invalid message params field")
 )
 
 // Message is the equivalent of an Ethereum transaction. They are the way actors exchange information between each other.
 type Message struct {
-	To   Address
-	From Address
+	To    Address
+	From  Address
+	Value *big.Int
 
 	Method string
 	Params []interface{}
@@ -41,13 +44,14 @@ func marshalMessage(msg Message) ([]interface{}, error) {
 	return []interface{}{
 		msg.To,
 		msg.From,
+		msg.Value,
 		msg.Method,
 		msg.Params,
 	}, nil
 }
 
 func unmarshalMessage(x []interface{}) (Message, error) {
-	if len(x) != 4 {
+	if len(x) != 5 {
 		return Message{}, ErrInvalidMessageLength
 	}
 
@@ -61,12 +65,17 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 		return Message{}, ErrInvalidMessageFromField
 	}
 
-	method, ok := x[2].(string)
+	valueB, ok := x[2].([]byte)
+	if !ok && x[2] != nil {
+		return Message{}, ErrInvalidMessageValueField
+	}
+
+	method, ok := x[3].(string)
 	if !ok {
 		return Message{}, ErrInvalidMessageMethodField
 	}
 
-	params, ok := x[3].([]interface{})
+	params, ok := x[4].([]interface{})
 	if !ok {
 		return Message{}, ErrInvalidMessageParamsField
 	}
@@ -74,6 +83,7 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 	return Message{
 		To:     Address(to),
 		From:   Address(from),
+		Value:  big.NewInt(0).SetBytes(valueB),
 		Method: method,
 		Params: params,
 	}, nil
