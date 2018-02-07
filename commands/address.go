@@ -8,21 +8,20 @@ import (
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var walletCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"addrs":   addrsCmd,
-		"balance": balanceCmd,
+		"addrs": addrsCmd,
 	},
 }
 
 var addrsCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"new":  addrsNewCmd,
-		"list": addrsListCmd,
+		"new":     addrsNewCmd,
+		"list":    addrsListCmd,
+		"balance": addrsBalanceCmd,
 	},
 }
 
@@ -33,7 +32,16 @@ type addressResult struct {
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
-		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
+
+		blk := fcn.ChainMgr.GetBestBlock()
+		if blk.StateRoot == nil {
+			re.SetError("state root in latest block was nil", cmdkit.ErrNormal)
+			return
+		}
+
+		addr := fcn.Wallet.NewAddress()
+
+		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
 	},
 	Type: addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -67,7 +75,7 @@ var addrsListCmd = &cmds.Command{
 	},
 }
 
-var balanceCmd = &cmds.Command{
+var addrsBalanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
@@ -79,7 +87,7 @@ var balanceCmd = &cmds.Command{
 			return
 		}
 
-		tree, err := state.LoadTree(req.Context, fcn.CborStore, blk.StateRoot)
+		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -91,13 +99,14 @@ var balanceCmd = &cmds.Command{
 			return
 		}
 
-		act, err := tree.GetActor(req.Context, addr)
+		_, err = tree.GetActor(req.Context, addr)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(act.Balance) // nolint: errcheck
+		// TODO: fix
+		// re.Emit(act.Balance) // nolint: errcheck
 	},
 	Type: big.Int{},
 	Encoders: cmds.EncoderMap{

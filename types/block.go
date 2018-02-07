@@ -4,13 +4,9 @@ import (
 	"fmt"
 
 	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
-	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 )
-
-// DefaultHashFunction represents the default hashing function to use
-const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
 func init() {
 	cbor.RegisterCborType(Block{})
@@ -33,6 +29,9 @@ type Block struct {
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
 	StateRoot *cid.Cid
+
+	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
+	MessageReceipts []*MessageReceipt
 }
 
 // Cid returns the content id of this block.

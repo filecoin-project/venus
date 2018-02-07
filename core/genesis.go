@@ -6,8 +6,7 @@ import (
 
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	state "github.com/filecoin-project/go-filecoin/state"
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -16,10 +15,11 @@ type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
-	st := state.NewEmptyTree(cst)
+	st := types.NewEmptyStateTree(cst)
 
-	filNetwork := &state.Actor{
-		Balance: big.NewInt(1000000000),
+	filNetwork, err := NewAccountActor(big.NewInt(100000))
+	if err != nil {
+		return nil, err
 	}
 
 	if err := st.SetActor(ctx, types.Address("filecoin"), filNetwork); err != nil {

@@ -1,14 +1,14 @@
 package commands
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
 	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -18,10 +18,12 @@ var sendMsgCmd = &cmds.Command{
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("target", true, false, "address to send message to"),
+		cmdkit.StringArg("method", true, false, "method to invoke"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.IntOption("value", "value to send with message"),
 		cmdkit.StringOption("from", "address to send message from"),
+		cmdkit.BoolOption("offchain", "send the message without adding to a block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
@@ -31,10 +33,13 @@ var sendMsgCmd = &cmds.Command{
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
+		method := req.Arguments[1]
 
-		val := req.Options["value"].(int)
-
+		var val int
+		val, _ = req.Options["value"].(int)
+		offchain := req.Options["offchain"].(bool)
 		from, _ := req.Options["from"].(string)
+
 		var fromAddr types.Address
 		if from != "" {
 			fromAddr, err = types.ParseAddress(from)
@@ -51,25 +56,53 @@ var sendMsgCmd = &cmds.Command{
 			fromAddr = addrs[0]
 		}
 
-		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
+		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), method, nil)
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		if offchain {
+			// fetch state tree
+			fcn := GetNode(env)
+			blk := fcn.ChainMgr.GetBestBlock()
+			if blk.StateRoot == nil {
+				re.SetError("state root in latest block was nil", cmdkit.ErrNormal)
+				return
+			}
+
+			tree, err := types.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+
+			receipt, err := core.ApplyMessage(req.Context, tree, msg)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+
+			re.Emit(receipt) // nolint: errcheck
+		} else {
+			if err := n.AddNewMessage(req.Context, msg); err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+
+			c, err := msg.Cid()
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+
+			re.Emit(&types.MessageReceipt{Message: c}) // nolint: errcheck
 		}
-
-		c, err := msg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(c) // nolint: errcheck
 	},
-	Type: cid.Cid{},
+	Type: &types.MessageReceipt{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			_, err := fmt.Fprintln(w, c.String())
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipt *types.MessageReceipt) error {
+			marshaled, err := json.MarshalIndent(receipt, "", "\t")
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(marshaled)
 			return err
 		}),
 	},

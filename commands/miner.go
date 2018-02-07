@@ -10,7 +10,6 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -33,7 +32,7 @@ var minerGenBlockCmd = &cmds.Command{
 		}
 		myaddr := addrs[0]
 
-		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
+		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "main", nil)
 
 		msgs := []*types.Message{reward}
 		msgs = append(msgs, fcn.MsgPool.Pending()...)
@@ -44,16 +43,18 @@ var minerGenBlockCmd = &cmds.Command{
 			Messages: msgs,
 		}
 
-		tree, err := state.LoadTree(req.Context, fcn.CborStore, cur.StateRoot)
+		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		if err := core.ProcessBlock(req.Context, next, tree); err != nil {
+		receipts, err := core.ProcessBlock(req.Context, next, tree)
+		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
+		next.MessageReceipts = receipts
 
 		stcid, err := tree.Flush(req.Context)
 		if err != nil {
