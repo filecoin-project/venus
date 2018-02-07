@@ -20,6 +20,7 @@ import (
 	nonerouting "github.com/ipfs/go-ipfs/routing/none"
 
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -30,12 +31,14 @@ type Node struct {
 	Host host.Host
 
 	ChainMgr *chain.ChainManager
+	MsgPool  *core.MessagePool
 
 	Wallet *types.Wallet
 
 	// Network Fields
-	PubSub   *floodsub.PubSub
-	BlockSub *floodsub.Subscription
+	PubSub     *floodsub.PubSub
+	BlockSub   *floodsub.Subscription
+	MessageSub *floodsub.Subscription
 
 	// Data Storage Fields
 	Datastore ds.Batching
@@ -130,6 +133,13 @@ func (node *Node) Start() error {
 		return errors.Wrap(err, "failed to subscribe to blocks topic")
 	}
 	node.BlockSub = blkSub
+
+	// subscribe to message notifications
+	msgSub, err := node.PubSub.Subscribe(MessageTopic)
+	if err != nil {
+		return errors.Wrap(err, "failed to subscribe to message topic")
+	}
+	node.MessageSub = msgSub
 
 	go node.handleBlockSubscription()
 
