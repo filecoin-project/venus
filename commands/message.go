@@ -39,7 +39,6 @@ var sendMsgCmd = &cmds.Command{
 		if from != "" {
 			a, err := types.ParseAddress(from)
 			if err != nil {
-				fmt.Println("FAIL", from)
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
