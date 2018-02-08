@@ -40,19 +40,23 @@ var rootCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
 		cmds.OptionEncodingType,
+		cmdkit.BoolOption("help", "Show the full command help text."),
+		cmdkit.BoolOption("h", "Show a short version of the command help text."),
 	},
 	Subcommands: make(map[string]*cmds.Command),
 }
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain":   chainCmd,
-	"daemon":  daemonCmd,
-	"id":      idCmd,
-	"miner":   minerCmd,
-	"swarm":   swarmCmd,
-	"version": versionCmd,
-	"wallet":  walletCmd,
+	"chain":        chainCmd,
+	"daemon":       daemonCmd,
+	"id":           idCmd,
+	"send-message": sendMsgCmd,
+	"miner":        minerCmd,
+	"mpool":        mpoolCmd,
+	"swarm":        swarmCmd,
+	"version":      versionCmd,
+	"wallet":       walletCmd,
 }
 
 func init() {
