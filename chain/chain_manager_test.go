@@ -151,3 +151,17 @@ func TestKnownAncestor(t *testing.T) {
 	assert.Equal(fork2, chain[1])
 	assert.Equal(fork1, chain[2])
 }
+
+func TestGenesis(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	stm := NewChainManager(cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.Equal(testGenesis, stm.bestBlock.blk)
+	assert.True(stm.KnownGoodBlocks.Has(testGenesis))
+
+	var i interface{}
+	assert.NoError(stm.cstore.Get(ctx, testGenesis.StateRoot, &i))
+}

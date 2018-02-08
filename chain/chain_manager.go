@@ -17,6 +17,10 @@ import (
 
 var log = logging.Logger("chain")
 
+var (
+	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
+)
+
 // ChainManager manages the current state of the chain and handles validating
 // and applying updates.
 // Safe for concurrent access
@@ -176,6 +180,15 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 
 		// TODO: check that state transitions are valid once we have them
 		s.KnownGoodBlocks.Add(cur.Cid())
+	}
+
+	outCid, err := st.Flush(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to flush tree after applying state transitions")
+	}
+
+	if !outCid.Equals(b.StateRoot) {
+		return ErrStateRootMismatch
 	}
 
 	return nil
