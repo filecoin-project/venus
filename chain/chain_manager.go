@@ -21,6 +21,21 @@ var (
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
 )
 
+// BlockProcessResult signifies the outcome of processing a given block.
+type BlockProcessResult int
+
+const (
+	Unknown = BlockProcessResult(iota)
+
+	// ChainAccepted implies the chain was valid, and is now our current best
+	// chain.
+	ChainAccepted
+
+	// ChainValid implies the chain was valid, but not better than our current
+	// best chain.
+	ChainValid
+)
+
 // ChainManager manages the current state of the chain and handles validating
 // and applying updates.
 // Safe for concurrent access
@@ -93,14 +108,6 @@ func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (
 
 	return s.acceptNewBestBlock(ctx, blk)
 }
-
-type BlockProcessResult int
-
-const (
-	Unknown = BlockProcessResult(iota)
-	ChainAccepted
-	ChainValid
-)
 
 // ProcessNewBlock sends a new block to the chain manager. If the block is
 // better than our current best, it is accepted as our new best block.
