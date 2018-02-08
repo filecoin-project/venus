@@ -2,6 +2,9 @@ package node
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -10,8 +13,10 @@ var BlocksTopic = "/fil/blocks"
 var MessageTopic = "/fil/msgs"
 
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
-	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
+	if res, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
 		return err
+	} else {
+		fmt.Println("RESPONSE: ", res)
 	}
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
@@ -85,10 +90,8 @@ func (node *Node) handleMessage(msgdata []byte) error {
 		return errors.Wrap(err, "got bad message data")
 	}
 
-	if res, err := node.MsgPool.Add(&m); err != nil {
+	if err := node.MsgPool.Add(&m); err != nil {
 		return errors.Wrapf(err, "processing message from network")
-	} else {
-		log.Error("process message returned: ", res)
 	}
 	return nil
 }
