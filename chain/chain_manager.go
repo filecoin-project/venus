@@ -59,6 +59,7 @@ func (s *ChainManager) SetBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
+// GetBestBlock returns the head of our currently selected 'best' chain.
 func (s *ChainManager) GetBestBlock() *types.Block {
 	s.bestBlock.Lock()
 	defer s.bestBlock.Unlock()
