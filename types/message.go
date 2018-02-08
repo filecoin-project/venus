@@ -76,7 +76,7 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 	}
 
 	params, ok := x[4].([]interface{})
-	if !ok {
+	if !ok && x[4] != nil {
 		return Message{}, ErrInvalidMessageParamsField
 	}
 

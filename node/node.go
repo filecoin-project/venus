@@ -122,6 +122,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Datastore: nc.Datastore,
 		Exchange:  bswap,
 		Wallet:    types.NewWallet(),
+		MsgPool:   core.NewMessagePool(),
 	}, nil
 }
 
