@@ -19,6 +19,7 @@ var log = logging.Logger("chain")
 
 var (
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
+	ErrInvalidBase       = errors.New("block does not connect to a known good chain")
 )
 
 // BlockProcessResult signifies the outcome of processing a given block.
@@ -34,6 +35,10 @@ const (
 	// ChainValid implies the chain was valid, but not better than our current
 	// best chain.
 	ChainValid
+
+	// InvalidBase implies the chain does not connect back to any previously
+	// known good block.
+	InvalidBase
 )
 
 // ChainManager manages the current state of the chain and handles validating
@@ -112,11 +117,14 @@ func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
 func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
-	if err := s.validateBlock(ctx, blk); err != nil {
+	switch err := s.validateBlock(ctx, blk); err {
+	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
+	case ErrInvalidBase:
+		return InvalidBase, ErrInvalidBase
+	case nil:
+		return s.maybeAcceptBlock(ctx, blk)
 	}
-
-	return s.maybeAcceptBlock(ctx, blk)
 }
 
 // acceptNewBestBlock sets the given block as our current 'best chain' block
@@ -213,6 +221,10 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	var validating []*types.Block
 	baseBlk := tip
 	for !s.KnownGoodBlocks.Has(baseBlk.Cid()) {
+		if baseBlk.Parent == nil {
+			return nil, nil, ErrInvalidBase
+		}
+
 		validating = append(validating, baseBlk)
 
 		next, err := s.fetchBlock(ctx, baseBlk.Parent)
