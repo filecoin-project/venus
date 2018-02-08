@@ -43,9 +43,9 @@ func deps() {
 	log.Println("Installing dependencies...")
 
 	list := []string{
-		"go get -d github.com/ipfs/go-ipfs",
 		"go get -u github.com/whyrusleeping/gx",
 		"go get -u github.com/whyrusleeping/gx-go",
+		"./fetch_go-ipfs_deps.sh",
 		"gx install",
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",
