@@ -12,6 +12,8 @@ import (
 
 var (
 	testGenesis, block1, block2, fork1, fork2, fork3 *types.Block
+
+	bad1, bad2 *types.Block
 )
 
 func init() {
@@ -28,6 +30,12 @@ func init() {
 	fork1 = mkChild(testGenesis, 1)
 	fork2 = mkChild(fork1, 1)
 	fork3 = mkChild(fork2, 1)
+
+	bad1 = &types.Block{
+		StateRoot: testGenesis.StateRoot,
+		Nonce:     404,
+	}
+	bad2 = mkChild(bad1, 0)
 }
 
 func mkChild(blk *types.Block, nonce uint64) *types.Block {
@@ -160,8 +168,23 @@ func TestGenesis(t *testing.T) {
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 	assert.Equal(testGenesis, stm.bestBlock.blk)
-	assert.True(stm.KnownGoodBlocks.Has(testGenesis))
+	assert.True(stm.KnownGoodBlocks.Has(testGenesis.Cid()))
 
 	var i interface{}
 	assert.NoError(stm.cstore.Get(ctx, testGenesis.StateRoot, &i))
+}
+
+func TestRejectBadChain(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	stm := NewChainManager(cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+
+	addBlocks(t, cs, bad1)
+	res, err := stm.ProcessNewBlock(ctx, bad2)
+	assert.EqualError(err, ErrInvalidBase.Error())
+	assert.Equal(InvalidBase, res)
+	assert.Equal(stm.GetBestBlock(), testGenesis)
 }

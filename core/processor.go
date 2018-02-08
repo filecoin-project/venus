@@ -14,6 +14,8 @@ import (
 
 type Processor func(ctx context.Context, blk *types.Block, st *state.Tree) error
 
+// ProcessBlock takes a block and a state tree and applies the state
+// transitions specified in the block on top of the state tree.
 func ProcessBlock(ctx context.Context, blk *types.Block, st *state.Tree) error {
 	for _, msg := range blk.Messages {
 		err := ApplyMessage(ctx, st, msg)
