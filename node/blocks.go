@@ -6,8 +6,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// BlocksTopic is the string topic for the blocks pubsub channel
 var BlocksTopic = "/fil/blocks"
 
+// AddNewBlock adds a new locally crafted block and announces it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
 		return err
