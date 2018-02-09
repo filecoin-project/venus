@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -162,6 +163,10 @@ func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // previous block has been validated.
 func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	// TODO: validate signatures on messages
+	if b.StateRoot == nil {
+		return fmt.Errorf("block has nil StateRoot")
+	}
+
 	return nil
 }
 
