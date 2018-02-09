@@ -29,11 +29,7 @@ var minerGenBlockCmd = &cmds.Command{
 
 		myaddr := fcn.Wallet.GetAddresses()[0]
 
-		reward := &types.Message{
-			From:  types.Address("filecoin"),
-			To:    myaddr,
-			Value: big.NewInt(1000),
-		}
+		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
 
 		msgs := []*types.Message{reward}
 		msgs = append(msgs, fcn.MsgPool.Pending()...)

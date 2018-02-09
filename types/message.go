@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
@@ -15,23 +16,37 @@ func init() {
 }
 
 var (
-	ErrInvalidMessageLength      = errors.New("invalid message length")
-	ErrInvalidMessageToField     = errors.New("invalid message to field")
-	ErrInvalidMessageFromField   = errors.New("invalid message from field")
-	ErrInvalidMessageValueField  = errors.New("invalid message value field")
-	ErrInvalidMessageMethodField = errors.New("invalid message method field")
-	ErrInvalidMessageParamsField = errors.New("invalid message params field")
+	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
+	ErrInvalidMessageLength = errors.New("invalid message length")
 )
 
-// Message is the equivalent of an Ethereum transaction. They are the way actors exchange information between each other.
+// Message is an exchange of information between two actors modeled
+// as a function call.
+// Messages are the equivalent of transactions in Ethereum.
 type Message struct {
-	To    Address
-	From  Address
-	Value *big.Int
+	to   Address
+	from Address
 
-	Method string
-	Params []interface{}
+	value *big.Int
+
+	method string
+	params []interface{}
 }
+
+// To is a getter for the to field.
+func (msg *Message) To() Address { return msg.to }
+
+// From is a getter for the from field.
+func (msg *Message) From() Address { return msg.from }
+
+// Value is a getter for the value field.
+func (msg *Message) Value() *big.Int { return msg.value }
+
+// Method is a getter for the method field.
+func (msg *Message) Method() string { return msg.method }
+
+// Params is a getter for the params field.
+func (msg *Message) Params() []interface{} { return msg.params }
 
 var messageCborEntry = atlas.
 	BuildEntry(Message{}).
@@ -42,11 +57,11 @@ var messageCborEntry = atlas.
 
 func marshalMessage(msg Message) ([]interface{}, error) {
 	return []interface{}{
-		msg.To,
-		msg.From,
-		msg.Value,
-		msg.Method,
-		msg.Params,
+		msg.To(),
+		msg.From(),
+		msg.Value(),
+		msg.Method(),
+		msg.Params(),
 	}, nil
 }
 
@@ -57,35 +72,35 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 
 	to, ok := x[0].(string)
 	if !ok {
-		return Message{}, ErrInvalidMessageToField
+		return Message{}, errInvalidMessage("to", x[0])
 	}
 
 	from, ok := x[1].(string)
 	if !ok {
-		return Message{}, ErrInvalidMessageFromField
+		return Message{}, errInvalidMessage("from", x[1])
 	}
 
 	valueB, ok := x[2].([]byte)
 	if !ok && x[2] != nil {
-		return Message{}, ErrInvalidMessageValueField
+		return Message{}, errInvalidMessage("value", x[2])
 	}
 
 	method, ok := x[3].(string)
 	if !ok {
-		return Message{}, ErrInvalidMessageMethodField
+		return Message{}, errInvalidMessage("method", x[3])
 	}
 
 	params, ok := x[4].([]interface{})
 	if !ok && x[4] != nil {
-		return Message{}, ErrInvalidMessageParamsField
+		return Message{}, errInvalidMessage("params", x[4])
 	}
 
 	return Message{
-		To:     Address(to),
-		From:   Address(from),
-		Value:  big.NewInt(0).SetBytes(valueB),
-		Method: method,
-		Params: params,
+		to:     Address(to),
+		from:   Address(from),
+		value:  big.NewInt(0).SetBytes(valueB),
+		method: method,
+		params: params,
 	}, nil
 }
 
@@ -108,4 +123,19 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 	}
 
 	return obj.Cid(), nil
+}
+
+// NewMessage creates a new message.
+func NewMessage(from, to Address, value *big.Int, method string, params []interface{}) *Message {
+	return &Message{
+		from:   from,
+		to:     to,
+		value:  value,
+		method: method,
+		params: params,
+	}
+}
+
+func errInvalidMessage(field string, received interface{}) error {
+	return fmt.Errorf("invalid message %s field: %v", field, received)
 }
