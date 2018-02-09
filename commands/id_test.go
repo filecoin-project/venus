@@ -18,8 +18,8 @@ func TestId(t *testing.T) {
 	assert.NoError(err)
 	defer nd.Stop()
 
-	out, err := testhelpers.RunCommand(idCmd, nil, &Env{node: nd})
+	out, err := testhelpers.RunCommand(idCmd, nil, nil, &Env{node: nd})
 	assert.NoError(err)
 
-	assert.True(out.Contains(nd.Host.ID().Pretty()))
+	assert.Contains(out.Raw, nd.Host.ID().Pretty())
 }
