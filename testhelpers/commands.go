@@ -3,11 +3,11 @@ package testhelpers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
-	//cli "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/cli"
 )
 
 type wc struct {
@@ -25,17 +25,13 @@ type TextOutput struct {
 	Raw   string
 }
 
-func (to *TextOutput) Contains(s string) bool {
-	return strings.Contains(to.Raw, s)
-}
-
-func (to *TextOutput) HasLine(s string) bool {
+func (to *TextOutput) HasLine(s string) error {
 	for _, l := range to.Lines {
 		if l == s {
-			return true
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf("%q\n\n\tdoes not have a line matching:\n\n%q\n", to.Raw, s)
 }
 
 func (to *TextOutput) Equals(s string) bool {
@@ -43,9 +39,9 @@ func (to *TextOutput) Equals(s string) bool {
 }
 
 // RunCommand is used to simulate calls to the commands library
-func RunCommand(root *cmds.Command, args []string, env cmds.Environment) (*TextOutput, error) {
+func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, env cmds.Environment) (*TextOutput, error) {
 	ctx := context.Background()
-	req, err := cmds.NewRequest(ctx, []string{}, nil, args, nil, root)
+	req, err := cmds.NewRequest(ctx, []string{}, opts, args, nil, root)
 	if err != nil {
 		return nil, err
 	}

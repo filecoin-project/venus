@@ -14,8 +14,8 @@ func TestVersion(t *testing.T) {
 	flags.Commit = "12345"
 
 	env := Env{}
-	out, err := testhelpers.RunCommand(versionCmd, []string{"version"}, &env)
+	out, err := testhelpers.RunCommand(versionCmd, nil, nil, &env)
 	assert.NoError(err)
 
-	assert.True(out.Contains("commit: 12345"))
+	assert.Contains(out.Raw, "commit: 12345")
 }

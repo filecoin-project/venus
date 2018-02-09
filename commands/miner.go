@@ -25,9 +25,13 @@ var minerGenBlockCmd = &cmds.Command{
 		fcn := GetNode(env)
 
 		cur := fcn.ChainMgr.GetBestBlock()
-		fmt.Println("Building on block: ", cur.Height)
 
-		myaddr := fcn.Wallet.GetAddresses()[0]
+		addrs := fcn.Wallet.GetAddresses()
+		if len(addrs) == 0 {
+			re.SetError("no addresses in wallet to mine to", cmdkit.ErrNormal)
+			return
+		}
+		myaddr := addrs[0]
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
 

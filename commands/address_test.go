@@ -15,10 +15,10 @@ func TestAddrsNew(t *testing.T) {
 
 	nd := &node.Node{Wallet: types.NewWallet()}
 
-	out, err := testhelpers.RunCommand(addrsNewCmd, nil, &Env{node: nd})
+	out, err := testhelpers.RunCommand(addrsNewCmd, nil, nil, &Env{node: nd})
 	assert.NoError(err)
 
-	assert.True(out.HasLine(nd.Wallet.GetAddresses()[0].String()))
+	assert.NoError(out.HasLine(nd.Wallet.GetAddresses()[0].String()))
 }
 
 func TestAddrsList(t *testing.T) {
@@ -29,10 +29,10 @@ func TestAddrsList(t *testing.T) {
 	a2 := nd.Wallet.NewAddress()
 	a3 := nd.Wallet.NewAddress()
 
-	out, err := testhelpers.RunCommand(addrsListCmd, nil, &Env{node: nd})
+	out, err := testhelpers.RunCommand(addrsListCmd, nil, nil, &Env{node: nd})
 	assert.NoError(err)
 
-	assert.True(out.HasLine(a1.String()))
-	assert.True(out.HasLine(a2.String()))
-	assert.True(out.HasLine(a3.String()))
+	assert.NoError(out.HasLine(a1.String()))
+	assert.NoError(out.HasLine(a2.String()))
+	assert.NoError(out.HasLine(a3.String()))
 }
