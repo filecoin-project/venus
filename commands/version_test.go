@@ -17,5 +17,5 @@ func TestVersion(t *testing.T) {
 	out, err := testhelpers.RunCommand(versionCmd, []string{"version"}, &env)
 	assert.NoError(err)
 
-	assert.Contains(out, "commit: 12345")
+	assert.True(out.Contains("commit: 12345"))
 }
