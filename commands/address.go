@@ -5,7 +5,7 @@ import (
 	"io"
 	"math/big"
 
-	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
+	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/state"
@@ -55,8 +55,8 @@ var addrsListCmd = &cmds.Command{
 	},
 	Type: []addressResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *[]addressResult) error {
-			for _, a := range *addrs {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs []addressResult) error {
+			for _, a := range addrs {
 				_, err := fmt.Fprintln(w, a.Address)
 				if err != nil {
 					return err
