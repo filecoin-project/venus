@@ -10,11 +10,11 @@ import (
 func TestMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
 	msg := Message{
-		To:     Address("Alice"),
-		From:   Address("Bob"),
-		Value:  big.NewInt(17777),
-		Method: "send",
-		Params: []interface{}{"1", "2"},
+		to:     Address("Alice"),
+		from:   Address("Bob"),
+		value:  big.NewInt(17777),
+		method: "send",
+		params: []interface{}{"1", "2"},
 	}
 
 	marshalled, err := msg.Marshal()
@@ -24,30 +24,30 @@ func TestMessageMarshal(t *testing.T) {
 	err = msgBack.Unmarshal(marshalled)
 	assert.NoError(err)
 
-	assert.Equal(msg.To, msgBack.To)
-	assert.Equal(msg.From, msgBack.From)
-	assert.Equal(msg.Value, msgBack.Value)
-	assert.Equal(msg.Method, msgBack.Method)
-	assert.Equal(msg.Params, msgBack.Params)
+	assert.Equal(msg.To(), msgBack.To())
+	assert.Equal(msg.From(), msgBack.From())
+	assert.Equal(msg.Value(), msgBack.Value())
+	assert.Equal(msg.Method(), msgBack.Method())
+	assert.Equal(msg.Params(), msgBack.Params())
 }
 
 func TestMessageCid(t *testing.T) {
 	assert := assert.New(t)
 
 	msg1 := Message{
-		To:     Address("Alice1"),
-		From:   Address("Bob"),
-		Value:  big.NewInt(999),
-		Method: "send",
-		Params: []interface{}{"1", "2"},
+		to:     Address("Alice1"),
+		from:   Address("Bob"),
+		value:  big.NewInt(999),
+		method: "send",
+		params: []interface{}{"1", "2"},
 	}
 
 	msg2 := Message{
-		To:     Address("Alice2"),
-		From:   Address("Bob"),
-		Value:  big.NewInt(4004),
-		Method: "send",
-		Params: []interface{}{"1", "2"},
+		to:     Address("Alice2"),
+		from:   Address("Bob"),
+		value:  big.NewInt(4004),
+		method: "send",
+		params: []interface{}{"1", "2"},
 	}
 
 	c1, err := msg1.Cid()

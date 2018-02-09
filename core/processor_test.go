@@ -44,11 +44,7 @@ func TestProcessBlock(t *testing.T) {
 		addr2: big.NewInt(550),
 	})
 
-	msg := &types.Message{
-		From:  addr1,
-		To:    addr2,
-		Value: big.NewInt(550),
-	}
+	msg := types.NewMessage(addr1, addr2, big.NewInt(550), "", nil)
 
 	blk := &types.Block{
 		Height:    20,
