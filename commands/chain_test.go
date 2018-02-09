@@ -30,11 +30,11 @@ func TestChainRun(t *testing.T) {
 	assert.NoError(err)
 	env := &Env{node: nd}
 
-	out, err := testhelpers.RunCommand(chainLsCmd, []string{"chain", "ls"}, env)
+	out, err := testhelpers.RunCommand(chainLsCmd, nil, nil, env)
 	assert.NoError(err)
 
-	assert.True(out.Contains("1337"))
-	assert.True(out.Contains("zDPWYqFCyJbt3rimt4hyXtwTg6Dkr3FLUisDXo4hLMjxLpsH5cx5"))
+	assert.Contains(out.Raw, "1337")
+	assert.Contains(out.Raw, "zDPWYqFCyJbt3rimt4hyXtwTg6Dkr3FLUisDXo4hLMjxLpsH5cx5")
 }
 
 func TestChainTextEncoder(t *testing.T) {

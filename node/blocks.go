@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -16,11 +15,10 @@ const MessageTopic = "/fil/msgs"
 
 // AddNewBlock adds a new locally crafted block and announces it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
-	if res, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
+	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
 		return err
-	} else {
-		fmt.Println("RESPONSE: ", res)
 	}
+
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
 

@@ -44,7 +44,12 @@ var sendMsgCmd = &cmds.Command{
 			}
 			fromAddr = a
 		} else {
-			fromAddr = n.Wallet.GetAddresses()[0]
+			addrs := n.Wallet.GetAddresses()
+			if len(addrs) == 0 {
+				re.SetError("no addresses in local wallet", cmdkit.ErrNormal)
+				return
+			}
+			fromAddr = addrs[0]
 		}
 
 		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
