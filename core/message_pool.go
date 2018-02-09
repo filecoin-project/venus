@@ -9,15 +9,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// MessagePool contains all currently known messages.
-// Messages are added to the pool, when
-// - they are submitted locally
-// - received through the network
+// MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
+// By 'de-duplicated' we mean that insertion of a message by cid that already
+// exists is a nop. We use a MessagePool to store all messages received by this node
+// via network or directly created via user command that have yet to be included
+// in a block. Messages are removed as they are processed.
 //
-// Messages are removed from the pool, when
-// - they are included into the chain.
-//
-// Safe for concurrent access.
+// MessagePool is safe for concurrent access.
 type MessagePool struct {
 	lk sync.RWMutex
 
