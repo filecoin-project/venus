@@ -57,11 +57,11 @@ var messageCborEntry = atlas.
 
 func marshalMessage(msg Message) ([]interface{}, error) {
 	return []interface{}{
-		msg.To(),
-		msg.From(),
-		msg.Value(),
-		msg.Method(),
-		msg.Params(),
+		msg.to,
+		msg.from,
+		msg.value,
+		msg.method,
+		msg.params,
 	}, nil
 }
 
