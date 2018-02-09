@@ -47,11 +47,7 @@ var sendMsgCmd = &cmds.Command{
 			fromAddr = n.Wallet.GetAddresses()[0]
 		}
 
-		msg := &types.Message{
-			From:  fromAddr,
-			To:    target,
-			Value: big.NewInt(int64(val)),
-		}
+		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
