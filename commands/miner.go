@@ -50,7 +50,7 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		if err := core.ProcessBlock(req.Context, next, tree); err != nil {
+		if err = core.ProcessBlock(req.Context, next, tree); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -63,12 +63,12 @@ var minerGenBlockCmd = &cmds.Command{
 
 		next.StateRoot = stcid
 
-		if err := fcn.AddNewBlock(req.Context, next); err != nil {
+		if err = fcn.AddNewBlock(req.Context, next); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(next.Cid())
+		re.Emit(next.Cid()) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

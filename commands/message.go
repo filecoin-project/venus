@@ -37,12 +37,11 @@ var sendMsgCmd = &cmds.Command{
 		from, _ := req.Options["from"].(string)
 		var fromAddr types.Address
 		if from != "" {
-			a, err := types.ParseAddress(from)
+			fromAddr, err = types.ParseAddress(from)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
-			fromAddr = a
 		} else {
 			addrs := n.Wallet.GetAddresses()
 			if len(addrs) == 0 {
@@ -54,7 +53,7 @@ var sendMsgCmd = &cmds.Command{
 
 		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
+		if err = n.AddNewMessage(req.Context, msg); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -65,7 +64,7 @@ var sendMsgCmd = &cmds.Command{
 			return
 		}
 
-		re.Emit(c)
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

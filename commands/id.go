@@ -40,7 +40,7 @@ var idCmd = &cmds.Command{
 
 		out := idOutputFromNode(fcn)
 
-		re.Emit(out)
+		re.Emit(out) // nolint: errcheck
 	},
 	Type: idOutput{},
 	Encoders: cmds.EncoderMap{
