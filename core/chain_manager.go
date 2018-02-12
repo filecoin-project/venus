@@ -1,4 +1,4 @@
-package chain
+package core
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	core "github.com/filecoin-project/go-filecoin/core"
 	state "github.com/filecoin-project/go-filecoin/state"
 	types "github.com/filecoin-project/go-filecoin/types"
 )
@@ -52,7 +51,7 @@ type ChainManager struct {
 		blk *types.Block
 	}
 
-	processor core.Processor
+	processor Processor
 
 	// KnownGoodBlocks is the set of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
@@ -69,7 +68,7 @@ type ChainManager struct {
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
 		cstore:    cs,
-		processor: core.ProcessBlock,
+		processor: ProcessBlock,
 	}
 	cm.KnownGoodBlocks.set = cid.NewSet()
 

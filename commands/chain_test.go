@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -19,10 +19,10 @@ func TestChainRun(t *testing.T) {
 	assert := assert.New(t)
 
 	cst := hamt.NewCborStore()
-	nd := &node.Node{ChainMgr: chain.NewChainManager(cst), CborStore: cst}
+	nd := &node.Node{ChainMgr: core.NewChainManager(cst), CborStore: cst}
 
 	// Chain of height two.
-	err := nd.ChainMgr.Genesis(ctx, chain.InitGenesis)
+	err := nd.ChainMgr.Genesis(ctx, core.InitGenesis)
 	assert.NoError(err)
 	gen := nd.ChainMgr.GetBestBlock()
 	child := &types.Block{Height: 1, Parent: gen.Cid(), StateRoot: gen.StateRoot}
