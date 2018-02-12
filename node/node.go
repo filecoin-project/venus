@@ -20,7 +20,7 @@ import (
 	nonerouting "github.com/ipfs/go-ipfs/routing/none"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var log = logging.Logger("node")
@@ -32,7 +32,7 @@ type Node struct {
 	ChainMgr *core.ChainManager
 	MsgPool  *core.MessagePool
 
-	Wallet *types.Wallet
+	Wallet *wallet.Wallet
 
 	// Network Fields
 	PubSub     *floodsub.PubSub
@@ -120,7 +120,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PubSub:    fsub,
 		Datastore: nc.Datastore,
 		Exchange:  bswap,
-		Wallet:    types.NewWallet(),
+		Wallet:    wallet.New(),
 		MsgPool:   core.NewMessagePool(),
 	}, nil
 }
