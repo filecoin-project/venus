@@ -7,13 +7,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 func TestAddrsNew(t *testing.T) {
 	assert := assert.New(t)
 
-	nd := &node.Node{Wallet: types.NewWallet()}
+	nd := &node.Node{Wallet: wallet.New()}
 
 	out, err := testhelpers.RunCommand(addrsNewCmd, nil, nil, &Env{node: nd})
 	assert.NoError(err)
@@ -24,7 +24,7 @@ func TestAddrsNew(t *testing.T) {
 func TestAddrsList(t *testing.T) {
 	assert := assert.New(t)
 
-	nd := &node.Node{Wallet: types.NewWallet()}
+	nd := &node.Node{Wallet: wallet.New()}
 	a1 := nd.Wallet.NewAddress()
 	a2 := nd.Wallet.NewAddress()
 	a3 := nd.Wallet.NewAddress()
