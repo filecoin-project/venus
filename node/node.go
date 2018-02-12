@@ -19,7 +19,6 @@ import (
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 	nonerouting "github.com/ipfs/go-ipfs/routing/none"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -30,7 +29,7 @@ var log = logging.Logger("node")
 type Node struct {
 	Host host.Host
 
-	ChainMgr *chain.ChainManager
+	ChainMgr *core.ChainManager
 	MsgPool  *core.MessagePool
 
 	Wallet *types.Wallet
@@ -101,10 +100,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	cst := &hamt.CborIpldStore{bserv}
 
-	chainMgr := chain.NewChainManager(cst)
+	chainMgr := core.NewChainManager(cst)
 
 	// TODO: load state from disk
-	if err := chainMgr.Genesis(ctx, chain.InitGenesis); err != nil {
+	if err := chainMgr.Genesis(ctx, core.InitGenesis); err != nil {
 		return nil, err
 	}
 
