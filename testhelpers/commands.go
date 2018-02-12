@@ -20,20 +20,23 @@ type nopCloser struct{}
 
 func (c nopCloser) Close() error { return nil }
 
+// TextOutput stores the result of running a command.
 type TextOutput struct {
 	Lines []string
 	Raw   string
 }
 
+// HasLine checks if the given line is part of the output.
 func (to *TextOutput) HasLine(s string) error {
 	for _, l := range to.Lines {
 		if l == s {
 			return nil
 		}
 	}
-	return fmt.Errorf("%q\n\n\tdoes not have a line matching:\n\n%q\n", to.Raw, s)
+	return fmt.Errorf("expected %q\n\n\tto have a line matching:\n\n%q", to.Raw, s)
 }
 
+// Equals checks if the given string is equal to the raw output.
 func (to *TextOutput) Equals(s string) bool {
 	return to.Raw == s
 }

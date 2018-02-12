@@ -103,7 +103,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	chainMgr := core.NewChainManager(cst)
 
 	// TODO: load state from disk
-	if err := chainMgr.Genesis(ctx, core.InitGenesis); err != nil {
+	if err = chainMgr.Genesis(ctx, core.InitGenesis); err != nil {
 		return nil, err
 	}
 

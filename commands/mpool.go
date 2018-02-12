@@ -16,7 +16,7 @@ var mpoolCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
-		re.Emit(n.MsgPool.Pending())
+		re.Emit(n.MsgPool.Pending()) // nolint: errcheck
 	},
 	Type: []*types.Message{},
 	Encoders: cmds.EncoderMap{

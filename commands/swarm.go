@@ -172,7 +172,7 @@ var swarmPeersCmd = &cmds.Command{
 		}
 
 		sort.Sort(&out)
-		re.Emit(&out)
+		re.Emit(&out) // nolint: errcheck
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *connInfos) error {
@@ -257,7 +257,7 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 			}
 		}
 
-		re.Emit(output)
+		re.Emit(output) // nolint: errcheck
 	},
 	Type: []connectResult{},
 	Encoders: cmds.EncoderMap{
