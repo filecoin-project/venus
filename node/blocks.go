@@ -8,9 +8,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// BlocksTopic is the pubsub topic identifier on which new blocks are announced.
 var BlocksTopic = "/fil/blocks"
+
+// MessageTopic is the pubsub topic identifier on which new messages are announced.
 var MessageTopic = "/fil/msgs"
 
+// AddNewBlock processes a block on the local chain and publishes it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
 		return err
@@ -49,6 +53,7 @@ func (node *Node) handleBlockSubscription() {
 	}
 }
 
+// AddNewMessage adds a new message to the pool and publishes it to the network.
 func (node *Node) AddNewMessage(ctx context.Context, msg *types.Message) error {
 	if err := node.MsgPool.Add(msg); err != nil {
 		return err

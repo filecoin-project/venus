@@ -18,14 +18,17 @@ import (
 var log = logging.Logger("chain")
 
 var (
+	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
-	ErrInvalidBase       = errors.New("block does not connect to a known good chain")
+	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
+	ErrInvalidBase = errors.New("block does not connect to a known good chain")
 )
 
 // BlockProcessResult signifies the outcome of processing a given block.
 type BlockProcessResult int
 
 const (
+	// Unknown implies there was an error that made it impossible to process the block.
 	Unknown = BlockProcessResult(iota)
 
 	// ChainAccepted implies the chain was valid, and is now our current best
@@ -75,6 +78,7 @@ func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	return cm
 }
 
+// Genesis creates a new genesis block and sets it as the the best known block.
 func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 	genesis, err := gen(s.cstore)
 	if err != nil {
@@ -97,6 +101,7 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
+// GetBestBlock retrieves the currently best known head of the best chain.
 func (s *ChainManager) GetBestBlock() *types.Block {
 	s.bestBlock.Lock()
 	defer s.bestBlock.Unlock()
@@ -192,7 +197,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 
 	for i := len(chain) - 1; i >= 0; i-- {
 		cur := chain[i]
-		if err := s.processor(ctx, cur, st); err != nil {
+		if err = s.processor(ctx, cur, st); err != nil {
 			return err
 		}
 

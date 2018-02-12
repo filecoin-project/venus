@@ -16,17 +16,17 @@ var versionCmd = &cmds.Command{
 	},
 	Run: versionRun,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vo *VersionOutput) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vo *versionOutput) error {
 			_, err := fmt.Fprintf(w, "commit: %s\n", vo.Commit)
 			return err
 		}),
 	},
 }
 
-type VersionOutput struct {
+type versionOutput struct {
 	Commit string
 }
 
 func versionRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-	re.Emit(&VersionOutput{Commit: flags.Commit})
+	re.Emit(&versionOutput{Commit: flags.Commit}) // nolint: errcheck
 }

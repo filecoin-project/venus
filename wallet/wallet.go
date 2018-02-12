@@ -7,17 +7,21 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Wallet manages the locally stored accounts.
 type Wallet struct {
 	lk        sync.Mutex
 	addresses map[types.Address]struct{}
 }
 
+// New creates a new Wallet.
 func New() *Wallet {
 	return &Wallet{
 		addresses: make(map[types.Address]struct{}),
 	}
 }
 
+// HasAddress checks if the given address is stored.
+// Safe for concurrent access.
 func (w *Wallet) HasAddress(a types.Address) bool {
 	w.lk.Lock()
 	defer w.lk.Unlock()
@@ -25,9 +29,16 @@ func (w *Wallet) HasAddress(a types.Address) bool {
 	return ok
 }
 
+// NewAddress creates a new address and stores it.
+// Safe for concurrent access.
 func (w *Wallet) NewAddress() types.Address {
 	fakeAddrBuf := make([]byte, 20)
-	rand.Read(fakeAddrBuf)
+	_, err := rand.Read(fakeAddrBuf)
+	if err != nil {
+		// if rand.Read errors we have a problem
+		panic(err)
+	}
+
 	fakeAddr := types.Address(fakeAddrBuf)
 
 	w.lk.Lock()
@@ -36,6 +47,8 @@ func (w *Wallet) NewAddress() types.Address {
 	return fakeAddr
 }
 
+// GetAddresses retrieves all stored addresses.
+// Safe for concurrent access.
 func (w *Wallet) GetAddresses() []types.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()

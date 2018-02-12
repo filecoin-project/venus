@@ -32,7 +32,7 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 	n := GetNode(env)
 
 	blk := n.ChainMgr.GetBestBlock()
-	re.Emit(blk)
+	re.Emit(blk) // nolint: errcheck
 
 	for blk.Parent != nil {
 		var next types.Block
@@ -41,7 +41,7 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 			return
 		}
 
-		re.Emit(&next)
+		re.Emit(&next) // nolint: errcheck
 		blk = &next
 	}
 }

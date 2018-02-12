@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Processor is the signature a function used to process blocks.
 type Processor func(ctx context.Context, blk *types.Block, st *state.Tree) error
 
 // ProcessBlock takes a block and a state tree and applies the state
