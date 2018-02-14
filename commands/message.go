@@ -53,7 +53,7 @@ var sendMsgCmd = &cmds.Command{
 
 		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
 
-		if err = n.AddNewMessage(req.Context, msg); err != nil {
+		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
