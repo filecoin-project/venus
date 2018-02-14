@@ -197,7 +197,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 
 	for i := len(chain) - 1; i >= 0; i-- {
 		cur := chain[i]
-		if err = s.processor(ctx, cur, st); err != nil {
+		if err := s.processor(ctx, cur, st); err != nil {
 			return err
 		}
 
