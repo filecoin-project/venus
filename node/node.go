@@ -40,8 +40,14 @@ type Node struct {
 	MessageSub *floodsub.Subscription
 
 	// Data Storage Fields
+
+	// Datastore is the underlying storage backend.
 	Datastore ds.Batching
-	Exchange  exchange.Interface
+
+	// Exchange is the interface for fetching data from other nodes.
+	Exchange exchange.Interface
+
+	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
 }
 

@@ -8,10 +8,16 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
+var testRand *rand.Rand
+
+func init() {
+	testRand = rand.New(rand.NewSource(42))
+}
+
 func randCid() *cid.Cid {
 	pref := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31)
 	data := make([]byte, 16)
-	rand.Read(data)
+	testRand.Read(data)
 
 	c, err := pref.Sum(data)
 	if err != nil {
