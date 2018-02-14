@@ -18,6 +18,7 @@ type revertError interface {
 	RevertState() bool
 }
 
+// ShouldRevert retrieves if the given error is a revertError or not.
 func ShouldRevert(err error) bool {
 	rev, ok := err.(revertError)
 	return ok && rev.RevertState()

@@ -1,4 +1,4 @@
-package chain
+package core
 
 import (
 	"context"
@@ -10,8 +10,10 @@ import (
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
+// GenesisInitFunc is the signature for function that is used to create a genesis block.
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
+// InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
 	st := state.NewEmptyTree(cst)

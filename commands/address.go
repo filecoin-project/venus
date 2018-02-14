@@ -33,7 +33,7 @@ type addressResult struct {
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
-		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()})
+		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
 	},
 	Type: addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -51,7 +51,7 @@ var addrsListCmd = &cmds.Command{
 		for _, a := range fcn.Wallet.GetAddresses() {
 			out = append(out, addressResult{a.String()})
 		}
-		re.Emit(out)
+		re.Emit(out) // nolint: errcheck
 	},
 	Type: []addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -97,7 +97,7 @@ var balanceCmd = &cmds.Command{
 			return
 		}
 
-		re.Emit(act.Balance)
+		re.Emit(act.Balance) // nolint: errcheck
 	},
 	Type: big.Int{},
 	Encoders: cmds.EncoderMap{
