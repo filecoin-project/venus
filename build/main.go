@@ -74,7 +74,6 @@ func lint(packages []string) {
 
 	fastLinters := []string{
 		"--enable=vet",
-		"--enable=vetshadow",
 		"--enable=gofmt",
 		"--enable=misspell",
 		"--enable=goconst",
