@@ -21,7 +21,7 @@ func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st *ty
 		return nil, 1, fmt.Errorf("missing export: %s", msg.Method())
 	}
 
-	return toExecutable.Execute(vmCtx)
+	return MakeTypedExport(toExecutable, msg.Method())(vmCtx)
 }
 
 func hasExport(exports Exports, method string) bool {

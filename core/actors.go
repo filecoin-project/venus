@@ -19,14 +19,13 @@ type Exports map[string]*FunctionSignature
 
 type ExecutableActor interface {
 	Exports() Exports
-	Execute(ctx *VMContext) ([]byte, uint8, error)
 }
 
-type ActorMemory interface {
-	isMemory() bool
+type ActorStorage interface {
+	isStorage() bool
 }
 
-type ExportFunc func(ctx *VMContext, memory ActorMemory) ([]byte, uint8, error)
+type ExportFunc func(ctx *VMContext) ([]byte, uint8, error)
 
 // TODO: convert signatures into non go types, but rather low level agreed up types
 type FunctionSignature struct {
@@ -51,19 +50,6 @@ func LoadCode(code *cid.Cid) (ExecutableActor, error) {
 	return actor, nil
 }
 
-// --
-// Below are helper functions that are used to implement actors.
-
-// MarshalMemory encodes the passed in data into bytes.
-func MarshalMemory(in interface{}) ([]byte, error) {
-	return cbor.DumpObject(in)
-}
-
-// UnmarshalMemory decodes the passed in bytes into the given object.
-func UnmarshalMemory(raw []byte, to interface{}) error {
-	return cbor.DecodeInto(raw, to)
-}
-
 func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
 	if !ok {
@@ -78,8 +64,8 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 
 	val := f.Func
 	t := f.Type
-	// number of input args, struct receiver + context + memory + dynamic params
-	numIn := 3 + len(signature.Params)
+	// number of input args, struct receiver + context + dynamic params
+	numIn := 2 + len(signature.Params)
 
 	if t.Kind() != reflect.Func || t.NumIn() != numIn {
 		fmt.Println(t.Kind())
@@ -101,11 +87,10 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 		}
 	}
 
-	return func(ctx *VMContext, memory ActorMemory) ([]byte, uint8, error) {
+	return func(ctx *VMContext) ([]byte, uint8, error) {
 		args := []reflect.Value{
 			reflect.ValueOf(actor),
 			reflect.ValueOf(ctx),
-			reflect.ValueOf(memory),
 		}
 
 		for i, paramType := range signature.Params {
@@ -167,4 +152,17 @@ func marshalValue(val interface{}) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unknown type: %s", t)
 	}
+}
+
+// --
+// Below are helper functions that are used to implement actors.
+
+// MarshalStorage encodes the passed in data into bytes.
+func MarshalStorage(in interface{}) ([]byte, error) {
+	return cbor.DumpObject(in)
+}
+
+// UnmarshalStorage decodes the passed in bytes into the given object.
+func UnmarshalStorage(raw []byte, to interface{}) error {
+	return cbor.DecodeInto(raw, to)
 }

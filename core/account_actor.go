@@ -11,31 +11,31 @@ import (
 )
 
 func init() {
-	cbor.RegisterCborType(AccountMemory{})
+	cbor.RegisterCborType(AccountStorage{})
 }
 
 type AccountActor struct{}
 
-type AccountMemory struct {
+type AccountStorage struct {
 	Balance *big.Int
 }
 
-func (mem *AccountMemory) isMemory() bool {
+func (mem *AccountStorage) isStorage() bool {
 	return true
 }
 
 var _ ExecutableActor = (*AccountActor)(nil)
-var _ ActorMemory = (*AccountMemory)(nil)
+var _ ActorStorage = (*AccountStorage)(nil)
 
 // NewAccountActor creates a new Actor with a predefined balance.
 func NewAccountActor(balance *big.Int) (*types.Actor, error) {
-	memoryBytes, err := MarshalMemory(&AccountMemory{
+	storageBytes, err := MarshalStorage(&AccountStorage{
 		Balance: balance,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return types.NewActorWithMemory(types.AccountActorCid, memoryBytes), nil
+	return types.NewActorWithMemory(types.AccountActorCid, storageBytes), nil
 }
 
 var exports = Exports{
@@ -57,28 +57,24 @@ var exports = Exports{
 	},
 }
 
-// Execute is the entry point for calling from the external land into the VM.
-func (account *AccountActor) Execute(ctx *VMContext) ([]byte, uint8, error) {
-	memory, err := account.unmarshalMemory(ctx.ReadStorage())
+func withStorage(ctx *VMContext, f func(*AccountStorage) (interface{}, error)) (interface{}, error) {
+	storage, err := unmarshalStorage(ctx.ReadStorage())
 	if err != nil {
-		return nil, 1, err
+		return nil, err
 	}
 
-	ret, exitCode, err := MakeTypedExport(account, ctx.Message().Method())(ctx, memory)
+	ret, err := f(storage)
+
+	newStorage, err := marshalStorage(storage)
 	if err != nil {
-		return ret, exitCode, err
+		return nil, err
 	}
 
-	newMemory, err := account.marshalMemory(memory)
-	if err != nil {
-		return nil, 1, err
+	if err := ctx.WriteStorage(newStorage); err != nil {
+		return nil, err
 	}
 
-	if err := ctx.WriteStorage(newMemory); err != nil {
-		return nil, 1, err
-	}
-
-	return ret, exitCode, nil
+	return ret, nil
 }
 
 // Exports makes the available methods for this contract available.
@@ -86,27 +82,41 @@ func (account *AccountActor) Exports() Exports {
 	return exports
 }
 
-func (account *AccountActor) Main(ctx *VMContext, memory *AccountMemory) (uint8, error) {
+func (account *AccountActor) Main(ctx *VMContext) (uint8, error) {
 	return 0, nil
 }
 
-func (account *AccountActor) Balance(ctx *VMContext, memory *AccountMemory) (*big.Int, uint8, error) {
-	return memory.Balance, 0, nil
+func (account *AccountActor) Balance(ctx *VMContext) (*big.Int, uint8, error) {
+	balance, err := withStorage(ctx, func(storage *AccountStorage) (interface{}, error) {
+		return storage.Balance, nil
+	})
+
+	if err != nil {
+		return nil, 1, err
+	}
+
+	return balance.(*big.Int), 0, nil
 }
 
-func (account *AccountActor) Transfer(ctx *VMContext, memory *AccountMemory) (uint8, error) {
+func (account *AccountActor) Transfer(ctx *VMContext) (uint8, error) {
 	value := ctx.Message().Value()
 	_, _, err := ctx.Send(ctx.Message().From(), "subtract", []interface{}{ctx.Message(), value})
 	if err != nil {
 		return 1, errors.Wrap(err, "failed to send message: subtract")
 	}
 
-	memory.Balance.Add(memory.Balance, value)
+	_, err = withStorage(ctx, func(storage *AccountStorage) (interface{}, error) {
+		storage.Balance.Add(storage.Balance, value)
+		return nil, nil
+	})
+	if err != nil {
+		return 1, err
+	}
 
 	return 0, nil
 }
 
-func (account *AccountActor) Subtract(ctx *VMContext, memory *AccountMemory, msg *types.Message, value *big.Int) (uint8, error) {
+func (account *AccountActor) Subtract(ctx *VMContext, msg *types.Message, value *big.Int) (uint8, error) {
 	// validate we agreed to this value being sent
 	// TODO: instead of passing the message, only send the cid, and fetch it from the state, to make sure it
 	// is valid and included in the state tree
@@ -122,31 +132,37 @@ func (account *AccountActor) Subtract(ctx *VMContext, memory *AccountMemory, msg
 		return 1, fmt.Errorf("invalid value")
 	}
 
-	// make sure enough is available
-	if memory.Balance.Cmp(value) == -1 {
-		return 1, fmt.Errorf("not enough balance")
-	}
+	_, err := withStorage(ctx, func(storage *AccountStorage) (interface{}, error) {
+		// make sure enough is available
+		if storage.Balance.Cmp(value) == -1 {
+			return 1, fmt.Errorf("not enough balance")
+		}
 
-	memory.Balance.Sub(memory.Balance, value)
+		storage.Balance.Sub(storage.Balance, value)
+		return nil, nil
+	})
+	if err != nil {
+		return 1, err
+	}
 
 	return 0, nil
 }
 
-func (account *AccountActor) unmarshalMemory(raw []byte) (*AccountMemory, error) {
-	memory := &AccountMemory{Balance: big.NewInt(0)}
+func unmarshalStorage(raw []byte) (*AccountStorage, error) {
+	storage := &AccountStorage{Balance: big.NewInt(0)}
 
-	// no memory to initialize
+	// no storage to initialize
 	if len(raw) == 0 {
-		return memory, nil
+		return storage, nil
 	}
 
-	if err := UnmarshalMemory(raw, memory); err != nil {
+	if err := UnmarshalStorage(raw, storage); err != nil {
 		return nil, err
 	}
 
-	return memory, nil
+	return storage, nil
 }
 
-func (account *AccountActor) marshalMemory(memory *AccountMemory) ([]byte, error) {
-	return MarshalMemory(memory)
+func marshalStorage(storage *AccountStorage) ([]byte, error) {
+	return MarshalStorage(storage)
 }
