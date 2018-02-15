@@ -18,14 +18,14 @@ func TestMessagePoolAddRemove(t *testing.T) {
 		types.Address("Alice"),
 		types.Address("Bob"),
 		nil,
-		"main",
+		"balance",
 		nil,
 	)
 	msg2 := types.NewMessage(
 		types.Address("Alice"),
 		types.Address("Bob"),
 		nil,
-		"main",
+		"balance",
 		[]interface{}{"hello"},
 	)
 
@@ -56,7 +56,7 @@ func TestMessagePoolDedup(t *testing.T) {
 		types.Address("Alice"),
 		types.Address("Bob"),
 		nil,
-		"main",
+		"balance",
 		nil,
 	)
 
