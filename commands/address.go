@@ -80,9 +80,6 @@ var addrsBalanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send message from"),
-	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		blk := fcn.ChainMgr.GetBestBlock()
@@ -103,26 +100,10 @@ var addrsBalanceCmd = &cmds.Command{
 			return
 		}
 
-		from, _ := req.Options["from"].(string)
-		var fromAddr types.Address
-		if from != "" {
-			fromAddr, err = types.ParseAddress(from)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-		} else {
-			addrs := fcn.Wallet.GetAddresses()
-			if len(addrs) == 0 {
-				re.SetError("no addresses in local wallet", cmdkit.ErrNormal)
-				return
-			}
-			fromAddr = addrs[0]
-		}
-
-		msg := types.NewMessage(fromAddr, toAddr, nil, "balance", nil)
+		msg := types.NewMessage(types.Address(""), toAddr, nil, "balance", nil)
 		receipt, err := core.ApplyMessage(req.Context, tree, msg)
 		if err != nil {
+			panic(err)
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

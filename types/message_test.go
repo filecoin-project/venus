@@ -66,3 +66,13 @@ func TestNewMessageForTestGetter(t *testing.T) {
 	c2, _ := m2.Cid()
 	assert.False(t, c1.Equals(c2))
 }
+
+func TestMessageHasFrom(t *testing.T) {
+	assert := assert.New(t)
+
+	msgNoFrom := NewMessage(Address(""), Address("to"), nil, "balance", nil)
+	msgFrom := NewMessage(Address("from"), Address("to"), nil, "balance", nil)
+
+	assert.False(msgNoFrom.HasFrom())
+	assert.True(msgFrom.HasFrom())
+}

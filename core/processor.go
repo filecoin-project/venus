@@ -36,14 +36,19 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st *types.StateTree) ([
 // ApplyMessage applies the state transition specified by the given
 // message to the state tree.
 func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) (*types.MessageReceipt, error) {
-	if msg.From() == msg.To() {
-		// TODO: handle this
-		return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From())
-	}
+	var fromActor *types.Actor
 
-	fromActor, err := st.GetActor(ctx, msg.From())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From())
+	if msg.HasFrom() {
+		if msg.From() == msg.To() {
+			// TODO: handle this
+			return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From())
+		}
+
+		from, err := st.GetActor(ctx, msg.From())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From())
+		}
+		fromActor = from
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To())
@@ -60,7 +65,6 @@ func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) 
 		return nil, errors.Wrap(err, "failed to send message")
 	}
 
-	fmt.Printf("return value: %s\n", string(ret))
 	return &types.MessageReceipt{
 		Message:  c,
 		ExitCode: exitCode,
