@@ -63,9 +63,9 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk := &types.Block{Parent: baseBlk.Cid(), Height: 1}
+	nextBlk := &types.Block{Parent: baseBlk.Cid(), Height: 1, StateRoot: baseBlk.StateRoot}
 
-	// Wait for network connection notifications to propogate
+	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 50)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk))

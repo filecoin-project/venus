@@ -1,4 +1,4 @@
-package chain
+package core
 
 import (
 	"sync"
@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
+// SyncCidSet wraps a lock around cid.Set operations
 type SyncCidSet struct {
 	lk  sync.Mutex
 	set *cid.Set

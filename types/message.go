@@ -1,0 +1,141 @@
+package types
+
+import (
+	"errors"
+	"fmt"
+	"math/big"
+
+	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
+	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+)
+
+func init() {
+	cbor.RegisterCborType(messageCborEntry)
+}
+
+var (
+	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
+	ErrInvalidMessageLength = errors.New("invalid message length")
+)
+
+// Message is an exchange of information between two actors modeled
+// as a function call.
+// Messages are the equivalent of transactions in Ethereum.
+type Message struct {
+	to   Address
+	from Address
+
+	value *big.Int
+
+	method string
+	params []interface{}
+}
+
+// To is a getter for the to field.
+func (msg *Message) To() Address { return msg.to }
+
+// From is a getter for the from field.
+func (msg *Message) From() Address { return msg.from }
+
+// Value is a getter for the value field.
+func (msg *Message) Value() *big.Int { return msg.value }
+
+// Method is a getter for the method field.
+func (msg *Message) Method() string { return msg.method }
+
+// Params is a getter for the params field.
+func (msg *Message) Params() []interface{} { return msg.params }
+
+var messageCborEntry = atlas.
+	BuildEntry(Message{}).
+	Transform().
+	TransformMarshal(atlas.MakeMarshalTransformFunc(marshalMessage)).
+	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(unmarshalMessage)).
+	Complete()
+
+func marshalMessage(msg Message) ([]interface{}, error) {
+	return []interface{}{
+		msg.to,
+		msg.from,
+		msg.value,
+		msg.method,
+		msg.params,
+	}, nil
+}
+
+func unmarshalMessage(x []interface{}) (Message, error) {
+	if len(x) != 5 {
+		return Message{}, ErrInvalidMessageLength
+	}
+
+	to, ok := x[0].(string)
+	if !ok {
+		return Message{}, errInvalidMessage("to", x[0])
+	}
+
+	from, ok := x[1].(string)
+	if !ok {
+		return Message{}, errInvalidMessage("from", x[1])
+	}
+
+	valueB, ok := x[2].([]byte)
+	if !ok && x[2] != nil {
+		return Message{}, errInvalidMessage("value", x[2])
+	}
+
+	method, ok := x[3].(string)
+	if !ok {
+		return Message{}, errInvalidMessage("method", x[3])
+	}
+
+	params, ok := x[4].([]interface{})
+	if !ok && x[4] != nil {
+		return Message{}, errInvalidMessage("params", x[4])
+	}
+
+	return Message{
+		to:     Address(to),
+		from:   Address(from),
+		value:  big.NewInt(0).SetBytes(valueB),
+		method: method,
+		params: params,
+	}, nil
+}
+
+// Unmarshal a message from the given bytes.
+func (msg *Message) Unmarshal(b []byte) error {
+	return cbor.DecodeInto(b, msg)
+}
+
+// Marshal the message into bytes.
+func (msg *Message) Marshal() ([]byte, error) {
+	return cbor.DumpObject(msg)
+}
+
+// Cid returns the canonical CID for the message.
+// TODO: can we avoid returning an error?
+func (msg *Message) Cid() (*cid.Cid, error) {
+	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
+	if err != nil {
+		return nil, errPkg.Wrap(err, "failed to marshal to cbor")
+	}
+
+	return obj.Cid(), nil
+}
+
+// NewMessage creates a new message.
+func NewMessage(from, to Address, value *big.Int, method string, params []interface{}) *Message {
+	return &Message{
+		from:   from,
+		to:     to,
+		value:  value,
+		method: method,
+		params: params,
+	}
+}
+
+func errInvalidMessage(field string, received interface{}) error {
+	return fmt.Errorf("invalid message %s field: %v", field, received)
+}

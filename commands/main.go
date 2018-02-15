@@ -6,9 +6,9 @@ import (
 	"net"
 	"os"
 
-	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
-	cmdcli "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/cli"
-	cmdhttp "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds/http"
+	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmdcli "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/cli"
+	cmdhttp "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
@@ -40,18 +40,23 @@ var rootCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
 		cmds.OptionEncodingType,
+		cmdkit.BoolOption("help", "Show the full command help text."),
+		cmdkit.BoolOption("h", "Show a short version of the command help text."),
 	},
 	Subcommands: make(map[string]*cmds.Command),
 }
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"chain":   chainCmd,
-	"daemon":  daemonCmd,
-	"id":      idCmd,
-	"miner":   minerCmd,
-	"swarm":   swarmCmd,
-	"version": versionCmd,
+	"chain":        chainCmd,
+	"daemon":       daemonCmd,
+	"id":           idCmd,
+	"send-message": sendMsgCmd,
+	"miner":        minerCmd,
+	"mpool":        mpoolCmd,
+	"swarm":        swarmCmd,
+	"version":      versionCmd,
+	"wallet":       walletCmd,
 }
 
 func init() {
