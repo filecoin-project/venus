@@ -73,15 +73,12 @@ func (account *AccountActor) Exports() Exports {
 
 // Balance retrieves the current balance of this account in Filecoin.
 func (account *AccountActor) Balance(ctx *VMContext) (*big.Int, uint8, error) {
-	balance, err := withStorage(ctx, func(storage *AccountStorage) (interface{}, error) {
-		return storage.Balance, nil
-	})
-
+	storage, err := loadStorage(ctx)
 	if err != nil {
 		return nil, 1, err
 	}
 
-	return balance.(*big.Int), 0, nil
+	return storage.Balance, 0, nil
 }
 
 // Transfer sends a specified amount of Filecoin from the sender of the message to this
@@ -151,7 +148,7 @@ func (account *AccountActor) Subtract(ctx *VMContext, msg *types.Message, value 
 // withStorage is a helper to initialize the accounts storage, operate on it, and then
 // commit it again.
 func withStorage(ctx *VMContext, f func(*AccountStorage) (interface{}, error)) (interface{}, error) {
-	storage, err := unmarshalAccountStorage(ctx.ReadStorage())
+	storage, err := loadStorage(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +168,11 @@ func withStorage(ctx *VMContext, f func(*AccountStorage) (interface{}, error)) (
 	}
 
 	return ret, nil
+}
+
+// loadStorage fetches the storage from the actor.
+func loadStorage(ctx *VMContext) (*AccountStorage, error) {
+	return unmarshalAccountStorage(ctx.ReadStorage())
 }
 
 // unmarshalAccountStorage initializes and unmarshales the account storage.
