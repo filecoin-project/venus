@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	cmds "gx/ipfs/QmWGgKRz5S24SqaAapF5PPCfYfLT7MexJZewN5M82CQTzs/go-ipfs-cmds"
+	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -32,7 +32,7 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 	n := GetNode(env)
 
 	blk := n.ChainMgr.GetBestBlock()
-	re.Emit(blk)
+	re.Emit(blk) // nolint: errcheck
 
 	for blk.Parent != nil {
 		var next types.Block
@@ -41,7 +41,7 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 			return
 		}
 
-		re.Emit(&next)
+		re.Emit(&next) // nolint: errcheck
 		blk = &next
 	}
 }

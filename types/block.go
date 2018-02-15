@@ -2,12 +2,15 @@ package types
 
 import (
 	"fmt"
-	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 
+	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 )
+
+// DefaultHashFunction represents the default hashing function to use
+const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
 func init() {
 	cbor.RegisterCborType(Block{})
@@ -22,6 +25,14 @@ type Block struct {
 
 	// Nonce is a temporary field used to differentiate blocks for testing
 	Nonce uint64
+
+	// Messages is the set of messages included in this block
+	// TODO: should be a merkletree-ish thing
+	Messages []*Message
+
+	// StateRoot is a cid pointer to the state tree after application of the
+	// transactions state transitions.
+	StateRoot *cid.Cid
 }
 
 // Cid returns the content id of this block.
@@ -47,7 +58,7 @@ func (b Block) IsParentOf(c Block) bool {
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
 	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	obj, err := cbor.WrapObject(b, mh.BLAKE2B_MIN+31, -1)
+	obj, err := cbor.WrapObject(b, DefaultHashFunction, -1)
 	if err != nil {
 		panic(err)
 	}
