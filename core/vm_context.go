@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -54,16 +55,5 @@ func (ctx *VMContext) Send(to types.Address, method string, params []interface{}
 		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To())
 	}
 
-	vmCtx := NewVMContext(fromActor, toActor, msg, ctx.state)
-
-	toExecutable, err := LoadCode(toActor.Code())
-	if err != nil {
-		return nil, 1, errors.Wrap(err, "unable to load code for To actor")
-	}
-
-	if !hasExport(toExecutable.Exports(), msg.Method()) {
-		return nil, 1, fmt.Errorf("missing export: %s", msg.Method())
-	}
-
-	return toExecutable.Execute(vmCtx)
+	return Send(context.Background(), fromActor, toActor, msg, ctx.state)
 }

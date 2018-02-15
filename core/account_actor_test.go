@@ -47,7 +47,7 @@ func TestAccountBalanceAndTransfer(t *testing.T) {
 		msg := types.NewMessage(fAddr, tAddr, value, method, params)
 		ctx := NewVMContext(fActor, tActor, msg, state)
 
-		ret, exitCode, err := execActor.Execute(ctx)
+		ret, exitCode, err := MakeTypedExport(execActor, method)(ctx)
 		assert.NoError(err)
 		assert.Equal(exitCode, uint8(0))
 
