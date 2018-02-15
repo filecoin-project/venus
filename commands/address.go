@@ -21,8 +21,8 @@ var walletCmd = &cmds.Command{
 
 var addrsCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"new":  addrsNewCmd,
 		"list": addrsListCmd,
+		"new":  addrsNewCmd,
 	},
 }
 
