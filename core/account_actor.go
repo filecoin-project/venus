@@ -138,7 +138,7 @@ func (account *AccountActor) Subtract(ctx *VMContext, msg *types.Message, value 
 // withStorage is a helper to initialize the accounts storage, operate on it, and then
 // commit it again.
 func withStorage(ctx *VMContext, f func(*AccountStorage) (interface{}, error)) (interface{}, error) {
-	storage, err := unmarshalStorage(ctx.ReadStorage())
+	storage, err := unmarshalAccountStorage(ctx.ReadStorage())
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +160,8 @@ func withStorage(ctx *VMContext, f func(*AccountStorage) (interface{}, error)) (
 	return ret, nil
 }
 
-// unmarshalStorage initializes and unmarshales the account storage.
-func unmarshalStorage(raw []byte) (*AccountStorage, error) {
+// unmarshalAccountStorage initializes and unmarshales the account storage.
+func unmarshalAccountStorage(raw []byte) (*AccountStorage, error) {
 	storage := &AccountStorage{Balance: big.NewInt(0)}
 
 	// no storage to initialize

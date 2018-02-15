@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -84,4 +85,77 @@ func TestAccountBalanceAndTransfer(t *testing.T) {
 	t.Log(`check the right amount was added to "to"`)
 	b3 := send(toAddr, "balance", nil, nil)
 	assertInt(b3, 100)
+}
+
+func TestAccountActorMarshalStorage(t *testing.T) {
+	assert := assert.New(t)
+
+	t.Log("empty storage")
+	emptyStorage := &AccountStorage{}
+	outEmpty, err := MarshalStorage(emptyStorage)
+	assert.NoError(err)
+
+	emptyStorageBack, err := unmarshalAccountStorage(outEmpty)
+	assert.NoError(err)
+	assert.Equal(emptyStorage, emptyStorageBack)
+
+	t.Log("storage with balance")
+	storage := &AccountStorage{Balance: big.NewInt(10)}
+	out, err := MarshalStorage(storage)
+	assert.NoError(err)
+
+	storageBack, err := unmarshalAccountStorage(out)
+	assert.NoError(err)
+	assert.Equal(storage, storageBack)
+}
+
+func TestAccountActorWithStorage(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+
+	from, err := NewAccountActor(big.NewInt(0))
+	assert.NoError(err)
+	fromAddr := types.Address("from")
+
+	to, err := NewAccountActor(big.NewInt(10))
+	assert.NoError(err)
+	toAddr := types.Address("to")
+
+	cst := hamt.NewCborStore()
+	state := types.NewEmptyStateTree(cst)
+
+	assert.NoError(state.SetActor(ctx, fromAddr, from))
+	assert.NoError(state.SetActor(ctx, toAddr, to))
+
+	msg := types.NewMessage(fromAddr, toAddr, nil, "balance", nil)
+	vmCtx := NewVMContext(from, to, msg, state)
+
+	t.Log("when no error is returned the changes are applied")
+	result, err := withStorage(vmCtx, func(storage *AccountStorage) (interface{}, error) {
+		assert.Equal(storage.Balance, big.NewInt(10))
+		storage.Balance = big.NewInt(20)
+
+		return "hello", nil
+	})
+	assert.NoError(err)
+	assert.Equal(result.(string), "hello")
+
+	_, err = withStorage(vmCtx, func(storage *AccountStorage) (interface{}, error) {
+		assert.Equal(storage.Balance, big.NewInt(20))
+		return nil, nil
+	})
+	assert.NoError(err)
+
+	t.Log("when an error is returned the changes are not applied")
+	_, err = withStorage(vmCtx, func(storage *AccountStorage) (interface{}, error) {
+		storage.Balance = big.NewInt(1000)
+		return nil, fmt.Errorf("fail")
+	})
+	assert.Error(err, "fail")
+
+	_, err = withStorage(vmCtx, func(storage *AccountStorage) (interface{}, error) {
+		assert.Equal(storage.Balance, big.NewInt(20))
+		return nil, nil
+	})
+	assert.NoError(err)
 }
