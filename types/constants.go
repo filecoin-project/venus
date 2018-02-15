@@ -8,6 +8,7 @@ import (
 // DefaultHashFunction represents the default hashing function to use
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
+// AccountActorCid is the CID of the builtin account actor.
 var AccountActorCid *cid.Cid
 
 func init() {

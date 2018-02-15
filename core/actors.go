@@ -13,19 +13,27 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// BuiltinActors is list of all actors that ship with Filecoin.
+// They are indexed by their CID.
 var BuiltinActors = map[string]ExecutableActor{}
 
+// Exports describe the public methods of an actor.
 type Exports map[string]*FunctionSignature
 
+// ExecutableActor is the interface all builting actors have to implement.
 type ExecutableActor interface {
 	Exports() Exports
 }
 
+// ExportFunc is the signature an exported method of an actor is expected to have.
 type ExportFunc func(ctx *VMContext) ([]byte, uint8, error)
 
+// FunctionSignature describes the signature of a single function.
 // TODO: convert signatures into non go types, but rather low level agreed up types
 type FunctionSignature struct {
+	// Params is a list of the types of the parameters the function expects.
 	Params []interface{}
+	// Return is the type of the return value of the function.
 	Return interface{}
 }
 
@@ -46,6 +54,10 @@ func LoadCode(code *cid.Cid) (ExecutableActor, error) {
 	return actor, nil
 }
 
+// MakeTypedExport finds the correct method on the given actor and returns it.
+// The returned function is wrapped such that it takes care of serialization and type checks.
+//
+// TODO: find a better name, naming is hard..
 func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
 	if !ok {
@@ -123,18 +135,18 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 			}
 
 			return ret, exitCode, err
-		} else {
-			exitCode, ok := out[0].Interface().(uint8)
-			if !ok {
-				panic("invalid return value")
-			}
-			err, ok := out[1].Interface().(error)
-			if !ok {
-				err = nil
-			}
-
-			return nil, exitCode, err
 		}
+
+		exitCode, ok := out[0].Interface().(uint8)
+		if !ok {
+			panic("invalid return value")
+		}
+		err, ok := out[1].Interface().(error)
+		if !ok {
+			err = nil
+		}
+
+		return nil, exitCode, err
 	}
 }
 

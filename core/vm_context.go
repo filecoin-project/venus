@@ -17,6 +17,7 @@ type VMContext struct {
 	state   *types.StateTree
 }
 
+// NewVMContext returns an initialized context.
 func NewVMContext(from, to *types.Actor, msg *types.Message, st *types.StateTree) *VMContext {
 	return &VMContext{
 		from:    from,
@@ -26,19 +27,23 @@ func NewVMContext(from, to *types.Actor, msg *types.Message, st *types.StateTree
 	}
 }
 
+// Message retrieves the message associated with this context.
 func (ctx *VMContext) Message() *types.Message {
 	return ctx.message
 }
 
+// ReadStorage reads the storage from the associated to actor.
 func (ctx *VMContext) ReadStorage() []byte {
 	return ctx.to.ReadStorage()
 }
 
+// WriteStorage writes to the storage of the associated to actor.
 func (ctx *VMContext) WriteStorage(memory []byte) error {
 	ctx.to.WriteStorage(memory)
 	return ctx.state.SetActor(context.Background(), ctx.message.To(), ctx.to)
 }
 
+// Send sends a message to another actor.
 func (ctx *VMContext) Send(to types.Address, method string, params []interface{}) ([]byte, uint8, error) {
 	// from is always currents context to
 	from := ctx.Message().To()

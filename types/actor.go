@@ -18,29 +18,44 @@ var (
 	ErrInvalidActorLength = errors.New("invalid actor length")
 )
 
+// Actor is the central abstraction of entities in the system.
+// TODO: write better docs
 type Actor struct {
 	code   *cid.Cid
 	memory []byte
 	nonce  uint64
 }
 
-func (a *Actor) Code() *cid.Cid { return a.code }
-func (a *Actor) Nonce() uint64  { return a.nonce }
+// Code retrieves the code of this actor.
+func (a *Actor) Code() *cid.Cid {
+	return a.code
+}
 
+// Nonce retrieves the nonce of this actor.
+func (a *Actor) Nonce() uint64 {
+	return a.nonce
+}
+
+// IncNonce increments the nonce of this actor by 1.
 func (a *Actor) IncNonce() {
 	a.nonce = a.nonce + 1
 }
 
+// ReadStorage retrieves all storage of this actor.
 func (a *Actor) ReadStorage() []byte {
 	out := make([]byte, len(a.memory))
 	copy(out, a.memory)
 	return out
 }
+
+// WriteStorage sets the storage of this actor.
+// All existing storage is overwritten.
 func (a *Actor) WriteStorage(memory []byte) {
-	// Grow memory as needed for now
 	if len(a.memory) < len(memory) {
+		// Grow memory as needed for now
 		a.memory = make([]byte, len(memory))
 	} else if len(a.memory) > len(memory) {
+		// Shrink memory down
 		a.memory = a.memory[0:len(memory)]
 	}
 	copy(a.memory, memory)
@@ -66,6 +81,7 @@ func NewActor(code *cid.Cid) *Actor {
 	}
 }
 
+// NewActorWithMemory constructs a new actor with a predefined memory.
 func NewActorWithMemory(code *cid.Cid, memory []byte) *Actor {
 	return &Actor{
 		code:   code,
@@ -122,13 +138,13 @@ func unmarshalActor(x []interface{}) (Actor, error) {
 }
 
 // Unmarshal a actor from the given bytes.
-func (actor *Actor) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, actor)
+func (a *Actor) Unmarshal(b []byte) error {
+	return cbor.DecodeInto(b, a)
 }
 
 // Marshal the actor into bytes.
-func (actor *Actor) Marshal() ([]byte, error) {
-	return cbor.DumpObject(actor)
+func (a *Actor) Marshal() ([]byte, error) {
+	return cbor.DumpObject(a)
 }
 
 func errInvalidActor(field string, received interface{}) error {
