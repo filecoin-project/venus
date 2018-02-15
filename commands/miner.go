@@ -21,14 +21,14 @@ var minerGenBlockCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 
-		cur := fcn.ChainMgr.BestBlock
+		cur := fcn.ChainMgr.GetBestBlock()
 
 		next := &types.Block{
 			Parent: cur.Cid(),
 			Height: cur.Height + 1,
 		}
 
-		if err := fcn.ChainMgr.ProcessNewBlock(req.Context, next); err != nil {
+		if err := fcn.AddNewBlock(req.Context, next); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

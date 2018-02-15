@@ -43,15 +43,15 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmT68EgyFbnSs5rbHkNkFZQwjdHfqrJiGr3R6rwcwnzYLc",
+      "hash": "QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp",
       "name": "go-libp2p",
-      "version": "5.0.13"
+      "version": "5.0.14"
     },
     {
       "author": "why",
-      "hash": "QmPWejECnZ4a2eShmnMFBfaLQR7AjuNDPxiY7jmR4fPjg6",
+      "hash": "QmQViVWBHbU6HmYjXcdNq7tVASCNgdg64ZGcauuDkLCivW",
       "name": "go-ipfs-addr",
-      "version": "0.1.6"
+      "version": "0.1.7"
     },
     {
       "author": "whyrusleeping",
@@ -61,14 +61,26 @@
     },
     {
       "author": "why",
-      "hash": "QmSwABWvsucRwH7XVDbTE3aJgiVdtJUfeWjY8oejB4RmAA",
+      "hash": "QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q",
       "name": "go-hamt-ipld",
-      "version": "0.0.4"
+      "version": "0.0.5"
     },
     {
       "hash": "QmSpJByNKFX1sCsHBEp3R73FL4NF6FnQTEGyNAXHm2GS52",
       "name": "go-log",
       "version": "1.2.0"
+    },
+    {
+      "author": "jbenet",
+      "hash": "QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg",
+      "name": "go-datastore",
+      "version": "1.4.1"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw",
+      "name": "go-libp2p-floodsub",
+      "version": "0.9.10"
     }
   ],
   "gxVersion": "0.12.1",
