@@ -56,13 +56,13 @@ type ChainManager struct {
 
 	processor Processor
 
-	// KnownGoodBlocks is the set of 'good blocks'. It is a cache to prevent us
+	// knownGoodBlocks is a cache of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
 	// validity of a given chain.
 	// In the future we will need a more sophisticated mechanism here.
 	// TODO: this should probably be an LRU, needs more consideration.
 	// For example, the genesis block should always be considered a "good" block.
-	KnownGoodBlocks SyncCidSet
+	knownGoodBlocks SyncCidSet
 
 	cstore *hamt.CborIpldStore
 }
@@ -73,7 +73,7 @@ func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 		cstore:    cs,
 		processor: ProcessBlock,
 	}
-	cm.KnownGoodBlocks.set = cid.NewSet()
+	cm.knownGoodBlocks.set = cid.NewSet()
 
 	return cm
 }
@@ -96,7 +96,7 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 		return errors.Wrap(err, "failed to put block to disk")
 	}
 	s.bestBlock.blk = b // TODO: make a copy?
-	s.KnownGoodBlocks.Add(b.Cid())
+	s.knownGoodBlocks.Add(b.Cid())
 
 	return nil
 }
@@ -202,7 +202,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		}
 
 		// TODO: check that state transitions are valid once we have them
-		s.KnownGoodBlocks.Add(cur.Cid())
+		s.knownGoodBlocks.Add(cur.Cid())
 	}
 
 	outCid, err := st.Flush(ctx)
@@ -229,7 +229,7 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	// to an entirely different chain.
 	var validating []*types.Block
 	baseBlk := tip
-	for !s.KnownGoodBlocks.Has(baseBlk.Cid()) {
+	for !s.knownGoodBlocks.Has(baseBlk.Cid()) {
 		if baseBlk.Parent == nil {
 			return nil, nil, ErrInvalidBase
 		}
