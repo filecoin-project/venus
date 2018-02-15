@@ -1,3 +1,4 @@
+// Package state implements a merkelized blockchain state tree.
 package state
 
 import (
@@ -16,6 +17,7 @@ func init() {
 	cbor.RegisterCborType(Actor{})
 }
 
+// Tree is a state tree that maps addresses to actors.
 type Tree struct {
 	// root is the root of the state merklehamt
 	root *hamt.Node
@@ -23,6 +25,7 @@ type Tree struct {
 	store *hamt.CborIpldStore
 }
 
+// LoadTree loads the state tree referenced by the given cid.
 func LoadTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (*Tree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
@@ -35,6 +38,7 @@ func LoadTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (*Tree
 	}, nil
 }
 
+// NewEmptyTree instantiates a new state tree with no data in it.
 func NewEmptyTree(store *hamt.CborIpldStore) *Tree {
 	return &Tree{
 		root:  hamt.NewNode(store),
@@ -42,6 +46,8 @@ func NewEmptyTree(store *hamt.CborIpldStore) *Tree {
 	}
 }
 
+// Flush serialized the state tree and flushes unflushed changes to the backing
+// datastore. The cid of the state tree is returned.
 func (t *Tree) Flush(ctx context.Context) (*cid.Cid, error) {
 	if err := t.root.Flush(ctx); err != nil {
 		return nil, err
@@ -50,6 +56,7 @@ func (t *Tree) Flush(ctx context.Context) (*cid.Cid, error) {
 	return t.store.Put(ctx, t.root)
 }
 
+// GetActor looks up the actor with address 'a'.
 func (t *Tree) GetActor(ctx context.Context, a types.Address) (*Actor, error) {
 	data, err := t.root.Find(ctx, string(a))
 	if err != nil {
@@ -62,6 +69,8 @@ func (t *Tree) GetActor(ctx context.Context, a types.Address) (*Actor, error) {
 	return &act, nil
 }
 
+// SetActor sets the memory slot at address 'a' to the given actor.
+// This operation can overwrite existing actors at that address.
 func (t *Tree) SetActor(ctx context.Context, a types.Address, act *Actor) error {
 	data, err := cbor.DumpObject(act)
 	if err != nil {

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -46,4 +48,21 @@ func TestStatePutGet(t *testing.T) {
 	act2out2, err := tree2.GetActor(ctx, addr2)
 	assert.NoError(err)
 	assert.Equal(act2, act2out2)
+}
+
+func TestStateErrors(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+	tree := NewEmptyTree(cst)
+
+	_, err := tree.GetActor(ctx, "foo")
+	assert.EqualError(err, "not found")
+
+	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
+	assert.NoError(err)
+
+	tr2, err := LoadTree(ctx, cst, c)
+	assert.EqualError(err, "not found")
+	assert.Nil(tr2)
 }
