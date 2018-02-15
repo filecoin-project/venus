@@ -36,8 +36,15 @@ func TestAccountBalanceAndTransfer(t *testing.T) {
 		t.Helper()
 
 		// load actors to ensure they are current
-		fActor, err := state.GetActor(ctx, fAddr)
-		assert.NoError(err)
+
+		// only load from actor if one is passed in
+		var fActor *types.Actor
+		if fAddr != types.Address("") {
+			a, err := state.GetActor(ctx, fAddr)
+			assert.NoError(err)
+			fActor = a
+		}
+
 		tActor, err := state.GetActor(ctx, tAddr)
 		assert.NoError(err)
 
@@ -67,8 +74,12 @@ func TestAccountBalanceAndTransfer(t *testing.T) {
 		assert.Equal(actualInt, big.NewInt(expected))
 	}
 
+	t.Log(`check that "from" has the set balance of 500, with no from address`)
+	b0 := sendFrom(types.Address(""), fromAddr, "balance", nil, nil)
+	assertInt(b0, 500)
+
 	t.Log(`check that "from" has the set balance of 500`)
-	b0 := send(fromAddr, "balance", nil, nil)
+	b0 = send(fromAddr, "balance", nil, nil)
 	assertInt(b0, 500)
 
 	t.Log(`check that "to" has the set balance of 0`)

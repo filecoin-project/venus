@@ -31,10 +31,9 @@ func TestAddrsBalance(t *testing.T) {
 	nd, err := node.New(ctx)
 	assert.NoError(err)
 
-	fromAddr := types.Address("investor1")
 	toAddr := types.Address("filecoin")
 
-	out, err := testhelpers.RunCommand(addrsBalanceCmd, []string{toAddr.String()}, map[string]interface{}{"from": fromAddr.String()}, &Env{node: nd})
+	out, err := testhelpers.RunCommand(addrsBalanceCmd, []string{toAddr.String()}, nil, &Env{node: nd})
 	assert.NoError(err)
 	assert.NoError(out.HasLine("100000"))
 }

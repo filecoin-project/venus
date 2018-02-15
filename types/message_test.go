@@ -57,3 +57,13 @@ func TestMessageCid(t *testing.T) {
 
 	assert.NotEqual(c1.String(), c2.String())
 }
+
+func TestMessageHasFrom(t *testing.T) {
+	assert := assert.New(t)
+
+	msgNoFrom := NewMessage(Address(""), Address("to"), nil, "balance", nil)
+	msgFrom := NewMessage(Address("from"), Address("to"), nil, "balance", nil)
+
+	assert.False(msgNoFrom.HasFrom())
+	assert.True(msgFrom.HasFrom())
+}

@@ -48,6 +48,11 @@ func (msg *Message) Method() string { return msg.method }
 // Params is a getter for the params field.
 func (msg *Message) Params() []interface{} { return msg.params }
 
+// HasFrom indidcates if this message has a from address.
+func (msg *Message) HasFrom() bool {
+	return msg.from != Address("")
+}
+
 var messageCborEntry = atlas.
 	BuildEntry(Message{}).
 	Transform().

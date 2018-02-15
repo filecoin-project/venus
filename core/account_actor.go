@@ -14,6 +14,11 @@ func init() {
 	cbor.RegisterCborType(AccountStorage{})
 }
 
+var (
+	// ErrRequiredFrom is returned when a method requires a from address, but none was passed.
+	ErrRequiredFrom = errors.New("message is missing required from")
+)
+
 // AccountActor is the builtin actor for handling individual accounts.
 //
 // AccountActor __is__ shared shared between multiple accounts, as it is the
@@ -82,6 +87,10 @@ func (account *AccountActor) Balance(ctx *VMContext) (*big.Int, uint8, error) {
 // Transfer sends a specified amount of Filecoin from the sender of the message to this
 // account.
 func (account *AccountActor) Transfer(ctx *VMContext) (uint8, error) {
+	if !ctx.Message().HasFrom() {
+		return 1, ErrRequiredFrom
+	}
+
 	value := ctx.Message().Value()
 	_, _, err := ctx.Send(ctx.Message().From(), "subtract", []interface{}{ctx.Message(), value})
 	if err != nil {
@@ -104,6 +113,10 @@ func (account *AccountActor) Transfer(ctx *VMContext) (uint8, error) {
 // DANGER ZONE: This has critical security implications and as such needs to ensure that the Message
 // passed in is valid and only used a single time.
 func (account *AccountActor) Subtract(ctx *VMContext, msg *types.Message, value *big.Int) (uint8, error) {
+	if !ctx.Message().HasFrom() {
+		return 1, ErrRequiredFrom
+	}
+
 	// validate we agreed to this value being sent
 	// TODO: instead of passing the message, only send the cid, and fetch it from the state, to make sure it
 	// is valid and included in the state tree
