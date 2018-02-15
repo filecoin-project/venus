@@ -34,12 +34,6 @@ var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 
-		blk := fcn.ChainMgr.GetBestBlock()
-		if blk.StateRoot == nil {
-			re.SetError("state root in latest block was nil", cmdkit.ErrNormal)
-			return
-		}
-
 		addr := fcn.Wallet.NewAddress()
 
 		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
