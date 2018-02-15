@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestAddrsNew(t *testing.T) {
@@ -21,6 +22,21 @@ func TestAddrsNew(t *testing.T) {
 	assert.NoError(err)
 
 	assert.NoError(out.HasLine(nd.Wallet.GetAddresses()[0].String()))
+}
+
+func TestAddrsBalance(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+
+	nd, err := node.New(ctx)
+	assert.NoError(err)
+
+	fromAddr := types.Address("investor1")
+	toAddr := types.Address("filecoin")
+
+	out, err := testhelpers.RunCommand(addrsBalanceCmd, []string{toAddr.String()}, map[string]interface{}{"from": fromAddr.String()}, &Env{node: nd})
+	assert.NoError(err)
+	assert.NoError(out.HasLine("100000"))
 }
 
 func TestAddrsList(t *testing.T) {

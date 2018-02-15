@@ -8,6 +8,7 @@ import (
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -79,6 +80,9 @@ var addrsBalanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("from", "address to send message from"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		blk := fcn.ChainMgr.GetBestBlock()
@@ -93,20 +97,39 @@ var addrsBalanceCmd = &cmds.Command{
 			return
 		}
 
-		addr, err := types.ParseAddress(req.Arguments[0])
+		toAddr, err := types.ParseAddress(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		_, err = tree.GetActor(req.Context, addr)
+		from, _ := req.Options["from"].(string)
+		var fromAddr types.Address
+		if from != "" {
+			fromAddr, err = types.ParseAddress(from)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+		} else {
+			addrs := fcn.Wallet.GetAddresses()
+			if len(addrs) == 0 {
+				re.SetError("no addresses in local wallet", cmdkit.ErrNormal)
+				return
+			}
+			fromAddr = addrs[0]
+		}
+
+		msg := types.NewMessage(fromAddr, toAddr, nil, "balance", nil)
+		receipt, err := core.ApplyMessage(req.Context, tree, msg)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
+		balance := big.NewInt(0)
+		balance.SetBytes(receipt.Return)
 
-		// TODO: fix
-		// re.Emit(act.Balance) // nolint: errcheck
+		re.Emit(balance) // nolint: errcheck
 	},
 	Type: big.Int{},
 	Encoders: cmds.EncoderMap{
