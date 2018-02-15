@@ -98,6 +98,7 @@ var sendMsgCmd = &cmds.Command{
 	Type: &types.MessageReceipt{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, receipt *types.MessageReceipt) error {
+			// TODO: proper formatting depending on the returned result
 			marshaled, err := json.MarshalIndent(receipt, "", "\t")
 			if err != nil {
 				return err
