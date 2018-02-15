@@ -21,10 +21,6 @@ type ExecutableActor interface {
 	Exports() Exports
 }
 
-type ActorStorage interface {
-	isStorage() bool
-}
-
 type ExportFunc func(ctx *VMContext) ([]byte, uint8, error)
 
 // TODO: convert signatures into non go types, but rather low level agreed up types

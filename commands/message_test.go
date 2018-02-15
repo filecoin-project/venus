@@ -22,7 +22,7 @@ func TestMessageSend(t *testing.T) {
 	assert.NoError(err)
 	defer nd.Stop()
 
-	out, err := testhelpers.RunCommand(sendMsgCmd, []string{"0xf00ba4", "main"}, msi{"value": 100, "from": "0x123456", "offchain": false}, &Env{node: nd})
+	out, err := testhelpers.RunCommand(sendMsgCmd, []string{"0xf00ba4", "balance"}, msi{"value": 100, "from": "0x123456", "offchain": false}, &Env{node: nd})
 	assert.NoError(err)
 
 	pending := nd.MsgPool.Pending()
