@@ -11,8 +11,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	state "github.com/filecoin-project/go-filecoin/state"
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var log = logging.Logger("chain")
@@ -190,7 +189,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		return err
 	}
 
-	st, err := state.LoadTree(ctx, s.cstore, baseBlk.StateRoot)
+	st, err := types.LoadStateTree(ctx, s.cstore, baseBlk.StateRoot)
 	if err != nil {
 		return err
 	}
