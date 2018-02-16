@@ -17,6 +17,7 @@ func testCid() *cid.Cid {
 	return b.Cid()
 }
 
+// TODO (fritz) Do something about the test duplication w/AddParent.
 func TestBlockGenerator_Generate(t *testing.T) {
 	pool := core.NewMessagePool()
 	g := BlockGenerator{pool}
