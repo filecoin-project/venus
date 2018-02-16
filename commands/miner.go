@@ -36,7 +36,11 @@ var minerGenBlockCmd = &cmds.Command{
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
 		fcn.MsgPool.Add(reward)
-		next := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(cur)
+		next, err := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(cur)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 
 		// TODO move this functionality into the mining package so it can be used by multiple
 		// commands.

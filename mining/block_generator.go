@@ -11,12 +11,14 @@ type BlockGenerator struct {
 }
 
 // Generate returns a new block created from the messages in the
-// pool. It does not remove them. It can't fail.
-func (b BlockGenerator) Generate(p *types.Block) *types.Block {
+// pool. It does not remove them.
+func (b BlockGenerator) Generate(p *types.Block) (*types.Block, error) {
 	child := &types.Block{
 		Height:   p.Height + 1,
 		Messages: b.Mp.Pending(),
 	}
-	child.AddParent(*p)
-	return child
+	if err := child.AddParent(*p); err != nil {
+		return nil, err
+	}
+	return child, nil
 }

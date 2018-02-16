@@ -26,7 +26,8 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	}
 
 	// With no messages.
-	b := g.Generate(&parent)
+	b, err := g.Generate(&parent)
+	assert.NoError(t, err)
 	assert.Equal(t, parent.Cid(), b.Parent)
 	assert.Len(t, b.Messages, 0)
 
@@ -36,7 +37,8 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	pool.Add(newMsg())
 	expectedMsgs := 2
 	require.Len(t, pool.Pending(), expectedMsgs)
-	b = g.Generate(&parent)
+	b, err = g.Generate(&parent)
+	assert.NoError(t, err)
 	assert.Len(t, pool.Pending(), expectedMsgs) // Does not remove them.
 	assert.Len(t, b.Messages, expectedMsgs)
 }
