@@ -10,6 +10,7 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -34,16 +35,11 @@ var minerGenBlockCmd = &cmds.Command{
 		myaddr := addrs[0]
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
+		fcn.MsgPool.Add(reward)
+		next := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(cur)
 
-		msgs := []*types.Message{reward}
-		msgs = append(msgs, fcn.MsgPool.Pending()...)
-
-		next := &types.Block{
-			Parent:   cur.Cid(),
-			Height:   cur.Height + 1,
-			Messages: msgs,
-		}
-
+		// TODO move this functionality into the mining package so it can be used by multiple
+		// commands.
 		tree, err := state.LoadTree(req.Context, fcn.CborStore, cur.StateRoot)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)

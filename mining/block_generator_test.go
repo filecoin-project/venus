@@ -18,24 +18,25 @@ func testCid() *cid.Cid {
 }
 
 func TestBlockGenerator_Generate(t *testing.T) {
-	p := core.NewMessagePool()
-	g := BlockGenerator{p}
-	parentCid := testCid()
-	parentHeight := uint64(100)
+	pool := core.NewMessagePool()
+	g := BlockGenerator{pool}
+	parent := types.Block{
+		Parent: testCid(),
+		Height: uint64(100),
+	}
 
 	// With no messages.
-	b := g.Generate(parentCid, parentHeight)
-	assert.Equal(t, parentCid, b.Parent)
-	assert.Equal(t, parentHeight+1, b.Height)
+	b := g.Generate(&parent)
+	assert.Equal(t, parent.Cid(), b.Parent)
 	assert.Len(t, b.Messages, 0)
 
 	// With messages.
 	newMsg := types.NewMessageForTestGetter()
-	p.Add(newMsg())
-	p.Add(newMsg())
+	pool.Add(newMsg())
+	pool.Add(newMsg())
 	expectedMsgs := 2
-	require.Len(t, p.Pending(), expectedMsgs)
-	b = g.Generate(parentCid, parentHeight)
-	assert.Len(t, p.Pending(), expectedMsgs) // Does not remove them.
+	require.Len(t, pool.Pending(), expectedMsgs)
+	b = g.Generate(&parent)
+	assert.Len(t, pool.Pending(), expectedMsgs) // Does not remove them.
 	assert.Len(t, b.Messages, expectedMsgs)
 }

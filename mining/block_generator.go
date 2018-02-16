@@ -1,8 +1,6 @@
 package mining
 
 import (
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -14,10 +12,11 @@ type BlockGenerator struct {
 
 // Generate returns a new block created from the messages in the
 // pool. It does not remove them. It can't fail.
-func (b BlockGenerator) Generate(cid *cid.Cid, h uint64) *types.Block {
-	return &types.Block{
-		Parent:   cid,
-		Height:   h + 1,
+func (b BlockGenerator) Generate(p *types.Block) *types.Block {
+	child := &types.Block{
+		Height:   p.Height + 1,
 		Messages: b.Mp.Pending(),
 	}
+	child.AddParent(*p)
+	return child
 }
