@@ -50,8 +50,6 @@ type Node struct {
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
-
-	pool *core.MessagePool
 }
 
 // Config is a helper to aid in the construction of a filecoin node.

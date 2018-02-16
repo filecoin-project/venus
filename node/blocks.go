@@ -9,10 +9,10 @@ import (
 )
 
 // BlocksTopic is the pubsub topic identifier on which new blocks are announced.
-var BlocksTopic = "/fil/blocks"
+const BlocksTopic = "/fil/blocks"
 
 // MessageTopic is the pubsub topic identifier on which new messages are announced.
-var MessageTopic = "/fil/msgs"
+const MessageTopic = "/fil/msgs"
 
 // AddNewBlock processes a block on the local chain and publishes it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
