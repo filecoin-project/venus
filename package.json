@@ -81,6 +81,18 @@
       "hash": "QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw",
       "name": "go-libp2p-floodsub",
       "version": "0.9.10"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmZRcGYvxdauCd7hHnMYLYqcZRaDjv24c7eUNyJojAcdBb",
+      "name": "go-ipfs-routing",
+      "version": "0.0.1"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmTVDM4LCSUMFNQzbDLL9zQwp8usE6QHymFdh3h8vL9v6b",
+      "name": "go-ipfs-blockstore",
+      "version": "0.0.1"
     }
   ],
   "gxVersion": "0.12.1",

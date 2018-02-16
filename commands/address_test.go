@@ -33,7 +33,7 @@ func TestAddrsBalance(t *testing.T) {
 
 	toAddr := types.Address("filecoin")
 
-	out, err := testhelpers.RunCommand(addrsBalanceCmd, []string{toAddr.String()}, nil, &Env{node: nd})
+	out, err := testhelpers.RunCommand(balanceCmd, []string{toAddr.String()}, nil, &Env{node: nd})
 	assert.NoError(err)
 	assert.NoError(out.HasLine("100000"))
 }

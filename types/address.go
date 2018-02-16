@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 // Address represents the address of a Filecoin actor.
-// TODO: correct address format
+// TODO: make address a little more sophisticated
 type Address string
 
 func (a Address) String() string {

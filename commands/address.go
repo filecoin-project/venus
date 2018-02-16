@@ -14,15 +14,15 @@ import (
 
 var walletCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"addrs": addrsCmd,
+		"addrs":   addrsCmd,
+		"balance": balanceCmd,
 	},
 }
 
 var addrsCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
-		"new":     addrsNewCmd,
-		"list":    addrsListCmd,
-		"balance": addrsBalanceCmd,
+		"list": addrsListCmd,
+		"new":  addrsNewCmd,
 	},
 }
 
@@ -33,10 +33,7 @@ type addressResult struct {
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
-
-		addr := fcn.Wallet.NewAddress()
-
-		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
+		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
 	},
 	Type: addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -70,7 +67,7 @@ var addrsListCmd = &cmds.Command{
 	},
 }
 
-var addrsBalanceCmd = &cmds.Command{
+var balanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
@@ -97,7 +94,6 @@ var addrsBalanceCmd = &cmds.Command{
 		msg := types.NewMessage(types.Address(""), toAddr, nil, "balance", nil)
 		receipt, err := core.ApplyMessage(req.Context, tree, msg)
 		if err != nil {
-			panic(err)
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

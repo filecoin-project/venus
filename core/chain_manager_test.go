@@ -71,13 +71,13 @@ func TestBasicAddBlock(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), block1.Cid())
-	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
+	assert.True(stm.knownGoodBlocks.Has(block1.Cid()))
 
 	res, err = stm.ProcessNewBlock(ctx, block2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
-	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
+	assert.True(stm.knownGoodBlocks.Has(block2.Cid()))
 }
 
 func TestForkChoice(t *testing.T) {
@@ -92,14 +92,14 @@ func TestForkChoice(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), block1.Cid())
-	assert.True(stm.KnownGoodBlocks.Has(block1.Cid()))
+	assert.True(stm.knownGoodBlocks.Has(block1.Cid()))
 
 	// progress to block2 block on our chain
 	res, err = stm.ProcessNewBlock(ctx, block2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), block2.Cid())
-	assert.True(stm.KnownGoodBlocks.Has(block2.Cid()))
+	assert.True(stm.knownGoodBlocks.Has(block2.Cid()))
 
 	// Now, introduce a valid fork
 	addBlocks(t, cs, fork1, fork2)
@@ -171,7 +171,7 @@ func TestGenesis(t *testing.T) {
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 	assert.Equal(testGenesis, stm.bestBlock.blk)
-	assert.True(stm.KnownGoodBlocks.Has(testGenesis.Cid()))
+	assert.True(stm.knownGoodBlocks.Has(testGenesis.Cid()))
 
 	var i interface{}
 	assert.NoError(stm.cstore.Get(ctx, testGenesis.StateRoot, &i))
