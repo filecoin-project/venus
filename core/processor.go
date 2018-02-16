@@ -8,16 +8,15 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Processor is the signature a function used to process blocks.
-type Processor func(ctx context.Context, blk *types.Block, st *state.Tree) error
+type Processor func(ctx context.Context, blk *types.Block, st *types.StateTree) error
 
 // ProcessBlock takes a block and a state tree and applies the state
 // transitions specified in the block on top of the state tree.
-func ProcessBlock(ctx context.Context, blk *types.Block, st *state.Tree) error {
+func ProcessBlock(ctx context.Context, blk *types.Block, st *types.StateTree) error {
 	for _, msg := range blk.Messages {
 		err := ApplyMessage(ctx, st, msg)
 		switch {
@@ -35,7 +34,7 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st *state.Tree) error {
 
 // ApplyMessage applies the state transition specified by the given
 // message to the state tree.
-func ApplyMessage(ctx context.Context, st *state.Tree, msg *types.Message) error {
+func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) error {
 	if msg.From() == msg.To() {
 		// TODO: handle this
 		return fmt.Errorf("unhandled: sending to self")
@@ -57,7 +56,7 @@ func ApplyMessage(ctx context.Context, st *state.Tree, msg *types.Message) error
 	default:
 		return err
 	case hamt.ErrNotFound:
-		toAct = &state.Actor{Balance: big.NewInt(0)}
+		toAct = &types.Actor{Balance: big.NewInt(0)}
 	case nil:
 	}
 
