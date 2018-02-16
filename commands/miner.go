@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -42,9 +41,7 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		// TODO move this functionality into the mining package so it can be used by multiple
-		// commands.
-		tree, err := state.LoadTree(req.Context, fcn.CborStore, cur.StateRoot)
+		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
