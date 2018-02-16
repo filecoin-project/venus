@@ -5,19 +5,19 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 
-	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, *state.Tree) {
+func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, *types.StateTree) {
 	ctx := context.Background()
-	t := state.NewEmptyTree(cst)
+	t := types.NewEmptyTree(cst)
 	for k, v := range balances {
-		act := &state.Actor{Balance: v}
+		act := &types.Actor{Balance: v}
 		if err := t.SetActor(ctx, k, act); err != nil {
 			panic(err)
 		}
