@@ -139,3 +139,22 @@ func NewMessage(from, to Address, value *big.Int, method string, params []interf
 func errInvalidMessage(field string, received interface{}) error {
 	return fmt.Errorf("invalid message %s field: %v", field, received)
 }
+
+// NewMessageFortestGetter returns a closure that returns a message unique to that invocation.
+// The message is unique wrt the closure returned, not globally. You can use this function
+// in tests instead of manually creating messages -- it both reduces duplication and gives us
+// exactly one place to create valid messages for tests if messages require validation in the
+// future.
+func NewMessageForTestGetter() func() *Message {
+	i := 0
+	return func() *Message {
+		s := fmt.Sprintf("msg%d", i)
+		i++
+		return NewMessage(
+			Address(s+"-from"),
+			Address(s+"-to"),
+			nil,
+			s+"-method",
+			nil)
+	}
+}
