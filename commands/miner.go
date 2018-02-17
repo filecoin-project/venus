@@ -10,7 +10,6 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -45,25 +44,19 @@ var minerGenBlockCmd = &cmds.Command{
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-
-		processBlock := func(ctx context.Context, b *types.Block) error {
-			return core.ProcessBlock(ctx, b, tree)
+		worker := mining.Worker{
+			Bg: mining.BlockGenerator{Mp: fcn.MsgPool},
+			AddNewBlock: func(ctx context.Context, b *types.Block) error {
+				return fcn.AddNewBlock(req.Context, b)
+			},
 		}
-		flushTree := func(ctx context.Context) (*cid.Cid, error) {
-			return tree.Flush(ctx)
-		}
-		next, err := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(req.Context, cur, processBlock, flushTree)
+		nextCid, err := worker.Mine(req.Context, cur, tree)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		if err := fcn.AddNewBlock(req.Context, next); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(next.Cid()) // nolint: errcheck
+		re.Emit(nextCid)
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

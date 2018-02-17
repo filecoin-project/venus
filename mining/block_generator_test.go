@@ -12,31 +12,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mock is a poor man's mock use to stub out the processBlock and flushTree
+// mockFuncs is a poor man's mock use to stub out the processBlock and flushTree
 // functions when testing Generate. Could have used testify mocks for flushTree
 // but then I would've had to introduce an interface for tree, unclear whether
 // that's warranted yet. This is pretty easy in any case.
-type mock struct {
+type mockFuncs struct {
 	Called bool
 	Cid    *cid.Cid
 }
 
-func (m *mock) successfulProcessBlockFunc(context.Context, *types.Block) error {
+func (m *mockFuncs) successfulProcessBlockFunc(context.Context, *types.Block) error {
 	m.Called = true
 	return nil
 }
 
-func (m *mock) failingProcessBlockFunc(context.Context, *types.Block) error {
+func (m *mockFuncs) failingProcessBlockFunc(context.Context, *types.Block) error {
 	m.Called = true
 	return errors.New("boom")
 }
 
-func (m *mock) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
+func (m *mockFuncs) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
 	m.Called = true
 	return m.Cid, nil
 }
 
-func (m *mock) failingFlushTreeFunc(context.Context) (*cid.Cid, error) {
+func (m *mockFuncs) failingFlushTreeFunc(context.Context) (*cid.Cid, error) {
 	m.Called = true
 	return nil, errors.New("boom")
 }
@@ -52,7 +52,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	}
 
 	// With no messages.
-	m1, m2 := new(mock), new(mock)
+	m1, m2 := new(mockFuncs), new(mockFuncs)
 	m2.Cid = newCid()
 	b, err := g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
 	assert.NoError(t, err)
@@ -74,14 +74,14 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	assert.Len(t, b.Messages, expectedMsgs)
 
 	// processBlock fails.
-	m1, m2 = new(mock), new(mock)
+	m1, m2 = new(mockFuncs), new(mockFuncs)
 	b, err = g.Generate(context.Background(), &parent, m1.failingProcessBlockFunc, m2.successfulFlushTreeFunc)
 	assert.Error(t, err)
 	assert.True(t, m1.Called)
 	assert.False(t, m2.Called)
 
 	// flushTree fails.
-	m1, m2 = new(mock), new(mock)
+	m1, m2 = new(mockFuncs), new(mockFuncs)
 	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.failingFlushTreeFunc)
 	assert.Error(t, err)
 	assert.True(t, m1.Called)

@@ -20,6 +20,15 @@ type StateTree struct {
 	store *hamt.CborIpldStore
 }
 
+// StateTreeInterface is the interface to StateTree exposes to things that hold
+// it as a dependency. This interface makes it easy to replace a StateTree with
+// a mock or fake state tree when testing higher-level code.
+type StateTreeInterface interface {
+	Flush(ctx context.Context) (*cid.Cid, error)
+	GetActor(ctx context.Context, a Address) (*Actor, error)
+	SetActor(ctx context.Context, a Address, act *Actor) error
+}
+
 func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (*StateTree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
