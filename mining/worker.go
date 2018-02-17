@@ -12,7 +12,7 @@ import (
 // details from the Worker and makes it easier to test.
 type AddNewBlockFunc func(context.Context, *types.Block) error
 
-// Worker mines. If successful, it passes the new block to AddNewBlock()
+// Worker mines. If successful it passes the new block to AddNewBlock()
 // and returns its cid.
 type Worker struct {
 	Bg          BlockGeneratorInterface
