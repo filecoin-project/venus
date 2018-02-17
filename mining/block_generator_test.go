@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// mock is a poor man's mock use to stub out the processBlock and flushTree
+// functions when testing Generate. Could have used testify mocks for flushTree
+// but then I would've had to introduce an interface for tree, unclear whether
+// that's warranted yet. This is pretty easy in any case.
 type mock struct {
 	Called bool
 	Cid    *cid.Cid

@@ -35,7 +35,10 @@ var minerGenBlockCmd = &cmds.Command{
 		myaddr := addrs[0]
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
-		fcn.MsgPool.Add(reward)
+		if err := fcn.MsgPool.Add(reward); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 
 		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
 		if err != nil {
