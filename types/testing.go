@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
@@ -22,5 +23,24 @@ func NewCidForTestGetter() func() *cid.Cid {
 		b := &Block{Height: i}
 		i++
 		return b.Cid()
+	}
+}
+
+// NewMessageForTestGetter returns a closure that returns a message unique to that invocation.
+// The message is unique wrt the closure returned, not globally. You can use this function
+// in tests instead of manually creating messages -- it both reduces duplication and gives us
+// exactly one place to create valid messages for tests if messages require validation in the
+// future.
+func NewMessageForTestGetter() func() *Message {
+	i := 0
+	return func() *Message {
+		s := fmt.Sprintf("msg%d", i)
+		i++
+		return NewMessage(
+			Address(s+"-from"),
+			Address(s+"-to"),
+			nil,
+			s+"-method",
+			nil)
 	}
 }
