@@ -1,7 +1,9 @@
 package mining
 
 import (
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"context"
+	"errors"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/core"
@@ -10,27 +12,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: we should put this in a test helper somewhere so we can just get a cid when
-// we need one in tests and don't care about what it is. Where do we put it?
-func testCid() *cid.Cid {
-	b := &types.Block{}
-	return b.Cid()
+type mock struct {
+	Called bool
+	Cid    *cid.Cid
+}
+
+func (m *mock) successfulProcessBlockFunc(context.Context, *types.Block) error {
+	m.Called = true
+	return nil
+}
+
+func (m *mock) failingProcessBlockFunc(context.Context, *types.Block) error {
+	m.Called = true
+	return errors.New("boom")
+}
+
+func (m *mock) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
+	m.Called = true
+	return m.Cid, nil
+}
+
+func (m *mock) failingFlushTreeFunc(context.Context) (*cid.Cid, error) {
+	m.Called = true
+	return nil, errors.New("boom")
 }
 
 // TODO (fritz) Do something about the test duplication w/AddParent.
 func TestBlockGenerator_Generate(t *testing.T) {
+	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()
 	g := BlockGenerator{pool}
 	parent := types.Block{
-		Parent: testCid(),
+		Parent: types.SomeCid(),
 		Height: uint64(100),
 	}
 
 	// With no messages.
-	b, err := g.Generate(&parent)
+	m1, m2 := new(mock), new(mock)
+	m2.Cid = newCid()
+	b, err := g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
 	assert.NoError(t, err)
 	assert.Equal(t, parent.Cid(), b.Parent)
+	assert.Equal(t, m2.Cid, b.StateRoot)
 	assert.Len(t, b.Messages, 0)
+	assert.True(t, m1.Called)
+	assert.True(t, m2.Called)
 
 	// With messages.
 	newMsg := types.NewMessageForTestGetter()
@@ -38,8 +64,22 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	pool.Add(newMsg())
 	expectedMsgs := 2
 	require.Len(t, pool.Pending(), expectedMsgs)
-	b, err = g.Generate(&parent)
+	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
 	assert.NoError(t, err)
 	assert.Len(t, pool.Pending(), expectedMsgs) // Does not remove them.
 	assert.Len(t, b.Messages, expectedMsgs)
+
+	// processBlock fails.
+	m1, m2 = new(mock), new(mock)
+	b, err = g.Generate(context.Background(), &parent, m1.failingProcessBlockFunc, m2.successfulFlushTreeFunc)
+	assert.Error(t, err)
+	assert.True(t, m1.Called)
+	assert.False(t, m2.Called)
+
+	// flushTree fails.
+	m1, m2 = new(mock), new(mock)
+	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.failingFlushTreeFunc)
+	assert.Error(t, err)
+	assert.True(t, m1.Called)
+	assert.True(t, m2.Called)
 }

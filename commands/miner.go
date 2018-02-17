@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/big"
@@ -35,11 +36,6 @@ var minerGenBlockCmd = &cmds.Command{
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
 		fcn.MsgPool.Add(reward)
-		next, err := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(cur)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
 
 		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
 		if err != nil {
@@ -47,18 +43,17 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		if err := core.ProcessBlock(req.Context, next, tree); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		processBlock := func(ctx context.Context, b *types.Block) error {
+			return core.ProcessBlock(ctx, b, tree)
 		}
-
-		stcid, err := tree.Flush(req.Context)
+		flushTree := func(ctx context.Context) (*cid.Cid, error) {
+			return tree.Flush(ctx)
+		}
+		next, err := mining.BlockGenerator{Mp: fcn.MsgPool}.Generate(req.Context, cur, processBlock, flushTree)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-
-		next.StateRoot = stcid
 
 		if err := fcn.AddNewBlock(req.Context, next); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
