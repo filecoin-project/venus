@@ -12,22 +12,11 @@ import (
 
 func TestMessagePoolAddRemove(t *testing.T) {
 	assert := assert.New(t)
+	newMsg := types.NewMessageForTestGetter()
 
 	pool := NewMessagePool()
-	msg1 := types.NewMessage(
-		types.Address("Alice"),
-		types.Address("Bob"),
-		nil,
-		"main",
-		nil,
-	)
-	msg2 := types.NewMessage(
-		types.Address("Alice"),
-		types.Address("Bob"),
-		nil,
-		"main",
-		[]interface{}{"hello"},
-	)
+	msg1 := newMsg()
+	msg2 := newMsg()
 
 	c1, err := msg1.Cid()
 	assert.NoError(err)
@@ -50,13 +39,7 @@ func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
 
 	pool := NewMessagePool()
-	msg1 := types.NewMessage(
-		types.Address("Alice"),
-		types.Address("Bob"),
-		nil,
-		"main",
-		nil,
-	)
+	msg1 := types.NewMessageForTestGetter()()
 
 	assert.Len(pool.Pending(), 0)
 	assert.NoError(pool.Add(msg1))
