@@ -12,6 +12,8 @@ type MockBlockGenerator struct {
 	mock.Mock
 }
 
+var _ BlockGeneratorInterface = &MockBlockGenerator{}
+
 func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, pbf ProcessBlockFunc, ftf FlushTreeFunc) (b *types.Block, err error) {
 	args := bg.Called(ctx, h, pbf, ftf)
 	if args.Get(0) != nil {
