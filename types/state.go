@@ -29,6 +29,8 @@ type StateTreeInterface interface {
 	SetActor(ctx context.Context, a Address, act *Actor) error
 }
 
+var _ StateTreeInterface = &StateTree{}
+
 func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (*StateTree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {

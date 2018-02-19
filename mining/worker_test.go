@@ -42,39 +42,36 @@ func (f FakeStateTree) Flush(ctx context.Context) (*cid.Cid, error) {
 	return types.SomeCid(), nil
 }
 func (f FakeStateTree) GetActor(context.Context, types.Address) (*types.Actor, error) {
-	return nil, errors.New("boom -- not expected to be called")
+	panic("boom -- not expected to be called")
+	return nil, nil
 }
 func (f FakeStateTree) SetActor(context.Context, types.Address, *types.Actor) error {
-	return errors.New("boom -- not expected to be called")
+	panic("boom -- not expected to be called")
+	return nil
 }
 
 func TestWorker_Mine(t *testing.T) {
+	assert := assert.New(t)
 	cur := &types.Block{Height: 2}
 	next := &types.Block{Height: 3}
 	ctx := context.Background()
 
 	// Success
 	mockBg, mockAddNewBlock := &MockBlockGenerator{}, &mockAddNewBlockFunc{}
-	w := &Worker{
-		Bg:          mockBg,
-		AddNewBlock: mockAddNewBlock.AddNewBlock,
-	}
+	w := NewWorker(mockBg, mockAddNewBlock.AddNewBlock)
 	mockBg.On("Generate", ctx, cur, mock.AnythingOfType("ProcessBlockFunc"), mock.AnythingOfType("FlushTreeFunc")).Return(next, nil)
 	cid, err := w.Mine(ctx, cur, FakeStateTree{})
-	assert.NoError(t, err)
-	assert.True(t, cid.Equals(next.Cid()))
+	assert.NoError(err)
+	assert.True(cid.Equals(next.Cid()))
 	mockBg.AssertExpectations(t)
-	assert.True(t, mockAddNewBlock.Called)
-	assert.Equal(t, next, mockAddNewBlock.Arg)
+	assert.True(mockAddNewBlock.Called)
+	assert.Equal(next, mockAddNewBlock.Arg)
 
 	// Block generation fails.
 	mockBg, mockAddNewBlock = &MockBlockGenerator{}, &mockAddNewBlockFunc{}
-	w = &Worker{
-		Bg:          mockBg,
-		AddNewBlock: mockAddNewBlock.AddNewBlock,
-	}
+	w = NewWorker(mockBg, mockAddNewBlock.AddNewBlock)
 	mockBg.On("Generate", ctx, cur, mock.AnythingOfType("ProcessBlockFunc"), mock.AnythingOfType("FlushTreeFunc")).Return(nil, errors.New("boom"))
 	cid, err = w.Mine(ctx, cur, FakeStateTree{})
-	assert.Error(t, err)
+	assert.Error(err)
 	mockBg.AssertExpectations(t)
 }

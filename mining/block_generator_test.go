@@ -28,7 +28,7 @@ func (m *mockFuncs) successfulProcessBlockFunc(context.Context, *types.Block) er
 
 func (m *mockFuncs) failingProcessBlockFunc(context.Context, *types.Block) error {
 	m.Called = true
-	return errors.New("boom")
+	return errors.New("boom processBlockFunc failed")
 }
 
 func (m *mockFuncs) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
@@ -38,11 +38,12 @@ func (m *mockFuncs) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
 
 func (m *mockFuncs) failingFlushTreeFunc(context.Context) (*cid.Cid, error) {
 	m.Called = true
-	return nil, errors.New("boom")
+	return nil, errors.New("boom flushTreeFunc failed")
 }
 
 // TODO (fritz) Do something about the test duplication w/AddParent.
 func TestBlockGenerator_Generate(t *testing.T) {
+	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()
 	g := BlockGenerator{pool}
@@ -55,12 +56,12 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	m1, m2 := new(mockFuncs), new(mockFuncs)
 	m2.Cid = newCid()
 	b, err := g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
-	assert.NoError(t, err)
-	assert.Equal(t, parent.Cid(), b.Parent)
-	assert.Equal(t, m2.Cid, b.StateRoot)
-	assert.Len(t, b.Messages, 0)
-	assert.True(t, m1.Called)
-	assert.True(t, m2.Called)
+	assert.NoError(err)
+	assert.Equal(parent.Cid(), b.Parent)
+	assert.Equal(m2.Cid, b.StateRoot)
+	assert.Len(b.Messages, 0)
+	assert.True(m1.Called)
+	assert.True(m2.Called)
 
 	// With messages.
 	newMsg := types.NewMessageForTestGetter()
@@ -69,21 +70,25 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	expectedMsgs := 2
 	require.Len(t, pool.Pending(), expectedMsgs)
 	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
-	assert.NoError(t, err)
-	assert.Len(t, pool.Pending(), expectedMsgs) // Does not remove them.
-	assert.Len(t, b.Messages, expectedMsgs)
+	assert.NoError(err)
+	assert.Len(pool.Pending(), expectedMsgs) // Does not remove them.
+	assert.Len(b.Messages, expectedMsgs)
 
 	// processBlock fails.
 	m1, m2 = new(mockFuncs), new(mockFuncs)
 	b, err = g.Generate(context.Background(), &parent, m1.failingProcessBlockFunc, m2.successfulFlushTreeFunc)
-	assert.Error(t, err)
-	assert.True(t, m1.Called)
-	assert.False(t, m2.Called)
+	if assert.Error(err) {
+		assert.Contains(err.Error(), "process")
+	}
+	assert.True(m1.Called)
+	assert.False(m2.Called)
 
 	// flushTree fails.
 	m1, m2 = new(mockFuncs), new(mockFuncs)
 	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.failingFlushTreeFunc)
-	assert.Error(t, err)
-	assert.True(t, m1.Called)
-	assert.True(t, m2.Called)
+	if assert.Error(err) {
+		assert.Contains(err.Error(), "flush")
+	}
+	assert.True(m1.Called)
+	assert.True(m2.Called)
 }

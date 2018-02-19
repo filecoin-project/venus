@@ -15,8 +15,13 @@ type AddNewBlockFunc func(context.Context, *types.Block) error
 // Worker mines. If successful it passes the new block to AddNewBlock()
 // and returns its cid.
 type Worker struct {
-	Bg          BlockGeneratorInterface
-	AddNewBlock AddNewBlockFunc
+	BlockGenerator BlockGeneratorInterface
+	AddNewBlock    AddNewBlockFunc
+}
+
+// NewWorker instantiates a new
+func NewWorker(blockGenerator BlockGeneratorInterface, addNewBlock AddNewBlockFunc) *Worker {
+	return &Worker{blockGenerator, addNewBlock}
 }
 
 // Mine attempts to mine one block. Returns the cid of the new block, if any.
@@ -27,7 +32,7 @@ func (w *Worker) Mine(ctx context.Context, cur *types.Block, tree types.StateTre
 	flushTree := func(ctx context.Context) (*cid.Cid, error) {
 		return tree.Flush(ctx)
 	}
-	next, err := w.Bg.Generate(ctx, cur, processBlock, flushTree)
+	next, err := w.BlockGenerator.Generate(ctx, cur, processBlock, flushTree)
 	if err != nil {
 		return nil, err
 	}

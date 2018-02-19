@@ -45,12 +45,11 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		worker := mining.Worker{
-			Bg: mining.BlockGenerator{Mp: fcn.MsgPool},
-			AddNewBlock: func(ctx context.Context, b *types.Block) error {
+		worker := mining.NewWorker(
+			mining.BlockGenerator{Mp: fcn.MsgPool},
+			func(ctx context.Context, b *types.Block) error {
 				return fcn.AddNewBlock(req.Context, b)
-			},
-		}
+			})
 		nextCid, err := worker.Mine(req.Context, cur, tree)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
