@@ -48,11 +48,11 @@ func init() {
 // LoadCode fetches the code referenced by the passed in CID.
 func LoadCode(code *cid.Cid) (ExecutableActor, error) {
 	if code == nil {
-		return nil, fmt.Errorf("missing code: %s", code)
+		return nil, fmt.Errorf("missing code")
 	}
 	actor, ok := BuiltinActors[code.KeyString()]
 	if !ok {
-		return nil, fmt.Errorf("unknown code")
+		return nil, fmt.Errorf("unknown code: %s", code.String())
 	}
 
 	return actor, nil
@@ -71,7 +71,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 	exports := actor.Exports()
 	signature, ok := exports[method]
 	if !ok {
-		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in params: %s", method))
+		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in exports: %s", method))
 	}
 
 	val := f.Func
@@ -91,7 +91,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 		retType := reflect.TypeOf(signature.Return)
 
 		if t.NumOut() != 3 || t.Out(0) != retType || t.Out(1).Kind() != exitType || !t.Out(2).Implements(errorType) {
-			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (%suint8, error) for %s", retType, method))
+			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (%s, uint8, error) for %s", retType, method))
 		}
 	} else {
 		if t.NumOut() != 2 || t.Out(0).Kind() != exitType || !t.Out(1).Implements(errorType) {
@@ -161,8 +161,12 @@ func marshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
 		return val.(*big.Int).Bytes(), nil
+	case []byte:
+		return val.([]byte), nil
+	case string:
+		return []byte(val.(string)), nil
 	default:
-		return nil, fmt.Errorf("unknown type: %s", t)
+		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
 	}
 }
 
