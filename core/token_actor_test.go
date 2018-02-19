@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestTokenBalanceAndTransfer(t *testing.T) {
+func TestTokenActor(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -37,7 +37,7 @@ func TestTokenBalanceAndTransfer(t *testing.T) {
 	assert.NoError(state.SetActor(ctx, tokenAddr, token))
 	assert.NoError(state.SetActor(ctx, fromAddr, from))
 
-	sendFrom := func(fAddr types.Address, tAddr types.Address, method string, params []interface{}) []byte {
+	sendFrom := func(fAddr types.Address, tAddr types.Address, method string, params []interface{}) ([]byte, uint8, error) {
 		// load actors to ensure they are current
 
 		// only load from actor if one is passed in
@@ -53,20 +53,29 @@ func TestTokenBalanceAndTransfer(t *testing.T) {
 
 		execActor, err := LoadCode(tActor.Code())
 		assert.NoError(err)
-		t.Logf("to: %v", tActor)
 
 		msg := types.NewMessage(fAddr, tAddr, method, params)
 		ctx := NewVMContext(fActor, tActor, msg, state)
-		t.Log(msg)
-		ret, exitCode, err := MakeTypedExport(execActor, method)(ctx)
+
+		return MakeTypedExport(execActor, method)(ctx)
+	}
+
+	send := func(toAddr types.Address, method string, params []interface{}) ([]byte, uint8, error) {
+		return sendFrom(fromAddr, toAddr, method, params)
+	}
+
+	sendSuccess := func(toAddr types.Address, method string, params []interface{}) []byte {
+		ret, exitCode, err := send(toAddr, method, params)
 		assert.NoError(err)
 		assert.Equal(exitCode, uint8(0))
-
 		return ret
 	}
 
-	send := func(toAddr types.Address, method string, params []interface{}) []byte {
-		return sendFrom(fromAddr, toAddr, method, params)
+	sendFromSuccess := func(fromAddr, toAddr types.Address, method string, params []interface{}) []byte {
+		ret, exitCode, err := sendFrom(fromAddr, toAddr, method, params)
+		assert.NoError(err)
+		assert.Equal(exitCode, uint8(0))
+		return ret
 	}
 
 	assertInt := func(actual []byte, expected int64) {
@@ -75,28 +84,37 @@ func TestTokenBalanceAndTransfer(t *testing.T) {
 		assert.Equal(big.NewInt(expected), actualInt)
 	}
 
-	t.Log(`check that "from" has the set balance of 500, with no from address`)
-	b0 := sendFrom(types.Address(""), tokenAddr, "balance", []interface{}{fromAddr})
-	assertInt(b0, 500)
+	t.Run("balance and transfer", func(t *testing.T) {
+		t.Log(`check that "from" has the set balance of 500, with no from address`)
+		b0 := sendFromSuccess(types.Address(""), tokenAddr, "balance", []interface{}{fromAddr})
+		assertInt(b0, 500)
 
-	t.Log(`check that "from" has the set balance of 500`)
-	b0 = send(tokenAddr, "balance", []interface{}{fromAddr})
-	assertInt(b0, 500)
+		t.Log(`check that "from" has the set balance of 500`)
+		b0 = sendSuccess(tokenAddr, "balance", []interface{}{fromAddr})
+		assertInt(b0, 500)
 
-	t.Log(`check that "to" has a balance of 0`)
-	b1 := send(tokenAddr, "balance", []interface{}{toAddr})
-	assertInt(b1, 0)
+		t.Log(`check that "to" has a balance of 0`)
+		b1 := sendSuccess(tokenAddr, "balance", []interface{}{toAddr})
+		assertInt(b1, 0)
 
-	t.Log(`transfer 100 from "from" to "to"`)
-	_ = sendFrom(fromAddr, tokenAddr, "transfer", []interface{}{toAddr, big.NewInt(100)})
+		t.Log(`transfer 100 from "from" to "to"`)
+		_ = sendFromSuccess(fromAddr, tokenAddr, "transfer", []interface{}{toAddr, big.NewInt(100)})
 
-	t.Log(`check the right amount was subtracted from "from"`)
-	b2 := send(tokenAddr, "balance", []interface{}{fromAddr})
-	assertInt(b2, 400)
+		t.Log(`check the right amount was subtracted from "from"`)
+		b2 := sendSuccess(tokenAddr, "balance", []interface{}{fromAddr})
+		assertInt(b2, 400)
 
-	t.Log(`check the right amount was added to "to"`)
-	b3 := send(tokenAddr, "balance", []interface{}{toAddr})
-	assertInt(b3, 100)
+		t.Log(`check the right amount was added to "to"`)
+		b3 := sendSuccess(tokenAddr, "balance", []interface{}{toAddr})
+		assertInt(b3, 100)
+	})
+
+	t.Run("transfer fail", func(t *testing.T) {
+		ret, exitCode, err := sendFrom(fromAddr, tokenAddr, "transfer", []interface{}{toAddr, big.NewInt(100000)})
+		assert.Equal(err.Error(), "not enough balance")
+		assert.Equal(exitCode, uint8(1))
+		assert.Nil(ret)
+	})
 }
 
 func TestTokenActorMarshalStorage(t *testing.T) {
