@@ -170,7 +170,7 @@ func (node *Node) Stop() {
 
 // TODO: where does this belong?
 func (node *Node) SendMessage(from, to types.Address, method string, params []interface{}, cb func(error, []byte)) {
-	msg := types.NewMessage(from, to, nil, method, params)
+	msg := types.NewMessage(from, to, method, params)
 
 	_, err := node.MsgPool.Add(msg)
 	if err != nil {

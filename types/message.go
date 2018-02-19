@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"fmt"
-	"math/big"
 
 	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -27,8 +26,6 @@ type Message struct {
 	to   Address
 	from Address
 
-	value *big.Int
-
 	method string
 	params []interface{}
 }
@@ -38,9 +35,6 @@ func (msg *Message) To() Address { return msg.to }
 
 // From is a getter for the from field.
 func (msg *Message) From() Address { return msg.from }
-
-// Value is a getter for the value field.
-func (msg *Message) Value() *big.Int { return msg.value }
 
 // Method is a getter for the method field.
 func (msg *Message) Method() string { return msg.method }
@@ -64,14 +58,13 @@ func marshalMessage(msg Message) ([]interface{}, error) {
 	return []interface{}{
 		msg.to,
 		msg.from,
-		msg.value,
 		msg.method,
 		msg.params,
 	}, nil
 }
 
 func unmarshalMessage(x []interface{}) (Message, error) {
-	if len(x) != 5 {
+	if len(x) != 4 {
 		return Message{}, ErrInvalidMessageLength
 	}
 
@@ -83,11 +76,6 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 	from, ok := x[1].(string)
 	if !ok {
 		return Message{}, errInvalidMessage("from", x[1])
-	}
-
-	valueB, ok := x[2].([]byte)
-	if !ok && x[2] != nil {
-		return Message{}, errInvalidMessage("value", x[2])
 	}
 
 	method, ok := x[3].(string)
@@ -103,7 +91,6 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 	return Message{
 		to:     Address(to),
 		from:   Address(from),
-		value:  big.NewInt(0).SetBytes(valueB),
 		method: method,
 		params: params,
 	}, nil
@@ -131,11 +118,10 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, value *big.Int, method string, params []interface{}) *Message {
+func NewMessage(from, to Address, method string, params []interface{}) *Message {
 	return &Message{
 		from:   from,
 		to:     to,
-		value:  value,
 		method: method,
 		params: params,
 	}
@@ -158,7 +144,6 @@ func NewMessageForTestGetter() func() *Message {
 		return NewMessage(
 			Address(s+"-from"),
 			Address(s+"-to"),
-			nil,
 			s+"-method",
 			nil)
 	}

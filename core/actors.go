@@ -38,6 +38,10 @@ type FunctionSignature struct {
 }
 
 func init() {
+	// Singelton Actors
+	BuiltinActors[types.TokenActorCid.KeyString()] = &TokenActor{}
+
+	// Instance Actors
 	BuiltinActors[types.AccountActorCid.KeyString()] = &AccountActor{}
 }
 

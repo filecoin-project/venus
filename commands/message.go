@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -21,7 +20,6 @@ var sendMsgCmd = &cmds.Command{
 		cmdkit.StringArg("method", true, false, "method to invoke"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.IntOption("value", "value to send with message"),
 		cmdkit.StringOption("from", "address to send message from"),
 		cmdkit.BoolOption("offchain", "send the message without adding to a block"),
 	},
@@ -35,8 +33,6 @@ var sendMsgCmd = &cmds.Command{
 		}
 		method := req.Arguments[1]
 
-		var val int
-		val, _ = req.Options["value"].(int)
 		offchain := req.Options["offchain"].(bool)
 		from, _ := req.Options["from"].(string)
 
@@ -56,7 +52,7 @@ var sendMsgCmd = &cmds.Command{
 			fromAddr = addrs[0]
 		}
 
-		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), method, nil)
+		msg := types.NewMessage(fromAddr, target, method, nil)
 
 		if offchain {
 			// fetch state tree

@@ -8,15 +8,27 @@ import (
 // DefaultHashFunction represents the default hashing function to use
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
+// TokenActorCid is the CID of the builtin token actor.
+var TokenActorCid *cid.Cid
+
 // AccountActorCid is the CID of the builtin account actor.
 var AccountActorCid *cid.Cid
 
-func init() {
+func cidFromString(input string) (*cid.Cid, error) {
 	prefix := cid.NewPrefixV1(cid.DagCBOR, DefaultHashFunction)
-	c, err := prefix.Sum([]byte("accountactor"))
+	return prefix.Sum([]byte(input))
+}
+
+func init() {
+	token, err := cidFromString("tokenactor")
 	if err != nil {
 		panic(err)
 	}
+	TokenActorCid = token
 
-	AccountActorCid = c
+	acc, err := cidFromString("accountactor")
+	if err != nil {
+		panic(err)
+	}
+	AccountActorCid = acc
 }

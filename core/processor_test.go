@@ -17,16 +17,28 @@ import (
 func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, *types.StateTree, error) {
 	ctx := context.Background()
 	t := types.NewEmptyStateTree(cst)
+	b := map[types.Address]*Balance{}
+
 	for k, v := range balances {
-		act, err := NewAccountActor(v)
+		act, err := NewAccountActor()
 		if err != nil {
 			return nil, nil, err
 		}
 		fmt.Printf("setactor %v\n%v\n", k, act)
+		b[k] = &Balance{Total: v}
 		if err := t.SetActor(ctx, k, act); err != nil {
 			return nil, nil, err
 		}
 	}
+
+	token, err := NewTokenActor(b)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := t.SetActor(ctx, types.Address("token"), token); err != nil {
+		return nil, nil, err
+	}
+
 	c, err := t.Flush(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -53,7 +65,7 @@ func TestProcessBlock(t *testing.T) {
 	})
 	assert.NoError(err)
 
-	msg := types.NewMessage(addr1, addr2, big.NewInt(550), "transfer", nil)
+	msg := types.NewMessage(addr1, types.Address("token"), "transfer", []interface{}{addr2, big.NewInt(550)})
 
 	blk := &types.Block{
 		Height:    20,

@@ -94,10 +94,9 @@ var addrsBalanceCmd = &cmds.Command{
 			return
 		}
 
-		msg := types.NewMessage(types.Address(""), toAddr, nil, "balance", nil)
+		msg := types.NewMessage(types.Address(""), types.Address("token"), "balance", []interface{}{toAddr})
 		receipt, err := core.ApplyMessage(req.Context, tree, msg)
 		if err != nil {
-			panic(err)
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

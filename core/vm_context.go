@@ -49,7 +49,7 @@ func (ctx *VMContext) Send(to types.Address, method string, params []interface{}
 	from := ctx.Message().To()
 	fromActor := ctx.to
 
-	msg := types.NewMessage(from, to, nil, method, params)
+	msg := types.NewMessage(from, to, method, params)
 	if msg.From() == msg.To() {
 		// TODO: handle this
 		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From())

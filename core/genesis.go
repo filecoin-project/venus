@@ -24,15 +24,26 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
 	st := types.NewEmptyStateTree(cst)
 
+	balances := map[types.Address]*Balance{}
 	for addr, val := range defaultAccounts {
-		a, err := NewAccountActor(big.NewInt(val))
+		a, err := NewAccountActor()
 		if err != nil {
 			return nil, err
 		}
+		balances[types.Address(addr)] = &Balance{Total: big.NewInt(val)}
 
 		if err := st.SetActor(ctx, types.Address(addr), a); err != nil {
 			return nil, err
 		}
+	}
+
+	t, err := NewTokenActor(balances)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := st.SetActor(ctx, types.Address("token"), t); err != nil {
+		return nil, err
 	}
 
 	c, err := st.Flush(ctx)

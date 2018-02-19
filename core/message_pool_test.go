@@ -63,7 +63,6 @@ func TestMessagePoolAsync(t *testing.T) {
 		msgs[i] = types.NewMessage(
 			types.Address(fmt.Sprintf("Alice-%d", i)),
 			types.Address(fmt.Sprintf("Bob-%d", i)),
-			nil,
 			"send",
 			[]interface{}{"1", "2", fmt.Sprintf("%d", i)},
 		)
