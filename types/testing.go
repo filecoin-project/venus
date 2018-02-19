@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
@@ -43,4 +44,21 @@ func NewMessageForTestGetter() func() *Message {
 			s+"-method",
 			nil)
 	}
+}
+
+// Implements types.StateTreeInterface
+type FakeStateTree struct{}
+
+var _ StateTreeInterface = FakeStateTree{}
+
+func (f FakeStateTree) Flush(ctx context.Context) (*cid.Cid, error) {
+	return SomeCid(), nil
+}
+func (f FakeStateTree) GetActor(context.Context, Address) (*Actor, error) {
+	panic("boom -- not implemented")
+	return nil, nil
+}
+func (f FakeStateTree) SetActor(context.Context, Address, *Actor) error {
+	panic("boom -- not implemented")
+	return nil
 }
