@@ -20,7 +20,6 @@ import (
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -166,35 +165,4 @@ func (node *Node) Stop() {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 	fmt.Println("stopping filecoin :(")
-}
-
-// TODO: where does this belong?
-func (node *Node) SendMessage(from, to types.Address, method string, params []interface{}, cb func(error, []byte)) {
-	msg := types.NewMessage(from, to, method, params)
-
-	_, err := node.MsgPool.Add(msg)
-	if err != nil {
-		cb(err, nil)
-		return
-	}
-
-	// TODO: subscribe to new blocks
-	// go func(c *cid.Cid, cb func(error, []byte)) {
-	// outer:
-	// 	for {
-	// 		select {
-	// 		case block := <-node.ChainMgr.BlockChan:
-	// 			for _, receipt := range block.MessageReceipts {
-	// 				if c.Equals(receipt.Message) {
-	// 					if receipt.ExitCode > 0 {
-	// 						cb(fmt.Errorf("execution failed with exit code: %d", receipt.ExitCode), nil)
-	// 					} else {
-	// 						cb(nil, receipt.Return)
-	// 					}
-	// 					break outer
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }(c, cb)
 }
