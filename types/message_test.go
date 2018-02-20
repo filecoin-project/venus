@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +11,6 @@ func TestMessageMarshal(t *testing.T) {
 	msg := Message{
 		to:     Address("Alice"),
 		from:   Address("Bob"),
-		value:  big.NewInt(17777),
 		method: "send",
 		params: []interface{}{"1", "2"},
 	}
@@ -26,7 +24,6 @@ func TestMessageMarshal(t *testing.T) {
 
 	assert.Equal(msg.To(), msgBack.To())
 	assert.Equal(msg.From(), msgBack.From())
-	assert.Equal(msg.Value(), msgBack.Value())
 	assert.Equal(msg.Method(), msgBack.Method())
 	assert.Equal(msg.Params(), msgBack.Params())
 }
@@ -37,7 +34,6 @@ func TestMessageCid(t *testing.T) {
 	msg1 := Message{
 		to:     Address("Alice1"),
 		from:   Address("Bob"),
-		value:  big.NewInt(999),
 		method: "send",
 		params: []interface{}{"1", "2"},
 	}
@@ -45,7 +41,6 @@ func TestMessageCid(t *testing.T) {
 	msg2 := Message{
 		to:     Address("Alice2"),
 		from:   Address("Bob"),
-		value:  big.NewInt(4004),
 		method: "send",
 		params: []interface{}{"1", "2"},
 	}
@@ -70,8 +65,8 @@ func TestNewMessageForTestGetter(t *testing.T) {
 func TestMessageHasFrom(t *testing.T) {
 	assert := assert.New(t)
 
-	msgNoFrom := NewMessage(Address(""), Address("to"), nil, "balance", nil)
-	msgFrom := NewMessage(Address("from"), Address("to"), nil, "balance", nil)
+	msgNoFrom := NewMessage(Address(""), Address("to"), "balance", nil)
+	msgFrom := NewMessage(Address("from"), Address("to"), "balance", nil)
 
 	assert.False(msgNoFrom.HasFrom())
 	assert.True(msgFrom.HasFrom())

@@ -78,14 +78,14 @@ func unmarshalMessage(x []interface{}) (Message, error) {
 		return Message{}, errInvalidMessage("from", x[1])
 	}
 
-	method, ok := x[3].(string)
+	method, ok := x[2].(string)
 	if !ok {
-		return Message{}, errInvalidMessage("method", x[3])
+		return Message{}, errInvalidMessage("method", x[2])
 	}
 
-	params, ok := x[4].([]interface{})
-	if !ok && x[4] != nil {
-		return Message{}, errInvalidMessage("params", x[4])
+	params, ok := x[3].([]interface{})
+	if !ok && x[3] != nil {
+		return Message{}, errInvalidMessage("params", x[3])
 	}
 
 	return Message{

@@ -17,5 +17,14 @@ type MessageReceipt struct {
 	ExitCode uint8
 	// The value returned from the message.
 	// TODO: limit size
-	Return []byte
+	Ret []byte
+}
+
+// NewMessageReceipt creates a new MessageReceipt.
+func NewMessageReceipt(msg *cid.Cid, exitCode uint8, ret []byte) *MessageReceipt {
+	return &MessageReceipt{
+		Message:  msg,
+		ExitCode: exitCode,
+		Ret:      ret,
+	}
 }
