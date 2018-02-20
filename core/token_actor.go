@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -14,23 +15,27 @@ func init() {
 	cbor.RegisterCborType(Balance{})
 }
 
-// TokenActor is the builtin actor for handling individual accounts.
+var (
+	// ErrRequiredFrom is returned when a method requires a from address, but none was passed.
+	ErrRequiredFrom = errors.New("message is missing required from")
+)
+
+// TokenActor is the builtin actor for handling account balances.
 //
-// TokenActor __is__ shared shared between multiple accounts, as it is the
-// underlying code.
+// TokenActor __is__ a singleton actor, that should only exist at one location
+// and manages the balances of all accounts.
 type TokenActor struct{}
 
 // TokenStorage is what the TokenActor uses to store data permanently
 // onchain. It is unmarshalled & marshalled when needed, as only raw bytes
 // can be stored onchain.
-//
-// TokenStorage __is not__ shared between multiple accounts, as it represents
-// the individual instances of an account.
 type TokenStorage struct {
 	Balances map[types.Address]*Balance
 }
 
+// Balance represents the balance sheet for an individual account.
 type Balance struct {
+	// Total is the amount of filecoin this account holds.
 	Total *big.Int
 }
 
@@ -109,6 +114,7 @@ func (state *TokenActor) Transfer(ctx *VMContext, receiver types.Address, amount
 		receiverBalance.Total.Add(receiverBalance.Total, amount)
 		return nil, nil
 	})
+
 	if err != nil {
 		return 1, err
 	}
@@ -127,11 +133,6 @@ func withTokenStorage(ctx *VMContext, f func(*TokenStorage) (interface{}, error)
 	ret, err := f(storage)
 	if err != nil {
 		return nil, err
-	}
-
-	fmt.Println("writing storage")
-	for k, v := range storage.Balances {
-		fmt.Printf("%v: %v\n", k, v)
 	}
 
 	newStorage, err := MarshalStorage(storage)
@@ -162,10 +163,6 @@ func unmarshalTokenStorage(raw []byte) (*TokenStorage, error) {
 
 	if err := UnmarshalStorage(raw, storage); err != nil {
 		return nil, err
-	}
-	fmt.Println("storage loaded")
-	for k, v := range storage.Balances {
-		fmt.Printf("%v: %v\n", k, v)
 	}
 
 	return storage, nil

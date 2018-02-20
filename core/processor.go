@@ -65,5 +65,5 @@ func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) 
 		return nil, errors.Wrap(err, "failed to send message")
 	}
 
-	return &types.NewMessageReceipt(c, exitCode, ret), nil
+	return types.NewMessageReceipt(c, exitCode, ret), nil
 }

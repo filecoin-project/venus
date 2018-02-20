@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Send executes a message pass inside the VM.
 func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st *types.StateTree) ([]byte, uint8, error) {
 	vmCtx := NewVMContext(from, to, msg, st)
 
