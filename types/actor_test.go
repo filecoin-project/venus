@@ -17,9 +17,9 @@ func TestActorMarshal(t *testing.T) {
 	err = actorBack.Unmarshal(marshalled)
 	assert.NoError(err)
 
-	assert.Equal(actor.Code(), actorBack.Code())
+	assert.Equal(actor.Code, actorBack.Code)
 	assert.Equal(actor.ReadStorage(), actorBack.ReadStorage())
-	assert.Equal(actor.Nonce(), actorBack.Nonce())
+	assert.Equal(actor.Nonce, actorBack.Nonce)
 
 	c1, err := actor.Cid()
 	assert.NoError(err)

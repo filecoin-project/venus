@@ -18,6 +18,7 @@ var sendMsgCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("target", true, false, "address to send message to"),
 		cmdkit.StringArg("method", true, false, "method to invoke"),
+		cmdkit.StringArg("params", true, true, "params"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send message from"),
@@ -32,6 +33,12 @@ var sendMsgCmd = &cmds.Command{
 			return
 		}
 		method := req.Arguments[1]
+		rest := req.Arguments[2:]
+
+		params := make([]interface{}, len(rest))
+		for i, p := range rest {
+			params[i] = p
+		}
 
 		offchain := req.Options["offchain"].(bool)
 		from, _ := req.Options["from"].(string)
@@ -52,7 +59,7 @@ var sendMsgCmd = &cmds.Command{
 			fromAddr = addrs[0]
 		}
 
-		msg := types.NewMessage(fromAddr, target, method, nil)
+		msg := types.NewMessage(fromAddr, target, method, params)
 
 		if offchain {
 			// fetch state tree

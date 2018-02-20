@@ -31,7 +31,7 @@ func TestMessageSend(t *testing.T) {
 
 	pending := nd.MsgPool.Pending()
 	assert.Len(pending, 1)
-	assert.Equal(pending[0].From().String(), "0x123456")
+	assert.Equal(pending[0].From.String(), "0x123456")
 
 	c, err := pending[0].Cid()
 	assert.NoError(err)
@@ -49,9 +49,10 @@ func TestMessageSendOffChain(t *testing.T) {
 	defer nd.Stop()
 
 	fromAddr := types.Address("investor1")
-	toAddr := types.Address("filecoin")
+	toAddr := types.Address("token")
 
-	out, err := testhelpers.RunCommand(sendMsgCmd, []string{toAddr.String(), "balance"}, msi{"from": fromAddr.String(), "offchain": true}, &Env{node: nd})
+	// TODO: fix me, need a way to send typed params to an actor.
+	out, err := testhelpers.RunCommand(sendMsgCmd, []string{toAddr.String(), "balance", toAddr.String()}, msi{"from": fromAddr.String(), "offchain": true}, &Env{node: nd})
 	assert.NoError(err)
 
 	assert.Len(nd.MsgPool.Pending(), 0)

@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 func init() {
-	cbor.RegisterCborType(messageCborEntry)
+	cbor.RegisterCborType(CborEntryFromStruct(Message{}))
 }
 
 var (
@@ -23,77 +22,15 @@ var (
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
 type Message struct {
-	to   Address
-	from Address
-
-	method string
-	params []interface{}
+	To     Address       `cbor:"0"`
+	From   Address       `cbor:"1"`
+	Method string        `cbor:"2"`
+	Params []interface{} `cbor:"3"`
 }
-
-// To is a getter for the to field.
-func (msg *Message) To() Address { return msg.to }
-
-// From is a getter for the from field.
-func (msg *Message) From() Address { return msg.from }
-
-// Method is a getter for the method field.
-func (msg *Message) Method() string { return msg.method }
-
-// Params is a getter for the params field.
-func (msg *Message) Params() []interface{} { return msg.params }
 
 // HasFrom indidcates if this message has a from address.
 func (msg *Message) HasFrom() bool {
-	return msg.from != Address("")
-}
-
-var messageCborEntry = atlas.
-	BuildEntry(Message{}).
-	Transform().
-	TransformMarshal(atlas.MakeMarshalTransformFunc(marshalMessage)).
-	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(unmarshalMessage)).
-	Complete()
-
-func marshalMessage(msg Message) ([]interface{}, error) {
-	return []interface{}{
-		msg.to,
-		msg.from,
-		msg.method,
-		msg.params,
-	}, nil
-}
-
-func unmarshalMessage(x []interface{}) (Message, error) {
-	if len(x) != 4 {
-		return Message{}, ErrInvalidMessageLength
-	}
-
-	to, ok := x[0].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("to", x[0])
-	}
-
-	from, ok := x[1].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("from", x[1])
-	}
-
-	method, ok := x[2].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("method", x[2])
-	}
-
-	params, ok := x[3].([]interface{})
-	if !ok && x[3] != nil {
-		return Message{}, errInvalidMessage("params", x[3])
-	}
-
-	return Message{
-		to:     Address(to),
-		from:   Address(from),
-		method: method,
-		params: params,
-	}, nil
+	return msg.From != Address("")
 }
 
 // Unmarshal a message from the given bytes.
@@ -120,10 +57,10 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 // NewMessage creates a new message.
 func NewMessage(from, to Address, method string, params []interface{}) *Message {
 	return &Message{
-		from:   from,
-		to:     to,
-		method: method,
-		params: params,
+		From:   from,
+		To:     to,
+		Method: method,
+		Params: params,
 	}
 }
 

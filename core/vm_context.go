@@ -40,24 +40,24 @@ func (ctx *VMContext) ReadStorage() []byte {
 // WriteStorage writes to the storage of the associated to actor.
 func (ctx *VMContext) WriteStorage(memory []byte) error {
 	ctx.to.WriteStorage(memory)
-	return ctx.state.SetActor(context.Background(), ctx.message.To(), ctx.to)
+	return ctx.state.SetActor(context.Background(), ctx.message.To, ctx.to)
 }
 
 // Send sends a message to another actor.
 func (ctx *VMContext) Send(to types.Address, method string, params []interface{}) ([]byte, uint8, error) {
 	// from is always currents context to
-	from := ctx.Message().To()
+	from := ctx.Message().To
 	fromActor := ctx.to
 
 	msg := types.NewMessage(from, to, method, params)
-	if msg.From() == msg.To() {
+	if msg.From == msg.To {
 		// TODO: handle this
-		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From())
+		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := ctx.state.GetOrCreateActor(context.Background(), msg.To())
+	toActor, err := ctx.state.GetOrCreateActor(context.Background(), msg.To)
 	if err != nil {
-		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To())
+		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 
 	return Send(context.Background(), fromActor, toActor, msg, ctx.state)

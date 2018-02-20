@@ -11,8 +11,8 @@ import (
 )
 
 func init() {
-	cbor.RegisterCborType(TokenStorage{})
-	cbor.RegisterCborType(Balance{})
+	cbor.RegisterCborType(types.CborEntryFromStruct(TokenStorage{}))
+	cbor.RegisterCborType(types.CborEntryFromStruct(Balance{}))
 }
 
 var (
@@ -30,13 +30,13 @@ type TokenActor struct{}
 // onchain. It is unmarshalled & marshalled when needed, as only raw bytes
 // can be stored onchain.
 type TokenStorage struct {
-	Balances map[types.Address]*Balance
+	Balances map[types.Address]*Balance `cbor:"0"`
 }
 
 // Balance represents the balance sheet for an individual account.
 type Balance struct {
 	// Total is the amount of filecoin this account holds.
-	Total *big.Int
+	Total *big.Int `cbor:"0"`
 }
 
 // ensure TokenActor is an ExecutableActor at compile time
@@ -91,7 +91,7 @@ func (state *TokenActor) Transfer(ctx *VMContext, receiver types.Address, amount
 		return 1, ErrRequiredFrom
 	}
 
-	sender := ctx.Message().From()
+	sender := ctx.Message().From
 
 	_, err := withTokenStorage(ctx, func(storage *TokenStorage) (interface{}, error) {
 		senderBalance, ok := storage.Balances[sender]
@@ -112,6 +112,7 @@ func (state *TokenActor) Transfer(ctx *VMContext, receiver types.Address, amount
 
 		senderBalance.Total.Sub(senderBalance.Total, amount)
 		receiverBalance.Total.Add(receiverBalance.Total, amount)
+
 		return nil, nil
 	})
 

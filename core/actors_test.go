@@ -74,7 +74,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"two": &FunctionSignature{
+			"two": {
 				Params: []interface{}{},
 				Return: nil,
 			},
@@ -91,7 +91,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"four": &FunctionSignature{
+			"four": {
 				Params: []interface{}{},
 				Return: []byte{},
 			},
@@ -108,7 +108,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"five": &FunctionSignature{
+			"five": {
 				Params: []interface{}{},
 				Return: []byte{},
 			},
@@ -127,11 +127,11 @@ func TestMakeTypedExportFail(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"one": &FunctionSignature{
+			"one": {
 				Params: []interface{}{},
 				Return: nil,
 			},
-			"other": &FunctionSignature{
+			"other": {
 				Params: []interface{}{},
 				Return: nil,
 			},
@@ -156,7 +156,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"one": &FunctionSignature{
+			"one": {
 				Params: []interface{}{},
 				Return: nil,
 			},
@@ -171,7 +171,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"three": &FunctionSignature{
+			"three": {
 				Params: []interface{}{},
 				Return: nil,
 			},
@@ -186,7 +186,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		assert := assert.New(t)
 
 		a := NewMockActor(map[string]*FunctionSignature{
-			"two": &FunctionSignature{
+			"two": {
 				Params: []interface{}{},
 				Return: []byte{},
 			},

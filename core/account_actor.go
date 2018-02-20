@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	cbor.RegisterCborType(AccountStorage{})
+	cbor.RegisterCborType(types.CborEntryFromStruct(AccountStorage{}))
 }
 
 // AccountActor is the builtin actor for handling individual accounts.

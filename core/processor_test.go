@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -24,7 +23,6 @@ func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int)
 		if err != nil {
 			return nil, nil, err
 		}
-		fmt.Printf("setactor %v\n%v\n", k, act)
 		b[k] = &Balance{Total: v}
 		if err := t.SetActor(ctx, k, act); err != nil {
 			return nil, nil, err
@@ -57,6 +55,7 @@ func TestProcessBlock(t *testing.T) {
 	addr2 := types.Address("two")
 	stc, st, err := makeStateTree(cst, map[types.Address]*big.Int{
 		addr1: big.NewInt(10000),
+		addr2: big.NewInt(0),
 	})
 	assert.NoError(err)
 	stc2, _, err := makeStateTree(cst, map[types.Address]*big.Int{

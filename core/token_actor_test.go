@@ -51,7 +51,7 @@ func TestTokenActor(t *testing.T) {
 		tActor, err := state.GetActor(ctx, tAddr)
 		assert.NoError(err)
 
-		execActor, err := LoadCode(tActor.Code())
+		execActor, err := LoadCode(tActor.Code)
 		assert.NoError(err)
 
 		msg := types.NewMessage(fAddr, tAddr, method, params)

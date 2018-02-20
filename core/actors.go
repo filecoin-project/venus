@@ -105,8 +105,12 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportFunc {
 			reflect.ValueOf(ctx),
 		}
 
+		if len(signature.Params) != len(ctx.Message().Params) {
+			return nil, 1, fmt.Errorf("invalid params: expected %v, got %v", signature.Params, ctx.Message().Params)
+		}
+
 		for i, paramType := range signature.Params {
-			actualParam := ctx.Message().Params()[i]
+			actualParam := ctx.Message().Params[i]
 
 			tActual := reflect.TypeOf(actualParam)
 			tExpected := reflect.TypeOf(paramType)

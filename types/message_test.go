@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,40 +11,47 @@ import (
 func TestMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
 	msg := Message{
-		to:     Address("Alice"),
-		from:   Address("Bob"),
-		method: "send",
-		params: []interface{}{"1", "2"},
+		To:     Address("Alice"),
+		From:   Address("Bob"),
+		Method: "send",
+		Params: []interface{}{"1", "2"},
 	}
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(err)
 
+	// make sure the format used is correct
+	// ["Alice", "Bob", "send", ["1", "2"]]
+	bytes, err := hex.DecodeString("8465416c69636563426f626473656e648261316132")
+	assert.NoError(err)
+	assert.Equal(marshalled, bytes)
+
+	fmt.Printf("%x\n", marshalled)
 	msgBack := Message{}
 	err = msgBack.Unmarshal(marshalled)
 	assert.NoError(err)
 
-	assert.Equal(msg.To(), msgBack.To())
-	assert.Equal(msg.From(), msgBack.From())
-	assert.Equal(msg.Method(), msgBack.Method())
-	assert.Equal(msg.Params(), msgBack.Params())
+	assert.Equal(msg.To, msgBack.To)
+	assert.Equal(msg.From, msgBack.From)
+	assert.Equal(msg.Method, msgBack.Method)
+	assert.Equal(msg.Params, msgBack.Params)
 }
 
 func TestMessageCid(t *testing.T) {
 	assert := assert.New(t)
 
 	msg1 := Message{
-		to:     Address("Alice1"),
-		from:   Address("Bob"),
-		method: "send",
-		params: []interface{}{"1", "2"},
+		To:     Address("Alice1"),
+		From:   Address("Bob"),
+		Method: "send",
+		Params: []interface{}{"1", "2"},
 	}
 
 	msg2 := Message{
-		to:     Address("Alice2"),
-		from:   Address("Bob"),
-		method: "send",
-		params: []interface{}{"1", "2"},
+		To:     Address("Alice2"),
+		From:   Address("Bob"),
+		Method: "send",
+		Params: []interface{}{"1", "2"},
 	}
 
 	c1, err := msg1.Cid()

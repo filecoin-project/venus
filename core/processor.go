@@ -39,21 +39,21 @@ func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) 
 	var fromActor *types.Actor
 
 	if msg.HasFrom() {
-		if msg.From() == msg.To() {
+		if msg.From == msg.To {
 			// TODO: handle this
-			return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From())
+			return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
 		}
 
-		from, err := st.GetActor(ctx, msg.From())
+		from, err := st.GetActor(ctx, msg.From)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From())
+			return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From)
 		}
 		fromActor = from
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, msg.To())
+	toActor, err := st.GetOrCreateActor(ctx, msg.To)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get or create To actor %s", msg.To())
+		return nil, errors.Wrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	c, err := msg.Cid()
 	if err != nil {

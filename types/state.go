@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -89,4 +90,28 @@ func (t *StateTree) SetActor(ctx context.Context, a Address, act *Actor) error {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
 	return nil
+}
+
+// Debug prints a debug version of the current state tree.
+func (t *StateTree) Debug() {
+	t.debugPointer(t.root.Pointers)
+}
+
+func (t *StateTree) debugPointer(ps []*hamt.Pointer) {
+	for _, p := range ps {
+		fmt.Println("----")
+		for _, kv := range p.KVs {
+			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
+		}
+		if p.Link != nil {
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			if err != nil {
+				fmt.Printf("unable to print link: %s: %s\n", p.Link.String(), err)
+				continue
+			}
+
+			t.debugPointer(n.Pointers)
+		}
+	}
+
 }
