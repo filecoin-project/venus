@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
+	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
 	ds "gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
@@ -38,6 +39,7 @@ type Node struct {
 	PubSub     *floodsub.PubSub
 	BlockSub   *floodsub.Subscription
 	MessageSub *floodsub.Subscription
+	Ping       *ping.PingService
 
 	// Data Storage Fields
 
@@ -89,6 +91,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	// set up pinger
+	pinger := ping.NewPingService(host)
+
 	if nc.Datastore == nil {
 		nc.Datastore = ds.NewMapDatastore()
 	}
@@ -121,13 +126,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	return &Node{
 		CborStore: cst,
-		Host:      host,
 		ChainMgr:  chainMgr,
-		PubSub:    fsub,
 		Datastore: nc.Datastore,
 		Exchange:  bswap,
-		Wallet:    wallet.New(),
+		Host:      host,
 		MsgPool:   core.NewMessagePool(),
+		Ping:      pinger,
+		PubSub:    fsub,
+		Wallet:    wallet.New(),
 	}, nil
 }
 
