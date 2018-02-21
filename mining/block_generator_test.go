@@ -23,8 +23,8 @@ func (mpb *MockProcessBlock) ProcessBlock(ctx context.Context, b *types.Block, s
 
 // TODO (fritz) Do something about the test duplication w/AddParent.
 func TestBlockGenerator_Generate(t *testing.T) {
-	oldProcessBlock := ProcessBlock
-	defer func() { ProcessBlock = oldProcessBlock }()
+	oldProcessBlock := processBlock
+	defer func() { processBlock = oldProcessBlock }()
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()
@@ -37,7 +37,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	// With no messages.
 	expectedCid := newCid()
 	mpb, mst := &MockProcessBlock{}, &types.MockStateTree{}
-	ProcessBlock = mpb.ProcessBlock
+	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
 	mst.On("Flush", context.Background()).Return(expectedCid, nil)
 	b, err := g.Generate(context.Background(), &parent, mst)
@@ -51,7 +51,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	// With messages.
 	expectedCid = newCid()
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
-	ProcessBlock = mpb.ProcessBlock
+	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
 	mst.On("Flush", context.Background()).Return(expectedCid, nil)
 	newMsg := types.NewMessageForTestGetter()
@@ -68,7 +68,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 
 	// processBlock fails.
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
-	ProcessBlock = mpb.ProcessBlock
+	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(errors.New("boom ProcessBlock failed"))
 	b, err = g.Generate(context.Background(), &parent, mst)
 	if assert.Error(err) {
@@ -79,7 +79,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 
 	// tree.Flush fails.
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
-	ProcessBlock = mpb.ProcessBlock
+	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
 	mst.On("Flush", context.Background()).Return(nil, errors.New("boom tree.Flush failed"))
 	b, err = g.Generate(context.Background(), &parent, mst)

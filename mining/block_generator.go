@@ -7,11 +7,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// ProcessBlockFunc is a signature that makes it easier to test Generate().
-type ProcessBlockFunc func(context.Context, *types.Block, types.StateTree) error
+// processBlockFunc is a signature that makes it easier to test Generate().
+type processBlockFunc func(context.Context, *types.Block, types.StateTree) error
 
-// ProcessBlock is the functoin that does the block processing.
-var ProcessBlock = core.ProcessBlock
+// processBlock is the functoin that does the block processing.
+var processBlock = core.ProcessBlock
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
@@ -39,7 +39,7 @@ func (b blockGenerator) Generate(ctx context.Context, p *types.Block, st types.S
 		return nil, err
 	}
 
-	if err := ProcessBlock(ctx, child, st); err != nil {
+	if err := processBlock(ctx, child, st); err != nil {
 		return nil, err
 	}
 	newStCid, err := st.Flush(ctx)
