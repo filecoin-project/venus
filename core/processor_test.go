@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, *types.StateTree) {
+func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, types.StateTree) {
 	ctx := context.Background()
 	t := types.NewEmptyTree(cst)
 	for k, v := range balances {

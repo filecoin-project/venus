@@ -49,7 +49,7 @@ func NewMessageForTestGetter() func() *Message {
 // Implements types.StateTreeInterface
 type FakeStateTree struct{}
 
-var _ StateTreeInterface = FakeStateTree{}
+var _ StateTree = FakeStateTree{}
 
 func (f FakeStateTree) Flush(ctx context.Context) (*cid.Cid, error) {
 	return SomeCid(), nil

@@ -25,7 +25,7 @@ func NewWorker(blockGenerator BlockGeneratorInterface, addNewBlock AddNewBlockFu
 }
 
 // Mine attempts to mine one block. Returns the cid of the new block, if any.
-func (w *Worker) Mine(ctx context.Context, cur *types.Block, tree types.StateTreeInterface) (*cid.Cid, error) {
+func (w *Worker) Mine(ctx context.Context, cur *types.Block, tree types.StateTree) (*cid.Cid, error) {
 	processBlock := func(ctx context.Context, b *types.Block) error {
 		return core.ProcessBlock(ctx, b, tree)
 	}
