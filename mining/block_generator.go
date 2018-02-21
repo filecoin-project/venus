@@ -12,21 +12,23 @@ type ProcessBlockFunc func(context.Context, *types.Block, types.StateTree) error
 
 var ProcessBlock = core.ProcessBlock
 
-// BlockGeneratorInterface is the primary interface for a BlockGenerator. It's
-// used by the tests of higher-level code to create a mock or fake BlockGenerators
-// as a dependency.
-type BlockGeneratorInterface interface {
+// BlockGenerator is the primary interface for blockGenerator.
+type BlockGenerator interface {
 	Generate(context.Context, *types.Block, types.StateTree) (*types.Block, error)
 }
 
-// BlockGenerator generates new blocks for inclusion in the chain.
-type BlockGenerator struct {
+func NewBlockGenerator(mp *core.MessagePool) BlockGenerator {
+	return &blockGenerator{mp}
+}
+
+// blockGenerator generates new blocks for inclusion in the chain.
+type blockGenerator struct {
 	Mp *core.MessagePool
 }
 
 // Generate returns a new block created from the messages in the
 // pool. It does not remove them.
-func (b BlockGenerator) Generate(ctx context.Context, p *types.Block, st types.StateTree) (*types.Block, error) {
+func (b blockGenerator) Generate(ctx context.Context, p *types.Block, st types.StateTree) (*types.Block, error) {
 	child := &types.Block{
 		Height:   p.Height + 1,
 		Messages: b.Mp.Pending(),

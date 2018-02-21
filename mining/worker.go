@@ -14,12 +14,12 @@ type AddNewBlockFunc func(context.Context, *types.Block) error
 // Worker mines. If successful it passes the new block to AddNewBlock()
 // and returns its cid.
 type Worker struct {
-	BlockGenerator BlockGeneratorInterface
+	BlockGenerator BlockGenerator
 	AddNewBlock    AddNewBlockFunc
 }
 
 // NewWorker instantiates a new
-func NewWorker(blockGenerator BlockGeneratorInterface, addNewBlock AddNewBlockFunc) *Worker {
+func NewWorker(blockGenerator BlockGenerator, addNewBlock AddNewBlockFunc) *Worker {
 	return &Worker{blockGenerator, addNewBlock}
 }
 

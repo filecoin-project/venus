@@ -28,7 +28,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()
-	g := BlockGenerator{pool}
+	g := blockGenerator{pool}
 	parent := types.Block{
 		Parent: types.SomeCid(),
 		Height: uint64(100),

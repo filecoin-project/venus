@@ -12,7 +12,7 @@ type MockBlockGenerator struct {
 	mock.Mock
 }
 
-var _ BlockGeneratorInterface = &MockBlockGenerator{}
+var _ BlockGenerator = &MockBlockGenerator{}
 
 // Generate is a testify mock implementation.
 func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, st types.StateTree) (b *types.Block, err error) {
