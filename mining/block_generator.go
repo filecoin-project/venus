@@ -8,7 +8,7 @@ import (
 )
 
 // processBlockFunc is a signature that makes it easier to test Generate().
-type processBlockFunc func(context.Context, *types.Block, types.StateTree) error
+type processBlockFunc func(context.Context, *types.Block, types.StateTree) ([]*types.MessageReceipt, error)
 
 // processBlock is the functoin that does the block processing.
 var processBlock = core.ProcessBlock
@@ -39,9 +39,13 @@ func (b blockGenerator) Generate(ctx context.Context, p *types.Block, st types.S
 		return nil, err
 	}
 
-	if err := processBlock(ctx, child, st); err != nil {
+	receipts, err := processBlock(ctx, child, st)
+	if err != nil {
 		return nil, err
 	}
+
+	child.MessageReceipts = receipts
+
 	newStCid, err := st.Flush(ctx)
 	if err != nil {
 		return nil, err

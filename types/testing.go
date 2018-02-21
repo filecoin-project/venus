@@ -81,3 +81,7 @@ func (m *MockStateTree) SetActor(ctx context.Context, address Address, actor *Ac
 	args := m.Called(ctx, address, actor)
 	return args.Error(0)
 }
+
+func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address Address, creator func() (*Actor, error)) (*Actor, error) {
+	panic("do not call me")
+}

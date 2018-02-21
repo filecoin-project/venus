@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
+	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
@@ -13,36 +13,46 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, types.StateTree) {
+func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, types.StateTree, error) {
 	ctx := context.Background()
 	t := types.NewEmptyStateTree(cst)
+
 	for k, v := range balances {
-		act := &types.Actor{Balance: v}
+		act, err := NewAccountActor(v)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		if err := t.SetActor(ctx, k, act); err != nil {
-			panic(err)
+			return nil, nil, err
 		}
 	}
+
 	c, err := t.Flush(ctx)
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	return c, t
+	return c, t, nil
 }
 
 func TestProcessBlock(t *testing.T) {
+	assert := assert.New(t)
+
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
 	addr1 := types.Address("one")
 	addr2 := types.Address("two")
-	stc, st := makeStateTree(cst, map[types.Address]*big.Int{
+	stc, st, err := makeStateTree(cst, map[types.Address]*big.Int{
 		addr1: big.NewInt(10000),
 	})
-	stc2, _ := makeStateTree(cst, map[types.Address]*big.Int{
+	assert.NoError(err)
+	stc2, _, err := makeStateTree(cst, map[types.Address]*big.Int{
 		addr1: big.NewInt(10000 - 550),
 		addr2: big.NewInt(550),
 	})
+	assert.NoError(err)
 
 	msg := types.NewMessage(addr1, addr2, big.NewInt(550), "", nil)
 
@@ -52,10 +62,13 @@ func TestProcessBlock(t *testing.T) {
 		Messages:  []*types.Message{msg},
 	}
 
-	assert.NoError(t, ProcessBlock(ctx, blk, st))
+	receipts, err := ProcessBlock(ctx, blk, st)
+	assert.NoError(err)
+
+	assert.Len(receipts, 1)
 
 	stc2out, err := st.Flush(ctx)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
-	assert.Equal(t, stc2, stc2out)
+	assert.Equal(stc2, stc2out)
 }

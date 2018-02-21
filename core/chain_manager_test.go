@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var (
@@ -40,10 +41,12 @@ func init() {
 
 func mkChild(blk *types.Block, nonce uint64) *types.Block {
 	return &types.Block{
-		Parent:    blk.Cid(),
-		Height:    blk.Height + 1,
-		Nonce:     nonce,
-		StateRoot: blk.StateRoot,
+		Parent:          blk.Cid(),
+		Height:          blk.Height + 1,
+		Nonce:           nonce,
+		StateRoot:       blk.StateRoot,
+		Messages:        []*types.Message{},
+		MessageReceipts: []*types.MessageReceipt{},
 	}
 }
 
