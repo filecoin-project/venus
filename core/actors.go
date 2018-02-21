@@ -58,6 +58,7 @@ func LoadCode(codePointer *cid.Cid) (ExecutableActor, error) {
 // MakeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
 //
+// TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
