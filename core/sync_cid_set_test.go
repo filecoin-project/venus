@@ -2,6 +2,7 @@ package core
 
 import (
 	"math/rand"
+	"sync"
 	"testing"
 
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
@@ -9,12 +10,16 @@ import (
 )
 
 var testRand *rand.Rand
+var lk sync.Mutex
 
 func init() {
 	testRand = rand.New(rand.NewSource(42))
 }
 
 func randCid() *cid.Cid {
+	lk.Lock()
+	defer lk.Unlock()
+
 	pref := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31)
 	data := make([]byte, 16)
 	testRand.Read(data)
