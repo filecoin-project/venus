@@ -27,7 +27,7 @@ func TestMessageSend(t *testing.T) {
 
 	pending := nd.MsgPool.Pending()
 	assert.Len(pending, 1)
-	assert.Equal(pending[0].From().String(), "0x123456")
+	assert.Equal(pending[0].From.String(), "0x123456")
 
 	c, err := pending[0].Cid()
 	assert.NoError(err)

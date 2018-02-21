@@ -29,5 +29,5 @@ func TestMinerGenBlock(t *testing.T) {
 	assert.Equal(uint64(1), blk.Height)
 	assert.NoError(out.HasLine(blk.Cid().String()))
 	assert.Len(blk.Messages, 1)
-	assert.Equal(addr, blk.Messages[0].To())
+	assert.Equal(addr, blk.Messages[0].To)
 }

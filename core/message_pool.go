@@ -23,17 +23,17 @@ type MessagePool struct {
 }
 
 // Add adds a message to the pool.
-func (pool *MessagePool) Add(msg *types.Message) error {
+func (pool *MessagePool) Add(msg *types.Message) (*cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
 	c, err := msg.Cid()
 	if err != nil {
-		return errors.Wrap(err, "failed to create CID")
+		return nil, errors.Wrap(err, "failed to create CID")
 	}
 
 	pool.pending[c.KeyString()] = msg
-	return nil
+	return c, nil
 }
 
 // Pending returns all pending messages.

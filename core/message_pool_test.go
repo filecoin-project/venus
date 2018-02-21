@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 	"testing"
 
@@ -24,9 +25,11 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0)
-	assert.NoError(pool.Add(msg1))
+	_, err = pool.Add(msg1)
+	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
-	assert.NoError(pool.Add(msg2))
+	_, err = pool.Add(msg2)
+	assert.NoError(err)
 	assert.Len(pool.Pending(), 2)
 
 	pool.Remove(c1)
@@ -42,10 +45,12 @@ func TestMessagePoolDedup(t *testing.T) {
 	msg1 := types.NewMessageForTestGetter()()
 
 	assert.Len(pool.Pending(), 0)
-	assert.NoError(pool.Add(msg1))
+	_, err := pool.Add(msg1)
+	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
 
-	assert.NoError(pool.Add(msg1))
+	_, err = pool.Add(msg1)
+	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
 }
 
@@ -59,7 +64,7 @@ func TestMessagePoolAsync(t *testing.T) {
 		msgs[i] = types.NewMessage(
 			types.Address(fmt.Sprintf("Alice-%d", i)),
 			types.Address(fmt.Sprintf("Bob-%d", i)),
-			nil,
+			big.NewInt(1),
 			"send",
 			[]interface{}{"1", "2", fmt.Sprintf("%d", i)},
 		)
@@ -72,7 +77,7 @@ func TestMessagePoolAsync(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			for j := 0; j < count/4; j++ {
-				err := pool.Add(msgs[j+(count/4)*i])
+				_, err := pool.Add(msgs[j+(count/4)*i])
 				assert.NoError(err)
 			}
 			wg.Done()

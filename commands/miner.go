@@ -47,10 +47,13 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		if err := core.ProcessBlock(req.Context, next, tree); err != nil {
+		receipts, err := core.ProcessBlock(req.Context, next, tree)
+		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
+
+		next.MessageReceipts = receipts
 
 		stcid, err := tree.Flush(req.Context)
 		if err != nil {

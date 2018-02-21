@@ -77,7 +77,7 @@ func TestAssimilateMap(t *testing.T) {
 	testCases := []interface{}{
 		map[string]string{"hello": "world"},
 		map[string]*big.Int{"hello": big.NewInt(10)},
-		map[string][]byte{"hello": []byte{1, 2, 3}},
+		map[string][]byte{"hello": {1, 2, 3}},
 		map[Address]Address{Address("hi"): Address("you")},
 	}
 
