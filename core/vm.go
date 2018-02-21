@@ -40,12 +40,8 @@ func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st typ
 }
 
 func hasExport(exports Exports, method string) bool {
-	for m := range exports {
-		if m == method {
-			return true
-		}
-	}
-	return false
+	_, ok := exports[method]
+	return ok
 }
 
 func transfer(from, to *types.Actor, value *big.Int) error {
@@ -53,7 +49,7 @@ func transfer(from, to *types.Actor, value *big.Int) error {
 		return fmt.Errorf("can not transfer negative values")
 	}
 
-	if from.Balance.Cmp(value) == -1 {
+	if from.Balance.Cmp(value) < 0 {
 		return fmt.Errorf("from has not enough balance")
 	}
 
