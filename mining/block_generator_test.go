@@ -8,42 +8,23 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
-// mockFuncs is a poor man's mock use to stub out the processBlock and flushTree
-// functions when testing Generate. Could have used testify mocks for flushTree
-// but then I would've had to introduce an interface for tree, unclear whether
-// that's warranted yet. This is pretty easy in any case.
-type mockFuncs struct {
-	Called bool
-	Cid    *cid.Cid
+type MockProcessBlock struct {
+	mock.Mock
 }
 
-func (m *mockFuncs) successfulProcessBlockFunc(context.Context, *types.Block) error {
-	m.Called = true
-	return nil
-}
-
-func (m *mockFuncs) failingProcessBlockFunc(context.Context, *types.Block) error {
-	m.Called = true
-	return errors.New("boom processBlockFunc failed")
-}
-
-func (m *mockFuncs) successfulFlushTreeFunc(context.Context) (*cid.Cid, error) {
-	m.Called = true
-	return m.Cid, nil
-}
-
-func (m *mockFuncs) failingFlushTreeFunc(context.Context) (*cid.Cid, error) {
-	m.Called = true
-	return nil, errors.New("boom flushTreeFunc failed")
+func (mpb *MockProcessBlock) ProcessBlock(ctx context.Context, b *types.Block, st types.StateTree) error {
+	args := mpb.Called(ctx, b, st)
+	return args.Error(0)
 }
 
 // TODO (fritz) Do something about the test duplication w/AddParent.
 func TestBlockGenerator_Generate(t *testing.T) {
+	oldProcessBlock := ProcessBlock
+	defer func() { ProcessBlock = oldProcessBlock }()
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()
@@ -54,42 +35,57 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	}
 
 	// With no messages.
-	m1, m2 := new(mockFuncs), new(mockFuncs)
-	m2.Cid = newCid()
-	b, err := g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
+	expectedCid := newCid()
+	mpb, mst := &MockProcessBlock{}, &types.MockStateTree{}
+	ProcessBlock = mpb.ProcessBlock
+	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
+	mst.On("Flush", context.Background()).Return(expectedCid, nil)
+	b, err := g.Generate(context.Background(), &parent, mst)
 	assert.NoError(err)
 	assert.Equal(parent.Cid(), b.Parent)
-	assert.Equal(m2.Cid, b.StateRoot)
+	assert.Equal(expectedCid, b.StateRoot)
 	assert.Len(b.Messages, 0)
-	assert.True(m1.Called)
-	assert.True(m2.Called)
+	mpb.AssertExpectations(t)
+	mst.AssertExpectations(t)
 
 	// With messages.
+	expectedCid = newCid()
+	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
+	ProcessBlock = mpb.ProcessBlock
+	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
+	mst.On("Flush", context.Background()).Return(expectedCid, nil)
 	newMsg := types.NewMessageForTestGetter()
 	pool.Add(newMsg())
 	pool.Add(newMsg())
 	expectedMsgs := 2
 	require.Len(t, pool.Pending(), expectedMsgs)
-	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.successfulFlushTreeFunc)
+	b, err = g.Generate(context.Background(), &parent, mst)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), expectedMsgs) // Does not remove them.
 	assert.Len(b.Messages, expectedMsgs)
+	mpb.AssertExpectations(t)
+	mst.AssertExpectations(t)
 
 	// processBlock fails.
-	m1, m2 = new(mockFuncs), new(mockFuncs)
-	b, err = g.Generate(context.Background(), &parent, m1.failingProcessBlockFunc, m2.successfulFlushTreeFunc)
+	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
+	ProcessBlock = mpb.ProcessBlock
+	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(errors.New("boom ProcessBlock failed"))
+	b, err = g.Generate(context.Background(), &parent, mst)
 	if assert.Error(err) {
-		assert.Contains(err.Error(), "process")
+		assert.Contains(err.Error(), "ProcessBlock")
 	}
-	assert.True(m1.Called)
-	assert.False(m2.Called)
+	mpb.AssertExpectations(t)
+	mst.AssertExpectations(t)
 
-	// flushTree fails.
-	m1, m2 = new(mockFuncs), new(mockFuncs)
-	b, err = g.Generate(context.Background(), &parent, m1.successfulProcessBlockFunc, m2.failingFlushTreeFunc)
+	// tree.Flush fails.
+	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
+	ProcessBlock = mpb.ProcessBlock
+	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil)
+	mst.On("Flush", context.Background()).Return(nil, errors.New("boom tree.Flush failed"))
+	b, err = g.Generate(context.Background(), &parent, mst)
 	if assert.Error(err) {
-		assert.Contains(err.Error(), "flush")
+		assert.Contains(err.Error(), "Flush")
 	}
-	assert.True(m1.Called)
-	assert.True(m2.Called)
+	mpb.AssertExpectations(t)
+	mst.AssertExpectations(t)
 }

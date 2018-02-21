@@ -4,7 +4,6 @@ import (
 	"context"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,14 +24,9 @@ func NewWorker(blockGenerator BlockGeneratorInterface, addNewBlock AddNewBlockFu
 }
 
 // Mine attempts to mine one block. Returns the cid of the new block, if any.
+// TODO reconcile who loads the StateTree, probably the worker.
 func (w *Worker) Mine(ctx context.Context, cur *types.Block, tree types.StateTree) (*cid.Cid, error) {
-	processBlock := func(ctx context.Context, b *types.Block) error {
-		return core.ProcessBlock(ctx, b, tree)
-	}
-	flushTree := func(ctx context.Context) (*cid.Cid, error) {
-		return tree.Flush(ctx)
-	}
-	next, err := w.BlockGenerator.Generate(ctx, cur, processBlock, flushTree)
+	next, err := w.BlockGenerator.Generate(ctx, cur, tree)
 	if err != nil {
 		return nil, err
 	}

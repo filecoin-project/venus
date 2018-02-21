@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestWorker_Mine(t *testing.T) {
@@ -17,21 +16,23 @@ func TestWorker_Mine(t *testing.T) {
 	ctx := context.Background()
 
 	// Success
-	mockBg, mockAddNewBlock := &MockBlockGenerator{}, &mockAddNewBlockFunc{}
+	mockBg, mockStateTree, mockAddNewBlock := &MockBlockGenerator{}, &types.MockStateTree{}, &mockAddNewBlockFunc{}
 	w := NewWorker(mockBg, mockAddNewBlock.AddNewBlock)
-	mockBg.On("Generate", ctx, cur, mock.AnythingOfType("ProcessBlockFunc"), mock.AnythingOfType("FlushTreeFunc")).Return(next, nil)
-	cid, err := w.Mine(ctx, cur, types.FakeStateTree{})
+	mockBg.On("Generate", ctx, cur, mockStateTree).Return(next, nil)
+	cid, err := w.Mine(ctx, cur, mockStateTree)
 	assert.NoError(err)
 	assert.True(cid.Equals(next.Cid()))
 	mockBg.AssertExpectations(t)
+	mockStateTree.AssertExpectations(t)
 	assert.True(mockAddNewBlock.Called)
 	assert.Equal(next, mockAddNewBlock.Arg)
 
 	// Block generation fails.
-	mockBg, mockAddNewBlock = &MockBlockGenerator{}, &mockAddNewBlockFunc{}
+	mockBg, mockStateTree, mockAddNewBlock = &MockBlockGenerator{}, &types.MockStateTree{}, &mockAddNewBlockFunc{}
 	w = NewWorker(mockBg, mockAddNewBlock.AddNewBlock)
-	mockBg.On("Generate", ctx, cur, mock.AnythingOfType("ProcessBlockFunc"), mock.AnythingOfType("FlushTreeFunc")).Return(nil, errors.New("boom"))
-	cid, err = w.Mine(ctx, cur, types.FakeStateTree{})
+	mockBg.On("Generate", ctx, cur, mockStateTree).Return(nil, errors.New("boom"))
+	cid, err = w.Mine(ctx, cur, mockStateTree)
 	assert.Error(err)
 	mockBg.AssertExpectations(t)
+	mockStateTree.AssertExpectations(t)
 }

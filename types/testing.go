@@ -3,6 +3,9 @@ package types
 import (
 	"context"
 	"fmt"
+
+	"github.com/stretchr/testify/mock"
+
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
@@ -46,22 +49,35 @@ func NewMessageForTestGetter() func() *Message {
 	}
 }
 
-// FakeStateTree is a fake state tree taht implements types.StateTreeInterface.
-type FakeStateTree struct{}
-
-var _ StateTree = FakeStateTree{}
-
-// Flush pretends to Flush the tree.
-func (f FakeStateTree) Flush(ctx context.Context) (*cid.Cid, error) {
-	return SomeCid(), nil
+// MockStateTree is a testify mock that implements StateTree.
+type MockStateTree struct {
+	mock.Mock
 }
 
-// GetActor explodes in your face. It's not implemented.
-func (f FakeStateTree) GetActor(context.Context, Address) (*Actor, error) {
-	panic("boom -- not implemented")
+var _ StateTree = &MockStateTree{}
+
+// Flush implements StateTree.Flush.
+func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
+	args := m.Called(ctx)
+	if args.Get(0) != nil {
+		c = args.Get(0).(*cid.Cid)
+	}
+	err = args.Error(1)
+	return
 }
 
-// SetActor explodes in your face. It's not implemented.
-func (f FakeStateTree) SetActor(context.Context, Address, *Actor) error {
-	panic("boom -- not implemented")
+// GetActor implements StateTree.GetActor.
+func (m *MockStateTree) GetActor(ctx context.Context, address Address) (actor *Actor, err error) {
+	args := m.Called(ctx, address)
+	if args.Get(0) != nil {
+		actor = args.Get(0).(*Actor)
+	}
+	err = args.Error(1)
+	return
+}
+
+// SetActor implements StateTree.SetActor.
+func (m *MockStateTree) SetActor(ctx context.Context, address Address, actor *Actor) error {
+	args := m.Called(ctx, address, actor)
+	return args.Error(0)
 }
