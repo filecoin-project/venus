@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockBlockGenerator is a testify mock for BlockGenerator
+// MockBlockGenerator is a testify mock for BlockGenerator.
 type MockBlockGenerator struct {
 	mock.Mock
 }
