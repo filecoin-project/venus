@@ -10,6 +10,7 @@ import (
 // ProcessBlockFunc is a signature that makes it easier to test Generate().
 type ProcessBlockFunc func(context.Context, *types.Block, types.StateTree) error
 
+// ProcessBlock is the functoin that does the block processing.
 var ProcessBlock = core.ProcessBlock
 
 // BlockGenerator is the primary interface for blockGenerator.
@@ -17,6 +18,7 @@ type BlockGenerator interface {
 	Generate(context.Context, *types.Block, types.StateTree) (*types.Block, error)
 }
 
+// NewBlockGenerator returns a new BlockGenerator.
 func NewBlockGenerator(mp *core.MessagePool) BlockGenerator {
 	return &blockGenerator{mp}
 }
