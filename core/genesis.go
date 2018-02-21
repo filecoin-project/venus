@@ -12,17 +12,27 @@ import (
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
+var defaultAccounts = map[string]int64{
+	// the filecoin network
+	"filecoin": 100000,
+	// some lucky investor, used in testing and bootstraping for now
+	"investor1": 500,
+}
+
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
-	st := types.NewEmptyTree(cst)
+	st := types.NewEmptyStateTree(cst)
 
-	filNetwork := &types.Actor{
-		Balance: big.NewInt(1000000000),
-	}
+	for addr, val := range defaultAccounts {
+		a, err := NewAccountActor(big.NewInt(val))
+		if err != nil {
+			return nil, err
+		}
 
-	if err := st.SetActor(ctx, types.Address("filecoin"), filNetwork); err != nil {
-		return nil, err
+		if err := st.SetActor(ctx, types.Address(addr), a); err != nil {
+			return nil, err
+		}
 	}
 
 	c, err := st.Flush(ctx)
