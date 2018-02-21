@@ -18,7 +18,18 @@ var (
 )
 
 // Actor is the central abstraction of entities in the system.
-// TODO: write better docs
+//
+// Both individual accounts, as well as contracts (user & system level) are
+// represented as actors. An actor has the follwoing core functionality implemented on a system level:
+// - track a Filecoine balance, using the `Balance` field
+// - execute code stored in the `Code` field
+// - read & write memory
+// - replay protection, using the `Nonce` field
+//
+// More specific capabilities for individual accounts or contract specific must be implemented
+// inside the code.
+//
+// Not safe for concurrent access.
 type Actor struct {
 	Code    *cid.Cid
 	Memory  []byte
