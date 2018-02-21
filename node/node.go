@@ -51,6 +51,9 @@ type Node struct {
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
+
+	// handle to cancel the block subscription
+	cancelBlockSubscriptionCtx context.CancelFunc
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -153,17 +156,24 @@ func (node *Node) Start() error {
 	}
 	node.MessageSub = msgSub
 
-	go node.handleBlockSubscription()
+	ctx, cancel := context.WithCancel(context.Background())
+	node.cancelBlockSubscriptionCtx = cancel
+	go node.handleBlockSubscription(ctx)
 
 	return nil
 }
 
-// Stop initiates the shutdown of the node.
-func (node *Node) Stop() {
+func (node *Node) cancelBlockSubscription() {
 	if node.BlockSub != nil {
 		node.BlockSub.Cancel()
+		node.cancelBlockSubscriptionCtx()
 		node.BlockSub = nil
 	}
+}
+
+// Stop initiates the shutdown of the node.
+func (node *Node) Stop() {
+	node.cancelBlockSubscription()
 
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)

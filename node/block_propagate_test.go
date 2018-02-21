@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func makeNodes(t *testing.T, n int) []*Node {
@@ -54,7 +54,8 @@ func startNodes(t *testing.T, nds []*Node) {
 }
 
 func TestBlockPropTwoNodes(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	assert := assert.New(t)
 
 	nodes := makeNodes(t, 2)
