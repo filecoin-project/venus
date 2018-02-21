@@ -1,107 +1,29 @@
 package types
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
-	atlas "gx/ipfs/QmSaDQWMxJBMtzQWnGoDppbwSEbHv4aJcD86CMSdszPU4L/refmt/obj/atlas"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cbor "gx/ipfs/QmZpue627xQuNGXn7xHieSjSZ8N4jot6oBHwe9XTn3e4NU/go-ipld-cbor"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 func init() {
-	cbor.RegisterCborType(messageCborEntry)
+	cbor.RegisterCborType(CborEntryFromStruct(Message{}))
 }
-
-var (
-	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
-	ErrInvalidMessageLength = errors.New("invalid message length")
-)
 
 // Message is an exchange of information between two actors modeled
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
 type Message struct {
-	to   Address
-	from Address
+	To   Address `cbor:"0"`
+	From Address `cbor:"1"`
 
-	value *big.Int
+	Value *big.Int `cbor:"2"`
 
-	method string
-	params []interface{}
-}
-
-// To is a getter for the to field.
-func (msg *Message) To() Address { return msg.to }
-
-// From is a getter for the from field.
-func (msg *Message) From() Address { return msg.from }
-
-// Value is a getter for the value field.
-func (msg *Message) Value() *big.Int { return msg.value }
-
-// Method is a getter for the method field.
-func (msg *Message) Method() string { return msg.method }
-
-// Params is a getter for the params field.
-func (msg *Message) Params() []interface{} { return msg.params }
-
-var messageCborEntry = atlas.
-	BuildEntry(Message{}).
-	Transform().
-	TransformMarshal(atlas.MakeMarshalTransformFunc(marshalMessage)).
-	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(unmarshalMessage)).
-	Complete()
-
-func marshalMessage(msg Message) ([]interface{}, error) {
-	return []interface{}{
-		msg.to,
-		msg.from,
-		msg.value,
-		msg.method,
-		msg.params,
-	}, nil
-}
-
-func unmarshalMessage(x []interface{}) (Message, error) {
-	if len(x) != 5 {
-		return Message{}, ErrInvalidMessageLength
-	}
-
-	to, ok := x[0].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("to", x[0])
-	}
-
-	from, ok := x[1].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("from", x[1])
-	}
-
-	valueB, ok := x[2].([]byte)
-	if !ok && x[2] != nil {
-		return Message{}, errInvalidMessage("value", x[2])
-	}
-
-	method, ok := x[3].(string)
-	if !ok {
-		return Message{}, errInvalidMessage("method", x[3])
-	}
-
-	params, ok := x[4].([]interface{})
-	if !ok && x[4] != nil {
-		return Message{}, errInvalidMessage("params", x[4])
-	}
-
-	return Message{
-		to:     Address(to),
-		from:   Address(from),
-		value:  big.NewInt(0).SetBytes(valueB),
-		method: method,
-		params: params,
-	}, nil
+	Method string        `cbor:"3"`
+	Params []interface{} `cbor:"4"`
 }
 
 // Unmarshal a message from the given bytes.
@@ -128,16 +50,12 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 // NewMessage creates a new message.
 func NewMessage(from, to Address, value *big.Int, method string, params []interface{}) *Message {
 	return &Message{
-		from:   from,
-		to:     to,
-		value:  value,
-		method: method,
-		params: params,
+		From:   from,
+		To:     to,
+		Value:  value,
+		Method: method,
+		Params: params,
 	}
-}
-
-func errInvalidMessage(field string, received interface{}) error {
-	return fmt.Errorf("invalid message %s field: %v", field, received)
 }
 
 // NewMessageForTestGetter returns a closure that returns a message unique to that invocation.

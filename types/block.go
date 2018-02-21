@@ -13,26 +13,26 @@ import (
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
 func init() {
-	cbor.RegisterCborType(Block{})
+	cbor.RegisterCborType(CborEntryFromStruct(Block{}))
 }
 
 // Block is a block in the blockchain.
 type Block struct {
-	Parent *cid.Cid
+	Parent *cid.Cid `cbor:"0"`
 
 	// Height is the chain height of this block.
-	Height uint64
+	Height uint64 `cbor:"1"`
 
 	// Nonce is a temporary field used to differentiate blocks for testing
-	Nonce uint64
+	Nonce uint64 `cbor:"2"`
 
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
-	Messages []*Message
+	Messages []*Message `cbor:"3"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot *cid.Cid
+	StateRoot *cid.Cid `cbor:"4"`
 }
 
 // Cid returns the content id of this block.

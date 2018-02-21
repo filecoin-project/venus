@@ -35,23 +35,23 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st *types.StateTree) er
 // ApplyMessage applies the state transition specified by the given
 // message to the state tree.
 func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) error {
-	if msg.From() == msg.To() {
+	if msg.From == msg.To {
 		// TODO: handle this
 		return fmt.Errorf("unhandled: sending to self")
 	}
 
-	fromAct, err := st.GetActor(ctx, msg.From())
+	fromAct, err := st.GetActor(ctx, msg.From)
 	if err != nil {
 		return errors.Wrap(err, "failed to get From actor")
 	}
 
-	if fromAct.Balance.Cmp(msg.Value()) < 0 {
+	if fromAct.Balance.Cmp(msg.Value) < 0 {
 		return &revertErrorWrap{fmt.Errorf("not enough funds")}
 	}
 
-	fromAct.Balance.Sub(fromAct.Balance, msg.Value())
+	fromAct.Balance.Sub(fromAct.Balance, msg.Value)
 
-	toAct, err := st.GetActor(ctx, msg.To())
+	toAct, err := st.GetActor(ctx, msg.To)
 	switch err {
 	default:
 		return err
@@ -60,13 +60,13 @@ func ApplyMessage(ctx context.Context, st *types.StateTree, msg *types.Message) 
 	case nil:
 	}
 
-	toAct.Balance.Add(toAct.Balance, msg.Value())
+	toAct.Balance.Add(toAct.Balance, msg.Value)
 
-	if err := st.SetActor(ctx, msg.From(), fromAct); err != nil {
+	if err := st.SetActor(ctx, msg.From, fromAct); err != nil {
 		return err
 	}
 
-	if err := st.SetActor(ctx, msg.To(), toAct); err != nil {
+	if err := st.SetActor(ctx, msg.To, toAct); err != nil {
 		return err
 	}
 

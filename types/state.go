@@ -9,10 +9,6 @@ import (
 	"gx/ipfs/QmdBXcN47jVwKLwSyN9e9xYVZ7WcAWgQ5N4cmNw7nzWq2q/go-hamt-ipld"
 )
 
-func init() {
-	cbor.RegisterCborType(Actor{})
-}
-
 type StateTree struct {
 	// root is the root of the state merklehamt
 	root *hamt.Node
