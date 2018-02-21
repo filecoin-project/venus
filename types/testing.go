@@ -46,19 +46,22 @@ func NewMessageForTestGetter() func() *Message {
 	}
 }
 
-// Implements types.StateTreeInterface
+// FakeStateTree is a fake state tree taht implements types.StateTreeInterface.
 type FakeStateTree struct{}
 
 var _ StateTree = FakeStateTree{}
 
+// Flush pretends to Flush the tree.
 func (f FakeStateTree) Flush(ctx context.Context) (*cid.Cid, error) {
 	return SomeCid(), nil
 }
+
+// GetActor explodes in your face. It's not implemented.
 func (f FakeStateTree) GetActor(context.Context, Address) (*Actor, error) {
 	panic("boom -- not implemented")
-	return nil, nil
 }
+
+// SetActor explodes in your face. It's not implemented.
 func (f FakeStateTree) SetActor(context.Context, Address, *Actor) error {
 	panic("boom -- not implemented")
-	return nil
 }
