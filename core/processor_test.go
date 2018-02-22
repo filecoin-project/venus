@@ -15,7 +15,7 @@ import (
 
 func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, types.StateTree) {
 	ctx := context.Background()
-	t := types.NewEmptyTree(cst)
+	t := types.NewEmptyStateTree(cst)
 	for k, v := range balances {
 		act := &types.Actor{Balance: v}
 		if err := t.SetActor(ctx, k, act); err != nil {
