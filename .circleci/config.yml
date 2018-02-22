@@ -9,6 +9,5 @@ jobs:
       - checkout
 
       - run: go run ./build/*.go deps
-      - run: go run ./build/*.go test -race
       - run: go run ./build/*.go test -cover
       - run: go run ./build/*.go lint
