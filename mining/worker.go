@@ -24,8 +24,8 @@ func NewResult(b *types.Block, e error) Result {
 	return Result{NewBlock: b, Err: e}
 }
 
-// Worker mines. At the moment it does a single mining run. It is not safe
-// for concurrent access.
+// Worker mines. At the moment it does a single mining run. It is
+// a work in progress.
 type Worker struct {
 	blockGenerator BlockGenerator
 	getStateTree   GetStateTree
@@ -36,7 +36,7 @@ type Worker struct {
 type GetStateTree func(context.Context, *cid.Cid) (types.StateTree, error)
 
 // NewWorker instantiates a new Worker.
-func NewWorker(blockGenerator BlockGenerator, getStateTree GetStateTree) (*Worker) {
+func NewWorker(blockGenerator BlockGenerator, getStateTree GetStateTree) *Worker {
 	return &Worker{blockGenerator, getStateTree}
 }
 
