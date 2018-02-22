@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -10,6 +11,7 @@ import (
 )
 
 // VMContext is the only thing exposed to an actor while executing.
+// All methods on the VMContext are ABI methods exposed to actors.
 type VMContext struct {
 	from    *types.Actor
 	to      *types.Actor
@@ -44,12 +46,13 @@ func (ctx *VMContext) WriteStorage(memory []byte) error {
 }
 
 // Send sends a message to another actor.
-func (ctx *VMContext) Send(to types.Address, method string, params []interface{}) ([]byte, uint8, error) {
-	// from is always currents context to
+// This method assumes to be called from inside the `to` actor.
+func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, params []interface{}) ([]byte, uint8, error) {
+	// the message sender is the `to` actor, so this is what we set as `from` in the new message
 	from := ctx.Message().To
 	fromActor := ctx.to
 
-	msg := types.NewMessage(from, to, nil, method, params)
+	msg := types.NewMessage(from, to, value, method, params)
 	if msg.From == msg.To {
 		// TODO: handle this
 		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)

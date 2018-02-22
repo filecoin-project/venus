@@ -20,6 +20,7 @@ var BuiltinActors = map[string]ExecutableActor{}
 // Exports describe the public methods of an actor.
 type Exports map[string]*FunctionSignature
 
+// Has checks if the given method is an exported method.
 func (e Exports) Has(method string) bool {
 	_, ok := e[method]
 	return ok
