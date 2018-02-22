@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
@@ -62,8 +61,4 @@ func NewMessage(from, to Address, value *big.Int, method string, params []interf
 		Method: method,
 		Params: params,
 	}
-}
-
-func errInvalidMessage(field string, received interface{}) error {
-	return fmt.Errorf("invalid message %s field: %v", field, received)
 }
