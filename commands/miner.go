@@ -1,17 +1,15 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var minerCmd = &cmds.Command{
@@ -33,24 +31,11 @@ var minerGenBlockCmd = &cmds.Command{
 		}
 		myaddr := addrs[0]
 
-		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
-		if err := fcn.MsgPool.Add(reward); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
 		worker := mining.NewWorker(
-			mining.NewBlockGenerator(fcn.MsgPool),
-			func(ctx context.Context, b *types.Block) error {
-				return fcn.AddNewBlock(ctx, b)
-			})
-		nextCid, err := worker.Mine(req.Context, cur, tree)
+			mining.NewBlockGenerator(fcn.MsgPool, fcn.CborStore, core.ProcessBlock, myaddr),
+			fcn.AddNewBlock,
+		)
+		nextCid, err := worker.Mine(req.Context, cur)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

@@ -2,44 +2,60 @@ package mining
 
 import (
 	"context"
+	"math/big"
+
+	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// processBlockFunc is a signature that makes it easier to test Generate().
-type processBlockFunc func(context.Context, *types.Block, types.StateTree) error
-
-// processBlock is the functoin that does the block processing.
-var processBlock = core.ProcessBlock
-
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(context.Context, *types.Block, types.StateTree) (*types.Block, error)
+	Generate(context.Context, *types.Block) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
-func NewBlockGenerator(mp *core.MessagePool) BlockGenerator {
-	return &blockGenerator{mp}
+func NewBlockGenerator(mp *core.MessagePool, cst *hamt.CborIpldStore, proc core.Processor, maddr types.Address) BlockGenerator {
+	return &blockGenerator{
+		Mp:  mp,
+		Cst: cst, Processor: proc,
+		MinerAddr: maddr,
+	}
 }
 
 // blockGenerator generates new blocks for inclusion in the chain.
 type blockGenerator struct {
-	Mp *core.MessagePool
+	Mp        *core.MessagePool
+	Cst       *hamt.CborIpldStore
+	Processor core.Processor
+	MinerAddr types.Address
 }
+
+// TODO: this needs a better home
+const filecoinNetworkAddr = types.Address("filecoin")
+
+var miningReward = big.NewInt(1000)
 
 // Generate returns a new block created from the messages in the
 // pool. It does not remove them.
-func (b blockGenerator) Generate(ctx context.Context, p *types.Block, st types.StateTree) (*types.Block, error) {
-	child := &types.Block{
-		Height:   p.Height + 1,
-		Messages: b.Mp.Pending(),
-	}
-	if err := child.AddParent(*p); err != nil {
+func (b blockGenerator) Generate(ctx context.Context, p *types.Block) (*types.Block, error) {
+	st, err := types.LoadStateTree(ctx, b.Cst, p.StateRoot)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := processBlock(ctx, child, st); err != nil {
+	// TODO: this could be passed in as a "getRewardMsg" functor
+	reward := types.NewMessage(filecoinNetworkAddr, b.MinerAddr, miningReward, "", nil)
+
+	child := &types.Block{
+		Height:   p.Height + 1,
+		Messages: append([]*types.Message{reward}, b.Mp.Pending()...),
+	}
+
+	child.AddParent(p)
+
+	if err := b.Processor(ctx, child, st); err != nil {
 		return nil, err
 	}
 	newStCid, err := st.Flush(ctx)

@@ -1,8 +1,6 @@
 package types
 
 import (
-	"fmt"
-
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -42,12 +40,9 @@ func (b *Block) Cid() *cid.Cid {
 
 // AddParent sets the parent pointer of the receiver to the argument if it
 // is a valid assignment, else returns an error.
-func (b *Block) AddParent(p Block) error {
-	if b.Height != p.Height+1 {
-		return fmt.Errorf("child height %v != parent height %v+1", b.Height, p.Height)
-	}
+func (b *Block) AddParent(p *Block) {
+	b.Height = p.Height + 1
 	b.Parent = p.Cid()
-	return nil
 }
 
 // IsParentOf returns true if the argument is the parent of the receiver.

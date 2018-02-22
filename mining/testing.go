@@ -15,8 +15,8 @@ type MockBlockGenerator struct {
 var _ BlockGenerator = &MockBlockGenerator{}
 
 // Generate is a testify mock implementation.
-func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, st types.StateTree) (b *types.Block, err error) {
-	args := bg.Called(ctx, h, st)
+func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block) (b *types.Block, err error) {
+	args := bg.Called(ctx, h)
 	if args.Get(0) != nil {
 		b = args.Get(0).(*types.Block)
 	}
