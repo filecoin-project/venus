@@ -10,15 +10,16 @@ import (
 )
 
 var testRand *rand.Rand
-var lk sync.Mutex
+var randlk sync.Mutex
 
 func init() {
 	testRand = rand.New(rand.NewSource(42))
 }
 
 func randCid() *cid.Cid {
-	lk.Lock()
-	defer lk.Unlock()
+	// lock so we can access testRand concurrently
+	randlk.Lock()
+	defer randlk.Unlock()
 
 	pref := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31)
 	data := make([]byte, 16)
