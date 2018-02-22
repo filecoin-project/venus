@@ -52,6 +52,10 @@ func chainTextEncoder(req *cmds.Request, w io.Writer, val *types.Block) error {
 		return err
 	}
 	marshaled = append(marshaled, byte('\n'))
+	_, err = w.Write([]byte(val.Cid().String() + ":\n"))
+	if err != nil {
+		return err
+	}
 	_, err = w.Write(marshaled)
 	return err
 }
