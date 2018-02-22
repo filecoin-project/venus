@@ -25,14 +25,15 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 }
 
 func (node *Node) handleBlockSubscription(ctx context.Context) {
-	msg, err := node.BlockSub.Next(ctx)
-	if err != nil {
-		log.Errorf("blocksub.Next(): %s", err)
-		return
-	}
-	log.Error("got a block!")
+	for {
+		msg, err := node.BlockSub.Next(ctx)
+		if err != nil {
+			log.Errorf("blocksub.Next(): %s", err)
+			return
+		}
 
-	node.processMessage(ctx, msg)
+		node.processMessage(ctx, msg)
+	}
 }
 
 func (node *Node) processMessage(ctx context.Context, msg *floodsub.Message) {
