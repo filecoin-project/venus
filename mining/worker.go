@@ -65,11 +65,7 @@ func (w *Worker) Start(ctx context.Context, baseBlock *types.Block) (resCh chan 
 // be make it easier to test Worker.
 func mine(ctx context.Context, baseBlock *types.Block, stateTree types.StateTree, blockGenerator BlockGenerator, resCh chan<- Result) {
 	next, err := blockGenerator.Generate(ctx, baseBlock, stateTree)
-	if err == nil {
-		resCh <- NewResult(next, nil)
-	} else {
-		resCh <- NewResult(nil, err)
-	}
+	resCh <- NewResult(next, err)
 }
 
 var mineFunc = mine
