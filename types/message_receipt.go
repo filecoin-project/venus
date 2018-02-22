@@ -12,12 +12,12 @@ func init() {
 // MessageReceipt represents the result of sending a message.
 type MessageReceipt struct {
 	// The ID of the message this references
-	Message *cid.Cid `cbor:"0"`
+	Message *cid.Cid
 	// `0` is success, anything else is an error code in unix style.
-	ExitCode uint8 `cbor:"1"`
+	ExitCode uint8
 	// The value returned from the message.
 	// TODO: limit size
-	Return []byte `cbor:"2"`
+	Return []byte
 }
 
 // NewMessageReceipt creates a new MessageReceipt.
