@@ -3,12 +3,37 @@ package mining
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
+
+func TestNewWorker(t *testing.T) {
+	assert := assert.New(t)
+	newCid := types.NewCidForTestGetter()
+	b := &types.Block{StateRoot: newCid()}
+	
+	// Mismatched statetree.
+	mockBg := &MockBlockGenerator{}
+	mockStateTree := &types.MockStateTree{}
+	mockStateTree.On("Flush", mock.Anything).Return(newCid(), nil)
+	assert.Panics(func() { NewWorker(b, mockBg, mockStateTree) })
+
+	// Error flushing.
+	mockBg = &MockBlockGenerator{}
+	mockStateTree = &types.MockStateTree{}
+	mockStateTree.On("Flush", mock.Anything).Return(nil, errors.New("boom"))
+	assert.Panics(func() { NewWorker(b, mockBg, mockStateTree) })
+}
+
+func wireUp(b *types.Block, m *types.MockStateTree, cid *cid.Cid) {
+	b.StateRoot = cid
+	m.On("Flush", mock.Anything).Return(cid, nil)
+}
 
 func TestWorker_Start(t *testing.T) {
 	assert := assert.New(t)
@@ -27,6 +52,7 @@ func TestWorker_Start(t *testing.T) {
 		resCh <- Result{}
 	}
 
+	wireUp(baseBlock, mockStateTree, types.SomeCid())
 	_ = <-NewWorker(baseBlock, mockBg, mockStateTree).Start(ctx)
 	assert.True(mineCalled)
 	mockBg.AssertExpectations(t)

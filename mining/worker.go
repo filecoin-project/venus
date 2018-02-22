@@ -21,12 +21,19 @@ func NewResult(b *types.Block, e error) Result {
 // Worker mines. At the moment it does a single mining run.
 type Worker struct {
 	baseBlock      *types.Block
-	BlockGenerator BlockGenerator
+	blockGenerator BlockGenerator
 	stateTree      types.StateTree
 }
 
 // NewWorker instantiates a new Worker.
 func NewWorker(baseBlock *types.Block, blockGenerator BlockGenerator, stateTree types.StateTree) *Worker {
+	// @why It's either this or passing in a StateTreeGetter function.
+	// Personally I like this solution but I suspect you prefer that
+	// we load the statetree here....
+	stateTreeCid, err := stateTree.Flush(context.Background())
+	if err != nil || !stateTreeCid.Equals(baseBlock.StateRoot) {
+		panic("block.stateroot != statetree")
+	}
 	return &Worker{baseBlock, blockGenerator, stateTree}
 }
 
@@ -38,13 +45,13 @@ func (w *Worker) Start(ctx context.Context) <-chan Result {
 	// TODO periodicity
 	// TODO Stop()
 	resCh := make(chan Result)
-	go mine(ctx, w.baseBlock, w.stateTree, w.BlockGenerator, resCh)
+	go mineFunc(ctx, w.baseBlock, w.stateTree, w.blockGenerator, resCh)
 	return resCh
 }
 
-// mine does the actual work. mine sends exactly one result on the 
-// given result channel so it should be launched into a goroutine 
-// by the caller. mine is broken out into a separate function to 
+// mine does the actual work. mine sends exactly one result on the
+// given result channel so it should be launched into a goroutine
+// by the caller. mine is broken out into a separate function to
 // be make it easier to test Worker.
 func mine(ctx context.Context, baseBlock *types.Block, stateTree types.StateTree, blockGenerator BlockGenerator, resCh chan<- Result) {
 	next, err := blockGenerator.Generate(ctx, baseBlock, stateTree)
@@ -52,7 +59,7 @@ func mine(ctx context.Context, baseBlock *types.Block, stateTree types.StateTree
 		resCh <- NewResult(next, nil)
 	} else {
 		resCh <- NewResult(nil, err)
-	} 
+	}
 }
 
 var mineFunc = mine
