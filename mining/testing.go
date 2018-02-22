@@ -23,14 +23,3 @@ func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, st t
 	err = args.Error(1)
 	return
 }
-
-type mockAddNewBlockFunc struct {
-	Called bool
-	Arg    *types.Block
-}
-
-func (m *mockAddNewBlockFunc) AddNewBlock(ctx context.Context, b *types.Block) error {
-	m.Called = true
-	m.Arg = b
-	return nil
-}

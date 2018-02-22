@@ -2,33 +2,57 @@ package mining
 
 import (
 	"context"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// AddNewBlockFunc is a signature that enables us to hide implementation
-// details from the Worker and makes it easier to test.
-type AddNewBlockFunc func(context.Context, *types.Block) error
+// Result is the result of a single mining run. It has either a new
+// block or an error, mimicing the golang (retVal, error) pattern.
+type Result struct {
+	NewBlock *types.Block
+	Err      error
+}
 
-// Worker mines. If successful it passes the new block to AddNewBlock()
-// and returns its cid.
+// NewResult instantiates a new MiningResult.
+func NewResult(b *types.Block, e error) Result {
+	return Result{NewBlock: b, Err: e}
+}
+
+// Worker mines. At the moment it does a single mining run.
 type Worker struct {
+	baseBlock      *types.Block
 	BlockGenerator BlockGenerator
-	AddNewBlock    AddNewBlockFunc
+	stateTree      types.StateTree
 }
 
-// NewWorker instantiates a new
-func NewWorker(blockGenerator BlockGenerator, addNewBlock AddNewBlockFunc) *Worker {
-	return &Worker{blockGenerator, addNewBlock}
+// NewWorker instantiates a new Worker.
+func NewWorker(baseBlock *types.Block, blockGenerator BlockGenerator, stateTree types.StateTree) *Worker {
+	return &Worker{baseBlock, blockGenerator, stateTree}
 }
 
-// Mine attempts to mine one block. Returns the cid of the new block, if any.
-// TODO reconcile who loads the StateTree, probably the worker.
-func (w *Worker) Mine(ctx context.Context, cur *types.Block, tree types.StateTree) (*cid.Cid, error) {
-	next, err := w.BlockGenerator.Generate(ctx, cur, tree)
-	if err != nil {
-		return nil, err
-	}
-	return next.Cid(), w.AddNewBlock(ctx, next)
+// Start is the main entrypoint for Worker. Call it to start mining. Exactly
+// one Result is sent into the returned channel.
+func (w *Worker) Start(ctx context.Context) <-chan Result {
+	// TODO respect context
+	// TODO respect new blocks
+	// TODO periodicity
+	// TODO Stop()
+	resCh := make(chan Result)
+	go mine(ctx, w.baseBlock, w.stateTree, w.BlockGenerator, resCh)
+	return resCh
 }
+
+// mine does the actual work. mine sends exactly one result on the 
+// given result channel so it should be launched into a goroutine 
+// by the caller. mine is broken out into a separate function to 
+// be make it easier to test Worker.
+func mine(ctx context.Context, baseBlock *types.Block, stateTree types.StateTree, blockGenerator BlockGenerator, resCh chan<- Result) {
+	next, err := blockGenerator.Generate(ctx, baseBlock, stateTree)
+	if err == nil {
+		resCh <- NewResult(next, nil)
+	} else {
+		resCh <- NewResult(nil, err)
+	} 
+}
+
+var mineFunc = mine

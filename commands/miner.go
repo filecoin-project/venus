@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"math/big"
@@ -45,17 +44,14 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		worker := mining.NewWorker(
-			mining.NewBlockGenerator(fcn.MsgPool),
-			func(ctx context.Context, b *types.Block) error {
-				return fcn.AddNewBlock(ctx, b)
-			})
-		nextCid, err := worker.Mine(req.Context, cur, tree)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
+		resCh := mining.NewWorker(cur, mining.NewBlockGenerator(fcn.MsgPool), tree).Start(req.Context)
+		res := <-resCh
+		if res.Err != nil {
+			re.SetError(res.Err, cmdkit.ErrNormal)
 			return
 		}
-		re.Emit(nextCid)
+		fcn.AddNewBlock(req.Context, res.NewBlock)
+		re.Emit(res.NewBlock.Cid())
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
