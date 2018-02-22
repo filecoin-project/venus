@@ -52,7 +52,7 @@ type Node struct {
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
 
-	// handle to cancel the block subscription
+	// cancelBlockSubscriptionCtx is a handle to cancel the block subscription.
 	cancelBlockSubscriptionCtx context.CancelFunc
 }
 
