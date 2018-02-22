@@ -2,48 +2,20 @@ package mining
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
-func TestNewWorker(t *testing.T) {
-	assert := assert.New(t)
-	newCid := types.NewCidForTestGetter()
-	b := &types.Block{StateRoot: newCid()}
-
-	// Mismatched statetree.
-	mockBg := &MockBlockGenerator{}
-	mockStateTree := &types.MockStateTree{}
-	mockStateTree.On("Flush", mock.Anything).Return(newCid(), nil)
-	worker, err := NewWorker(b, mockBg, mockStateTree)
-	assert.Nil(worker)
-	assert.Error(err)
-	assert.Contains(err.Error(), "!=")
-
-	// Error flushing.
-	mockBg = &MockBlockGenerator{}
-	mockStateTree = &types.MockStateTree{}
-	mockStateTree.On("Flush", mock.Anything).Return(nil, errors.New("boom"))
-	assert.Nil(worker)
-	assert.Error(err)
-	assert.Contains(err.Error(), "!=")
-}
-
-func wireUp(b *types.Block, m *types.MockStateTree, cid *cid.Cid) {
-	b.StateRoot = cid
-	m.On("Flush", mock.Anything).Return(cid, nil)
-}
-
 func TestWorker_Start(t *testing.T) {
+	newCid := types.NewCidForTestGetter()
 	assert := assert.New(t)
 	ctx := context.Background()
-	baseBlock := &types.Block{}
+	baseBlock := &types.Block{StateRoot: newCid()}
 	mockBg, mockStateTree := &MockBlockGenerator{}, &types.MockStateTree{}
 
 	var mineCalled bool
@@ -57,12 +29,28 @@ func TestWorker_Start(t *testing.T) {
 		resCh <- Result{}
 	}
 
-	wireUp(baseBlock, mockStateTree, types.SomeCid())
-	worker, err := NewWorker(baseBlock, mockBg, mockStateTree)
+	// Success.
+	worker := NewWorker(mockBg, func(contextIgnored context.Context, cid *cid.Cid) (types.StateTree, error) {
+		assert.True(cid.Equals(baseBlock.StateRoot))
+		return mockStateTree, nil
+	})
 	assert.NotNil(worker)
-	assert.NoError(err)
-	_ = <-worker.Start(ctx)
+	_ = <-worker.Start(ctx, baseBlock)
 	assert.True(mineCalled)
+	mockBg.AssertExpectations(t)
+	mockStateTree.AssertExpectations(t)
+
+	// Fails to load state tree.
+	mineCalled = false
+	mockBg, mockStateTree = &MockBlockGenerator{}, &types.MockStateTree{}
+	worker = NewWorker(mockBg, func(contextIgnored context.Context, cid *cid.Cid) (types.StateTree, error) {
+		return nil, errors.New("boom")
+	})
+	assert.NotNil(worker)
+	result := <-worker.Start(ctx, baseBlock)
+	assert.False(mineCalled)
+	assert.Error(result.Err)
+	assert.Contains(result.Err.Error(), "state tree")
 	mockBg.AssertExpectations(t)
 	mockStateTree.AssertExpectations(t)
 }

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/big"
@@ -38,18 +39,10 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, cur.StateRoot)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		w, err := mining.NewWorker(cur, mining.NewBlockGenerator(fcn.MsgPool), tree)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-		res := <-w.Start(req.Context)
+		worker := mining.NewWorker(mining.NewBlockGenerator(fcn.MsgPool), func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
+			return types.LoadStateTree(ctx, fcn.CborStore, cid)
+		})
+		res := <-worker.Start(req.Context, cur)
 		if res.Err != nil {
 			re.SetError(res.Err, cmdkit.ErrNormal)
 			return
