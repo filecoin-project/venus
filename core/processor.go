@@ -36,19 +36,14 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st types.StateTree) ([]
 // ApplyMessage applies the state transition specified by the given
 // message to the state tree.
 func ApplyMessage(ctx context.Context, st types.StateTree, msg *types.Message) (*types.MessageReceipt, error) {
-	var fromActor *types.Actor
+	if msg.From == msg.To {
+		// TODO: handle this
+		return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
+	}
 
-	if msg.HasFrom() {
-		if msg.From == msg.To {
-			// TODO: handle this
-			return nil, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
-		}
-
-		from, err := st.GetActor(ctx, msg.From)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From)
-		}
-		fromActor = from
+	fromActor, err := st.GetActor(ctx, msg.From)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get From actor %s", msg.From)
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*types.Actor, error) {

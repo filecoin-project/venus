@@ -32,11 +32,6 @@ type Message struct {
 	Params []interface{}
 }
 
-// HasFrom indidcates if this message has a from address.
-func (msg *Message) HasFrom() bool {
-	return msg.From != Address("")
-}
-
 // Unmarshal a message from the given bytes.
 func (msg *Message) Unmarshal(b []byte) error {
 	return cbor.DecodeInto(b, msg)
