@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -17,8 +18,13 @@ func TestStatePutGet(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	act1 := &Actor{Balance: big.NewInt(155), Nonce: 17}
-	act2 := &Actor{Balance: big.NewInt(1799), Nonce: 1}
+	act1 := NewActor(AccountActorCodeCid, nil)
+	act1.WriteStorage([]byte("hello"))
+	act1.IncNonce()
+	act2 := NewActor(AccountActorCodeCid, nil)
+	act2.WriteStorage([]byte("world"))
+	act2.IncNonce()
+	act2.IncNonce()
 
 	addr1 := Address("foo")
 	addr2 := Address("bar")
@@ -63,4 +69,46 @@ func TestStateErrors(t *testing.T) {
 	tr2, err := LoadStateTree(ctx, cst, c)
 	assert.EqualError(err, "not found")
 	assert.Nil(tr2)
+}
+
+func TestStateGetOrCreate(t *testing.T) {
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+	tree := NewEmptyStateTree(cst)
+
+	addr := Address("coolio")
+
+	// no actor - error
+	t.Run("no actor - error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
+			return nil, fmt.Errorf("fail")
+		})
+		assert.EqualError(err, "fail")
+		assert.Nil(actor)
+	})
+
+	t.Run("no actor - success", func(t *testing.T) {
+		assert := assert.New(t)
+
+		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
+			return &Actor{}, nil
+		})
+		assert.NoError(err)
+		assert.Equal(actor, &Actor{})
+	})
+
+	t.Run("actor exists", func(t *testing.T) {
+		assert := assert.New(t)
+
+		actor := NewActor(nil, big.NewInt(10))
+		assert.NoError(tree.SetActor(ctx, addr, actor))
+
+		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
+			return &Actor{}, nil
+		})
+		assert.NoError(err)
+		assert.Equal(actorBack, actor)
+	})
 }

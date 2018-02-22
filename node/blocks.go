@@ -55,7 +55,7 @@ func (node *Node) handleBlockSubscription() {
 
 // AddNewMessage adds a new message to the pool and publishes it to the network.
 func (node *Node) AddNewMessage(ctx context.Context, msg *types.Message) error {
-	if err := node.MsgPool.Add(msg); err != nil {
+	if _, err := node.MsgPool.Add(msg); err != nil {
 		return err
 	}
 
@@ -93,7 +93,7 @@ func (node *Node) handleMessage(msgdata []byte) error {
 		return errors.Wrap(err, "got bad message data")
 	}
 
-	if err := node.MsgPool.Add(&m); err != nil {
+	if _, err := node.MsgPool.Add(&m); err != nil {
 		return errors.Wrapf(err, "processing message from network")
 	}
 	return nil

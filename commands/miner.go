@@ -34,7 +34,7 @@ var minerGenBlockCmd = &cmds.Command{
 		myaddr := addrs[0]
 
 		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
-		if err := fcn.MsgPool.Add(reward); err != nil {
+		if _, err := fcn.MsgPool.Add(reward); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
