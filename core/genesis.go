@@ -15,7 +15,7 @@ type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
-	st := types.NewEmptyTree(cst)
+	st := types.NewEmptyStateTree(cst)
 
 	filNetwork := &types.Actor{
 		Balance: big.NewInt(1000000000),
