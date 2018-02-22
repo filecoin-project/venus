@@ -20,6 +20,11 @@ var BuiltinActors = map[string]ExecutableActor{}
 // Exports describe the public methods of an actor.
 type Exports map[string]*FunctionSignature
 
+func (e Exports) Has(method string) bool {
+	_, ok := e[method]
+	return ok
+}
+
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Exports() Exports

@@ -32,16 +32,11 @@ func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st typ
 		return nil, 1, errors.Wrap(err, "unable to load code for To actor")
 	}
 
-	if !hasExport(toExecutable.Exports(), msg.Method) {
+	if !toExecutable.Exports().Has(msg.Method) {
 		return nil, 1, fmt.Errorf("missing export: %s", msg.Method)
 	}
 
 	return MakeTypedExport(toExecutable, msg.Method)(vmCtx)
-}
-
-func hasExport(exports Exports, method string) bool {
-	_, ok := exports[method]
-	return ok
 }
 
 func transfer(from, to *types.Actor, value *big.Int) error {
