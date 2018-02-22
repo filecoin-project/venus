@@ -24,7 +24,8 @@ func NewResult(b *types.Block, e error) Result {
 	return Result{NewBlock: b, Err: e}
 }
 
-// Worker mines. At the moment it does a single mining run.
+// Worker mines. At the moment it does a single mining run. It is not safe
+// for concurrent access.
 type Worker struct {
 	blockGenerator BlockGenerator
 	getStateTree   GetStateTree
