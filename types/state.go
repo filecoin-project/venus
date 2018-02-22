@@ -45,7 +45,7 @@ func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (
 }
 
 // NewEmptyStateTree instantiates a new state tree with no data in it.
-func NewEmptyTree(store *hamt.CborIpldStore) *stateTree {
+func NewEmptyStateTree(store *hamt.CborIpldStore) *stateTree {
 	return &stateTree{
 		root:  hamt.NewNode(store),
 		store: store,
