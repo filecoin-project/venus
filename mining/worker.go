@@ -49,8 +49,8 @@ func (w *Worker) Start(ctx context.Context, baseBlock *types.Block) (resCh chan 
 	resCh = make(chan Result)
 	stateTree, err := w.getStateTree(ctx, baseBlock.StateRoot)
 	if err != nil {
-		err := errors.Wrap(err, "Couldn't load state tree")
-		go func() { resCh <- NewResult(nil, err) }()
+		wrappedErr := errors.Wrap(err, "Couldn't load state tree")
+		go func() { resCh <- NewResult(nil, wrappedErr) }()
 		return
 	}
 
