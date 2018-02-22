@@ -2,9 +2,14 @@ package mining
 
 import (
 	"context"
+	"errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
+
+	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 )
+
+var log = logging.Logger("mining.Worker")
 
 // Result is the result of a single mining run. It has either a new
 // block or an error, mimicing the golang (retVal, error) pattern.
@@ -26,15 +31,17 @@ type Worker struct {
 }
 
 // NewWorker instantiates a new Worker.
-func NewWorker(baseBlock *types.Block, blockGenerator BlockGenerator, stateTree types.StateTree) *Worker {
+func NewWorker(baseBlock *types.Block, blockGenerator BlockGenerator, stateTree types.StateTree) (*Worker, error) {
 	// @why It's either this or passing in a StateTreeGetter function.
 	// Personally I like this solution but I suspect you prefer that
 	// we load the statetree here....
 	stateTreeCid, err := stateTree.Flush(context.Background())
 	if err != nil || !stateTreeCid.Equals(baseBlock.StateRoot) {
-		panic("block.stateroot != statetree")
+		errText := "programming error: block.stateroot != statetree"
+		log.Error(errText)
+		return nil, errors.New(errText)
 	}
-	return &Worker{baseBlock, blockGenerator, stateTree}
+	return &Worker{baseBlock, blockGenerator, stateTree}, nil
 }
 
 // Start is the main entrypoint for Worker. Call it to start mining. Exactly

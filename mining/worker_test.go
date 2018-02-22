@@ -16,18 +16,23 @@ func TestNewWorker(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	b := &types.Block{StateRoot: newCid()}
-	
+
 	// Mismatched statetree.
 	mockBg := &MockBlockGenerator{}
 	mockStateTree := &types.MockStateTree{}
 	mockStateTree.On("Flush", mock.Anything).Return(newCid(), nil)
-	assert.Panics(func() { NewWorker(b, mockBg, mockStateTree) })
+	worker, err := NewWorker(b, mockBg, mockStateTree)
+	assert.Nil(worker)
+	assert.Error(err)
+	assert.Contains(err.Error(), "!=")
 
 	// Error flushing.
 	mockBg = &MockBlockGenerator{}
 	mockStateTree = &types.MockStateTree{}
 	mockStateTree.On("Flush", mock.Anything).Return(nil, errors.New("boom"))
-	assert.Panics(func() { NewWorker(b, mockBg, mockStateTree) })
+	assert.Nil(worker)
+	assert.Error(err)
+	assert.Contains(err.Error(), "!=")
 }
 
 func wireUp(b *types.Block, m *types.MockStateTree, cid *cid.Cid) {
@@ -53,7 +58,10 @@ func TestWorker_Start(t *testing.T) {
 	}
 
 	wireUp(baseBlock, mockStateTree, types.SomeCid())
-	_ = <-NewWorker(baseBlock, mockBg, mockStateTree).Start(ctx)
+	worker, err := NewWorker(baseBlock, mockBg, mockStateTree)
+	assert.NotNil(worker)
+	assert.NoError(err)
+	_ = <-worker.Start(ctx)
 	assert.True(mineCalled)
 	mockBg.AssertExpectations(t)
 	mockStateTree.AssertExpectations(t)

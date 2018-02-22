@@ -44,8 +44,11 @@ var minerGenBlockCmd = &cmds.Command{
 			return
 		}
 
-		resCh := mining.NewWorker(cur, mining.NewBlockGenerator(fcn.MsgPool), tree).Start(req.Context)
-		res := <-resCh
+		w, err := mining.NewWorker(cur, mining.NewBlockGenerator(fcn.MsgPool), tree)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+		}
+		res := <-w.Start(req.Context)
 		if res.Err != nil {
 			re.SetError(res.Err, cmdkit.ErrNormal)
 			return
