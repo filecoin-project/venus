@@ -40,6 +40,7 @@ type Node struct {
 	BlockSub   *floodsub.Subscription
 	MessageSub *floodsub.Subscription
 	Ping       *ping.PingService
+	HelloSvc   *core.Hello
 
 	// Data Storage Fields
 
@@ -120,6 +121,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	// Set up 'hello' handshake service
+	hello := core.NewHello(host, chainMgr.GetGenesisCid(), chainMgr.InformNewBlock, chainMgr.GetBestBlock)
+
 	// Set up libp2p pubsub
 	fsub, err := floodsub.NewFloodSub(ctx, host)
 	if err != nil {
@@ -131,6 +135,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainMgr:  chainMgr,
 		Datastore: nc.Datastore,
 		Exchange:  bswap,
+		HelloSvc:  hello,
 		Host:      host,
 		MsgPool:   core.NewMessagePool(),
 		Ping:      pinger,
