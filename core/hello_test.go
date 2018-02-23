@@ -59,10 +59,45 @@ func TestHelloHandshake(t *testing.T) {
 	mn.LinkAll()
 	mn.ConnectAllButSelf()
 
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 50)
 
 	msc1.AssertCalled(t, "SyncCallback", b.ID(), best2.Cid().String(), uint64(3))
 	msc1.AssertNumberOfCalls(t, "SyncCallback", 1)
 	msc2.AssertCalled(t, "SyncCallback", a.ID(), best1.Cid().String(), uint64(2))
 	msc2.AssertNumberOfCalls(t, "SyncCallback", 1)
+}
+
+func TestHelloBadGenesis(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mn, err := mocknet.WithNPeers(ctx, 2)
+	assert.NoError(t, err)
+
+	a := mn.Hosts()[0]
+	b := mn.Hosts()[1]
+
+	genesisA := &types.Block{Nonce: 451}
+	genesisB := &types.Block{Nonce: 101}
+
+	best1 := &types.Block{Nonce: 1000, Height: 2}
+	best2 := &types.Block{Nonce: 1001, Height: 3}
+
+	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	bg1, bg2 := &mockBestGetter{best1}, &mockBestGetter{best2}
+
+	h1 := NewHello(a, genesisA.Cid(), msc1.SyncCallback, bg1.getBestBlock)
+	h2 := NewHello(b, genesisB.Cid(), msc2.SyncCallback, bg2.getBestBlock)
+	_, _ = h1, h2
+
+	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	mn.LinkAll()
+	mn.ConnectAllButSelf()
+
+	time.Sleep(time.Millisecond * 50)
+
+	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
+	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
 }
