@@ -272,6 +272,11 @@ func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
 	return bc.Equals(s.genesisCid) || s.knownGoodBlocks.Has(bc)
 }
 
+// InformNewBlock informs the chainmanager that we learned about a potentially
+// new block from the given peer. Currently, it just fetches that block and
+// passes it to the block processor (which fetches the rest of the chain on
+// demand). In the (near) future we will want a better protocol for
+// synchronizing the blockchain and downloading it efficiently.
 func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 	b := s.GetBestBlock()
 	if b.Height >= h {
