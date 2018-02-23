@@ -133,6 +133,8 @@ func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
 func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+	log.Infof("processing block [s=%d, h=%s]", blk.Score(), blk.Cid())
+
 	switch err := s.validateBlock(ctx, blk); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
@@ -160,6 +162,8 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 
 // fetchBlock gets the requested block, either from disk or from the network.
 func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
+	log.Infof("fetching block, [%s]", c.String())
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
