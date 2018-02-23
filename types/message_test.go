@@ -9,6 +9,10 @@ import (
 
 func TestMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
+
+	// TODO: allow more types than just strings for the params
+	// currently []interface{} results in type information getting lost when doing
+	// a roundtrip with the default cbor encoder.
 	msg := NewMessage(
 		Address("Alice"),
 		Address("Bob"),

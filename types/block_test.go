@@ -32,8 +32,12 @@ func TestBlockAddParent(t *testing.T) {
 func TestDecodeBlock(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewMessage(Address("from"), Address("to"), big.NewInt(10), "hello", []interface{}{"world", big.NewInt(11)})
-	mCid, err := m.Cid()
+	m1 := NewMessage(Address("from"), Address("to"), big.NewInt(10), "hello", []interface{}{"world"})
+	m2 := NewMessage(Address("from"), Address("other"), big.NewInt(2), "yes", []interface{}{"no"})
+
+	m1Cid, err := m1.Cid()
+	assert.NoError(err)
+	m2Cid, err := m2.Cid()
 	assert.NoError(err)
 
 	c1, err := cidFromString("a")
@@ -41,12 +45,15 @@ func TestDecodeBlock(t *testing.T) {
 	c2, err := cidFromString("b")
 	assert.NoError(err)
 
-	before := Block{
-		Parent:          c1,
-		Height:          2,
-		Messages:        []*Message{m},
-		StateRoot:       c2,
-		MessageReceipts: []*MessageReceipt{NewMessageReceipt(mCid, 1, []byte{1, 2})},
+	before := &Block{
+		Parent:    c1,
+		Height:    2,
+		Messages:  []*Message{m1, m2},
+		StateRoot: c2,
+		MessageReceipts: []*MessageReceipt{
+			NewMessageReceipt(m1Cid, 1, []byte{1, 2}),
+			NewMessageReceipt(m2Cid, 1, []byte{1, 2}),
+		},
 	}
 
 	after, err := DecodeBlock(before.ToNode().RawData())
