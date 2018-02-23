@@ -277,6 +277,8 @@ func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
 // passes it to the block processor (which fetches the rest of the chain on
 // demand). In the (near) future we will want a better protocol for
 // synchronizing the blockchain and downloading it efficiently.
+// TODO: sync logic should be decoupled and off in a separate worker. This
+// method should not block
 func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 	b := s.GetBestBlock()
 	if b.Height >= h {

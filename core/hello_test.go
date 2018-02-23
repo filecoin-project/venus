@@ -20,7 +20,7 @@ type mockSyncCallback struct {
 }
 
 func (msb *mockSyncCallback) SyncCallback(p peer.ID, c *cid.Cid, h uint64) {
-	msb.Called(p, c.String(), h)
+	msb.Called(p, c, h)
 }
 
 type mockBestGetter struct {
@@ -53,18 +53,16 @@ func TestHelloHandshake(t *testing.T) {
 	h2 := NewHello(b, genesisA.Cid(), msc2.SyncCallback, bg2.getBestBlock)
 	_, _ = h1, h2
 
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	msc1.On("SyncCallback", b.ID(), best2.Cid(), uint64(3)).Return()
+	msc2.On("SyncCallback", a.ID(), best1.Cid(), uint64(2)).Return()
 
 	mn.LinkAll()
 	mn.ConnectAllButSelf()
 
 	time.Sleep(time.Millisecond * 50)
 
-	msc1.AssertCalled(t, "SyncCallback", b.ID(), best2.Cid().String(), uint64(3))
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 1)
-	msc2.AssertCalled(t, "SyncCallback", a.ID(), best1.Cid().String(), uint64(2))
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 1)
+	msc1.AssertExpectations(t)
+	msc2.AssertExpectations(t)
 }
 
 func TestHelloBadGenesis(t *testing.T) {
