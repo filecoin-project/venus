@@ -86,8 +86,7 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 	return n.Build(ctx)
 }
 
-// Build instantiates a filecoin Node from the settings specified in the
-// config.
+// Build instantiates a filecoin Node from the settings specified in the config.
 func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	host, err := libp2p.New(ctx, nc.Libp2pOpts...)
 	if err != nil {
