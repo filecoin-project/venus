@@ -31,6 +31,9 @@ func idOutputFromNode(fcn *node.Node) *idOutput {
 }
 
 var idCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show info about the network peers",
+	},
 	Options: []cmdkit.Option{
 		// TODO: ideally copy this from the `ipfs id` command
 		cmdkit.StringOption("format", "f", "specify an output format"),

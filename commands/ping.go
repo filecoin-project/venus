@@ -20,7 +20,7 @@ type pingResult struct {
 
 var pingCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Send echo request packets to libp2p hosts.",
+		Tagline: "Send echo request packets to p2p network members",
 		ShortDescription: `
 'ping' is a tool to test sending data to other nodes. It finds nodes
 via the routing system, sends pings, waits for pongs, and prints out round-

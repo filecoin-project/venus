@@ -12,6 +12,9 @@ import (
 )
 
 var chainCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Inspect the filecoin blockchain",
+	},
 	Subcommands: map[string]*cmds.Command{
 		"ls": chainLsCmd,
 	},

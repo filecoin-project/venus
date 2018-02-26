@@ -18,7 +18,7 @@ import (
 
 var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "start the filecoin daemon",
+		Tagline: "Start a long-running daemon-process",
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("swarmlisten").WithDefault("/ip4/127.0.0.1/tcp/6000"),

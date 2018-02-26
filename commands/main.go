@@ -37,6 +37,9 @@ func defaultAPIAddr() string {
 }
 
 var rootCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "A decentralized storage network",
+	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
 		cmds.OptionEncodingType,
@@ -68,102 +71,75 @@ func init() {
 }
 
 // Run processes the arguments and stdin
-func Run(args []string, stdin *os.File) (int, error) {
-	req, err := cmdcli.Parse(context.Background(), args[1:], stdin, rootCmd)
+func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
+	err := cmdcli.Run(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err != nil {
 		return 1, err
 	}
 
-	api := req.Options[OptionAPI].(string)
-	isDaemonRunning, err := daemonRunning(api)
-	if err != nil {
-		return 1, err
-	}
-
-	if isDaemonRunning && req.Command == daemonCmd {
-		return 1, ErrAlreadyRunning
-	}
-
-	if !isDaemonRunning && requiresDaemon(req) {
-		return 1, ErrMissingDaemon
-	}
-
-	if isDaemonRunning {
-		return dispatchRemoteCmd(req, api)
-	}
-
-	return dispatchLocalCmd(req)
+	return 0, nil
 }
 
-func requiresDaemon(req *cmds.Request) bool {
-	return req.Command != daemonCmd
+func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
+	return &Env{ctx: ctx}, nil
 }
 
-func dispatchRemoteCmd(req *cmds.Request, api string) (int, error) {
-	client := cmdhttp.NewClient(api, cmdhttp.ClientWithAPIPrefix(APIPrefix))
+type executor struct {
+	api     string
+	running bool
+	exec    cmds.Executor
+}
 
-	// send request to server
+func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	if !e.running {
+		return e.exec.Execute(req, re, env)
+	}
+
+	client := cmdhttp.NewClient(e.api, cmdhttp.ClientWithAPIPrefix(APIPrefix))
+
 	res, err := client.Send(req)
 	if err != nil {
-		return 1, err
+		return err
 	}
-
-	encType := cmds.GetEncoding(req)
-	enc := req.Command.Encoders[encType]
-	if enc == nil {
-		enc = cmds.Encoders[encType]
-	}
-
-	// create an emitter
-	re, retCh := cmdcli.NewResponseEmitter(os.Stdout, os.Stderr, enc, req)
-
-	if pr, ok := req.Command.PostRun[cmds.CLI]; ok {
-		re = pr(req, re)
-	}
-
+	// send request to server
 	wait := make(chan struct{})
 	// copy received result into cli emitter
 	go func() {
-		err = cmds.Copy(re, res)
+		err := cmds.Copy(re, res)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal|cmdkit.ErrFatal)
 		}
 		close(wait)
 	}()
 
-	// wait until command has returned and exit
-	ret := <-retCh
 	<-wait
-
-	return ret, nil
+	return nil
 }
 
-func dispatchLocalCmd(req *cmds.Request) (ret int, err error) {
-	req.Options[cmds.EncLong] = cmds.Text
-
-	// create an emitter
-	re, retCh := cmdcli.NewResponseEmitter(os.Stdout, os.Stderr, req.Command.Encoders[cmds.Text], req)
-
-	if pr, ok := req.Command.PostRun[cmds.CLI]; ok {
-		re = pr(req, re)
+func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
+	api := req.Options[OptionAPI].(string)
+	isDaemonRunning, err := daemonRunning(api)
+	if err != nil {
+		return nil, err
 	}
 
-	wait := make(chan struct{})
-	// call command in background
-	go func() {
-		defer close(wait)
+	if isDaemonRunning && req.Command == daemonCmd {
+		return nil, ErrAlreadyRunning
+	}
 
-		err = rootCmd.Call(req, re, nil)
-		if err != nil {
-			panic(err)
-		}
-	}()
+	if !isDaemonRunning && requiresDaemon(req) {
+		return nil, ErrMissingDaemon
+	}
 
-	// wait until command has returned and exit
-	ret = <-retCh
-	<-wait
+	return &executor{
+		api:     api,
+		exec:    cmds.NewExecutor(rootCmd),
+		running: isDaemonRunning,
+	}, nil
+}
 
-	return ret, err
+func requiresDaemon(req *cmds.Request) bool {
+	return req.Command != daemonCmd
 }
 
 func daemonRunning(api string) (bool, error) {

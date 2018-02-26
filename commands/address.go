@@ -12,6 +12,9 @@ import (
 )
 
 var walletCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Manage your filecoin wallets",
+	},
 	Subcommands: map[string]*cmds.Command{
 		"addrs":   addrsCmd,
 		"balance": balanceCmd,
@@ -19,6 +22,9 @@ var walletCmd = &cmds.Command{
 }
 
 var addrsCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Interact with addresses",
+	},
 	Subcommands: map[string]*cmds.Command{
 		"list": addrsListCmd,
 		"new":  addrsNewCmd,

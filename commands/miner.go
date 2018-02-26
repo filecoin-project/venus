@@ -15,6 +15,9 @@ import (
 )
 
 var minerCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Manage mining operations",
+	},
 	Subcommands: map[string]*cmds.Command{
 		"gen-block": minerGenBlockCmd,
 	},

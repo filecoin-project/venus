@@ -12,7 +12,7 @@ import (
 
 var versionCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "show the version",
+		Tagline: "Show go-filecoin version information",
 	},
 	Run: versionRun,
 	Encoders: cmds.EncoderMap{
