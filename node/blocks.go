@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 
+	"gx/ipfs/QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw/go-libp2p-floodsub"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -23,34 +24,36 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
 
-func (node *Node) handleBlockSubscription() {
-	ctx := context.TODO()
+func (node *Node) handleBlockSubscription(ctx context.Context) {
 	for {
 		msg, err := node.BlockSub.Next(ctx)
 		if err != nil {
 			log.Errorf("blocksub.Next(): %s", err)
 			return
 		}
-		log.Error("got a block!")
 
-		// ignore messages from ourself
-		if msg.GetFrom() == node.Host.ID() {
-			continue
-		}
-
-		blk, err := types.DecodeBlock(msg.GetData())
-		if err != nil {
-			log.Errorf("got bad block data: %s", err)
-			continue
-		}
-
-		if res, err := node.ChainMgr.ProcessNewBlock(ctx, blk); err != nil {
-			log.Errorf("processing block from network: %s", err)
-			continue
-		} else {
-			log.Error("process blocks returned: ", res)
-		}
+		node.processMessage(ctx, msg)
 	}
+}
+
+func (node *Node) processMessage(ctx context.Context, msg *floodsub.Message) {
+	// ignore messages from ourself
+	if msg.GetFrom() == node.Host.ID() {
+		return
+	}
+
+	blk, err := types.DecodeBlock(msg.GetData())
+	if err != nil {
+		log.Errorf("got bad block data: %s", err)
+		return
+	}
+
+	res, err := node.ChainMgr.ProcessNewBlock(ctx, blk)
+	if err != nil {
+		log.Errorf("processing block from network: %s", err)
+		return
+	}
+	log.Error("process blocks returned:", res)
 }
 
 // AddNewMessage adds a new message to the pool and publishes it to the network.

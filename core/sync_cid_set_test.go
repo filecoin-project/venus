@@ -2,6 +2,7 @@ package core
 
 import (
 	"math/rand"
+	"sync"
 	"testing"
 
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
@@ -9,12 +10,17 @@ import (
 )
 
 var testRand *rand.Rand
+var randlk sync.Mutex
 
 func init() {
 	testRand = rand.New(rand.NewSource(42))
 }
 
 func randCid() *cid.Cid {
+	// The underlying rand.NewSource() is not safe for concurrent access, so we lock calling into testRand.
+	randlk.Lock()
+	defer randlk.Unlock()
+
 	pref := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31)
 	data := make([]byte, 16)
 	testRand.Read(data)
