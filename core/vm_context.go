@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -66,4 +68,19 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 	}
 
 	return Send(context.Background(), fromActor, toActor, msg, ctx.state)
+}
+
+// AddressForNewActor creates computes the address for a new actor in the same
+// way that ethereum does.  Note that this will not work if we allow the
+// creation of multiple contracts in a given invocation (nonce will remain the
+// same, resulting in the same address back)
+func (ctx *VMContext) AddressForNewActor() types.Address {
+	return computeActorAddress(ctx.message.From, ctx.from.Nonce)
+}
+
+func computeActorAddress(creator types.Address, nonce uint64) types.Address {
+	h := sha256.New()
+	h.Write([]byte(creator))
+	binary.Write(h, binary.BigEndian, nonce)
+	return types.Address(h.Sum(nil))
 }

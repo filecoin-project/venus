@@ -45,7 +45,10 @@ type FunctionSignature struct {
 
 func init() {
 	// Instance Actors
+	// TODO: these should probably not be direct instances, but constructors for the actors
 	BuiltinActors[types.AccountActorCodeCid.KeyString()] = &AccountActor{}
+	BuiltinActors[types.StorageMarketActorCodeCid.KeyString()] = &StorageMarketActor{}
+	BuiltinActors[types.MinerActorCodeCid.KeyString()] = &MinerActor{}
 }
 
 // LoadCode fetches the code referenced by the passed in CID.
@@ -168,11 +171,13 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 func marshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
-		return val.(*big.Int).Bytes(), nil
+		return t.Bytes(), nil
 	case []byte:
-		return val.([]byte), nil
+		return t, nil
 	case string:
-		return []byte(val.(string)), nil
+		return []byte(t), nil
+	case types.Address:
+		return []byte(t), nil
 	default:
 		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
 	}

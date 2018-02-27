@@ -12,12 +12,18 @@ import (
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
-var defaultAccounts = map[string]int64{
-	// the filecoin network
-	"filecoin": 100000,
-	// some lucky investor, used in testing and bootstraping for now
-	"investor1": 500,
+// an account with some initial funds in it
+var testAccount = types.Address("satoshi")
+
+// the filecoin network
+var networkAccount = types.Address("filecoin")
+
+var defaultAccounts = map[types.Address]int64{
+	networkAccount: 100000,
+	testAccount:    500,
 }
+
+var StorageMarketAddress = types.Address("storage")
 
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
@@ -30,9 +36,17 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 			return nil, err
 		}
 
-		if err := st.SetActor(ctx, types.Address(addr), a); err != nil {
+		if err := st.SetActor(ctx, addr, a); err != nil {
 			return nil, err
 		}
+	}
+
+	stAct, err := NewStorageMarketActor()
+	if err != nil {
+		return nil, err
+	}
+	if err := st.SetActor(ctx, StorageMarketAddress, stAct); err != nil {
+		return nil, err
 	}
 
 	c, err := st.Flush(ctx)

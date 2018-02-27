@@ -1,8 +1,10 @@
 package core
 
 import (
+	"context"
 	"math/big"
 
+	"github.com/pkg/errors"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -10,6 +12,7 @@ import (
 
 func init() {
 	cbor.RegisterCborType(StorageMarketStorage{})
+	cbor.RegisterCborType(struct{}{})
 }
 
 type StorageMarketActor struct{}
@@ -35,6 +38,41 @@ func (sma *StorageMarketActor) Exports() Exports {
 var storageMarketExports = Exports{
 	"createMiner": &FunctionSignature{
 		Params: []interface{}{&big.Int{}},
-		Return: nil,
+		Return: types.Address(""),
 	},
+}
+
+func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (types.Address, uint8, error) {
+	var storage StorageMarketStorage
+	if err := cbor.DecodeInto(ctx.ReadStorage(), &storage); err != nil {
+		return "", 1, errors.Wrapf(err, "failed to load storage market actors data")
+	}
+
+	addr := ctx.AddressForNewActor()
+
+	miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
+	if err != nil {
+		return "", 1, err
+	}
+
+	if err := transfer(ctx.from, miner, ctx.message.Value); err != nil {
+		return "", 1, err
+	}
+
+	if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
+		return "", 1, err
+	}
+
+	storage.Miners[addr] = struct{}{}
+
+	data, err := cbor.DumpObject(storage)
+	if err != nil {
+		return "", 1, err
+	}
+
+	if err := ctx.WriteStorage(data); err != nil {
+		return "", 1, err
+	}
+
+	return addr, 0, nil
 }
