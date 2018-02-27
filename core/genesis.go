@@ -13,10 +13,10 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
 // an account with some initial funds in it
-var testAccount = types.Address("satoshi")
+const testAccount = types.Address("satoshi")
 
 // the filecoin network
-var networkAccount = types.Address("filecoin")
+const networkAccount = types.Address("filecoin")
 
 var defaultAccounts = map[types.Address]int64{
 	networkAccount: 100000,

@@ -18,7 +18,9 @@ type MinerStorage struct {
 	Owner types.Address
 
 	// Pledge is amount the space being offered up by this miner
-	Pledge *big.Int
+	// TODO: maybe minimum granularity is more than 1 byte?
+	PledgeBytes *big.Int
+
 	// Collateral is the total amount of filecoin being held as collateral for
 	// the miners pledge
 	Collateral *big.Int
@@ -31,9 +33,9 @@ var _ ExecutableActor = (*MinerActor)(nil)
 
 func NewMinerActor(owner types.Address, pledge *big.Int, coll *big.Int) (*types.Actor, error) {
 	st := &MinerStorage{
-		Owner:      owner,
-		Pledge:     pledge,
-		Collateral: coll,
+		Owner:       owner,
+		PledgeBytes: pledge,
+		Collateral:  coll,
 	}
 
 	storageBytes, err := MarshalStorage(st)

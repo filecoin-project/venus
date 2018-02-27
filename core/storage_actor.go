@@ -2,13 +2,18 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
-	"github.com/pkg/errors"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+// The minimum amount of space a user can pledge
+var MinimumPledge = big.NewInt(10000)
+
+var ErrPledgeTooLow = &revertErrorWrap{fmt.Errorf("pledge must be at least %s bytes", MinimumPledge)}
 
 func init() {
 	cbor.RegisterCborType(StorageMarketStorage{})
@@ -44,35 +49,31 @@ var storageMarketExports = Exports{
 
 func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (types.Address, uint8, error) {
 	var storage StorageMarketStorage
-	if err := cbor.DecodeInto(ctx.ReadStorage(), &storage); err != nil {
-		return "", 1, errors.Wrapf(err, "failed to load storage market actors data")
-	}
+	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+		if pledge.Cmp(MinimumPledge) < 0 {
+			return nil, ErrPledgeTooLow
+		}
+		addr := ctx.AddressForNewActor()
 
-	addr := ctx.AddressForNewActor()
+		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
+		if err != nil {
+			return "", err
+		}
 
-	miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
+		if err := transfer(ctx.from, miner, ctx.message.Value); err != nil {
+			return "", err
+		}
+
+		if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
+			return "", err
+		}
+
+		storage.Miners[addr] = struct{}{}
+		return addr, nil
+	})
 	if err != nil {
 		return "", 1, err
 	}
 
-	if err := transfer(ctx.from, miner, ctx.message.Value); err != nil {
-		return "", 1, err
-	}
-
-	if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
-		return "", 1, err
-	}
-
-	storage.Miners[addr] = struct{}{}
-
-	data, err := cbor.DumpObject(storage)
-	if err != nil {
-		return "", 1, err
-	}
-
-	if err := ctx.WriteStorage(data); err != nil {
-		return "", 1, err
-	}
-
-	return addr, 0, nil
+	return ret.(types.Address), 0, nil
 }

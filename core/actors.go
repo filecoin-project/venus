@@ -195,3 +195,34 @@ func MarshalStorage(in interface{}) ([]byte, error) {
 func UnmarshalStorage(raw []byte, to interface{}) error {
 	return cbor.DecodeInto(raw, to)
 }
+
+// WithStorage is a helper method that makes dealing with storage serialization
+// easier for implementors.
+// It is designed to be used like:
+//
+// var st MyStorage
+// ret, err := WithStorage(ctx, &st, func() (interface{}, error) {
+//   fmt.Println("hey look, my storage is loaded: ", st)
+//   return st.Thing, nil
+// }
+func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
+	if err := UnmarshalStorage(ctx.ReadStorage(), st); err != nil {
+		return nil, err
+	}
+
+	ret, err := f()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := MarshalStorage(st)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ctx.WriteStorage(data); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
