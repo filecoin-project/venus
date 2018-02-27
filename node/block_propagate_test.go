@@ -76,3 +76,27 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	otherBest := nodes[1].ChainMgr.GetBestBlock()
 	assert.Equal(otherBest.Cid(), nextBlk.Cid())
 }
+
+func TestChainSync(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	nodes := makeNodes(t, 2)
+	startNodes(t, nodes)
+	defer stopNodes(nodes)
+
+	baseBlk := nodes[0].ChainMgr.GetBestBlock()
+	nextBlk1 := &types.Block{Parent: baseBlk.Cid(), Height: 1, StateRoot: baseBlk.StateRoot}
+	nextBlk2 := &types.Block{Parent: nextBlk1.Cid(), Height: 2, StateRoot: baseBlk.StateRoot}
+	nextBlk3 := &types.Block{Parent: nextBlk2.Cid(), Height: 3, StateRoot: baseBlk.StateRoot}
+
+	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
+	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))
+	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk3))
+
+	connect(t, nodes[0], nodes[1])
+
+	time.Sleep(time.Millisecond * 50)
+	otherBest := nodes[1].ChainMgr.GetBestBlock()
+	assert.Equal(otherBest.Cid(), nextBlk3.Cid())
+}

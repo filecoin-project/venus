@@ -9,6 +9,7 @@ import (
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
+	peer "gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -21,6 +22,8 @@ var (
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
 	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
 	ErrInvalidBase = errors.New("block does not connect to a known good chain")
+	// ErrDifferentGenesis is returned when processing a chain with a different genesis block.
+	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 )
 
 // BlockProcessResult signifies the outcome of processing a given block.
@@ -55,6 +58,9 @@ type ChainManager struct {
 
 	processor Processor
 
+	// genesisCid holds the cid of the chains genesis block for later access
+	genesisCid *cid.Cid
+
 	// knownGoodBlocks is a cache of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
 	// validity of a given chain.
@@ -84,6 +90,8 @@ func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 		return err
 	}
 
+	s.genesisCid = genesis.Cid()
+
 	return s.setBestBlock(ctx, genesis)
 }
 
@@ -98,6 +106,10 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	s.knownGoodBlocks.Add(b.Cid())
 
 	return nil
+}
+
+func (s *ChainManager) GetGenesisCid() *cid.Cid {
+	return s.genesisCid
 }
 
 // GetBestBlock returns the head of our currently selected 'best' chain.
@@ -121,6 +133,8 @@ func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
 func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+	log.Infof("processing block [s=%d, h=%s]", blk.Score(), blk.Cid())
+
 	switch err := s.validateBlock(ctx, blk); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
@@ -148,6 +162,8 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 
 // fetchBlock gets the requested block, either from disk or from the network.
 func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
+	log.Infof("fetching block, [%s]", c.String())
+
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
@@ -234,7 +250,7 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	// to an entirely different chain.
 	var validating []*types.Block
 	baseBlk := tip
-	for !s.knownGoodBlocks.Has(baseBlk.Cid()) {
+	for !s.isKnownGoodBlock(baseBlk.Cid()) {
 		if baseBlk.Parent == nil {
 			return nil, nil, ErrInvalidBase
 		}
@@ -254,4 +270,37 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	}
 
 	return baseBlk, validating, nil
+}
+
+func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
+	return bc.Equals(s.genesisCid) || s.knownGoodBlocks.Has(bc)
+}
+
+// InformNewBlock informs the chainmanager that we learned about a potentially
+// new block from the given peer. Currently, it just fetches that block and
+// passes it to the block processor (which fetches the rest of the chain on
+// demand). In the (near) future we will want a better protocol for
+// synchronizing the blockchain and downloading it efficiently.
+// TODO: sync logic should be decoupled and off in a separate worker. This
+// method should not block
+func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
+	b := s.GetBestBlock()
+	if b.Height >= h {
+		return
+	}
+
+	// Naive sync.
+	// TODO: more dedicated sync protocols, like "getBlockHashes(range)"
+	ctx := context.TODO()
+	blk, err := s.fetchBlock(ctx, c)
+	if err != nil {
+		log.Error("failed to fetch block: ", err)
+		return
+	}
+
+	_, err = s.ProcessNewBlock(ctx, blk)
+	if err != nil {
+		log.Error("processing new block: ", err)
+		return
+	}
 }
