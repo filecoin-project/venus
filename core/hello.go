@@ -44,6 +44,8 @@ type Hello struct {
 	getBestBlock getBlockFunc
 }
 
+// NewHello creates a new instance of the hello protocol and registers it to
+// the given host, with the provided callbacks.
 func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getBestBlockFunc getBlockFunc) *Hello {
 	hello := &Hello{
 		host:         h,
