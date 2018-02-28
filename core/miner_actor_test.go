@@ -1,0 +1,84 @@
+package core
+
+import (
+	"context"
+	"math/big"
+	"testing"
+
+	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/types"
+)
+
+func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, collateral int64) types.Address {
+	pdata := mustConvertParams([]interface{}{big.NewInt(10000)})
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
+
+	receipt, err := ApplyMessage(context.Background(), st, msg)
+	assert.NoError(err)
+
+	return types.Address(receipt.Return)
+}
+
+func TestAddAsk(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := InitGenesis(cst)
+	assert.NoError(err)
+
+	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	assert.NoError(err)
+
+	outAddr := createTestMiner(assert, st, 10000, 500)
+
+	// make an ask, and then make sure it all looks good
+	pdata := mustConvertParams([]interface{}{big.NewInt(100), big.NewInt(150)})
+	msg := types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
+
+	receipt, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(receipt.Return))
+
+	storageMkt, err := st.GetActor(ctx, StorageMarketAddress)
+	assert.NoError(err)
+
+	var strgMktStorage StorageMarketStorage
+	assert.NoError(UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage))
+	assert.Len(strgMktStorage.Asks, 1)
+	assert.Equal(outAddr, strgMktStorage.Asks[0].Miner)
+
+	miner, err := st.GetActor(ctx, outAddr)
+	assert.NoError(err)
+
+	var minerStorage MinerStorage
+	assert.NoError(UnmarshalStorage(miner.ReadStorage(), &minerStorage))
+	assert.Equal(big.NewInt(150), minerStorage.LockedStorage)
+
+	// make another ask!
+	pdata = mustConvertParams([]interface{}{big.NewInt(110), big.NewInt(200)})
+	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
+
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(receipt.Return))
+
+	storageMkt, err = st.GetActor(ctx, StorageMarketAddress)
+	assert.NoError(err)
+
+	var strgMktStorage2 StorageMarketStorage
+	assert.NoError(UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage2))
+	assert.Len(strgMktStorage2.Asks, 2)
+	assert.Equal(outAddr, strgMktStorage2.Asks[1].Miner)
+
+	miner, err = st.GetActor(ctx, outAddr)
+	assert.NoError(err)
+
+	var minerStorage2 MinerStorage
+	assert.NoError(UnmarshalStorage(miner.ReadStorage(), &minerStorage2))
+	assert.Equal(big.NewInt(350), minerStorage2.LockedStorage)
+}

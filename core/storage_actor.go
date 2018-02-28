@@ -30,13 +30,20 @@ type StorageMarketActor struct{}
 // StorageMarketStorage is the storage markets storage
 type StorageMarketStorage struct {
 	Miners map[types.Address]struct{}
+
+	Asks      map[uint64]Ask
+	NextAskID uint64
 }
 
 var _ ExecutableActor = (*StorageMarketActor)(nil)
 
 // NewStorageMarketActor returns a new storage market actor
 func NewStorageMarketActor() (*types.Actor, error) {
-	storageBytes, err := MarshalStorage(&StorageMarketStorage{make(map[types.Address]struct{})})
+	initStorage := &StorageMarketStorage{
+		Miners: make(map[types.Address]struct{}),
+		Asks:   make(map[uint64]Ask),
+	}
+	storageBytes, err := MarshalStorage(initStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +59,10 @@ var storageMarketExports = Exports{
 	"createMiner": &FunctionSignature{
 		Params: []abi.Type{abi.Integer},
 		Return: []abi.Type{abi.Address},
+	},
+	"addAsk": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.Integer},
+		Return: []abi.Type{abi.Integer},
 	},
 }
 
@@ -93,4 +104,38 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 	}
 
 	return ret.(types.Address), 0, nil
+}
+
+func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+	var storage StorageMarketStorage
+	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+		// method must be called by a miner that was created by this storage market actor
+		miner := ctx.Message().From
+
+		_, ok := storage.Miners[miner]
+		if !ok {
+			return nil, fmt.Errorf("unknown miner: %s", miner)
+		}
+
+		askID := storage.NextAskID
+		storage.NextAskID++
+
+		storage.Asks[askID] = Ask{
+			Price: price,
+			Size:  size,
+			Miner: miner,
+		}
+
+		return big.NewInt(0).SetUint64(askID), nil
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	askID, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+	}
+
+	return askID, 0, nil
 }
