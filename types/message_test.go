@@ -18,7 +18,7 @@ func TestMessageMarshal(t *testing.T) {
 		Address("Bob"),
 		big.NewInt(17777),
 		"send",
-		[]interface{}{"1", "2"},
+		[]byte("foobar"),
 	)
 
 	marshalled, err := msg.Marshal()
@@ -43,7 +43,7 @@ func TestMessageCid(t *testing.T) {
 		Address("Bob"),
 		big.NewInt(999),
 		"send",
-		[]interface{}{"1", "2"},
+		nil,
 	)
 
 	msg2 := NewMessage(
@@ -51,7 +51,7 @@ func TestMessageCid(t *testing.T) {
 		Address("Bob"),
 		big.NewInt(4004),
 		"send",
-		[]interface{}{"1", "2"},
+		nil,
 	)
 
 	c1, err := msg1.Cid()

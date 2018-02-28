@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -38,9 +39,9 @@ type ExportedFunc func(ctx *VMContext) ([]byte, uint8, error)
 // TODO: convert signatures into non go types, but rather low level agreed up types
 type FunctionSignature struct {
 	// Params is a list of the types of the parameters the function expects.
-	Params []interface{}
+	Params []abi.Type
 	// Return is the type of the return value of the function.
-	Return interface{}
+	Return []abi.Type
 }
 
 func init() {
@@ -95,10 +96,13 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 	errorType := reflect.TypeOf((*error)(nil)).Elem()
 
 	if signature.Return != nil {
-		retType := reflect.TypeOf(signature.Return)
+		if len(signature.Return) != 1 {
+			panic("FunctionSignature.Return must be either nil or have exactly one value")
+		}
 
-		if t.NumOut() != 3 || t.Out(0) != retType || t.Out(1).Kind() != exitType || !t.Out(2).Implements(errorType) {
-			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (%s, uint8, error) for %s", retType, method))
+		if t.NumOut() != 3 || !abi.TypeMatches(signature.Return[0], t.Out(0)) ||
+			t.Out(1).Kind() != exitType || !t.Out(2).Implements(errorType) {
+			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (%s, uint8, error) for %s", signature.Return[0], method))
 		}
 	} else {
 		if t.NumOut() != 2 || t.Out(0).Kind() != exitType || !t.Out(1).Implements(errorType) {
@@ -107,61 +111,44 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 	}
 
 	return func(ctx *VMContext) ([]byte, uint8, error) {
+		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
+		if err != nil {
+			return nil, 1, errors.Wrapf(err, "invalid params")
+		}
+
 		args := []reflect.Value{
 			reflect.ValueOf(actor),
 			reflect.ValueOf(ctx),
 		}
 
-		if len(signature.Params) != len(ctx.Message().Params) {
-			return nil, 1, fmt.Errorf("invalid params: expected %v, got %v", signature.Params, ctx.Message().Params)
-		}
-
-		for i, paramType := range signature.Params {
-			actualParam := ctx.Message().Params[i]
-
-			tActual := reflect.TypeOf(actualParam)
-			tExpected := reflect.TypeOf(paramType)
-
-			if tActual != tExpected {
-				return nil, 0, fmt.Errorf("invalid params type: expected %v, got %v", tExpected, tActual)
-			}
-			args = append(args, reflect.ValueOf(actualParam))
+		for _, param := range params {
+			args = append(args, reflect.ValueOf(param.Val))
 		}
 
 		out := val.Call(args)
 
+		var retVal []byte
 		if signature.Return != nil {
-			ret, retErr := marshalValue(out[0].Interface())
-			exitCode, ok := out[1].Interface().(uint8)
-			if !ok {
-				panic("invalid return value")
-			}
-			err, ok := out[2].Interface().(error)
-			if !ok {
-				err = nil
+			ret, err := marshalValue(out[0].Interface())
+			if err != nil {
+				return nil, 1, errors.Wrapf(err, "failed to marshal output value")
 			}
 
-			if retErr != nil {
-				if err != nil {
-					err = errors.Wrap(err, retErr.Error())
-				} else {
-					err = retErr
-				}
-			}
-
-			return ret, exitCode, err
+			retVal = ret
+			out = out[1:]
 		}
 
 		exitCode, ok := out[0].Interface().(uint8)
 		if !ok {
 			panic("invalid return value")
 		}
-		err, ok := out[1].Interface().(error)
+
+		outErr, ok := out[1].Interface().(error)
 		if !ok {
-			err = nil
+			outErr = nil
 		}
 
-		return nil, exitCode, err
+		return retVal, exitCode, outErr
 	}
 }
 

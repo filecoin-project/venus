@@ -7,6 +7,7 @@ import (
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -49,8 +50,8 @@ func (sma *StorageMarketActor) Exports() Exports {
 
 var storageMarketExports = Exports{
 	"createMiner": &FunctionSignature{
-		Params: []interface{}{&big.Int{}},
-		Return: types.Address(""),
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Address},
 	},
 }
 

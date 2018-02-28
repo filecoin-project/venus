@@ -10,7 +10,11 @@ const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
 // AccountActorCodeCid is the CID of the builtin account actor.
 var AccountActorCodeCid *cid.Cid
+
+// StorageMarketActorCodeCid is the CID of the builtin storage market actor.
 var StorageMarketActorCodeCid *cid.Cid
+
+// MinerActorCodeCid is the CID of the builtin miner actor.
 var MinerActorCodeCid *cid.Cid
 
 func cidFromString(input string) (*cid.Cid, error) {

@@ -32,8 +32,8 @@ func TestBlockAddParent(t *testing.T) {
 func TestDecodeBlock(t *testing.T) {
 	assert := assert.New(t)
 
-	m1 := NewMessage(Address("from"), Address("to"), big.NewInt(10), "hello", []interface{}{"world"})
-	m2 := NewMessage(Address("from"), Address("other"), big.NewInt(2), "yes", []interface{}{"no"})
+	m1 := NewMessage(Address("from"), Address("to"), big.NewInt(10), "hello", []byte("cat"))
+	m2 := NewMessage(Address("from"), Address("other"), big.NewInt(2), "yes", []byte("dog"))
 
 	m1Cid, err := m1.Cid()
 	assert.NoError(err)

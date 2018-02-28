@@ -28,7 +28,7 @@ type Message struct {
 	Value *big.Int
 
 	Method string
-	Params []interface{}
+	Params []byte
 }
 
 // Unmarshal a message from the given bytes.
@@ -53,7 +53,7 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, value *big.Int, method string, params []interface{}) *Message {
+func NewMessage(from, to Address, value *big.Int, method string, params []byte) *Message {
 	return &Message{
 		From:   from,
 		To:     to,

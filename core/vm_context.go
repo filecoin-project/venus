@@ -9,6 +9,7 @@ import (
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -54,7 +55,17 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 	from := ctx.Message().To
 	fromActor := ctx.to
 
-	msg := types.NewMessage(from, to, value, method, params)
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		return nil, 1, errors.Wrapf(err, "failed to convert inputs to abi values")
+	}
+
+	paramData, err := abi.EncodeValues(vals)
+	if err != nil {
+		return nil, 1, err
+	}
+
+	msg := types.NewMessage(from, to, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO: handle this
 		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)

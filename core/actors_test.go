@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -79,7 +80,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"two": {
-				Params: []interface{}{},
+				Params: nil,
 				Return: nil,
 			},
 		})
@@ -96,8 +97,8 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"four": {
-				Params: []interface{}{},
-				Return: []byte{},
+				Params: nil,
+				Return: []abi.Type{abi.Bytes},
 			},
 		})
 
@@ -113,8 +114,8 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"five": {
-				Params: []interface{}{},
-				Return: []byte{},
+				Params: []abi.Type{},
+				Return: []abi.Type{abi.Bytes},
 			},
 		})
 
@@ -132,11 +133,11 @@ func TestMakeTypedExportFail(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"one": {
-				Params: []interface{}{},
+				Params: []abi.Type{},
 				Return: nil,
 			},
 			"other": {
-				Params: []interface{}{},
+				Params: []abi.Type{},
 				Return: nil,
 			},
 		})
@@ -161,7 +162,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"one": {
-				Params: []interface{}{},
+				Params: []abi.Type{},
 				Return: nil,
 			},
 		})
@@ -176,7 +177,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"three": {
-				Params: []interface{}{},
+				Params: []abi.Type{},
 				Return: nil,
 			},
 		})
@@ -191,12 +192,12 @@ func TestMakeTypedExportFail(t *testing.T) {
 
 		a := NewMockActor(map[string]*FunctionSignature{
 			"two": {
-				Params: []interface{}{},
-				Return: []byte{},
+				Params: []abi.Type{},
+				Return: []abi.Type{abi.Bytes},
 			},
 		})
 		assert.PanicsWithValue(
-			"MakeTypedExport must receive a function that returns ([]uint8, uint8, error) for two",
+			"MakeTypedExport must receive a function that returns ([]byte, uint8, error) for two",
 			func() { MakeTypedExport(a, "two") },
 		)
 	})

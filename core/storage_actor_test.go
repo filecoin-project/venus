@@ -8,11 +8,25 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+func mustConvertParams(params []interface{}) []byte {
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := abi.EncodeValues(vals)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
 
 func TestStorageMarketCreateMiner(t *testing.T) {
 	assert := assert.New(t)
@@ -23,7 +37,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(10000)})
+	pdata := mustConvertParams([]interface{}{big.NewInt(10000)})
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
 
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)
@@ -57,7 +72,8 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(50)})
+	pdata := mustConvertParams([]interface{}{big.NewInt(50)})
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
 
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)

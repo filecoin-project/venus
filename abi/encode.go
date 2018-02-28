@@ -1,0 +1,55 @@
+package abi
+
+import (
+	"fmt"
+
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+)
+
+// EncodeValues encodes a set of abi values to raw bytes. Zero length arrays of
+// values are normalized to nil
+func EncodeValues(vals []*Value) ([]byte, error) {
+	if len(vals) == 0 {
+		return nil, nil
+	}
+
+	var arr [][]byte
+
+	for _, val := range vals {
+		data, err := val.Serialize()
+		if err != nil {
+			return nil, err
+		}
+
+		arr = append(arr, data)
+	}
+
+	return cbor.DumpObject(arr)
+}
+
+// DecodeValues decodes an array of abi values from the given buffer, using the
+// provided type information.
+func DecodeValues(data []byte, types []Type) ([]*Value, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
+
+	var arr [][]byte
+	if err := cbor.DecodeInto(data, &arr); err != nil {
+		return nil, err
+	}
+
+	if len(arr) != len(types) {
+		return nil, fmt.Errorf("expected %d parameters, but got %d", len(types), len(arr))
+	}
+
+	out := make([]*Value, 0, len(types))
+	for i, t := range types {
+		v, err := Deserialize(arr[i], t)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
