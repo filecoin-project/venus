@@ -35,7 +35,11 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	miner, err := st.GetActor(ctx, outAddr)
 	assert.NoError(err)
 
-	assert.Equal(miner.Balance, big.NewInt(100))
+	storageMkt, err := st.GetActor(ctx, StorageMarketAddress)
+	assert.NoError(err)
+
+	assert.Equal(big.NewInt(0), storageMkt.Balance)
+	assert.Equal(big.NewInt(100), miner.Balance)
 
 	var mstor MinerStorage
 	assert.NoError(cbor.DecodeInto(miner.ReadStorage(), &mstor))

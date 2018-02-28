@@ -61,13 +61,23 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 	}
 
 	toActor, err := ctx.state.GetOrCreateActor(context.Background(), msg.To, func() (*types.Actor, error) {
+		log.Error("CREATING ACCOUNT ACTOR")
 		return NewAccountActor(nil)
 	})
 	if err != nil {
 		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 
-	return Send(context.Background(), fromActor, toActor, msg, ctx.state)
+	out, ret, err := Send(context.Background(), fromActor, toActor, msg, ctx.state)
+	if err != nil {
+		return nil, ret, err
+	}
+
+	if err := ctx.state.SetActor(context.TODO(), to, toActor); err != nil {
+		return nil, 1, errors.Wrapf(err, "failed to write actor after send")
+	}
+
+	return out, ret, nil
 }
 
 // AddressForNewActor creates computes the address for a new actor in the same

@@ -56,19 +56,23 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 		if pledge.Cmp(MinimumPledge) < 0 {
 			return nil, ErrPledgeTooLow
 		}
+
+		// 'CreateNewActor'
 		addr := ctx.AddressForNewActor()
 
 		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
 		if err != nil {
-			return "", err
-		}
-
-		if err := transfer(ctx.from, miner, ctx.message.Value); err != nil {
-			return "", err
+			return nil, err
 		}
 
 		if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
-			return "", err
+			return nil, err
+		}
+		//
+
+		_, _, err = ctx.Send(addr, "", ctx.message.Value, nil)
+		if err != nil {
+			return nil, err
 		}
 
 		storage.Miners[addr] = struct{}{}
