@@ -1,38 +1,60 @@
 package commands
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-func TestAddrsNew(t *testing.T) {
-	assert := assert.New(t)
-
-	nd := &node.Node{Wallet: wallet.New()}
-
-	out, err := testhelpers.RunCommand(addrsNewCmd, nil, nil, &Env{node: nd})
-	assert.NoError(err)
-
-	assert.NoError(out.HasLine(nd.Wallet.GetAddresses()[0].String()))
+// makeAddr must be run inside a `withDaemon` context to have access to
+// the default daemon.
+func makeAddr(t *testing.T) string {
+	t.Helper()
+	outNew := runSuccess(t, "go-filecoin wallet addrs new")
+	addr := strings.Trim(outNew.ReadStdout(), "\n")
+	assert.NotEmpty(t, addr)
+	return addr
 }
 
-func TestAddrsList(t *testing.T) {
+func TestAddrsNewAndList(t *testing.T) {
 	assert := assert.New(t)
 
-	nd := &node.Node{Wallet: wallet.New()}
-	a1 := nd.Wallet.NewAddress()
-	a2 := nd.Wallet.NewAddress()
-	a3 := nd.Wallet.NewAddress()
+	daemon := withDaemon(func() {
+		addrs := make([]string, 10)
+		for i := 0; i < 10; i++ {
+			addrs[i] = makeAddr(t)
+		}
 
-	out, err := testhelpers.RunCommand(addrsListCmd, nil, nil, &Env{node: nd})
-	assert.NoError(err)
+		outList := runSuccess(t, "go-filecoin wallet addrs list")
+		list := outList.ReadStdout()
 
-	assert.NoError(out.HasLine(a1.String()))
-	assert.NoError(out.HasLine(a2.String()))
-	assert.NoError(out.HasLine(a3.String()))
+		for _, addr := range addrs {
+			assert.Contains(list, addr)
+		}
+	})
+	assert.NoError(daemon.Error)
+	assert.Equal(daemon.Code, 0)
+}
+
+func TestWalletBalance(t *testing.T) {
+	assert := assert.New(t)
+
+	daemon := withDaemon(func() {
+		addr := makeAddr(t)
+
+		t.Log("[failure] not found")
+		balance := run(fmt.Sprintf("go-filecoin wallet balance %s", addr))
+		assert.Contains(balance.ReadStderr(), "not found")
+		assert.Equal(balance.Code, 1)
+		assert.Empty(balance.ReadStdout())
+
+		t.Log("[success] balance 100000")
+		balance = runSuccess(t, fmt.Sprintf("go-filecoin wallet balance %s", types.Address("filecoin")))
+		assert.Contains(balance.ReadStdout(), "100000")
+	})
+	assert.NoError(daemon.Error)
+	assert.Equal(daemon.Code, 0)
 }

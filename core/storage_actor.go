@@ -65,7 +65,10 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 		}
 
 		// 'CreateNewActor' (should likely be a method on the vmcontext)
-		addr := ctx.AddressForNewActor()
+		addr, err := ctx.AddressForNewActor()
+		if err != nil {
+			return nil, err
+		}
 
 		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
 		if err != nil {

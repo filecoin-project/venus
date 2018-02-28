@@ -31,7 +31,7 @@ func TestWorker_Mine(t *testing.T) {
 	mockBg, mockStateTree, mockAddNewBlock = &MockBlockGenerator{}, &types.MockStateTree{}, &mockAddNewBlockFunc{}
 	w = NewWorker(mockBg, mockAddNewBlock.AddNewBlock)
 	mockBg.On("Generate", ctx, cur, mockStateTree).Return(nil, errors.New("boom"))
-	cid, err = w.Mine(ctx, cur, mockStateTree)
+	_, err = w.Mine(ctx, cur, mockStateTree)
 	assert.Error(err)
 	mockBg.AssertExpectations(t)
 	mockStateTree.AssertExpectations(t)

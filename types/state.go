@@ -29,7 +29,7 @@ type StateTree interface {
 var _ StateTree = &stateTree{}
 
 // LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (*stateTree, error) {
+func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (StateTree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (
 }
 
 // NewEmptyStateTree instantiates a new state tree with no data in it.
-func NewEmptyStateTree(store *hamt.CborIpldStore) *stateTree {
+func NewEmptyStateTree(store *hamt.CborIpldStore) StateTree {
 	return &stateTree{
 		root:  hamt.NewNode(store),
 		store: store,

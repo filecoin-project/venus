@@ -40,7 +40,7 @@ var addrsNewCmd = &cmds.Command{
 		fcn := GetNode(env)
 		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
 	},
-	Type: addressResult{},
+	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
 			_, err := fmt.Fprintln(w, a.Address)
@@ -52,22 +52,15 @@ var addrsNewCmd = &cmds.Command{
 var addrsListCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
-		var out []addressResult
 		for _, a := range fcn.Wallet.GetAddresses() {
-			out = append(out, addressResult{a.String()})
+			re.Emit(&addressResult{a.String()}) // nolint: errcheck
 		}
-		re.Emit(out) // nolint: errcheck
 	},
-	Type: []addressResult{},
+	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs []addressResult) error {
-			for _, a := range addrs {
-				_, err := fmt.Fprintln(w, a.Address)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr *addressResult) error {
+			_, err := fmt.Fprintln(w, addr.Address)
+			return err
 		}),
 	},
 }
@@ -104,11 +97,10 @@ var balanceCmd = &cmds.Command{
 
 		re.Emit(act.Balance) // nolint: errcheck
 	},
-	Type: big.Int{},
+	Type: &big.Int{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *big.Int) error {
-			_, err := fmt.Fprintln(w, b.String())
-			return err
+			return PrintString(w, b)
 		}),
 	},
 }

@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
+// Address is the go type that represents an address in the filecoin network.
 // TODO: make address a little more sophisticated
 type Address string
 

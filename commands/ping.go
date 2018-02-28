@@ -82,14 +82,14 @@ func pingPeer(ctx context.Context, p *ping.PingService, pid peer.ID, count int, 
 		return
 	}
 
-	re.Emit(&pingResult{Text: fmt.Sprintf("PING %s", pid)})
+	re.Emit(&pingResult{Text: fmt.Sprintf("PING %s", pid)}) // nolint: errcheck
 
 	for i := 0; i < count; i++ {
 		select {
 		case dur := <-times:
-			re.Emit(&pingResult{Time: dur, Success: true})
+			re.Emit(&pingResult{Time: dur, Success: true}) // nolint: errcheck
 		case <-time.After(pingTimeout):
-			re.Emit(&pingResult{Text: "error: timeout"})
+			re.Emit(&pingResult{Text: "error: timeout"}) // nolint: errcheck
 		case <-ctx.Done():
 			return
 		}

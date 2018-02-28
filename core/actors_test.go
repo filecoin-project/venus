@@ -128,79 +128,77 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 }
 
 func TestMakeTypedExportFail(t *testing.T) {
-	t.Run("missing method on actor", func(t *testing.T) {
-		assert := assert.New(t)
+	testCases := []struct {
+		Name   string
+		Actor  *MockActor
+		Method string
+		Error  string
+	}{
+		{
+			Name: "missing method on actor",
+			Actor: NewMockActor(map[string]*FunctionSignature{
+				"one": {
+					Params: nil,
+					Return: nil,
+				},
+				"other": {
+					Params: nil,
+					Return: nil,
+				},
+			}),
+			Method: "other",
+			Error:  "MakeTypedExport could not find passed in method in actor: other",
+		},
+		{
+			Name:   "missing method on exports",
+			Actor:  NewMockActor(nil),
+			Error:  "MakeTypedExport could not find passed in method in exports: one",
+			Method: "one",
+		},
+		{
+			Name: "too little params",
+			Actor: NewMockActor(map[string]*FunctionSignature{
+				"one": {
+					Params: nil,
+					Return: nil,
+				},
+			}),
+			Error:  "MakeTypedExport must receive a function with at least 2 parameters for one",
+			Method: "one",
+		},
+		{
+			Name: "too little return parameters",
+			Actor: NewMockActor(map[string]*FunctionSignature{
+				"three": {
+					Params: nil,
+					Return: nil,
+				},
+			}),
+			Error:  "MakeTypedExport must receive a function that returns (uint8, error) for three",
+			Method: "three",
+		},
+		{
+			Name: "wrong return parameters",
+			Actor: NewMockActor(map[string]*FunctionSignature{
+				"two": {
+					Params: nil,
+					Return: []abi.Type{abi.Bytes},
+				},
+			}),
+			Error:  "MakeTypedExport must receive a function that returns ([]byte, uint8, error) for two",
+			Method: "two",
+		},
+	}
 
-		a := NewMockActor(map[string]*FunctionSignature{
-			"one": {
-				Params: []abi.Type{},
-				Return: nil,
-			},
-			"other": {
-				Params: []abi.Type{},
-				Return: nil,
-			},
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			assert.PanicsWithValue(tc.Error, func() {
+				MakeTypedExport(tc.Actor, tc.Method)
+			})
 		})
-		assert.PanicsWithValue(
-			"MakeTypedExport could not find passed in method in actor: other",
-			func() { MakeTypedExport(a, "other") },
-		)
-	})
-
-	t.Run("missing method on exports", func(t *testing.T) {
-		assert := assert.New(t)
-
-		a := NewMockActor(nil)
-		assert.PanicsWithValue(
-			"MakeTypedExport could not find passed in method in exports: one",
-			func() { MakeTypedExport(a, "one") },
-		)
-	})
-
-	t.Run("too little params", func(t *testing.T) {
-		assert := assert.New(t)
-
-		a := NewMockActor(map[string]*FunctionSignature{
-			"one": {
-				Params: []abi.Type{},
-				Return: nil,
-			},
-		})
-		assert.PanicsWithValue(
-			"MakeTypedExport must receive a function with at least 2 parameters for one",
-			func() { MakeTypedExport(a, "one") },
-		)
-	})
-
-	t.Run("too little return parameters", func(t *testing.T) {
-		assert := assert.New(t)
-
-		a := NewMockActor(map[string]*FunctionSignature{
-			"three": {
-				Params: []abi.Type{},
-				Return: nil,
-			},
-		})
-		assert.PanicsWithValue(
-			"MakeTypedExport must receive a function that returns (uint8, error) for three",
-			func() { MakeTypedExport(a, "three") },
-		)
-	})
-
-	t.Run("wrong return parameters", func(t *testing.T) {
-		assert := assert.New(t)
-
-		a := NewMockActor(map[string]*FunctionSignature{
-			"two": {
-				Params: []abi.Type{},
-				Return: []abi.Type{abi.Bytes},
-			},
-		})
-		assert.PanicsWithValue(
-			"MakeTypedExport must receive a function that returns ([]byte, uint8, error) for two",
-			func() { MakeTypedExport(a, "two") },
-		)
-	})
+	}
 }
 
 func TestMarshalValue(t *testing.T) {

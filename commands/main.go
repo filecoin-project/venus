@@ -7,7 +7,6 @@ import (
 	"os"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
-	cmdcli "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/cli"
 	cmdhttp "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
@@ -72,12 +71,7 @@ func init() {
 
 // Run processes the arguments and stdin
 func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
-	err := cmdcli.Run(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
-	if err != nil {
-		return 1, err
-	}
-
-	return 0, nil
+	return CliRun(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 }
 
 func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {

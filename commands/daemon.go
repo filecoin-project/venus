@@ -16,6 +16,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
+// exposed here, to be available during testing
+var sigCh = make(chan os.Signal, 1)
+
 var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Start a long-running daemon-process",
@@ -40,9 +43,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		return
 	}
 
-	fmt.Println("My peer ID is", fcn.Host.ID().Pretty())
+	re.Emit(fmt.Sprintf("My peer ID is %s", fcn.Host.ID().Pretty())) // nolint: errcheck
 	for _, a := range fcn.Host.Addrs() {
-		fmt.Println("Swarm listening on", a)
+		re.Emit(fmt.Sprintf("Swarm listening on: %s", a)) // nolint: errcheck
 	}
 
 	if err := runAPIAndWait(req.Context, fcn, api); err != nil {
@@ -66,9 +69,8 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 
 	handler := cmdhttp.NewHandler(servenv, rootCmd, cfg)
 
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt)
-	defer signal.Stop(sigc)
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
 
 	apiserv := http.Server{
 		Addr:    api,
@@ -76,10 +78,13 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 	}
 
 	go func() {
-		panic(http.ListenAndServe(api, handler))
+		err := apiserv.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
 	}()
 
-	<-sigc
+	<-sigCh
 	fmt.Println("Got interrupt, shutting down...")
 
 	// allow 5 seconds for clean shutdown. Ideally it would never take this long.

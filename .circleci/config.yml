@@ -2,12 +2,32 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.10
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     steps:
       - checkout
 
-      - run: go run ./build/*.go deps
-      - run: go run ./build/*.go test -cover
-      - run: go run ./build/*.go lint
+      - restore_cache:
+          key: v1-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+
+      - run:
+          name: Install Dependencies
+          command: go run ./build/*.go deps
+
+      - save_cache:
+          key: v1-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+          paths:
+            - "/go/pkg"
+            - "/go/src/gx" # gx deps
+      - run:
+          name: Build
+          command: go run ./build/*.go build
+      - run:
+          name: Test
+          command: |
+            go run ./build/*.go test -covermode=atomic -coverprofile=coverage.txt &&
+            bash <(curl -s https://codecov.io/bash)
+      - run:
+          name: Lint
+          command: go run ./build/*.go lint

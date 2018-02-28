@@ -15,8 +15,10 @@ import (
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
+// HelloProtocol is the libp2p protocol identifier for the hello protocol.
 const HelloProtocol = "/fil/hello/1.0.0"
 
+// HelloMsg is the data structure of a single message in the hello protocol.
 type HelloMsg struct {
 	BestBlockCid    *cid.Cid
 	BestBlockHeight uint64
@@ -62,7 +64,7 @@ func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getBestBlock
 }
 
 func (h *Hello) handleNewStream(s net.Stream) {
-	defer s.Close()
+	defer s.Close() // nolint: errcheck
 
 	from := s.Conn().RemotePeer()
 
@@ -83,6 +85,7 @@ func (h *Hello) handleNewStream(s net.Stream) {
 	}
 }
 
+// ErrBadGenesis is the error returned when a missmatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 func (h *Hello) processHelloMessage(from peer.ID, msg *HelloMsg) error {
@@ -109,7 +112,7 @@ func (h *Hello) sayHello(ctx context.Context, p peer.ID) error {
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer s.Close() // nolint: errcheck
 
 	msg := h.getOurHelloMessage()
 

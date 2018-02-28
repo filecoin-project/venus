@@ -94,13 +94,19 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 // way that ethereum does.  Note that this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *VMContext) AddressForNewActor() types.Address {
+func (ctx *VMContext) AddressForNewActor() (types.Address, error) {
 	return computeActorAddress(ctx.message.From, ctx.from.Nonce)
 }
 
-func computeActorAddress(creator types.Address, nonce uint64) types.Address {
+func computeActorAddress(creator types.Address, nonce uint64) (types.Address, error) {
 	h := sha256.New()
-	h.Write([]byte(creator))
-	binary.Write(h, binary.BigEndian, nonce)
-	return types.Address(h.Sum(nil))
+
+	if _, err := h.Write([]byte(creator)); err != nil {
+		return types.Address(""), err
+	}
+	if err := binary.Write(h, binary.BigEndian, nonce); err != nil {
+		return types.Address(""), err
+	}
+
+	return types.Address(h.Sum(nil)), nil
 }

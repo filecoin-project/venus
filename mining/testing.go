@@ -24,7 +24,7 @@ func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, st t
 	return
 }
 
-type mockAddNewBlockFunc struct {
+type mockAddNewBlockFunc struct { // nolint: deadcode
 	Called bool
 	Arg    *types.Block
 }

@@ -104,7 +104,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	bs := bstore.NewBlockstore(nc.Datastore)
 
 	// no content routing yet...
-	routing, _ := nonerouting.ConstructNilRouting(nil, nil, nil)
+	routing, _ := nonerouting.ConstructNilRouting(ctx, nil, nil)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(host, routing)

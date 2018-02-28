@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPing2Nodes(t *testing.T) {
+func TestSwarmConnectPeers(t *testing.T) {
 	assert := assert.New(t)
 
 	args := []string{
@@ -19,22 +19,21 @@ func TestPing2Nodes(t *testing.T) {
 		id1 := getID(t, ":4444")
 		id2 := getID(t, ":4445")
 
-		t.Log("[failure] not connected")
-		ping0 := run(fmt.Sprintf("go-filecoin ping --count 2 --cmdapiaddr=:4444 %s", id2))
-		assert.NoError(ping0.Error)
-		assert.Equal(ping0.Code, 1)
-		assert.Contains(ping0.ReadStderr(), "failed to dial")
-		assert.Empty(ping0.ReadStdout())
+		t.Log("[failure] invalid peer")
+		fail := run("go-filecoin swarm connect --cmdapiaddr=:4444 /ip4/hello")
+		assert.NoError(fail.Error)
+		assert.Equal(fail.Code, 1)
+		assert.Contains(fail.ReadStderr(), "invalid peer address")
 
 		_ = runSuccess(t, fmt.Sprintf("go-filecoin swarm connect --cmdapiaddr=:4444 /ip4/127.0.0.1/tcp/6001/ipfs/%s", id2))
-		ping1 := runSuccess(t, fmt.Sprintf("go-filecoin ping --count 2 --cmdapiaddr=:4444 %s", id2))
-		ping2 := runSuccess(t, fmt.Sprintf("go-filecoin ping --count 2 --cmdapiaddr=:4445 %s", id1))
+		peers1 := runSuccess(t, "go-filecoin swarm peers --cmdapiaddr=:4444")
+		peers2 := runSuccess(t, "go-filecoin swarm peers --cmdapiaddr=:4445")
 
 		t.Log("[success] 1 -> 2")
-		assert.Contains(ping1.ReadStdout(), "Pong received")
+		assert.Contains(peers1.ReadStdout(), id2)
 
 		t.Log("[success] 2 -> 1")
-		assert.Contains(ping2.ReadStdout(), "Pong received")
+		assert.Contains(peers2.ReadStdout(), id1)
 	})
 	for _, d := range ds {
 		assert.NoError(d.Error)

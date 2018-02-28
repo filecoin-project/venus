@@ -108,6 +108,7 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
+// GetGenesisCid returns the cid of the current genesis block.
 func (s *ChainManager) GetGenesisCid() *cid.Cid {
 	return s.genesisCid
 }

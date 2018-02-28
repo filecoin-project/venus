@@ -58,7 +58,7 @@ var minerGenBlockCmd = &cmds.Command{
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-		re.Emit(nextCid)
+		re.Emit(nextCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

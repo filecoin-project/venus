@@ -74,7 +74,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
 	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil, errors.New("boom ProcessBlock failed"))
-	b, err = g.Generate(context.Background(), &parent, mst)
+	_, err = g.Generate(context.Background(), &parent, mst)
 	if assert.Error(err) {
 		assert.Contains(err.Error(), "ProcessBlock")
 	}
@@ -86,7 +86,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	processBlock = mpb.ProcessBlock
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return([]*types.MessageReceipt{}, nil)
 	mst.On("Flush", context.Background()).Return(nil, errors.New("boom tree.Flush failed"))
-	b, err = g.Generate(context.Background(), &parent, mst)
+	_, err = g.Generate(context.Background(), &parent, mst)
 	if assert.Error(err) {
 		assert.Contains(err.Error(), "Flush")
 	}

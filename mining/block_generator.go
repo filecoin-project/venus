@@ -7,9 +7,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// processBlockFunc is a signature that makes it easier to test Generate().
-type processBlockFunc func(context.Context, *types.Block, types.StateTree) ([]*types.MessageReceipt, error)
-
 // processBlock is the functoin that does the block processing.
 var processBlock = core.ProcessBlock
 

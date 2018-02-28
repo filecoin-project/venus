@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"io"
 	"math/big"
 
@@ -32,7 +31,10 @@ var sendMsgCmd = &cmds.Command{
 			return
 		}
 
-		val := req.Options["value"].(int)
+		val, ok := req.Options["value"].(int)
+		if !ok {
+			val = 0
+		}
 
 		from, _ := req.Options["from"].(string)
 		var fromAddr types.Address
@@ -69,8 +71,7 @@ var sendMsgCmd = &cmds.Command{
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			_, err := fmt.Fprintln(w, c.String())
-			return err
+			return PrintString(w, c)
 		}),
 	},
 }

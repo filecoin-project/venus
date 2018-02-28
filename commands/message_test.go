@@ -1,35 +1,39 @@
 package commands
 
 import (
-	"context"
+	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
-type msi map[string]interface{}
-
 func TestMessageSend(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert := assert.New(t)
 
-	nd, err := node.New(ctx)
-	assert.NoError(err)
-	defer nd.Stop()
+	d := withDaemon(func() {
+		t.Log("[failure] invalid target")
+		fail := run(fmt.Sprintf("go-filecoin send-message --from %s --value 10 xyz", types.Address("filecoin")))
+		assert.Equal(fail.Code, 1)
+		assert.NoError(fail.Error)
+		assert.Contains(fail.ReadStderr(), "addresses must start with 0x")
 
-	out, err := testhelpers.RunCommand(sendMsgCmd, []string{"0xf00ba4"}, msi{"value": 100, "from": "0x123456"}, &Env{node: nd})
-	assert.NoError(err)
+		t.Log("[failure] no from and no addresses")
+		fail = run(fmt.Sprintf("go-filecoin send-message %s", types.Address("investor1")))
+		assert.Equal(fail.Code, 1)
+		assert.NoError(fail.Error)
+		assert.Contains(fail.ReadStderr(), "no addresses in local wallet")
 
-	pending := nd.MsgPool.Pending()
-	assert.Len(pending, 1)
-	assert.Equal(pending[0].From.String(), "0x123456")
+		t.Log("[success] no from")
+		_ = runSuccess(t, "go-filecoin wallet addrs new")
+		_ = runSuccess(t, fmt.Sprintf("go-filecoin send-message %s", types.Address("investor1")))
 
-	c, err := pending[0].Cid()
-	assert.NoError(err)
-	assert.NoError(out.HasLine(c.String()))
+		t.Log("[success] with from")
+		_ = runSuccess(t, fmt.Sprintf("go-filecoin send-message --from %s %s", types.Address("filecoin"), types.Address("investor1")))
+
+		t.Log("[success] with from and value")
+		_ = runSuccess(t, fmt.Sprintf("go-filecoin send-message --from %s --value 10 %s", types.Address("filecoin"), types.Address("investor1")))
+	})
+	assert.NoError(d.Error)
+	assert.Equal(d.Code, 0)
 }

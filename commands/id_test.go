@@ -1,25 +1,37 @@
 package commands
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
 func TestId(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	nd, err := node.New(ctx)
-	assert.NoError(err)
-	defer nd.Stop()
 
-	out, err := testhelpers.RunCommand(idCmd, nil, nil, &Env{node: nd})
-	assert.NoError(err)
+	runWithDaemon("go-filecoin id", func(id *output) {
+		assert.NoError(id.Error)
+		assert.Equal(id.Code, 0)
+		assert.Empty(id.ReadStderr())
 
-	assert.Contains(out.Raw, nd.Host.ID().Pretty())
+		idContent := id.ReadStdout()
+		assert.Containsf(idContent, "/ip4/127.0.0.1/tcp/6000/ipfs/", "default addr")
+		assert.Contains(idContent, "ID")
+	})
+}
+
+func TestIdFormat(t *testing.T) {
+	assert := assert.New(t)
+
+	runWithDaemon("go-filecoin id --format=\"<id>\\t<aver>\\t<pver>\\t<pubkey>\\n<addrs>\"", func(id *output) {
+		assert.NoError(id.Error)
+		assert.Equal(id.Code, 0)
+		assert.Empty(id.ReadStderr())
+
+		idContent := id.ReadStdout()
+		assert.Contains(idContent, "\t")
+		assert.Contains(idContent, "\n")
+		assert.Containsf(idContent, "/ip4/127.0.0.1/tcp/6000/ipfs/", "default addr")
+		assert.NotContains(idContent, "ID")
+	})
 }

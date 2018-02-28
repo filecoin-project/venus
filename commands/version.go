@@ -14,7 +14,8 @@ var versionCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show go-filecoin version information",
 	},
-	Run: versionRun,
+	Run:  versionRun,
+	Type: versionOutput{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vo *versionOutput) error {
 			_, err := fmt.Fprintf(w, "commit: %s\n", vo.Commit)
