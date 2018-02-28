@@ -204,7 +204,10 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 // ret, err := WithStorage(ctx, &st, func() (interface{}, error) {
 //   fmt.Println("hey look, my storage is loaded: ", st)
 //   return st.Thing, nil
-// }
+// })
+//
+// Note that if 'f' returns an error, modifications to the storage are not
+// saved.
 func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
 	if err := UnmarshalStorage(ctx.ReadStorage(), st); err != nil {
 		return nil, err

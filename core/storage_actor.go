@@ -20,6 +20,9 @@ func init() {
 	cbor.RegisterCborType(struct{}{})
 }
 
+// StorageMarketActor implements the filecoin storage market. It is responsible
+// for starting up new miners, adding bids, asks and deals. It also exposes the
+// power table used to drive filecoin consensus.
 type StorageMarketActor struct{}
 
 type StorageMarketStorage struct {
