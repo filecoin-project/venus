@@ -12,8 +12,10 @@ func init() {
 	cbor.RegisterCborType(MinerStorage{})
 }
 
+// MinerActor is the miner actor
 type MinerActor struct{}
 
+// MinerStorage is the miner actors storage
 type MinerStorage struct {
 	Owner types.Address
 
@@ -31,6 +33,7 @@ type MinerStorage struct {
 
 var _ ExecutableActor = (*MinerActor)(nil)
 
+// NewMinerActor returns a new miner actor
 func NewMinerActor(owner types.Address, pledge *big.Int, coll *big.Int) (*types.Actor, error) {
 	st := &MinerStorage{
 		Owner:       owner,
@@ -46,6 +49,7 @@ func NewMinerActor(owner types.Address, pledge *big.Int, coll *big.Int) (*types.
 	return types.NewActorWithMemory(types.MinerActorCodeCid, nil, storageBytes), nil
 }
 
+// Exports just panics
 func (ma *MinerActor) Exports() Exports {
 	panic("TODO")
 }

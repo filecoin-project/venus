@@ -60,8 +60,7 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := ctx.state.GetOrCreateActor(context.Background(), msg.To, func() (*types.Actor, error) {
-		log.Error("CREATING ACCOUNT ACTOR")
+	toActor, err := ctx.state.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
 		return NewAccountActor(nil)
 	})
 	if err != nil {

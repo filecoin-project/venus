@@ -23,7 +23,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	msg := types.NewMessage(testAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(10000)})
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(10000)})
 
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)
@@ -57,7 +57,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	msg := types.NewMessage(testAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(50)})
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", []interface{}{big.NewInt(50)})
 
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)
