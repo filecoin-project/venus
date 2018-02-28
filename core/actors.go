@@ -45,7 +45,10 @@ type FunctionSignature struct {
 
 func init() {
 	// Instance Actors
+	// TODO: these should probably not be direct instances, but constructors for the actors
 	BuiltinActors[types.AccountActorCodeCid.KeyString()] = &AccountActor{}
+	BuiltinActors[types.StorageMarketActorCodeCid.KeyString()] = &StorageMarketActor{}
+	BuiltinActors[types.MinerActorCodeCid.KeyString()] = &MinerActor{}
 }
 
 // LoadCode fetches the code referenced by the passed in CID.
@@ -168,11 +171,13 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 func marshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
-		return val.(*big.Int).Bytes(), nil
+		return t.Bytes(), nil
 	case []byte:
-		return val.([]byte), nil
+		return t, nil
 	case string:
-		return []byte(val.(string)), nil
+		return []byte(t), nil
+	case types.Address:
+		return []byte(t), nil
 	default:
 		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
 	}
@@ -189,4 +194,38 @@ func MarshalStorage(in interface{}) ([]byte, error) {
 // UnmarshalStorage decodes the passed in bytes into the given object.
 func UnmarshalStorage(raw []byte, to interface{}) error {
 	return cbor.DecodeInto(raw, to)
+}
+
+// WithStorage is a helper method that makes dealing with storage serialization
+// easier for implementors.
+// It is designed to be used like:
+//
+// var st MyStorage
+// ret, err := WithStorage(ctx, &st, func() (interface{}, error) {
+//   fmt.Println("hey look, my storage is loaded: ", st)
+//   return st.Thing, nil
+// })
+//
+// Note that if 'f' returns an error, modifications to the storage are not
+// saved.
+func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
+	if err := UnmarshalStorage(ctx.ReadStorage(), st); err != nil {
+		return nil, err
+	}
+
+	ret, err := f()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := MarshalStorage(st)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ctx.WriteStorage(data); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }

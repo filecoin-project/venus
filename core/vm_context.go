@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -58,12 +60,36 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := ctx.state.GetOrCreateActor(context.Background(), msg.To, func() (*types.Actor, error) {
+	toActor, err := ctx.state.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
 		return NewAccountActor(nil)
 	})
 	if err != nil {
 		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 
-	return Send(context.Background(), fromActor, toActor, msg, ctx.state)
+	out, ret, err := Send(context.Background(), fromActor, toActor, msg, ctx.state)
+	if err != nil {
+		return nil, ret, err
+	}
+
+	if err := ctx.state.SetActor(context.TODO(), to, toActor); err != nil {
+		return nil, 1, errors.Wrapf(err, "failed to write actor after send")
+	}
+
+	return out, ret, nil
+}
+
+// AddressForNewActor creates computes the address for a new actor in the same
+// way that ethereum does.  Note that this will not work if we allow the
+// creation of multiple contracts in a given invocation (nonce will remain the
+// same, resulting in the same address back)
+func (ctx *VMContext) AddressForNewActor() types.Address {
+	return computeActorAddress(ctx.message.From, ctx.from.Nonce)
+}
+
+func computeActorAddress(creator types.Address, nonce uint64) types.Address {
+	h := sha256.New()
+	h.Write([]byte(creator))
+	binary.Write(h, binary.BigEndian, nonce)
+	return types.Address(h.Sum(nil))
 }
