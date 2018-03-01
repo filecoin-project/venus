@@ -29,9 +29,9 @@ type StorageMarketActor struct{}
 
 // StorageMarketStorage is the storage markets storage
 type StorageMarketStorage struct {
-	Miners map[types.Address]struct{}
+	Miners types.AddrSet
 
-	Asks      map[uint64]Ask
+	Asks      AskSet
 	NextAskID uint64
 }
 
@@ -40,8 +40,8 @@ var _ ExecutableActor = (*StorageMarketActor)(nil)
 // NewStorageMarketActor returns a new storage market actor
 func NewStorageMarketActor() (*types.Actor, error) {
 	initStorage := &StorageMarketStorage{
-		Miners: make(map[types.Address]struct{}),
-		Asks:   make(map[uint64]Ask),
+		Miners: make(types.AddrSet),
+		Asks:   make(AskSet),
 	}
 	storageBytes, err := MarshalStorage(initStorage)
 	if err != nil {
@@ -120,7 +120,8 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 		askID := storage.NextAskID
 		storage.NextAskID++
 
-		storage.Asks[askID] = Ask{
+		storage.Asks[askID] = &Ask{
+			ID:    askID,
 			Price: price,
 			Size:  size,
 			Miner: miner,
