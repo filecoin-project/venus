@@ -4,7 +4,7 @@
 [![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg&circle-token=5a9d1cb48788b41d98bdfbc8b15298816ec71fea)](https://circleci.com/gh/filecoin-project/go-filecoin)
 
 Filecoin is a decentralized storage network that turns cloud storage into an algorithmic market. The
-market runs on a blockchain with a native protocol token (also called “Filecoin”), which miners earn
+market runs on a blockchain with a native protocol token (also called “filecoin” or FIL), which miners earn
 by providing storage to clients.
 
 ## Development
