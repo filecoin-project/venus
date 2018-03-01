@@ -64,6 +64,7 @@ func (ma *MinerActor) Exports() Exports {
 	return minerExports
 }
 
+// AddAsk adds an ask via this miner to the storage markets orderbook
 func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
 	var mstore MinerStorage
 	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {

@@ -49,8 +49,8 @@ func TestAddAsk(t *testing.T) {
 
 	var strgMktStorage StorageMarketStorage
 	assert.NoError(UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage))
-	assert.Len(strgMktStorage.Asks, 1)
-	assert.Equal(outAddr, strgMktStorage.Asks[0].Miner)
+	assert.Len(strgMktStorage.Orderbook.Asks, 1)
+	assert.Equal(outAddr, strgMktStorage.Orderbook.Asks[0].Owner)
 
 	miner, err := st.GetActor(ctx, outAddr)
 	assert.NoError(err)
@@ -72,8 +72,8 @@ func TestAddAsk(t *testing.T) {
 
 	var strgMktStorage2 StorageMarketStorage
 	assert.NoError(UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage2))
-	assert.Len(strgMktStorage2.Asks, 2)
-	assert.Equal(outAddr, strgMktStorage2.Asks[1].Miner)
+	assert.Len(strgMktStorage2.Orderbook.Asks, 2)
+	assert.Equal(outAddr, strgMktStorage2.Orderbook.Asks[1].Owner)
 
 	miner, err = st.GetActor(ctx, outAddr)
 	assert.NoError(err)
@@ -81,4 +81,11 @@ func TestAddAsk(t *testing.T) {
 	var minerStorage2 MinerStorage
 	assert.NoError(UnmarshalStorage(miner.ReadStorage(), &minerStorage2))
 	assert.Equal(big.NewInt(350), minerStorage2.LockedStorage)
+
+	// now try to create an ask larger than our pledge
+	pdata = mustConvertParams([]interface{}{big.NewInt(55), big.NewInt(9900)})
+	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
+
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.EqualError(err, "failed to send message: not enough pledged storage for new ask")
 }

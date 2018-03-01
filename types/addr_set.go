@@ -11,6 +11,7 @@ func init() {
 	cbor.RegisterCborType(addrSetEntry)
 }
 
+// AddrSet is a set of addresses
 type AddrSet map[Address]struct{}
 
 var addrSetEntry = atlas.BuildEntry(AddrSet{}).Transform().

@@ -31,8 +31,7 @@ type StorageMarketActor struct{}
 type StorageMarketStorage struct {
 	Miners types.AddrSet
 
-	Asks      AskSet
-	NextAskID uint64
+	Orderbook *Orderbook
 }
 
 var _ ExecutableActor = (*StorageMarketActor)(nil)
@@ -41,7 +40,9 @@ var _ ExecutableActor = (*StorageMarketActor)(nil)
 func NewStorageMarketActor() (*types.Actor, error) {
 	initStorage := &StorageMarketStorage{
 		Miners: make(types.AddrSet),
-		Asks:   make(AskSet),
+		Orderbook: &Orderbook{
+			Asks: make(AskSet),
+		},
 	}
 	storageBytes, err := MarshalStorage(initStorage)
 	if err != nil {
@@ -106,6 +107,8 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 	return ret.(types.Address), 0, nil
 }
 
+// AddAsk adds an ask order to the orderbook. Must be called by a miner created
+// by this storage market actor
 func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
@@ -117,14 +120,14 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 			return nil, fmt.Errorf("unknown miner: %s", miner)
 		}
 
-		askID := storage.NextAskID
-		storage.NextAskID++
+		askID := storage.Orderbook.NextAskID
+		storage.Orderbook.NextAskID++
 
-		storage.Asks[askID] = &Ask{
+		storage.Orderbook.Asks[askID] = &Ask{
 			ID:    askID,
 			Price: price,
 			Size:  size,
-			Miner: miner,
+			Owner: miner,
 		}
 
 		return big.NewInt(0).SetUint64(askID), nil
