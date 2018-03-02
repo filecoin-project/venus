@@ -54,6 +54,8 @@ type ChainManager struct {
 	bestBlock struct {
 		sync.Mutex
 		blk *types.Block
+		// If ch is not nil we'll send new blocks on it when we accept them.
+		ch chan<- *types.Block
 	}
 
 	processor Processor
@@ -72,7 +74,7 @@ type ChainManager struct {
 	cstore *hamt.CborIpldStore
 }
 
-// NewChainManager creates a new filecoin chain manager
+// NewChainManager creates a new filecoin chain manager.
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
 		cstore:    cs,
@@ -92,11 +94,23 @@ func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 
 	s.genesisCid = genesis.Cid()
 
+	s.bestBlock.Lock()
+	defer s.bestBlock.Unlock()
 	return s.setBestBlock(ctx, genesis)
+}
+
+// SetBestBlockCh provides the chain manager with a channel into which
+// it will send newly accepted best blocks. Ordering is not guaranteed.
+// TODO guarantee ordering!
+func (s *ChainManager) SetBestBlockCh(bestBlockCh chan<- *types.Block) {
+	s.bestBlock.Lock()
+	defer s.bestBlock.Unlock()
+	s.bestBlock.ch = bestBlockCh
 }
 
 // setBestBlock sets the best block. Should be used to either to set the
 // genesis block, or to manually set the current selected chain for testing.
+// CALLER MUST HOLD THE bestBlock LOCK.
 func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
@@ -104,6 +118,12 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	}
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
+
+	if s.bestBlock.ch != nil {
+		// The goroutine will execute out of scope of the lock, so copy ch.
+		bbCh := s.bestBlock.ch
+		go func() { bbCh <- b }()
+	}
 
 	return nil
 }
@@ -121,6 +141,8 @@ func (s *ChainManager) GetBestBlock() *types.Block {
 }
 
 func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+	// We have to hold the lock at this level to avoid TOCTOU problems
+	// with the new best block.
 	s.bestBlock.Lock()
 	defer s.bestBlock.Unlock()
 	if blk.Score() <= s.bestBlock.blk.Score() {
@@ -146,7 +168,8 @@ func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (B
 	}
 }
 
-// acceptNewBestBlock sets the given block as our current 'best chain' block
+// acceptNewBestBlock sets the given block as our current 'best chain' block.
+// CALLER MUST HOLD THE bestBlock LOCK.
 func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
 	if err := s.setBestBlock(ctx, blk); err != nil {
 		return Unknown, err
@@ -304,4 +327,14 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 		log.Error("processing new block: ", err)
 		return
 	}
+}
+
+// ChainManagerForTest provides backdoor access to internal fields to make
+// testing easier. You are a bad person if you use this outside of a test.
+type ChainManagerForTest = ChainManager
+
+// SetBestBlockForTest enables setting the best block directly. Don't
+// use this outside of a testing context.
+func (s *ChainManagerForTest) SetBestBlockForTest(ctx context.Context, b *types.Block) error {
+	return s.setBestBlock(ctx, b)
 }

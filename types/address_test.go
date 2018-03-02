@@ -28,12 +28,12 @@ func TestParseAddress(t *testing.T) {
 		t.Run(fmt.Sprintf("(%t) %s -> %s", tc.error != nil, tc.input, tc.output), func(t *testing.T) {
 			assert := assert.New(t)
 
-			expected, err := ParseAddress(tc.input)
+			got, err := ParseAddress(tc.input)
 			if tc.error == nil {
 				assert.NoError(err)
 			} else {
-				assert.Equal(err.Error(), tc.error.Error())
-				assert.Equal(expected, tc.output)
+				assert.Equal(tc.error.Error(), err.Error())
+				assert.Equal(tc.output, got)
 			}
 		})
 	}

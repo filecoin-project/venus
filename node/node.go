@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
@@ -14,6 +16,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	nonerouting "gx/ipfs/QmZRcGYvxdauCd7hHnMYLYqcZRaDjv24c7eUNyJojAcdBb/go-ipfs-routing/none"
 	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	bserv "github.com/ipfs/go-ipfs/blockservice"
 	exchange "github.com/ipfs/go-ipfs/exchange"
@@ -21,10 +24,12 @@ import (
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/mining"
+	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-var log = logging.Logger("node")
+var log = logging.Logger("node") // nolint: deadcode
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -34,6 +39,11 @@ type Node struct {
 	MsgPool  *core.MessagePool
 
 	Wallet *wallet.Wallet
+
+	// Mining stuff.
+	MiningWorker mining.Worker
+	cancelMining context.CancelFunc
+	miningDoneWg sync.WaitGroup
 
 	// Network Fields
 	PubSub     *floodsub.PubSub
@@ -112,9 +122,18 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	bserv := bserv.New(bs, bswap)
 
-	cst := &hamt.CborIpldStore{bserv}
+	cst := &hamt.CborIpldStore{Blocks: bserv}
 
 	chainMgr := core.NewChainManager(cst)
+
+	msgPool := core.NewMessagePool()
+
+	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
+	// to simulate the work of generating proofs.
+	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
+		return types.LoadStateTree(ctx, cst, cid)
+	}, core.ProcessBlock)
+	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
 	// TODO: load state from disk
 	if err := chainMgr.Genesis(ctx, core.InitGenesis); err != nil {
@@ -131,16 +150,17 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	return &Node{
-		CborStore: cst,
-		ChainMgr:  chainMgr,
-		Datastore: nc.Datastore,
-		Exchange:  bswap,
-		HelloSvc:  hello,
-		Host:      host,
-		MsgPool:   core.NewMessagePool(),
-		Ping:      pinger,
-		PubSub:    fsub,
-		Wallet:    wallet.New(),
+		CborStore:    cst,
+		ChainMgr:     chainMgr,
+		Datastore:    nc.Datastore,
+		Exchange:     bswap,
+		HelloSvc:     hello,
+		Host:         host,
+		MiningWorker: miningWorker,
+		MsgPool:      msgPool,
+		Ping:         pinger,
+		PubSub:       fsub,
+		Wallet:       wallet.New(),
 	}, nil
 }
 
@@ -183,4 +203,68 @@ func (node *Node) Stop() {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 	fmt.Println("stopping filecoin :(")
+}
+
+// How long the node's mining Worker should sleep after it
+// generates a new block.
+const mineSleepTime = 20 * time.Second
+
+type newBlockFunc func(context.Context, *types.Block)
+
+// StartMining starts the mining worker. The method is separated
+// into two pieces so we can capture the output of the worker in
+// tests.
+// TODO make Start/StopMining safe to call multiple times.
+func (node *Node) StartMining(ctx context.Context) {
+	node.startMining(ctx, func(ctx context.Context, b *types.Block) {
+		if err := node.AddNewBlock(ctx, b); err != nil {
+			// Not really an error; a better block could have
+			// arrived while mining.
+			log.Warningf("Error adding new mined block: %s", err.Error())
+		}
+	})
+}
+
+func (node *Node) startMining(ctx context.Context, newBlock newBlockFunc) {
+	miningCtx, cancel := context.WithCancel(ctx)
+	node.cancelMining = cancel
+	inCh, outCh, workerDoneWg := node.MiningWorker.Start(miningCtx)
+
+	// Wire up the mining input.
+	go func() { inCh <- node.ChainMgr.GetBestBlock() }()
+	node.ChainMgr.SetBestBlockCh(inCh)
+
+	// Wire up the mining output.
+	node.miningDoneWg.Add(1)
+	go func() {
+		// When this goroutine exits wait for the worker to fully exit
+		// and then signal our exit on miningDoneWg.
+		defer func() {
+			workerDoneWg.Wait()
+			node.miningDoneWg.Done()
+		}()
+		for {
+			select {
+			case <-miningCtx.Done():
+				return
+			case result := <-outCh:
+				if result.Err != nil {
+					log.Errorf("Problem mining a block: %s", result.Err.Error())
+				} else {
+					node.miningDoneWg.Add(1)
+					go func() {
+						newBlock(miningCtx, result.NewBlock)
+						node.miningDoneWg.Done()
+					}()
+				}
+			}
+		}
+	}()
+}
+
+// StopMining stops the node's mining.Worker and waits for it to exit.
+func (node *Node) StopMining() {
+	node.ChainMgr.SetBestBlockCh(nil)
+	node.cancelMining()
+	node.miningDoneWg.Wait()
 }
