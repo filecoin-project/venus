@@ -163,7 +163,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with at least 2 parameters for one",
+			Error:  "MakeTypedExport must receive a function with 2 parameters for one",
 			Method: "one",
 		},
 		{

@@ -18,12 +18,27 @@ type Orderbook struct {
 	Asks AskSet
 	// NextAskID is the ID that will be assigned to the next ask that is created
 	NextAskID uint64
+
+	Bids      BidSet
+	NextBidID uint64
 }
 
 // Ask is a storage market ask order.
 type Ask struct {
 	Price *big.Int
 	Size  *big.Int
+	Owner types.Address
+	ID    uint64
+}
+
+// Bid is a storage market bid order.
+type Bid struct {
+	//Expiry *big.Int
+	Price *big.Int
+	Size  *big.Int
+	//Duration *big.Int
+	Collateral *big.Int
+	//Coding ???
 	Owner types.Address
 	ID    uint64
 }

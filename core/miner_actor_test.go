@@ -13,7 +13,7 @@ import (
 )
 
 func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, collateral int64) types.Address {
-	pdata := mustConvertParams([]interface{}{big.NewInt(10000)})
+	pdata := mustConvertParams(big.NewInt(10000))
 	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
 
 	receipt, err := ApplyMessage(context.Background(), st, msg)
@@ -37,7 +37,7 @@ func TestAddAsk(t *testing.T) {
 	outAddr := createTestMiner(assert, st, 10000, 500)
 
 	// make an ask, and then make sure it all looks good
-	pdata := mustConvertParams([]interface{}{big.NewInt(100), big.NewInt(150)})
+	pdata := mustConvertParams(big.NewInt(100), big.NewInt(150))
 	msg := types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	receipt, err := ApplyMessage(ctx, st, msg)
@@ -60,7 +60,7 @@ func TestAddAsk(t *testing.T) {
 	assert.Equal(big.NewInt(150), minerStorage.LockedStorage)
 
 	// make another ask!
-	pdata = mustConvertParams([]interface{}{big.NewInt(110), big.NewInt(200)})
+	pdata = mustConvertParams(big.NewInt(110), big.NewInt(200))
 	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	receipt, err = ApplyMessage(ctx, st, msg)
@@ -83,7 +83,7 @@ func TestAddAsk(t *testing.T) {
 	assert.Equal(big.NewInt(350), minerStorage2.LockedStorage)
 
 	// now try to create an ask larger than our pledge
-	pdata = mustConvertParams([]interface{}{big.NewInt(55), big.NewInt(9900)})
+	pdata = mustConvertParams(big.NewInt(55), big.NewInt(9900))
 	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	_, err = ApplyMessage(ctx, st, msg)

@@ -19,8 +19,8 @@ const TestAccount = types.Address("satoshi")
 const NetworkAccount = types.Address("filecoin")
 
 var defaultAccounts = map[types.Address]int64{
-	NetworkAccount: 100000,
-	TestAccount:    500,
+	NetworkAccount: 10000000,
+	TestAccount:    50000,
 }
 
 // StorageMarketAddress is the hard-coded address of the filecoin storage market

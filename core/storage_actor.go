@@ -42,6 +42,7 @@ func NewStorageMarketActor() (*types.Actor, error) {
 		Miners: make(types.AddrSet),
 		Orderbook: &Orderbook{
 			Asks: make(AskSet),
+			Bids: make(BidSet),
 		},
 	}
 	storageBytes, err := MarshalStorage(initStorage)
@@ -62,6 +63,10 @@ var storageMarketExports = Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.Integer},
+		Return: []abi.Type{abi.Integer},
+	},
+	"addBid": &FunctionSignature{
 		Params: []abi.Type{abi.Integer, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
@@ -142,4 +147,37 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 	}
 
 	return askID, 0, nil
+}
+
+func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+	var storage StorageMarketStorage
+	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+		lockedFunds := big.NewInt(0).Mul(price, size)
+		if ctx.Message().Value.Cmp(lockedFunds) < 0 {
+			fmt.Println(lockedFunds, ctx.Message().Value)
+			return nil, fmt.Errorf("must send price * size funds to create bid")
+		}
+
+		bidID := storage.Orderbook.NextBidID
+		storage.Orderbook.NextBidID++
+
+		storage.Orderbook.Bids[bidID] = &Bid{
+			ID:    bidID,
+			Price: price,
+			Size:  size,
+			Owner: ctx.Message().From,
+		}
+
+		return big.NewInt(0).SetUint64(bidID), nil
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	bidID, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+	}
+
+	return bidID, 0, nil
 }

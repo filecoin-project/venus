@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func mustConvertParams(params []interface{}) []byte {
+func mustConvertParams(params ...interface{}) []byte {
 	vals, err := abi.ToValues(params)
 	if err != nil {
 		panic(err)
@@ -37,12 +37,11 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	pdata := mustConvertParams([]interface{}{big.NewInt(10000)})
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
-
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)
 
+	pdata := mustConvertParams(big.NewInt(10000))
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
@@ -72,12 +71,50 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	pdata := mustConvertParams([]interface{}{big.NewInt(50)})
+	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	assert.NoError(err)
+
+	pdata := mustConvertParams(big.NewInt(50))
 	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
+	_, err = ApplyMessage(ctx, st, msg)
+	assert.Equal(ErrPledgeTooLow, errors.Cause(err))
+}
+
+func TestStorageMarketAddBid(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := InitGenesis(cst)
+	assert.NoError(err)
 
 	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
 	assert.NoError(err)
 
-	_, err = ApplyMessage(ctx, st, msg)
-	assert.Equal(ErrPledgeTooLow, errors.Cause(err))
+	// create a bid
+	pdata := mustConvertParams(big.NewInt(20), big.NewInt(30))
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(600), "addBid", pdata)
+	receipt, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+
+	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(receipt.Return))
+
+	// create another bid
+	pdata = mustConvertParams(big.NewInt(15), big.NewInt(80))
+	msg = types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(1200), "addBid", pdata)
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+
+	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(receipt.Return))
+
+	// try to create a bid, but send wrong value
+	pdata = mustConvertParams(big.NewInt(90), big.NewInt(100))
+	msg = types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(600), "addBid", pdata)
+	_, err = ApplyMessage(ctx, st, msg) // TODO: apply message shouldnt error
+	// here. This invocation should be valid, it should just return a non-zero
+	// exit code and an error message in the receipt.
+	assert.EqualError(err, "failed to send message: must send price * size funds to create bid")
 }

@@ -89,7 +89,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 
 	if t.Kind() != reflect.Func || t.NumIn() != numIn {
 		fmt.Println(t.Kind())
-		panic(fmt.Sprintf("MakeTypedExport must receive a function with at least %d parameters for %s", numIn, method))
+		panic(fmt.Sprintf("MakeTypedExport must receive a function with %d parameters for %s", numIn, method))
 	}
 
 	exitType := reflect.Uint8

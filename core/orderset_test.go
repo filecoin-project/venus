@@ -30,3 +30,25 @@ func TestAskSetMarshaling(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(ask5, ask5out)
 }
+
+func TestBidSetMarshaling(t *testing.T) {
+	assert := assert.New(t)
+	bs := make(BidSet)
+	bid4 := &Bid{ID: 4, Owner: "foo", Price: big.NewInt(19), Size: big.NewInt(105)}
+	bid5 := &Bid{ID: 5, Owner: "bar", Price: big.NewInt(909), Size: big.NewInt(435)}
+	bs[4] = bid4
+	bs[5] = bid5
+
+	data, err := cbor.DumpObject(bs)
+	assert.NoError(err)
+
+	var bsout BidSet
+	assert.NoError(cbor.DecodeInto(data, &bsout))
+	assert.Len(bsout, 2)
+	bid4out, ok := bs[4]
+	assert.True(ok)
+	assert.Equal(bid4, bid4out)
+	bid5out, ok := bs[5]
+	assert.True(ok)
+	assert.Equal(bid5, bid5out)
+}
