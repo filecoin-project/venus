@@ -158,6 +158,9 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 func marshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
+		if t == nil {
+			return []byte{}, nil
+		}
 		return t.Bytes(), nil
 	case []byte:
 		return t, nil

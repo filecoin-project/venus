@@ -29,14 +29,22 @@ type StorageMarketActor struct{}
 
 // StorageMarketStorage is the storage markets storage
 type StorageMarketStorage struct {
-	Miners map[types.Address]struct{}
+	Miners types.AddrSet
+
+	Orderbook *Orderbook
 }
 
 var _ ExecutableActor = (*StorageMarketActor)(nil)
 
 // NewStorageMarketActor returns a new storage market actor
 func NewStorageMarketActor() (*types.Actor, error) {
-	storageBytes, err := MarshalStorage(&StorageMarketStorage{make(map[types.Address]struct{})})
+	initStorage := &StorageMarketStorage{
+		Miners: make(types.AddrSet),
+		Orderbook: &Orderbook{
+			Asks: make(AskSet),
+		},
+	}
+	storageBytes, err := MarshalStorage(initStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +60,10 @@ var storageMarketExports = Exports{
 	"createMiner": &FunctionSignature{
 		Params: []abi.Type{abi.Integer},
 		Return: []abi.Type{abi.Address},
+	},
+	"addAsk": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.Integer},
+		Return: []abi.Type{abi.Integer},
 	},
 }
 
@@ -93,4 +105,41 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 	}
 
 	return ret.(types.Address), 0, nil
+}
+
+// AddAsk adds an ask order to the orderbook. Must be called by a miner created
+// by this storage market actor
+func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+	var storage StorageMarketStorage
+	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+		// method must be called by a miner that was created by this storage market actor
+		miner := ctx.Message().From
+
+		_, ok := storage.Miners[miner]
+		if !ok {
+			return nil, fmt.Errorf("unknown miner: %s", miner)
+		}
+
+		askID := storage.Orderbook.NextAskID
+		storage.Orderbook.NextAskID++
+
+		storage.Orderbook.Asks[askID] = &Ask{
+			ID:    askID,
+			Price: price,
+			Size:  size,
+			Owner: miner,
+		}
+
+		return big.NewInt(0).SetUint64(askID), nil
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	askID, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+	}
+
+	return askID, 0, nil
 }

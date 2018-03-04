@@ -21,7 +21,7 @@ func TestParseAddress(t *testing.T) {
 	}{
 		{nil, "0x68656c6c6f", Address("hello")},
 		{fmt.Errorf("addresses must start with 0x, got 123"), "123", Address("")},
-		{fmt.Errorf("decoding address failed: 0xxyz: encoding/hex: invalid byte: U+0078 'x'"), "0xxyz", Address("")},
+		{fmt.Errorf("decoding address failed: 0xxyzv: encoding/hex: invalid byte: U+0078 'x'"), "0xxyzv", Address("")},
 	}
 
 	for _, tc := range testCases {
