@@ -89,10 +89,8 @@ func lint(packages []string) {
 		"--enable=unconvert",
 		"--enable=gosimple",
 		"--enable=megacheck",
-		"--enable=dupl",
 		"--enable=varcheck",
 		"--enable=structcheck",
-		"--enable=dupl",
 		"--enable=deadcode",
 	}
 

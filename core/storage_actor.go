@@ -149,6 +149,9 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 	return askID, 0, nil
 }
 
+// AddBid adds a bid order to the orderbook. Can be called by anyone. The
+// message must contain the appropriate amount of funds to be locked up for the
+// bid.
 func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
