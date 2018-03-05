@@ -86,6 +86,6 @@ func TestAddAsk(t *testing.T) {
 	pdata = mustConvertParams([]interface{}{big.NewInt(55), big.NewInt(9900)})
 	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
-	receipt, err = ApplyMessage(ctx, st, msg)
+	_, err = ApplyMessage(ctx, st, msg)
 	assert.EqualError(err, "failed to send message: not enough pledged storage for new ask")
 }
