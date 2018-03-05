@@ -108,5 +108,7 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 		return types.Address(""), err
 	}
 
-	return types.Address(h.Sum(nil)), nil
+	// need to convert to hex, to make sure we have printable chars
+	// otherwise storage in the state tree does not work reliably
+	return types.Address(fmt.Sprintf("%x", h.Sum(nil))), nil
 }
