@@ -24,6 +24,7 @@ type StateTree interface {
 	GetActor(ctx context.Context, a Address) (*Actor, error)
 	GetOrCreateActor(ctx context.Context, a Address, c func() (*Actor, error)) (*Actor, error)
 	SetActor(ctx context.Context, a Address, act *Actor) error
+	Debug()
 }
 
 var _ StateTree = &stateTree{}
@@ -110,6 +111,7 @@ func (t *stateTree) Debug() {
 }
 
 func (t *stateTree) debugPointer(ps []*hamt.Pointer) {
+	fmt.Println("---- state tree -- ")
 	for _, p := range ps {
 		fmt.Println("----")
 		for _, kv := range p.KVs {
