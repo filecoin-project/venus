@@ -108,6 +108,7 @@ var clientAddAskCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
 		cmdkit.StringArg("size", true, false, "size in bytes of the ask"),
+		cmdkit.StringArg("price", true, false, "the price of the ask"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the ask from"),
