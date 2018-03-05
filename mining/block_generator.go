@@ -34,8 +34,7 @@ type blockGenerator struct {
 	processBlock core.Processor
 }
 
-// Generate returns a new block created from the messages in the
-// pool. It does not remove them.
+// Generate returns a new block created from the messages in the pool.
 func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*types.Block, error) {
 	stateTree, err := b.getStateTree(ctx, baseBlock.StateRoot)
 	if err != nil {
@@ -62,6 +61,19 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*
 		return nil, err
 	}
 	next.StateRoot = newStateTreeCid
+
+	// TODO: Is this the right place?
+	toRemove := make([]*cid.Cid, len(next.Messages))
+	for i, msg := range next.Messages {
+		c, err := msg.Cid()
+		if err != nil {
+			return nil, err
+		}
+		toRemove[i] = c
+	}
+	for _, c := range toRemove {
+		b.messagePool.Remove(c)
+	}
 
 	return next, nil
 }
