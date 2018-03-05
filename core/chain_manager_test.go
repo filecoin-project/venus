@@ -111,6 +111,30 @@ func TestBestBlockCh(t *testing.T) {
 	}
 }
 
+func TestBestBlockPubSub(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+
+	stm := NewChainManager(cs)
+	ch := stm.BestBlockPubSub.Sub(BlockTopic)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	block3 := mkChild(block2, 0)
+	blocks := []*types.Block{block1, block2, block3}
+	for _, b := range blocks {
+		stm.ProcessNewBlock(ctx, b)
+	}
+	gotCids := map[string]bool{}
+	for i := 0; i < 4; i++ {
+		gotBlock := <-ch
+		gotCids[gotBlock.(*types.Block).Cid().String()] = true
+	}
+	for _, b := range blocks {
+		assert.True(gotCids[b.Cid().String()])
+	}
+}
+
 func TestForkChoice(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()

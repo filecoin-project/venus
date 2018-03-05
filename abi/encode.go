@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+
+	"github.com/pkg/errors"
 )
 
 // EncodeValues encodes a set of abi values to raw bytes. Zero length arrays of
@@ -52,4 +54,19 @@ func DecodeValues(data []byte, types []Type) ([]*Value, error) {
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+// ToEncodedValues converts from a list of go abi-compatible values to abi values and then encodes to raw bytes.
+func ToEncodedValues(params ...interface{}) ([]byte, error) {
+	vals, err := ToValues(params)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to convert params to values")
+	}
+
+	bytes, err := EncodeValues(vals)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to encode values")
+	}
+
+	return bytes, nil
 }

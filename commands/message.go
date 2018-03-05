@@ -36,21 +36,10 @@ var sendMsgCmd = &cmds.Command{
 			val = 0
 		}
 
-		from, _ := req.Options["from"].(string)
-		var fromAddr types.Address
-		if from != "" {
-			fromAddr, err = types.ParseAddress(from)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-		} else {
-			addrs := n.Wallet.GetAddresses()
-			if len(addrs) == 0 {
-				re.SetError("no addresses in local wallet", cmdkit.ErrNormal)
-				return
-			}
-			fromAddr = addrs[0]
+		fromAddr, err := addressWithDefault(req.Options["from"], n)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)

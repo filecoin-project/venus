@@ -198,6 +198,7 @@ func (node *Node) cancelBlockSubscription() {
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
 	node.cancelBlockSubscription()
+	node.ChainMgr.BestBlockPubSub.Shutdown()
 
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)

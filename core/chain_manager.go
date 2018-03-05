@@ -11,6 +11,7 @@ import (
 	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	peer "gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -25,6 +26,9 @@ var (
 	// ErrDifferentGenesis is returned when processing a chain with a different genesis block.
 	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 )
+
+// BlockTopic is the topic used to publish new best blocks.
+const BlockTopic = "blocks"
 
 // BlockProcessResult signifies the outcome of processing a given block.
 type BlockProcessResult int
@@ -72,13 +76,17 @@ type ChainManager struct {
 	knownGoodBlocks SyncCidSet
 
 	cstore *hamt.CborIpldStore
+
+	// BestBlockPubSub is a pubsub channel that publishes all best blocks.
+	BestBlockPubSub *pubsub.PubSub
 }
 
 // NewChainManager creates a new filecoin chain manager.
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
-		cstore:    cs,
-		processor: ProcessBlock,
+		cstore:          cs,
+		processor:       ProcessBlock,
+		BestBlockPubSub: pubsub.New(128),
 	}
 	cm.knownGoodBlocks.set = cid.NewSet()
 
@@ -124,6 +132,8 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 		bbCh := s.bestBlock.ch
 		go func() { bbCh <- b }()
 	}
+
+	s.BestBlockPubSub.Pub(b, BlockTopic)
 
 	return nil
 }
