@@ -67,30 +67,14 @@ var clientCreateMinerCmd = &cmds.Command{
 			return
 		}
 
-		// TODO: Wait for msg to be mined and emit the address of the created miner
-		ch := n.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
-		defer n.ChainMgr.BestBlockPubSub.Unsub(ch, core.BlockTopic)
-
-		for blkRaw := range ch {
-			blk := blkRaw.(*types.Block)
-			for i, msg := range blk.Messages {
-				c, err := msg.Cid()
-				if err != nil {
-					// TODO: How to handle?
-					continue
-				}
-				if c.Equals(msgCid) {
-					receipt := blk.MessageReceipts[i]
-					address, err := abi.Deserialize(receipt.Return, abi.Address)
-					if err != nil {
-						re.SetError(err, cmdkit.ErrNormal)
-						return
-					}
-					re.Emit(address.Val) // nolint: errcheck
-					return
-				}
+		waitForMessage(n, msgCid, func(blk *types.Block, msg *types.Message, receipt *types.MessageReceipt) {
+			address, err := abi.Deserialize(receipt.Return, abi.Address)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
 			}
-		}
+			re.Emit(address.Val) // nolint: errcheck
+		})
 	},
 	Type: types.Address(""),
 	Encoders: cmds.EncoderMap{
