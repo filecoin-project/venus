@@ -58,8 +58,6 @@ type ChainManager struct {
 	bestBlock struct {
 		sync.Mutex
 		blk *types.Block
-		// If ch is not nil we'll send new blocks on it when we accept them.
-		ch chan<- *types.Block
 	}
 
 	processor Processor
@@ -107,15 +105,6 @@ func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 	return s.setBestBlock(ctx, genesis)
 }
 
-// SetBestBlockCh provides the chain manager with a channel into which
-// it will send newly accepted best blocks. Ordering is not guaranteed.
-// TODO guarantee ordering!
-func (s *ChainManager) SetBestBlockCh(bestBlockCh chan<- *types.Block) {
-	s.bestBlock.Lock()
-	defer s.bestBlock.Unlock()
-	s.bestBlock.ch = bestBlockCh
-}
-
 // setBestBlock sets the best block. Should be used to either to set the
 // genesis block, or to manually set the current selected chain for testing.
 // CALLER MUST HOLD THE bestBlock LOCK.
@@ -126,12 +115,6 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	}
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
-
-	if s.bestBlock.ch != nil {
-		// The goroutine will execute out of scope of the lock, so copy ch.
-		bbCh := s.bestBlock.ch
-		go func() { bbCh <- b }()
-	}
 
 	s.BestBlockPubSub.Pub(b, BlockTopic)
 
@@ -337,6 +320,11 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 		log.Error("processing new block: ", err)
 		return
 	}
+}
+
+// Stop stops all activities and cleans up.
+func (s *ChainManager) Stop() {
+	s.BestBlockPubSub.Shutdown()
 }
 
 // ChainManagerForTest provides backdoor access to internal fields to make

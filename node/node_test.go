@@ -92,9 +92,9 @@ func TestNodeMining(t *testing.T) {
 	node.StopMining()
 	assert.True(workerDone)
 	// Part of stopping is ensuring we stop getting new blocks.
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
+	assert.Equal(mining.ChannelClosed, mining.ReceiveInCh(inCh))
 	node.ChainMgr.SetBestBlockForTest(ctx, b2)
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
+	assert.Equal(mining.ChannelClosed, mining.ReceiveInCh(inCh))
 
 	// Ensure that the output is wired up correctly.
 	mockWorker = &mining.MockWorker{}
