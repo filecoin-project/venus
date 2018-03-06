@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -16,7 +17,7 @@ import (
 
 var minerCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Miner operations",
+		Tagline: "Manage miner operations",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"create":  minerCreateCmd,
@@ -27,9 +28,12 @@ var minerCmd = &cmds.Command{
 var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Create a new file miner",
+		ShortDescription: `Issues a new message to the network to create the miner. Then waits for the
+message to be mined as this is required to return the address of the new miner.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("plege", true, false, "the size of the pledge for the miner"),
+		cmdkit.StringArg("pledge", true, false, "the size of the pledge for the miner"),
+		cmdkit.StringArg("collateral", true, false, "the amount of collateral to be sent"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
@@ -43,9 +47,15 @@ var minerCreateCmd = &cmds.Command{
 			return
 		}
 
-		pledge, err := toBigInt(req.Arguments[0])
-		if err != nil {
-			re.SetError(errors.Wrap(err, "invalid pledge"), cmdkit.ErrNormal)
+		pledge, ok := new(big.Int).SetString(req.Arguments[0], 10)
+		if !ok {
+			re.SetError(fmt.Errorf("invalid pledge"), cmdkit.ErrNormal)
+			return
+		}
+
+		collateral, ok := new(big.Int).SetString(req.Arguments[1], 10)
+		if !ok {
+			re.SetError(fmt.Errorf("invalid collateral"), cmdkit.ErrNormal)
 			return
 		}
 
@@ -55,7 +65,7 @@ var minerCreateCmd = &cmds.Command{
 			return
 		}
 
-		msg := types.NewMessage(fromAddr, core.StorageMarketAddress, nil, "createMiner", params)
+		msg := types.NewMessage(fromAddr, core.StorageMarketAddress, collateral, "createMiner", params)
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -87,7 +97,7 @@ var minerCreateCmd = &cmds.Command{
 
 var minerAddAskCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Add an ask",
+		Tagline: "Add an ask to the storage market",
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
@@ -112,15 +122,15 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		size, err := toBigInt(req.Arguments[1])
-		if err != nil {
-			re.SetError(errors.Wrap(err, "invalid sizes"), cmdkit.ErrNormal)
+		size, ok := new(big.Int).SetString(req.Arguments[1], 10)
+		if !ok {
+			re.SetError(fmt.Errorf("invalid sizes"), cmdkit.ErrNormal)
 			return
 		}
 
-		price, err := toBigInt(req.Arguments[2])
-		if err != nil {
-			re.SetError(errors.Wrap(err, "invalid price"), cmdkit.ErrNormal)
+		price, ok := new(big.Int).SetString(req.Arguments[2], 10)
+		if !ok {
+			re.SetError(fmt.Errorf("invalid price"), cmdkit.ErrNormal)
 			return
 		}
 

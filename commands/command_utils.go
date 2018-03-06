@@ -2,8 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"math/big"
-	"strconv"
 
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
@@ -33,14 +31,6 @@ func addressWithDefault(rawAddr interface{}, n *node.Node) (types.Address, error
 	}
 
 	return addr, nil
-}
-
-func toBigInt(rawString string) (*big.Int, error) {
-	rawInt, err := strconv.ParseInt(rawString, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return big.NewInt(rawInt), nil
 }
 
 func waitForMessage(n *node.Node, msgCid *cid.Cid, cb func(*types.Block, *types.Message, *types.MessageReceipt)) {

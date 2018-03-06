@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestMinerCreateMiner(t *testing.T) {
+func TestMinerCreate(t *testing.T) {
 	assert := assert.New(t)
 
 	daemon := withDaemon(func() {
@@ -26,7 +26,7 @@ func TestMinerCreateMiner(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000", core.TestAccount))
+			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
 			addr, err := types.ParseAddress(strings.Trim(miner.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address(""))
@@ -54,7 +54,7 @@ func TestMinerAddAsk(t *testing.T) {
 
 		wg.Add(1)
 		go func() {
-			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000", core.TestAccount))
+			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
 			addr, err := types.ParseAddress(strings.Trim(miner.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address(""))
