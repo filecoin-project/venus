@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/core"
@@ -11,10 +9,7 @@ import (
 )
 
 func addressWithDefault(rawAddr interface{}, n *node.Node) (types.Address, error) {
-	stringAddr, ok := rawAddr.(string)
-	if !ok {
-		stringAddr = ""
-	}
+	stringAddr, _ := rawAddr.(string)
 	var addr types.Address
 	var err error
 	if stringAddr != "" {
@@ -23,11 +18,10 @@ func addressWithDefault(rawAddr interface{}, n *node.Node) (types.Address, error
 			return "", err
 		}
 	} else {
-		addrs := n.Wallet.GetAddresses()
-		if len(addrs) == 0 {
-			return "", fmt.Errorf("no addresses in local wallet")
+		addr, err = n.Wallet.GetDefaultAddress()
+		if err != nil {
+			return "", err
 		}
-		addr = addrs[0]
 	}
 
 	return addr, nil

@@ -21,3 +21,18 @@ func TestWalletSimple(t *testing.T) {
 
 	assert.ElementsMatch(addrs, w.GetAddresses())
 }
+
+func TestWalletDefaultAddress(t *testing.T) {
+	assert := assert.New(t)
+
+	w := New()
+
+	addr, err := w.GetDefaultAddress()
+	assert.EqualError(err, "no default address in local wallet")
+	assert.Equal(addr, types.Address(""))
+
+	addrNew := w.NewAddress()
+	addr, err = w.GetDefaultAddress()
+	assert.NoError(err)
+	assert.Equal(addr, addrNew)
+}

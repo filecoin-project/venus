@@ -22,7 +22,7 @@ func TestMessageSend(t *testing.T) {
 		fail = run(fmt.Sprintf("go-filecoin send-message %s", types.Address("investor1")))
 		assert.Equal(fail.Code, 1)
 		assert.NoError(fail.Error)
-		assert.Contains(fail.ReadStderr(), "no addresses in local wallet")
+		assert.Contains(fail.ReadStderr(), "no default address")
 
 		t.Log("[success] no from")
 		_ = runSuccess(t, "go-filecoin wallet addrs new")
