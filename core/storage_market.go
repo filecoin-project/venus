@@ -4,12 +4,14 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
 	cbor.RegisterCborType(Orderbook{})
+	cbor.RegisterCborType(Deal{})
 }
 
 // Orderbook holds all the bids and asks
@@ -20,7 +22,10 @@ type Orderbook struct {
 	NextAskID uint64
 
 	Bids      BidSet
+	UsedBids  BidSet
 	NextBidID uint64
+
+	Deals []*Deal
 }
 
 // Ask is a storage market ask order.
@@ -41,4 +46,13 @@ type Bid struct {
 	//Coding ???
 	Owner types.Address
 	ID    uint64
+}
+
+// Deal is the successful fulfilment of an ask and a bid with eachother.
+type Deal struct {
+	Expiry  *big.Int
+	DataRef *cid.Cid
+
+	Ask uint64
+	Bid uint64
 }

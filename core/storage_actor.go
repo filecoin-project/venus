@@ -70,6 +70,10 @@ var storageMarketExports = Exports{
 		Params: []abi.Type{abi.Integer, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
+	"addDeal": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.Integer, abi.Bytes},
+		Return: []abi.Type{abi.Integer},
+	},
 }
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
@@ -190,4 +194,63 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*bi
 	}
 
 	return bidID, 0, nil
+}
+
+// AddDeal creates a deal from the given ask and bid
+func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, minerSig []byte) (*big.Int, uint8, error) {
+	var storage StorageMarketStorage
+	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+		// TODO: askset is a map from uint64, our input is a big int.
+		ask, ok := storage.Orderbook.Asks[askID.Uint64()]
+		if !ok {
+			return nil, fmt.Errorf("unknown ask %s", askID)
+		}
+
+		bid, ok := storage.Orderbook.Bids[bidID.Uint64()]
+		if !ok {
+			return nil, fmt.Errorf("unknown bid %s", bidID)
+		}
+
+		if ctx.Message().From != bid.Owner {
+			return nil, fmt.Errorf("cannot create a deal for someone elses bid")
+		}
+
+		if ask.Size.Cmp(bid.Size) < 0 {
+			return nil, fmt.Errorf("not enough space in ask for bid")
+		}
+
+		// TODO: real signature check and stuff
+		if ask.Owner != types.Address(minerSig) {
+			return nil, fmt.Errorf("signature failed to validate")
+		}
+
+		// mark bid as used (we could just have a bool field on the bid for this)
+		delete(storage.Orderbook.Bids, bidID.Uint64())
+		storage.Orderbook.UsedBids[bidID.Uint64()] = bid
+
+		// subtract used space from add
+		ask.Size.Sub(ask.Size, bid.Size)
+
+		d := &Deal{
+			// Expiry:  ???
+			// DataRef: ???
+			Ask: askID.Uint64(),
+			Bid: bidID.Uint64(),
+		}
+
+		dealID := len(storage.Orderbook.Deals)
+		storage.Orderbook.Deals = append(storage.Orderbook.Deals, d)
+
+		return big.NewInt(int64(dealID)), nil
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	dealID, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+	}
+
+	return dealID, 0, nil
 }
