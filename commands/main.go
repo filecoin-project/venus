@@ -52,6 +52,7 @@ var rootCmd = &cmds.Command{
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"address":      addrsCmd,
 	"chain":        chainCmd,
+	"client":       clientCmd,
 	"daemon":       daemonCmd,
 	"id":           idCmd,
 	"miner":        minerCmd,
