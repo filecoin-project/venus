@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,6 +44,6 @@ func TestWalletBalance(t *testing.T) {
 	d.RunFail("not found", "wallet balance", addr)
 
 	t.Log("[success] balance 100000")
-	balance := d.RunSuccess("wallet balance", types.Address("filecoin").String())
+	balance := d.RunSuccess("wallet balance", core.NetworkAccount.String())
 	assert.Contains(balance.ReadStdout(), "100000")
 }

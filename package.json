@@ -99,6 +99,18 @@
       "hash": "QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2",
       "name": "pubsub",
       "version": "1.0.0"
+    },
+    {
+      "author": "minio",
+      "hash": "QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx",
+      "name": "blake2b-simd",
+      "version": "0.1.1"
+    },
+    {
+      "author": "dignifiedquire",
+      "hash": "QmZo5avr9dhVVRzcpKnU9ZGQuPaU62pbufUHXBNB7GwLzQ",
+      "name": "go-basex",
+      "version": "0.1.0"
     }
   ],
   "gxVersion": "0.12.1",

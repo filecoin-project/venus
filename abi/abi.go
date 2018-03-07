@@ -84,9 +84,9 @@ func (av *Value) Serialize() ([]byte, error) {
 	case Address:
 		addr, ok := av.Val.(types.Address)
 		if !ok {
-			return nil, &typeError{types.Address(""), av.Val}
+			return nil, &typeError{types.Address{}, av.Val}
 		}
-		return []byte(addr), nil
+		return addr.Bytes(), nil
 	case Integer:
 		intgr, ok := av.Val.(*big.Int)
 		if !ok {
@@ -157,9 +157,14 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 	case Invalid:
 		return nil, ErrInvalidType
 	case Address:
+		addr, err := types.NewAddressFromBytes(data)
+		if err != nil {
+			return nil, err
+		}
+
 		return &Value{
 			Type: t,
-			Val:  types.Address(data),
+			Val:  addr,
 		}, nil
 	case Integer:
 		return &Value{
@@ -182,7 +187,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address: reflect.TypeOf(types.Address("")),
+	Address: reflect.TypeOf(types.Address{}),
 	Integer: reflect.TypeOf(&big.Int{}),
 	Bytes:   reflect.TypeOf([]byte{}),
 	String:  reflect.TypeOf(string("")),

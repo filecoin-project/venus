@@ -9,13 +9,14 @@ import (
 
 func TestMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
+	addrGetter := NewAddressForTestGetter()
 
 	// TODO: allow more types than just strings for the params
 	// currently []interface{} results in type information getting lost when doing
 	// a roundtrip with the default cbor encoder.
 	msg := NewMessage(
-		Address("Alice"),
-		Address("Bob"),
+		addrGetter(),
+		addrGetter(),
 		big.NewInt(17777),
 		"send",
 		[]byte("foobar"),
@@ -37,18 +38,19 @@ func TestMessageMarshal(t *testing.T) {
 
 func TestMessageCid(t *testing.T) {
 	assert := assert.New(t)
+	addrGetter := NewAddressForTestGetter()
 
 	msg1 := NewMessage(
-		Address("Alice1"),
-		Address("Bob"),
+		addrGetter(),
+		addrGetter(),
 		big.NewInt(999),
 		"send",
 		nil,
 	)
 
 	msg2 := NewMessage(
-		Address("Alice2"),
-		Address("Bob"),
+		addrGetter(),
+		addrGetter(),
 		big.NewInt(4004),
 		"send",
 		nil,

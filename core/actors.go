@@ -174,7 +174,10 @@ func marshalValue(val interface{}) ([]byte, error) {
 	case string:
 		return []byte(t), nil
 	case types.Address:
-		return []byte(t), nil
+		if t == (types.Address{}) {
+			return []byte{}, nil
+		}
+		return t.Bytes(), nil
 	default:
 		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
 	}

@@ -27,8 +27,9 @@ func TestStatePutGet(t *testing.T) {
 	act2.IncNonce()
 	act2.IncNonce()
 
-	addr1 := Address("foo")
-	addr2 := Address("bar")
+	addrGetter := NewAddressForTestGetter()
+	addr1 := addrGetter()
+	addr2 := addrGetter()
 
 	assert.NoError(tree.SetActor(ctx, addr1, act1))
 	assert.NoError(tree.SetActor(ctx, addr2, act2))
@@ -61,7 +62,7 @@ func TestStateErrors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	_, err := tree.GetActor(ctx, "foo")
+	_, err := tree.GetActor(ctx, NewAddressForTestGetter()())
 	assert.EqualError(err, "not found")
 
 	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
@@ -77,7 +78,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	addr := Address("coolio")
+	addr := NewAddressForTestGetter()()
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {

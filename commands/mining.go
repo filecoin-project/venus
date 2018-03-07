@@ -39,7 +39,7 @@ var miningOnceCmd = &cmds.Command{
 		}
 		myaddr := addrs[0]
 
-		reward := types.NewMessage(types.Address("filecoin"), myaddr, big.NewInt(1000), "", nil)
+		reward := types.NewMessage(core.NetworkAccount, myaddr, big.NewInt(1000), "", nil)
 		if _, err := fcn.MsgPool.Add(reward); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

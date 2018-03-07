@@ -13,6 +13,7 @@ import (
 
 func TestVMContextStorage(t *testing.T) {
 	assert := assert.New(t)
+	addrGetter := types.NewAddressForTestGetter()
 	ctx := context.Background()
 
 	cst := hamt.NewCborStore()
@@ -20,11 +21,11 @@ func TestVMContextStorage(t *testing.T) {
 
 	toActor, err := NewAccountActor(nil)
 	assert.NoError(err)
-	toAddr := types.Address("to")
+	toAddr := addrGetter()
 
 	assert.NoError(state.SetActor(ctx, toAddr, toActor))
 
-	msg := types.NewMessage(types.Address(""), toAddr, nil, "hello", nil)
+	msg := types.NewMessage(addrGetter(), toAddr, nil, "hello", nil)
 
 	vmCtx := NewVMContext(nil, toActor, msg, state)
 
