@@ -49,13 +49,13 @@ message to be mined as this is required to return the address of the new miner.`
 
 		pledge, ok := new(big.Int).SetString(req.Arguments[0], 10)
 		if !ok {
-			re.SetError(fmt.Errorf("invalid pledge"), cmdkit.ErrNormal)
+			re.SetError("invalid pledge", cmdkit.ErrNormal)
 			return
 		}
 
 		collateral, ok := new(big.Int).SetString(req.Arguments[1], 10)
 		if !ok {
-			re.SetError(fmt.Errorf("invalid collateral"), cmdkit.ErrNormal)
+			re.SetError("invalid collateral", cmdkit.ErrNormal)
 			return
 		}
 
@@ -89,8 +89,7 @@ message to be mined as this is required to return the address of the new miner.`
 	Type: types.Address(""),
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr *types.Address) error {
-			_, err := fmt.Fprintln(w, *addr)
-			return err
+			return PrintString(w, *addr)
 		}),
 	},
 }
@@ -124,7 +123,7 @@ var minerAddAskCmd = &cmds.Command{
 
 		size, ok := new(big.Int).SetString(req.Arguments[1], 10)
 		if !ok {
-			re.SetError(fmt.Errorf("invalid sizes"), cmdkit.ErrNormal)
+			re.SetError(fmt.Errorf("invalid size"), cmdkit.ErrNormal)
 			return
 		}
 
