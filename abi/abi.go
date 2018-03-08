@@ -50,6 +50,23 @@ type Value struct {
 	Val  interface{}
 }
 
+func (av *Value) String() string {
+	switch av.Type {
+	case Invalid:
+		return "<invalid>"
+	case Address:
+		return av.Val.(types.Address).String()
+	case Integer:
+		return av.Val.(*big.Int).String()
+	case Bytes:
+		return string(av.Val.([]byte))
+	case String:
+		return av.Val.(string)
+	default:
+		return "<unknown type>"
+	}
+}
+
 type typeError struct {
 	exp interface{}
 	got interface{}

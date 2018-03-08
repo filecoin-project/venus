@@ -22,12 +22,16 @@ func TestMinerCreateSuccess(t *testing.T) {
 		// need an address to mine
 		_ = makeAddr(t)
 
+		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
+		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(err)
+
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
-			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-			addr, err := types.ParseAddress(strings.Trim(miner.ReadStdout(), "\n"))
+			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
+			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address(""))
 			wg.Done()
@@ -65,13 +69,17 @@ func TestMinerAddAskSuccess(t *testing.T) {
 		// need an address to mine
 		_ = makeAddr(t)
 
+		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
+		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(err)
+
 		var wg sync.WaitGroup
 		var minerAddr types.Address
 
 		wg.Add(1)
 		go func() {
-			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-			addr, err := types.ParseAddress(strings.Trim(miner.ReadStdout(), "\n"))
+			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
+			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address(""))
 			minerAddr = addr
@@ -108,13 +116,17 @@ func TestMinerAddAskFail(t *testing.T) {
 		// need an address to mine
 		_ = makeAddr(t)
 
+		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
+		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(err)
+
 		var wg sync.WaitGroup
 		var minerAddr types.Address
 
 		wg.Add(1)
 		go func() {
-			miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-			addr, err := types.ParseAddress(strings.Trim(miner.ReadStdout(), "\n"))
+			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
+			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address(""))
 			minerAddr = addr

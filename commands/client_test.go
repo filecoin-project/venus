@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"math/big"
 	"strings"
 	"sync"
@@ -19,12 +20,17 @@ func TestClientAddBidSuccess(t *testing.T) {
 	daemon := withDaemon(func() {
 		_ = makeAddr(t)
 
+		bid := runSuccess(t, fmt.Sprintf("go-filecoin client add-bid 2000 10 --from %s", core.TestAccount))
+		bidMessageCid, err := cid.Parse(strings.Trim(bid.ReadStdout(), "\n"))
+		assert.NoError(err)
+
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
-			bid := runSuccess(t, fmt.Sprintf("go-filecoin client add-bid 2000 10 --from %s", core.TestAccount))
-			bidID, ok := new(big.Int).SetString(strings.Trim(bid.ReadStdout(), "\n"), 10)
+			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", bidMessageCid.String()))
+			out := wait.ReadStdout()
+			bidID, ok := new(big.Int).SetString(strings.Trim(out, "\n"), 10)
 			assert.True(ok)
 			assert.NotNil(bidID)
 			wg.Done()

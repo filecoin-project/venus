@@ -77,19 +77,12 @@ message to be mined as this is required to return the address of the new miner.`
 			return
 		}
 
-		waitForMessage(n, msgCid, func(blk *types.Block, msg *types.Message, receipt *types.MessageReceipt) {
-			address, err := abi.Deserialize(receipt.Return, abi.Address)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-			re.Emit(address.Val) // nolint: errcheck
-		})
+		re.Emit(msgCid) // nolint: errcheck
 	},
-	Type: types.Address(""),
+	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr *types.Address) error {
-			return PrintString(w, *addr)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+			return PrintString(w, c)
 		}),
 	},
 }

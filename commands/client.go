@@ -7,6 +7,7 @@ import (
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -75,19 +76,12 @@ var clientAddBidCmd = &cmds.Command{
 			return
 		}
 
-		waitForMessage(n, msgCid, func(blk *types.Block, msg *types.Message, receipt *types.MessageReceipt) {
-			id, err := abi.Deserialize(receipt.Return, abi.Integer)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-			re.Emit(id.Val) // nolint: errcheck
-		})
+		re.Emit(msgCid) // nolint: errcheck
 	},
-	Type: &big.Int{},
+	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, id *big.Int) error {
-			return PrintString(w, id)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+			return PrintString(w, c)
 		}),
 	},
 }

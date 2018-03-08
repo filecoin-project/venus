@@ -32,7 +32,7 @@ var _ StateTree = &stateTree{}
 func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (StateTree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to load node")
 	}
 
 	return &stateTree{

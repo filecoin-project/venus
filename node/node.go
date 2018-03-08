@@ -279,3 +279,28 @@ func (node *Node) StopMining() {
 	node.cancelMining()
 	node.miningDoneWg.Wait()
 }
+
+// GetSignature fetches the signature for the given method on the appropriate actor.
+func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*core.FunctionSignature, error) {
+	st, err := types.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load state tree")
+	}
+
+	actor, err := st.GetActor(ctx, actorAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get actor")
+	}
+
+	executable, err := core.LoadCode(actor.Code)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load actor code")
+	}
+
+	export, ok := executable.Exports()[method]
+	if !ok {
+		return nil, fmt.Errorf("missing export: %s", method)
+	}
+
+	return export, nil
+}
