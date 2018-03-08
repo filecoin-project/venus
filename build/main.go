@@ -136,6 +136,9 @@ func main() {
 		build()
 	case "test":
 		test(args[1:])
+	case "best":
+		build()
+		test(args[1:])
 	default:
 		log.Fatalf("Unknown command: %s\n", cmd)
 	}

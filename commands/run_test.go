@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
@@ -92,8 +95,8 @@ func newReadPipe() (*pipe, error) {
 	}, nil
 }
 
-// output manages running, inprocess, a filecoin command.
-type output struct {
+// Output manages running, inprocess, a filecoin command.
+type Output struct {
 	lk sync.Mutex
 	// Input is the the raw input we got.
 	Input string
@@ -110,12 +113,12 @@ type output struct {
 	CloseChan chan struct{}
 }
 
-func (o *output) Interrupt() {
+func (o *Output) Interrupt() {
 	// hack to stop the daemon inprocess
 	sigCh <- os.Interrupt.(syscall.Signal)
 }
 
-func (o *output) Close(code int, err error) {
+func (o *Output) Close(code int, err error) {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
@@ -128,7 +131,7 @@ func (o *output) Close(code int, err error) {
 	o.CloseChan <- struct{}{}
 }
 
-func (o *output) ReadStderr() string {
+func (o *Output) ReadStderr() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
@@ -139,7 +142,7 @@ func (o *output) ReadStderr() string {
 	return string(out)
 }
 
-func (o *output) ReadStdout() string {
+func (o *Output) ReadStdout() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
@@ -151,7 +154,7 @@ func (o *output) ReadStdout() string {
 }
 
 // runSuccess runs a one off command and make sure it succeeds.
-func runSuccess(t *testing.T, args string) *output {
+func runSuccess(t *testing.T, args string) *Output {
 	t.Helper()
 	out := run(args)
 	assert.NoError(t, out.Error)
@@ -161,7 +164,7 @@ func runSuccess(t *testing.T, args string) *output {
 }
 
 // runFail runs a one off command and make sure it fails with the given error.
-func runFail(t *testing.T, err, args string) *output {
+func runFail(t *testing.T, err, args string) *Output {
 	t.Helper()
 	out := run(args)
 	assert.NoError(t, out.Error)
@@ -172,14 +175,14 @@ func runFail(t *testing.T, err, args string) *output {
 }
 
 // run runs a one off command.
-func run(input string) *output {
+func run(input string) *Output {
 	o := runNoWait(input)
 	<-o.CloseChan
 	return o
 }
 
 // runNoWait spawns a command and don't wait for it to finish, like running the daemon.
-func runNoWait(input string) *output {
+func runNoWait(input string) *Output {
 	args := strings.Split(input, " ")
 
 	stdin, err := newPipe()
@@ -195,7 +198,7 @@ func runNoWait(input string) *output {
 		panic(err)
 	}
 
-	o := &output{
+	o := &Output{
 		Input:     input,
 		Args:      args,
 		Stdin:     stdin,
@@ -204,7 +207,7 @@ func runNoWait(input string) *output {
 		CloseChan: make(chan struct{}, 1),
 	}
 
-	go func(o *output) {
+	go func(o *Output) {
 		exitCode, err := Run(args, stdin.Reader(), stdout.Writer(), stderr.Writer())
 		o.Close(exitCode, err)
 	}(o)
@@ -213,7 +216,7 @@ func runNoWait(input string) *output {
 }
 
 // runWithDaemon runs a command, while a daemon is running.
-func runWithDaemon(input string, cb func(*output)) {
+func runWithDaemon(input string, cb func(*Output)) {
 	d := withDaemon(func() {
 		o := run(input)
 		cb(o)
@@ -233,16 +236,16 @@ func runWithDaemon(input string, cb func(*output)) {
 }
 
 // withDaemon executes the provided cb during the time a daemon is running.
-func withDaemon(cb func()) (daemon *output) {
+func withDaemon(cb func()) (daemon *Output) {
 	return withDaemonArgs("", cb)
 }
 
 // withDaemonsArgs executes the provided cb during the time multiple daemons are running and allow to pass
 // additional arguments to each daemon.
-func withDaemonsArgs(count int, args []string, cb func()) []*output {
+func withDaemonsArgs(count int, args []string, cb func()) []*Output {
 	// lock the out array
 	var lk sync.Mutex
-	out := make([]*output, count)
+	out := make([]*Output, count)
 	var outWg sync.WaitGroup
 	outWg.Add(count)
 
@@ -277,7 +280,7 @@ func withDaemonsArgs(count int, args []string, cb func()) []*output {
 }
 
 // withDaemonArgs runs cb while a single daemon is running.
-func withDaemonArgs(args string, cb func()) (daemon *output) {
+func withDaemonArgs(args string, cb func()) (daemon *Output) {
 	cmd := "go-filecoin daemon"
 	if len(args) > 0 {
 		cmd = fmt.Sprintf("%s %s", cmd, args)
@@ -331,4 +334,185 @@ func getID(t *testing.T, api string) string {
 	assert.NoError(t, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 
 	return parsed["ID"].(string)
+}
+
+type TestDaemon struct {
+	cmdAddr   string
+	swarmAddr string
+
+	//The filecoin daemon process
+	process *exec.Cmd
+
+	lk     sync.Mutex
+	Stdin  io.Writer
+	Stdout io.Reader
+	Stderr io.Reader
+
+	test *testing.T
+}
+
+func (td *TestDaemon) Run(input string, args ...string) *Output {
+	cmd := fmt.Sprintf("go-filecoin %s --cmdapiaddr=%s", input, td.cmdAddr)
+	if len(args) > 0 {
+		cmd = fmt.Sprintf("%s %s", cmd, strings.Join(args, " "))
+	}
+	return run(cmd)
+}
+
+func (td *TestDaemon) RunSuccess(input string, args ...string) *Output {
+	o := td.Run(input, args...)
+	assert.NoError(td.test, o.Error)
+	assert.Equal(td.test, o.Code, 0)
+	assert.Empty(td.test, o.ReadStderr())
+	return o
+}
+
+func (td *TestDaemon) RunFail(input, err string, args ...string) *Output {
+	td.test.Helper()
+	o := td.Run(input, args...)
+	assert.NoError(td.test, o.Error)
+	assert.Equal(td.test, o.Code, 1)
+	assert.Empty(td.test, o.ReadStdout())
+	assert.Contains(td.test, o.ReadStderr(), err)
+	return o
+}
+
+func (td *TestDaemon) GetID() string {
+	out := td.RunSuccess("id")
+	var parsed map[string]interface{}
+	assert.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
+
+	return parsed["ID"].(string)
+}
+
+func (td *TestDaemon) ReadAllStdout() string {
+	td.lk.Lock()
+	defer td.lk.Unlock()
+	out, err := ioutil.ReadAll(td.Stdout)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+func (td *TestDaemon) ReadAllStderr() string {
+	td.lk.Lock()
+	defer td.lk.Unlock()
+	out, err := ioutil.ReadAll(td.Stderr)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+func (td *TestDaemon) Start() *TestDaemon {
+	if err := td.process.Start(); err != nil {
+		td.test.Fatalf("Failed to start filecoin: %s", err)
+	}
+	done := make(chan struct{})
+	defer close(done)
+	//TODO this is still flakey sometimes potential for non-determ test
+	go func() {
+		for {
+			if td.IsRunning() {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		done <- struct{}{}
+	}()
+	for {
+		select {
+		case <-done:
+			td.test.Logf("[success starting daemon on: %s", td.cmdAddr)
+			return td
+		case <-time.After(30 * time.Second):
+			td.test.Fatal("Timout waiting for daemon to start")
+		}
+	}
+}
+
+func (td *TestDaemon) Shutdown() {
+	if err := td.process.Process.Signal(syscall.SIGTERM); err != nil {
+		td.test.Fatalf("Failed to shutdown filecoin: %s", err)
+	}
+}
+
+func (td *TestDaemon) ShutdownSuccess() {
+	err := td.process.Process.Signal(syscall.SIGTERM)
+	assert.NoError(td.test, err)
+	assert.Empty(td.test, td.ReadAllStderr())
+}
+
+func (td *TestDaemon) Kill() {
+	if err := td.process.Process.Kill(); err != nil {
+		td.test.Fatalf("Failed to kill daemon %s", err)
+	}
+}
+
+func (td *TestDaemon) IsRunning() bool {
+	ln, err := net.Listen("tcp", td.cmdAddr)
+	if err != nil {
+		return true
+	}
+
+	if err := ln.Close(); err != nil {
+		panic(err)
+	}
+	return false
+}
+
+func CmdAddr(addr string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.cmdAddr = addr
+	}
+}
+
+func SwarmAddr(addr string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.swarmAddr = addr
+	}
+}
+
+func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
+	//Ensure we have the actual binary
+	filecoinBin := fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH"))
+	if _, err := os.Stat(filecoinBin); os.IsNotExist(err) {
+		t.Fatal("You are missing the filecoin binary...try building")
+	}
+
+	//Configure with default options
+	td := &TestDaemon{
+		cmdAddr:   ":3453",
+		swarmAddr: "/ip4/127.0.0.1/tcp/6000",
+		test:      t,
+	}
+
+	// configure TestDaemon options
+	for _, option := range options {
+		option(td)
+	}
+
+	// define filecoin daemon process
+	td.process = exec.Command(filecoinBin, "daemon",
+		fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr),
+		fmt.Sprintf("--swarmlisten=%s", td.swarmAddr),
+	)
+
+	//setup process pipes
+	var err error
+	td.Stdout, err = td.process.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	td.Stderr, err = td.process.StderrPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	td.Stdin, err = td.process.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return td
 }

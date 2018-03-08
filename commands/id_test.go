@@ -9,7 +9,7 @@ import (
 func TestId(t *testing.T) {
 	assert := assert.New(t)
 
-	runWithDaemon("go-filecoin id", func(id *output) {
+	runWithDaemon("go-filecoin id", func(id *Output) {
 		assert.NoError(id.Error)
 		assert.Equal(id.Code, 0)
 		assert.Empty(id.ReadStderr())
@@ -23,7 +23,7 @@ func TestId(t *testing.T) {
 func TestIdFormat(t *testing.T) {
 	assert := assert.New(t)
 
-	runWithDaemon("go-filecoin id --format=\"<id>\\t<aver>\\t<pver>\\t<pubkey>\\n<addrs>\"", func(id *output) {
+	runWithDaemon("go-filecoin id --format=\"<id>\\t<aver>\\t<pver>\\t<pubkey>\\n<addrs>\"", func(id *Output) {
 		assert.NoError(id.Error)
 		assert.Equal(id.Code, 0)
 		assert.Empty(id.ReadStderr())

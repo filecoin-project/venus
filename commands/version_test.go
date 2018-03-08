@@ -12,7 +12,7 @@ func TestVersion(t *testing.T) {
 	assert := assert.New(t)
 	flags.Commit = "12345"
 
-	runWithDaemon("go-filecoin version", func(out *output) {
+	runWithDaemon("go-filecoin version", func(out *Output) {
 		assert.NoError(out.Error)
 		assert.Equal(out.Code, 0)
 		assert.Equal(out.ReadStderr(), "")

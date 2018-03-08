@@ -18,8 +18,18 @@ by providing storage to clients.
 > go run ./build/*.go build
 # Test
 > go run ./build/*.go test
+# Build & Test
+> go run ./build/*.go best
 # Coverage
 > go run ./build/*.go test -cover
 # Race
 > go run ./build/*.go test -race
 ```
+
+## Testing
+The filecoin binary must be built prior to testing changes made during development.
+```sh
+# Build & Test
+> go run ./build/*.go best
+```
+
