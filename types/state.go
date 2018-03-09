@@ -24,7 +24,6 @@ type StateTree interface {
 	GetActor(ctx context.Context, a Address) (*Actor, error)
 	GetOrCreateActor(ctx context.Context, a Address, c func() (*Actor, error)) (*Actor, error)
 	SetActor(ctx context.Context, a Address, act *Actor) error
-	Debug()
 }
 
 var _ StateTree = &stateTree{}
@@ -105,9 +104,13 @@ func (t *stateTree) SetActor(ctx context.Context, a Address, act *Actor) error {
 	return nil
 }
 
-// Debug prints a debug version of the current state tree.
-func (t *stateTree) Debug() {
-	t.debugPointer(t.root.Pointers)
+// DebugStateTree prints a debug version of the current state tree.
+func DebugStateTree(t StateTree) {
+	st, ok := t.(*stateTree)
+	if !ok {
+		panic("can debug non stateTree")
+	}
+	st.debugPointer(st.root.Pointers)
 }
 
 func (t *stateTree) debugPointer(ps []*hamt.Pointer) {
