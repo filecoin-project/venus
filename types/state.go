@@ -104,12 +104,17 @@ func (t *stateTree) SetActor(ctx context.Context, a Address, act *Actor) error {
 	return nil
 }
 
-// Debug prints a debug version of the current state tree.
-func (t *stateTree) Debug() {
-	t.debugPointer(t.root.Pointers)
+// DebugStateTree prints a debug version of the current state tree.
+func DebugStateTree(t StateTree) {
+	st, ok := t.(*stateTree)
+	if !ok {
+		panic("can debug non stateTree")
+	}
+	st.debugPointer(st.root.Pointers)
 }
 
 func (t *stateTree) debugPointer(ps []*hamt.Pointer) {
+	fmt.Println("---- state tree -- ")
 	for _, p := range ps {
 		fmt.Println("----")
 		for _, kv := range p.KVs {

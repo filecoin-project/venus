@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"crypto/rand"
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -9,8 +10,9 @@ import (
 
 // Wallet manages the locally stored accounts.
 type Wallet struct {
-	lk        sync.Mutex
-	addresses map[types.Address]struct{}
+	lk             sync.Mutex
+	addresses      map[types.Address]struct{}
+	defaultAddress types.Address
 }
 
 // New creates a new Wallet.
@@ -44,6 +46,11 @@ func (w *Wallet) NewAddress() types.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 	w.addresses[fakeAddr] = struct{}{}
+
+	if w.defaultAddress == types.Address("") {
+		w.defaultAddress = fakeAddr
+	}
+
 	return fakeAddr
 }
 
@@ -57,4 +64,18 @@ func (w *Wallet) GetAddresses() []types.Address {
 		out = append(out, a)
 	}
 	return out
+}
+
+// GetDefaultAddress retrieves the default address if one exists.
+// If no address is available it returns an error.
+// Safe for concurrent access.
+func (w *Wallet) GetDefaultAddress() (types.Address, error) {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	if w.defaultAddress == types.Address("") {
+		return types.Address(""), fmt.Errorf("no default address in local wallet")
+	}
+
+	return w.defaultAddress, nil
 }

@@ -65,6 +65,9 @@ type Node struct {
 
 	// cancelBlockSubscriptionCtx is a handle to cancel the block subscription.
 	cancelBlockSubscriptionCtx context.CancelFunc
+
+	// bestBlockCh is a subscription to the best block topic on the chainmgr.
+	bestBlockCh chan interface{}
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -198,6 +201,7 @@ func (node *Node) cancelBlockSubscription() {
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
 	node.cancelBlockSubscription()
+	node.ChainMgr.Stop()
 
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
@@ -229,10 +233,17 @@ func (node *Node) startMining(ctx context.Context, newBlock newBlockFunc) {
 	miningCtx, cancel := context.WithCancel(ctx)
 	node.cancelMining = cancel
 	inCh, outCh, workerDoneWg := node.MiningWorker.Start(miningCtx)
+	node.bestBlockCh = node.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
 
 	// Wire up the mining input.
-	go func() { inCh <- node.ChainMgr.GetBestBlock() }()
-	node.ChainMgr.SetBestBlockCh(inCh)
+	go func() {
+		inCh <- node.ChainMgr.GetBestBlock()
+
+		for blk := range node.bestBlockCh {
+			inCh <- blk.(*types.Block)
+		}
+		close(inCh)
+	}()
 
 	// Wire up the mining output.
 	node.miningDoneWg.Add(1)
@@ -264,7 +275,7 @@ func (node *Node) startMining(ctx context.Context, newBlock newBlockFunc) {
 
 // StopMining stops the node's mining.Worker and waits for it to exit.
 func (node *Node) StopMining() {
-	node.ChainMgr.SetBestBlockCh(nil)
+	node.ChainMgr.BestBlockPubSub.Unsub(node.bestBlockCh)
 	node.cancelMining()
 	node.miningDoneWg.Wait()
 }

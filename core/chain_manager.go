@@ -11,6 +11,7 @@ import (
 	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	peer "gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -25,6 +26,9 @@ var (
 	// ErrDifferentGenesis is returned when processing a chain with a different genesis block.
 	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 )
+
+// BlockTopic is the topic used to publish new best blocks.
+const BlockTopic = "blocks"
 
 // BlockProcessResult signifies the outcome of processing a given block.
 type BlockProcessResult int
@@ -54,8 +58,6 @@ type ChainManager struct {
 	bestBlock struct {
 		sync.Mutex
 		blk *types.Block
-		// If ch is not nil we'll send new blocks on it when we accept them.
-		ch chan<- *types.Block
 	}
 
 	processor Processor
@@ -72,13 +74,17 @@ type ChainManager struct {
 	knownGoodBlocks SyncCidSet
 
 	cstore *hamt.CborIpldStore
+
+	// BestBlockPubSub is a pubsub channel that publishes all best blocks.
+	BestBlockPubSub *pubsub.PubSub
 }
 
 // NewChainManager creates a new filecoin chain manager.
 func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
-		cstore:    cs,
-		processor: ProcessBlock,
+		cstore:          cs,
+		processor:       ProcessBlock,
+		BestBlockPubSub: pubsub.New(128),
 	}
 	cm.knownGoodBlocks.set = cid.NewSet()
 
@@ -99,15 +105,6 @@ func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 	return s.setBestBlock(ctx, genesis)
 }
 
-// SetBestBlockCh provides the chain manager with a channel into which
-// it will send newly accepted best blocks. Ordering is not guaranteed.
-// TODO guarantee ordering!
-func (s *ChainManager) SetBestBlockCh(bestBlockCh chan<- *types.Block) {
-	s.bestBlock.Lock()
-	defer s.bestBlock.Unlock()
-	s.bestBlock.ch = bestBlockCh
-}
-
 // setBestBlock sets the best block. Should be used to either to set the
 // genesis block, or to manually set the current selected chain for testing.
 // CALLER MUST HOLD THE bestBlock LOCK.
@@ -119,11 +116,7 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
 
-	if s.bestBlock.ch != nil {
-		// The goroutine will execute out of scope of the lock, so copy ch.
-		bbCh := s.bestBlock.ch
-		go func() { bbCh <- b }()
-	}
+	s.BestBlockPubSub.Pub(b, BlockTopic)
 
 	return nil
 }
@@ -327,6 +320,11 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 		log.Error("processing new block: ", err)
 		return
 	}
+}
+
+// Stop stops all activities and cleans up.
+func (s *ChainManager) Stop() {
+	s.BestBlockPubSub.Shutdown()
 }
 
 // ChainManagerForTest provides backdoor access to internal fields to make

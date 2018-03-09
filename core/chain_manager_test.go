@@ -80,31 +80,24 @@ func TestBasicAddBlock(t *testing.T) {
 	assert.True(stm.knownGoodBlocks.Has(block2.Cid()))
 }
 
-func TestBestBlockCh(t *testing.T) {
+func TestBestBlockPubSub(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
 
-	// Make sure it doesn't blow up with a nil channel.
 	stm := NewChainManager(cs)
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	stm.SetBestBlockCh(nil)
-	assert.NotPanics(func() { stm.ProcessNewBlock(ctx, block1) })
+	ch := stm.BestBlockPubSub.Sub(BlockTopic)
 
-	// Check that it works.
-	ch := make(chan *types.Block)
-	stm = NewChainManager(cs)
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	stm.SetBestBlockCh(ch)
 	block3 := mkChild(block2, 0)
 	blocks := []*types.Block{block1, block2, block3}
 	for _, b := range blocks {
 		stm.ProcessNewBlock(ctx, b)
 	}
 	gotCids := map[string]bool{}
-	for range blocks {
+	for i := 0; i < 4; i++ {
 		gotBlock := <-ch
-		gotCids[gotBlock.Cid().String()] = true
+		gotCids[gotBlock.(*types.Block).Cid().String()] = true
 	}
 	for _, b := range blocks {
 		assert.True(gotCids[b.Cid().String()])

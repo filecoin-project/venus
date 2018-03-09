@@ -86,3 +86,8 @@ func (m *MockStateTree) SetActor(ctx context.Context, address Address, actor *Ac
 func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address Address, creator func() (*Actor, error)) (*Actor, error) {
 	panic("do not call me")
 }
+
+// Debug implements StateTree.Debug
+func (m *MockStateTree) Debug() {
+	panic("do not call me")
+}

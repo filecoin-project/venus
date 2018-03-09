@@ -150,7 +150,7 @@ func (o *output) ReadStdout() string {
 	return string(out)
 }
 
-// run a one off command and make sure it succeeds
+// runSuccess runs a one off command and make sure it succeeds.
 func runSuccess(t *testing.T, args string) *output {
 	t.Helper()
 	out := run(args)
@@ -160,14 +160,25 @@ func runSuccess(t *testing.T, args string) *output {
 	return out
 }
 
-// run a one off command
+// runFail runs a one off command and make sure it fails with the given error.
+func runFail(t *testing.T, err, args string) *output {
+	t.Helper()
+	out := run(args)
+	assert.NoError(t, out.Error)
+	assert.Equal(t, out.Code, 1)
+	assert.Empty(t, out.ReadStdout())
+	assert.Contains(t, out.ReadStderr(), err)
+	return out
+}
+
+// run runs a one off command.
 func run(input string) *output {
 	o := runNoWait(input)
 	<-o.CloseChan
 	return o
 }
 
-// spawn a command and don't wait for it to finish, like running the daemon.
+// runNoWait spawns a command and don't wait for it to finish, like running the daemon.
 func runNoWait(input string) *output {
 	args := strings.Split(input, " ")
 
