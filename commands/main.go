@@ -50,18 +50,19 @@ var rootCmd = &cmds.Command{
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"address":      addrsCmd,
-	"chain":        chainCmd,
-	"daemon":       daemonCmd,
-	"id":           idCmd,
-	"miner":        minerCmd,
-	"mining":       miningCmd,
-	"mpool":        mpoolCmd,
-	"ping":         pingCmd,
-	"send-message": sendMsgCmd,
-	"swarm":        swarmCmd,
-	"version":      versionCmd,
-	"wallet":       walletCmd,
+	"address": addrsCmd,
+	"chain":   chainCmd,
+	"client":  clientCmd,
+	"daemon":  daemonCmd,
+	"id":      idCmd,
+	"miner":   minerCmd,
+	"mining":  miningCmd,
+	"mpool":   mpoolCmd,
+	"ping":    pingCmd,
+	"message": msgCmd,
+	"swarm":   swarmCmd,
+	"version": versionCmd,
+	"wallet":  walletCmd,
 }
 
 func init() {
