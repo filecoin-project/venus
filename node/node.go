@@ -60,6 +60,9 @@ type Node struct {
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
 
+	// Blockservice is a higher level interface for fetching data
+	Blockservice bserv.BlockService
+
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
 
@@ -153,6 +156,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	return &Node{
+		Blockservice: bserv,
 		CborStore:    cst,
 		ChainMgr:     chainMgr,
 		Datastore:    nc.Datastore,
