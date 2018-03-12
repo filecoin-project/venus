@@ -22,7 +22,6 @@ type Orderbook struct {
 	NextAskID uint64
 
 	Bids      BidSet
-	UsedBids  BidSet
 	NextBidID uint64
 
 	Deals []*Deal
@@ -46,6 +45,9 @@ type Bid struct {
 	//Coding ???
 	Owner types.Address
 	ID    uint64
+
+	// Used indicates whether or not this bid is in use by a deal
+	Used bool
 }
 
 // Deal is the successful fulfilment of an ask and a bid with eachother.

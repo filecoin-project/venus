@@ -197,7 +197,7 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*bi
 }
 
 // AddDeal creates a deal from the given ask and bid
-func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, minerSig []byte) (*big.Int, uint8, error) {
+func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, clientSig []byte) (*big.Int, uint8, error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
 		// TODO: askset is a map from uint64, our input is a big int.
@@ -211,8 +211,16 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, mi
 			return nil, fmt.Errorf("unknown bid %s", bidID)
 		}
 
-		if ctx.Message().From != bid.Owner {
-			return nil, fmt.Errorf("cannot create a deal for someone elses bid")
+		mown, ret, err := ctx.Send(ask.Owner, "getOwner", nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		if ret != 0 {
+			return nil, fmt.Errorf("ask.miner.getOwner() failed")
+		}
+
+		if ctx.Message().From != types.Address(mown) {
+			return nil, fmt.Errorf("cannot create a deal for someone elses ask")
 		}
 
 		if ask.Size.Cmp(bid.Size) < 0 {
@@ -220,13 +228,12 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, mi
 		}
 
 		// TODO: real signature check and stuff
-		if ask.Owner != types.Address(minerSig) {
+		if bid.Owner != types.Address(clientSig) {
 			return nil, fmt.Errorf("signature failed to validate")
 		}
 
-		// mark bid as used (we could just have a bool field on the bid for this)
-		delete(storage.Orderbook.Bids, bidID.Uint64())
-		storage.Orderbook.UsedBids[bidID.Uint64()] = bid
+		// mark bid as used
+		bid.Used = true
 
 		// subtract used space from add
 		ask.Size.Sub(ask.Size, bid.Size)

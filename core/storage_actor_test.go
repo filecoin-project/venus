@@ -150,7 +150,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.Equal(uint8(0), receipt.ExitCode)
 
 	// now make a deal
-	sig := []byte(minerAddr)
+	sig := []byte(TestAccount)
 	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig) // askID, bidID, signature
 	msg = types.NewMessage(TestAccount, StorageMarketAddress, nil, "addDeal", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
