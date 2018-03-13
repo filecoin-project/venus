@@ -60,7 +60,7 @@ Likely future requirements:
 
 ## Testing philosophy
 * We use both unit tests (for functions, etc.) and command tests (that test commands executing on a filecoin node)
-* Test the output/contracts, not the individual lines of code (which we expect to change)
+* We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work)
 
 ## Merge strategy
 
