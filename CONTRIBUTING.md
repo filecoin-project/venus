@@ -58,6 +58,10 @@ Likely future requirements:
  * Integration tested
  * Respects Juan’s most important API requirements
 
+## Testing philosophy
+* We use both unit tests (for functions, etc.) and command tests (that test commands executing on a filecoin node)
+* We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work)
+
 ## Merge strategy
 
   * Always squash commits.
