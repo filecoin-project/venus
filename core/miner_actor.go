@@ -56,6 +56,10 @@ var minerExports = Exports{
 		Params: []abi.Type{abi.Integer, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
+	"getOwner": &FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Address},
+	},
 }
 
 // Exports returns the miner actors exported functions
@@ -119,4 +123,22 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 	}
 
 	return askID, 0, nil
+}
+
+// GetOwner returns the miners owner
+func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
+	var mstore MinerStorage
+	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+		return mstore.Owner, nil
+	})
+	if err != nil {
+		return "", 1, err
+	}
+
+	a, ok := out.(types.Address)
+	if !ok {
+		return "", 1, newFaultErrorf("expected an Address return value from call, but got %T instead", out)
+	}
+
+	return a, 0, nil
 }

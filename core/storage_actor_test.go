@@ -117,3 +117,50 @@ func TestStorageMarketAddBid(t *testing.T) {
 	assert.NoError(err)
 	assert.Contains(receipt.Error, "must send price * size funds to create bid")
 }
+
+func TestStorageMarketMakeDeal(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := InitGenesis(cst)
+	assert.NoError(err)
+
+	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	assert.NoError(err)
+
+	// create a bid
+	pdata := mustConvertParams(big.NewInt(20), big.NewInt(30))
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(600), "addBid", pdata)
+	receipt, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+
+	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(receipt.Return))
+
+	// create a miner
+	minerAddr := createTestMiner(assert, st, 50000, 45000)
+
+	// add an ask on it
+	pdata = mustConvertParams(big.NewInt(25), big.NewInt(35))
+	msg = types.NewMessage(TestAccount, minerAddr, nil, "addAsk", pdata)
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Equal(uint8(0), receipt.ExitCode)
+
+	// now make a deal
+	sig := []byte(TestAccount)
+	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig) // askID, bidID, signature
+	msg = types.NewMessage(TestAccount, StorageMarketAddress, nil, "addDeal", pdata)
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Equal(uint8(0), receipt.ExitCode)
+
+	sma, err := st.GetActor(ctx, StorageMarketAddress)
+	assert.NoError(err)
+	var sms StorageMarketStorage
+	assert.NoError(UnmarshalStorage(sma.ReadStorage(), &sms))
+	assert.Len(sms.Orderbook.Deals, 1)
+	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
+}
