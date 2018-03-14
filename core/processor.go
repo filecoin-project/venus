@@ -96,18 +96,14 @@ func ApplyMessage(ctx context.Context, st types.StateTree, msg *types.Message) (
 		return nil, faultErrorWrap(err, "could not set from actor")
 	}
 
-	// TODO(fritz) Uncomment once this lands:
-	// https://github.com/ipfs/go-hamt-ipld/pull/2
-	// snapshot := st.Snapshot()
+	snapshot := st.Snapshot()
 
 	ret, exitCode, vmErr := Send(ctx, fromActor, toActor, msg, st)
 
 	if IsFault(vmErr) {
 		return nil, vmErr
 	} else if shouldRevert(vmErr) {
-		// TODO(fritz) Uncomment once this lands:
-		// https://github.com/ipfs/go-hamt-ipld/pull/2
-		// st.RevertTo(snapshot)
+		st.RevertTo(snapshot)
 
 		// Only a few VM errors constitute message failures (eg, insufficient funds).
 		if isFailureVMError(vmErr) {

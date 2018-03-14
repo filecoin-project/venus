@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,64 +104,59 @@ func (ma *fakeActor) Foo(ctx *VMContext) (uint8, error) {
 	return 1, newRevertError("boom")
 }
 
-// TODO(fritz) Uncomment once this lands:
-// https://github.com/ipfs/go-hamt-ipld/pull/2
-// func requireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
-// 	storageBytes, err := MarshalStorage(&fakeActorStorage{})
-// 	require.NoError(err)
-// 	return types.NewActorWithMemory(codeCid, big.NewInt(100), storageBytes)
-// }
+func requireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
+	storageBytes, err := MarshalStorage(&fakeActorStorage{})
+	require.NoError(err)
+	return types.NewActorWithMemory(codeCid, big.NewInt(100), storageBytes)
+}
 
-// TODO(fritz) Uncomment once this lands:
-// https://github.com/ipfs/go-hamt-ipld/pull/2
-// func TestProcessBlockVMErrors(t *testing.T) {
-// 	assert := assert.New(t)
-// 	require := require.New(t)
-// 	newAddress := types.NewAddressForTestGetter()
-// 	ctx := context.Background()
-// 	cst := hamt.NewCborStore()
-// 	st := types.NewEmptyStateTree(cst)
+func TestProcessBlockVMErrors(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
 
-// 	// Install the fake actor so we can execute it.
-// 	fakeActorCodeCid := types.NewCidForTestGetter()()
-// 	BuiltinActors[fakeActorCodeCid.KeyString()] = &fakeActor{}
-// 	defer func() {
-// 		delete(BuiltinActors, fakeActorCodeCid.KeyString())
-// 	}()
+	// Install the fake actor so we can execute it.
+	fakeActorCodeCid := types.NewCidForTestGetter()()
+	BuiltinActors[fakeActorCodeCid.KeyString()] = &fakeActor{}
+	defer func() {
+		delete(BuiltinActors, fakeActorCodeCid.KeyString())
+	}()
 
-// 	// Stick two fake actors in the state tree so they can talk.
-// 	addr1, addr2 := newAddress(), newAddress()
-// 	act1, act2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
-// 	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-// 		addr1: act1,
-// 		addr2: act2,
-// 	})
-// 	msg := types.NewMessage(addr1, addr2, nil, "foo", nil)
-// 	blk := &types.Block{
-// 		Height:    20,
-// 		StateRoot: stCid,
-// 		Messages:  []*types.Message{msg},
-// 	}
+	// Stick two fake actors in the state tree so they can talk.
+	addr1, addr2 := newAddress(), newAddress()
+	act1, act2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
+	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	msg := types.NewMessage(addr1, addr2, nil, "foo", nil)
+	blk := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.Message{msg},
+	}
 
-// 	// The "foo" message will cause a vm error and
-// 	// we're going to check four things...
-// 	receipts, err := ProcessBlock(ctx, blk, st)
+	// The "foo" message will cause a vm error and
+	// we're going to check four things...
+	receipts, err := ProcessBlock(ctx, blk, st)
 
-// 	// 1. That a VM error is not a message failure (err).
-// 	assert.NoError(err)
+	// 1. That a VM error is not a message failure (err).
+	assert.NoError(err)
 
-// 	// 2. That the VM error is faithfully recorded.
-// 	assert.Len(receipts, 1)
-// 	assert.Contains(receipts[0].VMError, "boom")
+	// 2. That the VM error is faithfully recorded.
+	assert.Len(receipts, 1)
+	assert.Contains(receipts[0].Error, "boom")
 
-// 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
-// 	expectedAct1, expectedAct2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
-// 	expectedAct1.IncNonce()
-// 	expectedStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-// 		addr1: expectedAct1,
-// 		addr2: expectedAct2,
-// 	})
-// 	gotStCid, err := st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(expectedStCid.Equals(gotStCid))
-// }
+	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
+	expectedAct1, expectedAct2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
+	expectedAct1.IncNonce()
+	expectedStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: expectedAct1,
+		addr2: expectedAct2,
+	})
+	gotStCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	assert.True(expectedStCid.Equals(gotStCid))
+}
