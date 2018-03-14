@@ -24,6 +24,10 @@ var (
 type Message struct {
 	To   Address
 	From Address
+	// When receiving a message from a user account the nonce in
+	// the message must match the expected nonce in the from actor.
+	// This prevents replay attacks.
+	Nonce uint64
 
 	Value *big.Int
 

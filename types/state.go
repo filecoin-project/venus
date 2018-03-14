@@ -14,16 +14,27 @@ type stateTree struct {
 	// root is the root of the state merklehamt
 	root *hamt.Node
 
+	// Snapshot-related fields. See comment on Snapshot().
+	nextRevID RevID
+	revs      map[RevID]*hamt.Node
+
 	store *hamt.CborIpldStore
 }
+
+// RevID identifies a snapshot of the StateTree.
+type RevID int
 
 // StateTree is the interface that stateTree implements. It provides accessors
 // to Get and Set actors in a backing store by address.
 type StateTree interface {
 	Flush(ctx context.Context) (*cid.Cid, error)
+
 	GetActor(ctx context.Context, a Address) (*Actor, error)
 	GetOrCreateActor(ctx context.Context, a Address, c func() (*Actor, error)) (*Actor, error)
 	SetActor(ctx context.Context, a Address, act *Actor) error
+
+	Snapshot() RevID
+	RevertTo(RevID)
 }
 
 var _ StateTree = &stateTree{}
@@ -34,19 +45,51 @@ func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid) (
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load node")
 	}
-
-	return &stateTree{
-		root:  root,
-		store: store,
-	}, nil
+	stateTree := newEmptyStateTree(store)
+	stateTree.root = root
+	return stateTree, nil
 }
 
 // NewEmptyStateTree instantiates a new state tree with no data in it.
 func NewEmptyStateTree(store *hamt.CborIpldStore) StateTree {
+	return newEmptyStateTree(store)
+}
+
+func newEmptyStateTree(store *hamt.CborIpldStore) *stateTree {
 	return &stateTree{
 		root:  hamt.NewNode(store),
+		revs:  make(map[RevID]*hamt.Node),
 		store: store,
 	}
+}
+
+// Snapshot returns an identifier that can be used to revert to a
+// previous state of the tree. Present implementation is quick and
+// easy: we copy the underlying tree and keep it in a map by
+// revid, then set it when RevertTo is called. This obviously keeps
+// a full copy of the underlying tree around for each snapshot,
+// forever. We should eventually do something better/different.
+//
+// TODO for this to actually work the following PR has to be
+// patched/landed here:
+// https://github.com/ipfs/go-hamt-ipld/pull/2
+func (t *stateTree) Snapshot() RevID {
+	thisRevID := t.nextRevID
+	t.revs[thisRevID] = t.root.Copy()
+	t.nextRevID++
+	return thisRevID
+}
+
+// RevertTo reverts to the given RevID. You can revert to a given
+// RevID multiple times.
+func (t *stateTree) RevertTo(revID RevID) {
+	root, ok := t.revs[revID]
+	if !ok {
+		panic("RevId does not exist")
+	}
+	// We have to return another copy here in case they roll back
+	// to this state multiple times.
+	t.root = root.Copy()
 }
 
 // Flush serialized the state tree and flushes unflushed changes to the backing

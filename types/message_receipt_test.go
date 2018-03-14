@@ -14,7 +14,7 @@ func TestMessageReceiptMarshal(t *testing.T) {
 	c1, err := cidFromString("hello")
 	assert.NoError(err)
 
-	receipt := NewMessageReceipt(c1, 8, []byte{1, 2, 3})
+	receipt := NewMessageReceipt(c1, 8, "", []byte{1, 2, 3})
 	bytes, err := cbor.DumpObject(receipt)
 	assert.NoError(err)
 

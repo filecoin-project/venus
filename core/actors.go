@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -26,6 +25,9 @@ func (e Exports) Has(method string) bool {
 	_, ok := e[method]
 	return ok
 }
+
+// TODO fritz require actors to define their exit codes and associate
+// an error string with them.
 
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
@@ -113,7 +115,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 	return func(ctx *VMContext) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
-			return nil, 1, errors.Wrapf(err, "invalid params")
+			return nil, 1, faultErrorWrap(err, "invalid params")
 		}
 
 		args := []reflect.Value{
@@ -131,7 +133,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 		if signature.Return != nil {
 			ret, err := marshalValue(out[0].Interface())
 			if err != nil {
-				return nil, 1, errors.Wrapf(err, "failed to marshal output value")
+				return nil, 1, faultErrorWrap(err, "failed to marshal output value")
 			}
 
 			retVal = ret
@@ -144,7 +146,12 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 		}
 
 		outErr, ok := out[1].Interface().(error)
-		if !ok {
+		if ok {
+			if !(shouldRevert(outErr) || IsFault(outErr)) {
+				panic("you are a bad person: error must be either a reverterror or a fault")
+			}
+		} else {
+			// The value of the returned error was nil.
 			outErr = nil
 		}
 

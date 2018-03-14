@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
@@ -76,8 +75,9 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 
 	pdata := mustConvertParams(big.NewInt(50))
 	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
-	_, err = ApplyMessage(ctx, st, msg)
-	assert.Equal(ErrPledgeTooLow, errors.Cause(err))
+	receipt, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Contains(receipt.Error, ErrPledgeTooLow.Error())
 }
 
 func TestStorageMarketAddBid(t *testing.T) {
@@ -113,8 +113,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// try to create a bid, but send wrong value
 	pdata = mustConvertParams(big.NewInt(90), big.NewInt(100))
 	msg = types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(600), "addBid", pdata)
-	_, err = ApplyMessage(ctx, st, msg) // TODO: apply message shouldnt error
-	// here. This invocation should be valid, it should just return a non-zero
-	// exit code and an error message in the receipt.
-	assert.EqualError(err, "failed to send message: must send price * size funds to create bid")
+	receipt, err = ApplyMessage(ctx, st, msg)
+	assert.NoError(err)
+	assert.Contains(receipt.Error, "must send price * size funds to create bid")
 }

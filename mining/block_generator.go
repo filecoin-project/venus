@@ -49,6 +49,9 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*
 		return nil, err
 	}
 
+	// TODO(fritz) processBlock bails as soon as it sees a
+	// message failure. Change this to skip the message
+	// and surface it somehow, to order by nonce, etc.
 	receipts, err := b.processBlock(ctx, next, stateTree)
 	if err != nil {
 		return nil, err
@@ -62,7 +65,8 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*
 	}
 	next.StateRoot = newStateTreeCid
 
-	// TODO: Is this the right place?
+	// TODO(fritz) Keep messages in the pool up to date, maybe
+	// here maybe elsewhere.
 	toRemove := make([]*cid.Cid, len(next.Messages))
 	for i, msg := range next.Messages {
 		c, err := msg.Cid()

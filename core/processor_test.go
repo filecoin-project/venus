@@ -5,70 +5,163 @@ import (
 	"math/big"
 	"testing"
 
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	hamt "gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func makeStateTree(cst *hamt.CborIpldStore, balances map[types.Address]*big.Int) (*cid.Cid, types.StateTree, error) {
+func init() {
+	cbor.RegisterCborType(fakeActorStorage{})
+}
+
+func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, types.StateTree) {
 	ctx := context.Background()
 	t := types.NewEmptyStateTree(cst)
 
-	for k, v := range balances {
-		act, err := NewAccountActor(v)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if err := t.SetActor(ctx, k, act); err != nil {
-			return nil, nil, err
-		}
+	for addr, act := range acts {
+		err := t.SetActor(ctx, addr, act)
+		require.NoError(err)
 	}
 
 	c, err := t.Flush(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
+	require.NoError(err)
 
-	return c, t, nil
+	return c, t
 }
 
-func TestProcessBlock(t *testing.T) {
-	assert := assert.New(t)
+func requireNewAccountActor(require *require.Assertions, value *big.Int) *types.Actor {
+	act, err := NewAccountActor(value)
+	require.NoError(err)
+	return act
+}
 
+func TestProcessBlockSuccess(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	addr1 := types.Address("one")
-	addr2 := types.Address("two")
-	stc, st, err := makeStateTree(cst, map[types.Address]*big.Int{
-		addr1: big.NewInt(10000),
+	addr1, addr2 := newAddress(), newAddress()
+	act1 := requireNewAccountActor(require, big.NewInt(10000))
+	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
 	})
-	assert.NoError(err)
-	stc2, _, err := makeStateTree(cst, map[types.Address]*big.Int{
-		addr1: big.NewInt(10000 - 550),
-		addr2: big.NewInt(550),
-	})
-	assert.NoError(err)
-
 	msg := types.NewMessage(addr1, addr2, big.NewInt(550), "", nil)
-
 	blk := &types.Block{
 		Height:    20,
-		StateRoot: stc,
+		StateRoot: stCid,
 		Messages:  []*types.Message{msg},
 	}
-
 	receipts, err := ProcessBlock(ctx, blk, st)
 	assert.NoError(err)
-
 	assert.Len(receipts, 1)
 
-	stc2out, err := st.Flush(ctx)
+	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
-
-	assert.Equal(stc2, stc2out)
+	expAct1, expAct2 := requireNewAccountActor(require, big.NewInt(10000-550)), requireNewAccountActor(require, big.NewInt(550))
+	expAct1.IncNonce()
+	expStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: expAct1,
+		addr2: expAct2,
+	})
+	assert.True(expStCid.Equals(gotStCid))
 }
+
+type fakeActorStorage struct{ Changed bool }
+type fakeActor struct{}
+
+var _ ExecutableActor = (*fakeActor)(nil)
+
+var fakeActorExports = Exports{
+	"foo": &FunctionSignature{
+		Params: nil,
+		Return: nil,
+	},
+}
+
+// Exports returns the list of fakeActor exported functions.
+func (ma *fakeActor) Exports() Exports {
+	return fakeActorExports
+}
+
+// Foo sets a bit inside fakeActor's storage and returns a
+// revert error.
+func (ma *fakeActor) Foo(ctx *VMContext) (uint8, error) {
+	fastore := &fakeActorStorage{}
+	_, err := WithStorage(ctx, fastore, func() (interface{}, error) {
+		fastore.Changed = true
+		return nil, nil
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	return 1, newRevertError("boom")
+}
+
+// TODO(fritz) Uncomment once this lands:
+// https://github.com/ipfs/go-hamt-ipld/pull/2
+// func requireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
+// 	storageBytes, err := MarshalStorage(&fakeActorStorage{})
+// 	require.NoError(err)
+// 	return types.NewActorWithMemory(codeCid, big.NewInt(100), storageBytes)
+// }
+
+// TODO(fritz) Uncomment once this lands:
+// https://github.com/ipfs/go-hamt-ipld/pull/2
+// func TestProcessBlockVMErrors(t *testing.T) {
+// 	assert := assert.New(t)
+// 	require := require.New(t)
+// 	newAddress := types.NewAddressForTestGetter()
+// 	ctx := context.Background()
+// 	cst := hamt.NewCborStore()
+// 	st := types.NewEmptyStateTree(cst)
+
+// 	// Install the fake actor so we can execute it.
+// 	fakeActorCodeCid := types.NewCidForTestGetter()()
+// 	BuiltinActors[fakeActorCodeCid.KeyString()] = &fakeActor{}
+// 	defer func() {
+// 		delete(BuiltinActors, fakeActorCodeCid.KeyString())
+// 	}()
+
+// 	// Stick two fake actors in the state tree so they can talk.
+// 	addr1, addr2 := newAddress(), newAddress()
+// 	act1, act2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
+// 	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+// 		addr1: act1,
+// 		addr2: act2,
+// 	})
+// 	msg := types.NewMessage(addr1, addr2, nil, "foo", nil)
+// 	blk := &types.Block{
+// 		Height:    20,
+// 		StateRoot: stCid,
+// 		Messages:  []*types.Message{msg},
+// 	}
+
+// 	// The "foo" message will cause a vm error and
+// 	// we're going to check four things...
+// 	receipts, err := ProcessBlock(ctx, blk, st)
+
+// 	// 1. That a VM error is not a message failure (err).
+// 	assert.NoError(err)
+
+// 	// 2. That the VM error is faithfully recorded.
+// 	assert.Len(receipts, 1)
+// 	assert.Contains(receipts[0].VMError, "boom")
+
+// 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
+// 	expectedAct1, expectedAct2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
+// 	expectedAct1.IncNonce()
+// 	expectedStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+// 		addr1: expectedAct1,
+// 		addr2: expectedAct2,
+// 	})
+// 	gotStCid, err := st.Flush(ctx)
+// 	assert.NoError(err)
+// 	assert.True(expectedStCid.Equals(gotStCid))
+// }

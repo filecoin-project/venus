@@ -28,7 +28,7 @@ func TestTransfer(t *testing.T) {
 	t.Run("fail", func(t *testing.T) {
 		assert := assert.New(t)
 
-		assert.EqualError(transfer(actor2, actor3, big.NewInt(1000)), "from has not enough balance")
-		assert.EqualError(transfer(actor2, actor3, big.NewInt(-1000)), "can not transfer negative values")
+		assert.EqualError(transfer(actor2, actor3, big.NewInt(1000)), "not enough balance")
+		assert.EqualError(transfer(actor2, actor3, big.NewInt(-1000)), "cannot transfer negative values")
 	})
 }

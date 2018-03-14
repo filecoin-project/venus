@@ -15,7 +15,7 @@ import (
 var MinimumPledge = big.NewInt(10000)
 
 // ErrPledgeTooLow is returned when the pledge is too low
-var ErrPledgeTooLow = &revertErrorWrap{fmt.Errorf("pledge must be at least %s bytes", MinimumPledge)}
+var ErrPledgeTooLow = newRevertErrorf("pledge must be at least %s bytes", MinimumPledge)
 
 func init() {
 	cbor.RegisterCborType(StorageMarketStorage{})
@@ -78,22 +78,27 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
 		if pledge.Cmp(MinimumPledge) < 0 {
+			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, ErrPledgeTooLow
 		}
 
 		// 'CreateNewActor' (should likely be a method on the vmcontext)
 		addr, err := ctx.AddressForNewActor()
 		if err != nil {
-			return nil, err
+			return nil, faultErrorWrap(err, "could not get address for new actor")
 		}
 
 		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
 		if err != nil {
-			return nil, err
+			// TODO? From an Actor's perspective this (and other stuff) should probably
+			// never fail. It should call into the vmcontext to do this and the vm context
+			// should "throw" to a higher level handler if there's a system fault. It would
+			// simplify the actor code.
+			return nil, faultErrorWrap(err, "could not get a new miner actor")
 		}
 
 		if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
-			return nil, err
+			return nil, faultErrorWrap(err, "could not set miner actor in CreateMiner")
 		}
 		// -- end --
 
@@ -122,7 +127,8 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 
 		_, ok := storage.Miners[miner]
 		if !ok {
-			return nil, fmt.Errorf("unknown miner: %s", miner)
+			// TODO This should probably return a non-zero exit code instead of an error.
+			return nil, newRevertErrorf("unknown miner: %s", miner)
 		}
 
 		askID := storage.Orderbook.NextAskID
@@ -143,7 +149,7 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 
 	askID, ok := ret.(*big.Int)
 	if !ok {
-		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, newRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
 	return askID, 0, nil
@@ -158,7 +164,8 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*bi
 		lockedFunds := big.NewInt(0).Mul(price, size)
 		if ctx.Message().Value.Cmp(lockedFunds) < 0 {
 			fmt.Println(lockedFunds, ctx.Message().Value)
-			return nil, fmt.Errorf("must send price * size funds to create bid")
+			// TODO This should probably return a non-zero exit code instead of an error.
+			return nil, newRevertErrorf("must send price * size funds to create bid")
 		}
 
 		bidID := storage.Orderbook.NextBidID
@@ -179,7 +186,7 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*bi
 
 	bidID, ok := ret.(*big.Int)
 	if !ok {
-		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, newRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
 	return bidID, 0, nil

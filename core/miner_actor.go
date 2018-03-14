@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"math/big"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
@@ -64,12 +63,19 @@ func (ma *MinerActor) Exports() Exports {
 	return minerExports
 }
 
+// ErrCallerUnauthorized signals an unauthorized caller.
+var ErrCallerUnauthorized = newRevertError("not authorized to call the method")
+
+// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
+var ErrInsufficientPledge = newRevertError("not enough pledged")
+
 // AddAsk adds an ask via this miner to the storage markets orderbook
 func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
 	var mstore MinerStorage
 	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
 		if ctx.Message().From != mstore.Owner {
-			return nil, fmt.Errorf("not authorized to call this method")
+			// TODO This should probably return a non-zero exit code instead of an error.
+			return nil, ErrCallerUnauthorized
 		}
 
 		// compute locked storage + new ask
@@ -77,7 +83,8 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 		total := locked.Add(locked, size)
 
 		if total.Cmp(mstore.PledgeBytes) > 0 {
-			return nil, fmt.Errorf("not enough pledged storage for new ask")
+			// TODO This should probably return a non-zero exit code instead of an error.
+			return nil, ErrInsufficientPledge
 		}
 
 		mstore.LockedStorage = total
@@ -90,14 +97,14 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 
 		askID, err := abi.Deserialize(out, abi.Integer)
 		if err != nil {
-			return nil, err
+			return nil, faultErrorWrap(err, "error deserializing")
 		}
 
 		if ret != 0 {
 			// TODO: Log an error maybe? need good ways of signaling *why* failures happened.
 			// I guess we do want to revert all state changes in this case.
 			// Which is usually signalled through an error. Something smells.
-			return nil, fmt.Errorf("call to StorageMarket.addAsk failed")
+			return nil, newRevertError("call to StorageMarket.addAsk failed")
 		}
 
 		return askID.Val, nil
@@ -108,7 +115,7 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 
 	askID, ok := out.(*big.Int)
 	if !ok {
-		return nil, 1, fmt.Errorf("expected an Integer return value from call, but got %T instead", out)
+		return nil, 1, newRevertErrorf("expected an Integer return value from call, but got %T instead", out)
 	}
 
 	return askID, 0, nil

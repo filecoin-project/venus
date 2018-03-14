@@ -61,7 +61,11 @@ func (a *MockActor) Four(ctx *VMContext) ([]byte, uint8, error) {
 }
 
 func (a *MockActor) Five(ctx *VMContext) ([]byte, uint8, error) {
-	return nil, 2, fmt.Errorf("fail")
+	return nil, 2, newRevertError("fail5")
+}
+
+func (a *MockActor) Six(ctx *VMContext) (uint8, error) {
+	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
 func NewMockActor(list Exports) *MockActor {
@@ -70,11 +74,11 @@ func NewMockActor(list Exports) *MockActor {
 	}
 }
 
-func TestMakeTypedExportSuccess(t *testing.T) {
-	makeCtx := func(method string) *VMContext {
-		return NewVMContext(nil, nil, types.NewMessage(types.Address(""), types.Address("to"), nil, "two", nil), nil)
-	}
+func makeCtx(method string) *VMContext {
+	return NewVMContext(nil, nil, types.NewMessage(types.Address(""), types.Address("to"), nil, method, nil), nil)
+}
 
+func TestMakeTypedExportSuccess(t *testing.T) {
 	t.Run("no return", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -121,9 +125,25 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		ret, exitCode, err := MakeTypedExport(a, "five")(makeCtx("five"))
 
-		assert.Equal(err.Error(), "fail")
+		assert.Contains(err.Error(), "fail5")
 		assert.Equal(exitCode, uint8(2))
 		assert.Nil(ret)
+	})
+
+	t.Run("with error that is not revert or fault", func(t *testing.T) {
+		assert := assert.New(t)
+
+		a := NewMockActor(map[string]*FunctionSignature{
+			"six": {
+				Params: nil,
+				Return: nil,
+			},
+		})
+
+		exportedFunc := MakeTypedExport(a, "six")
+		assert.PanicsWithValue("you are a bad person: error must be either a reverterror or a fault", func() {
+			exportedFunc(makeCtx("six"))
+		})
 	})
 }
 

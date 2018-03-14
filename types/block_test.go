@@ -51,8 +51,8 @@ func TestDecodeBlock(t *testing.T) {
 		Messages:  []*Message{m1, m2},
 		StateRoot: c2,
 		MessageReceipts: []*MessageReceipt{
-			NewMessageReceipt(m1Cid, 1, []byte{1, 2}),
-			NewMessageReceipt(m2Cid, 1, []byte{1, 2}),
+			NewMessageReceipt(m1Cid, 1, "", []byte{1, 2}),
+			NewMessageReceipt(m2Cid, 1, "", []byte{1, 2}),
 		},
 	}
 

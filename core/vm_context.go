@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -57,34 +55,34 @@ func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, para
 
 	vals, err := abi.ToValues(params)
 	if err != nil {
-		return nil, 1, errors.Wrapf(err, "failed to convert inputs to abi values")
+		return nil, 1, faultErrorWrap(err, "failed to convert inputs to abi values")
 	}
 
 	paramData, err := abi.EncodeValues(vals)
 	if err != nil {
-		return nil, 1, err
+		return nil, 1, revertErrorWrap(err, "encoding params failed")
 	}
 
 	msg := types.NewMessage(from, to, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO: handle this
-		return nil, 1, fmt.Errorf("unhandled: sending to self (%s)", msg.From)
+		return nil, 1, newFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
 	toActor, err := ctx.state.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
 		return NewAccountActor(nil)
 	})
 	if err != nil {
-		return nil, 1, errors.Wrapf(err, "failed to get or create To actor %s", msg.To)
+		return nil, 1, faultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
-
+	// TODO(fritz) de-dup some of the logic between here and core.Send
 	out, ret, err := Send(context.Background(), fromActor, toActor, msg, ctx.state)
 	if err != nil {
 		return nil, ret, err
 	}
 
 	if err := ctx.state.SetActor(context.TODO(), to, toActor); err != nil {
-		return nil, 1, errors.Wrapf(err, "failed to write actor after send")
+		return nil, 1, faultErrorWrap(err, "failed to write actor after send")
 	}
 
 	return out, ret, nil

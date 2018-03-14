@@ -15,16 +15,19 @@ type MessageReceipt struct {
 	Message *cid.Cid
 	// `0` is success, anything else is an error code in unix style.
 	ExitCode uint8
+	// If invocation returned an error it will be included here.
+	Error string
 	// The value returned from the message.
 	// TODO: limit size
 	Return []byte
 }
 
 // NewMessageReceipt creates a new MessageReceipt.
-func NewMessageReceipt(msg *cid.Cid, exitCode uint8, ret []byte) *MessageReceipt {
+func NewMessageReceipt(msg *cid.Cid, exitCode uint8, vmError string, ret []byte) *MessageReceipt {
 	return &MessageReceipt{
 		Message:  msg,
 		ExitCode: exitCode,
+		Error:    vmError,
 		Return:   ret,
 	}
 }
