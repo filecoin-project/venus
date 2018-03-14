@@ -125,6 +125,7 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 	return askID, 0, nil
 }
 
+// GetOwner returns the miners owner
 func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
 	var mstore MinerStorage
 	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {

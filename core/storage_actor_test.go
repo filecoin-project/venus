@@ -143,7 +143,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	minerAddr := createTestMiner(assert, st, 50000, 45000)
 
 	// add an ask on it
-	pdata = mustConvertParams(big.NewInt(25), big.NewInt(30))
+	pdata = mustConvertParams(big.NewInt(25), big.NewInt(35))
 	msg = types.NewMessage(TestAccount, minerAddr, nil, "addAsk", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
@@ -162,4 +162,5 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	var sms StorageMarketStorage
 	assert.NoError(UnmarshalStorage(sma.ReadStorage(), &sms))
 	assert.Len(sms.Orderbook.Deals, 1)
+	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
 }
