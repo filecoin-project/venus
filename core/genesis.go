@@ -19,7 +19,7 @@ var (
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market
 	StorageMarketAddress types.Address
 
-	defaultAccounts map[types.Address]int64
+	defaultAccounts map[types.Address]uint64
 )
 
 func init() {
@@ -42,7 +42,7 @@ func init() {
 
 	StorageMarketAddress = types.NewMainnetAddress(s)
 
-	defaultAccounts = map[types.Address]int64{
+	defaultAccounts = map[types.Address]uint64{
 		NetworkAccount: 10000000,
 		TestAccount:    50000,
 	}

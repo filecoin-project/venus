@@ -47,8 +47,8 @@ func (z TokenAmount) MarshalJSON() ([]byte, error) {
 type TokenAmount struct{ val *big.Int }
 
 // NewTokenAmount allocates and returns a new TokenAmount set to x.
-func NewTokenAmount(x int64) *TokenAmount {
-	return &TokenAmount{val: big.NewInt(x)}
+func NewTokenAmount(x uint64) *TokenAmount {
+	return &TokenAmount{val: big.NewInt(0).SetUint64(x)}
 }
 
 // NewTokenAmountFromBytes allocates and returns a new TokenAmount set

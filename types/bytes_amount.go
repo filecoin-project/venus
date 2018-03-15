@@ -47,8 +47,8 @@ func (z BytesAmount) MarshalJSON() ([]byte, error) {
 type BytesAmount struct{ val *big.Int }
 
 // NewBytesAmount allocates and returns a new BytesAmount set to x.
-func NewBytesAmount(x int64) *BytesAmount {
-	return &BytesAmount{val: big.NewInt(x)}
+func NewBytesAmount(x uint64) *BytesAmount {
+	return &BytesAmount{val: big.NewInt(0).SetUint64(x)}
 }
 
 // NewBytesAmountFromBytes allocates and returns a new BytesAmount set

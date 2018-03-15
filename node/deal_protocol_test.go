@@ -34,6 +34,30 @@ func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*core.Bid, error) {
 	return msa.bids[bid], nil
 }
 
+// makes mocking existing asks easier
+func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint64) uint64 {
+	id := uint64(len(msa.asks))
+	msa.asks = append(msa.asks, &core.Ask{
+		ID:    id,
+		Owner: owner,
+		Price: types.NewTokenAmount(price),
+		Size:  types.NewBytesAmount(size),
+	})
+	return id
+}
+
+// makes mocking existing bids easier
+func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint64) uint64 {
+	id := uint64(len(msa.bids))
+	msa.bids = append(msa.bids, &core.Bid{
+		ID:    id,
+		Owner: owner,
+		Price: types.NewTokenAmount(price),
+		Size:  types.NewBytesAmount(size),
+	})
+	return id
+}
+
 func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string) (*cid.Cid, error) {
 	// TODO: something useful
 	msg := types.NewMessage(types.Address{}, types.Address{}, nil, "", nil)
@@ -55,24 +79,10 @@ func TestDealProtocol(t *testing.T) {
 
 	minerAddr := nd.Wallet.NewAddress()
 
-	msa := &mockStorageMarketPeeker{
-		asks: []*core.Ask{
-			{
-				ID:    0,
-				Owner: minerAddr,
-				Price: types.NewTokenAmount(40),
-				Size:  types.NewBytesAmount(5500),
-			},
-		},
-		bids: []*core.Bid{
-			{
-				ID:    0,
-				Owner: core.TestAccount,
-				Price: types.NewTokenAmount(35),
-				Size:  types.NewBytesAmount(5000),
-			},
-		},
-	}
+	msa := &mockStorageMarketPeeker{}
+	msa.addAsk(minerAddr, 40, 5500)
+	msa.addBid(core.TestAccount, 35, 5000)
+
 	sm.smi = msa
 	sm.minerAddr = minerAddr
 

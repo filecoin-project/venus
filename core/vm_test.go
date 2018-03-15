@@ -27,7 +27,8 @@ func TestTransfer(t *testing.T) {
 	t.Run("fail", func(t *testing.T) {
 		assert := assert.New(t)
 
+		negval := types.NewTokenAmount(0).Sub(types.NewTokenAmount(1000))
 		assert.EqualError(transfer(actor2, actor3, types.NewTokenAmount(1000)), "not enough balance")
-		assert.EqualError(transfer(actor2, actor3, types.NewTokenAmount(-1000)), "cannot transfer negative values")
+		assert.EqualError(transfer(actor2, actor3, negval), "cannot transfer negative values")
 	})
 }
