@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -9,11 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// makeAddr must be run inside a `withDaemon` context to have access to
-// the default daemon.
-func makeAddr(t *testing.T) string {
+func makeAddr(t *testing.T, d *TestDaemon) string {
 	t.Helper()
-	outNew := runSuccess(t, "go-filecoin wallet addrs new")
+	outNew := d.RunSuccess("wallet addrs new")
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
 	assert.NotEmpty(t, addr)
 	return addr
@@ -22,39 +19,31 @@ func makeAddr(t *testing.T) string {
 func TestAddrsNewAndList(t *testing.T) {
 	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		addrs := make([]string, 10)
-		for i := 0; i < 10; i++ {
-			addrs[i] = makeAddr(t)
-		}
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
 
-		outList := runSuccess(t, "go-filecoin wallet addrs list")
-		list := outList.ReadStdout()
+	addrs := make([]string, 10)
+	for i := 0; i < 10; i++ {
+		addrs[i] = makeAddr(t, d)
+	}
 
-		for _, addr := range addrs {
-			assert.Contains(list, addr)
-		}
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	list := d.RunSuccess("wallet addrs list").ReadStdout()
+	for _, addr := range addrs {
+		assert.Contains(list, addr)
+	}
 }
 
 func TestWalletBalance(t *testing.T) {
 	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		addr := makeAddr(t)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
+	addr := makeAddr(t, d)
 
-		t.Log("[failure] not found")
-		balance := run(fmt.Sprintf("go-filecoin wallet balance %s", addr))
-		assert.Contains(balance.ReadStderr(), "not found")
-		assert.Equal(balance.Code, 1)
-		assert.Empty(balance.ReadStdout())
+	t.Log("[failure] not found")
+	d.RunFail("not found", "wallet balance", addr)
 
-		t.Log("[success] balance 100000")
-		balance = runSuccess(t, fmt.Sprintf("go-filecoin wallet balance %s", types.Address("filecoin")))
-		assert.Contains(balance.ReadStdout(), "100000")
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	t.Log("[success] balance 100000")
+	balance := d.RunSuccess("wallet balance", types.Address("filecoin").String())
+	assert.Contains(balance.ReadStdout(), "100000")
 }

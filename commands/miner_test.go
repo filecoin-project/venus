@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -18,147 +17,174 @@ import (
 func TestMinerCreateSuccess(t *testing.T) {
 	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		// need an address to mine
-		_ = makeAddr(t)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
 
-		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	makeAddr(t, d)
+
+	miner := d.RunSuccess("miner create",
+		"--from", core.TestAccount.String(), "1000000", "20",
+	)
+	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	assert.NoError(err)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		wait := d.RunSuccess("message wait",
+			"--return",
+			"--message=false",
+			"--receipt=false",
+			minerMessageCid.String(),
+		)
+		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
+		assert.NotEqual(addr, types.Address(""))
+		wg.Done()
+	}()
 
-		var wg sync.WaitGroup
+	time.Sleep(100 * time.Millisecond)
+	d.RunSuccess("mining once")
 
-		wg.Add(1)
-		go func() {
-			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
-			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
-			assert.NoError(err)
-			assert.NotEqual(addr, types.Address(""))
-			wg.Done()
-		}()
-
-		time.Sleep(100 * time.Millisecond)
-		_ = runSuccess(t, "go-filecoin mining once")
-
-		wg.Wait()
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	wg.Wait()
 }
 
 func TestMinerCreateFail(t *testing.T) {
-	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		// need an address to mine
-		_ = makeAddr(t)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
 
-		_ = runFail(t, "invalid from address", "go-filecoin miner create --from hello 1000000 20")
-		_ = runFail(t, "invalid pledge", fmt.Sprintf("go-filecoin miner create --from %s '-123' 20", core.TestAccount))
-		_ = runFail(t, "invalid pledge", fmt.Sprintf("go-filecoin miner create --from %s 1f 20", core.TestAccount))
-		_ = runFail(t, "invalid collateral", fmt.Sprintf("go-filecoin miner create --from %s 100 2f", core.TestAccount))
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	makeAddr(t, d)
+
+	d.RunFail("invalid from address",
+		"miner create",
+		"--from", "hello", "1000000", "20",
+	)
+	d.RunFail("invalid pledge",
+		"miner create",
+		"--from", core.TestAccount.String(), "'-123'", "20",
+	)
+	d.RunFail("invalid pledge",
+		"miner create",
+		"--from", core.TestAccount.String(), "1f", "20",
+	)
+	d.RunFail("invalid collateral",
+		"miner create",
+		"--from", core.TestAccount.String(), "100", "2f",
+	)
+
 }
 
 func TestMinerAddAskSuccess(t *testing.T) {
 	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		// need an address to mine
-		_ = makeAddr(t)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
 
-		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	makeAddr(t, d)
+
+	miner := d.RunSuccess("miner create",
+		"--from", core.TestAccount.String(), "1000000", "20",
+	)
+	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	assert.NoError(err)
+
+	var wg sync.WaitGroup
+	var minerAddr types.Address
+
+	wg.Add(1)
+	go func() {
+		wait := d.RunSuccess("message wait",
+			"--return",
+			"--message=false",
+			"--receipt=false",
+			minerMessageCid.String(),
+		)
+		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
+		assert.NotEqual(addr, types.Address(""))
+		minerAddr = addr
+		wg.Done()
+	}()
 
-		var wg sync.WaitGroup
-		var minerAddr types.Address
+	time.Sleep(100 * time.Millisecond)
+	d.RunSuccess("mining once")
 
-		wg.Add(1)
-		go func() {
-			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
-			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
-			assert.NoError(err)
-			assert.NotEqual(addr, types.Address(""))
-			minerAddr = addr
-			wg.Done()
-		}()
+	wg.Wait()
 
-		time.Sleep(100 * time.Millisecond)
-		_ = runSuccess(t, "go-filecoin mining once")
+	wg.Add(1)
+	go func() {
+		ask := d.RunSuccess("miner add-ask", minerAddr.String(), "2000", "10",
+			"--from", core.TestAccount.String(),
+		)
+		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
+		assert.NoError(err)
+		assert.NotNil(askCid)
+		wg.Done()
+	}()
 
-		wg.Wait()
+	time.Sleep(100 * time.Millisecond)
+	d.RunSuccess("mining once")
 
-		wg.Add(1)
-		go func() {
-			ask := runSuccess(t, fmt.Sprintf("go-filecoin miner add-ask %s 2000 10 --from %s", minerAddr, core.TestAccount))
-			askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
-			assert.NoError(err)
-			assert.NotNil(askCid)
-			wg.Done()
-		}()
-
-		time.Sleep(100 * time.Millisecond)
-		_ = runSuccess(t, "go-filecoin mining once")
-
-		wg.Wait()
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	wg.Wait()
 }
 
 func TestMinerAddAskFail(t *testing.T) {
 	assert := assert.New(t)
 
-	daemon := withDaemon(func() {
-		// need an address to mine
-		_ = makeAddr(t)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
 
-		miner := runSuccess(t, fmt.Sprintf("go-filecoin miner create --from %s 1000000 20", core.TestAccount))
-		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	makeAddr(t, d)
+
+	miner := d.RunSuccess("miner create",
+		"--from", core.TestAccount.String(), "1000000", "20",
+	)
+	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	assert.NoError(err)
+
+	var wg sync.WaitGroup
+	var minerAddr types.Address
+
+	wg.Add(1)
+	go func() {
+		wait := d.RunSuccess("message wait",
+			"--return",
+			"--message=false",
+			"--receipt=false",
+			minerMessageCid.String(),
+		)
+		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
+		assert.NotEqual(addr, types.Address(""))
+		minerAddr = addr
+		wg.Done()
+	}()
 
-		var wg sync.WaitGroup
-		var minerAddr types.Address
+	time.Sleep(100 * time.Millisecond)
+	d.RunSuccess("mining once")
 
-		wg.Add(1)
-		go func() {
-			wait := runSuccess(t, fmt.Sprintf("go-filecoin message wait --return --message=false --receipt=false %s", minerMessageCid.String()))
-			addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
-			assert.NoError(err)
-			assert.NotEqual(addr, types.Address(""))
-			minerAddr = addr
-			wg.Done()
-		}()
+	wg.Wait()
 
-		time.Sleep(100 * time.Millisecond)
-		_ = runSuccess(t, "go-filecoin mining once")
-
-		wg.Wait()
-
-		_ = runFail(
-			t,
-			"invalid from address",
-			fmt.Sprintf("go-filecoin miner add-ask %s 2000 10 --from hello", minerAddr),
-		)
-		_ = runFail(
-			t,
-			"invalid miner address",
-			fmt.Sprintf("go-filecoin miner add-ask hello 2000 10 --from %s", core.TestAccount),
-		)
-		_ = runFail(
-			t,
-			"invalid size",
-			fmt.Sprintf("go-filecoin miner add-ask %s 2f 10 --from %s", minerAddr, core.TestAccount),
-		)
-		_ = runFail(
-			t,
-			"invalid price",
-			fmt.Sprintf("go-filecoin miner add-ask %s 10 3f --from %s", minerAddr, core.TestAccount),
-		)
-	})
-	assert.NoError(daemon.Error)
-	assert.Equal(daemon.Code, 0)
+	d.RunFail(
+		"invalid from address",
+		"miner add-ask", minerAddr.String(), "2000", "10",
+		"--from", "hello",
+	)
+	d.RunFail(
+		"invalid miner address",
+		"miner add-ask", "hello", "2000", "10",
+		"--from", core.TestAccount.String(),
+	)
+	d.RunFail(
+		"invalid size",
+		"miner add-ask", minerAddr.String(), "2f", "10",
+		"--from", core.TestAccount.String(),
+	)
+	d.RunFail(
+		"invalid price",
+		"miner add-ask", minerAddr.String(), "10", "3f",
+		"--from", core.TestAccount.String(),
+	)
 }

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -15,14 +14,17 @@ import (
 func TestMpool(t *testing.T) {
 	assert := assert.New(t)
 
-	d := withDaemon(func() {
-		_ = runSuccess(t, fmt.Sprintf("go-filecoin message send --from %s --value 10 %s", types.Address("filecoin"), types.Address("investor1")))
-		out := runSuccess(t, "go-filecoin mpool")
-		c := strings.Trim(out.ReadStdout(), "\n")
-		ci, err := cid.Decode(c)
-		assert.NoError(err)
-		assert.NotNil(ci)
-	})
-	assert.NoError(d.Error)
-	assert.Equal(d.Code, 0)
+	d := NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
+
+	d.RunSuccess("message send",
+		"--from", types.Address("filecoin").String(),
+		"--value 10", types.Address("investor1").String(),
+	)
+
+	out := d.RunSuccess("mpool")
+	c := strings.Trim(out.ReadStdout(), "\n")
+	ci, err := cid.Decode(c)
+	assert.NoError(err)
+	assert.NotNil(ci)
 }

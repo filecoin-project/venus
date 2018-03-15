@@ -153,27 +153,6 @@ func (o *Output) ReadStdout() string {
 	return string(out)
 }
 
-// runSuccess runs a one off command and make sure it succeeds.
-func runSuccess(t *testing.T, args string) *Output {
-	t.Helper()
-	out := run(args)
-	assert.NoError(t, out.Error)
-	assert.Equal(t, out.Code, 0)
-	assert.Empty(t, out.ReadStderr())
-	return out
-}
-
-// runFail runs a one off command and make sure it fails with the given error.
-func runFail(t *testing.T, err, args string) *Output {
-	t.Helper()
-	out := run(args)
-	assert.NoError(t, out.Error)
-	assert.Equal(t, out.Code, 1)
-	assert.Empty(t, out.ReadStdout())
-	assert.Contains(t, out.ReadStderr(), err)
-	return out
-}
-
 // run runs a one off command.
 func run(input string) *Output {
 	o := runNoWait(input)
@@ -215,127 +194,6 @@ func runNoWait(input string) *Output {
 	return o
 }
 
-// runWithDaemon runs a command, while a daemon is running.
-func runWithDaemon(input string, cb func(*Output)) {
-	d := withDaemon(func() {
-		o := run(input)
-		cb(o)
-	})
-
-	if d.Error != nil {
-		panic(d.Error)
-	}
-
-	if err := d.ReadStderr(); err != "" {
-		panic(fmt.Sprintf("stderr: %s", err))
-	}
-
-	if d.Code != 0 {
-		panic(fmt.Sprintf("exit code not 0: %d", d.Code))
-	}
-}
-
-// withDaemon executes the provided cb during the time a daemon is running.
-func withDaemon(cb func()) (daemon *Output) {
-	return withDaemonArgs("", cb)
-}
-
-// withDaemonsArgs executes the provided cb during the time multiple daemons are running and allow to pass
-// additional arguments to each daemon.
-func withDaemonsArgs(count int, args []string, cb func()) []*Output {
-	// lock the out array
-	var lk sync.Mutex
-	out := make([]*Output, count)
-	var outWg sync.WaitGroup
-	outWg.Add(count)
-
-	// synchronize such all daemons get spawened
-	var spawnWg sync.WaitGroup
-	spawnWg.Add(count)
-
-	// keep daemons running until we are done
-	var runWg sync.WaitGroup
-	runWg.Add(1)
-
-	for i := 0; i < count; i++ {
-		go func(i int) {
-			d := withDaemonArgs(args[i], func() {
-				spawnWg.Done()
-				runWg.Wait()
-			})
-
-			lk.Lock()
-			defer lk.Unlock()
-			out[i] = d
-			outWg.Done()
-		}(i)
-	}
-
-	spawnWg.Wait()
-	cb()
-	runWg.Done()
-
-	outWg.Wait()
-	return out
-}
-
-// withDaemonArgs runs cb while a single daemon is running.
-func withDaemonArgs(args string, cb func()) (daemon *Output) {
-	cmd := "go-filecoin daemon"
-	if len(args) > 0 {
-		cmd = fmt.Sprintf("%s %s", cmd, args)
-	}
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		daemon = runNoWait(cmd)
-		wg.Done()
-	}()
-
-	wg.Wait()
-	wg.Add(1)
-
-	go func() {
-		scanner := bufio.NewScanner(daemon.Stdout.Reader())
-	scannerLoop:
-		for {
-			select {
-			case <-daemon.CloseChan:
-				// early close
-				panic(daemon.Error)
-			default:
-				if scanner.Scan() && strings.Contains(scanner.Text(), "listening on") {
-					// wait a little bit to avoid flakyness...
-					time.Sleep(100 * time.Millisecond)
-					cb()
-					wg.Done()
-					break scannerLoop
-				}
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			panic(err)
-		}
-	}()
-
-	wg.Wait()
-	if daemon != nil {
-		daemon.Interrupt()
-		<-daemon.CloseChan
-	}
-
-	return daemon
-}
-
-// getId fetches the id of the daemon running on the passed in address.
-func getID(t *testing.T, api string) string {
-	out := runSuccess(t, fmt.Sprintf("go-filecoin id --cmdapiaddr=%s", api))
-	var parsed map[string]interface{}
-	assert.NoError(t, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
-
-	return parsed["ID"].(string)
-}
-
 type TestDaemon struct {
 	cmdAddr   string
 	swarmAddr string
@@ -359,17 +217,17 @@ func (td *TestDaemon) Run(input string, args ...string) *Output {
 	return run(cmd)
 }
 
-func (td *TestDaemon) RunSuccess(input string, args ...string) *Output {
-	o := td.Run(input, args...)
+func (td *TestDaemon) RunSuccess(cmd string, args ...string) *Output {
+	o := td.Run(cmd, args...)
 	assert.NoError(td.test, o.Error)
 	assert.Equal(td.test, o.Code, 0)
-	assert.Empty(td.test, o.ReadStderr())
+	assert.NotContains(td.test, o.ReadStderr(), "CRITICAL", "ERROR", "WARNING")
 	return o
 }
 
-func (td *TestDaemon) RunFail(input, err string, args ...string) *Output {
+func (td *TestDaemon) RunFail(err, cmd string, args ...string) *Output {
 	td.test.Helper()
-	o := td.Run(input, args...)
+	o := td.Run(cmd, args...)
 	assert.NoError(td.test, o.Error)
 	assert.Equal(td.test, o.Code, 1)
 	assert.Empty(td.test, o.ReadStdout())
@@ -441,7 +299,7 @@ func (td *TestDaemon) Shutdown() {
 func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
-	assert.Empty(td.test, td.ReadAllStderr())
+	assert.NotContains(td.test, td.ReadAllStderr(), "CRITICAL", "ERROR", "WARNING")
 }
 
 func (td *TestDaemon) Kill() {
@@ -462,12 +320,6 @@ func (td *TestDaemon) IsRunning() bool {
 	return false
 }
 
-func CmdAddr(addr string) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.cmdAddr = addr
-	}
-}
-
 func SwarmAddr(addr string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.swarmAddr = addr
@@ -481,9 +333,13 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		t.Fatal("You are missing the filecoin binary...try building")
 	}
 
-	//Configure with default options
+	//Ask the kernel for a port
+	fp, err := GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
 	td := &TestDaemon{
-		cmdAddr:   ":3453",
+		cmdAddr:   fmt.Sprintf(":%d", fp),
 		swarmAddr: "/ip4/127.0.0.1/tcp/6000",
 		test:      t,
 	}
@@ -500,7 +356,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	)
 
 	//setup process pipes
-	var err error
 	td.Stdout, err = td.process.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -515,4 +370,19 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	return td
+}
+
+// Credit: https://github.com/phayes/freeport
+func GetFreePort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
