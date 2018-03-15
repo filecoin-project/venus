@@ -13,6 +13,7 @@ import (
 	cmdhttp "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
@@ -32,12 +33,17 @@ var daemonCmd = &cmds.Command{
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 	api := req.Options[OptionAPI].(string)
 
-	// TODO: this should be passed in from a config file, not an api flag
-	libp2pOpts := node.Libp2pOptions(
-		libp2p.ListenAddrStrings(req.Options["swarmlisten"].(string)),
-	)
+	// TODO: load config from disk
+	cfg := &config.Config{}
 
-	fcn, err := node.New(req.Context, libp2pOpts)
+	opts := node.OptionsFromConfig(cfg)
+
+	// TODO: this should be passed in from a config file, not an api flag
+	opts = append(opts, node.Libp2pOptions(
+		libp2p.ListenAddrStrings(req.Options["swarmlisten"].(string)),
+	))
+
+	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
