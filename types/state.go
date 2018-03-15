@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 )
 
 // stateTree is a state tree that maps addresses to actors.
@@ -69,10 +69,6 @@ func newEmptyStateTree(store *hamt.CborIpldStore) *stateTree {
 // revid, then set it when RevertTo is called. This obviously keeps
 // a full copy of the underlying tree around for each snapshot,
 // forever. We should eventually do something better/different.
-//
-// TODO for this to actually work the following PR has to be
-// patched/landed here:
-// https://github.com/ipfs/go-hamt-ipld/pull/2
 func (t *stateTree) Snapshot() RevID {
 	thisRevID := t.nextRevID
 	t.revs[thisRevID] = t.root.Copy()

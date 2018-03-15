@@ -6,9 +6,9 @@ import (
 	"math/big"
 	"testing"
 
-	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -114,80 +114,75 @@ func TestStateGetOrCreate(t *testing.T) {
 	})
 }
 
-// TODO(fritz) Uncomment once this lands:
-// https://github.com/ipfs/go-hamt-ipld/pull/2
-// func TestSnapshotAndRevertTo(t *testing.T) {
-// 	assert := assert.New(t)
-// 	newAddress := NewAddressForTestGetter()
-// 	ctx := context.Background()
-// 	cst := hamt.NewCborStore()
+func TestSnapshotAndRevertTo(t *testing.T) {
+	assert := assert.New(t)
+	newAddress := NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
 
-// 	// Do nothing and revert.
-// 	st := NewEmptyStateTree(cst)
-// 	emptyCid, err := st.Flush(ctx)
-// 	assert.NoError(err)
-// 	emptyRev := st.Snapshot()
-// 	st.RevertTo(emptyRev)
-// 	gotCid, err := st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(emptyCid.Equals(gotCid))
-// 	// Add an actor that should not affect anything.
-// 	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
-// 	st.RevertTo(emptyRev)
+	// Do nothing and revert.
+	st := NewEmptyStateTree(cst)
+	emptyCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	emptyRev := st.Snapshot()
+	st.RevertTo(emptyRev)
+	gotCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	assert.True(emptyCid.Equals(gotCid))
+	// Add an actor that should not affect anything.
+	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	st.RevertTo(emptyRev)
 
-// 	// Add two actors, snapshotting each step.
-// 	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
-// 	oneActorCid, err := st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.False(oneActorCid.Equals(emptyCid))
-// 	oneActorRev := st.Snapshot()
-// 	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
-// 	twoActorCid, err := st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.False(twoActorCid.Equals(oneActorCid))
-// 	twoActorRev := st.Snapshot()
+	// Add two actors, snapshotting each step.
+	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	oneActorCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	assert.False(oneActorCid.Equals(emptyCid))
+	oneActorRev := st.Snapshot()
+	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	twoActorCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	assert.False(twoActorCid.Equals(oneActorCid))
+	twoActorRev := st.Snapshot()
 
-// 	// Roll back to same state.
-// 	st.RevertTo(twoActorRev)
-// 	gotCid, err = st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(twoActorCid.Equals(gotCid))
+	// Roll back to same state.
+	st.RevertTo(twoActorRev)
+	gotCid, err = st.Flush(ctx)
+	assert.NoError(err)
+	assert.True(twoActorCid.Equals(gotCid))
 
-// 	// Roll back to one actor state.
-// 	st.RevertTo(oneActorRev)
-// 	gotCid, err = st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(oneActorCid.Equals(gotCid))
+	// Roll back to one actor state.
+	st.RevertTo(oneActorRev)
+	gotCid, err = st.Flush(ctx)
+	assert.NoError(err)
+	assert.True(oneActorCid.Equals(gotCid))
 
-// 	// Roll back to empty.
-// 	st.RevertTo(emptyRev)
-// 	gotCid, err = st.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(emptyCid.Equals(gotCid))
-// }
+	// Roll back to empty.
+	st.RevertTo(emptyRev)
+	gotCid, err = st.Flush(ctx)
+	assert.NoError(err)
+	assert.True(emptyCid.Equals(gotCid))
+}
 
-// TODO(fritz) Uncomment once this lands:
-// https://github.com/ipfs/go-hamt-ipld/pull/2
+func TestLoadedStateTreeCanSnapshot(t *testing.T) {
+	// There was an issue where LoadStateTree initialized the tree
+	// differently than the constructor, hence this test. If it
+	// doesn't crash in Snapshot() we are winning.
+	assert := assert.New(t)
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+	tree := NewEmptyStateTree(cst)
 
-// func TestLoadedStateTreeCanSnapshot(t *testing.T) {
-// 	// There was an issue where LoadStateTree initialized the tree
-// 	// differently than the constructor, hence this test. If it
-// 	// doesn't crash in Snapshot() we are winning.
-// 	assert := assert.New(t)
-// 	ctx := context.Background()
-// 	cst := hamt.NewCborStore()
-// 	tree := NewEmptyStateTree(cst)
+	act := NewActor(AccountActorCodeCid, nil)
+	assert.NoError(tree.SetActor(ctx, NewAddressForTestGetter()(), act))
+	cid, err := tree.Flush(ctx)
+	assert.NoError(err)
 
-// 	act := NewActor(AccountActorCodeCid, nil)
-// 	assert.NoError(tree.SetActor(ctx, NewAddressForTestGetter()(), act))
-// 	cid, err := tree.Flush(ctx)
-// 	assert.NoError(err)
-
-// 	tree2, err := LoadStateTree(ctx, cst, cid)
-// 	assert.NoError(err)
-// 	snap := tree2.Snapshot()
-// 	tree2.RevertTo(snap)
-// 	gotCid, err := tree.Flush(ctx)
-// 	assert.NoError(err)
-// 	assert.True(cid.Equals(gotCid))
-// }
+	tree2, err := LoadStateTree(ctx, cst, cid)
+	assert.NoError(err)
+	snap := tree2.Snapshot()
+	tree2.RevertTo(snap)
+	gotCid, err := tree.Flush(ctx)
+	assert.NoError(err)
+	assert.True(cid.Equals(gotCid))
+}

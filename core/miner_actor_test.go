@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"gx/ipfs/QmZhoiN2zi5SBBBKb181dQm4QdvWAvEwbppZvKpp4gRyNY/go-hamt-ipld"
+	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 
