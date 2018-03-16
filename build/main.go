@@ -58,7 +58,7 @@ func deps() {
 }
 
 // lint runs linting using gometalinter
-func lint(packages []string) {
+func lint(packages ...string) {
 	if len(packages) == 0 {
 		packages = []string{"./..."}
 	}
@@ -112,7 +112,7 @@ func build() {
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
-func test(args []string) {
+func test(args ...string) {
 	log.Println("Testing...")
 
 	log.Println(run(fmt.Sprintf("go test ./... %s", strings.Join(args, " "))))
@@ -131,14 +131,19 @@ func main() {
 	case "deps":
 		deps()
 	case "lint":
-		lint(args[1:])
+		lint(args[1:]...)
 	case "build":
 		build()
 	case "test":
-		test(args[1:])
+		test(args[1:]...)
 	case "best":
 		build()
-		test(args[1:])
+		test(args[1:]...)
+	case "all":
+		deps()
+		lint()
+		build()
+		test(args[1:]...)
 	default:
 		log.Fatalf("Unknown command: %s\n", cmd)
 	}

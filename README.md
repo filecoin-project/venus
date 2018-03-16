@@ -84,6 +84,9 @@ Note: Build and test can be combined:
 
 # Race
 > go run ./build/*.go test -race
+
+# Deps, Lint, Build, Test (with args passed to Test)
+> go run ./build/*.go all
 ```
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
