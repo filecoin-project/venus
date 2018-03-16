@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -47,13 +46,13 @@ message to be mined as this is required to return the address of the new miner.`
 			return
 		}
 
-		pledge, ok := new(big.Int).SetString(req.Arguments[0], 10)
+		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
 		if !ok {
 			re.SetError("invalid pledge", cmdkit.ErrNormal)
 			return
 		}
 
-		collateral, ok := new(big.Int).SetString(req.Arguments[1], 10)
+		collateral, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
 		if !ok {
 			re.SetError("invalid collateral", cmdkit.ErrNormal)
 			return
@@ -114,13 +113,13 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		size, ok := new(big.Int).SetString(req.Arguments[1], 10)
+		size, ok := types.NewBytesAmountFromString(req.Arguments[1], 10)
 		if !ok {
 			re.SetError(fmt.Errorf("invalid size"), cmdkit.ErrNormal)
 			return
 		}
 
-		price, ok := new(big.Int).SetString(req.Arguments[2], 10)
+		price, ok := types.NewTokenAmountFromString(req.Arguments[2], 10)
 		if !ok {
 			re.SetError(fmt.Errorf("invalid price"), cmdkit.ErrNormal)
 			return

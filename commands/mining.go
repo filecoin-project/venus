@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -39,7 +38,7 @@ var miningOnceCmd = &cmds.Command{
 		}
 		myaddr := addrs[0]
 
-		reward := types.NewMessage(core.NetworkAccount, myaddr, big.NewInt(1000), "", nil)
+		reward := types.NewMessage(core.NetworkAccount, myaddr, types.NewTokenAmount(1000), "", nil)
 		if _, err := fcn.MsgPool.Add(reward); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

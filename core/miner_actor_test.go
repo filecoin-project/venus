@@ -13,8 +13,8 @@ import (
 )
 
 func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, collateral int64) types.Address {
-	pdata := mustConvertParams(big.NewInt(10000))
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, big.NewInt(100), "createMiner", pdata)
+	pdata := mustConvertParams(types.NewBytesAmount(10000))
+	msg := types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
 
 	receipt, err := ApplyMessage(context.Background(), st, msg)
 	assert.NoError(err)
@@ -39,12 +39,12 @@ func TestAddAsk(t *testing.T) {
 	outAddr := createTestMiner(assert, st, 10000, 500)
 
 	// make an ask, and then make sure it all looks good
-	pdata := mustConvertParams(big.NewInt(100), big.NewInt(150))
+	pdata := mustConvertParams(types.NewTokenAmount(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
-	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(receipt.Return))
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.Return))
 
 	storageMkt, err := st.GetActor(ctx, StorageMarketAddress)
 	assert.NoError(err)
@@ -59,10 +59,10 @@ func TestAddAsk(t *testing.T) {
 
 	var minerStorage MinerStorage
 	assert.NoError(UnmarshalStorage(miner.ReadStorage(), &minerStorage))
-	assert.Equal(big.NewInt(150), minerStorage.LockedStorage)
+	assert.Equal(types.NewBytesAmount(150), minerStorage.LockedStorage)
 
 	// make another ask!
-	pdata = mustConvertParams(big.NewInt(110), big.NewInt(200))
+	pdata = mustConvertParams(types.NewTokenAmount(110), types.NewBytesAmount(200))
 	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	receipt, err = ApplyMessage(ctx, st, msg)
@@ -82,10 +82,10 @@ func TestAddAsk(t *testing.T) {
 
 	var minerStorage2 MinerStorage
 	assert.NoError(UnmarshalStorage(miner.ReadStorage(), &minerStorage2))
-	assert.Equal(big.NewInt(350), minerStorage2.LockedStorage)
+	assert.Equal(types.NewBytesAmount(350), minerStorage2.LockedStorage)
 
 	// now try to create an ask larger than our pledge
-	pdata = mustConvertParams(big.NewInt(55), big.NewInt(9900))
+	pdata = mustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
 	msg = types.NewMessage(TestAccount, outAddr, nil, "addAsk", pdata)
 
 	receipt, err = ApplyMessage(ctx, st, msg)

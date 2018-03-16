@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ func TestMessageMarshal(t *testing.T) {
 	msg := NewMessage(
 		addrGetter(),
 		addrGetter(),
-		big.NewInt(17777),
+		NewTokenAmount(17777),
 		"send",
 		[]byte("foobar"),
 	)
@@ -43,7 +42,7 @@ func TestMessageCid(t *testing.T) {
 	msg1 := NewMessage(
 		addrGetter(),
 		addrGetter(),
-		big.NewInt(999),
+		NewTokenAmount(999),
 		"send",
 		nil,
 	)
@@ -51,7 +50,7 @@ func TestMessageCid(t *testing.T) {
 	msg2 := NewMessage(
 		addrGetter(),
 		addrGetter(),
-		big.NewInt(4004),
+		NewTokenAmount(4004),
 		"send",
 		nil,
 	)

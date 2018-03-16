@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +8,7 @@ import (
 
 func TestActorMarshal(t *testing.T) {
 	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, big.NewInt(1), []byte{1, 2, 3})
+	actor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(1), []byte{1, 2, 3})
 	actor.IncNonce()
 
 	marshalled, err := actor.Marshal()
@@ -34,7 +33,7 @@ func TestActorCid(t *testing.T) {
 	assert := assert.New(t)
 
 	actor1 := NewActor(AccountActorCodeCid, nil)
-	actor2 := NewActorWithMemory(AccountActorCodeCid, big.NewInt(5), []byte{1, 2, 3})
+	actor2 := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
 	actor1.IncNonce()
 
 	c1, err := actor1.Cid()
@@ -47,7 +46,7 @@ func TestActorCid(t *testing.T) {
 
 func TestActorMemory(t *testing.T) {
 	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, big.NewInt(5), []byte{1, 2, 3})
+	actor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
 
 	assert.Equal(actor.ReadStorage(), []byte{1, 2, 3})
 	// write at the beginning

@@ -2,7 +2,6 @@ package types
 
 import (
 	"errors"
-	"math/big"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -29,7 +28,7 @@ type Message struct {
 	// This prevents replay attacks.
 	Nonce uint64
 
-	Value *big.Int
+	Value *TokenAmount
 
 	Method string
 	Params []byte
@@ -57,7 +56,7 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, value *big.Int, method string, params []byte) *Message {
+func NewMessage(from, to Address, value *TokenAmount, method string, params []byte) *Message {
 	return &Message{
 		From:   from,
 		To:     to,

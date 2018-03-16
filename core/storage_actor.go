@@ -13,7 +13,7 @@ import (
 )
 
 // MinimumPledge is the minimum amount of space a user can pledge
-var MinimumPledge = big.NewInt(10000)
+var MinimumPledge = types.NewBytesAmount(10000)
 
 // ErrPledgeTooLow is returned when the pledge is too low
 var ErrPledgeTooLow = newRevertErrorf("pledge must be at least %s bytes", MinimumPledge)
@@ -60,15 +60,15 @@ func (sma *StorageMarketActor) Exports() Exports {
 
 var storageMarketExports = Exports{
 	"createMiner": &FunctionSignature{
-		Params: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.BytesAmount},
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.Integer},
+		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"addBid": &FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.Integer},
+		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"addDeal": &FunctionSignature{
@@ -79,10 +79,10 @@ var storageMarketExports = Exports{
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
-func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (types.Address, uint8, error) {
+func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAmount) (types.Address, uint8, error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
-		if pledge.Cmp(MinimumPledge) < 0 {
+		if pledge.LessThan(MinimumPledge) {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, ErrPledgeTooLow
 		}
@@ -124,7 +124,8 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
 // by this storage market actor
-func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+	error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
 		// method must be called by a miner that was created by this storage market actor
@@ -163,11 +164,11 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price, size *big.Int) (*bi
 // AddBid adds a bid order to the orderbook. Can be called by anyone. The
 // message must contain the appropriate amount of funds to be locked up for the
 // bid.
-func (sma *StorageMarketActor) AddBid(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8, error) {
 	var storage StorageMarketStorage
 	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
-		lockedFunds := big.NewInt(0).Mul(price, size)
-		if ctx.Message().Value.Cmp(lockedFunds) < 0 {
+		lockedFunds := price.CalculatePrice(size)
+		if ctx.Message().Value.LessThan(lockedFunds) {
 			fmt.Println(lockedFunds, ctx.Message().Value)
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, newRevertErrorf("must send price * size funds to create bid")
@@ -224,7 +225,7 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, cl
 			return nil, fmt.Errorf("cannot create a deal for someone elses ask")
 		}
 
-		if ask.Size.Cmp(bid.Size) < 0 {
+		if ask.Size.LessThan(bid.Size) {
 			return nil, fmt.Errorf("not enough space in ask for bid")
 		}
 
@@ -237,7 +238,7 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, cl
 		bid.Used = true
 
 		// subtract used space from add
-		ask.Size.Sub(ask.Size, bid.Size)
+		ask.Size = ask.Size.Sub(bid.Size)
 
 		d := &Deal{
 			// Expiry:  ???

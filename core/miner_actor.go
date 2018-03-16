@@ -22,25 +22,25 @@ type MinerStorage struct {
 
 	// Pledge is amount the space being offered up by this miner
 	// TODO: maybe minimum granularity is more than 1 byte?
-	PledgeBytes *big.Int
+	PledgeBytes *types.BytesAmount
 
 	// Collateral is the total amount of filecoin being held as collateral for
 	// the miners pledge
-	Collateral *big.Int
+	Collateral *types.TokenAmount
 
-	LockedStorage *big.Int
+	LockedStorage *types.BytesAmount // LockedStorage is the amount of the miner's storage that is used.
 	Power         *big.Int
 }
 
 var _ ExecutableActor = (*MinerActor)(nil)
 
 // NewMinerActor returns a new miner actor
-func NewMinerActor(owner types.Address, pledge *big.Int, coll *big.Int) (*types.Actor, error) {
+func NewMinerActor(owner types.Address, pledge *types.BytesAmount, coll *types.TokenAmount) (*types.Actor, error) {
 	st := &MinerStorage{
 		Owner:         owner,
 		PledgeBytes:   pledge,
 		Collateral:    coll,
-		LockedStorage: big.NewInt(0),
+		LockedStorage: types.NewBytesAmount(0),
 	}
 
 	storageBytes, err := MarshalStorage(st)
@@ -53,7 +53,7 @@ func NewMinerActor(owner types.Address, pledge *big.Int, coll *big.Int) (*types.
 
 var minerExports = Exports{
 	"addAsk": &FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.Integer},
+		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"getOwner": &FunctionSignature{
@@ -74,7 +74,8 @@ var ErrCallerUnauthorized = newRevertError("not authorized to call the method")
 var ErrInsufficientPledge = newRevertError("not enough pledged")
 
 // AddAsk adds an ask via this miner to the storage markets orderbook
-func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, uint8, error) {
+func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+	error) {
 	var mstore MinerStorage
 	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
 		if ctx.Message().From != mstore.Owner {
@@ -83,11 +84,11 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price, size *big.Int) (*big.Int, ui
 		}
 
 		// compute locked storage + new ask
-		locked := big.NewInt(0).Set(mstore.LockedStorage)
-		total := locked.Add(locked, size)
+		locked := types.NewBytesAmount(0).Set(mstore.LockedStorage)
+		total := locked.Add(size)
 
-		if total.Cmp(mstore.PledgeBytes) > 0 {
-			// TODO This should probably return a non-zero exit code instead of an error.
+		if total.GreaterThan(mstore.PledgeBytes) {
+			// TODO This should probably return a non-zero exit code instead of an error.88
 			return nil, ErrInsufficientPledge
 		}
 

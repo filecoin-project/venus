@@ -1,7 +1,6 @@
 package types
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,8 +32,8 @@ func TestDecodeBlock(t *testing.T) {
 	assert := assert.New(t)
 
 	addrGetter := NewAddressForTestGetter()
-	m1 := NewMessage(addrGetter(), addrGetter(), big.NewInt(10), "hello", []byte("cat"))
-	m2 := NewMessage(addrGetter(), addrGetter(), big.NewInt(2), "yes", []byte("dog"))
+	m1 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(10), "hello", []byte("cat"))
+	m2 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(2), "yes", []byte("dog"))
 
 	m1Cid, err := m1.Cid()
 	assert.NoError(err)

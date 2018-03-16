@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -97,9 +96,9 @@ var balanceCmd = &cmds.Command{
 
 		re.Emit(act.Balance) // nolint: errcheck
 	},
-	Type: &big.Int{},
+	Type: &types.TokenAmount{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *big.Int) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *types.TokenAmount) error {
 			return PrintString(w, b)
 		}),
 	},

@@ -2,7 +2,6 @@ package core
 
 import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -31,7 +30,7 @@ type AccountStorage struct{}
 var _ ExecutableActor = (*AccountActor)(nil)
 
 // NewAccountActor creates a new actor.
-func NewAccountActor(balance *big.Int) (*types.Actor, error) {
+func NewAccountActor(balance *types.TokenAmount) (*types.Actor, error) {
 	storageBytes, err := MarshalStorage(&AccountStorage{})
 	if err != nil {
 		return nil, err

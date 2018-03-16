@@ -1,7 +1,6 @@
 package core
 
 import (
-	"math/big"
 	"sync"
 	"testing"
 
@@ -64,7 +63,7 @@ func TestMessagePoolAsync(t *testing.T) {
 		msgs[i] = types.NewMessage(
 			addrGetter(),
 			addrGetter(),
-			big.NewInt(1),
+			types.NewTokenAmount(1),
 			"send",
 			nil,
 		)

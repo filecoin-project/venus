@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"math/big"
 
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
@@ -55,7 +54,7 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	st := types.NewEmptyStateTree(cst)
 
 	for addr, val := range defaultAccounts {
-		a, err := NewAccountActor(big.NewInt(val))
+		a, err := NewAccountActor(types.NewTokenAmount(val))
 		if err != nil {
 			return nil, err
 		}

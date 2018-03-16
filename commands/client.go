@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -44,19 +43,19 @@ var clientAddBidCmd = &cmds.Command{
 			return
 		}
 
-		size, ok := new(big.Int).SetString(req.Arguments[0], 10)
+		size, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
 		if !ok {
 			re.SetError(fmt.Errorf("invalid size"), cmdkit.ErrNormal)
 			return
 		}
 
-		price, ok := new(big.Int).SetString(req.Arguments[1], 10)
+		price, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
 		if !ok {
 			re.SetError(fmt.Errorf("invalid price"), cmdkit.ErrNormal)
 			return
 		}
 
-		funds := big.NewInt(0).Mul(price, size)
+		funds := price.CalculatePrice(size)
 
 		params, err := abi.ToEncodedValues(price, size)
 		if err != nil {

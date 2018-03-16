@@ -1,8 +1,6 @@
 package types
 
 import (
-	"math/big"
-
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -34,7 +32,7 @@ type Actor struct {
 	Code    *cid.Cid
 	Memory  []byte
 	Nonce   uint64
-	Balance *big.Int
+	Balance *TokenAmount
 }
 
 // IncNonce increments the nonce of this actor by 1.
@@ -74,7 +72,7 @@ func (a *Actor) Cid() (*cid.Cid, error) {
 }
 
 // NewActor constructs a new actor.
-func NewActor(code *cid.Cid, balance *big.Int) *Actor {
+func NewActor(code *cid.Cid, balance *TokenAmount) *Actor {
 	return &Actor{
 		Code:    code,
 		Memory:  []byte{},
@@ -84,7 +82,7 @@ func NewActor(code *cid.Cid, balance *big.Int) *Actor {
 }
 
 // NewActorWithMemory constructs a new actor with a predefined memory.
-func NewActorWithMemory(code *cid.Cid, balance *big.Int, memory []byte) *Actor {
+func NewActorWithMemory(code *cid.Cid, balance *TokenAmount, memory []byte) *Actor {
 	return &Actor{
 		Code:    code,
 		Memory:  memory,

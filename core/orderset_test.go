@@ -1,14 +1,12 @@
 package core
 
 import (
-	"math/big"
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAskSetMarshaling(t *testing.T) {
@@ -16,8 +14,8 @@ func TestAskSetMarshaling(t *testing.T) {
 	addrGetter := types.NewAddressForTestGetter()
 
 	as := make(AskSet)
-	ask4 := &Ask{ID: 4, Owner: addrGetter(), Price: big.NewInt(19), Size: big.NewInt(105)}
-	ask5 := &Ask{ID: 5, Owner: addrGetter(), Price: big.NewInt(909), Size: big.NewInt(435)}
+	ask4 := &Ask{ID: 4, Owner: addrGetter(), Price: types.NewTokenAmount(19), Size: types.NewBytesAmount(105)}
+	ask5 := &Ask{ID: 5, Owner: addrGetter(), Price: types.NewTokenAmount(909), Size: types.NewBytesAmount(435)}
 	as[4] = ask4
 	as[5] = ask5
 
@@ -40,8 +38,8 @@ func TestBidSetMarshaling(t *testing.T) {
 	bs := make(BidSet)
 	addrGetter := types.NewAddressForTestGetter()
 
-	bid4 := &Bid{ID: 4, Owner: addrGetter(), Price: big.NewInt(19), Size: big.NewInt(105)}
-	bid5 := &Bid{ID: 5, Owner: addrGetter(), Price: big.NewInt(909), Size: big.NewInt(435)}
+	bid4 := &Bid{ID: 4, Owner: addrGetter(), Price: types.NewTokenAmount(19), Size: types.NewBytesAmount(105)}
+	bid5 := &Bid{ID: 5, Owner: addrGetter(), Price: types.NewTokenAmount(909), Size: types.NewBytesAmount(435)}
 	bs[4] = bid4
 	bs[5] = bid5
 

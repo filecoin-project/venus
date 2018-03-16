@@ -29,8 +29,8 @@ type Orderbook struct {
 
 // Ask is a storage market ask order.
 type Ask struct {
-	Price *big.Int
-	Size  *big.Int
+	Price *types.TokenAmount
+	Size  *types.BytesAmount
 	Owner types.Address
 	ID    uint64
 }
@@ -38,10 +38,10 @@ type Ask struct {
 // Bid is a storage market bid order.
 type Bid struct {
 	//Expiry *big.Int
-	Price *big.Int
-	Size  *big.Int
+	Price *types.TokenAmount
+	Size  *types.BytesAmount
 	//Duration *big.Int
-	Collateral *big.Int
+	Collateral *types.TokenAmount
 	//Coding ???
 	Owner types.Address
 	ID    uint64

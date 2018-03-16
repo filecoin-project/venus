@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
@@ -34,7 +33,7 @@ func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 	return c, t
 }
 
-func requireNewAccountActor(require *require.Assertions, value *big.Int) *types.Actor {
+func requireNewAccountActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {
 	act, err := NewAccountActor(value)
 	require.NoError(err)
 	return act
@@ -48,11 +47,11 @@ func TestProcessBlockSuccess(t *testing.T) {
 	cst := hamt.NewCborStore()
 
 	addr1, addr2 := newAddress(), newAddress()
-	act1 := requireNewAccountActor(require, big.NewInt(10000))
+	act1 := requireNewAccountActor(require, types.NewTokenAmount(10000))
 	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 	})
-	msg := types.NewMessage(addr1, addr2, big.NewInt(550), "", nil)
+	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "", nil)
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -64,7 +63,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
-	expAct1, expAct2 := requireNewAccountActor(require, big.NewInt(10000-550)), requireNewAccountActor(require, big.NewInt(550))
+	expAct1, expAct2 := requireNewAccountActor(require, types.NewTokenAmount(10000-550)), requireNewAccountActor(require, types.NewTokenAmount(550))
 	expAct1.IncNonce()
 	expStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expAct1,
@@ -107,7 +106,7 @@ func (ma *fakeActor) Foo(ctx *VMContext) (uint8, error) {
 func requireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
 	storageBytes, err := MarshalStorage(&fakeActorStorage{})
 	require.NoError(err)
-	return types.NewActorWithMemory(codeCid, big.NewInt(100), storageBytes)
+	return types.NewActorWithMemory(codeCid, types.NewTokenAmount(100), storageBytes)
 }
 
 func TestProcessBlockVMErrors(t *testing.T) {

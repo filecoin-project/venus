@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -47,7 +46,8 @@ func (ctx *VMContext) WriteStorage(memory []byte) error {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *VMContext) Send(to types.Address, method string, value *big.Int, params []interface{}) ([]byte, uint8, error) {
+func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8,
+	error) {
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
 	from := ctx.Message().To
 	fromActor := ctx.to

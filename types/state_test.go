@@ -3,7 +3,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"testing"
 
 	mh "gx/ipfs/QmZyZDi491cCNTLfAhwcaDii2Kg4pwKRkhqQzURGDvY6ua/go-multihash"
@@ -104,7 +103,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	t.Run("actor exists", func(t *testing.T) {
 		assert := assert.New(t)
 
-		actor := NewActor(nil, big.NewInt(10))
+		actor := NewActor(nil, NewTokenAmount(10))
 		assert.NoError(tree.SetActor(ctx, addr, actor))
 
 		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {

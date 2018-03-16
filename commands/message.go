@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"io"
-	"math/big"
 
 	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -57,7 +56,7 @@ var msgSendCmd = &cmds.Command{
 			return
 		}
 
-		msg := types.NewMessage(fromAddr, target, big.NewInt(int64(val)), "", nil)
+		msg := types.NewMessage(fromAddr, target, types.NewTokenAmount(int64(val)), "", nil)
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)

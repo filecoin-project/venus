@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -36,21 +35,20 @@ func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st typ
 	return MakeTypedExport(toExecutable, msg.Method)(vmCtx)
 }
 
-func transfer(from, to *types.Actor, value *big.Int) error {
-	if value.Sign() < 0 {
+func transfer(from, to *types.Actor, value *types.TokenAmount) error {
+	if value.IsNegative() {
 		return ErrCannotTransferNegativeValue
 	}
 
-	if from.Balance.Cmp(value) < 0 {
+	if from.Balance.LessThan(value) {
 		return ErrInsufficientBalance
 	}
 
 	if to.Balance == nil {
-		to.Balance = big.NewInt(0)
+		to.Balance = types.ZeroToken // This would be unsafe if TokenAmount could be mutated.
 	}
-
-	from.Balance.Sub(from.Balance, value)
-	to.Balance.Add(to.Balance, value)
+	from.Balance = from.Balance.Sub(value)
+	to.Balance = to.Balance.Add(value)
 
 	return nil
 }

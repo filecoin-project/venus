@@ -19,6 +19,10 @@ const (
 	Invalid = Type(iota)
 	// Address is a types.Address
 	Address
+	// TokenAmount is a *types.TokenAmount
+	TokenAmount
+	// BytesAmount is a *types.BytesAmount
+	BytesAmount
 	// Integer is a *big.Int
 	Integer
 	// Bytes is a []byte
@@ -33,6 +37,10 @@ func (t Type) String() string {
 		return "<invalid>"
 	case Address:
 		return "types.Address"
+	case TokenAmount:
+		return "*types.TokenAmount"
+	case BytesAmount:
+		return "*types.BytesAmount"
 	case Integer:
 		return "*big.Int"
 	case Bytes:
@@ -56,6 +64,10 @@ func (av *Value) String() string {
 		return "<invalid>"
 	case Address:
 		return av.Val.(types.Address).String()
+	case TokenAmount:
+		return av.Val.(*types.TokenAmount).String()
+	case BytesAmount:
+		return av.Val.(*types.BytesAmount).String()
 	case Integer:
 		return av.Val.(*big.Int).String()
 	case Bytes:
@@ -87,6 +99,18 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.Address{}, av.Val}
 		}
 		return addr.Bytes(), nil
+	case TokenAmount:
+		ba, ok := av.Val.(*types.TokenAmount)
+		if !ok {
+			return nil, &typeError{types.TokenAmount{}, av.Val}
+		}
+		return ba.Bytes(), nil
+	case BytesAmount:
+		ba, ok := av.Val.(*types.BytesAmount)
+		if !ok {
+			return nil, &typeError{types.BytesAmount{}, av.Val}
+		}
+		return ba.Bytes(), nil
 	case Integer:
 		intgr, ok := av.Val.(*big.Int)
 		if !ok {
@@ -123,6 +147,10 @@ func ToValues(i []interface{}) ([]*Value, error) {
 		switch v := v.(type) {
 		case types.Address:
 			out = append(out, &Value{Type: Address, Val: v})
+		case *types.TokenAmount:
+			out = append(out, &Value{Type: TokenAmount, Val: v})
+		case *types.BytesAmount:
+			out = append(out, &Value{Type: BytesAmount, Val: v})
 		case *big.Int:
 			out = append(out, &Value{Type: Integer, Val: v})
 		case []byte:
@@ -154,8 +182,6 @@ func FromValues(vals []*Value) []interface{} {
 // ABI Value for it.
 func Deserialize(data []byte, t Type) (*Value, error) {
 	switch t {
-	case Invalid:
-		return nil, ErrInvalidType
 	case Address:
 		addr, err := types.NewAddressFromBytes(data)
 		if err != nil {
@@ -166,31 +192,45 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  addr,
 		}, nil
-	case Integer:
-		return &Value{
-			Type: t,
-			Val:  big.NewInt(0).SetBytes(data),
-		}, nil
 	case Bytes:
 		return &Value{
 			Type: t,
 			Val:  data,
+		}, nil
+	case BytesAmount:
+		return &Value{
+			Type: t,
+			Val:  types.NewBytesAmountFromBytes(data),
+		}, nil
+	case Integer:
+		return &Value{
+			Type: t,
+			Val:  big.NewInt(0).SetBytes(data),
 		}, nil
 	case String:
 		return &Value{
 			Type: t,
 			Val:  string(data),
 		}, nil
+	case TokenAmount:
+		return &Value{
+			Type: t,
+			Val:  types.NewTokenAmountFromBytes(data),
+		}, nil
+	case Invalid:
+		return nil, ErrInvalidType
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", t)
 	}
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address: reflect.TypeOf(types.Address{}),
-	Integer: reflect.TypeOf(&big.Int{}),
-	Bytes:   reflect.TypeOf([]byte{}),
-	String:  reflect.TypeOf(string("")),
+	Address:     reflect.TypeOf(types.Address{}),
+	Bytes:       reflect.TypeOf([]byte{}),
+	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),
+	Integer:     reflect.TypeOf(&big.Int{}),
+	String:      reflect.TypeOf(string("")),
+	TokenAmount: reflect.TypeOf(&types.TokenAmount{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type
