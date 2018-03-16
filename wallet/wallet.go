@@ -11,14 +11,14 @@ import (
 // Wallet manages the locally stored accounts.
 type Wallet struct {
 	lk             sync.Mutex
-	addresses      map[types.Address]struct{}
+	addresses      map[string]types.Address
 	defaultAddress types.Address
 }
 
 // New creates a new Wallet.
 func New() *Wallet {
 	return &Wallet{
-		addresses: make(map[types.Address]struct{}),
+		addresses: make(map[string]types.Address),
 	}
 }
 
@@ -27,7 +27,7 @@ func New() *Wallet {
 func (w *Wallet) HasAddress(a types.Address) bool {
 	w.lk.Lock()
 	defer w.lk.Unlock()
-	_, ok := w.addresses[a]
+	_, ok := w.addresses[a.String()]
 	return ok
 }
 
@@ -41,13 +41,19 @@ func (w *Wallet) NewAddress() types.Address {
 		panic(err)
 	}
 
-	fakeAddr := types.Address(fakeAddrBuf)
+	hash, err := types.AddressHash(fakeAddrBuf)
+	if err != nil {
+		panic(err)
+	}
+
+	fakeAddr := types.NewMainnetAddress(hash)
 
 	w.lk.Lock()
 	defer w.lk.Unlock()
-	w.addresses[fakeAddr] = struct{}{}
 
-	if w.defaultAddress == types.Address("") {
+	w.addresses[fakeAddr.String()] = fakeAddr
+
+	if w.defaultAddress == (types.Address{}) {
 		w.defaultAddress = fakeAddr
 	}
 
@@ -60,7 +66,7 @@ func (w *Wallet) GetAddresses() []types.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 	out := make([]types.Address, 0, len(w.addresses))
-	for a := range w.addresses {
+	for _, a := range w.addresses {
 		out = append(out, a)
 	}
 	return out
@@ -73,8 +79,8 @@ func (w *Wallet) GetDefaultAddress() (types.Address, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	if w.defaultAddress == types.Address("") {
-		return types.Address(""), fmt.Errorf("no default address in local wallet")
+	if w.defaultAddress == (types.Address{}) {
+		return types.Address{}, fmt.Errorf("no default address in local wallet")
 	}
 
 	return w.defaultAddress, nil

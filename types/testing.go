@@ -37,7 +37,7 @@ func NewAddressForTestGetter() func() Address {
 	return func() Address {
 		s := fmt.Sprintf("address%d", i)
 		i++
-		return Address(s)
+		return MakeTestAddress(s)
 	}
 }
 
@@ -52,8 +52,8 @@ func NewMessageForTestGetter() func() *Message {
 		s := fmt.Sprintf("msg%d", i)
 		i++
 		return NewMessage(
-			Address(s+"-from"),
-			Address(s+"-to"),
+			NewMainnetAddress([]byte(s+"-from")),
+			NewMainnetAddress([]byte(s+"-to")),
 			nil,
 			s+"-method",
 			nil)

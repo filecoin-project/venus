@@ -83,7 +83,7 @@ var balanceCmd = &cmds.Command{
 			return
 		}
 
-		addr, err := types.ParseAddress(req.Arguments[0])
+		addr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

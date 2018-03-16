@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -115,7 +116,7 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *big.Int) (typ
 		return addr, nil
 	})
 	if err != nil {
-		return "", 1, err
+		return types.Address{}, 1, err
 	}
 
 	return ret.(types.Address), 0, nil
@@ -219,7 +220,7 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, cl
 			return nil, fmt.Errorf("ask.miner.getOwner() failed")
 		}
 
-		if ctx.Message().From != types.Address(mown) {
+		if !bytes.Equal(ctx.Message().From.Bytes(), mown) {
 			return nil, fmt.Errorf("cannot create a deal for someone elses ask")
 		}
 
@@ -228,7 +229,7 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, cl
 		}
 
 		// TODO: real signature check and stuff
-		if bid.Owner != types.Address(clientSig) {
+		if !bytes.Equal(bid.Owner.Bytes(), clientSig) {
 			return nil, fmt.Errorf("signature failed to validate")
 		}
 

@@ -6,7 +6,7 @@ import (
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
+	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 )
 
 // stateTree is a state tree that maps addresses to actors.
@@ -101,7 +101,7 @@ func (t *stateTree) Flush(ctx context.Context) (*cid.Cid, error) {
 // GetActor retrieves an actor by their address.
 // If no actor exists at the given address an error is returned.
 func (t *stateTree) GetActor(ctx context.Context, a Address) (*Actor, error) {
-	data, err := t.root.Find(ctx, string(a))
+	data, err := t.root.Find(ctx, a.String())
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (t *stateTree) SetActor(ctx context.Context, a Address, act *Actor) error {
 		return errors.Wrap(err, "marshal actor failed")
 	}
 
-	if err := t.root.Set(ctx, string(a), data); err != nil {
+	if err := t.root.Set(ctx, a.String(), data); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
 	return nil

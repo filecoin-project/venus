@@ -13,14 +13,14 @@ func addressWithDefault(rawAddr interface{}, n *node.Node) (types.Address, error
 	var addr types.Address
 	var err error
 	if stringAddr != "" {
-		addr, err = types.ParseAddress(stringAddr)
+		addr, err = types.NewAddressFromString(stringAddr)
 		if err != nil {
-			return "", err
+			return types.Address{}, err
 		}
 	} else {
 		addr, err = n.Wallet.GetDefaultAddress()
 		if err != nil {
-			return "", err
+			return types.Address{}, err
 		}
 	}
 

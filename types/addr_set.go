@@ -16,21 +16,33 @@ type AddrSet map[Address]struct{}
 
 var addrSetEntry = atlas.BuildEntry(AddrSet{}).Transform().
 	TransformMarshal(atlas.MakeMarshalTransformFunc(
-		func(s AddrSet) ([]string, error) {
-			out := make([]string, 0, len(s))
+		func(s AddrSet) ([]byte, error) {
+			out := make([]string, len(s))
 			for k := range s {
-				out = append(out, string(k))
+				out = append(out, string(k.Bytes()))
 			}
 
 			sort.Strings(out)
 
-			return out, nil
+			bytes := make([]byte, len(out)*AddressLength)
+			for _, k := range out {
+				bytes = append(bytes, []byte(k)...)
+			}
+			return bytes, nil
 		})).
 	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-		func(vals []string) (AddrSet, error) {
+		func(vals []byte) (AddrSet, error) {
 			out := make(AddrSet)
-			for _, val := range vals {
-				out[Address(val)] = struct{}{}
+			for i := 0; i < len(vals); i += AddressLength {
+				end := i + AddressLength
+				if end > len(vals) {
+					end = len(vals)
+				}
+				s, err := NewAddressFromBytes(vals[i:end])
+				if err != nil {
+					return nil, err
+				}
+				out[s] = struct{}{}
 			}
 			return out, nil
 		})).

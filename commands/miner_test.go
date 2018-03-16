@@ -38,9 +38,9 @@ func TestMinerCreateSuccess(t *testing.T) {
 			"--receipt=false",
 			minerMessageCid.String(),
 		)
-		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
+		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, types.Address(""))
+		assert.NotEqual(addr, types.Address{})
 		wg.Done()
 	}()
 
@@ -101,9 +101,9 @@ func TestMinerAddAskSuccess(t *testing.T) {
 			"--receipt=false",
 			minerMessageCid.String(),
 		)
-		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
+		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, types.Address(""))
+		assert.NotEqual(addr, types.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
@@ -155,9 +155,9 @@ func TestMinerAddAskFail(t *testing.T) {
 			"--receipt=false",
 			minerMessageCid.String(),
 		)
-		addr, err := types.ParseAddress(strings.Trim(wait.ReadStdout(), "\n"))
+		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, types.Address(""))
+		assert.NotEqual(addr, types.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()

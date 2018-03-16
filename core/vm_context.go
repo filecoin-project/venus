@@ -1,10 +1,9 @@
 package core
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -97,16 +96,20 @@ func (ctx *VMContext) AddressForNewActor() (types.Address, error) {
 }
 
 func computeActorAddress(creator types.Address, nonce uint64) (types.Address, error) {
-	h := sha256.New()
+	buf := new(bytes.Buffer)
 
-	if _, err := h.Write([]byte(creator)); err != nil {
-		return types.Address(""), err
-	}
-	if err := binary.Write(h, binary.BigEndian, nonce); err != nil {
-		return types.Address(""), err
+	if _, err := buf.Write(creator.Bytes()); err != nil {
+		return types.Address{}, err
 	}
 
-	// need to convert to hex, to make sure we have printable chars
-	// otherwise storage in the state tree does not work reliably
-	return types.Address(fmt.Sprintf("%x", h.Sum(nil))), nil
+	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
+		return types.Address{}, err
+	}
+
+	hash, err := types.AddressHash(buf.Bytes())
+	if err != nil {
+		return types.Address{}, err
+	}
+
+	return types.NewMainnetAddress(hash), nil
 }

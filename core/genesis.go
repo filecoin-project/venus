@@ -12,19 +12,42 @@ import (
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
-// TestAccount is an account with some initial funds in it
-const TestAccount = types.Address("satoshi")
+var (
+	// TestAccount is an account with some initial funds in it
+	TestAccount types.Address
+	// NetworkAccount is the filecoin network
+	NetworkAccount types.Address
+	// StorageMarketAddress is the hard-coded address of the filecoin storage market
+	StorageMarketAddress types.Address
 
-// NetworkAccount is the filecoin network
-const NetworkAccount = types.Address("filecoin")
+	defaultAccounts map[types.Address]int64
+)
 
-var defaultAccounts = map[types.Address]int64{
-	NetworkAccount: 10000000,
-	TestAccount:    50000,
+func init() {
+	t, err := types.AddressHash([]byte("satoshi"))
+	if err != nil {
+		panic(err)
+	}
+	TestAccount = types.NewMainnetAddress(t)
+
+	n, err := types.AddressHash([]byte("filecoin"))
+	if err != nil {
+		panic(err)
+	}
+	NetworkAccount = types.NewMainnetAddress(n)
+
+	s, err := types.AddressHash([]byte("storage"))
+	if err != nil {
+		panic(err)
+	}
+
+	StorageMarketAddress = types.NewMainnetAddress(s)
+
+	defaultAccounts = map[types.Address]int64{
+		NetworkAccount: 10000000,
+		TestAccount:    50000,
+	}
 }
-
-// StorageMarketAddress is the hard-coded address of the filecoin storage market
-var StorageMarketAddress = types.Address("storage")
 
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {

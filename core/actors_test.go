@@ -75,7 +75,8 @@ func NewMockActor(list Exports) *MockActor {
 }
 
 func makeCtx(method string) *VMContext {
-	return NewVMContext(nil, nil, types.NewMessage(types.Address(""), types.Address("to"), nil, method, nil), nil)
+	addrGetter := types.NewAddressForTestGetter()
+	return NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), nil, method, nil), nil)
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {

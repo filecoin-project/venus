@@ -44,7 +44,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
-	outAddr := types.Address(receipt.Return)
+	outAddr, err := types.NewAddressFromBytes(receipt.Return)
+	assert.NoError(err)
 	miner, err := st.GetActor(ctx, outAddr)
 	assert.NoError(err)
 
@@ -150,7 +151,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.Equal(uint8(0), receipt.ExitCode)
 
 	// now make a deal
-	sig := []byte(TestAccount)
+	sig := TestAccount.Bytes()
 	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig) // askID, bidID, signature
 	msg = types.NewMessage(TestAccount, StorageMarketAddress, nil, "addDeal", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)

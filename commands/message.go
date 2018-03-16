@@ -40,7 +40,7 @@ var msgSendCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 
-		target, err := types.ParseAddress(req.Arguments[0])
+		target, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

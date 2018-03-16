@@ -132,12 +132,12 @@ func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
 		return mstore.Owner, nil
 	})
 	if err != nil {
-		return "", 1, err
+		return types.Address{}, 1, err
 	}
 
 	a, ok := out.(types.Address)
 	if !ok {
-		return "", 1, newFaultErrorf("expected an Address return value from call, but got %T instead", out)
+		return types.Address{}, 1, newFaultErrorf("expected an Address return value from call, but got %T instead", out)
 	}
 
 	return a, 0, nil

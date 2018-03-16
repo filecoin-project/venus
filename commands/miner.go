@@ -108,7 +108,7 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		minerAddr, err := types.ParseAddress(req.Arguments[0])
+		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(errors.Wrap(err, "invalid miner address"), cmdkit.ErrNormal)
 			return

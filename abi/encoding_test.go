@@ -14,15 +14,17 @@ import (
 // things.
 
 func TestBasicEncodingRoundTrip(t *testing.T) {
+	addrGetter := types.NewAddressForTestGetter()
+
 	cases := map[string][]interface{}{
 		"empty":      nil,
 		"one-int":    {big.NewInt(579)},
-		"one addr":   {types.Address("cats")},
-		"two addrs":  {types.Address("cats"), types.Address("dogs")},
+		"one addr":   {addrGetter()},
+		"two addrs":  {addrGetter(), addrGetter()},
 		"one []byte": {[]byte("foo")},
 		"two []byte": {[]byte("foo"), []byte("bar")},
 		"a string":   {"flugzeug"},
-		"mixed":      {big.NewInt(17), []byte("beep"), "mr rogers", types.Address("cryptokitties")},
+		"mixed":      {big.NewInt(17), []byte("beep"), "mr rogers", addrGetter()},
 	}
 
 	for tname, tcase := range cases {

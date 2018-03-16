@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -59,11 +58,12 @@ func TestMessagePoolAsync(t *testing.T) {
 
 	count := 400
 	msgs := make([]*types.Message, count)
+	addrGetter := types.NewAddressForTestGetter()
 
 	for i := 0; i < count; i++ {
 		msgs[i] = types.NewMessage(
-			types.Address(fmt.Sprintf("Alice-%d", i)),
-			types.Address(fmt.Sprintf("Bob-%d", i)),
+			addrGetter(),
+			addrGetter(),
 			big.NewInt(1),
 			"send",
 			nil,

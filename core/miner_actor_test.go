@@ -19,7 +19,9 @@ func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, coll
 	receipt, err := ApplyMessage(context.Background(), st, msg)
 	assert.NoError(err)
 
-	return types.Address(receipt.Return)
+	addr, err := types.NewAddressFromBytes(receipt.Return)
+	assert.NoError(err)
+	return addr
 }
 
 func TestAddAsk(t *testing.T) {
