@@ -120,6 +120,13 @@ func TestStorageMarketAddBid(t *testing.T) {
 }
 
 func TestStorageMarketMakeDeal(t *testing.T) {
+	// TODO: add test cases for:
+	// - ask too small
+	// - not enough collateral
+	// - bid already used
+	// - multiple bids, one ask
+	// - cases where ask.price != bid.price (above and below)
+	// - bad 'signature'
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
