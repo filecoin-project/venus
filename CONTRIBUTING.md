@@ -14,6 +14,7 @@ There are always exceptions but generally:
  * Logging
    * `Warning`: noteworthy but not completely unexpected
    * `Error`: a truly unexpected condition that should not happen in Real Life and that a dev should go look at
+ * Protocol messages are nouns (eg, `DealQuery`, `DealResponse`) and their handlers are verbs (eg, `QueryDeal`)
 
 ## Error handling
 
@@ -43,7 +44,9 @@ some point in the future.
 
 Presently (Q1'18) the minimum bar is:
  * Must be unittested
- * Must be code reviewed by all of {@phritz, @dignifiedquire, @whyrusleeping}
+ * Code review:
+   * Far-reaching/foundational changes 3/3 of {@phritz, @dignifiedquire, @whyrusleeping}; otherwise 2/3
+   * If you expect a response to a CR comment make it clear that you do
  * Must lint (`go run ./build/*.go lint`)
  * CI must be green
  * Must match a subset of the spec, unless when considering changes to the spec -- see details above
