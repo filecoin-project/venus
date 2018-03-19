@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -221,7 +222,10 @@ func (td *TestDaemon) RunSuccess(cmd string, args ...string) *Output {
 	o := td.Run(cmd, args...)
 	assert.NoError(td.test, o.Error)
 	assert.Equal(td.test, o.Code, 0)
-	assert.NotContains(td.test, o.ReadStderr(), "CRITICAL", "ERROR", "WARNING")
+	oErr := o.ReadStderr()
+	assert.NotContains(td.test, oErr, "CRITICAL")
+	assert.NotContains(td.test, oErr, "ERROR")
+	assert.NotContains(td.test, oErr, "WARNING")
 	return o
 }
 
@@ -265,59 +269,69 @@ func (td *TestDaemon) ReadAllStderr() string {
 
 func (td *TestDaemon) Start() *TestDaemon {
 	if err := td.process.Start(); err != nil {
-		td.test.Fatalf("Failed to start filecoin: %s", err)
+		td.test.Fatalf("Failed to start filecoin process: %v", err)
 	}
-	done := make(chan struct{})
-	defer close(done)
-	//TODO this is still flakey sometimes potential for non-determ test
-	go func() {
-		for {
-			if td.IsRunning() {
-				break
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		done <- struct{}{}
-	}()
-	for {
-		select {
-		case <-done:
-			td.test.Logf("[success starting daemon on: %s", td.cmdAddr)
-			return td
-		case <-time.After(30 * time.Second):
-			td.test.Fatal("Timout waiting for daemon to start")
-		}
+	if err := td.WaitForAPI(); err != nil {
+		td.test.Error(err)
+		td.test.Fatalf("Daemon failed to start")
 	}
+	return td
 }
 
 func (td *TestDaemon) Shutdown() {
 	if err := td.process.Process.Signal(syscall.SIGTERM); err != nil {
-		td.test.Fatalf("Failed to shutdown filecoin: %s", err)
+		td.test.Errorf("Daemon Stderr:\n%s", td.ReadAllStderr())
+		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
 }
 
 func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
-	assert.NotContains(td.test, td.ReadAllStderr(), "CRITICAL", "ERROR", "WARNING")
+	tdOut := td.ReadAllStderr()
+	assert.NotContains(td.test, tdOut, "CRITICAL")
+	assert.NotContains(td.test, tdOut, "ERROR")
+	assert.NotContains(td.test, tdOut, "WARNING")
+
 }
 
 func (td *TestDaemon) Kill() {
 	if err := td.process.Process.Kill(); err != nil {
+		td.test.Errorf("Daemon Stderr:\n%s", td.ReadAllStderr())
 		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
 }
 
-func (td *TestDaemon) IsRunning() bool {
-	ln, err := net.Listen("tcp", td.cmdAddr)
+func (td *TestDaemon) WaitForAPI() error {
+	for i := 0; i < 50; i++ {
+		err := tryAPICheck(td)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(time.Millisecond * 400)
+	}
+	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds)")
+}
+
+func tryAPICheck(td *TestDaemon) error {
+	addr := fmt.Sprintf("localhost%s", td.cmdAddr)
+	resp, err := http.Get(fmt.Sprintf("http://%s/api/id", addr))
 	if err != nil {
-		return true
+		return err
 	}
 
-	if err := ln.Close(); err != nil {
-		panic(err)
+	out := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	if err != nil {
+		return fmt.Errorf("liveness check failed: %s", err)
 	}
-	return false
+
+	_, ok := out["ID"]
+	if !ok {
+		return fmt.Errorf("liveness check failed: ID field not present in output")
+	}
+
+	return nil
 }
 
 func SwarmAddr(addr string) func(*TestDaemon) {
@@ -333,14 +347,18 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		t.Fatal("You are missing the filecoin binary...try building")
 	}
 
-	//Ask the kernel for a port
-	fp, err := GetFreePort()
+	//Ask the kernel for a port to avoid conflicts
+	cmdPort, err := GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	swarmPort, err := GetFreePort()
 	if err != nil {
 		t.Fatal(err)
 	}
 	td := &TestDaemon{
-		cmdAddr:   fmt.Sprintf(":%d", fp),
-		swarmAddr: "/ip4/127.0.0.1/tcp/6000",
+		cmdAddr:   fmt.Sprintf(":%d", cmdPort),
+		swarmAddr: fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
 		test:      t,
 	}
 
