@@ -303,19 +303,19 @@ func (td *TestDaemon) Kill() {
 }
 
 func (td *TestDaemon) WaitForAPI() error {
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		err := tryAPICheck(td)
 		if err == nil {
 			return nil
 		}
-		time.Sleep(time.Millisecond * 400)
+		time.Sleep(time.Millisecond * 100)
 	}
 	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds)")
 }
 
 func tryAPICheck(td *TestDaemon) error {
-	addr := fmt.Sprintf("localhost%s", td.cmdAddr)
-	resp, err := http.Get(fmt.Sprintf("http://%s/api/id", addr))
+	url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
+	resp, err := http.Get(url)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 // Credit: https://github.com/phayes/freeport
 func GetFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
 	if err != nil {
 		return 0, err
 	}
