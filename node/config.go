@@ -1,6 +1,8 @@
 package node
 
 import (
+	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -19,5 +21,7 @@ func OptionsFromRepo(r repo.Repo) []ConfigOpt {
 }
 
 func optionsFromConfig(cfg *config.Config) []ConfigOpt {
-	return nil
+	return []ConfigOpt{
+		Libp2pOptions(libp2p.ListenAddrStrings(cfg.Swarm.Address)),
+	}
 }
