@@ -83,16 +83,13 @@ var addrsLookupCmd = &cmds.Command{
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-		re.Emit(v.Pretty())
+		re.Emit(v.Pretty()) // nolint: errcheck
 	},
 	Type: string(""),
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pid string) error {
 			_, err := fmt.Fprintln(w, pid)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		}),
 	},
 }

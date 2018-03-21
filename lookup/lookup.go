@@ -76,6 +76,7 @@ func (le *LookupEngine) HandleMessages(s *floodsub.Subscription) {
 		}
 
 		var m message
+		//TODO: Replace with cbor
 		if err := json.Unmarshal(msg.GetData(), &m); err != nil {
 			log.Error("malformed message: ", err)
 			continue
@@ -104,6 +105,7 @@ func (le *LookupEngine) HandleMessages(s *floodsub.Subscription) {
 
 // SendMessage publishes message m on FilLookupTopic
 func (le *LookupEngine) SendMessage(m *message) {
+	//TODO: Replace with cbor
 	d, err := json.Marshal(m)
 	if err != nil {
 		log.Error("failed to marshal message: ", err)
