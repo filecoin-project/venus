@@ -28,3 +28,6 @@ coverage:
         enabled: no
 
 comment: false
+ignore:
+  - "testing.go"
+
