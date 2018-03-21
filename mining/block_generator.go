@@ -65,19 +65,5 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*
 	}
 	next.StateRoot = newStateTreeCid
 
-	// TODO(fritz) Keep messages in the pool up to date, maybe
-	// here maybe elsewhere.
-	toRemove := make([]*cid.Cid, len(next.Messages))
-	for i, msg := range next.Messages {
-		c, err := msg.Cid()
-		if err != nil {
-			return nil, err
-		}
-		toRemove[i] = c
-	}
-	for _, c := range toRemove {
-		b.messagePool.Remove(c)
-	}
-
 	return next, nil
 }

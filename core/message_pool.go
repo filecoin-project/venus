@@ -1,10 +1,12 @@
 package core
 
 import (
+	"context"
 	"sync"
 
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -56,4 +58,94 @@ func NewMessagePool() *MessagePool {
 	return &MessagePool{
 		pending: make(map[string]*types.Message),
 	}
+}
+
+// collectChainsMessagesToHeight is a helper that collects all the messages
+// from block `b` down the chain to but not including its ancestor of
+// height `height`.
+func collectChainsMessagesToHeight(store *hamt.CborIpldStore, start *types.Block, height uint64) (*types.Block, []*types.Message, error) {
+	curBlock := start
+	msgs := []*types.Message{}
+	for curBlock.Height > height {
+		msgs = append(msgs, curBlock.Messages...)
+		if curBlock.Parent == nil {
+			return curBlock, msgs, nil
+		}
+		var parent types.Block
+		if err := store.Get(context.TODO(), curBlock.Parent, &parent); err != nil {
+			return nil, nil, err
+		}
+		curBlock = &parent
+	}
+	return curBlock, msgs, nil
+}
+
+// UpdateMessagePool brings the message pool into the correct state after
+// we accept a new block. It removes messages from the pool that are
+// found in the newly adopted chain and adds back those from the removed
+// chain (if any) that do not appear in the new chain. We think
+// that the right model for keeping the message pool up to date is
+// to think about it like a garbage collector.
+//
+// TODO there is considerable functionality missing here: don't add
+//      messages that have expired, respect nonce, do this efficiently,
+//      etc.
+func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, oldHead, newHead *types.Block) error {
+	// Strategy: walk pointers oldHead and newHead back until they are at the same
+	// height, then walk back in lockstep to find the common ancesetor.
+
+	// If oldHead is higher/longer than newHead, collect all the messages
+	// from oldHead's chain down to the height of newHead.
+	oldPtr, addToPool, err := collectChainsMessagesToHeight(store, oldHead, newHead.Height)
+	if err != nil {
+		return err
+	}
+	// If newHead is higher/longer than oldHead, collect all the messages
+	// from its chain down to the height of newHead.
+	newPtr, removeFromPool, err := collectChainsMessagesToHeight(store, newHead, oldHead.Height)
+	if err != nil {
+		return err
+	}
+
+	// Old and new are now at the same height. Keep walking them down a
+	// block at a time in lockstep until they are pointing to the same
+	// node, the common ancestor. Collect their messages to add/remove
+	// along the way.
+	//
+	// TODO probably should limit depth here.
+	for !oldPtr.Cid().Equals(newPtr.Cid()) {
+		addToPool = append(addToPool, oldPtr.Messages...)
+		removeFromPool = append(removeFromPool, newPtr.Messages...)
+		if oldPtr.Parent == nil || newPtr.Parent == nil {
+			break
+		}
+		if err := store.Get(ctx, oldPtr.Parent, &oldPtr); err != nil {
+			return err
+		}
+		if err := store.Get(ctx, newPtr.Parent, &newPtr); err != nil {
+			return err
+		}
+	}
+
+	// Now actually update the pool.
+	for _, m := range addToPool {
+		_, err := pool.Add(m)
+		if err != nil {
+			return err
+		}
+	}
+	// m.Cid() can error, so collect all the Cids before
+	removeCids := make([]*cid.Cid, len(removeFromPool))
+	for i, m := range removeFromPool {
+		cid, err := m.Cid()
+		if err != nil {
+			return err
+		}
+		removeCids[i] = cid
+	}
+	for _, cid := range removeCids {
+		pool.Remove(cid)
+	}
+
+	return nil
 }

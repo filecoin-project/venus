@@ -69,7 +69,7 @@ var miningOnceCmd = &cmds.Command{
 
 var miningStartCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		GetNode(env).StartMining(context.Background())
+		GetNode(env).StartMining()
 		re.Emit("Started mining\n") // nolint: errcheck
 	},
 }

@@ -37,14 +37,26 @@ type Node struct {
 	Host host.Host
 
 	ChainMgr *core.ChainManager
-	MsgPool  *core.MessagePool
+	// BestBlockCh is a subscription to the best block topic on the chainmgr.
+	BestBlockCh chan interface{}
+	// BestBlockHandled is a hook for tests because pubsub notifications
+	// arrive async. It's called after handling a new best block.
+	BestBlockHandled func()
+	MsgPool          *core.MessagePool
 
 	Wallet *wallet.Wallet
 
 	// Mining stuff.
 	MiningWorker mining.Worker
-	cancelMining context.CancelFunc
-	miningDoneWg sync.WaitGroup
+	mining       struct {
+		sync.Mutex
+		isMining bool
+	}
+	miningInCh         chan<- mining.Input
+	miningCtx          context.Context
+	cancelMining       context.CancelFunc
+	miningDoneWg       *sync.WaitGroup
+	AddNewlyMinedBlock newBlockFunc
 
 	// Network Fields
 	PubSub     *floodsub.PubSub
@@ -72,9 +84,6 @@ type Node struct {
 
 	// cancelBlockSubscriptionCtx is a handle to cancel the block subscription.
 	cancelBlockSubscriptionCtx context.CancelFunc
-
-	// bestBlockCh is a subscription to the best block topic on the chainmgr.
-	bestBlockCh chan interface{}
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -202,7 +211,80 @@ func (node *Node) Start() error {
 	node.cancelBlockSubscriptionCtx = cancel
 	go node.handleBlockSubscription(ctx)
 
+	// Set up mining.Worker. The node won't feed blocks to the worker
+	// until node.StartMining() is called.
+	node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
+	inCh, outCh, doneWg := node.MiningWorker.Start(node.miningCtx)
+	node.miningInCh = inCh
+	node.miningDoneWg = doneWg
+	node.AddNewlyMinedBlock = node.addNewlyMinedBlock
+	node.miningDoneWg.Add(1)
+	go node.handleNewMiningOutput(outCh)
+
+	node.BestBlockHandled = func() {}
+	node.BestBlockCh = node.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
+	go node.handleNewBestBlock(ctx, node.ChainMgr.GetBestBlock())
+
 	return nil
+}
+
+func (node *Node) setIsMining(isMining bool) {
+	node.mining.Lock()
+	defer node.mining.Unlock()
+	node.mining.isMining = isMining
+}
+
+func (node *Node) isMining() bool {
+	node.mining.Lock()
+	defer node.mining.Unlock()
+	return node.mining.isMining
+}
+
+func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
+	defer func() {
+		node.miningDoneWg.Done()
+	}()
+	for {
+		select {
+		case <-node.miningCtx.Done():
+			return
+		case output := <-miningOutCh:
+			if output.Err != nil {
+				log.Errorf("Problem mining a block: %s", output.Err.Error())
+			} else {
+				node.miningDoneWg.Add(1)
+				go func() {
+					if node.isMining() {
+						node.AddNewlyMinedBlock(node.miningCtx, output.NewBlock)
+					}
+					node.miningDoneWg.Done()
+				}()
+			}
+		}
+	}
+
+}
+
+func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
+	for blk := range node.BestBlockCh {
+		newHead := blk.(*types.Block)
+		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore, head, newHead); err != nil {
+			panic(err)
+		}
+		head = newHead
+		if node.isMining() {
+			node.miningDoneWg.Add(1)
+			go func() {
+				defer func() { node.miningDoneWg.Done() }()
+				select {
+				case <-node.miningCtx.Done():
+					return
+				case node.miningInCh <- mining.NewInput(context.Background(), head):
+				}
+			}()
+		}
+		node.BestBlockHandled()
+	}
 }
 
 func (node *Node) cancelBlockSubscription() {
@@ -215,6 +297,16 @@ func (node *Node) cancelBlockSubscription() {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
+	node.ChainMgr.BestBlockPubSub.Unsub(node.BestBlockCh)
+	if node.cancelMining != nil {
+		node.cancelMining()
+	}
+	if node.miningDoneWg != nil {
+		node.miningDoneWg.Wait()
+	}
+	if node.miningInCh != nil {
+		close(node.miningInCh)
+	}
 	node.cancelBlockSubscription()
 	node.ChainMgr.Stop()
 
@@ -230,69 +322,32 @@ const mineSleepTime = 20 * time.Second
 
 type newBlockFunc func(context.Context, *types.Block)
 
-// StartMining starts the mining worker. The method is separated
-// into two pieces so we can capture the output of the worker in
-// tests.
-// TODO make Start/StopMining safe to call multiple times.
-func (node *Node) StartMining(ctx context.Context) {
-	node.startMining(ctx, func(ctx context.Context, b *types.Block) {
-		if err := node.AddNewBlock(ctx, b); err != nil {
-			// Not really an error; a better block could have
-			// arrived while mining.
-			log.Warningf("Error adding new mined block: %s", err.Error())
-		}
-	})
+func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
+	if err := node.AddNewBlock(ctx, b); err != nil {
+		// Not really an error; a better block could have
+		// arrived while mining.
+		log.Warningf("Error adding new mined block: %s", err.Error())
+	}
 }
 
-func (node *Node) startMining(ctx context.Context, newBlock newBlockFunc) {
-	miningCtx, cancel := context.WithCancel(ctx)
-	node.cancelMining = cancel
-	inCh, outCh, workerDoneWg := node.MiningWorker.Start(miningCtx)
-	node.bestBlockCh = node.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
-
-	// Wire up the mining input.
-	go func() {
-		inCh <- node.ChainMgr.GetBestBlock()
-
-		for blk := range node.bestBlockCh {
-			inCh <- blk.(*types.Block)
-		}
-		close(inCh)
-	}()
-
-	// Wire up the mining output.
+// StartMining causes the node to start feeding blocks to the mining worker.
+func (node *Node) StartMining() {
+	node.setIsMining(true)
 	node.miningDoneWg.Add(1)
 	go func() {
-		// When this goroutine exits wait for the worker to fully exit
-		// and then signal our exit on miningDoneWg.
-		defer func() {
-			workerDoneWg.Wait()
-			node.miningDoneWg.Done()
-		}()
-		for {
-			select {
-			case <-miningCtx.Done():
-				return
-			case result := <-outCh:
-				if result.Err != nil {
-					log.Errorf("Problem mining a block: %s", result.Err.Error())
-				} else {
-					node.miningDoneWg.Add(1)
-					go func() {
-						newBlock(miningCtx, result.NewBlock)
-						node.miningDoneWg.Done()
-					}()
-				}
-			}
+		defer func() { node.miningDoneWg.Done() }()
+		select {
+		case <-node.miningCtx.Done():
+			return
+		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock()):
 		}
 	}()
 }
 
-// StopMining stops the node's mining.Worker and waits for it to exit.
+// StopMining stops mining on new blocks.
 func (node *Node) StopMining() {
-	node.ChainMgr.BestBlockPubSub.Unsub(node.bestBlockCh)
-	node.cancelMining()
-	node.miningDoneWg.Wait()
+	// TODO should probably also keep track of and cancel last mining.Input.Ctx.
+	node.setIsMining(false)
 }
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
