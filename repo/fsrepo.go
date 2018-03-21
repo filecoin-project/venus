@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 )
 
-const configFilename = "config"
+const configFilename = "config.toml"
 
 // NoRepoError is returned when trying to open a repo where one does not exist
 type NoRepoError struct {
@@ -33,8 +33,8 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// Open opens an already initialized fsrepo at the given path
-func Open(p string) (*FSRepo, error) {
+// OpenFSRepo opens an already initialized fsrepo at the given path
+func OpenFSRepo(p string) (*FSRepo, error) {
 	expath, err := homedir.Expand(p)
 	if err != nil {
 		return nil, err
@@ -62,9 +62,16 @@ func Open(p string) (*FSRepo, error) {
 	return r, nil
 }
 
-// Init initializes an fsrepo at the given path using the given configuration
-func Init(p string, cfg *config.Config) error {
-	// TODO: write config file
+// InitFSRepo initializes an fsrepo at the given path using the given configuration
+func InitFSRepo(p string, cfg *config.Config) error {
+	expath, err := homedir.Expand(p)
+	if err != nil {
+		return err
+	}
+
+	if err := initConfig(expath, cfg); err != nil {
+		return err
+	}
 	// Create datastore as described in config
 	// write repo version file
 	return nil
@@ -105,4 +112,43 @@ func (r *FSRepo) openDatastore() error {
 	r.ds = datastore.NewMapDatastore()
 
 	return nil
+}
+
+func initConfig(p string, cfg *config.Config) error {
+	if err := checkWritable(p); err != nil {
+		return err
+	}
+
+	configFile := filepath.Join(p, configFilename)
+	if fileExists(configFile) {
+		return fmt.Errorf("file already exists: %s", configFile)
+	}
+
+	return cfg.WriteFile(configFile)
+}
+
+func checkWritable(dir string) error {
+	_, err := os.Stat(dir)
+	if err == nil {
+		return nil
+	}
+
+	if os.IsNotExist(err) {
+		// dir doesnt exist, check that we can create it
+		return os.Mkdir(dir, 0775)
+	}
+
+	if os.IsPermission(err) {
+		return errors.Wrapf(err, "cannot write to %s, incorrect permissions", dir)
+	}
+
+	return err
+}
+
+func fileExists(file string) bool {
+	_, err := os.Stat(file)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }

@@ -117,6 +117,12 @@
       "hash": "QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK",
       "name": "go-homedir",
       "version": "1.0.0"
+    },
+    {
+      "author": "dignifiedquire",
+      "hash": "QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj",
+      "name": "toml",
+      "version": "0.3.0"
     }
   ],
   "gxVersion": "0.12.1",

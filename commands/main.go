@@ -14,6 +14,8 @@ import (
 const (
 	// OptionAPI is the name of the option for specifying the api port.
 	OptionAPI = "cmdapiaddr"
+	// OptionRepoDir is the name of the option for specifying the directory of the repo.
+	OptionRepoDir = "repodir"
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 )
@@ -41,6 +43,7 @@ var rootCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
+		cmdkit.StringOption(OptionRepoDir, "set the directory of the reop, defaults to ~/.filecoin").WithDefault("~/.filecoin"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
@@ -55,6 +58,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"client":  clientCmd,
 	"daemon":  daemonCmd,
 	"id":      idCmd,
+	"init":    initCmd,
 	"miner":   minerCmd,
 	"mining":  miningCmd,
 	"mpool":   mpoolCmd,
@@ -135,7 +139,15 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 }
 
 func requiresDaemon(req *cmds.Request) bool {
-	return req.Command != daemonCmd
+	if req.Command == daemonCmd {
+		return false
+	}
+
+	if req.Command == initCmd {
+		return false
+	}
+
+	return true
 }
 
 func daemonRunning(api string) (bool, error) {
