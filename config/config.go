@@ -1,14 +1,20 @@
 package config
 
+import (
+	"os"
+
+	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
+)
+
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API   *APIConfig
-	Swarm *SwarmConfig
+	API   *APIConfig   `toml:"api"`
+	Swarm *SwarmConfig `toml:"swarm"`
 }
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	Address string
+	Address string `toml:"address"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -19,7 +25,7 @@ func newDefaultAPIConfig() *APIConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address string
+	Address string `toml:"address"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
@@ -35,4 +41,18 @@ func NewDefaultConfig() *Config {
 		API:   newDefaultAPIConfig(),
 		Swarm: newDefaultSwarmConfig(),
 	}
+}
+
+// WriteFile writes the config to the given filepath.
+func (cfg *Config) WriteFile(file string) error {
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	if err := toml.NewEncoder(f).Encode(*cfg); err != nil {
+		return err
+	}
+
+	return f.Close()
 }

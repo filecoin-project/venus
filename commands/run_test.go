@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -340,11 +341,25 @@ func SwarmAddr(addr string) func(*TestDaemon) {
 	}
 }
 
+func GetFilecoinBinary() (string, error) {
+	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
+	_, err := os.Stat(bin)
+	if err == nil {
+		return bin, nil
+	}
+
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("You are missing the filecoin binary...try building, searched in '%s'", bin)
+	}
+
+	return "", err
+}
+
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
-	//Ensure we have the actual binary
-	filecoinBin := fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH"))
-	if _, err := os.Stat(filecoinBin); os.IsNotExist(err) {
-		t.Fatal("You are missing the filecoin binary...try building")
+	// Ensure we have the actual binary
+	filecoinBin, err := GetFilecoinBinary()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	//Ask the kernel for a port to avoid conflicts
@@ -403,4 +418,26 @@ func GetFreePort() (int, error) {
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func RunInit(opts ...string) ([]byte, error) {
+	return RunCommand("init", opts...)
+}
+
+func RunCommand(cmd string, opts ...string) ([]byte, error) {
+	filecoinBin, err := GetFilecoinBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	process := exec.Command(filecoinBin, append([]string{cmd}, opts...)...)
+	return process.CombinedOutput()
+}
+
+func ConfigExists(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "config.toml"))
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }
