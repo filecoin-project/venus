@@ -24,6 +24,7 @@ import (
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	lookup "github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -65,6 +66,9 @@ type Node struct {
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
+
+	// A lookup engine for mapping on-chain address to peerIds
+	Lookup *lookup.LookupEngine
 
 	// cancelBlockSubscriptionCtx is a handle to cancel the block subscription.
 	cancelBlockSubscriptionCtx context.CancelFunc
@@ -155,6 +159,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to set up floodsub")
 	}
 
+	fcWallet := wallet.New()
+	le, err := lookup.NewLookupEngine(fsub, fcWallet, host.ID())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to setup lookup engine")
+	}
+
 	return &Node{
 		Blockservice: bserv,
 		CborStore:    cst,
@@ -167,7 +177,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgPool:      msgPool,
 		Ping:         pinger,
 		PubSub:       fsub,
-		Wallet:       wallet.New(),
+		Wallet:       fcWallet,
+		Lookup:       le,
 	}, nil
 }
 

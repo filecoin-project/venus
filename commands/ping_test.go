@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,9 +19,7 @@ func TestPing2Nodes(t *testing.T) {
 		"ping", "--count 2", d2.GetID(),
 	)
 
-	d1.RunSuccess("swarm connect",
-		fmt.Sprintf("/ip4/127.0.0.1/tcp/6001/ipfs/%s", d2.GetID()),
-	)
+	d1.ConnectSuccess(d2)
 	ping1 := d1.RunSuccess("ping", "--count 2", d2.GetID())
 	ping2 := d2.RunSuccess("ping", "--count 2", d1.GetID())
 

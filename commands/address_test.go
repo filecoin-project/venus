@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -46,4 +47,39 @@ func TestWalletBalance(t *testing.T) {
 	t.Log("[success] balance 100000")
 	balance := d.RunSuccess("wallet balance", core.NetworkAccount.String())
 	assert.Contains(balance.ReadStdout(), "100000")
+}
+
+func TestAddrsLookup(t *testing.T) {
+	assert := assert.New(t)
+
+	//Define 2 nodes, each with an address
+	d1 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
+	defer d1.ShutdownSuccess()
+	makeAddr(t, d1)
+
+	d2 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
+	defer d2.ShutdownSuccess()
+	makeAddr(t, d2)
+
+	//Connect daemons
+	d1.ConnectSuccess(d2)
+
+	d1Raw := d1.RunSuccess("address list")
+	d1WalletAdder := strings.Trim(d1Raw.ReadStdout(), "\n")
+	t.Logf("D1 Wallet Address: %s", d1WalletAdder)
+	assert.NotEmpty(d1WalletAdder)
+
+	d2Raw := d2.RunSuccess("address list")
+	d2WalletAdder := strings.Trim(d2Raw.ReadStdout(), "\n")
+	t.Logf("D2 Wallet Address: %s", d2WalletAdder)
+	assert.NotEmpty(d2WalletAdder)
+
+	isD2IdRaw := d1.RunSuccess(fmt.Sprintf("address lookup %s", d2WalletAdder))
+	isD1IdRaw := d2.RunSuccess(fmt.Sprintf("address lookup %s", d1WalletAdder))
+
+	isD1Id := strings.Trim(isD1IdRaw.ReadStdout(), "\n")
+	isD2Id := strings.Trim(isD2IdRaw.ReadStdout(), "\n")
+
+	assert.Equal(d1.GetID(), isD1Id)
+	assert.Equal(d2.GetID(), isD2Id)
 }
