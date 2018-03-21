@@ -18,9 +18,9 @@ func TestMineOnce(t *testing.T) {
 
 	var mineCtx context.Context
 	// Echoes the sent block to output.
-	echoMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	echoMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
 		mineCtx = c
-		outCh <- Output{NewBlock: b}
+		outCh <- Result{NewBlock: b}
 	}
 	worker := NewWorkerWithMineAndWork(mockBg, echoMine, func() {})
 	result := MineOnce(context.Background(), worker, baseBlock)
@@ -37,7 +37,7 @@ func TestMineEvery(t *testing.T) {
 
 	mineCnt := int32(0)
 	// Counts number of times mine is called.
-	countMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	countMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
 		atomic.AddInt32(&mineCnt, 1)
 	}
 	worker := NewWorkerWithMineAndWork(mockBg, countMine, func() {})
@@ -62,17 +62,17 @@ func TestWorker_Start(t *testing.T) {
 	doSomeWorkCalled := false
 	doSomeWork := func() { doSomeWorkCalled = true }
 	mineCalled := false
-	fakeMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	fakeMine := func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
 		mineCalled = true
 		assert.NotEqual(ctx, c)
 		assert.True(baseBlock.StateRoot.Equals(b.StateRoot))
 		assert.Equal(mockBg, bg)
 		doSomeWork()
-		outCh <- Output{}
+		outCh <- Result{}
 	}
 	worker := NewWorkerWithMineAndWork(mockBg, fakeMine, doSomeWork)
 	inCh, outCh, _ := worker.Start(ctx)
-	inCh <- NewInput(context.Background(), baseBlock)
+	inCh <- baseBlock
 	<-outCh
 	assert.True(mineCalled)
 	assert.True(doSomeWorkCalled)
@@ -80,14 +80,14 @@ func TestWorker_Start(t *testing.T) {
 
 	// Test that we can push multiple blocks through.
 	ctx, cancel = context.WithCancel(context.Background())
-	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		outCh <- Output{}
+	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
+		outCh <- Result{}
 	}
 	worker = NewWorkerWithMineAndWork(mockBg, fakeMine, func() {})
 	inCh, outCh, _ = worker.Start(ctx)
-	inCh <- NewInput(context.Background(), &types.Block{})
-	inCh <- NewInput(context.Background(), &types.Block{})
-	inCh <- NewInput(context.Background(), &types.Block{})
+	inCh <- &types.Block{}
+	inCh <- &types.Block{}
+	inCh <- &types.Block{}
 	<-outCh
 	<-outCh
 	<-outCh
@@ -98,54 +98,35 @@ func TestWorker_Start(t *testing.T) {
 	ctx, cancel = context.WithCancel(context.Background())
 	b1 := &types.Block{Height: 1}
 	bWorseScore := &types.Block{Height: 0}
-	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
 		assert.True(b1.Cid().Equals(b.Cid()))
-		outCh <- Output{}
+		outCh <- Result{}
 	}
 	worker = NewWorkerWithMineAndWork(mockBg, fakeMine, func() {})
 	inCh, outCh, _ = worker.Start(ctx)
-	inCh <- NewInput(context.Background(), b1)
+	inCh <- b1
 	<-outCh
-	inCh <- NewInput(context.Background(), bWorseScore)
+	inCh <- bWorseScore
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
 	cancel() // Makes vet happy.
 
-	// Test that canceling the Input.Ctx cancels that input's mining run.
-	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel := context.WithCancel(context.Background())
-	var gotMineCtx context.Context
-	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		gotMineCtx = c
-		outCh <- Output{}
+	// Test that cancel stops mining, cancels the inner context, and closes
+	// the output channel.
+	ctx, cancel = context.WithCancel(context.Background())
+	var mineCtx context.Context
+	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Result) {
+		mineCtx = c
+		outCh <- Result{}
 	}
 	worker = NewWorkerWithMineAndWork(mockBg, fakeMine, func() {})
-	inCh, outCh, _ = worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, &types.Block{})
+	inCh, outCh, doneWg := worker.Start(ctx)
+	inCh <- &types.Block{}
 	<-outCh
-	inputCtxCancel()
-	assert.Error(gotMineCtx.Err()) // Same context as miningRunCtx.
-	assert.NoError(miningCtx.Err())
-	miningCtxCancel() // Make vet happy.
-
-	// Test that canceling the mining context stops mining, cancels
-	// the inner context, and closes the output channel.
-	miningCtx, miningCtxCancel = context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel = context.WithCancel(context.Background())
-	gotMineCtx = context.Background()
-	fakeMine = func(c context.Context, b *types.Block, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		gotMineCtx = c
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithMineAndWork(mockBg, fakeMine, func() {})
-	inCh, outCh, doneWg := worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, &types.Block{})
-	<-outCh
-	miningCtxCancel()
+	cancel()
 	doneWg.Wait()
 	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
-	assert.Error(gotMineCtx.Err())
-	inputCtxCancel() // Make vet happy.
+	assert.Error(mineCtx.Err())
 }
 
 func Test_mine(t *testing.T) {
@@ -156,7 +137,7 @@ func Test_mine(t *testing.T) {
 
 	// Success.
 	mockBg := &MockBlockGenerator{}
-	outCh := make(chan Output)
+	outCh := make(chan Result)
 	mockBg.On("Generate", ctx, baseBlock).Return(next, nil)
 	doSomeWorkCalled := false
 	go Mine(ctx, baseBlock, mockBg, func() { doSomeWorkCalled = true }, outCh)
@@ -168,7 +149,7 @@ func Test_mine(t *testing.T) {
 
 	// Block generation fails.
 	mockBg = &MockBlockGenerator{}
-	outCh = make(chan Output)
+	outCh = make(chan Result)
 	mockBg.On("Generate", ctx, baseBlock).Return(nil, errors.New("boom"))
 	doSomeWorkCalled = false
 	go Mine(ctx, baseBlock, mockBg, func() { doSomeWorkCalled = true }, outCh)

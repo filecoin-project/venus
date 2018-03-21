@@ -51,16 +51,16 @@ func TestNodeNetworking(t *testing.T) {
 func TestNodeMining(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
-	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
+	ctx := context.Background()
 	node, err := New(ctx)
 	assert.NoError(err)
 
 	mockWorker := &mining.MockWorker{}
-	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
+	inCh, outCh, doneWg := make(chan *types.Block), make(chan mining.Result), new(sync.WaitGroup)
 	// Apparently you have to have exact types for testify.mock, so
 	// we use iCh and oCh for the specific return type of Start().
-	var iCh chan<- mining.Input = inCh
-	var oCh <-chan mining.Output = outCh
+	var iCh chan<- *types.Block = inCh
+	var oCh <-chan mining.Result = outCh
 	mockWorker.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
 	node.MiningWorker = mockWorker
 
@@ -69,94 +69,49 @@ func TestNodeMining(t *testing.T) {
 	var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetBestBlockForTest(ctx, b1)
-	assert.NoError(node.Start())
-	node.StartMining()
-	gotInput := <-inCh
-	assert.True(b1.Cid().Equals(gotInput.MineOn.Cid()))
+	node.StartMining(ctx)
+	gotBlock := <-inCh
+	assert.True(b1.Cid().Equals(gotBlock.Cid()))
 
 	// Ensure that the successive inputs (new best blocks) are wired up properly.
 	b2 := &types.Block{StateRoot: newCid()}
 	node.ChainMgr.SetBestBlockForTest(ctx, b2)
-	gotInput = <-inCh
-	assert.True(b2.Cid().Equals(gotInput.MineOn.Cid()))
+	gotBlock = <-inCh
+	assert.True(b2.Cid().Equals(gotBlock.Cid()))
 
-	// Ensure we don't mine when stopped.
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
-	node.StopMining()
-	node.ChainMgr.SetBestBlockForTest(ctx, b2)
-	time.Sleep(20 * time.Millisecond)
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
-
-	// Ensure we're tearing down cleanly.
+	// Ensure we're stopping cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node, err = New(ctx)
-	assert.NoError(err)
-	chainMgrForTest = node.ChainMgr
-	chainMgrForTest.SetBestBlockForTest(ctx, b1)
-	assert.NoError(node.Start())
-	node.StartMining()
 	workerDone := false
-	node.miningDoneWg.Add(1)
+	doneWg.Add(1)
 	go func() {
 		time.Sleep(20 * time.Millisecond)
 		workerDone = true
-		node.miningDoneWg.Done()
+		doneWg.Done()
 	}()
-	node.Stop()
+	node.StopMining()
 	assert.True(workerDone)
+	// Part of stopping is ensuring we stop getting new blocks.
+	assert.Equal(mining.ChannelClosed, mining.ReceiveInCh(inCh))
+	node.ChainMgr.SetBestBlockForTest(ctx, b2)
+	assert.Equal(mining.ChannelClosed, mining.ReceiveInCh(inCh))
 
 	// Ensure that the output is wired up correctly.
-	ctx, _ = context.WithCancel(context.Background()) // nolint: vet
-	node, err = New(ctx)
-	assert.NoError(err)
 	mockWorker = &mining.MockWorker{}
-	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
+	inCh, outCh, doneWg = make(chan *types.Block), make(chan mining.Result), new(sync.WaitGroup)
 	iCh = inCh
 	oCh = outCh
 	mockWorker.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
 	node.MiningWorker = mockWorker
-	assert.NoError(node.Start())
 
-	var gotBlock *types.Block
+	gotBlock = nil
 	gotBlockCh := make(chan struct{})
-	node.AddNewlyMinedBlock = func(ctx context.Context, b *types.Block) {
+	go func() { outCh <- mining.NewResult(b1, nil) }()
+	node.startMining(ctx, func(ctx context.Context, b *types.Block) {
 		gotBlock = b
-		go func() { gotBlockCh <- struct{}{} }()
-	}
-	node.StartMining()
-	go func() { outCh <- mining.NewOutput(b1, nil) }()
+		gotBlockCh <- struct{}{}
+	})
 	<-gotBlockCh
+	node.StopMining()
 	assert.True(b1.Cid().Equals(gotBlock.Cid()))
-}
-
-func TestUpdateMessagePool(t *testing.T) {
-	// Note: majority of tests are in message_pool_test. This test
-	// just makes sure it looks like it is hooked up correctly.
-	assert := assert.New(t)
-	ctx := context.Background()
-	node, err := New(ctx)
-	assert.NoError(err)
-	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
-	type msgs []*types.Message
-
-	// Msg pool: [m0, m1],   Chain: b[m2, m3]
-	// to
-	// Msg pool: [m0, m3],   Chain: b[m1, m2]
-	m := types.NewMsgs(4)
-	core.MustAdd(node.MsgPool, m[0], m[1])
-	oldChain := core.NewChainWithMessages(node.CborStore, nil, msgs{m[2], m[3]})
-	newChain := core.NewChainWithMessages(node.CborStore, nil, msgs{m[1], m[2]})
-	chainMgrForTest.SetBestBlockForTest(ctx, oldChain[len(oldChain)-1])
-	assert.NoError(node.Start())
-	updateMsgPoolDoneCh := make(chan struct{})
-	node.BestBlockHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
-	// Triggers a notification, node should update the message pool as a result.
-	chainMgrForTest.SetBestBlockForTest(ctx, newChain[len(newChain)-1])
-	<-updateMsgPoolDoneCh
-	assert.Equal(2, len(node.MsgPool.Pending()))
-	pending := node.MsgPool.Pending()
-	assert.True(types.MsgCidsEqual(m[0], pending[0]) || types.MsgCidsEqual(m[0], pending[1]))
-	assert.True(types.MsgCidsEqual(m[3], pending[0]) || types.MsgCidsEqual(m[3], pending[1]))
-	node.Stop()
 }

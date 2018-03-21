@@ -68,7 +68,7 @@ func TestBlockGenerator_Generate(t *testing.T) {
 	g = NewBlockGenerator(pool, successfulGetStateTree, mpb.ProcessBlock)
 	next, err = g.Generate(context.Background(), &baseBlock)
 	assert.NoError(err)
-	assert.Len(pool.Pending(), 2)
+	assert.Len(pool.Pending(), 0) // Removes them.
 	assert.Len(next.Messages, expectedMsgs)
 	mpb.AssertExpectations(t)
 	mst.AssertExpectations(t)
