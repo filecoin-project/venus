@@ -111,6 +111,12 @@
       "hash": "QmZo5avr9dhVVRzcpKnU9ZGQuPaU62pbufUHXBNB7GwLzQ",
       "name": "go-basex",
       "version": "0.1.0"
+    },
+    {
+      "author": "mitchellh",
+      "hash": "QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK",
+      "name": "go-homedir",
+      "version": "1.0.0"
     }
   ],
   "gxVersion": "0.12.1",
