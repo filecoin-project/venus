@@ -15,6 +15,7 @@ type Datastore interface {
 	// can either force it, or just do hopeful type checks. Not all datastores
 	// implement every feature.
 	datastore.Batching
+	Close() error
 }
 
 // Repo is a representation of all persistent data in a filecoin node.
@@ -22,4 +23,5 @@ type Repo interface {
 	Config() *config.Config
 	Datastore() Datastore
 	Version() uint
+	Close() error
 }

@@ -22,7 +22,8 @@ func TestNodeConstruct(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd, err := New(ctx)
+	r := repo.NewInMemoryRepo()
+	nd, err := New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 	assert.NotNil(nd.Host)
 
@@ -154,7 +155,8 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
 	ctx := context.Background()
-	node, err := New(ctx)
+	r := repo.NewInMemoryRepo()
+	node, err := New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
 	type msgs []*types.Message

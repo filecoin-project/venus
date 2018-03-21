@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	badgerds "gx/ipfs/Qmbjb3c2KRPVNZWSvQED8zAf12Brdbp3ksSnGdsJiytqUs/go-ds-badger"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -45,9 +45,7 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 		return nil, err
 	}
 
-	r := &FSRepo{path: expath}
-
-	isInit, err := r.isInitialized()
+	isInit, err := isInitialized(expath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check if repo was initialized")
 	}
@@ -55,6 +53,8 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 	if !isInit {
 		return nil, &NoRepoError{p}
 	}
+
+	r := &FSRepo{path: expath}
 
 	localVersion, err := r.loadVersion()
 	if err != nil {
@@ -85,19 +85,27 @@ func InitFSRepo(p string, cfg *config.Config) error {
 		return err
 	}
 
-	if err := checkWritable(p); err != nil {
+	init, err := isInitialized(expath)
+	if err != nil {
 		return err
+	}
+
+	if init {
+		return fmt.Errorf("repo already initialized")
+	}
+
+	if err := checkWritable(expath); err != nil {
+		return errors.Wrap(err, "checking writability failed")
 	}
 
 	if err := initVersion(expath, Version); err != nil {
-		return err
+		return errors.Wrap(err, "initializing repo version failed")
 	}
 
 	if err := initConfig(expath, cfg); err != nil {
-		return err
+		return errors.Wrap(err, "initializing config file failed")
 	}
-	// Create datastore as described in config
-	// write repo version file
+
 	return nil
 }
 
@@ -116,8 +124,17 @@ func (r *FSRepo) Version() uint {
 	return r.version
 }
 
-func (r *FSRepo) isInitialized() (bool, error) {
-	configPath := filepath.Join(r.path, configFilename)
+// Close closes the repo.
+func (r *FSRepo) Close() error {
+	if err := r.ds.Close(); err != nil {
+		return errors.Wrap(err, "failed to close datastore")
+	}
+
+	return nil
+}
+
+func isInitialized(p string) (bool, error) {
+	configPath := filepath.Join(p, configFilename)
 
 	_, err := os.Lstat(configPath)
 	switch {
@@ -131,9 +148,15 @@ func (r *FSRepo) isInitialized() (bool, error) {
 }
 
 func (r *FSRepo) loadConfig() error {
-	// TODO: read config file from disk
-	r.cfg = nil // make linting okay
-	panic("NYI")
+	configFile := filepath.Join(r.path, configFilename)
+
+	cfg, err := config.ReadFile(configFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read config file at %q", configFile)
+	}
+
+	r.cfg = cfg
+	return nil
 }
 
 func (r *FSRepo) loadVersion() (uint, error) {
@@ -153,7 +176,16 @@ func (r *FSRepo) loadVersion() (uint, error) {
 
 func (r *FSRepo) openDatastore() error {
 	// TODO: read datastore info from config, use that to open it up
-	r.ds = datastore.NewMapDatastore()
+	switch r.cfg.Datastore.Type {
+	case "badgerds":
+		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), nil)
+		if err != nil {
+			return err
+		}
+		r.ds = ds
+	default:
+		return fmt.Errorf("unknown datastore type in config: %s", r.cfg.Datastore.Type)
+	}
 
 	return nil
 }

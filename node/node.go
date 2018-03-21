@@ -9,7 +9,6 @@ import (
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
-	ds "gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 	"gx/ipfs/QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw/go-libp2p-floodsub"
 	bstore "gx/ipfs/QmTVDM4LCSUMFNQzbDLL9zQwp8usE6QHymFdh3h8vL9v6b/go-ipfs-blockstore"
@@ -26,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	lookup "github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/repo"
 	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -67,8 +67,9 @@ type Node struct {
 
 	// Data Storage Fields
 
-	// Datastore is the underlying storage backend.
-	Datastore ds.Batching
+	// Repo is the repo this node was created with
+	// it contains all persistent artifacts of the filecoin node
+	Repo repo.Repo
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -90,7 +91,7 @@ type Node struct {
 type Config struct {
 	Libp2pOpts []libp2p.Option
 
-	Datastore ds.Batching
+	Repo repo.Repo
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -126,11 +127,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up pinger
 	pinger := ping.NewPingService(host)
 
-	if nc.Datastore == nil {
-		nc.Datastore = ds.NewMapDatastore()
+	if nc.Repo == nil {
+		// TODO: maybe allow for not passing a repo?
+		return nil, fmt.Errorf("must pass a repo option to the node build process")
 	}
 
-	bs := bstore.NewBlockstore(nc.Datastore)
+	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
 	// no content routing yet...
 	routing, _ := nonerouting.ConstructNilRouting(ctx, nil, nil)
@@ -143,7 +145,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	cst := &hamt.CborIpldStore{Blocks: bserv}
 
-	chainMgr := core.NewChainManager(nc.Datastore, cst)
+	chainMgr := core.NewChainManager(nc.Repo.Datastore(), cst)
 
 	msgPool := core.NewMessagePool()
 
@@ -170,13 +172,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Blockservice: bserv,
 		CborStore:    cst,
 		ChainMgr:     chainMgr,
-		Datastore:    nc.Datastore,
 		Exchange:     bswap,
 		Host:         host,
 		MiningWorker: miningWorker,
 		MsgPool:      msgPool,
 		Ping:         pinger,
 		PubSub:       fsub,
+		Repo:         nc.Repo,
 		Wallet:       fcWallet,
 		Lookup:       le,
 	}, nil
@@ -315,6 +317,11 @@ func (node *Node) Stop() {
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
 	}
+
+	if err := node.Repo.Close(); err != nil {
+		fmt.Printf("error closing repo: %s\n", err)
+	}
+
 	fmt.Println("stopping filecoin :(")
 }
 
