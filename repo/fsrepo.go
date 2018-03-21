@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/mitchellh/go-homedir"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 const configFilename = "config"
@@ -20,7 +20,7 @@ type NoRepoError struct {
 }
 
 func (err NoRepoError) Error() string {
-	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'ipfs init'", err.Path)
+	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'go-filecoin init'", err.Path)
 }
 
 // FSRepo is a repo implementation backed by a filesystem.
@@ -30,6 +30,8 @@ type FSRepo struct {
 	cfg *config.Config
 	ds  Datastore
 }
+
+var _ Repo = (*FSRepo)(nil)
 
 // Open opens an already initialized fsrepo at the given path
 func Open(p string) (*FSRepo, error) {
@@ -66,6 +68,16 @@ func Init(p string, cfg *config.Config) error {
 	// Create datastore as described in config
 	// write repo version file
 	return nil
+}
+
+// Config returns the configuration object.
+func (r *FSRepo) Config() *config.Config {
+	return r.cfg
+}
+
+// Datastore returns the datastore.
+func (r *FSRepo) Datastore() Datastore {
+	return r.ds
 }
 
 func (r *FSRepo) isInitialized() (bool, error) {
