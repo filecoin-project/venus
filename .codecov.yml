@@ -29,5 +29,4 @@ coverage:
 
 comment: false
 ignore:
-  - "testing.go"
-
+  - "*/testing.go"
