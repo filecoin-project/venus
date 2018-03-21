@@ -25,8 +25,9 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"list": addrsListCmd,
-		"new":  addrsNewCmd,
+		"list":   addrsListCmd,
+		"new":    addrsNewCmd,
+		"lookup": addrsLookupCmd,
 	},
 }
 
@@ -60,6 +61,38 @@ var addrsListCmd = &cmds.Command{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr *addressResult) error {
 			_, err := fmt.Fprintln(w, addr.Address)
 			return err
+		}),
+	},
+}
+
+var addrsLookupCmd = &cmds.Command{
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("address", true, false, "address to find peerId for"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		fcn := GetNode(env)
+
+		address, err := types.NewAddressFromString(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		v, err := fcn.Lookup.Lookup(req.Context, address)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		re.Emit(v.Pretty())
+	},
+	Type: string(""),
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pid string) error {
+			_, err := fmt.Fprintln(w, pid)
+			if err != nil {
+				return err
+			}
+			return nil
 		}),
 	},
 }

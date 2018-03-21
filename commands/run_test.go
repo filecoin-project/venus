@@ -247,6 +247,29 @@ func (td *TestDaemon) GetID() string {
 	return parsed["ID"].(string)
 }
 
+func (td *TestDaemon) GetAddress() string {
+	out := td.RunSuccess("id")
+	var parsed map[string]interface{}
+	assert.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
+
+	adders := parsed["Addresses"].([]interface{})
+	return adders[0].(string)
+}
+
+func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
+	//Connect the nodes
+	out := td.RunSuccess("swarm connect", remote.GetAddress())
+	peers1 := td.RunSuccess("swarm peers")
+	peers2 := remote.RunSuccess("swarm peers")
+
+	td.test.Log("[success] 1 -> 2")
+	assert.Contains(td.test, peers1.ReadStdout(), remote.GetID())
+
+	td.test.Log("[success] 2 -> 1")
+	assert.Contains(td.test, peers2.ReadStdout(), td.GetID())
+	return out
+}
+
 func (td *TestDaemon) ReadAllStdout() string {
 	td.lk.Lock()
 	defer td.lk.Unlock()
