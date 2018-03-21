@@ -15,7 +15,8 @@ The following is a set of guidelines for contributing to the Filecoin Project. F
 
 ## Project Management
 
-We track work items via the [Project board](https://app.zenhub.com/workspace/o/filecoin-project/go-filecoin/boards?repos=113219518). We use Zenhub because it provides agile project management tools, but integrates directly with Github.
+* We use a modified Agile scrum method. Details are in [Agile and Scrum at Protocol Labs - Filecoin](https://docs.google.com/document/d/16PQVR5vTnbt6DtgxVIEdjc4n0TrqWEtOiWZLItQXC74/edit?ts=5ab28811#).
+* We track work items via the [Project Board](https://app.zenhub.com/workspace/o/filecoin-project/go-filecoin/boards?repos=113219518). We use Zenhub because it provides agile project management tools, but integrates directly with Github.
 
 | Stage | What is it for? |
 |---|---|
