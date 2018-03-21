@@ -23,6 +23,7 @@ func TestWriteFile(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "config")
 	assert.NoError(err)
+	defer os.RemoveAll(dir)
 
 	cfg := NewDefaultConfig()
 
@@ -41,4 +42,22 @@ func TestWriteFile(t *testing.T) {
 	)
 
 	assert.NoError(os.Remove(filepath.Join(dir, "config.toml")))
+}
+
+func TestConfigRoundtrip(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "config")
+	assert.NoError(err)
+	defer os.RemoveAll(dir)
+
+	cfg := NewDefaultConfig()
+
+	cfgpath := filepath.Join(dir, "config.toml")
+	assert.NoError(cfg.WriteFile(cfgpath))
+
+	cfgout, err := ReadFile(cfgpath)
+	assert.NoError(err)
+
+	assert.Equal(cfg, cfgout)
 }

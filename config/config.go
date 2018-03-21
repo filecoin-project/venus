@@ -56,3 +56,18 @@ func (cfg *Config) WriteFile(file string) error {
 
 	return f.Close()
 }
+
+// ReadFile reads a config file from disk.
+func ReadFile(file string) (*Config, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if _, err := toml.DecodeReader(f, &cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
