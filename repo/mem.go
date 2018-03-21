@@ -1,8 +1,9 @@
 package repo
 
 import (
-	"github.com/filecoin-project/go-filecoin/config"
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+
+	"github.com/filecoin-project/go-filecoin/config"
 )
 
 // MemRepo is an in memory implementation of the filecoin repo
@@ -11,10 +12,12 @@ type MemRepo struct {
 	D Datastore
 }
 
+var _ Repo = (*MemRepo)(nil)
+
 // NewInMemoryRepo makes a new one of these
 func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
-		C: &config.Config{},
+		C: config.NewDefaultConfig(),
 		D: datastore.NewMapDatastore(),
 	}
 }

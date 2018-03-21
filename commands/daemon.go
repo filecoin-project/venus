@@ -25,26 +25,30 @@ var daemonCmd = &cmds.Command{
 		Tagline: "Start a long-running daemon-process",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("swarmlisten").WithDefault("/ip4/127.0.0.1/tcp/6000"),
+		cmdkit.StringOption("swarmlisten"),
 	},
 	Run: daemonRun,
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-	api := req.Options[OptionAPI].(string)
-
-	repo, err := getRepo(req)
+	rep, err := getRepo(req)
 	if err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
 
-	opts := node.OptionsFromRepo(repo)
+	if apiAddress, ok := req.Options[OptionAPI].(string); ok {
+		rep.Config().API.Address = apiAddress
+	}
 
-	opts = append(opts,
-		// TODO: this should be passed in from a config file, not an api flag
-		node.Libp2pOptions(libp2p.ListenAddrStrings(req.Options["swarmlisten"].(string))),
-	)
+	opts := node.OptionsFromRepo(rep)
+
+	if swarmAddress, ok := req.Options["swarmlisten"].(string); ok {
+		opts = append(opts,
+			// TODO: this should be passed in from a config file, not an api flag
+			node.Libp2pOptions(libp2p.ListenAddrStrings(swarmAddress)),
+		)
+	}
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
@@ -57,7 +61,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		re.Emit(fmt.Sprintf("Swarm listening on: %s", a)) // nolint: errcheck
 	}
 
-	if err := runAPIAndWait(req.Context, fcn, api); err != nil {
+	if err := runAPIAndWait(req.Context, fcn, rep.Config().API.Address); err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
