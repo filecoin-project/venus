@@ -145,13 +145,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}, core.ProcessBlock)
 	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
-	if err := chainMgr.Load(); err != nil {
-		return nil, err
-	}
-
-	// Set up 'hello' handshake service
-	hello := core.NewHello(host, chainMgr.GetGenesisCid(), chainMgr.InformNewBlock, chainMgr.GetBestBlock)
-
 	// Set up libp2p pubsub
 	fsub, err := floodsub.NewFloodSub(ctx, host)
 	if err != nil {
@@ -170,7 +163,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainMgr:     chainMgr,
 		Datastore:    nc.Datastore,
 		Exchange:     bswap,
-		HelloSvc:     hello,
 		Host:         host,
 		MiningWorker: miningWorker,
 		MsgPool:      msgPool,
@@ -183,6 +175,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start() error {
+
+	if err := node.ChainMgr.Load(); err != nil {
+		return err
+	}
+
+	// Start up 'hello' handshake service
+	node.HelloSvc = core.NewHello(node.Host, node.ChainMgr.GetGenesisCid(), node.ChainMgr.InformNewBlock, node.ChainMgr.GetBestBlock)
+
 	// subscribe to block notifications
 	blkSub, err := node.PubSub.Subscribe(BlocksTopic)
 	if err != nil {
@@ -199,7 +199,7 @@ func (node *Node) Start() error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	node.cancelBlockSubscriptionCtx = cancel
-	go node.handleBlockSubscription(ctx)
+	go node.handleBlockSubscription(ctx, blkSub)
 
 	return nil
 }

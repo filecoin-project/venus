@@ -4,6 +4,7 @@ import (
 	"context"
 
 	bstore "gx/ipfs/QmTVDM4LCSUMFNQzbDLL9zQwp8usE6QHymFdh3h8vL9v6b/go-ipfs-blockstore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	bserv "github.com/ipfs/go-ipfs/blockservice"
@@ -13,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
-// FilecoinInit initializes a filecoin node in the given repo
+// Init initializes a filecoin node in the given repo
 // TODO: accept options?
 //  - configurable genesis block
 func Init(ctx context.Context, r repo.Repo) error {
@@ -24,7 +25,7 @@ func Init(ctx context.Context, r repo.Repo) error {
 
 	cm := core.NewChainManager(r.Datastore(), cst)
 	if err := cm.Genesis(ctx, core.InitGenesis); err != nil {
-		return err
+		return errors.Wrap(err, "failed to initialize genesis")
 	}
 
 	return nil

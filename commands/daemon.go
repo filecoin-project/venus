@@ -51,7 +51,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	// TODO: since init and startup are currently one, do this here...
-	if err := node.FilecoinInit(rep); err != nil {
+	if err := node.Init(req.Context, rep); err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}

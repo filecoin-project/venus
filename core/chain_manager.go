@@ -122,8 +122,8 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
 
-	if err := s.ds.Put(bestBlockKey, b.Cid().Bytes()); err != nil {
-		return err
+	if err := putCid(s.ds, bestBlockKey, b.Cid()); err != nil {
+		return errors.Wrap(err, "failed to write bestBlockCid to datastore")
 	}
 
 	s.BestBlockPubSub.Pub(b, BlockTopic)
@@ -131,6 +131,11 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
+func putCid(ds datastore.Datastore, k datastore.Key, c *cid.Cid) error {
+	return ds.Put(k, c.Bytes())
+}
+
+// Load reads the best block cid from disk and reparses the chain backwards from there.
 func (s *ChainManager) Load() error {
 	bbc, err := s.readBestBlockCid()
 	if err != nil {
@@ -146,7 +151,7 @@ func (s *ChainManager) Load() error {
 		return errors.Wrap(err, "scanning blockchain failed")
 	}
 
-	s.bestBlock.blk = blk
+	headBlk := blk
 
 	for blk.Parent != nil {
 		// TODO: hrm... adding these in reverse order
@@ -161,6 +166,7 @@ func (s *ChainManager) Load() error {
 
 	// TODO: probably want to load the expected genesis block and assert it here?
 	s.genesisCid = blk.Cid()
+	s.bestBlock.blk = headBlk
 
 	return nil
 }
