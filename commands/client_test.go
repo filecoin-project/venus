@@ -1,11 +1,13 @@
 package commands
 
 import (
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"math/big"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +21,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	bid := d.RunSuccess("client", "add-bid", "2000", "10",
 		"--from", core.TestAccount.String(),
@@ -51,7 +53,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 func TestClientAddBidFail(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	d.RunFail(
 		"invalid from address",
@@ -68,4 +70,51 @@ func TestClientAddBidFail(t *testing.T) {
 		"client", "add-bid", "10", "3f",
 		"--from", core.TestAccount.String(),
 	)
+}
+
+func TestProposeDeal(t *testing.T) {
+	dcli := NewDaemon(t).Start()
+	defer func() { t.Log(dcli.ReadStderr()) }()
+	defer dcli.ShutdownSuccess()
+	dmin := NewDaemon(t).Start()
+	defer func() { t.Log(dmin.ReadStderr()) }()
+	defer dmin.ShutdownSuccess()
+
+	dcli.ConnectSuccess(dmin)
+
+	// mine here to get some moneys
+	dcli.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+	dcli.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+	dmin.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+	dmin.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+
+	miner := dmin.CreateMinerAddr()
+
+	askO := dmin.RunSuccess("miner", "add-ask", miner.String(), "1200", "1")
+	dmin.RunSuccess("mining", "once")
+	dmin.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
+
+	dcli.RunSuccess("client", "add-bid", "500", "1")
+	dcli.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20) // wait for block propagation
+
+	buf := strings.NewReader("filecoin is a blockchain")
+	o := dcli.RunWithStdin(buf, "client", "import").AssertSuccess()
+	data := strings.TrimSpace(o.ReadStdout())
+
+	negidO := dcli.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", data)
+
+	time.Sleep(time.Millisecond * 20)
+	dmin.RunSuccess("mining", "once")
+
+	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
+	dcli.RunSuccess("client", "query-deal", negid)
+
+	// TODO: this command doesnt quite work
+	//dealO := dcli.RunSuccess("orderbook", "deals")
+	//t.Fatal(dealO.ReadStdout())
 }

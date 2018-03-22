@@ -21,12 +21,6 @@ func TestMessageSend(t *testing.T) {
 		"--value=10", "xyz",
 	)
 
-	t.Log("[failure] no from and no addresses")
-	d.RunFail(
-		"no default address",
-		"message", "send", core.TestAccount.String(),
-	)
-
 	t.Log("[success] no from")
 	d.RunSuccess("wallet addrs new")
 	d.RunSuccess("message", "send", core.TestAccount.String())

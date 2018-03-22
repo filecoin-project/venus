@@ -20,7 +20,7 @@ func TestMinerCreateSuccess(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	miner := d.RunSuccess("miner", "create",
 		"--from", core.TestAccount.String(), "1000000", "20",
@@ -54,7 +54,7 @@ func TestMinerCreateFail(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	d.RunFail("invalid from address",
 		"miner", "create",
@@ -81,7 +81,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	miner := d.RunSuccess(
 		"miner", "create",
@@ -136,7 +136,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	miner := d.RunSuccess("miner", "create",
 		"--from", core.TestAccount.String(), "1000000", "20",

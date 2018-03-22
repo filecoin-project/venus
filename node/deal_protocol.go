@@ -70,8 +70,6 @@ type StorageMarket struct {
 	// of things we need from it. blah blah passing in function closure nonsense blah blah
 	nd *Node
 
-	minerAddr types.Address
-
 	deals struct {
 		set map[[32]byte]*Negotiation
 		sync.Mutex
@@ -109,12 +107,37 @@ const (
 	Complete
 )
 
+func (s DealState) String() string {
+	switch s {
+	case Unknown:
+		return "unknown"
+	case Rejected:
+		return "rejected"
+	case Accepted:
+		return "accepted"
+	case Started:
+		return "started"
+	case Failed:
+		return "failed"
+	case Posted:
+		return "posted"
+	case Complete:
+		return "complete"
+	default:
+		return fmt.Sprintf("<unrecognized %d>", s)
+	}
+}
+
 // Negotiation tracks an in-progress deal between a miner and a storage client
 type Negotiation struct {
 	DealProposal *DealProposal
 	MsgCid       *cid.Cid
 	State        DealState
 	Error        string
+
+	// MinerOwner is the owner of the miner in this deals ask. It is controlled
+	// by this nodes operator.
+	MinerOwner types.Address
 }
 
 // NewStorageMarket sets up a new storage market protocol handler and registers
@@ -158,7 +181,15 @@ func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, erro
 		}, nil
 	}
 
-	if !sm.nd.Wallet.HasAddress(ask.Owner) {
+	mowner, err := sm.smi.GetMinerOwner(context.TODO(), ask.Owner)
+	if err != nil {
+		// TODO: does this get a response? This means that we have an ask whose
+		// miner we couldnt look up. Feels like an invariant being invalidated,
+		// or a system fault.
+		return nil, err
+	}
+
+	if !sm.nd.Wallet.HasAddress(mowner) {
 		return &DealResponse{
 			Message: "ask in deal proposal does not belong to us",
 			State:   Rejected,
@@ -179,7 +210,7 @@ func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, erro
 	// TODO: even under 'auto accept', have some restrictions around minimum
 	// price and requested collateral.
 
-	id := negotiationID(sm.minerAddr, propose)
+	id := negotiationID(mowner, propose)
 	sm.deals.Lock()
 	defer sm.deals.Unlock()
 
@@ -188,12 +219,14 @@ func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, erro
 		return &DealResponse{
 			Message: "deal negotiation already in progress",
 			State:   oneg.State,
+			ID:      id,
 		}, nil
 	}
 
 	neg := &Negotiation{
 		DealProposal: propose,
 		State:        Accepted,
+		MinerOwner:   mowner,
 	}
 
 	sm.deals.set[id] = neg
@@ -292,12 +325,14 @@ func negotiationID(minerID types.Address, propose *DealProposal) [32]byte {
 
 func (sm *StorageMarket) processDeal(id [32]byte) {
 	var propose *DealProposal
+	var minerOwner types.Address
 	sm.updateNegotiation(id, func(n *Negotiation) {
 		propose = n.DealProposal
+		minerOwner = n.MinerOwner
 		n.State = Started
 	})
 
-	msgcid, err := sm.finishDeal(context.TODO(), propose)
+	msgcid, err := sm.finishDeal(context.TODO(), minerOwner, propose)
 	if err != nil {
 		log.Warning(err)
 		sm.updateNegotiation(id, func(n *Negotiation) {
@@ -313,13 +348,13 @@ func (sm *StorageMarket) processDeal(id [32]byte) {
 	})
 }
 
-func (sm *StorageMarket) finishDeal(ctx context.Context, propose *DealProposal) (*cid.Cid, error) {
+func (sm *StorageMarket) finishDeal(ctx context.Context, minerOwner types.Address, propose *DealProposal) (*cid.Cid, error) {
 	// TODO: better file fetching
 	if err := sm.fetchData(context.TODO(), propose.Deal.DataRef); err != nil {
 		return nil, errors.Wrap(err, "fetching data failed")
 	}
 
-	msgcid, err := sm.smi.AddDeal(ctx, sm.minerAddr, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig)
+	msgcid, err := sm.smi.AddDeal(ctx, minerOwner, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig)
 	if err != nil {
 		return nil, err
 	}
@@ -356,6 +391,7 @@ type storageMarketPeeker interface {
 	GetAskSet() (core.AskSet, error)
 	GetBidSet() (core.BidSet, error)
 	GetDealList() ([]*core.Deal, error)
+	GetMinerOwner(context.Context, types.Address) (types.Address, error)
 }
 
 type stateTreeMarketPeeker struct {
@@ -447,6 +483,29 @@ func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
 	}
 
 	return stor.Orderbook.Deals, nil
+}
+
+func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, miner types.Address) (types.Address, error) {
+	st, err := stsa.loadStateTree(ctx)
+	if err != nil {
+		return types.Address{}, err
+	}
+
+	act, err := st.GetActor(ctx, miner)
+	if err != nil {
+		return types.Address{}, errors.Wrap(err, "failed to find miner actor in state tree")
+	}
+
+	if !act.Code.Equals(types.MinerActorCodeCid) {
+		return types.Address{}, fmt.Errorf("address given did not belong to a miner actor")
+	}
+
+	var mst core.MinerStorage
+	if err := core.UnmarshalStorage(act.ReadStorage(), &mst); err != nil {
+		return types.Address{}, err
+	}
+
+	return mst.Owner, nil
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain

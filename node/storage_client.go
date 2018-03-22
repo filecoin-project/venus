@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 
@@ -12,16 +14,50 @@ import (
 
 // StorageClient is a client interface to the storage market protocols.
 type StorageClient struct {
+	// TODO: this needs to be persisted to disk
+	prlk      sync.Mutex
+	proposals map[[32]byte]*DealProposal
+
+	smi storageMarketPeeker
+
 	nd *Node
 }
 
 // NewStorageClient creates a new storage client for the given filecoin node
 func NewStorageClient(nd *Node) *StorageClient {
-	return &StorageClient{nd}
+	return &StorageClient{
+		proposals: make(map[[32]byte]*DealProposal),
+		nd:        nd,
+		smi:       &stateTreeMarketPeeker{nd},
+	}
+}
+
+func (sc *StorageClient) minerPidForAsk(ctx context.Context, askID uint64) (peer.ID, error) {
+	ask, err := sc.smi.GetAsk(askID)
+	if err != nil {
+		return "", err
+	}
+
+	mowner, err := sc.smi.GetMinerOwner(ctx, ask.Owner)
+	if err != nil {
+		return "", err
+	}
+
+	minerPid, err := sc.nd.Lookup.Lookup(ctx, mowner)
+	if err != nil {
+		return "", errors.Wrap(err, "lookup of minerPid by miner owner failed")
+	}
+
+	return minerPid, nil
 }
 
 // ProposeDeal proposes a deal to the given miner
-func (sc *StorageClient) ProposeDeal(ctx context.Context, minerPid peer.ID, d *DealProposal) (*DealResponse, error) {
+func (sc *StorageClient) ProposeDeal(ctx context.Context, d *DealProposal) (*DealResponse, error) {
+	minerPid, err := sc.minerPidForAsk(ctx, d.Deal.Ask)
+	if err != nil {
+		return nil, err
+	}
+
 	s, err := sc.nd.Host.NewStream(ctx, minerPid, MakeDealProtocolID)
 	if err != nil {
 		return nil, err
@@ -39,11 +75,42 @@ func (sc *StorageClient) ProposeDeal(ctx context.Context, minerPid peer.ID, d *D
 		return nil, errors.Wrap(err, "failed to read deal proposal response")
 	}
 
+	// If the ID is actually set, register it locally
+	if resp.ID != [32]byte{} {
+		sc.registerProposal(d, &resp)
+	}
+
 	return &resp, nil
 }
 
+func (sc *StorageClient) registerProposal(dp *DealProposal, resp *DealResponse) {
+	sc.prlk.Lock()
+	defer sc.prlk.Unlock()
+	// TODO: store this per miner. Since the ID is selected by the miner, we
+	// don't want one miner to be able to return the same ID as another miner
+	// and mess up a client.
+	sc.proposals[resp.ID] = dp
+}
+
+func (sc *StorageClient) proposalForNegotiation(id [32]byte) *DealProposal {
+	sc.prlk.Lock()
+	defer sc.prlk.Unlock()
+
+	return sc.proposals[id]
+}
+
 // QueryDeal queries a deal from the given miner by its ID
-func (sc *StorageClient) QueryDeal(ctx context.Context, minerPid peer.ID, id [32]byte) (*DealResponse, error) {
+func (sc *StorageClient) QueryDeal(ctx context.Context, id [32]byte) (*DealResponse, error) {
+	propose := sc.proposalForNegotiation(id)
+	if propose == nil {
+		return nil, fmt.Errorf("unknown negotiation ID")
+	}
+
+	minerPid, err := sc.minerPidForAsk(ctx, propose.Deal.Ask)
+	if err != nil {
+		return nil, err
+	}
+
 	s, err := sc.nd.Host.NewStream(ctx, minerPid, QueryDealProtocolID)
 	if err != nil {
 		return nil, err

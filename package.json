@@ -129,6 +129,12 @@
       "hash": "QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo",
       "name": "go-ds-badger",
       "version": "1.4.5"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmWo8jYc19ppG7YoTsrr2kEtLRbARTJho5oNXFTR6B7Peq",
+      "name": "go-ipfs-chunker",
+      "version": "0.0.2"
     }
   ],
   "gxVersion": "0.12.1",

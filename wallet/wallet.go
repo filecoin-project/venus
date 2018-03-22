@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -19,9 +18,7 @@ type Wallet struct {
 // New creates a new Wallet.
 func New() *Wallet {
 	return &Wallet{
-		addresses: map[string]types.Address{
-			core.TestAccount.String(): core.TestAccount,
-		},
+		addresses: map[string]types.Address{},
 	}
 }
 

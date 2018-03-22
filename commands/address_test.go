@@ -17,7 +17,7 @@ func TestAddrsNewAndList(t *testing.T) {
 
 	addrs := make([]string, 10)
 	for i := 0; i < 10; i++ {
-		addrs[i] = d.CreateWalletAdder()
+		addrs[i] = d.CreateWalletAddr()
 	}
 
 	list := d.RunSuccess("wallet", "addrs", "list").ReadStdout()
@@ -31,7 +31,7 @@ func TestWalletBalance(t *testing.T) {
 
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
-	addr := d.CreateWalletAdder()
+	addr := d.CreateWalletAddr()
 
 	t.Log("[failure] not found")
 	d.RunFail("not found", "wallet", "balance", addr)
@@ -47,29 +47,29 @@ func TestAddrsLookup(t *testing.T) {
 	//Define 2 nodes, each with an address
 	d1 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
-	d1.CreateWalletAdder()
+	d1.CreateWalletAddr()
 
 	d2 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
 	defer d2.ShutdownSuccess()
-	d2.CreateWalletAdder()
+	d2.CreateWalletAddr()
 
 	//Connect daemons
 	d1.ConnectSuccess(d2)
 
 	d1Raw := d1.RunSuccess("address list")
 	d1Addrs := strings.Split(strings.Trim(d1Raw.ReadStdout(), "\n"), "\n")
-	d1WalletAdder := d1Addrs[len(d1Addrs)-1]
-	t.Logf("D1 Wallet Address: %s", d1WalletAdder)
-	assert.NotEmpty(d1WalletAdder)
+	d1WalletAddr := d1Addrs[len(d1Addrs)-1]
+	t.Logf("D1 Wallet Address: %s", d1WalletAddr)
+	assert.NotEmpty(d1WalletAddr)
 
 	d2Raw := d2.RunSuccess("address list")
 	d2Addrs := strings.Split(strings.Trim(d2Raw.ReadStdout(), "\n"), "\n")
-	d2WalletAdder := d2Addrs[len(d2Addrs)-1]
-	t.Logf("D2 Wallet Address: %s", d2WalletAdder)
-	assert.NotEmpty(d2WalletAdder)
+	d2WalletAddr := d2Addrs[len(d2Addrs)-1]
+	t.Logf("D2 Wallet Address: %s", d2WalletAddr)
+	assert.NotEmpty(d2WalletAddr)
 
-	isD2IdRaw := d1.RunSuccess(fmt.Sprintf("address lookup %s", d2WalletAdder))
-	isD1IdRaw := d2.RunSuccess(fmt.Sprintf("address lookup %s", d1WalletAdder))
+	isD2IdRaw := d1.RunSuccess(fmt.Sprintf("address lookup %s", d2WalletAddr))
+	isD1IdRaw := d2.RunSuccess(fmt.Sprintf("address lookup %s", d1WalletAddr))
 
 	isD1Id := strings.Trim(isD1IdRaw.ReadStdout(), "\n")
 	isD2Id := strings.Trim(isD2IdRaw.ReadStdout(), "\n")
