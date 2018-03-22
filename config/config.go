@@ -64,10 +64,10 @@ func ReadFile(file string) (*Config, error) {
 		return nil, err
 	}
 
-	var cfg Config
-	if _, err := toml.DecodeReader(f, &cfg); err != nil {
+	cfg := NewDefaultConfig()
+	if _, err := toml.DecodeReader(f, cfg); err != nil {
 		return nil, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
