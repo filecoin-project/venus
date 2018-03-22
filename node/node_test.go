@@ -2,12 +2,14 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -159,4 +161,97 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert.True(types.MsgCidsEqual(m[0], pending[0]) || types.MsgCidsEqual(m[0], pending[1]))
 	assert.True(types.MsgCidsEqual(m[3], pending[0]) || types.MsgCidsEqual(m[3], pending[1]))
 	node.Stop()
+}
+
+func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.Message,
+	expectError bool) {
+	expectCid, err := expectMsg.Cid()
+	assert.NoError(err)
+
+	err = cm.WaitForMessage(context.Background(), expectCid, func(b *types.Block, msg *types.Message,
+		rcp *types.MessageReceipt) {
+		assert.True(types.MsgCidsEqual(expectMsg, msg))
+		if wg != nil {
+			wg.Done()
+		}
+	})
+	assert.Equal(expectError, err != nil)
+}
+
+type msgs []*types.Message
+
+func TestWaitForMessage(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+
+	node, err := New(ctx)
+	assert.NoError(err)
+
+	err = node.Start()
+	assert.NoError(err)
+
+	stm := (*core.ChainManagerForTest)(node.ChainMgr)
+
+	testWaitExisting(ctx, assert, node, stm)
+	testWaitNew(ctx, assert, node, stm)
+}
+
+func TestWaitForMessageError(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+
+	node, err := New(ctx)
+	assert.NoError(err)
+
+	assert.NoError(node.Start())
+
+	stm := (*core.ChainManagerForTest)(node.ChainMgr)
+
+	testWaitError(ctx, assert, node, stm)
+}
+
+func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
+	newMsg := types.NewMessageForTestGetter()
+
+	m1, m2 := newMsg(), newMsg()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
+
+	stm.SetBestBlockForTest(ctx, chain[len(chain)-1])
+
+	testWaitHelp(nil, assert, stm, m1, false)
+	testWaitHelp(nil, assert, stm, m2, false)
+}
+
+func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
+	stm *core.ChainManagerForTest) {
+	var wg sync.WaitGroup
+	newMsg := types.NewMessageForTestGetter()
+
+	m1, m2 := newMsg(), newMsg()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
+
+	wg.Add(2)
+	go testWaitHelp(&wg, assert, stm, m1, false)
+	go testWaitHelp(&wg, assert, stm, m2, false)
+	time.Sleep(10 * time.Millisecond)
+
+	stm.SetBestBlockForTest(ctx, chain[len(chain)-1])
+	wg.Wait()
+}
+
+func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
+	newMsg := types.NewMessageForTestGetter()
+
+	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
+		return nil, fmt.Errorf("error fetching block (in test)")
+	}
+
+	m1, m2, m3, m4 := newMsg(), newMsg(), newMsg(), newMsg()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
+	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], msgs{m3, m4})
+	stm.SetBestBlockForTest(ctx, chain2[len(chain2)-1])
+
+	testWaitHelp(nil, assert, stm, m2, true)
 }

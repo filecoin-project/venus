@@ -76,7 +76,11 @@ type ChainManager struct {
 	cstore *hamt.CborIpldStore
 
 	// BestBlockPubSub is a pubsub channel that publishes all best blocks.
+	// We operate under the assumption that blocks published to this channel
+	// will always be queued and delivered to subscribers in the order discovered.
 	BestBlockPubSub *pubsub.PubSub
+
+	FetchBlock func(context.Context, *cid.Cid) (*types.Block, error)
 }
 
 // NewChainManager creates a new filecoin chain manager.
@@ -86,6 +90,7 @@ func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
 		processor:       ProcessBlock,
 		BestBlockPubSub: pubsub.New(128),
 	}
+	cm.FetchBlock = cm.fetchBlock
 	cm.knownGoodBlocks.set = cid.NewSet()
 
 	return cm
@@ -268,7 +273,7 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 
 		validating = append(validating, baseBlk)
 
-		next, err := s.fetchBlock(ctx, baseBlk.Parent)
+		next, err := s.FetchBlock(ctx, baseBlk.Parent)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "fetch block failed")
 		}
@@ -303,7 +308,7 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 	// Naive sync.
 	// TODO: more dedicated sync protocols, like "getBlockHashes(range)"
 	ctx := context.TODO()
-	blk, err := s.fetchBlock(ctx, c)
+	blk, err := s.FetchBlock(ctx, c)
 	if err != nil {
 		log.Error("failed to fetch block: ", err)
 		return
@@ -329,4 +334,95 @@ type ChainManagerForTest = ChainManager
 // use this outside of a testing context.
 func (s *ChainManagerForTest) SetBestBlockForTest(ctx context.Context, b *types.Block) error {
 	return s.setBestBlock(ctx, b)
+}
+
+// BlockHistory returns a channel of block pointers (or errors), starting with the current best block
+// followed by each subsequent parent and ending with the genesis block, after which the channel
+// is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
+func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
+	out := make(chan (interface{}), 1)
+	blk := s.GetBestBlock()
+
+	go func() {
+		defer close(out)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case out <- blk:
+				if blk.Parent == nil {
+					return
+				}
+				var err error
+				blk, err = s.FetchBlock(ctx, blk.Parent)
+				if err != nil {
+					log.Errorf("failed to fetch block: %s", err)
+					out <- err
+					return
+				}
+			}
+		}
+	}()
+	return out
+}
+
+// WaitForMessage searches for a message with Cid, msgCid, then passes it, along with the containing Block and any
+// MessageRecipt, to the supplied callback, cb. If an error is encountered, it is returned. Note that it is logically
+// possible that an error is returned and the success callback is called. In that case, the error can be safely ignored.
+// TODO: This implementation will become prohibitively expensive since it involves traversing the entire blockchain.
+//       We should replace with an index later.
+func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
+	*types.MessageReceipt)) (retErr error) {
+	// Ch will contain a stream of blocks to check for message (or errors).
+	// Blocks are either new best blocks, or next oldest historical blocks.
+	ch := make(chan (interface{}))
+
+	// New blocks
+	newBlockCh := s.BestBlockPubSub.Sub(BlockTopic)
+	defer s.BestBlockPubSub.Unsub(newBlockCh, BlockTopic)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Historical blocks
+	historyCh := s.BlockHistory(ctx)
+
+	// Merge historical and new block channels.
+	go func() {
+		// TODO: accommodate a new chain being added, as opposed to just a single block.
+		for raw := range newBlockCh {
+			ch <- raw
+		}
+	}()
+	go func() {
+		for raw := range historyCh {
+			ch <- raw
+		}
+	}()
+
+	for raw := range ch {
+		switch b := raw.(type) {
+		case error:
+			log.Errorf("chainManager.WaitForMessage: %s", b)
+			return b
+		case *types.Block:
+			for i, msg := range b.Messages {
+				c, err := msg.Cid()
+				if err != nil {
+					log.Errorf("chainManager.WaitForMessage: %s", err)
+					return err
+				}
+				if c.Equals(msgCid) {
+					var rcpt *types.MessageReceipt
+					if i < len(b.MessageReceipts) {
+						rcpt = b.MessageReceipts[i]
+					}
+					cb(b, msg, rcpt)
+					return nil
+				}
+			}
+		}
+	}
+
+	return retErr
 }

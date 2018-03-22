@@ -95,7 +95,7 @@ var msgWaitCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("message", "print the whole message").WithDefault(true),
 		cmdkit.BoolOption("receipt", "print the whole message receipt").WithDefault(true),
-		cmdkit.BoolOption("return", "rint the return value from the receipt").WithDefault(false),
+		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
@@ -106,7 +106,9 @@ var msgWaitCmd = &cmds.Command{
 			return
 		}
 
-		waitForMessage(n, msgCid, func(blk *types.Block, msg *types.Message, receipt *types.MessageReceipt) {
+		var found bool
+		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.Message,
+			receipt *types.MessageReceipt) {
 			signature, err := n.GetSignature(req.Context, msg.To, msg.Method)
 			if err != nil {
 				re.SetError(errors.Wrap(err, "unable to determine return type"), cmdkit.ErrNormal)
@@ -119,7 +121,12 @@ var msgWaitCmd = &cmds.Command{
 				Signature: signature,
 			}
 			re.Emit(res) // nolint: errcheck
+			found = true
 		})
+		if err != nil && !found {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 	},
 	Type: waitResult{},
 	Encoders: cmds.EncoderMap{

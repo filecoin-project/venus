@@ -4,7 +4,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
@@ -44,7 +43,6 @@ func TestMinerCreateSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
@@ -108,7 +106,6 @@ func TestMinerAddAskSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
@@ -124,7 +121,6 @@ func TestMinerAddAskSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
@@ -162,7 +158,6 @@ func TestMinerAddAskFail(t *testing.T) {
 		wg.Done()
 	}()
 
-	time.Sleep(100 * time.Millisecond)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
