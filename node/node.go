@@ -134,7 +134,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	cst := &hamt.CborIpldStore{Blocks: bserv}
 
-	chainMgr := core.NewChainManager(cst)
+	chainMgr := core.NewChainManager(nc.Datastore, cst)
 
 	msgPool := core.NewMessagePool()
 
@@ -145,8 +145,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}, core.ProcessBlock)
 	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
-	// TODO: load state from disk
-	if err := chainMgr.Genesis(ctx, core.InitGenesis); err != nil {
+	if err := chainMgr.Load(); err != nil {
 		return nil, err
 	}
 
