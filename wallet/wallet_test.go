@@ -19,7 +19,10 @@ func TestWalletSimple(t *testing.T) {
 		addrs[i] = w.NewAddress()
 	}
 
-	assert.ElementsMatch(addrs, w.GetAddresses())
+	returnedAddrs := w.GetAddresses()
+	for _, addr := range addrs {
+		assert.Contains(returnedAddrs, addr)
+	}
 }
 
 func TestWalletDefaultAddress(t *testing.T) {
