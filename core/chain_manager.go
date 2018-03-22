@@ -167,12 +167,6 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 	if err := s.setBestBlock(ctx, blk); err != nil {
 		return Unknown, err
 	}
-
-	// TODO: when we have transactions, adjust the local transaction mempool to
-	// remove any transactions contained in our chosen chain, and if we dropped
-	// any blocks (reorg, longer chain choice) re-add any missing txs back into
-	// the mempool
-
 	log.Infof("accepted new block, [s=%d, h=%s]", blk.Score(), blk.Cid())
 	return ChainAccepted, nil
 }

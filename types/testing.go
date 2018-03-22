@@ -55,9 +55,35 @@ func NewMessageForTestGetter() func() *Message {
 			NewMainnetAddress([]byte(s+"-from")),
 			NewMainnetAddress([]byte(s+"-to")),
 			nil,
-			s+"-method",
+			s,
 			nil)
 	}
+}
+
+// NewMsgs returns n messages. The messages returned are unique to this invocation
+// but are not unique globally (ie, a second call to NewMsgs will return the same
+// set of messages).
+func NewMsgs(n int) []*Message {
+	newMsg := NewMessageForTestGetter()
+	msgs := make([]*Message, n)
+	for i := 0; i < n; i++ {
+		msgs[i] = newMsg()
+	}
+	return msgs
+}
+
+// MsgCidsEqual returns true if the message cids are equal. It panics if
+// it can't get their cid.
+func MsgCidsEqual(m1, m2 *Message) bool {
+	m1Cid, err := m1.Cid()
+	if err != nil {
+		panic(err)
+	}
+	m2Cid, err := m2.Cid()
+	if err != nil {
+		panic(err)
+	}
+	return m1Cid.Equals(m2Cid)
 }
 
 // MockStateTree is a testify mock that implements StateTree.

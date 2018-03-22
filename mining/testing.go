@@ -31,9 +31,9 @@ type MockWorker struct {
 }
 
 // Start is the MockWorker's Start function.
-func (w *MockWorker) Start(ctx context.Context) (chan<- *types.Block, <-chan Result, *sync.WaitGroup) {
+func (w *MockWorker) Start(ctx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
 	args := w.Called(ctx)
-	return args.Get(0).(chan<- *types.Block), args.Get(1).(<-chan Result), args.Get(2).(*sync.WaitGroup)
+	return args.Get(0).(chan<- Input), args.Get(1).(<-chan Output), args.Get(2).(*sync.WaitGroup)
 }
 
 const (
@@ -48,7 +48,7 @@ const (
 )
 
 // ReceiveInCh returns the channel status.
-func ReceiveInCh(ch <-chan *types.Block) int {
+func ReceiveInCh(ch <-chan Input) int {
 	select {
 	case _, ok := <-ch:
 		if ok {
@@ -61,7 +61,7 @@ func ReceiveInCh(ch <-chan *types.Block) int {
 }
 
 // ReceiveOutCh returns the channel status.
-func ReceiveOutCh(ch <-chan Result) int {
+func ReceiveOutCh(ch <-chan Output) int {
 	select {
 	case _, ok := <-ch:
 		if ok {
