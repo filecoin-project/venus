@@ -190,6 +190,23 @@ func (a Address) Format(f fmt.State, c rune) {
 	}
 }
 
+// MarshalText implements the TextMarshaler interface.
+func (a Address) MarshalText() ([]byte, error) {
+	return []byte(a.String()), nil
+}
+
+// UnmarshalText implements the TextUnmarshaler interface.
+func (a *Address) UnmarshalText(in []byte) error {
+	out, err := NewAddressFromString(string(in))
+	if err != nil {
+		return err
+	}
+
+	copy(a[:], out[:])
+
+	return nil
+}
+
 func (a Address) String() string {
 	out, err := encode(NetworkToString(a.Network()), a.Version(), a.Hash())
 	if err != nil {

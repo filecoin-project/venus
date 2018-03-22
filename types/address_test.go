@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -90,4 +91,18 @@ func TestChecksum(t *testing.T) {
 
 	combined := append(data, []byte(checksum)...)
 	assert.True(verifyChecksum(hrp, combined))
+}
+
+func TestAddressJSON(t *testing.T) {
+	assert := assert.New(t)
+
+	a := MakeTestAddress("first")
+
+	out, err := json.Marshal(a)
+	assert.NoError(err)
+	assert.Equal(string(out), fmt.Sprintf(`"%s"`, a.String()))
+
+	var b Address
+	assert.NoError(json.Unmarshal(out, &b))
+	assert.Equal(a, b)
 }
