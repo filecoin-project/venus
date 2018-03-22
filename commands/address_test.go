@@ -65,12 +65,14 @@ func TestAddrsLookup(t *testing.T) {
 	d1.ConnectSuccess(d2)
 
 	d1Raw := d1.RunSuccess("address list")
-	d1WalletAdder := strings.Trim(d1Raw.ReadStdout(), "\n")
+	d1Addrs := strings.Split(strings.Trim(d1Raw.ReadStdout(), "\n"), "\n")
+	d1WalletAdder := d1Addrs[len(d1Addrs)-1]
 	t.Logf("D1 Wallet Address: %s", d1WalletAdder)
 	assert.NotEmpty(d1WalletAdder)
 
 	d2Raw := d2.RunSuccess("address list")
-	d2WalletAdder := strings.Trim(d2Raw.ReadStdout(), "\n")
+	d2Addrs := strings.Split(strings.Trim(d2Raw.ReadStdout(), "\n"), "\n")
+	d2WalletAdder := d2Addrs[len(d2Addrs)-1]
 	t.Logf("D2 Wallet Address: %s", d2WalletAdder)
 	assert.NotEmpty(d2WalletAdder)
 
