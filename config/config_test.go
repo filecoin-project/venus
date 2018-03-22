@@ -14,8 +14,12 @@ func TestDefaults(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	assert.Equal(cfg.API.Address, ":3453")
-	assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
+	bs := []string{
+		"TODO",
+	}
+	assert.Equal(":3453", cfg.API.Address)
+	assert.Equal("/ip4/127.0.0.1/tcp/6000", cfg.Swarm.Address)
+	assert.Equal(bs, cfg.Bootstrap.Addresses)
 }
 
 func TestWriteFile(t *testing.T) {
@@ -31,13 +35,16 @@ func TestWriteFile(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(
-		string(content),
 		`[api]
   address = ":3453"
 
 [swarm]
   address = "/ip4/127.0.0.1/tcp/6000"
+
+[bootstrap]
+  addresses = ["TODO"]
 `,
+		string(content),
 	)
 
 	assert.NoError(os.Remove(filepath.Join(dir, "config.toml")))
