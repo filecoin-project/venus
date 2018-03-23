@@ -68,7 +68,10 @@ func TestNodeMining(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
-	node, err := New(ctx)
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	node, err := New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 
 	mockWorker := &mining.MockWorker{}
@@ -106,7 +109,7 @@ func TestNodeMining(t *testing.T) {
 	// Ensure we're tearing down cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node, err = New(ctx)
+	node, err = New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetBestBlockForTest(ctx, b1)
@@ -124,7 +127,7 @@ func TestNodeMining(t *testing.T) {
 
 	// Ensure that the output is wired up correctly.
 	ctx, _ = context.WithCancel(context.Background()) // nolint: vet
-	node, err = New(ctx)
+	node, err = New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 	mockWorker = &mining.MockWorker{}
 	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -199,7 +202,10 @@ func TestWaitForMessage(t *testing.T) {
 
 	ctx := context.Background()
 
-	node, err := New(ctx)
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	node, err := New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 
 	err = node.Start()
@@ -216,7 +222,10 @@ func TestWaitForMessageError(t *testing.T) {
 
 	ctx := context.Background()
 
-	node, err := New(ctx)
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	node, err := New(ctx, OptionsFromRepo(r)...)
 	assert.NoError(err)
 
 	assert.NoError(node.Start())
