@@ -23,13 +23,16 @@ func TestFSRepoInit(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(
-		string(content),
 		`[api]
   address = ":3453"
 
 [swarm]
   address = "/ip4/127.0.0.1/tcp/6000"
+
+[bootstrap]
+  addresses = ["TODO"]
 `,
+		string(content),
 	)
 
 }

@@ -8,8 +8,9 @@ import (
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API   *APIConfig   `toml:"api"`
-	Swarm *SwarmConfig `toml:"swarm"`
+	API       *APIConfig       `toml:"api"`
+	Swarm     *SwarmConfig     `toml:"swarm"`
+	Bootstrap *BootstrapConfig `toml:"bootstrap"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -34,12 +35,27 @@ func newDefaultSwarmConfig() *SwarmConfig {
 	}
 }
 
+// BootstrapConfig holds all configuration options related to bootstrap nodes
+type BootstrapConfig struct {
+	Addresses []string `toml:"addresses"`
+}
+
+// TODO: define default bootstrap node addresses
+func newDefaultBootstrapConfig() *BootstrapConfig {
+	return &BootstrapConfig{
+		Addresses: []string{
+			"TODO",
+		},
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
 	return &Config{
-		API:   newDefaultAPIConfig(),
-		Swarm: newDefaultSwarmConfig(),
+		API:       newDefaultAPIConfig(),
+		Swarm:     newDefaultSwarmConfig(),
+		Bootstrap: newDefaultBootstrapConfig(),
 	}
 }
 
