@@ -1,9 +1,13 @@
 package repo
 
 import (
-	"github.com/filecoin-project/go-filecoin/config"
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+
+	"github.com/filecoin-project/go-filecoin/config"
 )
+
+// Version is the current repo version that we require for a valid repo.
+const Version uint = 1
 
 // Datastore is the datastore interface provided by the repo
 type Datastore interface {
@@ -17,4 +21,5 @@ type Datastore interface {
 type Repo interface {
 	Config() *config.Config
 	Datastore() Datastore
+	Version() uint
 }

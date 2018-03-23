@@ -2,8 +2,11 @@ package repo
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -13,6 +16,7 @@ import (
 )
 
 const configFilename = "config.toml"
+const versionFilename = "version"
 
 // NoRepoError is returned when trying to open a repo where one does not exist
 type NoRepoError struct {
@@ -25,7 +29,8 @@ func (err NoRepoError) Error() string {
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
-	path string
+	path    string
+	version uint
 
 	cfg *config.Config
 	ds  Datastore
@@ -51,6 +56,17 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 		return nil, &NoRepoError{p}
 	}
 
+	localVersion, err := r.loadVersion()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load version")
+	}
+
+	if localVersion != Version {
+		return nil, fmt.Errorf("invalid repo version, got %d expected %d", localVersion, Version)
+	}
+
+	r.version = localVersion
+
 	if err := r.loadConfig(); err != nil {
 		return nil, errors.Wrap(err, "failed to load config file")
 	}
@@ -66,6 +82,14 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 func InitFSRepo(p string, cfg *config.Config) error {
 	expath, err := homedir.Expand(p)
 	if err != nil {
+		return err
+	}
+
+	if err := checkWritable(p); err != nil {
+		return err
+	}
+
+	if err := initVersion(expath, Version); err != nil {
 		return err
 	}
 
@@ -85,6 +109,11 @@ func (r *FSRepo) Config() *config.Config {
 // Datastore returns the datastore.
 func (r *FSRepo) Datastore() Datastore {
 	return r.ds
+}
+
+// Version returns the version of the repo
+func (r *FSRepo) Version() uint {
+	return r.version
 }
 
 func (r *FSRepo) isInitialized() (bool, error) {
@@ -107,6 +136,21 @@ func (r *FSRepo) loadConfig() error {
 	panic("NYI")
 }
 
+func (r *FSRepo) loadVersion() (uint, error) {
+	// TODO: limited file reading, to avoid attack vector
+	file, err := ioutil.ReadFile(filepath.Join(r.path, versionFilename))
+	if err != nil {
+		return 0, err
+	}
+
+	version, err := strconv.Atoi(strings.Trim(string(file), "\n"))
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(version), nil
+}
+
 func (r *FSRepo) openDatastore() error {
 	// TODO: read datastore info from config, use that to open it up
 	r.ds = datastore.NewMapDatastore()
@@ -114,11 +158,11 @@ func (r *FSRepo) openDatastore() error {
 	return nil
 }
 
-func initConfig(p string, cfg *config.Config) error {
-	if err := checkWritable(p); err != nil {
-		return err
-	}
+func initVersion(p string, version uint) error {
+	return ioutil.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
+}
 
+func initConfig(p string, cfg *config.Config) error {
 	configFile := filepath.Join(p, configFilename)
 	if fileExists(configFile) {
 		return fmt.Errorf("file already exists: %s", configFile)

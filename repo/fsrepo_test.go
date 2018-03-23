@@ -35,4 +35,25 @@ func TestFSRepoInit(t *testing.T) {
 		string(content),
 	)
 
+	version, err := ioutil.ReadFile(filepath.Join(dir, versionFilename))
+	assert.NoError(err)
+	assert.Equal("1", string(version))
+}
+
+func TestFSRepoOpen(t *testing.T) {
+	t.Run("[fail] wrong version", func(t *testing.T) {
+		assert := assert.New(t)
+
+		dir, err := ioutil.TempDir("", "")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
+
+		// set wrong version
+		assert.NoError(ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("2"), 0644))
+
+		_, err = OpenFSRepo(dir)
+		assert.EqualError(err, "invalid repo version, got 2 expected 1")
+	})
 }

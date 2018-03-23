@@ -8,8 +8,9 @@ import (
 
 // MemRepo is an in memory implementation of the filecoin repo
 type MemRepo struct {
-	C *config.Config
-	D Datastore
+	C       *config.Config
+	D       Datastore
+	version uint
 }
 
 var _ Repo = (*MemRepo)(nil)
@@ -17,8 +18,9 @@ var _ Repo = (*MemRepo)(nil)
 // NewInMemoryRepo makes a new one of these
 func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
-		C: config.NewDefaultConfig(),
-		D: datastore.NewMapDatastore(),
+		C:       config.NewDefaultConfig(),
+		D:       datastore.NewMapDatastore(),
+		version: Version,
 	}
 }
 
@@ -30,4 +32,9 @@ func (mr *MemRepo) Config() *config.Config {
 // Datastore returns the datastore
 func (mr *MemRepo) Datastore() Datastore {
 	return mr.D
+}
+
+// Version returns the version of the repo
+func (mr *MemRepo) Version() uint {
+	return mr.version
 }
