@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/repo"
 	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -33,21 +33,35 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd1, err := New(ctx, Libp2pOptions(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0")))
-	assert.NoError(err)
-	nd2, err := New(ctx, Libp2pOptions(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0")))
-	assert.NoError(err)
+	nds := makeNodes(t, 2)
+	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
 		ID:    nd2.Host.ID(),
 		Addrs: nd2.Host.Addrs(),
 	}
 
-	err = nd1.Host.Connect(ctx, pinfo)
+	err := nd1.Host.Connect(ctx, pinfo)
 	assert.NoError(err)
 
 	nd1.Stop()
 	nd2.Stop()
+}
+
+func TestNodeInit(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	nd, err := New(ctx, OptionsFromRepo(r)...)
+	assert.NoError(err)
+
+	assert.NoError(nd.Start())
+
+	assert.NotNil(nd.ChainMgr.GetBestBlock())
+	nd.Stop()
 }
 
 func TestNodeMining(t *testing.T) {

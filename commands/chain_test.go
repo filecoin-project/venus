@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,8 @@ func TestChainRun(t *testing.T) {
 	assert := assert.New(t)
 
 	cst := hamt.NewCborStore()
-	nd := &node.Node{ChainMgr: core.NewChainManager(cst), CborStore: cst}
+	ds := datastore.NewMapDatastore()
+	nd := &node.Node{ChainMgr: core.NewChainManager(ds, cst), CborStore: cst}
 
 	// Chain of height two.
 	err := nd.ChainMgr.Genesis(ctx, core.InitGenesis)

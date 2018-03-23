@@ -50,6 +50,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		)
 	}
 
+	// TODO: since init and startup are currently one, do this here...
+	if err := node.Init(req.Context, rep); err != nil {
+		re.SetError(err, cmdkit.ErrNormal)
+		return
+	}
+
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
 		re.SetError(err, cmdkit.ErrNormal)

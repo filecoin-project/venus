@@ -24,9 +24,9 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
 
-func (node *Node) handleBlockSubscription(ctx context.Context) {
+func (node *Node) handleBlockSubscription(ctx context.Context, blksub *floodsub.Subscription) {
 	for {
-		msg, err := node.BlockSub.Next(ctx)
+		msg, err := blksub.Next(ctx)
 		if err != nil {
 			log.Errorf("BlockSub.Next(): %s", err)
 			return

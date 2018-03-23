@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
@@ -63,7 +64,8 @@ func TestBasicAddBlock(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
@@ -84,8 +86,9 @@ func TestBestBlockPubSub(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
 
-	stm := NewChainManager(cs)
+	stm := NewChainManager(ds, cs)
 	ch := stm.BestBlockPubSub.Sub(BlockTopic)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
@@ -108,7 +111,8 @@ func TestForkChoice(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
@@ -132,13 +136,18 @@ func TestForkChoice(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 	assert.Equal(stm.bestBlock.blk.Cid(), fork3.Cid())
+
+	bbc, err := stm.readBestBlockCid()
+	assert.NoError(err)
+	assert.Equal(fork3.Cid(), bbc)
 }
 
 func TestRejectShorterChain(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
@@ -169,7 +178,8 @@ func TestKnownAncestor(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 	addBlocks(t, cs, block1)
@@ -191,7 +201,8 @@ func TestGenesis(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 	assert.Equal(testGenesis, stm.bestBlock.blk)
@@ -205,7 +216,8 @@ func TestRejectBadChain(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
-	stm := NewChainManager(cs)
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
 
@@ -214,4 +226,27 @@ func TestRejectBadChain(t *testing.T) {
 	assert.EqualError(err, ErrInvalidBase.Error())
 	assert.Equal(InvalidBase, res)
 	assert.Equal(stm.GetBestBlock(), testGenesis)
+}
+
+func assertPut(assert *assert.Assertions, cst *hamt.CborIpldStore, i interface{}) {
+	_, err := cst.Put(context.TODO(), i)
+	assert.NoError(err)
+
+}
+func TestChainLoad(t *testing.T) {
+	assert := assert.New(t)
+	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
+
+	assert.NoError(putCid(ds, bestBlockKey, block2.Cid()))
+
+	assertPut(assert, cs, testGenesis)
+	assertPut(assert, cs, block1)
+	assertPut(assert, cs, block2)
+
+	assert.NoError(stm.Load())
+
+	assert.Equal(block2, stm.GetBestBlock())
+	assert.Equal(testGenesis.Cid(), stm.GetGenesisCid())
 }

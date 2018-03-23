@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	peer "gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
@@ -26,6 +27,8 @@ var (
 	// ErrDifferentGenesis is returned when processing a chain with a different genesis block.
 	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 )
+
+var bestBlockKey = datastore.NewKey("/chain/bestBlock")
 
 // BlockTopic is the topic used to publish new best blocks.
 const BlockTopic = "blocks"
@@ -75,6 +78,8 @@ type ChainManager struct {
 
 	cstore *hamt.CborIpldStore
 
+	ds datastore.Datastore
+
 	// BestBlockPubSub is a pubsub channel that publishes all best blocks.
 	// We operate under the assumption that blocks published to this channel
 	// will always be queued and delivered to subscribers in the order discovered.
@@ -84,9 +89,10 @@ type ChainManager struct {
 }
 
 // NewChainManager creates a new filecoin chain manager.
-func NewChainManager(cs *hamt.CborIpldStore) *ChainManager {
+func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
 		cstore:          cs,
+		ds:              ds,
 		processor:       ProcessBlock,
 		BestBlockPubSub: pubsub.New(128),
 	}
@@ -121,9 +127,72 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
 
+	if err := putCid(s.ds, bestBlockKey, b.Cid()); err != nil {
+		return errors.Wrap(err, "failed to write bestBlockCid to datastore")
+	}
+
 	s.BestBlockPubSub.Pub(b, BlockTopic)
 
 	return nil
+}
+
+func putCid(ds datastore.Datastore, k datastore.Key, c *cid.Cid) error {
+	return ds.Put(k, c.Bytes())
+}
+
+// Load reads the best block cid from disk and reparses the chain backwards from there.
+func (s *ChainManager) Load() error {
+	bbc, err := s.readBestBlockCid()
+	if err != nil {
+		return err
+	}
+
+	// TODO: 'read only from local disk' method here.
+	// actually, i think that the chainmanager should only ever fetch from
+	// the local disk unless we're syncing. Its something that needs more
+	// thought at least.
+	blk, err := s.fetchBlock(context.TODO(), bbc)
+	if err != nil {
+		return errors.Wrap(err, "scanning blockchain failed")
+	}
+
+	headBlk := blk
+
+	for blk.Parent != nil {
+		// TODO: hrm... adding these in reverse order
+		s.knownGoodBlocks.Add(blk.Cid())
+		next, err := s.fetchBlock(context.TODO(), blk.Parent)
+		if err != nil {
+			return errors.Wrap(err, "scanning blockchain failed")
+		}
+
+		blk = next
+	}
+
+	// TODO: probably want to load the expected genesis block and assert it here?
+	s.genesisCid = blk.Cid()
+	s.bestBlock.blk = headBlk
+
+	return nil
+}
+
+func (s *ChainManager) readBestBlockCid() (*cid.Cid, error) {
+	bbi, err := s.ds.Get(bestBlockKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read best block cid")
+	}
+
+	bb, ok := bbi.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("stored bestBlockCid was not []byte")
+	}
+
+	bestBlockCid, err := cid.Cast(bb)
+	if err != nil {
+		return nil, errors.Wrap(err, "casting stored bestBlockCid failed")
+	}
+
+	return bestBlockCid, nil
 }
 
 // GetGenesisCid returns the cid of the current genesis block.
