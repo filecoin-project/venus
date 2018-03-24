@@ -16,16 +16,15 @@ import (
 	wallet "github.com/filecoin-project/go-filecoin/wallet"
 )
 
-var FilLookupTopic = "/fil/lookup/" //nolint: golint
+var FilLookupTopic = "/fil/lookup/" // nolint: golint
 
 var log = logging.Logger("lookup")
 
 // LookupEngine can be used to find map address's -> peerId's
-type LookupEngine struct { //nolint: golint
+type LookupEngine struct { // nolint: golint
 	lk    sync.Mutex
 	cache map[types.Address]peer.ID
 
-	//ourAddresses map[types.Address]struct{}
 	ourPeerID peer.ID
 
 	reqPubsub *pubsub.PubSub
@@ -37,7 +36,7 @@ type LookupEngine struct { //nolint: golint
 
 // NewLookupEngine returns an engine for looking up peerId's
 func NewLookupEngine(ps *floodsub.PubSub, wallet *wallet.Wallet, self peer.ID) (*LookupEngine, error) {
-	sub, err := ps.Subscribe(FilLookupTopic) //nolint: errcheck
+	sub, err := ps.Subscribe(FilLookupTopic) // nolint: errcheck
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func (le *LookupEngine) HandleMessages(s *floodsub.Subscription) {
 		}
 
 		var m message
-		//TODO: Replace with cbor
+		// TODO: Replace with cbor
 		if err := json.Unmarshal(msg.GetData(), &m); err != nil {
 			log.Error("malformed message: ", err)
 			continue
@@ -105,14 +104,14 @@ func (le *LookupEngine) HandleMessages(s *floodsub.Subscription) {
 
 // SendMessage publishes message m on FilLookupTopic
 func (le *LookupEngine) SendMessage(m *message) {
-	//TODO: Replace with cbor
+	// TODO: Replace with cbor
 	d, err := json.Marshal(m)
 	if err != nil {
 		log.Error("failed to marshal message: ", err)
 		return
 	}
 
-	if err := le.ps.Publish(FilLookupTopic, d); err != nil { //nolint: errcheck
+	if err := le.ps.Publish(FilLookupTopic, d); err != nil { // nolint: errcheck
 		log.Error("publish failed: ", err)
 	}
 }

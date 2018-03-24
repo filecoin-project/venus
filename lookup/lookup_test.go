@@ -3,6 +3,7 @@ package lookup
 import (
 	"context"
 	"testing"
+	"time"
 
 	wallet "github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
@@ -47,10 +48,14 @@ func TestLookupAddress(t *testing.T) {
 		ID:    remote.ID(),
 		Addrs: remote.Addrs(),
 	}
+
 	err = local.Connect(context.Background(), rpi)
 	assert.NoError(err)
 	t.Logf("Local Node Conns: %v", local.Network().Conns())
 	t.Logf("Remote Node Conns: %v", remote.Network().Conns())
+
+	// Wait for network connection notifications to propagate
+	time.Sleep(time.Millisecond * 50)
 
 	//begin the test
 	//add an address on remote host

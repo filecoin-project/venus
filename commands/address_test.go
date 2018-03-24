@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func makeAddr(t *testing.T, d *TestDaemon) string {
-	t.Helper()
-	outNew := d.RunSuccess("wallet", "addrs", "new")
-	addr := strings.Trim(outNew.ReadStdout(), "\n")
-	assert.NotEmpty(t, addr)
-	return addr
-}
-
 func TestAddrsNewAndList(t *testing.T) {
 	assert := assert.New(t)
 
@@ -25,7 +17,7 @@ func TestAddrsNewAndList(t *testing.T) {
 
 	addrs := make([]string, 10)
 	for i := 0; i < 10; i++ {
-		addrs[i] = makeAddr(t, d)
+		addrs[i] = d.CreateWalletAdder()
 	}
 
 	list := d.RunSuccess("wallet", "addrs", "list").ReadStdout()
@@ -39,7 +31,7 @@ func TestWalletBalance(t *testing.T) {
 
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
-	addr := makeAddr(t, d)
+	addr := d.CreateWalletAdder()
 
 	t.Log("[failure] not found")
 	d.RunFail("not found", "wallet", "balance", addr)
@@ -55,11 +47,11 @@ func TestAddrsLookup(t *testing.T) {
 	//Define 2 nodes, each with an address
 	d1 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
-	makeAddr(t, d1)
+	d1.CreateWalletAdder()
 
 	d2 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
 	defer d2.ShutdownSuccess()
-	makeAddr(t, d2)
+	d2.CreateWalletAdder()
 
 	//Connect daemons
 	d1.ConnectSuccess(d2)

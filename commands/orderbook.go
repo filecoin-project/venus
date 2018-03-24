@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
@@ -21,16 +21,16 @@ var orderbookCmd = &cmds.Command{
 }
 
 var askCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 		askSet, err := n.StorageMarket.GetMarketPeeker().GetAskSet()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNotFound)
-			return
+			return err
 		}
-		for _, ask := range *askSet {
+		for _, ask := range askSet {
 			re.Emit(ask) // nolint errcheck
 		}
+		return nil
 	},
 	Type: &core.Ask{},
 	Encoders: cmds.EncoderMap{
@@ -46,16 +46,16 @@ var askCmd = &cmds.Command{
 }
 
 var bidCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 		bidSet, err := n.StorageMarket.GetMarketPeeker().GetBidSet()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNotFound)
-			return
+			return err
 		}
-		for _, bid := range *bidSet {
+		for _, bid := range bidSet {
 			re.Emit(bid) // nolint errcheck
 		}
+		return nil
 	},
 	Type: &core.Bid{},
 	Encoders: cmds.EncoderMap{
@@ -71,16 +71,16 @@ var bidCmd = &cmds.Command{
 }
 
 var dealCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 		dealList, err := n.StorageMarket.GetMarketPeeker().GetDealList()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNotFound)
-			return
+			return err
 		}
 		for deal := range dealList {
 			re.Emit(deal) // nolint errcheck
 		}
+		return nil
 	},
 	Type: &core.Deal{},
 	Encoders: cmds.EncoderMap{

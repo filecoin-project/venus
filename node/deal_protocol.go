@@ -353,8 +353,8 @@ type storageMarketPeeker interface {
 	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string) (*cid.Cid, error)
 
 	// more of a gape than a peek..
-	GetAskSet() (*core.AskSet, error)
-	GetBidSet() (*core.BidSet, error)
+	GetAskSet() (core.AskSet, error)
+	GetBidSet() (core.BidSet, error)
 	GetDealList() ([]*core.Deal, error)
 }
 
@@ -417,28 +417,28 @@ func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*core.Bid, error) {
 }
 
 // GetAskSet returns the given the entire ask set from the storage market
-// TODO limit the number of results..with a loop? order will be random..humm
-func (stsa *stateTreeMarketPeeker) GetAskSet() (*core.AskSet, error) {
+// TODO limit number of results
+func (stsa *stateTreeMarketPeeker) GetAskSet() (core.AskSet, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
-	return &stor.Orderbook.Asks, nil
+	return stor.Orderbook.Asks, nil
 }
 
 // GetBidSet returns the given the entire bid set from the storage market
-// TODO limit the number of results..with a loop? order will be random..humm
-func (stsa *stateTreeMarketPeeker) GetBidSet() (*core.BidSet, error) {
+// TODO limit number of results
+func (stsa *stateTreeMarketPeeker) GetBidSet() (core.BidSet, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
-	return &stor.Orderbook.Bids, nil
+	return stor.Orderbook.Bids, nil
 }
 
-// GetDealSet returns the given the entire bid set from the storage market
+// GetDealList returns the given the entire bid set from the storage market
 // TODO limit the number of results
 func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
