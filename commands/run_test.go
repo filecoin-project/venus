@@ -211,16 +211,48 @@ type TestDaemon struct {
 	test *testing.T
 }
 
-func (td *TestDaemon) Run(input string, args ...string) *Output {
-	cmd := fmt.Sprintf("go-filecoin %s --cmdapiaddr=%s", input, td.cmdAddr)
-	if len(args) > 0 {
-		cmd = fmt.Sprintf("%s %s", cmd, strings.Join(args, " "))
+func (td *TestDaemon) Run(args ...string) *Output {
+	cmd := exec.Command("go-filecoin", append(args, "--cmdapiaddr="+td.cmdAddr)...)
+
+	stdin, err := newPipe()
+	if err != nil {
+		panic(err)
 	}
-	return run(cmd)
+	stderr, err := newReadPipe()
+	if err != nil {
+		panic(err)
+	}
+	stdout, err := newReadPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	o := &Output{
+		Args:   args,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+	}
+
+	cmd.Stderr = stderr.writer
+	cmd.Stdout = stdout.writer
+	cmd.Stdin = stdin.reader
+
+	switch err := err.(type) {
+	case *exec.ExitError:
+		// TODO: its non-trivial to get the 'exit code' cross platform...
+		o.Code = 1
+	default:
+		o.Error = err
+	case nil:
+		// okay
+	}
+
+	return o
 }
 
-func (td *TestDaemon) RunSuccess(cmd string, args ...string) *Output {
-	o := td.Run(cmd, args...)
+func (td *TestDaemon) RunSuccess(args ...string) *Output {
+	o := td.Run(args...)
 	assert.NoError(td.test, o.Error)
 	assert.Equal(td.test, o.Code, 0)
 	oErr := o.ReadStderr()
@@ -230,9 +262,9 @@ func (td *TestDaemon) RunSuccess(cmd string, args ...string) *Output {
 	return o
 }
 
-func (td *TestDaemon) RunFail(err, cmd string, args ...string) *Output {
+func (td *TestDaemon) RunFail(err string, args ...string) *Output {
 	td.test.Helper()
-	o := td.Run(cmd, args...)
+	o := td.Run(args...)
 	assert.NoError(td.test, o.Error)
 	assert.Equal(td.test, o.Code, 1)
 	assert.Empty(td.test, o.ReadStdout())
