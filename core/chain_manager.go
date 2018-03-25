@@ -441,7 +441,7 @@ func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
 // TODO: This implementation will become prohibitively expensive since it involves traversing the entire blockchain.
 //       We should replace with an index later.
 func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
-	*types.MessageReceipt)) (retErr error) {
+	*types.MessageReceipt) error) (retErr error) {
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either new best blocks, or next oldest historical blocks.
 	ch := make(chan (interface{}))
@@ -486,8 +486,7 @@ func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb f
 					if i < len(b.MessageReceipts) {
 						rcpt = b.MessageReceipts[i]
 					}
-					cb(b, msg, rcpt)
-					return nil
+					return cb(b, msg, rcpt)
 				}
 			}
 		}

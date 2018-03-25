@@ -186,11 +186,13 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainM
 	assert.NoError(err)
 
 	err = cm.WaitForMessage(context.Background(), expectCid, func(b *types.Block, msg *types.Message,
-		rcp *types.MessageReceipt) {
+		rcp *types.MessageReceipt) error {
 		assert.True(types.MsgCidsEqual(expectMsg, msg))
 		if wg != nil {
 			wg.Done()
 		}
+
+		return nil
 	})
 	assert.Equal(expectError, err != nil)
 }

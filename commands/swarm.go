@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	swarm "gx/ipfs/QmSwZMWwFZSUpe5muU2xgTUwppH24KfMwdPXiwbEp2c6G5/go-libp2p-swarm"
 	ma "gx/ipfs/QmWWQ2Txc2c6tqjsBpzg5Ar652cHPGNsQQp2SejkNmkUMb/go-multiaddr"
 	pstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	ipfsaddr "gx/ipfs/QmQViVWBHbU6HmYjXcdNq7tVASCNgdg64ZGcauuDkLCivW/go-ipfs-addr"
@@ -118,13 +118,12 @@ var swarmPeersCmd = &cmds.Command{
 		cmdkit.BoolOption("streams", "Also list information about open streams for each peer"),
 		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
 		n := GetNode(env)
 
 		if n.Host == nil {
-			re.SetError("node must be online", cmdkit.ErrClient)
-			return
+			return ErrNodeOffline
 		}
 
 		verbose, _ := req.Options["verbose"].(bool)
@@ -159,8 +158,7 @@ var swarmPeersCmd = &cmds.Command{
 			if verbose || streams {
 				strs, err := c.GetStreams()
 				if err != nil {
-					re.SetError(err, cmdkit.ErrNormal)
-					return
+					return err
 				}
 
 				for _, s := range strs {
@@ -173,6 +171,8 @@ var swarmPeersCmd = &cmds.Command{
 
 		sort.Sort(&out)
 		re.Emit(&out) // nolint: errcheck
+
+		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *connInfos) error {
@@ -223,7 +223,7 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		ctx := req.Context
 
 		n := GetNode(env)
@@ -232,16 +232,14 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 
 		snet, ok := n.Host.Network().(*swarm.Network)
 		if !ok {
-			re.SetError("peerhost network was not swarm", cmdkit.ErrNormal)
-			return
+			return fmt.Errorf("peerhost network was not swarm")
 		}
 
 		swrm := snet.Swarm()
 
 		pis, err := peersWithAddresses(addrs)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		output := make([]connectResult, len(pis))
@@ -252,12 +250,13 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 
 			err := n.Host.Connect(ctx, pi)
 			if err != nil {
-				re.SetError(fmt.Errorf("%s failure: %s", output[i].Peer, err), cmdkit.ErrNormal)
-				return
+				return fmt.Errorf("%s failure: %s", output[i].Peer, err)
 			}
 		}
 
 		re.Emit(output) // nolint: errcheck
+
+		return nil
 	},
 	Type: []connectResult{},
 	Encoders: cmds.EncoderMap{

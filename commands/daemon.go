@@ -9,8 +9,8 @@ import (
 	"time"
 
 	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/http"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
+	cmdhttp "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/node"
@@ -30,11 +30,10 @@ var daemonCmd = &cmds.Command{
 	Run: daemonRun,
 }
 
-func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 	rep, err := getRepo(req)
 	if err != nil {
-		re.SetError(err, cmdkit.ErrNormal)
-		return
+		return err
 	}
 
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok {
@@ -52,14 +51,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 
 	// TODO: since init and startup are currently one, do this here...
 	if err := node.Init(req.Context, rep); err != nil {
-		re.SetError(err, cmdkit.ErrNormal)
-		return
+		return err
 	}
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
-		re.SetError(err, cmdkit.ErrNormal)
-		return
+		return err
 	}
 
 	re.Emit(fmt.Sprintf("My peer ID is %s", fcn.Host.ID().Pretty())) // nolint: errcheck
@@ -67,10 +64,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		re.Emit(fmt.Sprintf("Swarm listening on: %s", a)) // nolint: errcheck
 	}
 
-	if err := runAPIAndWait(req.Context, fcn, rep.Config().API.Address); err != nil {
-		re.SetError(err, cmdkit.ErrNormal)
-		return
-	}
+	return runAPIAndWait(req.Context, fcn, rep.Config().API.Address)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {

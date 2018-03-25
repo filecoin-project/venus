@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/node"
@@ -38,12 +38,13 @@ var idCmd = &cmds.Command{
 		// TODO: ideally copy this from the `ipfs id` command
 		cmdkit.StringOption("format", "f", "specify an output format"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 
 		out := idOutputFromNode(fcn)
 
 		re.Emit(out) // nolint: errcheck
+		return nil
 	},
 	Type: idOutput{},
 	Encoders: cmds.EncoderMap{

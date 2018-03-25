@@ -1,11 +1,10 @@
 package commands
 
 import (
-	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -34,48 +33,45 @@ var clientAddBidCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the bid from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
 		fromAddr, err := addressWithDefault(req.Options["from"], n)
 		if err != nil {
-			re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
-			return
+			return errors.Wrap(err, "invalid from address")
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
 		if !ok {
-			re.SetError(fmt.Errorf("invalid size"), cmdkit.ErrNormal)
-			return
+			return ErrInvalidSize
 		}
 
 		price, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
 		if !ok {
-			re.SetError(fmt.Errorf("invalid price"), cmdkit.ErrNormal)
-			return
+			return ErrInvalidPrice
 		}
 
 		funds := price.CalculatePrice(size)
 
 		params, err := abi.ToEncodedValues(price, size)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		msg := types.NewMessage(fromAddr, core.StorageMarketAddress, funds, "addBid", params)
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		err = n.AddNewMessage(req.Context, msg)
+		if err != nil {
+			return err
 		}
 
 		msgCid, err := msg.Cid()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(msgCid) // nolint: errcheck
+
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/flags"
@@ -28,6 +28,8 @@ type versionOutput struct {
 	Commit string
 }
 
-func versionRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+func versionRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 	re.Emit(&versionOutput{Commit: flags.Commit}) // nolint: errcheck
+
+	return nil
 }

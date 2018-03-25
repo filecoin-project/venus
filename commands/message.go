@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -36,13 +36,12 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.IntOption("value", "value to send with message"),
 		cmdkit.StringOption("from", "address to send message from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
 		target, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		val, ok := req.Options["value"].(int)
@@ -52,24 +51,23 @@ var msgSendCmd = &cmds.Command{
 
 		fromAddr, err := addressWithDefault(req.Options["from"], n)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		msg := types.NewMessage(fromAddr, target, types.NewTokenAmount(uint64(val)), "", nil)
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		c, err := msg.Cid()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(c) // nolint: errcheck
+
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -97,22 +95,20 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("receipt", "print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
-			re.SetError(errors.Wrap(err, "invalid message cid"), cmdkit.ErrNormal)
-			return
+			return errors.Wrap(err, "invalid message cid")
 		}
 
 		var found bool
 		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.Message,
-			receipt *types.MessageReceipt) {
+			receipt *types.MessageReceipt) error {
 			signature, err := n.GetSignature(req.Context, msg.To, msg.Method)
 			if err != nil {
-				re.SetError(errors.Wrap(err, "unable to determine return type"), cmdkit.ErrNormal)
-				return
+				return errors.Wrap(err, "unable to determine return type")
 			}
 
 			res := waitResult{
@@ -122,11 +118,13 @@ var msgWaitCmd = &cmds.Command{
 			}
 			re.Emit(res) // nolint: errcheck
 			found = true
+
+			return nil
 		})
 		if err != nil && !found {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
+		return nil
 	},
 	Type: waitResult{},
 	Encoders: cmds.EncoderMap{

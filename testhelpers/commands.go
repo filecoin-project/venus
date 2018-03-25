@@ -7,7 +7,8 @@ import (
 	"io"
 	"strings"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
 type wc struct {
@@ -54,7 +55,11 @@ func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, 
 	req.Options[cmds.EncLong] = cmds.Text
 
 	re := cmds.NewWriterResponseEmitter(wc{Writer: &buf, Closer: &nopCloser{}}, req, root.Encoders[cmds.Text])
-	root.Run(req, re, env)
+	err = root.Run(req, re, env)
+
+	if err != nil {
+		re.SetError(err, cmdkit.ErrNormal)
+	}
 
 	return &TextOutput{
 		Lines: strings.Split(buf.String(), "\n"),

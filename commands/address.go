@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -36,9 +36,10 @@ type addressResult struct {
 }
 
 var addrsNewCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
+		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -50,11 +51,12 @@ var addrsNewCmd = &cmds.Command{
 }
 
 var addrsListCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 		for _, a := range fcn.Wallet.GetAddresses() {
 			re.Emit(&addressResult{a.String()}) // nolint: errcheck
 		}
+		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -69,21 +71,20 @@ var addrsLookupCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to find peerId for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 
 		address, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		v, err := fcn.Lookup.Lookup(req.Context, address)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(v.Pretty()) // nolint: errcheck
+		return nil
 	},
 	Type: string(""),
 	Encoders: cmds.EncoderMap{
@@ -93,38 +94,34 @@ var addrsLookupCmd = &cmds.Command{
 		}),
 	},
 }
-
 var balanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 		blk := fcn.ChainMgr.GetBestBlock()
 		if blk.StateRoot == nil {
-			re.SetError("state root in latest block was nil", cmdkit.ErrNormal)
-			return
+			return ErrLatestBlockStateRootNil
 		}
 
 		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		addr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		act, err := tree.GetActor(req.Context, addr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(act.Balance) // nolint: errcheck
+		return nil
 	},
 	Type: &types.TokenAmount{},
 	Encoders: cmds.EncoderMap{

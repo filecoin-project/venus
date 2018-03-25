@@ -2,12 +2,11 @@ package commands
 
 import (
 	"context"
-	"errors"
 	"net"
 	"os"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds/http"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
+	cmdhttp "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
@@ -18,13 +17,6 @@ const (
 	OptionRepoDir = "repodir"
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
-)
-
-var (
-	// ErrAlreadyRunning is the error returned when trying to start the daemon, even though it is already running.
-	ErrAlreadyRunning = errors.New("daemon is already running")
-	// ErrMissingDaemon is the error returned when trying to execute a command that requires the daemon to be started.
-	ErrMissingDaemon = errors.New("daemon must be started before using this command")
 )
 
 func defaultAPIAddr() string {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmRv6ddf7gkiEgBs1LADv3vC1mkVGPZEfByoiiVybjE9Mc/go-ipfs-cmds"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -26,22 +26,20 @@ var miningCmd = &cmds.Command{
 }
 
 var miningOnceCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 
 		cur := fcn.ChainMgr.GetBestBlock()
 
 		addrs := fcn.Wallet.GetAddresses()
 		if len(addrs) == 0 {
-			re.SetError("no addresses in wallet to mine to", cmdkit.ErrNormal)
-			return
+			return ErrNoWalletAddresses
 		}
 		myaddr := addrs[0]
 
 		reward := types.NewMessage(core.NetworkAccount, myaddr, types.NewTokenAmount(1000), "", nil)
 		if _, err := fcn.MsgPool.Add(reward); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
@@ -49,14 +47,14 @@ var miningOnceCmd = &cmds.Command{
 		}, core.ProcessBlock)
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur)
 		if res.Err != nil {
-			re.SetError(res.Err, cmdkit.ErrNormal)
-			return
+			return res.Err
 		}
 		if err := fcn.AddNewBlock(req.Context, res.NewBlock); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(res.NewBlock.Cid()) // nolint: errcheck
+
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -68,15 +66,19 @@ var miningOnceCmd = &cmds.Command{
 }
 
 var miningStartCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		GetNode(env).StartMining()
 		re.Emit("Started mining\n") // nolint: errcheck
+
+		return nil
 	},
 }
 
 var miningStopCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		GetNode(env).StopMining()
 		re.Emit("Stopped mining\n") // nolint: errcheck
+
+		return nil
 	},
 }
