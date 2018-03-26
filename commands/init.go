@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io"
+	"os"
 
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -22,10 +23,7 @@ var initCmd = &cmds.Command{
 }
 
 func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-	repoDir, ok := req.Options[OptionRepoDir].(string)
-	if !ok {
-		repoDir = ""
-	}
+	repoDir := getRepoDir(req)
 
 	re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
@@ -35,4 +33,19 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) e
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
 	_, err := fmt.Fprintf(w, val.(string))
 	return err
+}
+
+func getRepoDir(req *cmds.Request) string {
+	envdir := os.Getenv("FIL_PATH")
+
+	repodir, ok := req.Options[OptionRepoDir].(string)
+	if ok {
+		return repodir
+	}
+
+	if envdir != "" {
+		return envdir
+	}
+
+	return "~/.filecoin"
 }

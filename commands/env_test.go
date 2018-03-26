@@ -7,13 +7,15 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/repo"
 )
 
 func TestEnv(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := context.Background()
-	node, err := node.New(ctx)
+	r := repo.NewInMemoryRepo()
+	node, err := node.New(ctx, node.OptionsFromRepo(r)...)
 	assert.NoError(err)
 
 	env := Env{ctx: ctx, node: node}

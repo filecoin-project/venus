@@ -35,7 +35,7 @@ var rootCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
-		cmdkit.StringOption(OptionRepoDir, "set the directory of the reop, defaults to ~/.filecoin").WithDefault("~/.filecoin"),
+		cmdkit.StringOption(OptionRepoDir, "set the directory of the reop, defaults to ~/.filecoin"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),

@@ -72,7 +72,7 @@ func TestInitFail(t *testing.T) {
 		ioutil.WriteFile(filepath.Join(dir, "config.toml"), []byte("hello"), 0644)
 		out, err := RunInit("--repodir", dir)
 		assert.Error(err)
-		assert.Contains(string(out), "file already exists")
+		assert.Contains(string(out), "repo already initialized")
 
 		assert.True(ConfigExists(dir))
 	})

@@ -39,11 +39,15 @@ func TestWriteFile(t *testing.T) {
 		`[api]
   address = ":3453"
 
-[swarm]
-  address = "/ip4/127.0.0.1/tcp/6000"
-
 [bootstrap]
   addresses = ["TODO"]
+
+[datastore]
+  type = "badgerds"
+  path = "badger"
+
+[swarm]
+  address = "/ip4/127.0.0.1/tcp/6000"
 `,
 		string(content),
 	)

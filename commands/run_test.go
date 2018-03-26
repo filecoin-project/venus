@@ -69,6 +69,8 @@ type TestDaemon struct {
 	cmdAddr   string
 	swarmAddr string
 
+	repoDir string
+
 	// The filecoin daemon process
 	process *exec.Cmd
 
@@ -89,7 +91,7 @@ func (td *TestDaemon) Run(args ...string) *Output {
 		args = strings.Split(args[0], " ")
 	}
 
-	finalArgs := append(args, "--cmdapiaddr="+td.cmdAddr)
+	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
 
 	td.test.Logf("run: %q", strings.Join(finalArgs, " "))
 	cmd := exec.Command(bin, finalArgs...)
@@ -220,6 +222,12 @@ func (td *TestDaemon) Shutdown() {
 		td.test.Errorf("Daemon Stderr:\n%s", td.ReadStderr())
 		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
+
+	if td.repoDir == "" {
+		panic("testdaemon had no repodir set")
+	}
+
+	_ = os.RemoveAll(td.repoDir)
 }
 
 func (td *TestDaemon) ShutdownSuccess() {
@@ -354,10 +362,17 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	dir, err := ioutil.TempDir("", "go-fil-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	td := &TestDaemon{
 		cmdAddr:   fmt.Sprintf(":%d", cmdPort),
 		swarmAddr: fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
 		test:      t,
+		repoDir:   dir,
 	}
 
 	// configure TestDaemon options
@@ -365,8 +380,16 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		option(td)
 	}
 
+	repodirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
+	out, err := RunInit(repodirFlag)
+	if err != nil {
+		t.Log(string(out))
+		t.Fatal(err)
+	}
+
 	// define filecoin daemon process
 	td.process = exec.Command(filecoinBin, "daemon",
+		repodirFlag,
 		fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr),
 		fmt.Sprintf("--swarmlisten=%s", td.swarmAddr),
 	)

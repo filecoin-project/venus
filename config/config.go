@@ -9,8 +9,9 @@ import (
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
 	API       *APIConfig       `toml:"api"`
-	Swarm     *SwarmConfig     `toml:"swarm"`
 	Bootstrap *BootstrapConfig `toml:"bootstrap"`
+	Datastore *DatastoreConfig `toml:"datastore"`
+	Swarm     *SwarmConfig     `toml:"swarm"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -21,6 +22,20 @@ type APIConfig struct {
 func newDefaultAPIConfig() *APIConfig {
 	return &APIConfig{
 		Address: ":3453",
+	}
+}
+
+// DatastoreConfig holds all the configuration options for the datastore.
+// TODO: use the advanced datastore configuration from ipfs
+type DatastoreConfig struct {
+	Type string `toml:"type"`
+	Path string `toml:"path"`
+}
+
+func newDefaultDatastoreConfig() *DatastoreConfig {
+	return &DatastoreConfig{
+		Type: "badgerds",
+		Path: "badger",
 	}
 }
 
@@ -54,8 +69,9 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 func NewDefaultConfig() *Config {
 	return &Config{
 		API:       newDefaultAPIConfig(),
-		Swarm:     newDefaultSwarmConfig(),
 		Bootstrap: newDefaultBootstrapConfig(),
+		Datastore: newDefaultDatastoreConfig(),
+		Swarm:     newDefaultSwarmConfig(),
 	}
 }
 

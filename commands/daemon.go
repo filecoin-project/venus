@@ -68,8 +68,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
-	// TODO: takes the request to make the repo loading configurable.
-	return repo.NewInMemoryRepo(), nil
+	return repo.OpenFSRepo(getRepoDir(req))
 }
 
 func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {

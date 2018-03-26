@@ -13,7 +13,7 @@ func OptionsFromRepo(r repo.Repo) []ConfigOpt {
 	cfgopts := optionsFromConfig(r.Config())
 
 	dsopt := func(c *Config) error {
-		c.Datastore = r.Datastore()
+		c.Repo = r
 		return nil
 	}
 

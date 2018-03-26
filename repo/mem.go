@@ -38,3 +38,8 @@ func (mr *MemRepo) Datastore() Datastore {
 func (mr *MemRepo) Version() uint {
 	return mr.version
 }
+
+// Close is a noop, just filling out the interface
+func (mr *MemRepo) Close() error {
+	return nil
+}

@@ -123,6 +123,12 @@
       "hash": "QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj",
       "name": "toml",
       "version": "0.3.0"
+    },
+    {
+      "author": "magik6k",
+      "hash": "Qmbjb3c2KRPVNZWSvQED8zAf12Brdbp3ksSnGdsJiytqUs",
+      "name": "go-ds-badger",
+      "version": "1.4.4"
     }
   ],
   "gxVersion": "0.12.1",
