@@ -11,7 +11,7 @@ import (
 
 func makeAddr(t *testing.T, d *TestDaemon) string {
 	t.Helper()
-	outNew := d.RunSuccess("wallet addrs new")
+	outNew := d.RunSuccess("wallet", "addrs", "new")
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
 	assert.NotEmpty(t, addr)
 	return addr
@@ -28,7 +28,7 @@ func TestAddrsNewAndList(t *testing.T) {
 		addrs[i] = makeAddr(t, d)
 	}
 
-	list := d.RunSuccess("wallet addrs list").ReadStdout()
+	list := d.RunSuccess("wallet", "addrs", "list").ReadStdout()
 	for _, addr := range addrs {
 		assert.Contains(list, addr)
 	}
@@ -42,10 +42,10 @@ func TestWalletBalance(t *testing.T) {
 	addr := makeAddr(t, d)
 
 	t.Log("[failure] not found")
-	d.RunFail("not found", "wallet balance", addr)
+	d.RunFail("not found", "wallet", "balance", addr)
 
 	t.Log("[success] balance 100000")
-	balance := d.RunSuccess("wallet balance", core.NetworkAccount.String())
+	balance := d.RunSuccess("wallet", "balance", core.NetworkAccount.String())
 	assert.Contains(balance.ReadStdout(), "100000")
 }
 

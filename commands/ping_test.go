@@ -16,12 +16,12 @@ func TestPing2Nodes(t *testing.T) {
 
 	t.Log("[failure] not connected")
 	d1.RunFail("failed to dial",
-		"ping", "--count 2", d2.GetID(),
+		"ping", "--count=2", d2.GetID(),
 	)
 
 	d1.ConnectSuccess(d2)
-	ping1 := d1.RunSuccess("ping", "--count 2", d2.GetID())
-	ping2 := d2.RunSuccess("ping", "--count 2", d1.GetID())
+	ping1 := d1.RunSuccess("ping", "--count=2", d2.GetID())
+	ping2 := d2.RunSuccess("ping", "--count=2", d1.GetID())
 
 	t.Log("[success] 1 -> 2")
 	assert.Contains(ping1.ReadStdout(), "Pong received")

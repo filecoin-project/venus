@@ -17,9 +17,9 @@ func TestMpool(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.RunSuccess("message send",
+	d.RunSuccess("message", "send",
 		"--from", core.NetworkAccount.String(),
-		"--value 10", core.TestAccount.String(),
+		"--value=10", core.TestAccount.String(),
 	)
 
 	out := d.RunSuccess("mpool")
