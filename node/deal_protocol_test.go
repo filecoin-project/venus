@@ -34,6 +34,18 @@ func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*core.Bid, error) {
 	return msa.bids[bid], nil
 }
 
+func (msa *mockStorageMarketPeeker) GetAskSet() (core.AskSet, error) {
+	return nil, nil
+}
+
+func (msa *mockStorageMarketPeeker) GetBidSet() (core.BidSet, error) {
+	return nil, nil
+}
+
+func (msa *mockStorageMarketPeeker) GetDealList() ([]*core.Deal, error) {
+	return nil, nil
+}
+
 // makes mocking existing asks easier
 func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.asks))

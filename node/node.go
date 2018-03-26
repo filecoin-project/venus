@@ -58,6 +58,9 @@ type Node struct {
 	miningDoneWg       *sync.WaitGroup
 	AddNewlyMinedBlock newBlockFunc
 
+	StorageClient *StorageClient
+	StorageMarket *StorageMarket
+
 	// Network Fields
 	PubSub     *floodsub.PubSub
 	BlockSub   *floodsub.Subscription
@@ -191,6 +194,9 @@ func (node *Node) Start() error {
 
 	// Start up 'hello' handshake service
 	node.HelloSvc = core.NewHello(node.Host, node.ChainMgr.GetGenesisCid(), node.ChainMgr.InformNewBlock, node.ChainMgr.GetBestBlock)
+
+	node.StorageClient = NewStorageClient(node)
+	node.StorageMarket = NewStorageMarket(node)
 
 	// subscribe to block notifications
 	blkSub, err := node.PubSub.Subscribe(BlocksTopic)

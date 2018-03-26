@@ -29,32 +29,32 @@ type Orderbook struct {
 
 // Ask is a storage market ask order.
 type Ask struct {
-	Price *types.TokenAmount
-	Size  *types.BytesAmount
-	Owner types.Address
-	ID    uint64
+	Price *types.TokenAmount `json:"price":` // nolint vet
+	Size  *types.BytesAmount `json:"size"`
+	Owner types.Address      `json:"owner"`
+	ID    uint64             `json:"id"`
 }
 
 // Bid is a storage market bid order.
 type Bid struct {
 	//Expiry *big.Int
-	Price *types.TokenAmount
-	Size  *types.BytesAmount
+	Price *types.TokenAmount `json:"price"`
+	Size  *types.BytesAmount `json:"size"`
 	//Duration *big.Int
-	Collateral *types.TokenAmount
+	Collateral *types.TokenAmount `json:"collateral"`
 	//Coding ???
-	Owner types.Address
-	ID    uint64
+	Owner types.Address `json:"owner"`
+	ID    uint64        `json:"id"`
 
 	// Used indicates whether or not this bid is in use by a deal
-	Used bool
+	Used bool `json:"used"`
 }
 
 // Deal is the successful fulfilment of an ask and a bid with eachother.
 type Deal struct {
-	Expiry  *big.Int
-	DataRef *cid.Cid
+	Expiry  *big.Int `json:"expiry"`
+	DataRef *cid.Cid `json:"dataRef"`
 
-	Ask uint64
-	Bid uint64
+	Ask uint64 `json:"ask"`
+	Bid uint64 `json:"bid"`
 }

@@ -341,10 +341,21 @@ func (sm *StorageMarket) fetchData(ctx context.Context, ref *cid.Cid) error {
 	return dag.FetchGraph(ctx, ref, dag.NewDAGService(sm.nd.Blockservice))
 }
 
+// GetMarketPeeker returns the storageMarketPeeker for this storage market
+// TODO: something something returning unexported interfaces?
+func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: golint
+	return sm.smi
+}
+
 type storageMarketPeeker interface {
 	GetAsk(uint64) (*core.Ask, error)
 	GetBid(uint64) (*core.Bid, error)
 	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string) (*cid.Cid, error)
+
+	// more of a gape than a peek..
+	GetAskSet() (core.AskSet, error)
+	GetBidSet() (core.BidSet, error)
+	GetDealList() ([]*core.Deal, error)
 }
 
 type stateTreeMarketPeeker struct {
@@ -403,6 +414,39 @@ func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*core.Bid, error) {
 	}
 
 	return bid, nil
+}
+
+// GetAskSet returns the given the entire ask set from the storage market
+// TODO limit number of results
+func (stsa *stateTreeMarketPeeker) GetAskSet() (core.AskSet, error) {
+	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	return stor.Orderbook.Asks, nil
+}
+
+// GetBidSet returns the given the entire bid set from the storage market
+// TODO limit number of results
+func (stsa *stateTreeMarketPeeker) GetBidSet() (core.BidSet, error) {
+	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	return stor.Orderbook.Bids, nil
+}
+
+// GetDealList returns the given the entire bid set from the storage market
+// TODO limit the number of results
+func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
+	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	return stor.Orderbook.Deals, nil
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain

@@ -19,7 +19,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	makeAddr(t, d)
+	d.CreateWalletAdder()
 
 	bid := d.RunSuccess("client", "add-bid", "2000", "10",
 		"--from", core.TestAccount.String(),
@@ -51,7 +51,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 func TestClientAddBidFail(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
-	makeAddr(t, d)
+	d.CreateWalletAdder()
 
 	d.RunFail(
 		"invalid from address",

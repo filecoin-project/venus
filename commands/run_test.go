@@ -16,8 +16,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 // Output manages running, inprocess, a filecoin command.
@@ -146,7 +151,7 @@ func (td *TestDaemon) RunFail(err string, args ...string) *Output {
 	td.test.Helper()
 	o := td.Run(args...)
 	assert.NoError(td.test, o.Error)
-	assert.Equal(td.test, o.Code, 1)
+	assert.Equal(td.test, 1, o.Code)
 	assert.Empty(td.test, o.ReadStdout())
 	assert.Contains(td.test, o.ReadStderr(), err)
 	return o
@@ -221,6 +226,7 @@ func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
 	tdOut := td.ReadStderr()
+	assert.NoError(td.test, err, tdOut)
 	assert.NotContains(td.test, tdOut, "CRITICAL")
 	assert.NotContains(td.test, tdOut, "ERROR")
 	assert.NotContains(td.test, tdOut, "WARNING")
@@ -242,6 +248,53 @@ func (td *TestDaemon) WaitForAPI() error {
 		time.Sleep(time.Millisecond * 100)
 	}
 	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds)")
+}
+
+// CreateMinerAdder issues a new message to the network, mines the message
+// and returns the address of the new miner
+// equivalent to:
+//     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
+func (td *TestDaemon) CreateMinerAdder() types.Address {
+	miner := td.RunSuccess("miner", "create",
+		"--from", core.TestAccount.String(), "1000000", "20",
+	)
+	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+	require.NoError(td.test, err)
+
+	var wg sync.WaitGroup
+	var minerAddr types.Address
+
+	wg.Add(1)
+	go func() {
+		wait := td.RunSuccess("message", "wait",
+			"--return",
+			"--message=false",
+			"--receipt=false",
+			minerMessageCid.String(),
+		)
+		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
+		require.NoError(td.test, err)
+		require.NotEqual(td.test, addr, types.Address{})
+		minerAddr = addr
+		wg.Done()
+	}()
+
+	td.RunSuccess("mining", "once")
+
+	wg.Wait()
+	return minerAddr
+}
+
+// CreateWalletAdder adds a new address to the daemons wallet and
+// returns it.
+// equivalent to:
+//     `go-filecoin wallet addrs new`
+func (td *TestDaemon) CreateWalletAdder() string {
+	td.test.Helper()
+	outNew := td.RunSuccess("wallet", "addrs", "new")
+	addr := strings.Trim(outNew.ReadStdout(), "\n")
+	require.NotEmpty(td.test, addr)
+	return addr
 }
 
 func tryAPICheck(td *TestDaemon) error {
