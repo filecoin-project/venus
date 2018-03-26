@@ -1,14 +1,16 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"testing"
 
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
+
+	"encoding/json"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -33,26 +35,25 @@ func TestChainRun(t *testing.T) {
 	assert.NoError(err)
 	env := &Env{node: nd}
 
-	out, err := testhelpers.RunCommand(chainLsCmd, nil, nil, env)
+	out, err := testhelpers.RunCommand(chainLsCmd, nil, map[string]interface{}{
+		cmds.EncLong: cmds.JSON,
+	}, env)
 	assert.NoError(err)
 
-	assert.Contains(out.Raw, "1337")
-	assert.Contains(out.Raw, gen.Cid().String())
-	assert.Contains(out.Raw, child.Cid().String())
-}
+	results := make([]*types.Block, 2)
+	for i, line := range out.Lines {
+		if line == "" {
+			continue
+		}
 
-func TestChainTextEncoder(t *testing.T) {
-	assert := assert.New(t)
+		var result types.Block
+		err = json.Unmarshal([]byte(line), &result)
+		assert.NoError(err)
 
-	var a, b types.Block
+		results[i] = &result
+	}
 
-	b.Height = 1
-	assert.NoError(b.AddParent(a))
-
-	var buf bytes.Buffer
-	assert.NoError(chainTextEncoder(nil, &buf, &b))
-
-	// TODO: improve assertions once content is stabilized
-	assert.Contains(buf.String(), a.Cid().String())
-	assert.Contains(buf.String(), b.Cid().String())
+	assert.Equal(len(results), 2)
+	assert.Nil(results[1].Parent)
+	assert.Equal(gen.Cid(), results[0].Parent)
 }

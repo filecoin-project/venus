@@ -8,10 +8,9 @@ import (
 	"strings"
 
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
-type wc struct {
+type writercloser struct {
 	io.Writer
 	io.Closer
 }
@@ -50,15 +49,21 @@ func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, 
 		return nil, err
 	}
 
+	// if a specific encoding is requested, use it
+	// otherwise, default to text
+
+	var etypestr = "text"
+	if _, ok := opts[cmds.EncLong]; ok {
+		etypestr = opts[cmds.EncLong].(string)
+	}
+	req.Options[cmds.EncLong] = etypestr
+
 	var buf bytes.Buffer
+	wc := writercloser{Writer: &buf, Closer: &nopCloser{}}
+	re := cmds.NewWriterResponseEmitter(wc, req, root.Encoders[cmds.EncodingType(etypestr)])
 
-	req.Options[cmds.EncLong] = cmds.Text
-
-	re := cmds.NewWriterResponseEmitter(wc{Writer: &buf, Closer: &nopCloser{}}, req, root.Encoders[cmds.Text])
-	err = root.Run(req, re, env)
-
-	if err != nil {
-		re.SetError(err, cmdkit.ErrNormal)
+	if err := root.Run(req, re, env); err != nil {
+		return nil, err
 	}
 
 	return &TextOutput{

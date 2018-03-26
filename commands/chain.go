@@ -2,9 +2,6 @@
 package commands
 
 import (
-	"encoding/json"
-	"io"
-
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -24,11 +21,12 @@ var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "dump full block chain",
 	},
-	Run:  chainRun,
-	Type: types.Block{},
+	Run: chainRun,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(chainTextEncoder),
+		cmds.JSON: cmds.Encoders[cmds.JSON],
+		cmds.Text: cmds.Encoders[cmds.JSON], // TODO: devise a better text representation than JSON (e.g. columnar)
 	},
+	Type: types.Block{},
 }
 
 func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -42,23 +40,9 @@ func chainRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) 
 		if err := n.CborStore.Get(req.Context, blk.Parent, &next); err != nil {
 			return err
 		}
-
-		re.Emit(&next) // nolint: errcheck
+		re.Emit(next) // nolint: errcheck
 		blk = &next
 	}
-	return nil
-}
 
-func chainTextEncoder(req *cmds.Request, w io.Writer, val *types.Block) error {
-	marshaled, err := json.MarshalIndent(val, "", "\t")
-	if err != nil {
-		return err
-	}
-	marshaled = append(marshaled, byte('\n'))
-	_, err = w.Write([]byte(val.Cid().String() + ":\n"))
-	if err != nil {
-		return err
-	}
-	_, err = w.Write(marshaled)
-	return err
+	return nil
 }
