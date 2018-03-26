@@ -35,17 +35,12 @@ var miningOnceCmd = &cmds.Command{
 		if len(addrs) == 0 {
 			return ErrNoWalletAddresses
 		}
-		myaddr := addrs[0]
-
-		reward := types.NewMessage(core.NetworkAccount, myaddr, types.NewTokenAmount(1000), "", nil)
-		if _, err := fcn.MsgPool.Add(reward); err != nil {
-			return err
-		}
+		rewardAddr := addrs[0]
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
 			return types.LoadStateTree(ctx, fcn.CborStore, cid)
 		}, core.ProcessBlock)
-		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur)
+		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur, rewardAddr)
 		if res.Err != nil {
 			return res.Err
 		}
@@ -67,7 +62,10 @@ var miningOnceCmd = &cmds.Command{
 
 var miningStartCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		GetNode(env).StartMining()
+		if err := GetNode(env).StartMining(); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return err
+		}
 		re.Emit("Started mining\n") // nolint: errcheck
 
 		return nil

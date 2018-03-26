@@ -247,6 +247,16 @@ func (node *Node) isMining() bool {
 	return node.mining.isMining
 }
 
+// TODO this always mines to the 0th address in the wallet.
+// We need to enable setting which address.
+func (node *Node) getRewardAddress() (types.Address, error) {
+	addrs := node.Wallet.GetAddresses()
+	if len(addrs) == 0 {
+		return types.Address{}, errors.New("No addresses in wallet")
+	}
+	return addrs[0], nil
+}
+
 func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 	defer func() {
 		node.miningDoneWg.Done()
@@ -283,13 +293,18 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 		}
 		head = newHead
 		if node.isMining() {
+			rewardAddress, err := node.getRewardAddress()
+			if err != nil {
+				log.Error("No mining reward address, mining should not have started!")
+				continue
+			}
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head):
+				case node.miningInCh <- mining.NewInput(context.Background(), head, rewardAddress):
 				}
 			}()
 		}
@@ -346,7 +361,11 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker.
-func (node *Node) StartMining() {
+func (node *Node) StartMining() error {
+	rewardAddress, err := node.getRewardAddress()
+	if err != nil {
+		return err
+	}
 	node.setIsMining(true)
 	node.miningDoneWg.Add(1)
 	go func() {
@@ -354,9 +373,10 @@ func (node *Node) StartMining() {
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock()):
+		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock(), rewardAddress):
 		}
 	}()
+	return nil
 }
 
 // StopMining stops mining on new blocks.

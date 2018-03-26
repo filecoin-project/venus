@@ -8,16 +8,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Input is the block the worker should mine on and a context
-// that the caller can use to cancel this mining run.
+// Input is the block the worker should mine on, the address
+// to accrue rewards to, and a context that the caller can use
+// to cancel this mining run.
 type Input struct {
-	MineOn *types.Block
-	Ctx    context.Context
+	Ctx           context.Context
+	MineOn        *types.Block
+	RewardAddress types.Address
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, b *types.Block) Input {
-	return Input{MineOn: b, Ctx: ctx}
+func NewInput(ctx context.Context, b *types.Block, a types.Address) Input {
+	return Input{Ctx: ctx, MineOn: b, RewardAddress: a}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -73,12 +75,12 @@ func NewWorkerWithMineAndWork(blockGenerator BlockGenerator, mine mineFunc, doSo
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the worker.
-func MineOnce(ctx context.Context, w Worker, baseBlock *types.Block) Output {
+func MineOnce(ctx context.Context, w Worker, baseBlock *types.Block, rewardAddress types.Address) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 
 	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, baseBlock) }()
+	go func() { inCh <- NewInput(subCtx, baseBlock, rewardAddress) }()
 	return <-outCh
 }
 
@@ -88,7 +90,7 @@ type BlockGetterFunc func() *types.Block
 // MineEvery is a convenience function to mine by pulling a block from
 // a getter periodically. (This as opposed to Start() which runs on
 // demand, whenever a block is pushed to it through the input channel).
-func MineEvery(ctx context.Context, w Worker, period time.Duration, getBlock BlockGetterFunc) (chan<- Input, <-chan Output, *sync.WaitGroup) {
+func MineEvery(ctx context.Context, w Worker, period time.Duration, getBlock BlockGetterFunc, rewardAddress types.Address) (chan<- Input, <-chan Output, *sync.WaitGroup) {
 	inCh, outCh, doneWg := w.Start(ctx)
 
 	doneWg.Add(1)
@@ -101,7 +103,7 @@ func MineEvery(ctx context.Context, w Worker, period time.Duration, getBlock Blo
 			case <-ctx.Done():
 				return
 			case <-time.After(period):
-				go func() { inCh <- NewInput(ctx, getBlock()) }()
+				go func() { inCh <- NewInput(ctx, getBlock(), rewardAddress) }()
 			}
 		}
 	}()
@@ -143,7 +145,7 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 						currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
 						doneWg.Add(1)
 						go func() {
-							w.mine(currentRunCtx, newBaseBlock, w.blockGenerator, w.doSomeWork, outCh)
+							w.mine(currentRunCtx, input, w.blockGenerator, w.doSomeWork, outCh)
 							doneWg.Done()
 						}()
 						currentBlock = newBaseBlock
@@ -166,11 +168,11 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 // for that name.
 type DoSomeWorkFunc func()
 
-type mineFunc func(context.Context, *types.Block, BlockGenerator, DoSomeWorkFunc, chan<- Output)
+type mineFunc func(context.Context, Input, BlockGenerator, DoSomeWorkFunc, chan<- Output)
 
 // Mine does the actual work. It's the implementation of worker.mine.
-func Mine(ctx context.Context, baseBlock *types.Block, blockGenerator BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-	next, err := blockGenerator.Generate(ctx, baseBlock)
+func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	next, err := blockGenerator.Generate(ctx, input.MineOn, input.RewardAddress)
 	if err == nil {
 		// TODO whatever happens here, respect the context.
 		doSomeWork()

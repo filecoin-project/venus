@@ -15,7 +15,7 @@ type GetStateTree func(context.Context, *cid.Cid) (types.StateTree, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(context.Context, *types.Block) (*types.Block, error)
+	Generate(context.Context, *types.Block, types.Address) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
@@ -35,7 +35,7 @@ type blockGenerator struct {
 }
 
 // Generate returns a new block created from the messages in the pool.
-func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*types.Block, error) {
+func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, rewardAddress types.Address) (*types.Block, error) {
 	stateTree, err := b.getStateTree(ctx, baseBlock.StateRoot)
 	if err != nil {
 		return nil, err
@@ -48,6 +48,9 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block) (*
 	if err := next.AddParent(*baseBlock); err != nil {
 		return nil, err
 	}
+
+	rewardMsg := types.NewMessage(core.NetworkAccount, rewardAddress, types.NewTokenAmount(100), "", nil)
+	next.Messages = append(next.Messages, rewardMsg)
 
 	// TODO(fritz) processBlock bails as soon as it sees a
 	// message failure. Change this to skip the message
