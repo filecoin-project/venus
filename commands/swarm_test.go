@@ -13,8 +13,9 @@ func TestSwarmConnectPeers(t *testing.T) {
 	defer d2.ShutdownSuccess()
 
 	t.Log("[failure] invalid peer")
-	d1.RunFail("invalid peer address", "swarm connect", "/ip4/hello")
+	d1.RunFail("invalid peer address",
+		"swarm connect /ip4/hello",
+	)
 
 	d1.ConnectSuccess(d2)
-
 }

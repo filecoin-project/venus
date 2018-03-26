@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -21,17 +22,17 @@ func TestMinerCreateSuccess(t *testing.T) {
 
 	makeAddr(t, d)
 
-	miner := d.RunSuccess("miner create",
+	miner := d.RunSuccess("miner", "create",
 		"--from", core.TestAccount.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess("message wait",
+		wait := d.RunSuccess("message", "wait",
 			"--return",
 			"--message=false",
 			"--receipt=false",
@@ -56,19 +57,19 @@ func TestMinerCreateFail(t *testing.T) {
 	makeAddr(t, d)
 
 	d.RunFail("invalid from address",
-		"miner create",
+		"miner", "create",
 		"--from", "hello", "1000000", "20",
 	)
 	d.RunFail("invalid pledge",
-		"miner create",
+		"miner", "create",
 		"--from", core.TestAccount.String(), "'-123'", "20",
 	)
 	d.RunFail("invalid pledge",
-		"miner create",
+		"miner", "create",
 		"--from", core.TestAccount.String(), "1f", "20",
 	)
 	d.RunFail("invalid collateral",
-		"miner create",
+		"miner", "create",
 		"--from", core.TestAccount.String(), "100", "2f",
 	)
 
@@ -82,18 +83,20 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 	makeAddr(t, d)
 
-	miner := d.RunSuccess("miner create",
+	miner := d.RunSuccess(
+		"miner", "create",
 		"--from", core.TestAccount.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess("message wait",
+		wait := d.RunSuccess(
+			"message", "wait",
 			"--return",
 			"--message=false",
 			"--receipt=false",
@@ -112,12 +115,13 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		ask := d.RunSuccess("miner add-ask", minerAddr.String(), "2000", "10",
+		ask := d.RunSuccess("miner", "add-ask", minerAddr.String(), "2000", "10",
 			"--from", core.TestAccount.String(),
 		)
 		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
-		assert.NoError(err)
+		require.NoError(t, err)
 		assert.NotNil(askCid)
+
 		wg.Done()
 	}()
 
@@ -134,18 +138,18 @@ func TestMinerAddAskFail(t *testing.T) {
 
 	makeAddr(t, d)
 
-	miner := d.RunSuccess("miner create",
+	miner := d.RunSuccess("miner", "create",
 		"--from", core.TestAccount.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess("message wait",
+		wait := d.RunSuccess("message", "wait",
 			"--return",
 			"--message=false",
 			"--receipt=false",
@@ -164,22 +168,22 @@ func TestMinerAddAskFail(t *testing.T) {
 
 	d.RunFail(
 		"invalid from address",
-		"miner add-ask", minerAddr.String(), "2000", "10",
+		"miner", "add-ask", minerAddr.String(), "2000", "10",
 		"--from", "hello",
 	)
 	d.RunFail(
 		"invalid miner address",
-		"miner add-ask", "hello", "2000", "10",
+		"miner", "add-ask", "hello", "2000", "10",
 		"--from", core.TestAccount.String(),
 	)
 	d.RunFail(
 		"invalid size",
-		"miner add-ask", minerAddr.String(), "2f", "10",
+		"miner", "add-ask", minerAddr.String(), "2f", "10",
 		"--from", core.TestAccount.String(),
 	)
 	d.RunFail(
 		"invalid price",
-		"miner add-ask", minerAddr.String(), "10", "3f",
+		"miner", "add-ask", minerAddr.String(), "10", "3f",
 		"--from", core.TestAccount.String(),
 	)
 }

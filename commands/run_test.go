@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,84 +17,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-// pipe manages a unix pipe. Used to simulate std{in|err|out}
-type pipe struct {
-	lk     sync.Mutex
-	reader *os.File
-	writer *os.File
-	buffer *bufio.Reader
-}
-
-func (p *pipe) Reader() *os.File {
-	p.lk.Lock()
-	defer p.lk.Unlock()
-
-	return p.reader
-}
-func (p *pipe) Writer() *os.File {
-	p.lk.Lock()
-	defer p.lk.Unlock()
-
-	return p.writer
-}
-
-// IsReader indicates if we are have "reader" pipe, meaning we expect
-// the writer to get written by another party and us just reading, this
-// is the case for std{out|err}. For stdout the opposite is the case, e.g.
-// we expect for the other party to read from the Reader, and us to write to the
-// writer.
-func (p *pipe) IsReader() bool {
-	return p.buffer != nil
-}
-
-func (p *pipe) Close() {
-	p.lk.Lock()
-	defer p.lk.Unlock()
-
-	if p.IsReader() {
-		p.writer.Close()
-	} else {
-		p.reader.Close()
-	}
-}
-
-func (p *pipe) ReadAll() ([]byte, error) {
-	p.lk.Lock()
-	defer p.lk.Unlock()
-
-	if p.buffer == nil {
-		return nil, fmt.Errorf("missing buffer to read from")
-	}
-
-	return ioutil.ReadAll(p.buffer)
-}
-
-func newPipe() (*pipe, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-
-	return &pipe{
-		reader: r,
-		writer: w,
-	}, nil
-}
-
-func newReadPipe() (*pipe, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return nil, err
-	}
-
-	return &pipe{
-		reader: r,
-		writer: w,
-		buffer: bufio.NewReader(r),
-	}, nil
-}
 
 // Output manages running, inprocess, a filecoin command.
 type Output struct {
@@ -108,16 +31,11 @@ type Output struct {
 	Code int
 	// Error is the error returned from the command, after it exited.
 	Error  error
-	Stdin  *pipe
-	Stdout *pipe
-	Stderr *pipe
-	// CloseChan signals that the command stopped.
-	CloseChan chan struct{}
-}
-
-func (o *Output) Interrupt() {
-	// hack to stop the daemon inprocess
-	sigCh <- os.Interrupt.(syscall.Signal)
+	Stdin  io.WriteCloser
+	Stdout io.ReadCloser
+	stdout []byte
+	Stderr io.ReadCloser
+	stderr []byte
 }
 
 func (o *Output) Close(code int, err error) {
@@ -126,81 +44,27 @@ func (o *Output) Close(code int, err error) {
 
 	o.Code = code
 	o.Error = err
-
-	o.Stdin.Close()
-	o.Stdout.Close()
-	o.Stderr.Close()
-	o.CloseChan <- struct{}{}
 }
 
 func (o *Output) ReadStderr() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
-	out, err := o.Stderr.ReadAll()
-	if err != nil {
-		panic(err)
-	}
-	return string(out)
+	return string(o.stderr)
 }
 
 func (o *Output) ReadStdout() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
-	out, err := o.Stdout.ReadAll()
-	if err != nil {
-		panic(err)
-	}
-	return string(out)
-}
-
-// run runs a one off command.
-func run(input string) *Output {
-	o := runNoWait(input)
-	<-o.CloseChan
-	return o
-}
-
-// runNoWait spawns a command and don't wait for it to finish, like running the daemon.
-func runNoWait(input string) *Output {
-	args := strings.Split(input, " ")
-
-	stdin, err := newPipe()
-	if err != nil {
-		panic(err)
-	}
-	stdout, err := newReadPipe()
-	if err != nil {
-		panic(err)
-	}
-	stderr, err := newReadPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	o := &Output{
-		Input:     input,
-		Args:      args,
-		Stdin:     stdin,
-		Stdout:    stdout,
-		Stderr:    stderr,
-		CloseChan: make(chan struct{}, 1),
-	}
-
-	go func(o *Output) {
-		exitCode, err := Run(args, stdin.Reader(), stdout.Writer(), stderr.Writer())
-		o.Close(exitCode, err)
-	}(o)
-
-	return o
+	return string(o.stdout)
 }
 
 type TestDaemon struct {
 	cmdAddr   string
 	swarmAddr string
 
-	//The filecoin daemon process
+	// The filecoin daemon process
 	process *exec.Cmd
 
 	lk     sync.Mutex
@@ -212,31 +76,46 @@ type TestDaemon struct {
 }
 
 func (td *TestDaemon) Run(args ...string) *Output {
-	cmd := exec.Command("go-filecoin", append(args, "--cmdapiaddr="+td.cmdAddr)...)
+	bin, err := GetFilecoinBinary()
+	require.NoError(td.test, err)
 
-	stdin, err := newPipe()
-	if err != nil {
-		panic(err)
+	// handle Run("cmd subcmd")
+	if len(args) == 1 {
+		args = strings.Split(args[0], " ")
 	}
-	stderr, err := newReadPipe()
-	if err != nil {
-		panic(err)
-	}
-	stdout, err := newReadPipe()
-	if err != nil {
-		panic(err)
-	}
+
+	finalArgs := append(args, "--cmdapiaddr="+td.cmdAddr)
+
+	td.test.Logf("run: %q", strings.Join(finalArgs, " "))
+	cmd := exec.Command(bin, finalArgs...)
+
+	stdin, err := cmd.StdinPipe()
+	require.NoError(td.test, err)
+
+	stderr, err := cmd.StderrPipe()
+	require.NoError(td.test, err)
+
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(td.test, err)
+
+	require.NoError(td.test, cmd.Start())
+
+	stderrBytes, err := ioutil.ReadAll(stderr)
+	require.NoError(td.test, err)
+
+	stdoutBytes, err := ioutil.ReadAll(stdout)
+	require.NoError(td.test, err)
 
 	o := &Output{
 		Args:   args,
 		Stdin:  stdin,
 		Stdout: stdout,
+		stdout: stdoutBytes,
 		Stderr: stderr,
+		stderr: stderrBytes,
 	}
 
-	cmd.Stderr = stderr.writer
-	cmd.Stdout = stdout.writer
-	cmd.Stdin = stdin.reader
+	err = cmd.Wait()
 
 	switch err := err.(type) {
 	case *exec.ExitError:
@@ -254,8 +133,9 @@ func (td *TestDaemon) Run(args ...string) *Output {
 func (td *TestDaemon) RunSuccess(args ...string) *Output {
 	o := td.Run(args...)
 	assert.NoError(td.test, o.Error)
-	assert.Equal(td.test, o.Code, 0)
 	oErr := o.ReadStderr()
+
+	assert.Equal(td.test, o.Code, 0, oErr)
 	assert.NotContains(td.test, oErr, "CRITICAL")
 	assert.NotContains(td.test, oErr, "ERROR")
 	assert.NotContains(td.test, oErr, "WARNING")
@@ -275,7 +155,7 @@ func (td *TestDaemon) RunFail(err string, args ...string) *Output {
 func (td *TestDaemon) GetID() string {
 	out := td.RunSuccess("id")
 	var parsed map[string]interface{}
-	assert.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
+	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 
 	return parsed["ID"].(string)
 }
@@ -283,27 +163,28 @@ func (td *TestDaemon) GetID() string {
 func (td *TestDaemon) GetAddress() string {
 	out := td.RunSuccess("id")
 	var parsed map[string]interface{}
-	assert.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
+	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
 
 	adders := parsed["Addresses"].([]interface{})
 	return adders[0].(string)
 }
 
 func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
-	//Connect the nodes
-	out := td.RunSuccess("swarm connect", remote.GetAddress())
-	peers1 := td.RunSuccess("swarm peers")
-	peers2 := remote.RunSuccess("swarm peers")
+	// Connect the nodes
+	out := td.RunSuccess("swarm", "connect", remote.GetAddress())
+	peers1 := td.RunSuccess("swarm", "peers")
+	peers2 := remote.RunSuccess("swarm", "peers")
 
 	td.test.Log("[success] 1 -> 2")
-	assert.Contains(td.test, peers1.ReadStdout(), remote.GetID())
+	require.Contains(td.test, peers1.ReadStdout(), remote.GetID())
 
 	td.test.Log("[success] 2 -> 1")
-	assert.Contains(td.test, peers2.ReadStdout(), td.GetID())
+	require.Contains(td.test, peers2.ReadStdout(), td.GetID())
+
 	return out
 }
 
-func (td *TestDaemon) ReadAllStdout() string {
+func (td *TestDaemon) ReadStdout() string {
 	td.lk.Lock()
 	defer td.lk.Unlock()
 	out, err := ioutil.ReadAll(td.Stdout)
@@ -313,7 +194,7 @@ func (td *TestDaemon) ReadAllStdout() string {
 	return string(out)
 }
 
-func (td *TestDaemon) ReadAllStderr() string {
+func (td *TestDaemon) ReadStderr() string {
 	td.lk.Lock()
 	defer td.lk.Unlock()
 	out, err := ioutil.ReadAll(td.Stderr)
@@ -324,19 +205,14 @@ func (td *TestDaemon) ReadAllStderr() string {
 }
 
 func (td *TestDaemon) Start() *TestDaemon {
-	if err := td.process.Start(); err != nil {
-		td.test.Fatalf("Failed to start filecoin process: %v", err)
-	}
-	if err := td.WaitForAPI(); err != nil {
-		td.test.Error(err)
-		td.test.Fatalf("Daemon failed to start")
-	}
+	require.NoError(td.test, td.process.Start())
+	require.NoError(td.test, td.WaitForAPI(), "Daemon failed to start")
 	return td
 }
 
 func (td *TestDaemon) Shutdown() {
 	if err := td.process.Process.Signal(syscall.SIGTERM); err != nil {
-		td.test.Errorf("Daemon Stderr:\n%s", td.ReadAllStderr())
+		td.test.Errorf("Daemon Stderr:\n%s", td.ReadStderr())
 		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
 }
@@ -344,16 +220,15 @@ func (td *TestDaemon) Shutdown() {
 func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
-	tdOut := td.ReadAllStderr()
+	tdOut := td.ReadStderr()
 	assert.NotContains(td.test, tdOut, "CRITICAL")
 	assert.NotContains(td.test, tdOut, "ERROR")
 	assert.NotContains(td.test, tdOut, "WARNING")
-
 }
 
 func (td *TestDaemon) Kill() {
 	if err := td.process.Process.Kill(); err != nil {
-		td.test.Errorf("Daemon Stderr:\n%s", td.ReadAllStderr())
+		td.test.Errorf("Daemon Stderr:\n%s", td.ReadStderr())
 		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
 }
@@ -443,7 +318,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		fmt.Sprintf("--swarmlisten=%s", td.swarmAddr),
 	)
 
-	//setup process pipes
+	// setup process pipes
 	td.Stdout, err = td.process.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)

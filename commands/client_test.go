@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/core"
 )
@@ -20,16 +21,16 @@ func TestClientAddBidSuccess(t *testing.T) {
 
 	makeAddr(t, d)
 
-	bid := d.RunSuccess("client add-bid", "2000", "10",
+	bid := d.RunSuccess("client", "add-bid", "2000", "10",
 		"--from", core.TestAccount.String(),
 	)
 	bidMessageCid, err := cid.Parse(strings.Trim(bid.ReadStdout(), "\n"))
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess("message wait",
+		wait := d.RunSuccess("message", "wait",
 			"--return",
 			"--message=false",
 			"--receipt=false",
@@ -54,17 +55,17 @@ func TestClientAddBidFail(t *testing.T) {
 
 	d.RunFail(
 		"invalid from address",
-		"client add-bid", "2000", "10",
+		"client", "add-bid", "2000", "10",
 		"--from", "hello",
 	)
 	d.RunFail(
 		"invalid size",
-		"client add-bid", "2f", "10",
+		"client", "add-bid", "2f", "10",
 		"--from", core.TestAccount.String(),
 	)
 	d.RunFail(
 		"invalid price",
-		"client add-bid", "10", "3f",
+		"client", "add-bid", "10", "3f",
 		"--from", core.TestAccount.String(),
 	)
 }

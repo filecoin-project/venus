@@ -13,29 +13,29 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[failure] invalid target")
 	d.RunFail(
 		"invalid checksum",
-		"message send",
+		"message", "send",
 		"--from", core.NetworkAccount.String(),
-		"--value 10 xyz",
+		"--value=10", "xyz",
 	)
 
 	t.Log("[failure] no from and no addresses")
 	d.RunFail(
 		"no default address",
-		"message send", core.TestAccount.String(),
+		"message", "send", core.TestAccount.String(),
 	)
 
 	t.Log("[success] no from")
 	d.RunSuccess("wallet addrs new")
-	d.RunSuccess("message send", core.TestAccount.String())
+	d.RunSuccess("message", "send", core.TestAccount.String())
 
 	t.Log("[success] with from")
-	d.RunSuccess("message send",
+	d.RunSuccess("message", "send",
 		"--from", core.NetworkAccount.String(), core.TestAccount.String(),
 	)
 
 	t.Log("[success] with from and value")
-	d.RunSuccess("message send",
+	d.RunSuccess("message", "send",
 		"--from", core.NetworkAccount.String(),
-		"--value 10", core.TestAccount.String(),
+		"--value=10", core.TestAccount.String(),
 	)
 }
