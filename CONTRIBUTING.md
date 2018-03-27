@@ -73,13 +73,15 @@ updated in precise lockstep with the code". That will be the policy at
 some point in the future.
 
 ## Testing Philosophy
-* We use both unit tests (for functions, etc.) and command tests (that test commands executing on a filecoin node)
+* All code must be unit tested and should hit our target coverage rate (80%). We also have command tests that test commands executing on a filecoin node.
+Command tests are not a substitute for unit tests: test command integration with command tests, but 
+command implementations like all other code also require unit tests.
 * We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work)
 
 ## What is the bar for inclusion in master?
 
 Presently (Q1'18) the minimum bar is:
- * Must be unittested
+ * Must be unittested (80% target, some slippage ok); if PR is a command, it must be command tested
  * Code review:
    * Far-reaching/foundational changes 3/3 of {@phritz, @dignifiedquire, @whyrusleeping}; otherwise 2/3
    * If you expect a response to a CR comment make it clear that you do
