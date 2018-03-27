@@ -32,6 +32,11 @@ import (
 
 var log = logging.Logger("node") // nolint: deadcode
 
+var (
+	// ErrNoMethod is returned when processing a message that does not have a method.
+	ErrNoMethod = errors.New("no method in message")
+)
+
 // Node represents a full Filecoin node.
 type Node struct {
 	Host host.Host
@@ -400,6 +405,11 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 	executable, err := core.LoadCode(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
+	}
+
+	if method == "" {
+		// this is allowed if it is a transfer only case
+		return nil, ErrNoMethod
 	}
 
 	export, ok := executable.Exports()[method]

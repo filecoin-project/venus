@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -107,7 +108,7 @@ var msgWaitCmd = &cmds.Command{
 		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.Message,
 			receipt *types.MessageReceipt) error {
 			signature, err := n.GetSignature(req.Context, msg.To, msg.Method)
-			if err != nil {
+			if err != nil && err != node.ErrNoMethod {
 				return errors.Wrap(err, "unable to determine return type")
 			}
 
@@ -149,7 +150,7 @@ var msgWaitCmd = &cmds.Command{
 				}
 			}
 
-			if returnOpt {
+			if returnOpt && res.Receipt != nil && res.Signature != nil {
 				val, err := abi.Deserialize(res.Receipt.Return, res.Signature.Return[0])
 				if err != nil {
 					return errors.Wrap(err, "unable to deserialize return value")

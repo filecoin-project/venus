@@ -302,3 +302,23 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, s
 
 	testWaitHelp(nil, assert, stm, m2, true)
 }
+
+func TestGetSignature(t *testing.T) {
+	t.Run("no method", func(t *testing.T) {
+		ctx := context.Background()
+		assert := assert.New(t)
+
+		r := repo.NewInMemoryRepo()
+		assert.NoError(Init(ctx, r))
+
+		nd, err := New(ctx, OptionsFromRepo(r)...)
+		assert.NoError(err)
+		assert.NoError(nd.Start())
+		defer nd.Stop()
+
+		fmt.Println(nd.ChainMgr.GetBestBlock())
+		sig, err := nd.GetSignature(ctx, core.TestAccount, "")
+		assert.Equal(ErrNoMethod, err)
+		assert.Nil(sig)
+	})
+}
