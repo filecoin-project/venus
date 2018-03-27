@@ -61,3 +61,25 @@ func TestDecodeBlock(t *testing.T) {
 	assert.Equal(after.Cid(), before.Cid())
 	assert.Equal(after, before)
 }
+
+func TestEquals(t *testing.T) {
+	assert := assert.New(t)
+
+	c1, err := cidFromString("a")
+	assert.NoError(err)
+	c2, err := cidFromString("b")
+	assert.NoError(err)
+
+	var n1 uint64 = 1234
+	var n2 uint64 = 9876
+
+	b1 := &Block{Parent: c1, Nonce: n1}
+	b2 := &Block{Parent: c1, Nonce: n1}
+	b3 := &Block{Parent: c1, Nonce: n2}
+	b4 := &Block{Parent: c2, Nonce: n1}
+	assert.True(b1.Equals(b1))
+	assert.True(b1.Equals(b2))
+	assert.False(b1.Equals(b3))
+	assert.False(b1.Equals(b4))
+	assert.False(b3.Equals(b4))
+}

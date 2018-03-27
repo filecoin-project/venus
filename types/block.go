@@ -82,3 +82,8 @@ func DecodeBlock(b []byte) (*Block, error) {
 func (b *Block) Score() uint64 {
 	return b.Height
 }
+
+// Equals returns true if the Block is equal to other.
+func (b *Block) Equals(other *Block) bool {
+	return b.Cid().Equals(other.Cid())
+}

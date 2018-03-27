@@ -2,14 +2,16 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -226,6 +228,87 @@ func TestRejectBadChain(t *testing.T) {
 	assert.EqualError(err, ErrInvalidBase.Error())
 	assert.Equal(InvalidBase, res)
 	assert.Equal(stm.GetBestBlock(), testGenesis)
+}
+
+func TestBlockHistory(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+
+	_, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+
+	_, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+
+	blockCh := stm.BlockHistory(ctx)
+
+	assert.True(block2.Equals((<-blockCh).(*types.Block)))
+	assert.True(block1.Equals((<-blockCh).(*types.Block)))
+	assert.Equal(stm.GetGenesisCid(), ((<-blockCh).(*types.Block)).Cid())
+	blk, more := <-blockCh
+	assert.Equal(nil, blk)    // Genesis block has no parent.
+	assert.Equal(false, more) // Channel is closed
+}
+
+func TestBlockHistoryFetchError(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+
+	_, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+
+	_, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+
+	blockCh := stm.BlockHistory(ctx)
+
+	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
+		return nil, fmt.Errorf("error fetching block (in test)")
+	}
+	// One block is already ready.
+	assert.True(block2.Equals((<-blockCh).(*types.Block)))
+
+	// Next block sent should instead be an error.
+	next := <-blockCh
+
+	_, ok := next.(error)
+	assert.True(ok)
+}
+
+func TestBlockHistoryCancel(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
+
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+
+	_, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+
+	_, err = stm.ProcessNewBlock(ctx, block2)
+	assert.NoError(err)
+
+	blockCh := stm.BlockHistory(ctx)
+	assert.True(block2.Equals((<-blockCh).(*types.Block)))
+	cancel()
+	time.Sleep(10 * time.Millisecond)
+
+	blk, more := <-blockCh
+	// Channel is closed
+	assert.Equal(nil, blk)
+	assert.Equal(false, more)
 }
 
 func assertPut(assert *assert.Assertions, cst *hamt.CborIpldStore, i interface{}) {

@@ -409,7 +409,7 @@ func (s *ChainManagerForTest) SetBestBlockForTest(ctx context.Context, b *types.
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
 func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
-	out := make(chan (interface{}), 1)
+	out := make(chan interface{})
 	blk := s.GetBestBlock()
 
 	go func() {
