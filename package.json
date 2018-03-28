@@ -72,9 +72,9 @@
     },
     {
       "author": "jbenet",
-      "hash": "QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg",
+      "hash": "QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9",
       "name": "go-datastore",
-      "version": "1.4.1"
+      "version": "2.4.0"
     },
     {
       "author": "whyrusleeping",
@@ -84,15 +84,15 @@
     },
     {
       "author": "hsanjuan",
-      "hash": "QmZRcGYvxdauCd7hHnMYLYqcZRaDjv24c7eUNyJojAcdBb",
+      "hash": "QmXtoXbu9ReyV6Q4kDQ5CF9wXQNDY1PdHc4HhfxRR5AHB3",
       "name": "go-ipfs-routing",
-      "version": "0.0.1"
+      "version": "0.0.2"
     },
     {
       "author": "hsanjuan",
-      "hash": "QmTVDM4LCSUMFNQzbDLL9zQwp8usE6QHymFdh3h8vL9v6b",
+      "hash": "QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY",
       "name": "go-ipfs-blockstore",
-      "version": "0.0.1"
+      "version": "0.0.2"
     },
     {
       "author": "why",
@@ -126,9 +126,9 @@
     },
     {
       "author": "magik6k",
-      "hash": "Qmbjb3c2KRPVNZWSvQED8zAf12Brdbp3ksSnGdsJiytqUs",
+      "hash": "QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo",
       "name": "go-ds-badger",
-      "version": "1.4.4"
+      "version": "1.4.5"
     }
   ],
   "gxVersion": "0.12.1",
@@ -138,4 +138,3 @@
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "version": "0.0.1"
 }
-
