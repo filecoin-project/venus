@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/stretchr/testify/assert"
-	ds "gx/ipfs/QmPpegoMqhAEqjncrzArm7KVWAkCm78rqL2DPuNjhPrshg/go-datastore"
+	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 )
 
 func TestFSRepoInit(t *testing.T) {

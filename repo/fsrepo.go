@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	badgerds "gx/ipfs/QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo/go-ds-badger"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	badgerds "gx/ipfs/Qmbjb3c2KRPVNZWSvQED8zAf12Brdbp3ksSnGdsJiytqUs/go-ds-badger"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
