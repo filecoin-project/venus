@@ -12,6 +12,7 @@ The following is a set of guidelines for contributing to the Filecoin Project. F
 * [Testing Philosophy](#testing-philosophy)
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
+* [Gotchas](#gotchas)
 
 ## Project Management
 
@@ -115,3 +116,12 @@ Likely future requirements:
     merge because they have most context. Creators, if you really care
     about the commit message, squash ahead of time and provide a nice
     commit message because someone might merge for you.
+
+## Gotchas
+* Equality
+  * Don't use `==` to compare `*types.Block`; use `Block.Equals()`
+  * Ditto for `*cid.Cid`
+  * For `types.Message` use `types.MsgCidsEqual` (or better submit a PR to add `Message.Equals()`)
+  * DO use `==` for `types.Address`, it's just an address
+
+
