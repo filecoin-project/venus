@@ -58,9 +58,16 @@ func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, 
 	}
 	req.Options[cmds.EncLong] = etypestr
 
+	var encoderFunc cmds.EncoderFunc
+	if f, ok := root.Encoders[cmds.EncodingType(etypestr)]; ok {
+		encoderFunc = f
+	} else {
+		encoderFunc = cmds.Encoders[cmds.EncodingType(etypestr)]
+	}
+
 	var buf bytes.Buffer
 	wc := writercloser{Writer: &buf, Closer: &nopCloser{}}
-	re := cmds.NewWriterResponseEmitter(wc, req, root.Encoders[cmds.EncodingType(etypestr)])
+	re := cmds.NewWriterResponseEmitter(wc, req, encoderFunc)
 
 	if err := root.Run(req, re, env); err != nil {
 		return nil, err

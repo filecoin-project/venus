@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/stretchr/testify/assert"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/config"
 )
 
 func TestFSRepoInit(t *testing.T) {
@@ -27,6 +29,7 @@ func TestFSRepoInit(t *testing.T) {
 	assert.Equal(
 		`[api]
   address = ":3453"
+  accessControlAllowOrigin = ["http://localhost:8080"]
 
 [bootstrap]
   addresses = ["TODO"]

@@ -21,17 +21,17 @@ var (
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
 type Message struct {
-	To   Address
-	From Address
+	To   Address `json:"to"`
+	From Address `json:"from"`
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
-	Nonce uint64
+	Nonce uint64 `json:"nonce"`
 
-	Value *TokenAmount
+	Value *TokenAmount `json:"value"`
 
-	Method string
-	Params []byte
+	Method string `json:"method"`
+	Params []byte `json:"params"`
 }
 
 // Unmarshal a message from the given bytes.

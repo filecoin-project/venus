@@ -13,6 +13,7 @@ import (
 	cmdhttp "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -64,14 +65,14 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		re.Emit(fmt.Sprintf("Swarm listening on: %s", a)) // nolint: errcheck
 	}
 
-	return runAPIAndWait(req.Context, fcn, rep.Config().API.Address)
+	return runAPIAndWait(req.Context, fcn, rep.Config())
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
 	return repo.OpenFSRepo(getRepoDir(req))
 }
 
-func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
+func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config) error {
 	if err := node.Start(); err != nil {
 		return err
 	}
@@ -83,6 +84,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
+	cfg.SetAllowedOrigins(config.API.AccessControlAllowOrigin...)
 
 	handler := cmdhttp.NewHandler(servenv, rootCmd, cfg)
 
@@ -90,7 +92,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, api string) error {
 	defer signal.Stop(sigCh)
 
 	apiserv := http.Server{
-		Addr:    api,
+		Addr:    config.API.Address,
 		Handler: handler,
 	}
 

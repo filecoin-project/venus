@@ -14,24 +14,24 @@ func init() {
 
 // Block is a block in the blockchain.
 type Block struct {
-	Parent *cid.Cid
+	Parent *cid.Cid `json:"parent"`
 
 	// Height is the chain height of this block.
-	Height uint64
+	Height uint64 `json:"height"`
 
 	// Nonce is a temporary field used to differentiate blocks for testing
-	Nonce uint64
+	Nonce uint64 `json:"nonce"`
 
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
-	Messages []*Message
+	Messages []*Message `json:"messages"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot *cid.Cid
+	StateRoot *cid.Cid `json:"stateRoot"`
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
-	MessageReceipts []*MessageReceipt
+	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 }
 
 // Cid returns the content id of this block.

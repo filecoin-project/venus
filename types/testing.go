@@ -60,6 +60,27 @@ func NewMessageForTestGetter() func() *Message {
 	}
 }
 
+// NewBlockForTest returns a new block. If a parent block is provided, the returned
+// block will be configured as if it were a child of that parent. The returned block
+// has not been persisted into the store.
+func NewBlockForTest(parent *Block, nonce uint64) *Block {
+	block := &Block{
+		Nonce:           nonce,
+		Messages:        []*Message{},
+		MessageReceipts: []*MessageReceipt{},
+	}
+
+	if parent != nil {
+		block.Height = parent.Height + 1
+		block.StateRoot = parent.StateRoot
+		if err := block.AddParent(*parent); err != nil {
+			panic(err)
+		}
+	}
+
+	return block
+}
+
 // NewMsgs returns n messages. The messages returned are unique to this invocation
 // but are not unique globally (ie, a second call to NewMsgs will return the same
 // set of messages).

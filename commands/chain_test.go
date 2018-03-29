@@ -4,36 +4,51 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
-	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 
 	"encoding/json"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestChainRun(t *testing.T) {
+func TestChainHead(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	cst := hamt.NewCborStore()
-	ds := datastore.NewMapDatastore()
-	nd := &node.Node{ChainMgr: core.NewChainManager(ds, cst), CborStore: cst}
+	nd := CreateInMemoryOfflineTestCmdHarness().node
+	env := &Env{node: nd}
 
-	// Chain of height two.
 	err := nd.ChainMgr.Genesis(ctx, core.InitGenesis)
 	assert.NoError(err)
+
 	gen := nd.ChainMgr.GetBestBlock()
-	child := &types.Block{Height: 1, Parent: gen.Cid(), StateRoot: gen.StateRoot}
-	_, err = nd.ChainMgr.ProcessNewBlock(ctx, child)
+
+	out, err := testhelpers.RunCommand(chainHeadCmd, nil, map[string]interface{}{
+		cmds.EncLong: cmds.JSON,
+	}, env)
+
 	assert.NoError(err)
-	env := &Env{node: nd}
+	assert.Contains(out.Raw, gen.Cid().String())
+}
+
+func TestChainLsRun(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+
+	h := CreateInMemoryOfflineTestCmdHarness()
+
+	// Chain of height two.
+	err := h.chainmanager.Genesis(ctx, core.InitGenesis)
+	assert.NoError(err)
+	gen := h.chainmanager.GetBestBlock()
+	child := &types.Block{Height: 1, Parent: gen.Cid(), StateRoot: gen.StateRoot}
+	_, err = h.chainmanager.ProcessNewBlock(ctx, child)
+	assert.NoError(err)
+	env := &Env{node: h.node}
 
 	out, err := testhelpers.RunCommand(chainLsCmd, nil, map[string]interface{}{
 		cmds.EncLong: cmds.JSON,

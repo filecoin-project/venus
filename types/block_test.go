@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,4 +83,36 @@ func TestEquals(t *testing.T) {
 	assert.False(b1.Equals(b3))
 	assert.False(b1.Equals(b4))
 	assert.False(b3.Equals(b4))
+}
+
+func TestBlockJsonMarshal(t *testing.T) {
+	assert := assert.New(t)
+
+	var parent, child Block
+	child.Height = 1
+	child.Nonce = 2
+	child.Parent = parent.Cid()
+	child.StateRoot = parent.Cid()
+
+	mkMsg := NewMessageForTestGetter()
+
+	message := mkMsg()
+	receipt := NewMessageReceipt(SomeCid(), 0, "", nil)
+	child.Messages = []*Message{message}
+	child.MessageReceipts = []*MessageReceipt{receipt}
+
+	marshalled, e1 := json.Marshal(child)
+	assert.NoError(e1)
+	str := string(marshalled)
+
+	assert.Contains(str, parent.Cid().String())
+	assert.Contains(str, message.From.String())
+	assert.Contains(str, message.To.String())
+
+	// marshal/unmarshal symmetry
+	var unmarshalled Block
+	e2 := json.Unmarshal(marshalled, &unmarshalled)
+	assert.NoError(e2)
+
+	assert.True(child.Equals(&unmarshalled))
 }

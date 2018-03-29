@@ -16,12 +16,14 @@ type Config struct {
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	Address string `toml:"address"`
+	Address                  string   `toml:"address"`
+	AccessControlAllowOrigin []string `toml:"accessControlAllowOrigin"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
 	return &APIConfig{
-		Address: ":3453",
+		Address:                  ":3453",
+		AccessControlAllowOrigin: []string{"http://localhost:8080"},
 	}
 }
 

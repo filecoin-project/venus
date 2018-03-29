@@ -12,14 +12,14 @@ func init() {
 // MessageReceipt represents the result of sending a message.
 type MessageReceipt struct {
 	// The ID of the message this references
-	Message *cid.Cid
+	Message *cid.Cid `json:"message"`
 	// `0` is success, anything else is an error code in unix style.
-	ExitCode uint8
+	ExitCode uint8 `json:"exitCode"`
 	// If invocation returned an error it will be included here.
-	Error string
+	Error string `json:"error"`
 	// The value returned from the message.
 	// TODO: limit size
-	Return []byte
+	Return []byte `json:"return"`
 }
 
 // NewMessageReceipt creates a new MessageReceipt.
