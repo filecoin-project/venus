@@ -29,6 +29,9 @@ var daemonCmd = &cmds.Command{
 		cmdkit.StringOption("swarmlisten"),
 	},
 	Run: daemonRun,
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.Encoders[cmds.Text],
+	},
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -60,9 +63,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		return err
 	}
 
-	re.Emit(fmt.Sprintf("My peer ID is %s", fcn.Host.ID().Pretty())) // nolint: errcheck
+	re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host.ID().Pretty())) // nolint: errcheck
 	for _, a := range fcn.Host.Addrs() {
-		re.Emit(fmt.Sprintf("Swarm listening on: %s", a)) // nolint: errcheck
+		re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
 	}
 
 	return runAPIAndWait(req.Context, fcn, rep.Config())
