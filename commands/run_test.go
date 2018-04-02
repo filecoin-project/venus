@@ -73,8 +73,9 @@ func (o *Output) ReadStdoutTrimNewlines() string {
 type TestDaemon struct {
 	cmdAddr   string
 	swarmAddr string
+	repoDir   string
 
-	repoDir string
+	init bool
 
 	// The filecoin daemon process
 	process *exec.Cmd
@@ -355,6 +356,18 @@ func SwarmAddr(addr string) func(*TestDaemon) {
 	}
 }
 
+func RepoDir(dir string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.repoDir = dir
+	}
+}
+
+func ShouldInit(i bool) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.init = i
+	}
+}
+
 func GetFilecoinBinary() (string, error) {
 	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
 	_, err := os.Stat(bin)
@@ -396,6 +409,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		swarmAddr: fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
 		test:      t,
 		repoDir:   dir,
+		init:      true, // we want to init unless told otherwise
 	}
 
 	// configure TestDaemon options
@@ -404,15 +418,17 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	repodirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
-	out, err := RunInit(repodirFlag)
-	if err != nil {
-		t.Log(string(out))
-		t.Fatal(err)
+	if td.init {
+		out, err := RunInit(repodirFlag)
+		if err != nil {
+			t.Log(string(out))
+			t.Fatal(err)
+		}
 	}
 
 	// define filecoin daemon process
 	td.process = exec.Command(filecoinBin, "daemon",
-		repodirFlag,
+		fmt.Sprintf("--repodir=%s", td.repoDir),
 		fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr),
 		fmt.Sprintf("--swarmlisten=%s", td.swarmAddr),
 	)

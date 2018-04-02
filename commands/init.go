@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -23,24 +24,32 @@ var initCmd = &cmds.Command{
 	},
 }
 
-func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (err error) {
 	repoDir := getRepoDir(req)
 
 	re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
-	err := repo.InitFSRepo(repoDir, config.NewDefaultConfig())
+	if err := repo.InitFSRepo(repoDir, config.NewDefaultConfig()); err != nil {
+		return err
+	}
+
+	rep, err := repo.OpenFSRepo(repoDir)
 	if err != nil {
 		return err
 	}
 
-	r, err := repo.OpenFSRepo(repoDir)
-	if err != nil {
-		return err
-	}
+	defer func() {
+		if closeErr := rep.Close(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = errors.Wrap(err, closeErr.Error())
+			}
+		} // else err may be set and returned as normal
+	}()
 
-	defer r.Close() // nolint: errcheck
-
-	return node.Init(req.Context, r)
+	// TODO don't create the repo if this fails
+	return node.Init(req.Context, rep)
 }
 
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {

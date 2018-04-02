@@ -15,12 +15,19 @@ func TestEnv(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
-	node, err := node.New(ctx, node.OptionsFromRepo(r)...)
+
+	err := node.Init(ctx, r)
 	assert.NoError(err)
 
-	env := Env{ctx: ctx, node: node}
+	opts, err := node.OptionsFromRepo(r)
+	assert.NoError(err)
 
-	assert.Equal(env.Node(), node)
+	nd, err := node.New(ctx, opts...)
+	assert.NoError(err)
+
+	env := Env{ctx: ctx, node: nd}
+
+	assert.Equal(env.Node(), nd)
 	assert.Equal(env.Context(), ctx)
-	assert.Equal(GetNode(&env), node)
+	assert.Equal(GetNode(&env), nd)
 }

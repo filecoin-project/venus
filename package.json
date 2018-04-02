@@ -135,6 +135,18 @@
       "hash": "QmWo8jYc19ppG7YoTsrr2kEtLRbARTJho5oNXFTR6B7Peq",
       "name": "go-ipfs-chunker",
       "version": "0.0.2"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo",
+      "name": "go-libp2p-crypto",
+      "version": "1.5.0"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS",
+      "name": "go-libp2p-peer",
+      "version": "2.2.3"
     }
   ],
   "gxVersion": "0.12.1",

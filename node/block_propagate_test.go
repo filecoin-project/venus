@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -21,7 +20,9 @@ func makeNodes(t *testing.T, n int) []*Node {
 		if err := Init(context.Background(), r); err != nil {
 			t.Fatal(err)
 		}
-		opts := append(OptionsFromRepo(r), Libp2pOptions(libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/0")))
+		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
+		opts, err := OptionsFromRepo(r)
+		assert.NoError(t, err)
 		nd, err := New(context.Background(), opts...)
 		if err != nil {
 			t.Fatal(err)

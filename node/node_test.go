@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -17,15 +18,29 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
+
+// newInMemoryNode creates a new node with an InMemoryRepo, applies options
+// from the InMemoryRepo and returns the initialized node
+func newInMemoryNode(t *testing.T, ctx context.Context) *Node { // nolint: golint
+	r := repo.NewInMemoryRepo()
+	require.NoError(t, Init(ctx, r))
+
+	opts, err := OptionsFromRepo(r)
+	require.NoError(t, err)
+
+	node, err := New(ctx, opts...)
+	require.NoError(t, err)
+
+	return node
+}
 
 func TestNodeConstruct(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	r := repo.NewInMemoryRepo()
-	nd, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
+	nd := newInMemoryNode(t, ctx)
 	assert.NotNil(nd.Host)
 
 	nd.Stop()
@@ -54,11 +69,7 @@ func TestNodeInit(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
-
-	nd, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
+	nd := newInMemoryNode(t, ctx)
 
 	assert.NoError(nd.Start())
 
@@ -68,15 +79,14 @@ func TestNodeInit(t *testing.T) {
 func TestStartMiningEmptyWallet(t *testing.T) {
 	assert := assert.New(t)
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
-	node, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
+
+	node := newInMemoryNode(t, ctx)
+
 	// The node temporarily contains the testaccount address by
 	// default, so replace it.
 	node.Wallet = &wallet.Wallet{}
 	assert.NoError(node.Start())
-	err = node.StartMining()
+	err := node.StartMining()
 	assert.Error(err)
 	assert.Contains(err.Error(), "No addresses")
 }
@@ -85,11 +95,8 @@ func TestNodeMining(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
 
-	node, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
+	node := newInMemoryNode(t, ctx)
 
 	mockWorker := &mining.MockWorker{}
 	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -127,9 +134,9 @@ func TestNodeMining(t *testing.T) {
 	// Ensure we're tearing down cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node, err = New(ctx, OptionsFromRepo(r)...)
+	node = newInMemoryNode(t, ctx)
 	_ = node.Wallet.NewAddress()
-	assert.NoError(err)
+
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetBestBlockForTest(ctx, b1)
 	assert.NoError(node.Start())
@@ -146,9 +153,9 @@ func TestNodeMining(t *testing.T) {
 
 	// Ensure that the output is wired up correctly.
 	ctx, _ = context.WithCancel(context.Background()) // nolint: vet
-	node, err = New(ctx, OptionsFromRepo(r)...)
+	node = newInMemoryNode(t, ctx)
 	_ = node.Wallet.NewAddress()
-	assert.NoError(err)
+
 	mockWorker = &mining.MockWorker{}
 	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
 	iCh = inCh
@@ -174,10 +181,9 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
 	ctx := context.Background()
-	r := repo.NewInMemoryRepo()
-	node, err := New(ctx, OptionsFromRepo(r)...)
+	node := newInMemoryNode(t, ctx)
+
 	_ = node.Wallet.NewAddress()
-	assert.NoError(err)
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
 	type msgs []*types.Message
 
@@ -226,13 +232,9 @@ func TestWaitForMessage(t *testing.T) {
 
 	ctx := context.Background()
 
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
+	node := newInMemoryNode(t, ctx)
 
-	node, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
-
-	err = node.Start()
+	err := node.Start()
 	assert.NoError(err)
 
 	stm := (*core.ChainManagerForTest)(node.ChainMgr)
@@ -246,11 +248,7 @@ func TestWaitForMessageError(t *testing.T) {
 
 	ctx := context.Background()
 
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
-
-	node, err := New(ctx, OptionsFromRepo(r)...)
-	assert.NoError(err)
+	node := newInMemoryNode(t, ctx)
 
 	assert.NoError(node.Start())
 
@@ -308,11 +306,7 @@ func TestGetSignature(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
 
-		r := repo.NewInMemoryRepo()
-		assert.NoError(Init(ctx, r))
-
-		nd, err := New(ctx, OptionsFromRepo(r)...)
-		assert.NoError(err)
+		nd := newInMemoryNode(t, ctx)
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
@@ -320,4 +314,66 @@ func TestGetSignature(t *testing.T) {
 		assert.Equal(ErrNoMethod, err)
 		assert.Nil(sig)
 	})
+}
+
+func TestOptionWithError(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	opts, err := OptionsFromRepo(r)
+	assert.NoError(err)
+
+	scaryErr := errors.New("i am an error grrrr")
+	errOpt := func(c *Config) error {
+		return scaryErr
+	}
+
+	opts = append(opts, errOpt)
+
+	_, err = New(ctx, opts...)
+	assert.Error(err, scaryErr)
+
+}
+
+func TestErrorWithNoRepo(t *testing.T) {
+	ctx := context.Background()
+	assert := assert.New(t)
+	r := repo.NewInMemoryRepo()
+	assert.NoError(Init(ctx, r))
+
+	opts, err := OptionsFromRepo(r)
+	assert.NoError(err)
+
+	removeRepo := func(c *Config) error {
+		c.Repo = nil
+		return nil
+	}
+
+	opts = append(opts, removeRepo)
+
+	_, err = New(ctx, opts...)
+	assert.Error(err, ErrNoRepo)
+
+}
+
+func TestMakePrivateKey(t *testing.T) {
+	assert := assert.New(t)
+
+	// should fail if less than 1024
+	badKey, err := makePrivateKey(10)
+	assert.Error(err, ErrLittleBits)
+	assert.Nil(badKey)
+
+	// 1024 should work
+	okKey, err := makePrivateKey(1024)
+	assert.NoError(err)
+	assert.NotNil(okKey)
+
+	// large values should work
+	goodKey, err := makePrivateKey(4096)
+	assert.NoError(err)
+	assert.NotNil(goodKey)
+
 }

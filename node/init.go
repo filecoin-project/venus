@@ -7,12 +7,16 @@ import (
 	bstore "gx/ipfs/QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY/go-ipfs-blockstore"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
+
 	bserv "github.com/ipfs/go-ipfs/blockservice"
 	offline "github.com/ipfs/go-ipfs/exchange/offline"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
+
+var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
 
 // Init initializes a filecoin node in the given repo
 // TODO: accept options?
@@ -28,5 +32,29 @@ func Init(ctx context.Context, r repo.Repo) error {
 		return errors.Wrap(err, "failed to initialize genesis")
 	}
 
+	sk, err := makePrivateKey(2048)
+	if err != nil {
+		return errors.Wrap(err, "failed to create nodes private key")
+	}
+
+	if err := r.Keystore().Put("self", sk); err != nil {
+		return errors.Wrap(err, "failed to store private key")
+	}
+
 	return nil
+}
+
+// borrowed from go-ipfs: `repo/config/init.go`
+func makePrivateKey(nbits int) (ci.PrivKey, error) {
+	if nbits < 1024 {
+		return nil, ErrLittleBits
+	}
+
+	// create a public private key pair
+	sk, _, err := ci.GenerateKeyPair(ci.RSA, nbits)
+	if err != nil {
+		return nil, err
+	}
+	return sk, nil
+
 }
