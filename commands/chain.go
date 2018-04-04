@@ -2,6 +2,8 @@
 package commands
 
 import (
+	"context"
+
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -9,6 +11,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+type bestBlockGetter func() *types.Block
+
+// func sends either an error or a *types.Block
+type blockHistoryGetter func(ctx context.Context) <-chan interface{}
 
 var chainCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -24,7 +31,9 @@ var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "get the best block CID",
 	},
-	Run:  chainHeadRun,
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		return runChainHead(GetNode(env).ChainMgr.GetBestBlock, re.Emit)
+	},
 	Type: cid.Cid{},
 }
 
@@ -32,37 +41,34 @@ var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "dump full block chain",
 	},
-	Run:  chainLsRun,
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		return runChainLs(req.Context, GetNode(env).ChainMgr.BlockHistory, re.Emit)
+	},
 	Type: types.Block{},
 }
 
-func chainLsRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-	n := GetNode(env)
-
-	blk := n.ChainMgr.GetBestBlock()
-	re.Emit(blk) // nolint: errcheck
-
-	for blk.Parent != nil {
-		var next types.Block
-		if err := n.CborStore.Get(req.Context, blk.Parent, &next); err != nil {
-			return err
+func runChainLs(ctx context.Context, getter blockHistoryGetter, emitter valueEmitter) error {
+	for raw := range getter(ctx) {
+		switch v := raw.(type) {
+		case error:
+			return v
+		case *types.Block:
+			emitter(v) // nolint: errcheck
+		default:
+			return errors.New("unexpected type")
 		}
-		re.Emit(&next) // nolint: errcheck
-		blk = &next
 	}
 
 	return nil
 }
 
-func chainHeadRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-	n := GetNode(env)
-
-	blk := n.ChainMgr.GetBestBlock()
+func runChainHead(getBestBlock bestBlockGetter, emit valueEmitter) error {
+	blk := getBestBlock()
 	if blk == nil {
 		return errors.New("best block not found")
 	}
 
-	cmds.EmitOnce(re, blk.Cid()) // nolint: errcheck
+	emit(cmds.Single{Value: blk.Cid()}) // nolint: errcheck
 
 	return nil
 }

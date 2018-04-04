@@ -65,6 +65,10 @@ func (o *Output) ReadStdout() string {
 	return string(o.stdout)
 }
 
+func (o *Output) ReadStdoutTrimNewlines() string {
+	return strings.Trim(o.ReadStdout(), "\n")
+}
+
 type TestDaemon struct {
 	cmdAddr   string
 	swarmAddr string

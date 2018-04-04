@@ -316,7 +316,6 @@ func TestGetSignature(t *testing.T) {
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
-		fmt.Println(nd.ChainMgr.GetBestBlock())
 		sig, err := nd.GetSignature(ctx, core.TestAccount, "")
 		assert.Equal(ErrNoMethod, err)
 		assert.Nil(sig)

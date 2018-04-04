@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -158,4 +159,23 @@ func (m *MockStateTree) RevertTo(RevID) {
 // Debug implements StateTree.Debug
 func (m *MockStateTree) Debug() {
 	panic("do not call me")
+}
+
+// HasCid allows two values with CIDs to be compared.
+type HasCid interface {
+	Cid() *cid.Cid
+}
+
+// AssertHaveSameCid asserts that two values have identical CIDs.
+func AssertHaveSameCid(a *assert.Assertions, m HasCid, n HasCid) {
+	if !m.Cid().Equals(n.Cid()) {
+		a.Fail("CIDs don't match", "not equal %v %v", m.Cid(), n.Cid())
+	}
+}
+
+// AssertCidsEqual asserts that two CIDS are identical.
+func AssertCidsEqual(a *assert.Assertions, m *cid.Cid, n *cid.Cid) {
+	if !m.Equals(n) {
+		a.Fail("CIDs don't match", "not equal %v %v", m, n)
+	}
 }
