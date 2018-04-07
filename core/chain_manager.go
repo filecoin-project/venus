@@ -200,6 +200,9 @@ func (s *ChainManager) GetGenesisCid() *cid.Cid {
 	return s.genesisCid
 }
 
+// BestBlockGetter is the signature for a function used to get the current best block.
+type BestBlockGetter func() *types.Block
+
 // GetBestBlock returns the head of our currently selected 'best' chain.
 func (s *ChainManager) GetBestBlock() *types.Block {
 	s.bestBlock.Lock()
@@ -218,6 +221,9 @@ func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (
 
 	return s.acceptNewBestBlock(ctx, blk)
 }
+
+// NewBlockProcessor is the signature for a function which processes a new block.
+type NewBlockProcessor func(context.Context, *types.Block) (BlockProcessResult, error)
 
 // ProcessNewBlock sends a new block to the chain manager. If the block is
 // better than our current best, it is accepted as our new best block.

@@ -24,7 +24,7 @@ type NoRepoError struct {
 }
 
 func (err NoRepoError) Error() string {
-	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'go-filecoin init'", err.Path)
+	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'go-filecoin init [--repodir=%s]'", err.Path, err.Path)
 }
 
 // FSRepo is a repo implementation backed by a filesystem.

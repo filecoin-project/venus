@@ -42,17 +42,6 @@ func init() {
 	bad2 = mkChild(bad1, 0)
 }
 
-func mkChild(blk *types.Block, nonce uint64) *types.Block {
-	return &types.Block{
-		Parent:          blk.Cid(),
-		Height:          blk.Height + 1,
-		Nonce:           nonce,
-		StateRoot:       blk.StateRoot,
-		Messages:        []*types.Message{},
-		MessageReceipts: []*types.MessageReceipt{},
-	}
-}
-
 func addBlocks(t *testing.T, cs *hamt.CborIpldStore, blks ...*types.Block) {
 	for _, blk := range blks {
 		_, err := cs.Put(context.Background(), blk)

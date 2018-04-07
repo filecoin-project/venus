@@ -28,6 +28,31 @@ func MustAdd(p *MessagePool, msgs ...*types.Message) {
 	}
 }
 
+// mkChild creates a new block with parent, blk, and supplied nonce.
+func mkChild(blk *types.Block, nonce uint64) *types.Block {
+	return &types.Block{
+		Parent:          blk.Cid(),
+		Height:          blk.Height + 1,
+		Nonce:           nonce,
+		StateRoot:       blk.StateRoot,
+		Messages:        []*types.Message{},
+		MessageReceipts: []*types.MessageReceipt{},
+	}
+}
+
+// AddChain creates and processes new, empty chain of length, beginning from blk.
+func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, blk *types.Block, length int) (*types.Block, error) {
+	l := uint64(length)
+	for i := uint64(0); i < l; i++ {
+		blk = mkChild(blk, i)
+		_, err := processNewBlock(ctx, blk)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return blk, nil
+}
+
 // NewChainWithMessages creates a chain of blocks containing the given messages
 // and stores them in the given store. Note the msg arguments are slices of
 // messages -- each slice goes into a successive block.
