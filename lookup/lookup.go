@@ -136,8 +136,8 @@ func (le *LookupEngine) Lookup(ctx context.Context, a types.Address) (peer.ID, e
 	case out := <-ch:
 		return out.(peer.ID), nil
 	case <-time.After(time.Second * 10):
-		return "", fmt.Errorf("timed out waiting for response")
+		return "", fmt.Errorf("lookup timed out waiting for response")
 	case <-ctx.Done():
-		return "", fmt.Errorf("context cancled")
+		return "", fmt.Errorf("lookup failed: context cancled")
 	}
 }

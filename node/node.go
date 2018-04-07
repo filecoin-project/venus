@@ -63,6 +63,7 @@ type Node struct {
 	miningDoneWg       *sync.WaitGroup
 	AddNewlyMinedBlock newBlockFunc
 
+	// Storage Market Interfaces
 	StorageClient *StorageClient
 	StorageMarket *StorageMarket
 
@@ -171,6 +172,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	fcWallet := wallet.New()
+
+	// TODO: load wallet from repo
+	// start up with an address already made
+	_ = fcWallet.NewAddress()
+
 	le, err := lookup.NewLookupEngine(fsub, fcWallet, host.ID())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to setup lookup engine")
@@ -194,7 +200,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start() error {
-
 	if err := node.ChainMgr.Load(); err != nil {
 		return err
 	}

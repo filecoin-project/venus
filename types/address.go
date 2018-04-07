@@ -263,6 +263,9 @@ func encode(hrp string, version byte, data []byte) (string, error) {
 // the hrp(human-readable part), version (1byte) and data(32bit data array)
 // or an error.
 func decode(addr string) (string, byte, []byte, error) {
+	if len(addr) < 2 {
+		return "", 0, nil, fmt.Errorf("address too short")
+	}
 	if len(addr) > 41 {
 		return "", 0, nil, fmt.Errorf("too long: len=%d", len(addr))
 	}

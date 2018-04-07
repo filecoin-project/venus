@@ -16,17 +16,20 @@ func TestDealProtocolClient(t *testing.T) {
 	assert := assert.New(t)
 	nds := makeNodes(t, 2)
 	connect(t, nds[0], nds[1])
+	time.Sleep(time.Millisecond * 10) // wait for connect notifications to complete
 
 	sm := NewStorageMarket(nds[0])
 	client := NewStorageClient(nds[1])
 
 	minerAddr := nds[0].Wallet.NewAddress()
+	minerOwner := nds[0].Wallet.NewAddress()
 
-	msa := &mockStorageMarketPeeker{}
+	msa := newMockMsp()
+	client.smi = msa
+	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5000)
 	msa.addBid(core.TestAccount, 35, 5000)
 	sm.smi = msa
-	sm.minerAddr = minerAddr
 
 	data := dag.NewRawNode([]byte("cats"))
 
@@ -39,17 +42,14 @@ func TestDealProtocolClient(t *testing.T) {
 		ClientSig: string(core.TestAccount[:]),
 	}
 
-	// TODO: need a way of mapping address -> peerID
-	minerPid := nds[0].Host.ID()
-
-	resp, err := client.ProposeDeal(ctx, minerPid, propose)
+	resp, err := client.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Accepted, resp.State)
 	id := resp.ID
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = client.QueryDeal(ctx, minerPid, id)
+	resp, err = client.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Started, resp.State)
@@ -59,7 +59,7 @@ func TestDealProtocolClient(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = client.QueryDeal(ctx, minerPid, id)
+	resp, err = client.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Posted, resp.State)

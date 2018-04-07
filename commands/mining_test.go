@@ -28,11 +28,16 @@ func TestMinerGenBlock(t *testing.T) {
 	t.Log("[success] address in local wallet")
 	// Mining reward accrues to first address in the wallet (for now).
 	addr := strings.TrimSpace(d.RunSuccess("wallet", "addrs", "list").ReadStdout())
-	s := d.RunSuccess("wallet", "balance", addr)
-	beforeBalance := parseInt(assert, s.ReadStdout())
+	// TODO: currently, running 'wallet balance' on an address with no funds
+	// results in an 'Error: not found'. This needs to be changed to just
+	// return a zero balance. When that happens, remove the following line, and
+	// uncomment the two after it
+	beforeBalance := big.NewInt(0)
+	//s := d.RunSuccess("wallet", "balance", addr)
+	//beforeBalance := parseInt(assert, s.ReadStdout())
 	d.RunSuccess("mining", "once")
-	s = d.RunSuccess("wallet", "balance", addr)
+	s := d.RunSuccess("wallet", "balance", addr)
 	afterBalance := parseInt(assert, s.ReadStdout())
 	sum := new(big.Int)
-	assert.True(sum.Add(beforeBalance, big.NewInt(100)).Cmp(afterBalance) == 0)
+	assert.True(sum.Add(beforeBalance, big.NewInt(1000)).Cmp(afterBalance) == 0)
 }

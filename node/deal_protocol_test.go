@@ -18,6 +18,14 @@ type mockStorageMarketPeeker struct {
 	asks []*core.Ask
 	bids []*core.Bid
 	//deals []*core.Deal
+
+	minerOwners map[types.Address]types.Address
+}
+
+func newMockMsp() *mockStorageMarketPeeker {
+	return &mockStorageMarketPeeker{
+		minerOwners: make(map[types.Address]types.Address),
+	}
 }
 
 func (msa *mockStorageMarketPeeker) GetAsk(ask uint64) (*core.Ask, error) {
@@ -44,6 +52,15 @@ func (msa *mockStorageMarketPeeker) GetBidSet() (core.BidSet, error) {
 
 func (msa *mockStorageMarketPeeker) GetDealList() ([]*core.Deal, error) {
 	return nil, nil
+}
+
+func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a types.Address) (types.Address, error) {
+	mo, ok := msa.minerOwners[a]
+	if !ok {
+		return types.Address{}, fmt.Errorf("no such miner")
+	}
+
+	return mo, nil
 }
 
 // makes mocking existing asks easier
@@ -77,9 +94,6 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 }
 
 /* TODO: add tests for:
-- no such ask
-- no such bid
-- bid too large / ask too small
 - test query for deal not found
 - test deal fails once posted on chain (maybe)
 */
@@ -90,13 +104,15 @@ func TestDealProtocol(t *testing.T) {
 	sm := NewStorageMarket(nd)
 
 	minerAddr := nd.Wallet.NewAddress()
+	minerOwner := nd.Wallet.NewAddress()
+	_ = minerOwner
 
-	msa := &mockStorageMarketPeeker{}
+	msa := newMockMsp()
+	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
 	msa.addBid(core.TestAccount, 35, 5000)
 
 	sm.smi = msa
-	sm.minerAddr = minerAddr
 
 	data := dag.NewRawNode([]byte("cats"))
 
@@ -130,4 +146,55 @@ func TestDealProtocol(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(Posted, resp.State)
+}
+
+func TestDealProtocolMissing(t *testing.T) {
+	assert := assert.New(t)
+	nd := makeNodes(t, 1)[0]
+
+	sm := NewStorageMarket(nd)
+
+	minerAddr := nd.Wallet.NewAddress()
+	minerOwner := nd.Wallet.NewAddress()
+
+	msa := newMockMsp()
+	msa.minerOwners[minerAddr] = minerOwner
+	msa.addAsk(minerAddr, 40, 5500)
+	msa.addAsk(minerAddr, 20, 1000)
+	msa.addBid(core.TestAccount, 35, 5000)
+	msa.addBid(core.TestAccount, 15, 2000)
+
+	sm.smi = msa
+
+	data := dag.NewRawNode([]byte("cats"))
+
+	propose := &DealProposal{
+		Deal:      &core.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
+		ClientSig: string(core.TestAccount[:]),
+	}
+
+	resp, err := sm.ProposeDeal(propose)
+	assert.NoError(err)
+	assert.Equal(Rejected, resp.State)
+	assert.Equal("unknown bid: no such bid", resp.Message)
+
+	propose = &DealProposal{
+		Deal:      &core.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
+		ClientSig: string(core.TestAccount[:]),
+	}
+
+	resp, err = sm.ProposeDeal(propose)
+	assert.NoError(err)
+	assert.Equal(Rejected, resp.State)
+	assert.Equal("unknown ask: no such ask", resp.Message)
+
+	propose = &DealProposal{
+		Deal:      &core.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
+		ClientSig: string(core.TestAccount[:]),
+	}
+
+	resp, err = sm.ProposeDeal(propose)
+	assert.NoError(err)
+	assert.Equal(Rejected, resp.State)
+	assert.Equal("ask does not have enough space for bid", resp.Message)
 }

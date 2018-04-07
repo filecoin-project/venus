@@ -15,7 +15,7 @@ func TestBidList(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
+	d.CreateWalletAddr()
 
 	for i := 0; i < 10; i++ {
 		d.RunSuccess("client", "add-bid", "1", fmt.Sprintf("%d", i),
@@ -40,18 +40,13 @@ func TestAskList(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	d.CreateWalletAdder()
-	minerAddr := d.CreateMinerAdder()
+	minerAddr := d.CreateMinerAddr()
 
 	for i := 0; i < 10; i++ {
-		d.RunSuccess("miner", "add-ask", minerAddr.String(), "1", fmt.Sprintf("%d", i),
-			"--from", core.TestAccount.String(),
-		)
+		d.RunSuccess("miner", "add-ask", minerAddr.String(), "1", fmt.Sprintf("%d", i))
 	}
 
-	for i := 0; i < 10; i++ {
-		d.RunSuccess("mining", "once")
-	}
+	d.RunSuccess("mining", "once")
 
 	list := d.RunSuccess("orderbook", "asks").ReadStdout()
 	for i := 0; i < 10; i++ {

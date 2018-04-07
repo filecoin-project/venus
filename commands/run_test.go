@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -41,6 +40,8 @@ type Output struct {
 	stdout []byte
 	Stderr io.ReadCloser
 	stderr []byte
+
+	test testing.TB
 }
 
 func (o *Output) Close(code int, err error) {
@@ -87,6 +88,12 @@ type TestDaemon struct {
 }
 
 func (td *TestDaemon) Run(args ...string) *Output {
+	td.test.Helper()
+	return td.RunWithStdin(nil, args...)
+}
+
+func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
+	td.test.Helper()
 	bin, err := GetFilecoinBinary()
 	require.NoError(td.test, err)
 
@@ -100,8 +107,9 @@ func (td *TestDaemon) Run(args ...string) *Output {
 	td.test.Logf("run: %q", strings.Join(finalArgs, " "))
 	cmd := exec.Command(bin, finalArgs...)
 
-	stdin, err := cmd.StdinPipe()
-	require.NoError(td.test, err)
+	if stdin != nil {
+		cmd.Stdin = stdin
+	}
 
 	stderr, err := cmd.StderrPipe()
 	require.NoError(td.test, err)
@@ -119,11 +127,11 @@ func (td *TestDaemon) Run(args ...string) *Output {
 
 	o := &Output{
 		Args:   args,
-		Stdin:  stdin,
 		Stdout: stdout,
 		stdout: stdoutBytes,
 		Stderr: stderr,
 		stderr: stderrBytes,
+		test:   td.test,
 	}
 
 	err = cmd.Wait()
@@ -142,24 +150,34 @@ func (td *TestDaemon) Run(args ...string) *Output {
 }
 
 func (td *TestDaemon) RunSuccess(args ...string) *Output {
-	o := td.Run(args...)
-	assert.NoError(td.test, o.Error)
+	td.test.Helper()
+	return td.Run(args...).AssertSuccess()
+}
+
+func (o *Output) AssertSuccess() *Output {
+	o.test.Helper()
+	assert.NoError(o.test, o.Error)
 	oErr := o.ReadStderr()
 
-	assert.Equal(td.test, o.Code, 0, oErr)
-	assert.NotContains(td.test, oErr, "CRITICAL")
-	assert.NotContains(td.test, oErr, "ERROR")
-	assert.NotContains(td.test, oErr, "WARNING")
+	assert.Equal(o.test, o.Code, 0, oErr)
+	assert.NotContains(o.test, oErr, "CRITICAL")
+	assert.NotContains(o.test, oErr, "ERROR")
+	assert.NotContains(o.test, oErr, "WARNING")
 	return o
+
 }
 
 func (td *TestDaemon) RunFail(err string, args ...string) *Output {
 	td.test.Helper()
-	o := td.Run(args...)
-	assert.NoError(td.test, o.Error)
-	assert.Equal(td.test, 1, o.Code)
-	assert.Empty(td.test, o.ReadStdout())
-	assert.Contains(td.test, o.ReadStderr(), err)
+	return td.Run(args...).AssertFail(err)
+}
+
+func (o *Output) AssertFail(err string) *Output {
+	o.test.Helper()
+	assert.NoError(o.test, o.Error)
+	assert.Equal(o.test, 1, o.Code)
+	assert.Empty(o.test, o.ReadStdout())
+	assert.Contains(o.test, o.ReadStderr(), err)
 	return o
 }
 
@@ -262,14 +280,15 @@ func (td *TestDaemon) WaitForAPI() error {
 	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds)")
 }
 
-// CreateMinerAdder issues a new message to the network, mines the message
+// CreateMinerAddr issues a new message to the network, mines the message
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAdder() types.Address {
-	miner := td.RunSuccess("miner", "create",
-		"--from", core.TestAccount.String(), "1000000", "20",
-	)
+func (td *TestDaemon) CreateMinerAddr() types.Address {
+	// need money
+	td.RunSuccess("mining", "once")
+
+	miner := td.RunSuccess("miner", "create", "1000000", "1000")
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
 	require.NoError(td.test, err)
 
@@ -297,11 +316,11 @@ func (td *TestDaemon) CreateMinerAdder() types.Address {
 	return minerAddr
 }
 
-// CreateWalletAdder adds a new address to the daemons wallet and
+// CreateWalletAddr adds a new address to the daemons wallet and
 // returns it.
 // equivalent to:
 //     `go-filecoin wallet addrs new`
-func (td *TestDaemon) CreateWalletAdder() string {
+func (td *TestDaemon) CreateWalletAddr() string {
 	td.test.Helper()
 	outNew := td.RunSuccess("wallet", "addrs", "new")
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
