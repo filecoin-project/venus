@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"time"
 
-	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds/http"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -44,13 +43,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		rep.Config().API.Address = apiAddress
 	}
 
-	opts := node.OptionsFromRepo(rep)
-
 	if swarmAddress, ok := req.Options["swarmlisten"].(string); ok {
-		opts = append(opts,
-			// TODO: this should be passed in from a config file, not an api flag
-			node.Libp2pOptions(libp2p.ListenAddrStrings(swarmAddress)),
-		)
+		rep.Config().Swarm.Address = swarmAddress
+	}
+
+	opts, err := node.OptionsFromRepo(rep)
+	if err != nil {
+		return err
 	}
 
 	fcn, err := node.New(req.Context, opts...)

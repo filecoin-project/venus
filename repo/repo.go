@@ -4,6 +4,7 @@ import (
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/keystore"
 )
 
 // Version is the current repo version that we require for a valid repo.
@@ -22,6 +23,7 @@ type Datastore interface {
 type Repo interface {
 	Config() *config.Config
 	Datastore() Datastore
+	Keystore() keystore.Keystore
 	Version() uint
 	Close() error
 }

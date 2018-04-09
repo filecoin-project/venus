@@ -13,6 +13,7 @@ import (
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/keystore"
 )
 
 const configFilename = "config.toml"
@@ -32,8 +33,9 @@ type FSRepo struct {
 	path    string
 	version uint
 
-	cfg *config.Config
-	ds  Datastore
+	cfg      *config.Config
+	ds       Datastore
+	keystore keystore.Keystore
 }
 
 var _ Repo = (*FSRepo)(nil)
@@ -73,6 +75,10 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 
 	if err := r.openDatastore(); err != nil {
 		return nil, errors.Wrap(err, "failed to open datastore")
+	}
+
+	if err := r.openKeystore(); err != nil {
+		return nil, errors.Wrap(err, "failed to open keystore")
 	}
 
 	return r, nil
@@ -122,6 +128,11 @@ func (r *FSRepo) Datastore() Datastore {
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
+}
+
+// Keystore returns the keystore
+func (r *FSRepo) Keystore() keystore.Keystore {
+	return r.keystore
 }
 
 // Close closes the repo.
@@ -186,6 +197,18 @@ func (r *FSRepo) openDatastore() error {
 	default:
 		return fmt.Errorf("unknown datastore type in config: %s", r.cfg.Datastore.Type)
 	}
+
+	return nil
+}
+
+func (r *FSRepo) openKeystore() error {
+	ksp := filepath.Join(r.path, "keystore")
+
+	ks, err := keystore.NewFSKeystore(ksp)
+	if err != nil {
+		return err
+	}
+	r.keystore = ks
 
 	return nil
 }

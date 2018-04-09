@@ -4,12 +4,14 @@ import (
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/keystore"
 )
 
 // MemRepo is an in memory implementation of the filecoin repo
 type MemRepo struct {
 	C       *config.Config
 	D       Datastore
+	Ks      keystore.Keystore
 	version uint
 }
 
@@ -20,6 +22,7 @@ func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
 		C:       config.NewDefaultConfig(),
 		D:       datastore.NewMapDatastore(),
+		Ks:      keystore.NewMemKeystore(),
 		version: Version,
 	}
 }
@@ -32,6 +35,11 @@ func (mr *MemRepo) Config() *config.Config {
 // Datastore returns the datastore
 func (mr *MemRepo) Datastore() Datastore {
 	return mr.D
+}
+
+// Keystore returns the keystore
+func (mr *MemRepo) Keystore() keystore.Keystore {
+	return mr.Ks
 }
 
 // Version returns the version of the repo

@@ -35,6 +35,8 @@ var log = logging.Logger("node") // nolint: deadcode
 var (
 	// ErrNoMethod is returned when processing a message that does not have a method.
 	ErrNoMethod = errors.New("no method in message")
+	// ErrNoRepo is returned when the configs repo is nil
+	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 )
 
 // Node represents a full Filecoin node.
@@ -109,6 +111,10 @@ type ConfigOpt func(*Config) error
 // Libp2pOptions returns a node config option that sets up the libp2p node
 func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 	return func(nc *Config) error {
+		// Quietly having your options overridden leads to hair loss
+		if len(nc.Libp2pOpts) > 0 {
+			panic("Libp2pOptions can only be called once")
+		}
 		nc.Libp2pOpts = opts
 		return nil
 	}
@@ -138,7 +144,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	if nc.Repo == nil {
 		// TODO: maybe allow for not passing a repo?
-		return nil, fmt.Errorf("must pass a repo option to the node build process")
+		return nil, ErrNoRepo
 	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
