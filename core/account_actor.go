@@ -26,6 +26,11 @@ type AccountActor struct{}
 // the individual instances of an account.
 type AccountStorage struct{}
 
+// NewStorage returns an empty AccountStorage struct
+func (state *AccountActor) NewStorage() interface{} {
+	return &AccountStorage{}
+}
+
 // ensure AccountActor is an ExecutableActor at compile time
 var _ ExecutableActor = (*AccountActor)(nil)
 

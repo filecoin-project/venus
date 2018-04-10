@@ -74,9 +74,9 @@ func TestProcessBlockSuccess(t *testing.T) {
 }
 
 type fakeActorStorage struct{ Changed bool }
-type fakeActor struct{}
+type FakeActor struct{}
 
-var _ ExecutableActor = (*fakeActor)(nil)
+var _ ExecutableActor = (*FakeActor)(nil)
 
 var fakeActorExports = Exports{
 	"foo": &FunctionSignature{
@@ -85,14 +85,18 @@ var fakeActorExports = Exports{
 	},
 }
 
-// Exports returns the list of fakeActor exported functions.
-func (ma *fakeActor) Exports() Exports {
+// Exports returns the list of FakeActor exported functions.
+func (ma *FakeActor) Exports() Exports {
 	return fakeActorExports
 }
 
-// Foo sets a bit inside fakeActor's storage and returns a
+func (ma *FakeActor) NewStorage() interface{} {
+	return nil
+}
+
+// Foo sets a bit inside FakeActor's storage and returns a
 // revert error.
-func (ma *fakeActor) Foo(ctx *VMContext) (uint8, error) {
+func (ma *FakeActor) Foo(ctx *VMContext) (uint8, error) {
 	fastore := &fakeActorStorage{}
 	_, err := WithStorage(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
@@ -119,7 +123,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	BuiltinActors[fakeActorCodeCid.KeyString()] = &fakeActor{}
+	BuiltinActors[fakeActorCodeCid.KeyString()] = &FakeActor{}
 	defer func() {
 		delete(BuiltinActors, fakeActorCodeCid.KeyString())
 	}()

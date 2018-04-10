@@ -190,3 +190,53 @@ func (t *stateTree) debugPointer(ps []*hamt.Pointer) {
 		}
 	}
 }
+
+// GetAllActors returns a slice of all actors in the StateTree, t.
+func GetAllActors(t StateTree) ([]string, []*Actor) {
+	st := t.(*stateTree)
+
+	return st.getActorsFromPointers(st.root.Pointers)
+}
+
+// GetAllActorsFromStoreFunc is a function with the signature of GetAllActorsFromStore
+type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*Actor, error)
+
+// GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
+// Third returned value is any error that occurred when loading.
+func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string, []*Actor, error) {
+	st, err := LoadStateTree(ctx, store, stateRoot)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	addrs, actors := GetAllActors(st)
+	return addrs, actors, nil
+}
+
+// NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.
+func (t *stateTree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, actors []*Actor) {
+	for _, p := range ps {
+		for _, kv := range p.KVs {
+			a := new(Actor)
+			err := a.Unmarshal(kv.Value)
+			// An error here means kv.Value was not an actor.
+			// We won't append it to our results, but we should keep traversing the tree.
+			if err == nil {
+				addresses = append(addresses, kv.Key)
+				actors = append(actors, a)
+			}
+		}
+		if p.Link != nil {
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			// Even if we hit an error and can't follow this link, we should
+			// keep traversing its siblings.
+			if err != nil {
+				continue
+			}
+			moreAddrs, moreActors := t.getActorsFromPointers(n.Pointers)
+			addresses = append(addresses, moreAddrs...)
+			actors = append(actors, moreActors...)
+		}
+	}
+	return
+}
