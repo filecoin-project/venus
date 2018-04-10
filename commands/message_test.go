@@ -15,7 +15,7 @@ func TestMessageSend(t *testing.T) {
 
 	t.Log("[failure] invalid target")
 	d.RunFail(
-		"invalid checksum",
+		"invalid length",
 		"message", "send",
 		"--from", core.NetworkAccount.String(),
 		"--value=10", "xyz",

@@ -2,7 +2,9 @@ package types
 
 import (
 	"encoding/json"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -29,38 +31,65 @@ func TestBlockAddParent(t *testing.T) {
 	assert.False(t, c.IsParentOf(p))
 }
 
+func TestBlockScore(t *testing.T) {
+	source := rand.NewSource(time.Now().UnixNano())
+
+	t.Run("block score equals block height", func(t *testing.T) {
+		assert := assert.New(t)
+
+		for i := 0; i < 100; i++ {
+			n := uint64(source.Int63())
+
+			var b Block
+			b.Height = n
+
+			assert.Equal(b.Height, b.Score(), "block height: %d - block score %d", b.Height, b.Score())
+		}
+	})
+}
+
 func TestDecodeBlock(t *testing.T) {
-	assert := assert.New(t)
+	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
+		assert := assert.New(t)
 
-	addrGetter := NewAddressForTestGetter()
-	m1 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(10), "hello", []byte("cat"))
-	m2 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(2), "yes", []byte("dog"))
+		addrGetter := NewAddressForTestGetter()
+		m1 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(10), "hello", []byte("cat"))
+		m2 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(2), "yes", []byte("dog"))
 
-	m1Cid, err := m1.Cid()
-	assert.NoError(err)
-	m2Cid, err := m2.Cid()
-	assert.NoError(err)
+		m1Cid, err := m1.Cid()
+		assert.NoError(err)
+		m2Cid, err := m2.Cid()
+		assert.NoError(err)
 
-	c1, err := cidFromString("a")
-	assert.NoError(err)
-	c2, err := cidFromString("b")
-	assert.NoError(err)
+		c1, err := cidFromString("a")
+		assert.NoError(err)
+		c2, err := cidFromString("b")
+		assert.NoError(err)
 
-	before := &Block{
-		Parent:    c1,
-		Height:    2,
-		Messages:  []*Message{m1, m2},
-		StateRoot: c2,
-		MessageReceipts: []*MessageReceipt{
-			NewMessageReceipt(m1Cid, 1, "", []byte{1, 2}),
-			NewMessageReceipt(m2Cid, 1, "", []byte{1, 2}),
-		},
-	}
+		before := &Block{
+			Parent:    c1,
+			Height:    2,
+			Messages:  []*Message{m1, m2},
+			StateRoot: c2,
+			MessageReceipts: []*MessageReceipt{
+				NewMessageReceipt(m1Cid, 1, "", []byte{1, 2}),
+				NewMessageReceipt(m2Cid, 1, "", []byte{1, 2}),
+			},
+		}
 
-	after, err := DecodeBlock(before.ToNode().RawData())
-	assert.NoError(err)
-	assert.Equal(after.Cid(), before.Cid())
-	assert.Equal(after, before)
+		after, err := DecodeBlock(before.ToNode().RawData())
+		assert.NoError(err)
+		assert.Equal(after.Cid(), before.Cid())
+		assert.Equal(after, before)
+	})
+
+	t.Run("decode failure results in an error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		_, err := DecodeBlock([]byte{1, 2, 3})
+		assert.Error(err)
+		assert.Contains(err.Error(), "malformed stream")
+	})
 }
 
 func TestEquals(t *testing.T) {

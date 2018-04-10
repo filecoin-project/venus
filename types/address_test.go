@@ -67,8 +67,58 @@ func TestValidAddresses(t *testing.T) {
 	}
 }
 
-func TestInvalidAddresses(t *testing.T) {
-	// TODO: write me
+func TestInvalidAddressCreation(t *testing.T) {
+	testCases := []struct {
+		input                    string
+		expectedStrParseErrorMsg string
+	}{
+		{"f", "invalid length"},                                                                // < 2 chars
+		{"fcqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9x", "invalid length"},                       // > 41 chars
+		{"fcQeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "mixed case"},                            // fc[Q]...
+		{"f qeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character human-readable part"}, // f[ ]...
+		{"fcqéutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc", "non alphanumeric character"},             // fcq[é]...
+		{"fc1eutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character"},                     // fc[1]...
+		{"fcbeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character"},                     // fc[1]...
+		{"fcieutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character"},                     // fc[i]...
+		{"fcoeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character"},                     // fc[o]...
+		{"fcreutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid checksum"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("NewAddressFromString - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
+			assert := assert.New(t)
+
+			_, err := NewAddressFromString(tc.input)
+			assert.Error(err)
+			assert.Contains(err.Error(), tc.expectedStrParseErrorMsg, fmt.Sprintf("input: %s", tc.input))
+		})
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("NewAddressFromBytes - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
+			assert := assert.New(t)
+
+			_, err := NewAddressFromBytes([]byte(tc.input))
+			assert.Error(err)
+			assert.Contains(err.Error(), "invalid bytes")
+		})
+	}
+
+	t.Run("NewAddressFromBytes supports only Testnet", func(t *testing.T) {
+		assert := assert.New(t)
+
+		_, err := NewAddressFromBytes([]byte{Testnet + 1, AddressVersion, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+		assert.Error(err)
+		assert.Equal(ErrUnknownNetwork, err)
+	})
+
+	t.Run(fmt.Sprintf("NewAddressFromBytes supports only AddressVersion %d", AddressVersion), func(t *testing.T) {
+		assert := assert.New(t)
+
+		_, err := NewAddressFromBytes([]byte{Testnet, AddressVersion + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+		assert.Error(err)
+		assert.Equal(ErrUnknownVersion, err)
+	})
 }
 
 func TestAddressFormat(t *testing.T) {
