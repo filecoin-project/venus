@@ -9,6 +9,7 @@ The following is a set of guidelines for contributing to the Filecoin Project. F
 * [Conventions and Style](#conventions-and-style)
 * [Error Handling](#error-handling)
 * [The Spec](#the-spec)
+* [Platform Considerations](#platform-considerations)
 * [Testing Philosophy](#testing-philosophy)
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
@@ -73,11 +74,24 @@ this early stage is "the spec is updated" rather than "the spec is
 updated in precise lockstep with the code". That will be the policy at
 some point in the future.
 
+## Platform Considerations
+
+Prefer to derive patterns from more established, closely related
+platforms than to derive them from first principles.  For example for
+things like configuration, commands, persistence, and the like we draw
+heavily on patterns in IPFS. Similarly we draw on patterns in Ethereum
+for message processing. Features should be informed by an awareness of
+related platforms.
+
 ## Testing Philosophy
-* All code must be unit tested and should hit our target coverage rate (80%). We also have command tests that test commands executing on a filecoin node.
-Command tests are not a substitute for unit tests: test command integration with command tests, but 
-command implementations like all other code also require unit tests.
-* We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work)
+* All code must be unit tested and should hit our target coverage rate (80%). 
+* We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work).
+* Daemon tests (integration tests that run a node and send it commands):
+  * Daemon tests are not a substitute for unit tests: the foo command implementation should be unit tested in the `foo_test.go` file
+  * Daemon tests should test integration, not comprehensive functionality
+  * Daemon tests should validate that their responses conform to a JSON schema
+  * Daemon tests for foo go into `foo_daemon_test.go` (so `foo.go` should have *both* `foo_test.go` and `foo_daemon_test.go`)
+
 
 ## What is the bar for inclusion in master?
 
