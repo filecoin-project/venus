@@ -27,7 +27,7 @@ func TestMinerGenBlock(t *testing.T) {
 
 	t.Log("[success] address in local wallet")
 	// Mining reward accrues to first address in the wallet (for now).
-	addr := strings.TrimSpace(d.RunSuccess("wallet", "addrs", "list").ReadStdout())
+	addr := strings.TrimSpace(d.RunSuccess("wallet", "addrs", "ls").ReadStdout())
 	// TODO: currently, running 'wallet balance' on an address with no funds
 	// results in an 'Error: not found'. This needs to be changed to just
 	// return a zero balance. When that happens, remove the following line, and

@@ -25,7 +25,7 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"list":   addrsListCmd,
+		"ls":     addrsListCmd,
 		"new":    addrsNewCmd,
 		"lookup": addrsLookupCmd,
 	},

@@ -20,7 +20,7 @@ func TestAddrsNewAndList(t *testing.T) {
 		addrs[i] = d.CreateWalletAddr()
 	}
 
-	list := d.RunSuccess("wallet", "addrs", "list").ReadStdout()
+	list := d.RunSuccess("wallet", "addrs", "ls").ReadStdout()
 	for _, addr := range addrs {
 		assert.Contains(list, addr)
 	}
@@ -56,13 +56,13 @@ func TestAddrsLookup(t *testing.T) {
 	//Connect daemons
 	d1.ConnectSuccess(d2)
 
-	d1Raw := d1.RunSuccess("address list")
+	d1Raw := d1.RunSuccess("address ls")
 	d1Addrs := strings.Split(strings.Trim(d1Raw.ReadStdout(), "\n"), "\n")
 	d1WalletAddr := d1Addrs[len(d1Addrs)-1]
 	t.Logf("D1 Wallet Address: %s", d1WalletAddr)
 	assert.NotEmpty(d1WalletAddr)
 
-	d2Raw := d2.RunSuccess("address list")
+	d2Raw := d2.RunSuccess("address ls")
 	d2Addrs := strings.Split(strings.Trim(d2Raw.ReadStdout(), "\n"), "\n")
 	d2WalletAddr := d2Addrs[len(d2Addrs)-1]
 	t.Logf("D2 Wallet Address: %s", d2WalletAddr)
