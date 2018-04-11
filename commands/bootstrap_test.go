@@ -12,7 +12,7 @@ func TestBootstrapList(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	bs := d.RunSuccess("bootstrap list")
+	bs := d.RunSuccess("bootstrap ls")
 
 	assert.Equal("[TODO]\n", bs.ReadStdout())
 }

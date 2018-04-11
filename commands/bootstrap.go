@@ -19,11 +19,11 @@ var bootstrapCmd = &cmds.Command{
 		Tagline: "Interact with bootstrap addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"list": bootstrapListCmd,
+		"ls": bootstrapLsCmd,
 	},
 }
 
-var bootstrapListCmd = &cmds.Command{
+var bootstrapLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		// TODO load from config file once implemented
 		cfg := config.NewDefaultConfig()
