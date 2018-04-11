@@ -9,11 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChainDaemon(t *testing.T) {
 	t.Run("chain ls returns the whole chain", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
@@ -21,7 +23,7 @@ func TestChainDaemon(t *testing.T) {
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
 		result1 := op1.ReadStdoutTrimNewlines()
 		c, err := cid.Parse(result1)
-		assert.NoError(err)
+		require.NoError(err)
 
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
 		result2 := op2.ReadStdoutTrimNewlines()
@@ -30,7 +32,7 @@ func TestChainDaemon(t *testing.T) {
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
 			var b types.Block
 			err := json.Unmarshal(line, &b)
-			assert.NoError(err)
+			require.NoError(err)
 			bs = append(bs, b)
 		}
 
@@ -41,6 +43,7 @@ func TestChainDaemon(t *testing.T) {
 
 	t.Run("chain head with chain of size 1 returns genesis block", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
@@ -50,7 +53,7 @@ func TestChainDaemon(t *testing.T) {
 
 		var b types.Block
 		err := json.Unmarshal([]byte(result), &b)
-		assert.NoError(err)
+		require.NoError(err)
 
 		assert.Nil(b.Parent)
 	})

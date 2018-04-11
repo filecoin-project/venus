@@ -10,11 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDagDaemon(t *testing.T) {
 	t.Run("dag get <cid> returning the genesis block", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
@@ -35,7 +37,7 @@ func TestDagDaemon(t *testing.T) {
 		result2 := op2.ReadStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJson(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
-		assert.NoError(err)
+		require.NoError(err)
 
 		// CBOR decode the IPLD node's raw data into a Filecoin block
 
