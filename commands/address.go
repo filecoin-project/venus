@@ -25,7 +25,7 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"list":   addrsListCmd,
+		"ls":     addrsLsCmd,
 		"new":    addrsNewCmd,
 		"lookup": addrsLookupCmd,
 	},
@@ -50,7 +50,7 @@ var addrsNewCmd = &cmds.Command{
 	},
 }
 
-var addrsListCmd = &cmds.Command{
+var addrsLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
 		for _, a := range fcn.Wallet.GetAddresses() {
