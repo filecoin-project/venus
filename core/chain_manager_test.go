@@ -30,18 +30,18 @@ func init() {
 	}
 	testGenesis = genesis
 
-	block1 = mkChild(testGenesis, 0)
-	block2 = mkChild(block1, 0)
+	block1 = MkChild(testGenesis, 0)
+	block2 = MkChild(block1, 0)
 
-	fork1 = mkChild(testGenesis, 1)
-	fork2 = mkChild(fork1, 1)
-	fork3 = mkChild(fork2, 1)
+	fork1 = MkChild(testGenesis, 1)
+	fork2 = MkChild(fork1, 1)
+	fork3 = MkChild(fork2, 1)
 
 	bad1 = &types.Block{
 		StateRoot: testGenesis.StateRoot,
 		Nonce:     404,
 	}
-	bad2 = mkChild(bad1, 0)
+	bad2 = MkChild(bad1, 0)
 }
 
 func addBlocks(t *testing.T, cs *hamt.CborIpldStore, blks ...*types.Block) {
@@ -85,7 +85,7 @@ func TestBestBlockPubSub(t *testing.T) {
 	ch := stm.BestBlockPubSub.Sub(BlockTopic)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	block3 := mkChild(block2, 0)
+	block3 := MkChild(block2, 0)
 	blocks := []*types.Block{block1, block2, block3}
 	for _, b := range blocks {
 		stm.ProcessNewBlock(ctx, b)

@@ -34,8 +34,8 @@ func MustAdd(p *MessagePool, msgs ...*types.Message) {
 	}
 }
 
-// mkChild creates a new block with parent, blk, and supplied nonce.
-func mkChild(blk *types.Block, nonce uint64) *types.Block {
+// MkChild creates a new block with parent, blk, and supplied nonce.
+func MkChild(blk *types.Block, nonce uint64) *types.Block {
 	return &types.Block{
 		Parent:          blk.Cid(),
 		Height:          blk.Height + 1,
@@ -50,7 +50,7 @@ func mkChild(blk *types.Block, nonce uint64) *types.Block {
 func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, blk *types.Block, length int) (*types.Block, error) {
 	l := uint64(length)
 	for i := uint64(0); i < l; i++ {
-		blk = mkChild(blk, i)
+		blk = MkChild(blk, i)
 		_, err := processNewBlock(ctx, blk)
 		if err != nil {
 			return nil, err

@@ -5,16 +5,21 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 
-	offline "gx/ipfs/QmWM5HhdG5ZQNyHQ5XhMdGmV9CvLpFynQfGpTxN2MEM7Lc/go-ipfs-exchange-offline"
+	"gx/ipfs/QmWM5HhdG5ZQNyHQ5XhMdGmV9CvLpFynQfGpTxN2MEM7Lc/go-ipfs-exchange-offline"
 	"gx/ipfs/QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY/go-ipfs-blockstore"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	bserv "github.com/ipfs/go-ipfs/blockservice"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/core"
-	repo "github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var length int
@@ -28,6 +33,8 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+
 	var cmd string
 
 	if len(os.Args) > 1 {
@@ -47,40 +54,169 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		cm := getChainManager(r.Datastore())
+		defer closeRepo(r)
+
+		cm, _ := getChainManager(r.Datastore())
 		err = cm.Load()
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = fake(length, fakeDeps{cm.GetBestBlock, cm.ProcessNewBlock})
+
+		err = fake(ctx, length, cm.GetBestBlock, cm.ProcessNewBlock)
+		if err != nil {
+			log.Fatal(err)
+		}
+	// TODO: Make usage message reflect the command argument.
+
+	case "actors":
+		r, err := repo.OpenFSRepo(repodir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer closeRepo(r)
+
+		_, cst, cm, bb, err := getStateTree(ctx, r.Datastore())
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = fakeActors(ctx, cst, cm, bb)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-	// TODO: Make usage message reflect the command argument.
 }
 
-func getChainManager(d repo.Datastore) *core.ChainManager {
+func closeRepo(r *repo.FSRepo) {
+	err := r.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore) {
 	bs := blockstore.NewBlockstore(d)
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	return core.NewChainManager(d, cst)
+	cm := core.NewChainManager(d, cst)
+	return cm, cst
 }
 
-type fakeDeps = struct {
-	getBestBlock    core.BestBlockGetter
-	processNewBlock core.NewBlockProcessor
+func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
+	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
+		return types.LoadStateTree(ctx, cst, cid)
+	}, core.ProcessBlock)
 }
 
-func fake(length int, deps fakeDeps) error {
-	ctx := context.Background()
+func getStateTree(ctx context.Context, d repo.Datastore) (types.StateTree, *hamt.CborIpldStore, *core.ChainManager, *types.Block, error) {
+	cm, cst := getChainManager(d)
+	err := cm.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	blk := deps.getBestBlock()
+	bb := cm.GetBestBlock()
+	sr := bb.StateRoot
+	st, err := types.LoadStateTree(ctx, cst, sr)
+	return st, cst, cm, bb, err
+}
 
-	_, err := core.AddChain(ctx, deps.processNewBlock, blk, length)
+func fake(ctx context.Context, length int, getBestBlock core.BestBlockGetter, processNewBlock core.NewBlockProcessor) error {
+	blk := getBestBlock()
+
+	_, err := core.AddChain(ctx, processNewBlock, blk, length)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Added chain of %d empty blocks.\n", length)
 
 	return err
+}
+
+// fakeActors adds a block ensuring that the StateTree contains at least one of each extant Actor type, along with
+// well-formed data in its memory. For now, this exists primarily to exercise the Filecoin Explorer, though it may
+// be used for testing in the future.
+func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainManager, bb *types.Block) (err error) {
+	msgPool := core.NewMessagePool()
+
+	//// Have the storage market actor create a new miner
+	params, err := abi.ToEncodedValues(types.NewBytesAmount(100000))
+	if err != nil {
+		return err
+	}
+	newMinerMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(400), "createMiner", params)
+	_, err = msgPool.Add(newMinerMessage)
+	if err != nil {
+		return err
+	}
+
+	blk, err := mineBlock(ctx, msgPool, cst, cm, bb)
+	if err != nil {
+		return err
+	}
+	msgPool = core.NewMessagePool()
+
+	ret := blk.MessageReceipts[0].Return
+	minerAddress, err := types.NewAddressFromBytes(ret)
+	if err != nil {
+		return nil
+	}
+
+	// Add a new ask to the storage market
+	params, err = abi.ToEncodedValues(types.NewTokenAmount(10), types.NewBytesAmount(1000))
+	if err != nil {
+		return err
+	}
+	askMsg := types.NewMessage(minerAddress, core.StorageMarketAddress, types.NewTokenAmount(100), "addAsk", params)
+	_, err = msgPool.Add(askMsg)
+	if err != nil {
+		return err
+	}
+
+	// Add a new bid to the storage market
+	params, err = abi.ToEncodedValues(types.NewTokenAmount(9), types.NewBytesAmount(10))
+	if err != nil {
+		return err
+	}
+	bidMsg := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(90), "addBid", params)
+	_, err = msgPool.Add(bidMsg)
+	if err != nil {
+		return err
+	}
+
+	// mine again
+	blk, err = mineBlock(ctx, msgPool, cst, cm, blk)
+	if err != nil {
+		return err
+	}
+	msgPool = core.NewMessagePool()
+
+	// Create deal
+	params, err = abi.ToEncodedValues(big.NewInt(0), big.NewInt(0), core.TestAddress, types.NewCidForTestGetter()().Bytes())
+	if err != nil {
+		return err
+	}
+	newDealMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(400), "addDeal", params)
+	_, err = msgPool.Add(newDealMessage)
+	if err != nil {
+		return err
+	}
+
+	_, err = mineBlock(ctx, msgPool, cst, cm, blk)
+	return err
+}
+
+func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStore, cm *core.ChainManager, bb *types.Block) (*types.Block, error) {
+	bg := getBlockGenerator(mp, cm, cst)
+	ra := types.MakeTestAddress("rewardaddress")
+
+	blk, err := bg.Generate(ctx, bb, ra)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = cm.ProcessNewBlock(ctx, blk)
+	if err != nil {
+		return nil, err
+	}
+
+	return blk, nil
 }
