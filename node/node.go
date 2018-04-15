@@ -94,8 +94,8 @@ type Node struct {
 	// A lookup engine for mapping on-chain address to peerIds
 	Lookup *lookup.LookupEngine
 
-	// cancelBlockSubscriptionCtx is a handle to cancel the block subscription.
-	cancelBlockSubscriptionCtx context.CancelFunc
+	// cancelSubscriptionsCtx is a handle to cancel the block and message subscriptions.
+	cancelSubscriptionsCtx context.CancelFunc
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -231,8 +231,10 @@ func (node *Node) Start() error {
 	node.MessageSub = msgSub
 
 	ctx, cancel := context.WithCancel(context.Background())
-	node.cancelBlockSubscriptionCtx = cancel
-	go node.handleBlockSubscription(ctx, blkSub)
+	node.cancelSubscriptionsCtx = cancel
+
+	go node.handleSubscription(ctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
+	go node.handleSubscription(ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
 	// Set up mining.Worker. The node won't feed blocks to the worker
 	// until node.StartMining() is called.
@@ -328,11 +330,19 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 	}
 }
 
-func (node *Node) cancelBlockSubscription() {
+func (node *Node) cancelSubscriptions() {
+	if node.BlockSub != nil || node.MessageSub != nil {
+		node.cancelSubscriptionsCtx()
+	}
+
 	if node.BlockSub != nil {
 		node.BlockSub.Cancel()
-		node.cancelBlockSubscriptionCtx()
 		node.BlockSub = nil
+	}
+
+	if node.MessageSub != nil {
+		node.MessageSub.Cancel()
+		node.MessageSub = nil
 	}
 }
 
@@ -348,7 +358,7 @@ func (node *Node) Stop() {
 	if node.miningInCh != nil {
 		close(node.miningInCh)
 	}
-	node.cancelBlockSubscription()
+	node.cancelSubscriptions()
 	node.ChainMgr.Stop()
 
 	if err := node.Host.Close(); err != nil {

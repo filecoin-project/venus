@@ -24,27 +24,29 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) error {
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
 
-func (node *Node) handleBlockSubscription(ctx context.Context, blksub *floodsub.Subscription) {
+type floodSubProcessorFunc func(ctx context.Context, msg *floodsub.Message) error
+
+func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *floodsub.Subscription, sname string) {
 	for {
-		msg, err := blksub.Next(ctx)
+		pubSubMsg, err := s.Next(ctx)
 		if err != nil {
-			log.Errorf("BlockSub.Next(): %s", err)
+			log.Errorf("%s.Next(): %s", sname, err)
 			return
 		}
 
-		if err := node.processMessage(ctx, msg); err != nil {
-			log.Errorf("processMessage(): %s", err)
+		if err := f(ctx, pubSubMsg); err != nil {
+			log.Errorf("%s(): %s", fname, err)
 		}
 	}
 }
 
-func (node *Node) processMessage(ctx context.Context, msg *floodsub.Message) error {
+func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message) error {
 	// ignore messages from ourself
-	if msg.GetFrom() == node.Host.ID() {
+	if pubSubMsg.GetFrom() == node.Host.ID() {
 		return nil
 	}
 
-	blk, err := types.DecodeBlock(msg.GetData())
+	blk, err := types.DecodeBlock(pubSubMsg.GetData())
 	if err != nil {
 		return errors.Wrap(err, "got bad block data")
 	}
@@ -56,6 +58,16 @@ func (node *Node) processMessage(ctx context.Context, msg *floodsub.Message) err
 
 	log.Infof("message processed: %s", res)
 	return nil
+}
+
+func (node *Node) processMessage(ctx context.Context, pubSubMsg *floodsub.Message) error {
+	unmarshaled := &types.Message{}
+	if err := unmarshaled.Unmarshal(pubSubMsg.GetData()); err != nil {
+		return err
+	}
+
+	_, err := node.MsgPool.Add(unmarshaled)
+	return err
 }
 
 // AddNewMessage adds a new message to the pool and publishes it to the network.
