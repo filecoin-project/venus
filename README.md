@@ -70,6 +70,9 @@ Note: Build and test can be combined:
 # Build
 > go run ./build/*.go build
 
+# Install
+> go run ./build/*.go install
+
 # Test
 > go run ./build/*.go test
 

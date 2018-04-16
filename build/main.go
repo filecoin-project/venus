@@ -111,6 +111,12 @@ func build() {
 	)
 }
 
+func install() {
+	log.Println("Installing...")
+
+	log.Println(runParts("go", "install"))
+}
+
 // test executes tests and passes along all additional arguments to `go test`.
 func test(args ...string) {
 	log.Println("Testing...")
@@ -136,6 +142,8 @@ func main() {
 		build()
 	case "test":
 		test(args[1:]...)
+	case "install":
+		install()
 	case "best":
 		build()
 		test(args[1:]...)
