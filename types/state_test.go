@@ -20,11 +20,13 @@ func TestStatePutGet(t *testing.T) {
 
 	act1 := NewActor(AccountActorCodeCid, nil)
 	act1.WriteStorage([]byte("hello"))
-	act1.IncNonce()
+	// TODO fritz enable when we have nonce checking:
+	// act1.IncNextNonce()
 	act2 := NewActor(AccountActorCodeCid, nil)
 	act2.WriteStorage([]byte("world"))
-	act2.IncNonce()
-	act2.IncNonce()
+	// TODO fritz enable when we have nonce checking:
+	// act2.IncNextNonce()
+	// act2.IncNextNonce()
 
 	addrGetter := NewAddressForTestGetter()
 	addr1 := addrGetter()
@@ -61,8 +63,10 @@ func TestStateErrors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	_, err := tree.GetActor(ctx, NewAddressForTestGetter()())
-	assert.EqualError(err, "not found")
+	a, err := tree.GetActor(ctx, NewAddressForTestGetter()())
+	assert.Nil(a)
+	assert.Error(err)
+	assert.True(IsActorNotFoundError(err))
 
 	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
 	assert.NoError(err)

@@ -15,12 +15,6 @@ var (
 	ErrInsufficientBalance = newRevertError("not enough balance")
 )
 
-// isFailureVMError returns true on the small number of vm errors that
-// we consider message processing failures.
-func isFailureVMError(vmErr error) bool {
-	return vmErr == ErrCannotTransferNegativeValue || vmErr == ErrInsufficientBalance
-}
-
 // revertError is an error wrapper that signals that the vm should
 // revert all state changes for the call.
 //
@@ -121,4 +115,84 @@ func IsFault(err error) bool {
 	cause := errors.Cause(err)
 	fe, ok := cause.(faulterror)
 	return ok && fe.IsFault()
+}
+
+// IsApplyErrorPermanent returns true if the error returned by ApplyMessage is
+// a permanent failure, the message likely will never result in a valid state
+// transition (eg, trying to send negative value).
+func IsApplyErrorPermanent(err error) bool {
+	// Note: does not look at cause.
+	re, ok := err.(permanent)
+	return ok && re.IsPermanent()
+}
+
+type applyErrorPermanent struct {
+	err error
+	msg string
+}
+
+func (e applyErrorPermanent) Error() string {
+	if e.err == nil {
+		return e.msg
+	}
+	return fmt.Sprintf("%s: %s", e.msg, e.err.Error())
+}
+
+func (e applyErrorPermanent) Cause() error {
+	if e.err != nil {
+		return e.err
+	}
+	return e
+}
+
+func (e applyErrorPermanent) IsPermanent() bool {
+	return true
+}
+
+func applyErrorPermanentWrapf(err error, format string, args ...interface{}) error { // nolint: deadcode
+	return &applyErrorPermanent{err: err, msg: fmt.Sprintf(format, args...)}
+}
+
+type permanent interface {
+	IsPermanent() bool
+}
+
+// IsApplyErrorTemporary returns true if the error returned by ApplyMessage is
+// possibly a temporary failure, ie the message might result in a valid state
+// transition in the future (eg, nonce is too high).
+func IsApplyErrorTemporary(err error) bool {
+	// Note: does not look at cause.
+	re, ok := err.(temporary)
+	return ok && re.IsTemporary()
+}
+
+type applyErrorTemporary struct {
+	err error
+	msg string
+}
+
+func (e applyErrorTemporary) Error() string {
+	if e.err == nil {
+		return e.msg
+	}
+	return fmt.Sprintf("%s: %s", e.msg, e.err.Error())
+}
+
+func (e applyErrorTemporary) Cause() error {
+	if e.err != nil {
+		return e.err
+	}
+	return e
+}
+
+func (e applyErrorTemporary) IsTemporary() bool {
+	return true
+}
+
+func applyErrorTemporaryWrapf(err error, format string, args ...interface{}) error { // nolint: deadcode
+	return &applyErrorTemporary{err: err, msg: fmt.Sprintf(format, args...)}
+}
+
+type temporary interface {
+	IsTemporary() bool
 }

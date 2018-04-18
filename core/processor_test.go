@@ -64,7 +64,8 @@ func TestProcessBlockSuccess(t *testing.T) {
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	expAct1, expAct2 := requireNewAccountActor(require, types.NewTokenAmount(10000-550)), requireNewAccountActor(require, types.NewTokenAmount(550))
-	expAct1.IncNonce()
+	// TODO fritz when nonce checking is enforced:
+	// expAct1.IncNonce()
 	expStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expAct1,
 		addr2: expAct2,
@@ -150,7 +151,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
-	expectedAct1.IncNonce()
+	// TODO fritz when nonce checking is enforced:
+	// expectedAct1.IncNonce()
 	expectedStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expectedAct1,
 		addr2: expectedAct2,
@@ -159,3 +161,6 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	assert.NoError(err)
 	assert.True(expectedStCid.Equals(gotStCid))
 }
+
+// TODO fritz add more test cases that cover the intent expressed
+// in ApplyMessage's comments.

@@ -98,11 +98,36 @@ func (t *stateTree) Flush(ctx context.Context) (*cid.Cid, error) {
 	return t.store.Put(ctx, t.root)
 }
 
-// GetActor retrieves an actor by their address.
-// If no actor exists at the given address an error is returned.
+// IsActorNotFoundError is true of the error returned by
+// GetActor when no actor was found at the given address.
+func IsActorNotFoundError(err error) bool {
+	cause := errors.Cause(err)
+	e, ok := cause.(actornotfound)
+	return ok && e.ActorNotFound()
+}
+
+type actornotfound interface {
+	ActorNotFound() bool
+}
+
+type actorNotFoundError struct{}
+
+func (e actorNotFoundError) Error() string {
+	return "actor not found"
+}
+
+func (e actorNotFoundError) ActorNotFound() bool {
+	return true
+}
+
+// GetActor retrieves an actor by their address. If no actor
+// exists at the given address then an error will be returned
+// for which IsActorNotFoundError(err) is true.
 func (t *stateTree) GetActor(ctx context.Context, a Address) (*Actor, error) {
 	data, err := t.root.Find(ctx, a.String())
-	if err != nil {
+	if err == hamt.ErrNotFound {
+		return nil, &actorNotFoundError{}
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -118,15 +143,10 @@ func (t *stateTree) GetActor(ctx context.Context, a Address) (*Actor, error) {
 // If no actor exists at the given address it returns a newly initialized actor.
 func (t *stateTree) GetOrCreateActor(ctx context.Context, address Address, creator func() (*Actor, error)) (*Actor, error) {
 	act, err := t.GetActor(ctx, address)
-	switch err {
-	default:
-		return nil, err
-	case hamt.ErrNotFound:
+	if IsActorNotFoundError(err) {
 		return creator()
-	case nil:
 	}
-
-	return act, nil
+	return act, err
 }
 
 // SetActor sets the memory slot at address 'a' to the given actor.

@@ -48,3 +48,49 @@ func TestRevertError(t *testing.T) {
 	assert.True(shouldRevert(wrapped2))
 	assert.Equal(re, errors.Cause(wrapped2))
 }
+
+func TestApplyErrorPermanent(t *testing.T) {
+	t.Run("random errors dont satisfy", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.False(IsApplyErrorPermanent(errors.New("boom")))
+	})
+	t.Run("perm errors do satisfy", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.True(IsApplyErrorPermanent(applyErrorPermanentWrapf(errors.New("boom"), "wrapper")))
+	})
+	t.Run("message has both wrapped and wrapper and format string works", func(t *testing.T) {
+		assert := assert.New(t)
+		e := applyErrorPermanentWrapf(errors.New("wrapped"), "%s", "wrapper")
+		assert.Contains(e.Error(), "wrapped")
+		assert.Contains(e.Error(), "wrapper")
+	})
+	t.Run("Cause is the wrapped error", func(t *testing.T) {
+		assert := assert.New(t)
+		e := applyErrorPermanentWrapf(errors.New("wrapped"), "wrapper")
+		assert.Contains(errors.Cause(e).Error(), "wrapped")
+		assert.NotContains(errors.Cause(e).Error(), "wrapper")
+	})
+}
+
+func TestApplyErrorTemporary(t *testing.T) {
+	t.Run("random errors dont satisfy", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.False(IsApplyErrorTemporary(errors.New("boom")))
+	})
+	t.Run("temp errors do satisfy", func(t *testing.T) {
+		assert := assert.New(t)
+		assert.True(IsApplyErrorTemporary(applyErrorTemporaryWrapf(errors.New("boom"), "wrapper")))
+	})
+	t.Run("message has both wrapped and wrapper and format string works", func(t *testing.T) {
+		assert := assert.New(t)
+		e := applyErrorTemporaryWrapf(errors.New("wrapped"), "%s", "wrapper")
+		assert.Contains(e.Error(), "wrapped")
+		assert.Contains(e.Error(), "wrapper")
+	})
+	t.Run("Cause is the wrapped error", func(t *testing.T) {
+		assert := assert.New(t)
+		e := applyErrorTemporaryWrapf(errors.New("wrapped"), "wrapper")
+		assert.Contains(errors.Cause(e).Error(), "wrapped")
+		assert.NotContains(errors.Cause(e).Error(), "wrapper")
+	})
+}
