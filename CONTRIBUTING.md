@@ -2,9 +2,14 @@
 
 :+1::tada: First off, thanks for taking the time to contribute! :tada::+1:
 
-The following is a set of guidelines for contributing to the Filecoin Project. Feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing to the Filecoin
+Project. Feel free to propose changes to this document in a pull
+request. These guidelines can and should change as the project changes
+phases.
 
 ### Table Of Contents
+* [Enable Progress](#enable-progress)
+* [Code Reviews](#code-reviews)
 * [Project Management](#project-management)
 * [Conventions and Style](#conventions-and-style)
 * [Error Handling](#error-handling)
@@ -14,6 +19,84 @@ The following is a set of guidelines for contributing to the Filecoin Project. F
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
 * [Gotchas](#gotchas)
+
+## Enable Progress
+
+A primary directive for every dev is to _enable other devs to make
+progress_. We increase our leverage and velocity by enabling our
+teammates. Be an enabler -- find ways to help the person make progress.
+Don't be a gate-keeper -- someone who introduces un-actionable
+or unnecessary obstacles to progress. Prioritize code reviews and
+answering questions over your own work to a reasonable extent.
+Prioritize progress over perfection when possible.
+
+On the flip side: make progress. If you need help, ask for it.  Ask
+for immediate feedback in slack, a short video meeting, or a group
+code walk-through if it would be helpful.
+
+## Code Reviews
+
+With "prioritize progress" as a primary directive we can derive some
+corollaries for code reviews: 
+
+  * Unless a reviewee asks for it, **avoid lengthy design discussions
+  in PR reivews**. Design discussions in PRs shouldn't consume a lot
+  of time or be open-ended. If it seems like something is going to
+  take more than a few quick iterations or would require sweeping
+  changes, prefer to merge and defer the design discussion to a follow
+  up issue (and then follow up). Recognize that when this happens it
+  might point to a process failure where design should've been
+  discussed earlier. If that's the case go fix that problem as well.
+
+  Exercise judgement about when not to defer design discussion. For
+  example if deferring would ultimately require lots of painful
+  refactoring or undoing lots of work, consider not deferring.
+  
+  * Limit scope of comments to the story itself: avoid feature creep.
+  As above, prefer to defer the addition of new features to followup 
+  work.
+
+  * Get comfortable with "good enough" and recognize that "good
+  enough" is context-dependent. For example "good enough" is different
+  for v0 block explorer than for the consensus algorithm.  Ask
+  yourself if, given the context, whether the details you're about to
+  ask someone to spend time changing will materially affect the
+  success of the project.  If not, consider holding off.
+
+As for approvals:
+  * 2 approvals for all PRs (except typos, etc) with at least one of {@whyrusleeping, @dignifiedquire, @phritz}
+  * 3/3 for far-reaching/foundational or protocol level changes
+
+In order to minimize the time wasted in code review and handoff we have
+the following protocol:
+  * comments should be actionable and clearly state what is requested
+  * by default code review comments are advisory: reviewee
+ should consider them but doesn't _have_ to respond or
+ address them
+  * a comment that says "BLOCKING" must be addressed
+ and responded to. A reviewer has to decide how 
+ to deliver a blocking comment: via "Request Changes" (merge blocking) or via
+ "Add Comments" or "Approve" (not merge blocking):
+    * If a reviewer makes a blocking comment while blocking merge
+  ("Request Changes") they are signaling that they want to have another
+  look after the chages are made. Don't merge until they approve. Example:
+  the whole design of an abstraction is wrong and reviewer wants to see it
+  reworked.
+    * If a reviewer makes a blocking comment but does not block
+  merging ("Add Comments" or "Approve") then the reviewee can
+  merge if the issue is addressed. Example: you have an off by one
+  error. It's mandatory to fix but doesn't necessarily require
+  another look from the reviewer.
+  * Approval means approval even in the face of minor changes.
+  github should be configured to allow merging with earlier 
+  approval even after rebasing/minor changes.
+
+**Do not just leave comments in a code review.** Comments should be
+blocking or come with an approval unless you are still looking things
+over or you're asking for clarification. It's ok/encouraged to ask
+for explanations. The thing we want to avoid is *unnecessarily* 
+requiring mutiple round trips from someone whose next availability
+ might be 12 hours away.
 
 ## Project Management
 
@@ -97,9 +180,7 @@ related platforms.
 
 Presently (Q1'18) the minimum bar is:
  * Must be unittested (80% target, some slippage ok); if PR is a command, it must be command tested
- * Code review:
-   * Far-reaching/foundational changes 3/3 of {@phritz, @dignifiedquire, @whyrusleeping}; otherwise 2/3
-   * If you expect a response to a CR comment make it clear that you do
+ * Code review (see above)
  * Must lint (`go run ./build/*.go lint`)
  * CI must be green
  * Must match a subset of the spec, unless when considering changes to the spec -- see details above
