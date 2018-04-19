@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -189,4 +190,30 @@ func TestLoadedStateTreeCanSnapshot(t *testing.T) {
 	gotCid, err := tree.Flush(ctx)
 	assert.NoError(err)
 	assert.True(cid.Equals(gotCid))
+}
+
+func TestGetAllActors(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+	tree := NewEmptyStateTree(cst)
+
+	addr := NewAddressForTestGetter()()
+
+	actor := Actor{Code: AccountActorCodeCid, Nonce: 1234, Balance: NewTokenAmount(123)}
+	err := tree.SetActor(ctx, addr, &actor)
+	tree.Flush(ctx)
+
+	assert.NoError(err)
+
+	addrs, actors := GetAllActors(tree)
+
+	require.Equal(1, len(addrs))
+	found := *actors[0]
+
+	assert.Equal(addr.String(), addrs[0])
+	assert.Equal(actor.Code, found.Code)
+	assert.Equal(actor.Nonce, found.Nonce)
+	assert.Equal(actor.Balance, found.Balance)
 }

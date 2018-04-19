@@ -35,6 +35,11 @@ type StorageMarketStorage struct {
 	Orderbook *Orderbook
 }
 
+// NewStorage returns an empty StorageMarketStorage struct
+func (sma *StorageMarketActor) NewStorage() interface{} {
+	return &StorageMarketStorage{}
+}
+
 var _ ExecutableActor = (*StorageMarketActor)(nil)
 
 // NewStorageMarketActor returns a new storage market actor

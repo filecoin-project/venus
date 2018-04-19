@@ -45,6 +45,7 @@ var rootCmd = &cmds.Command{
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
+	"actor":     actorCmd,
 	"address":   addrsCmd,
 	"bootstrap": bootstrapCmd,
 	"chain":     chainCmd,

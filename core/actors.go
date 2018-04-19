@@ -32,6 +32,7 @@ func (e Exports) Has(method string) bool {
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Exports() Exports
+	NewStorage() interface{}
 }
 
 // ExportedFunc is the signature an exported method of an actor is expected to have.
@@ -228,4 +229,15 @@ func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) 
 	}
 
 	return ret, nil
+}
+
+// PresentStorage returns a representation of an actor's storage in a domain-specific form suitable for conversion to
+// JSON.
+func PresentStorage(act ExecutableActor, mem []byte) interface{} {
+	s := act.NewStorage()
+	err := UnmarshalStorage(mem, s)
+	if err != nil {
+		return nil
+	}
+	return s
 }

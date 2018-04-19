@@ -18,29 +18,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
-
-// newInMemoryNode creates a new node with an InMemoryRepo, applies options
-// from the InMemoryRepo and returns the initialized node
-func newInMemoryNode(t *testing.T, ctx context.Context) *Node { // nolint: golint
-	r := repo.NewInMemoryRepo()
-	require.NoError(t, Init(ctx, r))
-
-	opts, err := OptionsFromRepo(r)
-	require.NoError(t, err)
-
-	node, err := New(ctx, opts...)
-	require.NoError(t, err)
-
-	return node
-}
 
 func TestNodeConstruct(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd := newInMemoryNode(t, ctx)
+	nd := NewInMemoryNode(t, ctx)
 	assert.NotNil(nd.Host)
 
 	nd.Stop()
@@ -69,7 +53,7 @@ func TestNodeInit(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd := newInMemoryNode(t, ctx)
+	nd := NewInMemoryNode(t, ctx)
 
 	assert.NoError(nd.Start())
 
@@ -80,7 +64,7 @@ func TestStartMiningEmptyWallet(t *testing.T) {
 	assert := assert.New(t)
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
 
-	node := newInMemoryNode(t, ctx)
+	node := NewInMemoryNode(t, ctx)
 
 	// The node temporarily contains the testaccount address by
 	// default, so replace it.
@@ -96,7 +80,7 @@ func TestNodeMining(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
 
-	node := newInMemoryNode(t, ctx)
+	node := NewInMemoryNode(t, ctx)
 
 	mockWorker := &mining.MockWorker{}
 	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -134,7 +118,7 @@ func TestNodeMining(t *testing.T) {
 	// Ensure we're tearing down cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node = newInMemoryNode(t, ctx)
+	node = NewInMemoryNode(t, ctx)
 	_ = node.Wallet.NewAddress()
 
 	chainMgrForTest = node.ChainMgr
@@ -153,7 +137,7 @@ func TestNodeMining(t *testing.T) {
 
 	// Ensure that the output is wired up correctly.
 	ctx, _ = context.WithCancel(context.Background()) // nolint: vet
-	node = newInMemoryNode(t, ctx)
+	node = NewInMemoryNode(t, ctx)
 	_ = node.Wallet.NewAddress()
 
 	mockWorker = &mining.MockWorker{}
@@ -181,7 +165,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
 	ctx := context.Background()
-	node := newInMemoryNode(t, ctx)
+	node := NewInMemoryNode(t, ctx)
 
 	_ = node.Wallet.NewAddress()
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
@@ -232,7 +216,7 @@ func TestWaitForMessage(t *testing.T) {
 
 	ctx := context.Background()
 
-	node := newInMemoryNode(t, ctx)
+	node := NewInMemoryNode(t, ctx)
 
 	err := node.Start()
 	assert.NoError(err)
@@ -248,7 +232,7 @@ func TestWaitForMessageError(t *testing.T) {
 
 	ctx := context.Background()
 
-	node := newInMemoryNode(t, ctx)
+	node := NewInMemoryNode(t, ctx)
 
 	assert.NoError(node.Start())
 
@@ -306,7 +290,7 @@ func TestGetSignature(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
 
-		nd := newInMemoryNode(t, ctx)
+		nd := NewInMemoryNode(t, ctx)
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 

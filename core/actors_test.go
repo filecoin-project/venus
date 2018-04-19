@@ -43,6 +43,9 @@ type MockActor struct {
 func (a *MockActor) Exports() Exports {
 	return a.exports
 }
+func (a *MockActor) NewStorage() interface{} {
+	return nil
+}
 
 func (a *MockActor) One() (uint8, error) {
 	return 0, nil

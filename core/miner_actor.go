@@ -32,6 +32,11 @@ type MinerStorage struct {
 	Power         *big.Int
 }
 
+// NewStorage returns an empty MinerStorage struct
+func (ma *MinerActor) NewStorage() interface{} {
+	return &MinerStorage{}
+}
+
 var _ ExecutableActor = (*MinerActor)(nil)
 
 // NewMinerActor returns a new miner actor

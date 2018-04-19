@@ -85,7 +85,8 @@ type ChainManager struct {
 	// will always be queued and delivered to subscribers in the order discovered.
 	BestBlockPubSub *pubsub.PubSub
 
-	FetchBlock func(context.Context, *cid.Cid) (*types.Block, error)
+	FetchBlock   func(context.Context, *cid.Cid) (*types.Block, error)
+	GetBestBlock func() *types.Block
 }
 
 // NewChainManager creates a new filecoin chain manager.
@@ -97,6 +98,7 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 		BestBlockPubSub: pubsub.New(128),
 	}
 	cm.FetchBlock = cm.fetchBlock
+	cm.GetBestBlock = cm.getBestBlock
 	cm.knownGoodBlocks.set = cid.NewSet()
 
 	return cm
@@ -204,7 +206,7 @@ func (s *ChainManager) GetGenesisCid() *cid.Cid {
 type BestBlockGetter func() *types.Block
 
 // GetBestBlock returns the head of our currently selected 'best' chain.
-func (s *ChainManager) GetBestBlock() *types.Block {
+func (s *ChainManager) getBestBlock() *types.Block {
 	s.bestBlock.Lock()
 	defer s.bestBlock.Unlock()
 	return s.bestBlock.blk // TODO: return immutable copy?
