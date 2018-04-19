@@ -10,6 +10,8 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -321,4 +323,76 @@ func TestChainLoad(t *testing.T) {
 
 	assert.Equal(block2, stm.GetBestBlock())
 	assert.Equal(testGenesis.Cid(), stm.GetGenesisCid())
+}
+
+func TestChainManagerInformNewBlock(t *testing.T) {
+	makeGetBestBlockFunc := func(calls *[]string, blk *types.Block) func() *types.Block {
+		return func() *types.Block {
+			*calls = append(*calls, "GetBestBlock")
+			return blk
+		}
+	}
+
+	makeProcessNewBlockFunc := func(calls *[]string, bpr BlockProcessResult, err error) func(context.Context, *types.Block) (BlockProcessResult, error) {
+		return func(_ context.Context, _ *types.Block) (BlockProcessResult, error) {
+			*calls = append(*calls, "ProcessNewBlock")
+			return bpr, err
+		}
+	}
+
+	makeFetchBlockFunc := func(calls *[]string, blk *types.Block, err error) func(_ context.Context, _ *cid.Cid) (*types.Block, error) {
+		return func(_ context.Context, _ *cid.Cid) (*types.Block, error) {
+			*calls = append(*calls, "FetchBlock")
+			return blk, err
+		}
+	}
+
+	t.Run("informNewBlock does not process new block if its height is less than current best block's height", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var newBlockHeight uint64 = 1
+
+		var calls []string
+		deps := informNewBlockDeps{
+			GetBestBlock:    makeGetBestBlockFunc(&calls, &types.Block{Height: newBlockHeight + 1}),
+			FetchBlock:      makeFetchBlockFunc(&calls, nil, nil),
+			ProcessNewBlock: makeProcessNewBlockFunc(&calls, 0, nil),
+		}
+
+		(&ChainManager{}).informNewBlock(deps, "foo", nil, newBlockHeight)
+
+		assert.Equal([]string{"GetBestBlock"}, calls)
+	})
+
+	t.Run("informNewBlock does not process new block if error fetching block by cid", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var calls []string
+
+		deps := informNewBlockDeps{
+			GetBestBlock:    makeGetBestBlockFunc(&calls, &types.Block{Height: 1}),
+			FetchBlock:      makeFetchBlockFunc(&calls, nil, errors.New("error")),
+			ProcessNewBlock: makeProcessNewBlockFunc(&calls, 0, nil),
+		}
+
+		(&ChainManager{}).informNewBlock(deps, "foo", nil, 2)
+
+		assert.Equal([]string{"GetBestBlock", "FetchBlock"}, calls)
+	})
+
+	t.Run("informNewBlock does not panic when ProcessNewBlock returns an error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var calls []string
+
+		deps := informNewBlockDeps{
+			GetBestBlock:    makeGetBestBlockFunc(&calls, &types.Block{Height: 1}),
+			FetchBlock:      makeFetchBlockFunc(&calls, &types.Block{Height: 2}, nil),
+			ProcessNewBlock: makeProcessNewBlockFunc(&calls, 0, errors.New("error")),
+		}
+
+		(&ChainManager{}).informNewBlock(deps, "foo", nil, 2)
+
+		assert.Equal([]string{"GetBestBlock", "FetchBlock", "ProcessNewBlock"}, calls)
+	})
 }
