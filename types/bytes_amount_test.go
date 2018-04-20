@@ -102,7 +102,7 @@ func TestBytesAmountSubtraction(t *testing.T) {
 }
 
 func TestBytesAmountCborMarshaling(t *testing.T) {
-	t.Run("CBOR encode(decode(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
+	t.Run("CBOR decode(encode(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -123,7 +123,7 @@ func TestBytesAmountCborMarshaling(t *testing.T) {
 }
 
 func TestBytesAmountJsonMarshaling(t *testing.T) {
-	t.Run("JSON mashal(unmarshal(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
+	t.Run("JSON unmarshal(marshal(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))

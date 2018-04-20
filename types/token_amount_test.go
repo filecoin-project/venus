@@ -122,7 +122,7 @@ func TestTokenAmountPriceCalculation(t *testing.T) {
 }
 
 func TestTokenAmountCborMarshaling(t *testing.T) {
-	t.Run("CBOR encode(decode(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
+	t.Run("CBOR decode(encode(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -143,7 +143,7 @@ func TestTokenAmountCborMarshaling(t *testing.T) {
 }
 
 func TestTokenAmountJsonMarshaling(t *testing.T) {
-	t.Run("JSON mashal(unmarshal(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
+	t.Run("JSON unmarshal(marshal(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))

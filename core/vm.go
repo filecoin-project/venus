@@ -3,16 +3,33 @@ package core
 import (
 	"context"
 
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
 func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st types.StateTree) ([]byte, uint8, error) {
+	deps := sendDeps{
+		transfer: transfer,
+		LoadCode: LoadCode,
+	}
+
+	return send(ctx, deps, from, to, msg, st)
+}
+
+type sendDeps struct {
+	transfer func(*types.Actor, *types.Actor, *types.TokenAmount) error
+	LoadCode func(*cid.Cid) (ExecutableActor, error)
+}
+
+// send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
+func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.Message, st types.StateTree) ([]byte, uint8, error) {
 	vmCtx := NewVMContext(from, to, msg, st)
 
 	if msg.Value != nil {
-		if err := transfer(from, to, msg.Value); err != nil {
+		if err := deps.transfer(from, to, msg.Value); err != nil {
 			return nil, 1, err
 		}
 	}
@@ -23,7 +40,7 @@ func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st typ
 		return nil, 0, nil
 	}
 
-	toExecutable, err := LoadCode(to.Code)
+	toExecutable, err := deps.LoadCode(to.Code)
 	if err != nil {
 		return nil, 1, faultErrorWrap(err, "unable to load code for To actor")
 	}
