@@ -116,7 +116,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 	return func(ctx *VMContext) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
-			return nil, 1, faultErrorWrap(err, "invalid params")
+			return nil, 1, revertErrorWrap(err, "invalid params")
 		}
 
 		args := []reflect.Value{
