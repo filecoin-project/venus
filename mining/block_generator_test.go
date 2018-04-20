@@ -14,6 +14,13 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
+func TestGenerate(t *testing.T) {
+	// TODO fritz use core.FakeActor for state/contract tests for generate:
+	//  - test nonces out of order
+	//  - test nonce gap
+	//  - test apply errors are skipped
+}
+
 type MockProcessBlock struct {
 	mock.Mock
 }
@@ -27,8 +34,9 @@ func (mpb *MockProcessBlock) ProcessBlock(ctx context.Context, b *types.Block, s
 	return
 }
 
-// TODO (fritz) Do something about the test duplication w/AddParent.
-func TestBlockGenerator_Generate(t *testing.T) {
+// TODO replace with contract-based testing (TestGenerate)
+// when we have more nonce pieces in.
+func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
 	pool := core.NewMessagePool()

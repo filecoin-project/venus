@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -155,4 +156,25 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	}
 
 	return nil
+}
+
+// OrderPendingByNonce returns the pending messages in the
+// pool ordered such that all messages with the same msg.From
+// occur in Nonce order in the slice.
+// TODO can be smarter here by skipping messages with gaps; see
+//      ethereum's abstraction for example
+// TODO order by time of receipt
+func OrderPendingByNonce(pool *MessagePool) []*types.Message {
+	pending := pool.Pending()
+	// TODO this could all be more efficient.
+	byAddress := make(map[types.Address][]*types.Message)
+	for _, m := range pending {
+		byAddress[m.From] = append(byAddress[m.From], m)
+	}
+	pending = pending[:0]
+	for _, msgs := range byAddress {
+		sort.Slice(msgs, func(i, j int) bool { return msgs[i].Nonce < msgs[j].Nonce })
+		pending = append(pending, msgs...)
+	}
+	return pending
 }

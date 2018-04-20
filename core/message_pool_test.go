@@ -245,3 +245,52 @@ func TestUpdateMessagePool(t *testing.T) {
 		assertPoolEquals(assert, p)
 	})
 }
+
+func TestOrderPendingByNonce(t *testing.T) {
+	t.Run("Empty pool", func(t *testing.T) {
+		assert := assert.New(t)
+		p := NewMessagePool()
+		ordered := OrderPendingByNonce(p)
+		assert.Equal(0, len(ordered))
+	})
+
+	t.Run("Msgs in three orders", func(t *testing.T) {
+		assert := assert.New(t)
+		p := NewMessagePool()
+		m := types.NewMsgs(9)
+
+		// Three in increasing nonce order.
+		m[3].From = m[0].From
+		m[6].From = m[0].From
+		m[0].Nonce = 0
+		m[3].Nonce = 1
+		m[6].Nonce = 20
+
+		// Three in decreasing nonce order.
+		m[4].From = m[1].From
+		m[7].From = m[1].From
+		m[1].Nonce = 15
+		m[4].Nonce = 1
+		m[7].Nonce = 0
+
+		// Three out of order.
+		m[5].From = m[2].From
+		m[8].From = m[2].From
+		m[2].Nonce = 5
+		m[5].Nonce = 7
+		m[8].Nonce = 0
+
+		MustAdd(p, m...)
+		ordered := OrderPendingByNonce(p)
+		assert.Equal(len(p.Pending()), len(ordered))
+
+		lastSeen := make(map[types.Address]uint64)
+		for _, m := range ordered {
+			last, seen := lastSeen[m.From]
+			if seen {
+				assert.True(last <= m.Nonce)
+			}
+			lastSeen[m.From] = m.Nonce
+		}
+	})
+}

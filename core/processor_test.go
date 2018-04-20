@@ -4,40 +4,12 @@ import (
 	"context"
 	"testing"
 
-	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
-
-func init() {
-	cbor.RegisterCborType(fakeActorStorage{})
-}
-
-func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, types.StateTree) {
-	ctx := context.Background()
-	t := types.NewEmptyStateTree(cst)
-
-	for addr, act := range acts {
-		err := t.SetActor(ctx, addr, act)
-		require.NoError(err)
-	}
-
-	c, err := t.Flush(ctx)
-	require.NoError(err)
-
-	return c, t
-}
-
-func requireNewAccountActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {
-	act, err := NewAccountActor(value)
-	require.NoError(err)
-	return act
-}
 
 func TestProcessBlockSuccess(t *testing.T) {
 	assert := assert.New(t)
@@ -47,8 +19,8 @@ func TestProcessBlockSuccess(t *testing.T) {
 	cst := hamt.NewCborStore()
 
 	addr1, addr2 := newAddress(), newAddress()
-	act1 := requireNewAccountActor(require, types.NewTokenAmount(10000))
-	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(10000))
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 	})
 	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "", nil)
@@ -63,55 +35,14 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
-	expAct1, expAct2 := requireNewAccountActor(require, types.NewTokenAmount(10000-550)), requireNewAccountActor(require, types.NewTokenAmount(550))
+	expAct1, expAct2 := RequireNewAccountActor(require, types.NewTokenAmount(10000-550)), RequireNewAccountActor(require, types.NewTokenAmount(550))
 	// TODO fritz when nonce checking is enforced:
 	// expAct1.IncNonce()
-	expStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expAct1,
 		addr2: expAct2,
 	})
 	assert.True(expStCid.Equals(gotStCid))
-}
-
-type fakeActorStorage struct{ Changed bool }
-type FakeActor struct{}
-
-var _ ExecutableActor = (*FakeActor)(nil)
-
-var fakeActorExports = Exports{
-	"foo": &FunctionSignature{
-		Params: nil,
-		Return: nil,
-	},
-}
-
-// Exports returns the list of FakeActor exported functions.
-func (ma *FakeActor) Exports() Exports {
-	return fakeActorExports
-}
-
-func (ma *FakeActor) NewStorage() interface{} {
-	return nil
-}
-
-// Foo sets a bit inside FakeActor's storage and returns a
-// revert error.
-func (ma *FakeActor) Foo(ctx *VMContext) (uint8, error) {
-	fastore := &fakeActorStorage{}
-	_, err := WithStorage(ctx, fastore, func() (interface{}, error) {
-		fastore.Changed = true
-		return nil, nil
-	})
-	if err != nil {
-		panic(err.Error())
-	}
-	return 1, newRevertError("boom")
-}
-
-func requireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
-	storageBytes, err := MarshalStorage(&fakeActorStorage{})
-	require.NoError(err)
-	return types.NewActorWithMemory(codeCid, types.NewTokenAmount(100), storageBytes)
 }
 
 func TestProcessBlockVMErrors(t *testing.T) {
@@ -130,12 +61,12 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := newAddress(), newAddress()
-	act1, act2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
-	stCid, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	act1, act2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
 	})
-	msg := types.NewMessage(addr1, addr2, nil, "foo", nil)
+	msg := types.NewMessage(addr1, addr2, nil, "returnRevertError", nil)
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -154,10 +85,10 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	assert.Contains(receipts[0].Error, "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
-	expectedAct1, expectedAct2 := requireNewFakeActor(require, fakeActorCodeCid), requireNewFakeActor(require, fakeActorCodeCid)
+	expectedAct1, expectedAct2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
 	// TODO fritz when nonce checking is enforced:
 	// expectedAct1.IncNonce()
-	expectedStCid, _ := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expectedAct1,
 		addr2: expectedAct2,
 	})
