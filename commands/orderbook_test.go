@@ -19,7 +19,7 @@ func TestBidList(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		d.RunSuccess("client", "add-bid", "1", fmt.Sprintf("%d", i),
-			"--from", core.TestAccount.String(),
+			"--from", core.TestAddress.String(),
 		)
 	}
 

@@ -1,7 +1,10 @@
 package core
 
 import (
+	"context"
+
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -16,6 +19,7 @@ func init() {
 //
 // AccountActor __is__ shared shared between multiple accounts, as it is the
 // underlying code.
+// TODO make singleton vs not more clear
 type AccountActor struct{}
 
 // AccountStorage is what the AccountActor uses to store data permanently
@@ -49,4 +53,20 @@ var accountExports = Exports{}
 // Exports makes the available methods for this contract available.
 func (state *AccountActor) Exports() Exports {
 	return accountExports
+}
+
+// NextNonce returns the next nonce for the account actor based on its memory.
+// Depending on the context, this may or may not be sufficient to select a
+// nonce for a message. See node.NextNonce if you want to select a nonce
+// based on the state of the node (not just on the state of the actor).
+func NextNonce(ctx context.Context, st types.StateTree, address types.Address) (uint64, error) {
+	actor, err := st.GetActor(ctx, address)
+	if err != nil {
+		return 0, err
+	}
+	if !actor.Code.Equals(types.AccountActorCodeCid) {
+		return 0, errors.New("actor not an account actor")
+	}
+
+	return actor.Nonce, nil
 }

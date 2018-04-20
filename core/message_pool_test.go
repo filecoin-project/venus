@@ -294,3 +294,37 @@ func TestOrderPendingByNonce(t *testing.T) {
 		}
 	})
 }
+
+func TestLargestNonce(t *testing.T) {
+	assert := assert.New(t)
+
+	t.Run("No matches", func(t *testing.T) {
+		p := NewMessagePool()
+		m := types.NewMsgs(2)
+		MustAdd(p, m[0], m[1])
+		_, found := LargestNonce(p, types.NewAddressForTestGetter()())
+		assert.False(found)
+	})
+
+	t.Run("Match, largest is zero", func(t *testing.T) {
+		p := NewMessagePool()
+		m := types.NewMsgs(1)
+		m[0].Nonce = 0
+		MustAdd(p, m[0])
+		largest, found := LargestNonce(p, m[0].From)
+		assert.True(found)
+		assert.Equal(uint64(0), largest)
+	})
+
+	t.Run("Match", func(t *testing.T) {
+		p := NewMessagePool()
+		m := types.NewMsgs(3)
+		m[1].Nonce = 1
+		m[2].Nonce = 2
+		m[2].From = m[1].From
+		MustAdd(p, m[0], m[1], m[2])
+		largest, found := LargestNonce(p, m[2].From)
+		assert.True(found)
+		assert.Equal(uint64(2), largest)
+	})
+}

@@ -12,10 +12,10 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
 var (
-	// TestAccount is an account with some initial funds in it
-	TestAccount types.Address
-	// NetworkAccount is the filecoin network
-	NetworkAccount types.Address
+	// TestAddress is an account with some initial funds in it
+	TestAddress types.Address
+	// NetworkAddress is the filecoin network
+	NetworkAddress types.Address
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market
 	StorageMarketAddress types.Address
 
@@ -27,13 +27,13 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	TestAccount = types.NewMainnetAddress(t)
+	TestAddress = types.NewMainnetAddress(t)
 
 	n, err := types.AddressHash([]byte("filecoin"))
 	if err != nil {
 		panic(err)
 	}
-	NetworkAccount = types.NewMainnetAddress(n)
+	NetworkAddress = types.NewMainnetAddress(n)
 
 	s, err := types.AddressHash([]byte("storage"))
 	if err != nil {
@@ -43,8 +43,8 @@ func init() {
 	StorageMarketAddress = types.NewMainnetAddress(s)
 
 	defaultAccounts = map[types.Address]uint64{
-		NetworkAccount: 10000000,
-		TestAccount:    50000,
+		NetworkAddress: 10000000,
+		TestAddress:    50000,
 	}
 }
 

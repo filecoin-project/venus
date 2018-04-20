@@ -37,7 +37,7 @@ func TestWalletBalance(t *testing.T) {
 	d.RunFail("not found", "wallet", "balance", addr)
 
 	t.Log("[success] balance 100000")
-	balance := d.RunSuccess("wallet", "balance", core.NetworkAccount.String())
+	balance := d.RunSuccess("wallet", "balance", core.NetworkAddress.String())
 	assert.Contains(balance.ReadStdout(), "100000")
 }
 

@@ -28,7 +28,7 @@ func TestDealProtocolClient(t *testing.T) {
 	client.smi = msa
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5000)
-	msa.addBid(core.TestAccount, 35, 5000)
+	msa.addBid(core.TestAddress, 35, 5000)
 	sm.smi = msa
 
 	data := dag.NewRawNode([]byte("cats"))
@@ -39,7 +39,7 @@ func TestDealProtocolClient(t *testing.T) {
 			Bid:     0,
 			DataRef: data.Cid(),
 		},
-		ClientSig: string(core.TestAccount[:]),
+		ClientSig: string(core.TestAddress[:]),
 	}
 
 	resp, err := client.ProposeDeal(ctx, propose)

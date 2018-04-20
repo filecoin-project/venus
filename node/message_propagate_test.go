@@ -29,7 +29,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(0, len(nodes[1].MsgPool.Pending()))
 	require.Equal(0, len(nodes[2].MsgPool.Pending()))
 
-	msg := types.NewMessage(core.NetworkAccount, core.TestAccount, types.NewTokenAmount(123), "", nil)
+	msg := types.NewMessage(core.NetworkAddress, core.TestAddress, types.NewTokenAmount(123), "", nil)
 	nodes[0].AddNewMessage(ctx, msg)
 
 	// Wait for message to propagate across network

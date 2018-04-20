@@ -24,7 +24,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 	d.CreateWalletAddr()
 
 	bid := d.RunSuccess("client", "add-bid", "2000", "10",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 	bidMessageCid, err := cid.Parse(strings.Trim(bid.ReadStdout(), "\n"))
 	require.NoError(t, err)
@@ -63,12 +63,12 @@ func TestClientAddBidFail(t *testing.T) {
 	d.RunFail(
 		"invalid size",
 		"client", "add-bid", "2f", "10",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 	d.RunFail(
 		"invalid price",
 		"client", "add-bid", "10", "3f",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 }
 

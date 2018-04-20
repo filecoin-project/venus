@@ -294,7 +294,7 @@ func TestGetSignature(t *testing.T) {
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
-		sig, err := nd.GetSignature(ctx, core.TestAccount, "")
+		sig, err := nd.GetSignature(ctx, core.TestAddress, "")
 		assert.Equal(ErrNoMethod, err)
 		assert.Nil(sig)
 	})
@@ -359,5 +359,67 @@ func TestMakePrivateKey(t *testing.T) {
 	goodKey, err := makePrivateKey(4096)
 	assert.NoError(err)
 	assert.NotNil(goodKey)
+}
 
+func TestNextNonce(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("account does not exist", func(t *testing.T) {
+		assert := assert.New(t)
+		node := NewInMemoryNode(t, ctx)
+		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		assert.NoError(err)
+		assert.NoError(node.Start())
+
+		address := types.NewAddressForTestGetter()() // Won't have an actor.
+
+		_, err = NextNonce(ctx, node, address)
+		assert.Error(err)
+		assert.Contains(err.Error(), "not found")
+	})
+
+	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
+		assert := assert.New(t)
+		node := NewInMemoryNode(t, ctx)
+		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		assert.NoError(err)
+		assert.NoError(node.Start())
+
+		address := core.TestAddress // Has an actor.
+		msg := types.NewMessage(address, core.TestAddress, nil, "foo", []byte{})
+		msg.Nonce = 42
+		core.MustAdd(node.MsgPool, msg)
+
+		nonce, err := NextNonce(ctx, node, address)
+		assert.NoError(err)
+		assert.Equal(uint64(43), nonce)
+	})
+}
+
+func TestNewMessageWithNextNonce(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("includes correct nonce", func(t *testing.T) {
+		assert := assert.New(t)
+		node := NewInMemoryNode(t, ctx)
+		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		assert.NoError(err)
+		assert.NoError(node.Start())
+
+		address := core.TestAddress // Has an actor.
+
+		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
+		st, err := types.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot)
+		assert.NoError(err)
+		actor := types.MustGetActor(st, address)
+		actor.Nonce = 42
+		cid := types.MustSetActor(st, address, actor)
+		bb.StateRoot = cid
+		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
+		chainMgrForTest.SetBestBlockForTest(ctx, bb)
+
+		msg, err := NewMessageWithNextNonce(ctx, node, address, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
+		assert.NoError(err)
+		assert.Equal(uint64(42), msg.Nonce)
+	})
 }

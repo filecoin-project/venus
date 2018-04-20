@@ -17,23 +17,23 @@ func TestMessageSend(t *testing.T) {
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", core.NetworkAccount.String(),
+		"--from", core.NetworkAddress.String(),
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] no from")
 	d.RunSuccess("wallet addrs new")
-	d.RunSuccess("message", "send", core.TestAccount.String())
+	d.RunSuccess("message", "send", core.TestAddress.String())
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAccount.String(), core.TestAccount.String(),
+		"--from", core.NetworkAddress.String(), core.TestAddress.String(),
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAccount.String(),
-		"--value=10", core.TestAccount.String(),
+		"--from", core.NetworkAddress.String(),
+		"--value=10", core.TestAddress.String(),
 	)
 }
 
@@ -46,9 +46,9 @@ func TestMessageWait(t *testing.T) {
 
 		msg := d.RunSuccess(
 			"message", "send",
-			"--from", core.NetworkAccount.String(),
+			"--from", core.NetworkAddress.String(),
 			"--value=10",
-			core.TestAccount.String(),
+			core.TestAddress.String(),
 		)
 
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")

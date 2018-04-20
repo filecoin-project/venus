@@ -18,8 +18,8 @@ func TestMpool(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAccount.String(),
-		"--value=10", core.TestAccount.String(),
+		"--from", core.NetworkAddress.String(),
+		"--value=10", core.TestAddress.String(),
 	)
 
 	out := d.RunSuccess("mpool")

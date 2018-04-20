@@ -49,7 +49,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		return nil, err
 	}
 
-	rewardMsg := types.NewMessage(core.NetworkAccount, rewardAddress, types.NewTokenAmount(1000), "", nil)
+	rewardMsg := types.NewMessage(core.NetworkAddress, rewardAddress, types.NewTokenAmount(1000), "", nil)
 	next.Messages = append(next.Messages, rewardMsg)
 
 	// TODO(fritz) processBlock bails as soon as it sees a

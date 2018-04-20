@@ -23,7 +23,7 @@ func TestMinerCreateSuccess(t *testing.T) {
 	d.CreateWalletAddr()
 
 	miner := d.RunSuccess("miner", "create",
-		"--from", core.TestAccount.String(), "1000000", "20",
+		"--from", core.TestAddress.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
 	require.NoError(t, err)
@@ -62,15 +62,15 @@ func TestMinerCreateFail(t *testing.T) {
 	)
 	d.RunFail("invalid pledge",
 		"miner", "create",
-		"--from", core.TestAccount.String(), "'-123'", "20",
+		"--from", core.TestAddress.String(), "'-123'", "20",
 	)
 	d.RunFail("invalid pledge",
 		"miner", "create",
-		"--from", core.TestAccount.String(), "1f", "20",
+		"--from", core.TestAddress.String(), "1f", "20",
 	)
 	d.RunFail("invalid collateral",
 		"miner", "create",
-		"--from", core.TestAccount.String(), "100", "2f",
+		"--from", core.TestAddress.String(), "100", "2f",
 	)
 
 }
@@ -85,7 +85,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 	miner := d.RunSuccess(
 		"miner", "create",
-		"--from", core.TestAccount.String(), "1000000", "20",
+		"--from", core.TestAddress.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		ask := d.RunSuccess("miner", "add-ask", minerAddr.String(), "2000", "10",
-			"--from", core.TestAccount.String(),
+			"--from", core.TestAddress.String(),
 		)
 		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
 		require.NoError(t, err)
@@ -139,7 +139,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	d.CreateWalletAddr()
 
 	miner := d.RunSuccess("miner", "create",
-		"--from", core.TestAccount.String(), "1000000", "20",
+		"--from", core.TestAddress.String(), "1000000", "20",
 	)
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
 	require.NoError(t, err)
@@ -174,16 +174,16 @@ func TestMinerAddAskFail(t *testing.T) {
 	d.RunFail(
 		"invalid miner address",
 		"miner", "add-ask", "hello", "2000", "10",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 	d.RunFail(
 		"invalid size",
 		"miner", "add-ask", minerAddr.String(), "2f", "10",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 	d.RunFail(
 		"invalid price",
 		"miner", "add-ask", minerAddr.String(), "10", "3f",
-		"--from", core.TestAccount.String(),
+		"--from", core.TestAddress.String(),
 	)
 }

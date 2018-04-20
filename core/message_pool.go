@@ -178,3 +178,17 @@ func OrderPendingByNonce(pool *MessagePool) []*types.Message {
 	}
 	return pending
 }
+
+// LargestNonce returns the largest nonce used by a message from address in the pool.
+// If no messages from address are found, found will be false.
+func LargestNonce(pool *MessagePool, address types.Address) (largest uint64, found bool) {
+	for _, m := range pool.Pending() {
+		if m.From == address {
+			found = true
+			if m.Nonce > largest {
+				largest = m.Nonce
+			}
+		}
+	}
+	return
+}

@@ -440,3 +440,41 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 
 	return export, nil
 }
+
+// NextNonce returns the next nonce for the given address. It checks
+// the actor's memory and also scans the message pool for any pending
+// messages.
+func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
+	bb := node.ChainMgr.GetBestBlock()
+	st, err := types.LoadStateTree(ctx, node.CborStore, bb.StateRoot)
+	if err != nil {
+		return 0, err
+	}
+	nonce, err := core.NextNonce(ctx, st, address)
+	if err != nil {
+		return 0, err
+	}
+	// TODO consider what if anything to do if there's a gap with
+	// what's in the pool.
+	nonceFromMsgPool, found := core.LargestNonce(node.MsgPool, address)
+	if found && nonceFromMsgPool >= nonce {
+		nonce = nonceFromMsgPool + 1
+	}
+	return nonce, nil
+}
+
+// NewMessageWithNextNonce returns a new types.Message whose
+// nonce is set to our best guess at the next appropriate value
+// (see NextNonce).
+func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.TokenAmount, method string, params []byte) (*types.Message, error) {
+	nonce, err := NextNonce(ctx, node, from)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't get next nonce")
+	}
+	// TODO fritz when we switch to enforcing nonces change this
+	// to the new NewMessage signature and just:
+	// return types.NewMessage(...), nil
+	m := types.NewMessage(from, to, value, method, params)
+	m.Nonce = nonce
+	return m, nil
+}

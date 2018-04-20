@@ -40,7 +40,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	assert.NoError(err)
 
 	pdata := mustConvertParams(types.NewBytesAmount(10000))
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
@@ -75,7 +75,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	assert.NoError(err)
 
 	pdata := mustConvertParams(types.NewBytesAmount(50))
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 	assert.Contains(receipt.Error, ErrPledgeTooLow.Error())
@@ -95,7 +95,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 
 	// create a bid
 	pdata := mustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
+	msg := types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
@@ -104,7 +104,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 
 	// create another bid
 	pdata = mustConvertParams(types.NewTokenAmount(15), types.NewBytesAmount(80))
-	msg = types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(1200), "addBid", pdata)
+	msg = types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(1200), "addBid", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
@@ -113,7 +113,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 
 	// try to create a bid, but send wrong value
 	pdata = mustConvertParams(types.NewTokenAmount(90), types.NewBytesAmount(100))
-	msg = types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
+	msg = types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 	assert.Contains(receipt.Error, "must send price * size funds to create bid")
@@ -140,7 +140,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 
 	// create a bid
 	pdata := mustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
-	msg := types.NewMessage(TestAccount, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
+	msg := types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(600), "addBid", pdata)
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 
@@ -152,15 +152,15 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 
 	// add an ask on it
 	pdata = mustConvertParams(types.NewTokenAmount(25), types.NewBytesAmount(35))
-	msg = types.NewMessage(TestAccount, minerAddr, nil, "addAsk", pdata)
+	msg = types.NewMessage(TestAddress, minerAddr, nil, "addAsk", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 	assert.Equal(uint8(0), receipt.ExitCode)
 
 	// now make a deal
-	sig := TestAccount.Bytes()
+	sig := TestAddress.Bytes()
 	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig) // askID, bidID, signature
-	msg = types.NewMessage(TestAccount, StorageMarketAddress, nil, "addDeal", pdata)
+	msg = types.NewMessage(TestAddress, StorageMarketAddress, nil, "addDeal", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
 	assert.Equal(uint8(0), receipt.ExitCode)

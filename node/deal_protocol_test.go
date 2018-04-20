@@ -110,7 +110,7 @@ func TestDealProtocol(t *testing.T) {
 	msa := newMockMsp()
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
-	msa.addBid(core.TestAccount, 35, 5000)
+	msa.addBid(core.TestAddress, 35, 5000)
 
 	sm.smi = msa
 
@@ -122,7 +122,7 @@ func TestDealProtocol(t *testing.T) {
 			Bid:     0,
 			DataRef: data.Cid(),
 		},
-		ClientSig: string(core.TestAccount[:]),
+		ClientSig: string(core.TestAddress[:]),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -161,8 +161,8 @@ func TestDealProtocolMissing(t *testing.T) {
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
 	msa.addAsk(minerAddr, 20, 1000)
-	msa.addBid(core.TestAccount, 35, 5000)
-	msa.addBid(core.TestAccount, 15, 2000)
+	msa.addBid(core.TestAddress, 35, 5000)
+	msa.addBid(core.TestAddress, 15, 2000)
 
 	sm.smi = msa
 
@@ -170,7 +170,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose := &DealProposal{
 		Deal:      &core.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
-		ClientSig: string(core.TestAccount[:]),
+		ClientSig: string(core.TestAddress[:]),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -180,7 +180,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose = &DealProposal{
 		Deal:      &core.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
-		ClientSig: string(core.TestAccount[:]),
+		ClientSig: string(core.TestAddress[:]),
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -190,7 +190,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose = &DealProposal{
 		Deal:      &core.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
-		ClientSig: string(core.TestAccount[:]),
+		ClientSig: string(core.TestAddress[:]),
 	}
 
 	resp, err = sm.ProposeDeal(propose)

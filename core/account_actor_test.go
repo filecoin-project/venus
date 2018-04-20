@@ -1,14 +1,15 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAccountActorCborMarshaling(t *testing.T) {
@@ -30,5 +31,50 @@ func TestAccountActorCborMarshaling(t *testing.T) {
 		require.NoError(err)
 
 		types.AssertCidsEqual(assert.New(t), c1, c2)
+	})
+}
+
+func TestNextNonce(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("account does not exist", func(t *testing.T) {
+		assert := assert.New(t)
+		store := hamt.NewCborStore()
+		st := types.NewEmptyStateTree(store)
+
+		address := types.NewAddressForTestGetter()()
+
+		_, err := NextNonce(ctx, st, address)
+		assert.Error(err)
+		assert.Contains(err.Error(), "not found")
+	})
+
+	t.Run("account exists but wrong type", func(t *testing.T) {
+		assert := assert.New(t)
+		store := hamt.NewCborStore()
+		st := types.NewEmptyStateTree(store)
+		address := types.NewAddressForTestGetter()()
+		actor, err := NewStorageMarketActor()
+		assert.NoError(err)
+		_ = types.MustSetActor(st, address, actor)
+
+		_, err = NextNonce(ctx, st, address)
+		assert.Error(err)
+		assert.Contains(err.Error(), "not an account actor")
+	})
+
+	t.Run("account exists, gets correct value", func(t *testing.T) {
+		assert := assert.New(t)
+		store := hamt.NewCborStore()
+		st := types.NewEmptyStateTree(store)
+		address := types.NewAddressForTestGetter()()
+		actor, err := NewAccountActor(types.NewTokenAmount(0))
+		assert.NoError(err)
+		actor.Nonce = 42
+		types.MustSetActor(st, address, actor)
+
+		nonce, err := NextNonce(ctx, st, address)
+		assert.NoError(err)
+		assert.Equal(uint64(42), nonce)
 	})
 }

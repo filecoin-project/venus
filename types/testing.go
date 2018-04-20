@@ -108,6 +108,33 @@ func MsgCidsEqual(m1, m2 *Message) bool {
 	return m1Cid.Equals(m2Cid)
 }
 
+// MustFlush flushes the StateTree or panics if it can't.
+func MustFlush(st StateTree) *cid.Cid {
+	cid, err := st.Flush(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	return cid
+}
+
+// MustGetActor gets the actor or panics if it can't.
+func MustGetActor(st StateTree, a Address) *Actor {
+	actor, err := st.GetActor(context.Background(), a)
+	if err != nil {
+		panic(err)
+	}
+	return actor
+}
+
+// MustSetActor sets the actor or panics if it can't.
+func MustSetActor(st StateTree, address Address, actor *Actor) *cid.Cid {
+	err := st.SetActor(context.Background(), address, actor)
+	if err != nil {
+		panic(err)
+	}
+	return MustFlush(st)
+}
+
 // MockStateTree is a testify mock that implements StateTree.
 type MockStateTree struct {
 	mock.Mock
