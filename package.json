@@ -147,6 +147,18 @@
       "hash": "QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS",
       "name": "go-libp2p-peer",
       "version": "2.2.3"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc",
+      "name": "go-ipfs-exchange-interface",
+      "version": "0.0.1"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmWM5HhdG5ZQNyHQ5XhMdGmV9CvLpFynQfGpTxN2MEM7Lc",
+      "name": "go-ipfs-exchange-offline",
+      "version": "0.0.1"
     }
   ],
   "gxVersion": "0.12.1",
@@ -156,3 +168,4 @@
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "version": "0.0.1"
 }
+
