@@ -4,12 +4,29 @@ import (
 	"context"
 	"testing"
 
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, types.StateTree) {
+	ctx := context.Background()
+	t := types.NewEmptyStateTree(cst)
+
+	for addr, act := range acts {
+		err := t.SetActor(ctx, addr, act)
+		require.NoError(err)
+	}
+
+	c, err := t.Flush(ctx)
+	require.NoError(err)
+
+	return c, t
+}
 
 func TestProcessBlockSuccess(t *testing.T) {
 	assert := assert.New(t)
@@ -95,6 +112,55 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	assert.True(expectedStCid.Equals(gotStCid))
+}
+
+func TestProcessBlockParamsLengthError(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr2, addr1 := newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	params, err := abi.ToValues([]interface{}{"param"})
+	assert.NoError(err)
+	badParams, err := abi.EncodeValues(params)
+	assert.NoError(err)
+	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "addAsk", badParams)
+
+	r, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
+
+	assert.Contains(r.Error, "invalid params: expected 2 parameters, but got 1")
+}
+
+func TestProcessBlockParamsError(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr2, addr1 := newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	badParams := []byte{1, 2, 3, 4, 5}
+	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "addAsk", badParams)
+
+	r, err := ApplyMessage(ctx, st, msg)
+	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
+
+	assert.Contains(r.Error, "invalid params: malformed stream")
 }
 
 // TODO fritz add more test cases that cover the intent expressed

@@ -109,6 +109,14 @@ func RequireNewAccountActor(require *require.Assertions, value *types.TokenAmoun
 	return act
 }
 
+// RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
+// and requires that its steps succeed.
+func RequireNewMinerActor(require *require.Assertions, owner types.Address, pledge *types.BytesAmount, coll *types.TokenAmount) *types.Actor {
+	act, err := NewMinerActor(owner, pledge, coll)
+	require.NoError(err)
+	return act
+}
+
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
