@@ -158,8 +158,9 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.Equal(uint8(0), receipt.ExitCode)
 
 	// now make a deal
+	ref := types.NewCidForTestGetter()()
 	sig := TestAddress.Bytes()
-	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig) // askID, bidID, signature
+	pdata = mustConvertParams(big.NewInt(0), big.NewInt(0), sig, ref.Bytes()) // askID, bidID, signature, datacid
 	msg = types.NewMessage(TestAddress, StorageMarketAddress, nil, "addDeal", pdata)
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
@@ -169,6 +170,6 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.NoError(err)
 	var sms StorageMarketStorage
 	assert.NoError(UnmarshalStorage(sma.ReadStorage(), &sms))
-	assert.Len(sms.Orderbook.Deals, 1)
+	assert.Len(sms.Filemap.Deals, 1)
 	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
 }

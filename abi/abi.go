@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"reflect"
 
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,6 +31,8 @@ const (
 	Bytes
 	// String is a string
 	String
+	// UintArray is an array of uint64
+	UintArray
 )
 
 func (t Type) String() string {
@@ -47,6 +51,8 @@ func (t Type) String() string {
 		return "[]byte"
 	case String:
 		return "string"
+	case UintArray:
+		return "[]uint64"
 	default:
 		return "<unknown type>"
 	}
@@ -74,6 +80,8 @@ func (av *Value) String() string {
 		return string(av.Val.([]byte))
 	case String:
 		return av.Val.(string)
+	case UintArray:
+		return fmt.Sprint(av.Val.([]uint64))
 	default:
 		return "<unknown type>"
 	}
@@ -130,6 +138,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte(s), nil
+	case UintArray:
+		arr, ok := av.Val.([]uint64)
+		if !ok {
+			return nil, &typeError{[]uint64{}, av.Val}
+		}
+
+		return cbor.DumpObject(arr)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -157,6 +172,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Bytes, Val: v})
 		case string:
 			out = append(out, &Value{Type: String, Val: v})
+		case []uint64:
+			out = append(out, &Value{Type: UintArray, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -217,6 +234,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  types.NewTokenAmountFromBytes(data),
 		}, nil
+	case UintArray:
+		var arr []uint64
+		if err := cbor.DecodeInto(data, &arr); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  arr,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -231,6 +257,7 @@ var typeTable = map[Type]reflect.Type{
 	Integer:     reflect.TypeOf(&big.Int{}),
 	String:      reflect.TypeOf(string("")),
 	TokenAmount: reflect.TypeOf(&types.TokenAmount{}),
+	UintArray:   reflect.TypeOf([]uint64{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

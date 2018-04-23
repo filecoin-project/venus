@@ -69,6 +69,7 @@ func lint(packages ...string) {
 	configs := []string{
 		"gometalinter",
 		"--skip=sharness",
+		"--skip=vendor",
 		"--disable-all",
 	}
 

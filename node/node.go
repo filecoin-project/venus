@@ -134,6 +134,7 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 
 // Build instantiates a filecoin Node from the settings specified in the config.
 func (nc *Config) Build(ctx context.Context) (*Node, error) {
+
 	host, err := libp2p.New(ctx, nc.Libp2pOpts...)
 	if err != nil {
 		return nil, err
@@ -143,8 +144,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	pinger := ping.NewPingService(host)
 
 	if nc.Repo == nil {
-		// TODO: maybe allow for not passing a repo?
-		return nil, ErrNoRepo
+		nc.Repo = repo.NewInMemoryRepo()
 	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())

@@ -23,8 +23,6 @@ type Orderbook struct {
 
 	Bids      BidSet
 	NextBidID uint64
-
-	Deals []*Deal
 }
 
 // Ask is a storage market ask order.
@@ -57,4 +55,14 @@ type Deal struct {
 
 	Ask uint64 `json:"ask"`
 	Bid uint64 `json:"bid"`
+
+	Committed bool   `json:"committed"`
+	SectorID  uint64 `json:"sector"`
+}
+
+// Filemap maps files by hash to sets of deals storing those files
+type Filemap struct {
+	// Files maps file hash to file details
+	Files map[string][]uint64
+	Deals []*Deal
 }

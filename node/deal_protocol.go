@@ -354,7 +354,7 @@ func (sm *StorageMarket) finishDeal(ctx context.Context, minerOwner types.Addres
 		return nil, errors.Wrap(err, "fetching data failed")
 	}
 
-	msgcid, err := sm.smi.AddDeal(ctx, minerOwner, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig)
+	msgcid, err := sm.smi.AddDeal(ctx, minerOwner, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig, propose.Deal.DataRef)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +385,7 @@ func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 type storageMarketPeeker interface {
 	GetAsk(uint64) (*core.Ask, error)
 	GetBid(uint64) (*core.Bid, error)
-	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string) (*cid.Cid, error)
+	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
 	GetAskSet() (core.AskSet, error)
@@ -482,7 +482,7 @@ func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
 		return nil, err
 	}
 
-	return stor.Orderbook.Deals, nil
+	return stor.Filemap.Deals, nil
 }
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, miner types.Address) (types.Address, error) {
@@ -509,8 +509,8 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, miner type
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain
-func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Address, ask, bid uint64, sig string) (*cid.Cid, error) {
-	pdata, err := abi.ToEncodedValues(big.NewInt(0).SetUint64(ask), big.NewInt(0).SetUint64(bid), []byte(sig))
+func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
+	pdata, err := abi.ToEncodedValues(big.NewInt(0).SetUint64(ask), big.NewInt(0).SetUint64(bid), []byte(sig), data.Bytes())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode abi values")
 	}

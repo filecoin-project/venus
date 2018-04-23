@@ -87,7 +87,7 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 	return id
 }
 
-func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string) (*cid.Cid, error) {
+func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
 	// TODO: something useful
 	msg := types.NewMessage(types.Address{}, types.Address{}, nil, "", nil)
 	return msg.Cid()

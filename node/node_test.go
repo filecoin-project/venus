@@ -321,27 +321,6 @@ func TestOptionWithError(t *testing.T) {
 
 }
 
-func TestErrorWithNoRepo(t *testing.T) {
-	ctx := context.Background()
-	assert := assert.New(t)
-	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
-
-	opts, err := OptionsFromRepo(r)
-	assert.NoError(err)
-
-	removeRepo := func(c *Config) error {
-		c.Repo = nil
-		return nil
-	}
-
-	opts = append(opts, removeRepo)
-
-	_, err = New(ctx, opts...)
-	assert.Error(err, ErrNoRepo)
-
-}
-
 func TestMakePrivateKey(t *testing.T) {
 	assert := assert.New(t)
 

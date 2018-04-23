@@ -16,6 +16,12 @@ func init() {
 // MinerActor is the miner actor
 type MinerActor struct{}
 
+// Sector is the on-chain representation of a sector
+type Sector struct {
+	CommR []byte
+	Deals []uint64
+}
+
 // MinerStorage is the miner actors storage
 type MinerStorage struct {
 	Owner types.Address
@@ -28,8 +34,10 @@ type MinerStorage struct {
 	// the miners pledge
 	Collateral *types.TokenAmount
 
+	Sectors []*Sector
+
 	LockedStorage *types.BytesAmount // LockedStorage is the amount of the miner's storage that is used.
-	Power         *big.Int
+	Power         *types.BytesAmount
 }
 
 // NewStorage returns an empty MinerStorage struct
@@ -64,6 +72,14 @@ var minerExports = Exports{
 	"getOwner": &FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
+	},
+	"addDealsToSector": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.UintArray},
+		Return: []abi.Type{abi.Integer},
+	},
+	"commitSector": &FunctionSignature{
+		Params: []abi.Type{abi.Integer, abi.Bytes, abi.UintArray},
+		Return: []abi.Type{abi.Integer},
 	},
 }
 
@@ -147,4 +163,87 @@ func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
 	}
 
 	return a, 0, nil
+}
+
+// AddDealsToSector adds deals to a sector. If the sectorID given is -1, a new
+// sector ID is allocated. The sector ID that deals are added to is returned
+func (ma *MinerActor) AddDealsToSector(ctx *VMContext, sectorID int64, deals []uint64) (*big.Int, uint8,
+	error) {
+	var mstore MinerStorage
+	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+		return mstore.upsertDealsToSector(sectorID, deals)
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	secIDout, ok := out.(int64)
+	if !ok {
+		return nil, 1, newRevertError("expected an int64")
+	}
+
+	return big.NewInt(secIDout), 0, nil
+}
+
+func (mstore *MinerStorage) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
+	if sectorID == -1 {
+		sectorID = int64(len(mstore.Sectors))
+		mstore.Sectors = append(mstore.Sectors, new(Sector))
+	}
+	if sectorID >= int64(len(mstore.Sectors)) {
+		return 0, newRevertError("sectorID out of range")
+	}
+	sector := mstore.Sectors[sectorID]
+	if sector.CommR != nil {
+		return 0, newRevertError("can't add deals to committed sector")
+	}
+
+	sector.Deals = append(sector.Deals, deals...)
+	return sectorID, nil
+}
+
+// CommitSector adds a commitment to the specified sector
+// if sectorID is -1, a new sector will be allocated.
+// if passing an existing sector ID, any deals given here will be added to the
+// deals already added to that sector
+func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte, deals []uint64) (*big.Int, uint8, error) {
+	var mstore MinerStorage
+	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+		if len(deals) != 0 {
+			sid, err := mstore.upsertDealsToSector(sectorID, deals)
+			if err != nil {
+				return nil, err
+			}
+			sectorID = sid
+		}
+
+		sector := mstore.Sectors[sectorID]
+		if sector.CommR != nil {
+			return nil, newRevertError("sector already committed")
+		}
+
+		resp, ret, err := ctx.Send(StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
+		if err != nil {
+			return nil, err
+		}
+		if ret != 0 {
+			return nil, newRevertError("failed to call commitDeals")
+		}
+
+		sector.CommR = commR
+		power := types.NewBytesAmountFromBytes(resp)
+		mstore.Power = mstore.Power.Add(power)
+
+		return nil, nil
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	secIDout, ok := out.(int64)
+	if !ok {
+		return nil, 1, newRevertError("expected an int64")
+	}
+
+	return big.NewInt(secIDout), 0, nil
 }
