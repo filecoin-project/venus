@@ -50,6 +50,7 @@ func deps() {
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",
 		"go get -u github.com/stretchr/testify",
+		"go get -u github.com/xeipuuv/gojsonschema",
 	}
 
 	for _, name := range list {

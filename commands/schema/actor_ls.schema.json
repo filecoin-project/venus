@@ -1,0 +1,164 @@
+{
+  "definitions": {
+    "Export": {
+      "type": "object",
+      "properties": {
+        "Params": { "type": "array", "items": { "type": "string" } },
+        "Return":{ "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["Params", "Return"],
+      "additionalProperties": false
+    },
+    "Exports": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/Export" }
+    },
+    "MinerMemory": {
+      "type": "object",
+      "properties": {
+        "Collateral": { "type": "number" },
+        "LockedStorage": { "type": "number" },
+        "Owner": { "type": "string" },
+        "PledgeBytes": { "type": "number" }
+      },
+      "required": ["Collateral", "LockedStorage", "Owner", "PledgeBytes"]
+    },
+    "StorageMarketMemory": {
+      "type": "object",
+      "properties": {
+        "Filemap": {
+          "type": "object",
+          "properties": {
+            "Deals": {
+              "type": ["array", "null"],
+              "items": {
+                "$ref": "#/definitions/Deal"
+              }
+            },
+            "Files": { "type": "object" }
+          },
+          "required": ["Deals", "Files"]
+        },
+        "Miners": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "Orderbook": {
+          "type": "object",
+          "properties": {
+            "Asks":{
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/Ask" }
+            },
+            "Bids": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/definitions/Bid" }
+            },
+            "NextAskID": { "type": "number" },
+            "NextBidID":{ "type": "number" }
+          },
+          "required": ["Asks", "Bids", "NextAskID", "NextBidID"]
+        }
+      },
+      "required": ["Miners", "Orderbook"]
+    },
+    "Ask": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "owner": { "type": "string" },
+        "price":{ "type": "number" },
+        "size": { "type": "number" }
+      },
+      "required": ["id", "owner", "price", "size"]
+    },
+    "Bid": {
+      "type": "object",
+      "properties": {
+        "collateral": { "type": ["number", "null"] },
+        "id": { "type": "number" },
+        "owner": { "type": "string" },
+        "price": { "type": "number" },
+        "size":{ "type": "number" },
+        "used":{ "type": "boolean" }
+      },
+      "required": ["collateral", "id", "owner", "price", "size", "used"]
+    },
+    "Deal": {
+      "type": "object",
+      "properties": {
+        "ask": { "type": "number" },
+        "bid": { "type": "number" }
+      },
+      "required": ["ask", "bid"]
+    },
+    "Cid": {
+      "type": "object",
+      "properties": {
+        "/":  { "type": "string" }
+      },
+      "required": ["/"],
+      "additionalProperties": false
+    },
+    "Actor": {
+      "type": "object",
+      "properties": {
+        "address": { "type": "string" },
+        "code": { "$ref": "#/definitions/Cid" },
+        "nonce": { "type": "number" },
+        "exports": { "$ref": "#/definitions/Exports" },
+        "memory": { "type": ["object", "null"] }
+      },
+      "required": ["address", "code", "nonce", "balance", "exports", "actorType", "memory"]
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/definitions/Actor"
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "actorType": {
+              "type": "string",
+              "enum": [
+                "AccountActor"
+              ]
+            },
+            "balance": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "balance"
+          ]
+        },
+        {
+          "properties": {
+            "actorType": {
+              "type": "string",
+              "enum": [
+                "StorageMarketActor"
+              ]
+            },
+            "memory": { "$ref": "#/definitions/StorageMarketMemory" }
+          }
+        },
+        {
+          "properties": {
+            "actorType": {
+              "type": "string",
+              "enum": [
+                "MinerActor"
+              ]
+            },
+            "memory": { "$ref": "#/definitions/MinerMemory" }
+          }
+        }
+      ]
+    }
+  ]
+}
