@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	dag "github.com/ipfs/go-ipfs/merkledag"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+
+	dag "github.com/ipfs/go-ipfs/merkledag"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -99,7 +100,7 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 */
 func TestDealProtocol(t *testing.T) {
 	assert := assert.New(t)
-	nd := makeNodes(t, 1)[0]
+	nd := MakeNodesUnstarted(t, 1, false)[0]
 
 	sm := NewStorageMarket(nd)
 
@@ -150,7 +151,7 @@ func TestDealProtocol(t *testing.T) {
 
 func TestDealProtocolMissing(t *testing.T) {
 	assert := assert.New(t)
-	nd := makeNodes(t, 1)[0]
+	nd := MakeNodesUnstarted(t, 1, false)[0]
 
 	sm := NewStorageMarket(nd)
 

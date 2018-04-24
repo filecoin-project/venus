@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+
+	"github.com/filecoin-project/go-filecoin/core"
 )
 
 var orderbookCmd = &cmds.Command{

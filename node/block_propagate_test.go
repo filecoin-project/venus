@@ -7,31 +7,9 @@ import (
 
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
-
-func makeNodes(t *testing.T, n int) []*Node {
-	t.Helper()
-	var out []*Node
-	for i := 0; i < n; i++ {
-		r := repo.NewInMemoryRepo()
-		if err := Init(context.Background(), r); err != nil {
-			t.Fatal(err)
-		}
-		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
-		opts, err := OptionsFromRepo(r)
-		assert.NoError(t, err)
-		nd, err := New(context.Background(), opts...)
-		if err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, nd)
-	}
-
-	return out
-}
 
 func connect(t *testing.T, nd1, nd2 *Node) {
 	t.Helper()
@@ -65,7 +43,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	defer cancel()
 	assert := assert.New(t)
 
-	nodes := makeNodes(t, 2)
+	nodes := MakeNodesUnstarted(t, 2, false)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 	connect(t, nodes[0], nodes[1])
@@ -88,7 +66,7 @@ func TestChainSync(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nodes := makeNodes(t, 2)
+	nodes := MakeNodesUnstarted(t, 2, false)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 

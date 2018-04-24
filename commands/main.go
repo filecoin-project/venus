@@ -17,6 +17,10 @@ const (
 	OptionRepoDir = "repodir"
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
+	// OfflineMode tells us if we should try to connect this Filecoin node to the network
+	OfflineMode = "offline"
+	// SwarmListen is the multiaddr for this Filecoin node
+	SwarmListen = "swarmlisten"
 )
 
 func defaultAPIAddr() string {

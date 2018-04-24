@@ -14,7 +14,7 @@ import (
 func TestDealProtocolClient(t *testing.T) {
 	ctx := context.TODO()
 	assert := assert.New(t)
-	nds := makeNodes(t, 2)
+	nds := MakeNodesUnstarted(t, 2, false)
 	connect(t, nds[0], nds[1])
 	time.Sleep(time.Millisecond * 10) // wait for connect notifications to complete
 

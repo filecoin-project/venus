@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -28,7 +27,7 @@ func TestActorLs(t *testing.T) {
 		emitter := NewMockEmitter(func(v interface{}) error {
 			return nil
 		})
-		nd := node.NewInMemoryNode(t, ctx)
+		nd := node.MakeNodesUnstarted(t, 1, true)[0]
 		tcm := (*core.ChainManagerForTest)(nd.ChainMgr)
 		tcm.SetBestBlockForTest(ctx, nil)
 		nd.ChainMgr = tcm
@@ -43,14 +42,13 @@ func TestActorLs(t *testing.T) {
 		emitter := NewMockEmitter(func(v interface{}) error {
 			return nil
 		})
-		nd := node.NewInMemoryNode(t, ctx)
+		nd := node.MakeNodesUnstarted(t, 1, true)[0]
 		nd.ChainMgr.GetBestBlock = func() *types.Block {
 			return &types.Block{StateRoot: nil}
 		}
 
 		err := runActorLs(ctx, emitter.emit, nd, nil)
 		require.Error(err)
-		fmt.Println(err)
 	})
 
 	t.Run("returns an error if LoadStateTree returns an error", func(t *testing.T) {
@@ -67,7 +65,7 @@ func TestActorLs(t *testing.T) {
 			actorViews = append(actorViews, v.(*actorView))
 			return nil
 		})
-		nd := node.NewInMemoryNode(t, ctx)
+		nd := node.MakeNodesUnstarted(t, 1, true)[0]
 		b1 := &types.Block{StateRoot: types.NewCidForTestGetter()()}
 		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 		chainMgrForTest = nd.ChainMgr

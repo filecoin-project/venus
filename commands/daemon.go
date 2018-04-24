@@ -25,7 +25,8 @@ var daemonCmd = &cmds.Command{
 		Tagline: "Start a long-running daemon-process",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("swarmlisten"),
+		cmdkit.StringOption(SwarmListen),
+		cmdkit.BoolOption(OfflineMode),
 	},
 	Run: daemonRun,
 	Encoders: cmds.EncoderMap{
@@ -43,7 +44,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		rep.Config().API.Address = apiAddress
 	}
 
-	if swarmAddress, ok := req.Options["swarmlisten"].(string); ok {
+	if swarmAddress, ok := req.Options[SwarmListen].(string); ok {
 		rep.Config().Swarm.Address = swarmAddress
 	}
 
@@ -52,14 +53,25 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		return err
 	}
 
+	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
+		opts = append(opts, func(c *node.Config) error {
+			c.OfflineMode = offlineMode
+			return nil
+		})
+	}
+
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
 		return err
 	}
 
-	re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host.ID().Pretty())) // nolint: errcheck
-	for _, a := range fcn.Host.Addrs() {
-		re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
+	if fcn.OfflineMode {
+		re.Emit("Filecoin node running in offline mode (libp2p is disabled)\n") // nolint: errcheck
+	} else {
+		re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host.ID().Pretty())) // nolint: errcheck
+		for _, a := range fcn.Host.Addrs() {
+			re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
+		}
 	}
 
 	return runAPIAndWait(req.Context, fcn, rep.Config())

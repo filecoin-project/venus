@@ -14,19 +14,19 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	nonerouting "gx/ipfs/QmXtoXbu9ReyV6Q4kDQ5CF9wXQNDY1PdHc4HhfxRR5AHB3/go-ipfs-routing/none"
 	bstore "gx/ipfs/QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY/go-ipfs-blockstore"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	bserv "github.com/ipfs/go-ipfs/blockservice"
-	bitswap "github.com/ipfs/go-ipfs/exchange/bitswap"
+	"github.com/ipfs/go-ipfs/exchange/bitswap"
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	lookup "github.com/filecoin-project/go-filecoin/lookup"
+	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -96,13 +96,16 @@ type Node struct {
 
 	// cancelSubscriptionsCtx is a handle to cancel the block and message subscriptions.
 	cancelSubscriptionsCtx context.CancelFunc
+
+	// OfflineMode, when true, disables libp2p
+	OfflineMode bool
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts []libp2p.Option
-
-	Repo repo.Repo
+	Libp2pOpts  []libp2p.Option
+	Repo        repo.Repo
+	OfflineMode bool
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -134,10 +137,17 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 
 // Build instantiates a filecoin Node from the settings specified in the config.
 func (nc *Config) Build(ctx context.Context) (*Node, error) {
+	var host host.Host
 
-	host, err := libp2p.New(ctx, nc.Libp2pOpts...)
-	if err != nil {
-		return nil, err
+	if !nc.OfflineMode {
+		h, err := libp2p.New(ctx, nc.Libp2pOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		host = h
+	} else {
+		host = noopLibP2PHost{}
 	}
 
 	// set up pinger
@@ -155,7 +165,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(host, routing)
 	bswap := bitswap.New(ctx, nwork, bs)
-
 	bserv := bserv.New(bs, bswap)
 
 	cst := &hamt.CborIpldStore{Blocks: bserv}
@@ -194,13 +203,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainMgr:     chainMgr,
 		Exchange:     bswap,
 		Host:         host,
+		Lookup:       le,
 		MiningWorker: miningWorker,
 		MsgPool:      msgPool,
+		OfflineMode:  nc.OfflineMode,
 		Ping:         pinger,
 		PubSub:       fsub,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
-		Lookup:       le,
 	}, nil
 }
 

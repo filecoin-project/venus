@@ -21,10 +21,9 @@ import (
 )
 
 func TestNodeConstruct(t *testing.T) {
-	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd := NewInMemoryNode(t, ctx)
+	nd := MakeNodesUnstarted(t, 1, false)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop()
@@ -34,7 +33,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := makeNodes(t, 2)
+	nds := MakeNodesUnstarted(t, 2, false)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -50,10 +49,9 @@ func TestNodeNetworking(t *testing.T) {
 }
 
 func TestNodeInit(t *testing.T) {
-	ctx := context.Background()
 	assert := assert.New(t)
 
-	nd := NewInMemoryNode(t, ctx)
+	nd := MakeNodesUnstarted(t, 1, true)[0]
 
 	assert.NoError(nd.Start())
 
@@ -62,9 +60,8 @@ func TestNodeInit(t *testing.T) {
 }
 func TestStartMiningEmptyWallet(t *testing.T) {
 	assert := assert.New(t)
-	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
 
-	node := NewInMemoryNode(t, ctx)
+	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	// The node temporarily contains the testaccount address by
 	// default, so replace it.
@@ -80,7 +77,7 @@ func TestNodeMining(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
 
-	node := NewInMemoryNode(t, ctx)
+	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	mockWorker := &mining.MockWorker{}
 	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -118,7 +115,7 @@ func TestNodeMining(t *testing.T) {
 	// Ensure we're tearing down cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node = NewInMemoryNode(t, ctx)
+	node = MakeNodesUnstarted(t, 1, true)[0]
 	_ = node.Wallet.NewAddress()
 
 	chainMgrForTest = node.ChainMgr
@@ -136,8 +133,7 @@ func TestNodeMining(t *testing.T) {
 	assert.True(workerDone)
 
 	// Ensure that the output is wired up correctly.
-	ctx, _ = context.WithCancel(context.Background()) // nolint: vet
-	node = NewInMemoryNode(t, ctx)
+	node = MakeNodesUnstarted(t, 1, true)[0]
 	_ = node.Wallet.NewAddress()
 
 	mockWorker = &mining.MockWorker{}
@@ -165,7 +161,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
 	ctx := context.Background()
-	node := NewInMemoryNode(t, ctx)
+	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	_ = node.Wallet.NewAddress()
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
@@ -216,7 +212,7 @@ func TestWaitForMessage(t *testing.T) {
 
 	ctx := context.Background()
 
-	node := NewInMemoryNode(t, ctx)
+	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	err := node.Start()
 	assert.NoError(err)
@@ -232,7 +228,7 @@ func TestWaitForMessageError(t *testing.T) {
 
 	ctx := context.Background()
 
-	node := NewInMemoryNode(t, ctx)
+	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	assert.NoError(node.Start())
 
@@ -290,7 +286,7 @@ func TestGetSignature(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
 
-		nd := NewInMemoryNode(t, ctx)
+		nd := MakeNodesUnstarted(t, 1, true)[0]
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
@@ -345,7 +341,7 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account does not exist", func(t *testing.T) {
 		assert := assert.New(t)
-		node := NewInMemoryNode(t, ctx)
+		node := MakeNodesUnstarted(t, 1, true)[0]
 		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
 		assert.NoError(err)
 		assert.NoError(node.Start())
@@ -359,7 +355,7 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
 		assert := assert.New(t)
-		node := NewInMemoryNode(t, ctx)
+		node := MakeNodesUnstarted(t, 1, true)[0]
 		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
 		assert.NoError(err)
 		assert.NoError(node.Start())
@@ -380,7 +376,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 
 	t.Run("includes correct nonce", func(t *testing.T) {
 		assert := assert.New(t)
-		node := NewInMemoryNode(t, ctx)
+		node := MakeNodesUnstarted(t, 1, true)[0]
 		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
 		assert.NoError(err)
 		assert.NoError(node.Start())
