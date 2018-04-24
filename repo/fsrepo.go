@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	badgerds "gx/ipfs/QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo/go-ds-badger"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -33,6 +34,7 @@ type FSRepo struct {
 	path    string
 	version uint
 
+	lk       sync.RWMutex
 	cfg      *config.Config
 	ds       Datastore
 	keystore keystore.Keystore
@@ -117,7 +119,20 @@ func InitFSRepo(p string, cfg *config.Config) error {
 
 // Config returns the configuration object.
 func (r *FSRepo) Config() *config.Config {
+	r.lk.RLock()
+	defer r.lk.RUnlock()
+
 	return r.cfg
+}
+
+// ReplaceConfig replaces the current config with the newly passed in one.
+func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
+	r.lk.Lock()
+	defer r.lk.Unlock()
+
+	r.cfg = cfg
+
+	return r.cfg.WriteFile(filepath.Join(r.path, configFilename))
 }
 
 // Datastore returns the datastore.

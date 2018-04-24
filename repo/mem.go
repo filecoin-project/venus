@@ -1,6 +1,8 @@
 package repo
 
 import (
+	"sync"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/keystore"
 	kss "github.com/filecoin-project/go-filecoin/keystore/sync"
@@ -11,6 +13,8 @@ import (
 
 // MemRepo is an in memory implementation of the filecoin repo
 type MemRepo struct {
+	// lk guards the config
+	lk      sync.RWMutex
 	C       *config.Config
 	D       Datastore
 	Ks      keystore.Keystore
@@ -29,12 +33,25 @@ func NewInMemoryRepo() *MemRepo {
 	}
 }
 
-// Config returns the configuration object
+// Config returns the configuration object.
 func (mr *MemRepo) Config() *config.Config {
+	mr.lk.RLock()
+	defer mr.lk.RUnlock()
+
 	return mr.C
 }
 
-// Datastore returns the datastore
+// ReplaceConfig replaces the current config with the newly passed in one.
+func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
+	mr.lk.Lock()
+	defer mr.lk.Unlock()
+
+	mr.C = cfg
+
+	return nil
+}
+
+// Datastore returns the datastore.
 func (mr *MemRepo) Datastore() Datastore {
 	return mr.D
 }
