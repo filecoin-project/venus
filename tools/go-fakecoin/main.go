@@ -142,7 +142,8 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	newMinerMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(400), "createMiner", params)
+
+	newMinerMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 0, types.NewTokenAmount(400), "createMiner", params)
 	_, err = msgPool.Add(newMinerMessage)
 	if err != nil {
 		return err
@@ -165,7 +166,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	askMsg := types.NewMessage(minerAddress, core.StorageMarketAddress, types.NewTokenAmount(100), "addAsk", params)
+	askMsg := types.NewMessage(minerAddress, core.StorageMarketAddress, 0, types.NewTokenAmount(100), "addAsk", params)
 	_, err = msgPool.Add(askMsg)
 	if err != nil {
 		return err
@@ -176,7 +177,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	bidMsg := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(90), "addBid", params)
+	bidMsg := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 1, types.NewTokenAmount(90), "addBid", params)
 	_, err = msgPool.Add(bidMsg)
 	if err != nil {
 		return err
@@ -194,7 +195,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	newDealMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, types.NewTokenAmount(400), "addDeal", params)
+	newDealMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 2, types.NewTokenAmount(400), "addDeal", params)
 	_, err = msgPool.Add(newDealMessage)
 	if err != nil {
 		return err

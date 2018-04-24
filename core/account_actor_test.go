@@ -41,10 +41,11 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := types.NewEmptyStateTree(store)
+		mp := NewMessagePool()
 
 		address := types.NewAddressForTestGetter()()
 
-		_, err := NextNonce(ctx, st, address)
+		_, err := NextNonce(ctx, st, mp, address)
 		assert.Error(err)
 		assert.Contains(err.Error(), "not found")
 	})
@@ -53,12 +54,14 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := types.NewEmptyStateTree(store)
+		mp := NewMessagePool()
+
 		address := types.NewAddressForTestGetter()()
 		actor, err := NewStorageMarketActor()
 		assert.NoError(err)
 		_ = types.MustSetActor(st, address, actor)
 
-		_, err = NextNonce(ctx, st, address)
+		_, err = NextNonce(ctx, st, mp, address)
 		assert.Error(err)
 		assert.Contains(err.Error(), "not an account actor")
 	})
@@ -67,14 +70,45 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := types.NewEmptyStateTree(store)
+		mp := NewMessagePool()
 		address := types.NewAddressForTestGetter()()
 		actor, err := NewAccountActor(types.NewTokenAmount(0))
 		assert.NoError(err)
 		actor.Nonce = 42
 		types.MustSetActor(st, address, actor)
 
-		nonce, err := NextNonce(ctx, st, address)
+		nonce, err := NextNonce(ctx, st, mp, address)
 		assert.NoError(err)
 		assert.Equal(uint64(42), nonce)
+	})
+
+	t.Run("gets nonce from highest message pool value", func(t *testing.T) {
+		assert := assert.New(t)
+		store := hamt.NewCborStore()
+		st := types.NewEmptyStateTree(store)
+		mp := NewMessagePool()
+		address := types.NewAddressForTestGetter()()
+		actor, err := NewAccountActor(types.NewTokenAmount(0))
+		assert.NoError(err)
+		actor.Nonce = 2
+		types.MustSetActor(st, address, actor)
+
+		nonce, err := NextNonce(ctx, st, mp, address)
+		assert.NoError(err)
+		assert.Equal(uint64(2), nonce)
+
+		msg := types.NewMessage(address, TestAddress, nonce, nil, "", []byte{})
+		mp.Add(msg)
+
+		nonce, err = NextNonce(ctx, st, mp, address)
+		assert.NoError(err)
+		assert.Equal(uint64(3), nonce)
+
+		msg = types.NewMessage(address, TestAddress, nonce, nil, "", []byte{})
+		mp.Add(msg)
+
+		nonce, err = NextNonce(ctx, st, mp, address)
+		assert.NoError(err)
+		assert.Equal(uint64(4), nonce)
 	})
 }

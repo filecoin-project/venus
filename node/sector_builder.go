@@ -136,7 +136,7 @@ func (smc *SectorBuilder) PostSealedSector(ctx context.Context, ss *SealedSector
 	}
 
 	minerOwner := types.Address{} // TODO: get the miner owner to send this from
-	msg := types.NewMessage(minerOwner, smc.MinerAddr, nil, "commitSector", params)
+	msg := types.NewMessage(minerOwner, smc.MinerAddr, 0, nil, "commitSector", params)
 
 	if err := smc.nd.AddNewMessage(ctx, msg); err != nil {
 		return errors.Wrap(err, "pushing out commitSector message failed")

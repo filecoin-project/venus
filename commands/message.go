@@ -37,6 +37,7 @@ var msgSendCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.IntOption("value", "value to send with message"),
 		cmdkit.StringOption("from", "address to send message from"),
+		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
@@ -61,7 +62,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		msg := types.NewMessage(fromAddr, target, types.NewTokenAmount(uint64(val)), "", nil)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, target, types.NewTokenAmount(uint64(val)), "", nil)
+		if err != nil {
+			return err
+		}
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			return err

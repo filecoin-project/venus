@@ -59,7 +59,7 @@ func (state *AccountActor) Exports() Exports {
 // Depending on the context, this may or may not be sufficient to select a
 // nonce for a message. See node.NextNonce if you want to select a nonce
 // based on the state of the node (not just on the state of the actor).
-func NextNonce(ctx context.Context, st types.StateTree, address types.Address) (uint64, error) {
+func NextNonce(ctx context.Context, st types.StateTree, mp *MessagePool, address types.Address) (uint64, error) {
 	actor, err := st.GetActor(ctx, address)
 	if err != nil {
 		return 0, err
@@ -68,5 +68,14 @@ func NextNonce(ctx context.Context, st types.StateTree, address types.Address) (
 		return 0, errors.New("actor not an account actor")
 	}
 
-	return actor.Nonce, nil
+	nonce := actor.Nonce
+
+	// TODO consider what if anything to do if there's a gap with
+	// what's in the pool.
+	nonceFromMsgPool, found := LargestNonce(mp, address)
+	if found && nonceFromMsgPool >= nonce {
+		nonce = nonceFromMsgPool + 1
+	}
+
+	return nonce, nil
 }

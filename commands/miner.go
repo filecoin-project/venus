@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -59,7 +60,11 @@ message to be mined as this is required to return the address of the new miner.`
 			return err
 		}
 
-		msg := types.NewMessage(fromAddr, core.StorageMarketAddress, collateral, "createMiner", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, core.StorageMarketAddress, collateral, "createMiner", params)
+		if err != nil {
+			return err
+		}
+
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			return err
 		}
@@ -121,7 +126,11 @@ var minerAddAskCmd = &cmds.Command{
 			return err
 		}
 
-		msg := types.NewMessage(fromAddr, minerAddr, nil, "addAsk", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "addAsk", params)
+		if err != nil {
+			return err
+		}
+
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
 			return err
 		}

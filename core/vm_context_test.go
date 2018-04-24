@@ -27,7 +27,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	assert.NoError(state.SetActor(ctx, toAddr, toActor))
 
-	msg := types.NewMessage(addrGetter(), toAddr, nil, "hello", nil)
+	msg := types.NewMessage(addrGetter(), toAddr, 0, nil, "hello", nil)
 
 	vmCtx := NewVMContext(nil, toActor, msg, state)
 

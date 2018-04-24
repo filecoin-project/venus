@@ -41,16 +41,24 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		return nil, err
 	}
 
+	nonce, err := core.NextNonce(ctx, stateTree, b.messagePool, core.NetworkAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	rewardMsg := types.NewMessage(core.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
+	_, err = b.messagePool.Add(rewardMsg)
+	if err != nil {
+		return nil, err
+	}
+
 	next := &types.Block{
 		Height:   baseBlock.Height + 1,
-		Messages: b.messagePool.Pending(),
+		Messages: core.OrderPendingByNonce(b.messagePool),
 	}
 	if err := next.AddParent(*baseBlock); err != nil {
 		return nil, err
 	}
-
-	rewardMsg := types.NewMessage(core.NetworkAddress, rewardAddress, types.NewTokenAmount(1000), "", nil)
-	next.Messages = append(next.Messages, rewardMsg)
 
 	// TODO(fritz) processBlock bails as soon as it sees a
 	// message failure. Change this to skip the message

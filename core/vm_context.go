@@ -84,7 +84,7 @@ func (ctx *VMContext) send(deps vmContextSendDeps, to types.Address, method stri
 		return nil, 1, revertErrorWrap(err, "encoding params failed")
 	}
 
-	msg := types.NewMessage(from, to, value, method, paramData)
+	msg := types.NewMessage(from, to, 0, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO: handle this
 		return nil, 1, newFaultErrorf("unhandled: sending to self (%s)", msg.From)

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 // Type-related test helpers.
@@ -55,6 +55,7 @@ func NewMessageForTestGetter() func() *Message {
 		return NewMessage(
 			NewMainnetAddress([]byte(s+"-from")),
 			NewMainnetAddress([]byte(s+"-to")),
+			0,
 			nil,
 			s,
 			nil)

@@ -466,15 +466,9 @@ func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, 
 	if err != nil {
 		return 0, err
 	}
-	nonce, err := core.NextNonce(ctx, st, address)
+	nonce, err := core.NextNonce(ctx, st, node.MsgPool, address)
 	if err != nil {
 		return 0, err
-	}
-	// TODO consider what if anything to do if there's a gap with
-	// what's in the pool.
-	nonceFromMsgPool, found := core.LargestNonce(node.MsgPool, address)
-	if found && nonceFromMsgPool >= nonce {
-		nonce = nonceFromMsgPool + 1
 	}
 	return nonce, nil
 }
@@ -487,12 +481,7 @@ func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Add
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get next nonce")
 	}
-	// TODO fritz when we switch to enforcing nonces change this
-	// to the new NewMessage signature and just:
-	// return types.NewMessage(...), nil
-	m := types.NewMessage(from, to, value, method, params)
-	m.Nonce = nonce
-	return m, nil
+	return types.NewMessage(from, to, nonce, value, method, params), nil
 }
 
 // NewAddress creates a new account address on the default wallet backend.

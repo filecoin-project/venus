@@ -56,10 +56,11 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, value *TokenAmount, method string, params []byte) *Message {
+func NewMessage(from, to Address, nonce uint64, value *TokenAmount, method string, params []byte) *Message {
 	return &Message{
 		From:   from,
 		To:     to,
+		Nonce:  nonce,
 		Value:  value,
 		Method: method,
 		Params: params,

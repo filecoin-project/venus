@@ -21,13 +21,11 @@ func TestStatePutGet(t *testing.T) {
 
 	act1 := NewActor(AccountActorCodeCid, nil)
 	act1.WriteStorage([]byte("hello"))
-	// TODO fritz enable when we have nonce checking:
-	// act1.IncNextNonce()
+	act1.IncNonce()
 	act2 := NewActor(AccountActorCodeCid, nil)
 	act2.WriteStorage([]byte("world"))
-	// TODO fritz enable when we have nonce checking:
-	// act2.IncNextNonce()
-	// act2.IncNextNonce()
+	act2.IncNonce()
+	act2.IncNonce()
 
 	addrGetter := NewAddressForTestGetter()
 	addr1 := addrGetter()

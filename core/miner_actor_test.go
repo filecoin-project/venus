@@ -14,7 +14,8 @@ import (
 
 func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, collateral int64) types.Address {
 	pdata := mustConvertParams(types.NewBytesAmount(10000))
-	msg := types.NewMessage(TestAddress, StorageMarketAddress, types.NewTokenAmount(100), "createMiner", pdata)
+	nonce := MustGetNonce(st, TestAddress)
+	msg := types.NewMessage(TestAddress, StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
 	receipt, err := ApplyMessage(context.Background(), st, msg)
 	assert.NoError(err)
@@ -40,7 +41,7 @@ func TestAddAsk(t *testing.T) {
 
 	// make an ask, and then make sure it all looks good
 	pdata := mustConvertParams(types.NewTokenAmount(100), types.NewBytesAmount(150))
-	msg := types.NewMessage(TestAddress, outAddr, nil, "addAsk", pdata)
+	msg := types.NewMessage(TestAddress, outAddr, 1, nil, "addAsk", pdata)
 
 	receipt, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
@@ -63,7 +64,7 @@ func TestAddAsk(t *testing.T) {
 
 	// make another ask!
 	pdata = mustConvertParams(types.NewTokenAmount(110), types.NewBytesAmount(200))
-	msg = types.NewMessage(TestAddress, outAddr, nil, "addAsk", pdata)
+	msg = types.NewMessage(TestAddress, outAddr, 2, nil, "addAsk", pdata)
 
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)
@@ -86,7 +87,7 @@ func TestAddAsk(t *testing.T) {
 
 	// now try to create an ask larger than our pledge
 	pdata = mustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
-	msg = types.NewMessage(TestAddress, outAddr, nil, "addAsk", pdata)
+	msg = types.NewMessage(TestAddress, outAddr, 3, nil, "addAsk", pdata)
 
 	receipt, err = ApplyMessage(ctx, st, msg)
 	assert.NoError(err)

@@ -356,7 +356,7 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(node.Start())
 
 		address := core.TestAddress // Has an actor.
-		msg := types.NewMessage(address, core.TestAddress, nil, "foo", []byte{})
+		msg := types.NewMessage(address, core.TestAddress, 0, nil, "foo", []byte{})
 		msg.Nonce = 42
 		core.MustAdd(node.MsgPool, msg)
 

@@ -165,17 +165,14 @@ func ApplyMessage(ctx context.Context, st types.StateTree, msg *types.Message) (
 
 	// At this point we consider the message successfully applied so inc
 	// the nonce.
-
-	// TODO actually inc the nonce in a followup:
-	//
-	// fromActor, err := st.GetActor(ctx, msg.From)
-	// if err != nil {
-	// 	return nil, faultErrorWrap(err, "couldn't load from actor")
-	// }
-	// fromActor.IncNextNonce()
-	// if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
-	// 	return nil, faultErrorWrap(err, "could not set from actor after inc nonce")
-	// }
+	fromActor, err := st.GetActor(ctx, msg.From)
+	if err != nil {
+		return nil, faultErrorWrap(err, "couldn't load from actor")
+	}
+	fromActor.IncNonce()
+	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
+		return nil, faultErrorWrap(err, "could not set from actor after inc nonce")
+	}
 
 	return r, nil
 }
@@ -225,13 +222,12 @@ func attemptApplyMessage(ctx context.Context, st types.StateTree, msg *types.Mes
 		return nil, faultErrorWrap(err, "failed to get CID from the message")
 	}
 
-	// TODO enable nonce checking in a followup.
-	// if msg.Nonce < fromActor.NextNonce {
-	// 	return nil, errNonceTooLow
-	// }
-	// if msg.Nonce > fromActor.NextNonce {
-	// 	return nil, errNonceTooHigh
-	// }
+	if msg.Nonce < fromActor.Nonce {
+		return nil, errNonceTooLow
+	}
+	if msg.Nonce > fromActor.Nonce {
+		return nil, errNonceTooHigh
+	}
 
 	ret, exitCode, vmErr := Send(ctx, fromActor, toActor, msg, st)
 

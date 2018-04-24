@@ -40,7 +40,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 	})
-	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "", nil)
+	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "", nil)
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -53,8 +53,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	expAct1, expAct2 := RequireNewAccountActor(require, types.NewTokenAmount(10000-550)), RequireNewAccountActor(require, types.NewTokenAmount(550))
-	// TODO fritz when nonce checking is enforced:
-	// expAct1.IncNonce()
+	expAct1.IncNonce()
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expAct1,
 		addr2: expAct2,
@@ -83,7 +82,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		addr1: act1,
 		addr2: act2,
 	})
-	msg := types.NewMessage(addr1, addr2, nil, "returnRevertError", nil)
+	msg := types.NewMessage(addr1, addr2, 0, nil, "returnRevertError", nil)
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -103,8 +102,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
-	// TODO fritz when nonce checking is enforced:
-	// expectedAct1.IncNonce()
+	expectedAct1.IncNonce()
 	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expectedAct1,
 		addr2: expectedAct2,
@@ -132,7 +130,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	badParams, err := abi.EncodeValues(params)
 	assert.NoError(err)
-	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "addAsk", badParams)
+	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "addAsk", badParams)
 
 	r, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
@@ -155,12 +153,55 @@ func TestProcessBlockParamsError(t *testing.T) {
 		addr2: act2,
 	})
 	badParams := []byte{1, 2, 3, 4, 5}
-	msg := types.NewMessage(addr1, addr2, types.NewTokenAmount(550), "addAsk", badParams)
+	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "addAsk", badParams)
 
 	r, err := ApplyMessage(ctx, st, msg)
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Contains(r.Error, "invalid params: malformed stream")
+}
+
+func TestProcessBlockNonceTooLow(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr2, addr1 := newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	act1.Nonce = 5
+	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "", []byte{})
+
+	_, err := ApplyMessage(ctx, st, msg)
+	assert.Error(err)
+	assert.Equal(err.(*applyErrorPermanent).err, errNonceTooLow)
+}
+
+func TestProcessBlockNonceTooHigh(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr2, addr1 := newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	msg := types.NewMessage(addr1, addr2, 5, types.NewTokenAmount(550), "", []byte{})
+
+	_, err := ApplyMessage(ctx, st, msg)
+	assert.Error(err)
+	assert.Equal(err.(*applyErrorTemporary).err, errNonceTooHigh)
 }
 
 // TODO fritz add more test cases that cover the intent expressed

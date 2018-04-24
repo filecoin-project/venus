@@ -70,7 +70,11 @@ var clientAddBidCmd = &cmds.Command{
 			return err
 		}
 
-		msg := types.NewMessage(fromAddr, core.StorageMarketAddress, funds, "addBid", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, core.StorageMarketAddress, funds, "addBid", params)
+		if err != nil {
+			return err
+		}
+
 		err = n.AddNewMessage(req.Context, msg)
 		if err != nil {
 			return err
