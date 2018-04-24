@@ -9,13 +9,12 @@ import (
 	"time"
 
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
 	types "github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -58,24 +57,25 @@ func TestNodeInit(t *testing.T) {
 	assert.NotNil(nd.ChainMgr.GetBestBlock())
 	nd.Stop()
 }
-func TestStartMiningEmptyWallet(t *testing.T) {
+
+func TestStartMiningNoRewardAddress(t *testing.T) {
 	assert := assert.New(t)
 
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	nd := MakeNodesUnstarted(t, 1, true)[0]
 
-	// The node temporarily contains the testaccount address by
-	// default, so replace it.
-	node.Wallet = &wallet.Wallet{}
-	assert.NoError(node.Start())
-	err := node.StartMining()
+	// remove default addr
+	nd.rewardAddress = types.Address{}
+
+	assert.NoError(nd.Start())
+	err := nd.StartMining()
 	assert.Error(err)
-	assert.Contains(err.Error(), "No addresses")
+	assert.Contains(err.Error(), "no reward address")
 }
 
 func TestNodeMining(t *testing.T) {
 	assert := assert.New(t)
 	newCid := types.NewCidForTestGetter()
-	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
+	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true)[0]
 
@@ -97,7 +97,7 @@ func TestNodeMining(t *testing.T) {
 	assert.NoError(node.StartMining())
 	gotInput := <-inCh
 	assert.True(b1.Cid().Equals(gotInput.MineOn.Cid()))
-	assert.Equal(node.Wallet.GetAddresses()[0].String(), gotInput.RewardAddress.String())
+	assert.Equal(node.Wallet.Addresses()[0].String(), gotInput.RewardAddress.String())
 
 	// Ensure that the successive inputs (new best blocks) are wired up properly.
 	b2 := &types.Block{StateRoot: newCid()}
@@ -116,7 +116,6 @@ func TestNodeMining(t *testing.T) {
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
 	node = MakeNodesUnstarted(t, 1, true)[0]
-	_ = node.Wallet.NewAddress()
 
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetBestBlockForTest(ctx, b1)
@@ -134,7 +133,6 @@ func TestNodeMining(t *testing.T) {
 
 	// Ensure that the output is wired up correctly.
 	node = MakeNodesUnstarted(t, 1, true)[0]
-	_ = node.Wallet.NewAddress()
 
 	mockWorker = &mining.MockWorker{}
 	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -163,7 +161,6 @@ func TestUpdateMessagePool(t *testing.T) {
 	ctx := context.Background()
 	node := MakeNodesUnstarted(t, 1, true)[0]
 
-	_ = node.Wallet.NewAddress()
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
 	type msgs []*types.Message
 
@@ -209,7 +206,6 @@ type msgs []*types.Message
 
 func TestWaitForMessage(t *testing.T) {
 	assert := assert.New(t)
-
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true)[0]
@@ -225,7 +221,6 @@ func TestWaitForMessage(t *testing.T) {
 
 func TestWaitForMessageError(t *testing.T) {
 	assert := assert.New(t)
-
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true)[0]

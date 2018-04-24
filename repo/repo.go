@@ -22,8 +22,16 @@ type Datastore interface {
 // Repo is a representation of all persistent data in a filecoin node.
 type Repo interface {
 	Config() *config.Config
+	// ReplaceConfig replaces the current config, with the newly passed in one.
+	ReplaceConfig(cfg *config.Config) error
+
+	// Datastore is a general storage solution for things like blocks.
 	Datastore() Datastore
 	Keystore() keystore.Keystore
+
+	// WalletDatastore is a specifc storage solution, only used to store sensitive wallet information.
+	WalletDatastore() Datastore
+
 	Version() uint
 	Close() error
 }

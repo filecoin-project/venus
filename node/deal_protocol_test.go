@@ -104,8 +104,10 @@ func TestDealProtocol(t *testing.T) {
 
 	sm := NewStorageMarket(nd)
 
-	minerAddr := nd.Wallet.NewAddress()
-	minerOwner := nd.Wallet.NewAddress()
+	minerAddr, err := nd.NewAddress()
+	assert.NoError(err)
+	minerOwner, err := nd.NewAddress()
+	assert.NoError(err)
 	_ = minerOwner
 
 	msa := newMockMsp()
@@ -155,8 +157,10 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	sm := NewStorageMarket(nd)
 
-	minerAddr := nd.Wallet.NewAddress()
-	minerOwner := nd.Wallet.NewAddress()
+	minerAddr, err := nd.NewAddress()
+	assert.NoError(err)
+	minerOwner, err := nd.NewAddress()
+	assert.NoError(err)
 
 	msa := newMockMsp()
 	msa.minerOwners[minerAddr] = minerOwner

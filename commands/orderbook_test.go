@@ -43,7 +43,11 @@ func TestAskList(t *testing.T) {
 	minerAddr := d.CreateMinerAddr()
 
 	for i := 0; i < 10; i++ {
-		d.RunSuccess("miner", "add-ask", minerAddr.String(), "1", fmt.Sprintf("%d", i))
+		d.RunSuccess(
+			"miner", "add-ask",
+			"--from", d.Config().Mining.RewardAddress.String(),
+			minerAddr.String(), "1", fmt.Sprintf("%d", i),
+		)
 	}
 
 	d.RunSuccess("mining", "once")

@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -12,6 +14,7 @@ type Config struct {
 	Bootstrap *BootstrapConfig `toml:"bootstrap"`
 	Datastore *DatastoreConfig `toml:"datastore"`
 	Swarm     *SwarmConfig     `toml:"swarm"`
+	Mining    *MiningConfig    `toml:"mining"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -66,6 +69,15 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 	}
 }
 
+// MiningConfig holds all configuration options related to mining.
+type MiningConfig struct {
+	RewardAddress types.Address `toml:"rewardAddress,omitempty"`
+}
+
+func newDefaultMiningConfig() *MiningConfig {
+	return &MiningConfig{}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -74,12 +86,13 @@ func NewDefaultConfig() *Config {
 		Bootstrap: newDefaultBootstrapConfig(),
 		Datastore: newDefaultDatastoreConfig(),
 		Swarm:     newDefaultSwarmConfig(),
+		Mining:    newDefaultMiningConfig(),
 	}
 }
 
 // WriteFile writes the config to the given filepath.
 func (cfg *Config) WriteFile(file string) error {
-	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

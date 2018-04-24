@@ -40,6 +40,9 @@ func TestFSRepoInit(t *testing.T) {
 
 [swarm]
   address = "/ip4/127.0.0.1/tcp/6000"
+
+[mining]
+  rewardAddress = ""
 `,
 		string(content),
 	)
@@ -92,5 +95,32 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal([]byte("boop"), val)
 
+	assert.NoError(r2.Close())
+}
+
+func TestFSRepoReplaceConfig(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "")
+	assert.NoError(err)
+	defer os.RemoveAll(dir)
+
+	cfg := config.NewDefaultConfig()
+	cfg.API.Address = "foo"
+	assert.NoError(err, InitFSRepo(dir, cfg))
+
+	r1, err := OpenFSRepo(dir)
+	assert.NoError(err)
+
+	newCfg := r1.Config()
+	newCfg.API.Address = "bar"
+
+	assert.NoError(r1.ReplaceConfig(newCfg))
+	assert.Equal("bar", r1.Config().API.Address)
+	assert.NoError(r1.Close())
+
+	r2, err := OpenFSRepo(dir)
+	assert.NoError(err)
+	assert.Equal("bar", r2.Config().API.Address)
 	assert.NoError(r2.Close())
 }

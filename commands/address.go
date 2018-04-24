@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -38,7 +39,11 @@ type addressResult struct {
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
-		re.Emit(&addressResult{fcn.Wallet.NewAddress().String()}) // nolint: errcheck
+		addr, err := fcn.NewAddress()
+		if err != nil {
+			return err
+		}
+		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
 		return nil
 	},
 	Type: &addressResult{},
@@ -53,7 +58,7 @@ var addrsNewCmd = &cmds.Command{
 var addrsLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
-		for _, a := range fcn.Wallet.GetAddresses() {
+		for _, a := range fcn.Wallet.Addresses() {
 			re.Emit(&addressResult{a.String()}) // nolint: errcheck
 		}
 		return nil
@@ -117,6 +122,11 @@ var balanceCmd = &cmds.Command{
 
 		act, err := tree.GetActor(req.Context, addr)
 		if err != nil {
+			if types.IsActorNotFoundError(err) {
+				// if the account doesn't exit, the balance should be zero
+				re.Emit(big.NewInt(0)) // nolint: errcheck
+				return nil
+			}
 			return err
 		}
 

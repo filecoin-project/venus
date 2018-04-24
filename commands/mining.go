@@ -31,7 +31,7 @@ var miningOnceCmd = &cmds.Command{
 
 		cur := fcn.ChainMgr.GetBestBlock()
 
-		addrs := fcn.Wallet.GetAddresses()
+		addrs := fcn.Wallet.Addresses()
 		if len(addrs) == 0 {
 			return ErrNoWalletAddresses
 		}

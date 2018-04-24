@@ -94,11 +94,19 @@ func TestProposeDeal(t *testing.T) {
 
 	miner := dmin.CreateMinerAddr()
 
-	askO := dmin.RunSuccess("miner", "add-ask", miner.String(), "1200", "1")
+	askO := dmin.RunSuccess(
+		"miner", "add-ask",
+		"--from", dmin.Config().Mining.RewardAddress.String(),
+		miner.String(), "1200", "1",
+	)
 	dmin.RunSuccess("mining", "once")
 	dmin.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
 
-	dcli.RunSuccess("client", "add-bid", "500", "1")
+	dcli.RunSuccess(
+		"client", "add-bid",
+		"--from", dcli.Config().Mining.RewardAddress.String(),
+		"500", "1",
+	)
 	dcli.RunSuccess("mining", "once")
 	time.Sleep(time.Millisecond * 20) // wait for block propagation
 

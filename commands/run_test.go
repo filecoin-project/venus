@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -289,7 +290,8 @@ func (td *TestDaemon) CreateMinerAddr() types.Address {
 	// need money
 	td.RunSuccess("mining", "once")
 
-	miner := td.RunSuccess("miner", "create", "1000000", "1000")
+	addr := td.Config().Mining.RewardAddress
+	miner := td.RunSuccess("miner", "create", "--from", addr.String(), "1000000", "1000")
 	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
 	require.NoError(td.test, err)
 
@@ -327,6 +329,13 @@ func (td *TestDaemon) CreateWalletAddr() string {
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
 	require.NotEmpty(td.test, addr)
 	return addr
+}
+
+// Config is a helper to read out the config of the deamon
+func (td *TestDaemon) Config() *config.Config {
+	cfg, err := config.ReadFile(filepath.Join(td.repoDir, "config.toml"))
+	require.NoError(td.test, err)
+	return cfg
 }
 
 func tryAPICheck(td *TestDaemon) error {

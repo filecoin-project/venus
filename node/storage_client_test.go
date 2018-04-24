@@ -21,8 +21,10 @@ func TestDealProtocolClient(t *testing.T) {
 	sm := NewStorageMarket(nds[0])
 	client := NewStorageClient(nds[1])
 
-	minerAddr := nds[0].Wallet.NewAddress()
-	minerOwner := nds[0].Wallet.NewAddress()
+	minerAddr, err := nds[0].NewAddress()
+	assert.NoError(err)
+	minerOwner, err := nds[0].NewAddress()
+	assert.NoError(err)
 
 	msa := newMockMsp()
 	client.smi = msa

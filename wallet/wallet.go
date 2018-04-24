@@ -1,87 +1,87 @@
 package wallet
 
 import (
-	"crypto/rand"
-	"fmt"
+	"errors"
+	"reflect"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Wallet manages the locally stored accounts.
+var (
+	// ErrUnknownAddress is returned when the given address is not stored in this wallet.
+	ErrUnknownAddress = errors.New("unknown address")
+)
+
+// Wallet manages the locally stored addresses.
 type Wallet struct {
-	lk             sync.Mutex
-	addresses      map[string]types.Address
-	defaultAddress types.Address
+	lk sync.Mutex
+
+	backends map[reflect.Type][]Backend
 }
 
-// New creates a new Wallet.
-func New() *Wallet {
+// New constructs a new wallet, that manages addresses in all the
+// passed in backends.
+func New(backends ...Backend) *Wallet {
+	backendsMap := make(map[reflect.Type][]Backend)
+
+	for _, backend := range backends {
+		kind := reflect.TypeOf(backend)
+		backendsMap[kind] = append(backendsMap[kind], backend)
+	}
+
 	return &Wallet{
-		addresses: map[string]types.Address{},
+		backends: backendsMap,
 	}
 }
 
 // HasAddress checks if the given address is stored.
 // Safe for concurrent access.
 func (w *Wallet) HasAddress(a types.Address) bool {
-	w.lk.Lock()
-	defer w.lk.Unlock()
-	_, ok := w.addresses[a.String()]
-	return ok
+	_, err := w.Find(a)
+	return err == nil
 }
 
-// NewAddress creates a new address and stores it.
+// Find searches through all backends and returns the one storing the passed
+// in address.
 // Safe for concurrent access.
-func (w *Wallet) NewAddress() types.Address {
-	fakeAddrBuf := make([]byte, 20)
-	_, err := rand.Read(fakeAddrBuf)
-	if err != nil {
-		// if rand.Read errors we have a problem
-		panic(err)
-	}
-
-	hash, err := types.AddressHash(fakeAddrBuf)
-	if err != nil {
-		panic(err)
-	}
-
-	fakeAddr := types.NewMainnetAddress(hash)
-
+func (w *Wallet) Find(addr types.Address) (Backend, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	w.addresses[fakeAddr.String()] = fakeAddr
-
-	if w.defaultAddress == (types.Address{}) {
-		w.defaultAddress = fakeAddr
+	for _, backends := range w.backends {
+		for _, backend := range backends {
+			if backend.HasAddress(addr) {
+				return backend, nil
+			}
+		}
 	}
 
-	return fakeAddr
+	return nil, ErrUnknownAddress
 }
 
-// GetAddresses retrieves all stored addresses.
+// Addresses retrieves all stored addresses.
 // Safe for concurrent access.
-func (w *Wallet) GetAddresses() []types.Address {
+func (w *Wallet) Addresses() []types.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
-	out := make([]types.Address, 0, len(w.addresses))
-	for _, a := range w.addresses {
-		out = append(out, a)
+
+	var out []types.Address
+	for _, backends := range w.backends {
+		for _, backend := range backends {
+			out = append(out, backend.Addresses()...)
+		}
 	}
+
 	return out
 }
 
-// GetDefaultAddress retrieves the default address if one exists.
-// If no address is available it returns an error.
-// Safe for concurrent access.
-func (w *Wallet) GetDefaultAddress() (types.Address, error) {
+// Backends returns backends by their kind.
+func (w *Wallet) Backends(kind reflect.Type) []Backend {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	if w.defaultAddress == (types.Address{}) {
-		return types.Address{}, fmt.Errorf("no default address in local wallet")
-	}
-
-	return w.defaultAddress, nil
+	cpy := make([]Backend, len(w.backends[kind]))
+	copy(cpy, w.backends[kind])
+	return cpy
 }

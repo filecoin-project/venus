@@ -3,39 +3,44 @@ package wallet
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWalletSimple(t *testing.T) {
 	assert := assert.New(t)
 
-	w := New()
-	count := 10
-	addrs := make([]types.Address, count)
-
-	for i := 0; i < count; i++ {
-		addrs[i] = w.NewAddress()
-	}
-
-	returnedAddrs := w.GetAddresses()
-	for _, addr := range addrs {
-		assert.Contains(returnedAddrs, addr)
-	}
-}
-
-func TestWalletDefaultAddress(t *testing.T) {
-	assert := assert.New(t)
-
-	w := New()
-
-	addr, err := w.GetDefaultAddress()
-	assert.EqualError(err, "no default address in local wallet")
-	assert.Equal(addr, types.Address{})
-
-	addrNew := w.NewAddress()
-	addr, err = w.GetDefaultAddress()
+	t.Log("create a backend")
+	ds := datastore.NewMapDatastore()
+	fs, err := NewDSBackend(ds)
 	assert.NoError(err)
-	assert.Equal(addr, addrNew)
+
+	t.Log("create a wallet with a single backend")
+	w := New(fs)
+
+	t.Log("check backends")
+	assert.Len(w.Backends(DSBackendType), 1)
+
+	t.Log("create a new address in the backend")
+	addr, err := fs.NewAddress()
+	assert.NoError(err)
+
+	t.Log("test HasAddress")
+	assert.True(w.HasAddress(addr))
+
+	t.Log("find backend")
+	backend, err := w.Find(addr)
+	assert.NoError(err)
+	assert.Equal(fs, backend)
+
+	t.Log("find unknown address")
+	randomAddr := types.NewAddressForTestGetter()()
+
+	assert.False(w.HasAddress(randomAddr))
+
+	t.Log("list all addresses")
+	list := w.Addresses()
+	assert.Len(list, 1)
 }
