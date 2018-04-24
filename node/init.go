@@ -13,6 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
@@ -40,6 +42,18 @@ func Init(ctx context.Context, r repo.Repo) error {
 		return errors.Wrap(err, "failed to store private key")
 	}
 
+	// TODO: but behind a config option if this should be generated
+	addr, err := newAddress(r)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate reward address")
+	}
+
+	newConfig := r.Config()
+	newConfig.Mining.RewardAddress = addr
+	if err := r.ReplaceConfig(newConfig); err != nil {
+		return errors.Wrap(err, "failed to update config")
+	}
+
 	return nil
 }
 
@@ -54,6 +68,15 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sk, nil
 
+	return sk, nil
+}
+
+func newAddress(r repo.Repo) (types.Address, error) {
+	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+	if err != nil {
+		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+	}
+
+	return backend.NewAddress()
 }

@@ -28,6 +28,10 @@ type Repo interface {
 	// Datastore is a general storage solution for things like blocks.
 	Datastore() Datastore
 	Keystore() keystore.Keystore
+
+	// WalletDatastore is a specifc storage solution, only used to store sensitive wallet information.
+	WalletDatastore() Datastore
+
 	Version() uint
 	Close() error
 }

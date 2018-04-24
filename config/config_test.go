@@ -49,6 +49,9 @@ func TestWriteFile(t *testing.T) {
 
 [swarm]
   address = "/ip4/127.0.0.1/tcp/6000"
+
+[mining]
+  rewardAddress = ""
 `,
 		string(content),
 	)

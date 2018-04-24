@@ -18,6 +18,7 @@ type MemRepo struct {
 	C       *config.Config
 	D       Datastore
 	Ks      keystore.Keystore
+	W       Datastore
 	version uint
 }
 
@@ -29,6 +30,7 @@ func NewInMemoryRepo() *MemRepo {
 		C:       config.NewDefaultConfig(),
 		D:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Ks:      kss.MutexWrap(keystore.NewMemKeystore()),
+		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		version: Version,
 	}
 }
@@ -56,17 +58,22 @@ func (mr *MemRepo) Datastore() Datastore {
 	return mr.D
 }
 
-// Keystore returns the keystore
+// Keystore returns the keystore.
 func (mr *MemRepo) Keystore() keystore.Keystore {
 	return mr.Ks
 }
 
-// Version returns the version of the repo
+// WalletDatastore returns the wallet datastore.
+func (mr *MemRepo) WalletDatastore() Datastore {
+	return mr.W
+}
+
+// Version returns the version of the repo.
 func (mr *MemRepo) Version() uint {
 	return mr.version
 }
 
-// Close is a noop, just filling out the interface
+// Close is a noop, just filling out the interface.
 func (mr *MemRepo) Close() error {
 	return nil
 }

@@ -48,7 +48,7 @@ var clientAddBidCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := addressWithDefault(req.Options["from"], n)
+		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
 		if err != nil {
 			return errors.Wrap(err, "invalid from address")
 		}
@@ -158,10 +158,7 @@ var clientProposeDealCmd = &cmds.Command{
 			return err
 		}
 
-		defaddr, err := nd.Wallet.GetDefaultAddress()
-		if err != nil {
-			return err
-		}
+		defaddr := nd.RewardAddress()
 
 		propose := &node.DealProposal{
 			ClientSig: string(defaddr[:]), // TODO: actual crypto

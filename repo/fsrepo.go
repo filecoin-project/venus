@@ -19,6 +19,7 @@ import (
 
 const configFilename = "config.toml"
 const versionFilename = "version"
+const walletDatastorePrefix = "wallet"
 
 // NoRepoError is returned when trying to open a repo where one does not exist
 type NoRepoError struct {
@@ -38,6 +39,7 @@ type FSRepo struct {
 	cfg      *config.Config
 	ds       Datastore
 	keystore keystore.Keystore
+	walletDs Datastore
 }
 
 var _ Repo = (*FSRepo)(nil)
@@ -81,6 +83,10 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 
 	if err := r.openKeystore(); err != nil {
 		return nil, errors.Wrap(err, "failed to open keystore")
+	}
+
+	if err := r.openWalletDatastore(); err != nil {
+		return nil, errors.Wrap(err, "failed to open wallet datastore")
 	}
 
 	return r, nil
@@ -140,6 +146,11 @@ func (r *FSRepo) Datastore() Datastore {
 	return r.ds
 }
 
+// WalletDatastore returns the wallet datastore.
+func (r *FSRepo) WalletDatastore() Datastore {
+	return r.walletDs
+}
+
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
@@ -153,6 +164,10 @@ func (r *FSRepo) Keystore() keystore.Keystore {
 // Close closes the repo.
 func (r *FSRepo) Close() error {
 	if err := r.ds.Close(); err != nil {
+		return errors.Wrap(err, "failed to close datastore")
+	}
+
+	if err := r.walletDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close datastore")
 	}
 
@@ -201,7 +216,6 @@ func (r *FSRepo) loadVersion() (uint, error) {
 }
 
 func (r *FSRepo) openDatastore() error {
-	// TODO: read datastore info from config, use that to open it up
 	switch r.cfg.Datastore.Type {
 	case "badgerds":
 		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), nil)
@@ -223,7 +237,20 @@ func (r *FSRepo) openKeystore() error {
 	if err != nil {
 		return err
 	}
+
 	r.keystore = ks
+
+	return nil
+}
+
+func (r *FSRepo) openWalletDatastore() error {
+	// TODO: read wallet datastore info from config, use that to open it up
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.walletDs = ds
 
 	return nil
 }

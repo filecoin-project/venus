@@ -6,17 +6,17 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
+	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
-	"gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
+	host "gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
-	"gx/ipfs/QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw/go-libp2p-floodsub"
+	floodsub "gx/ipfs/QmSFihvoND3eDaAYRCeLgLPt62yCPgMZs1NSZmKFEtJQQw/go-libp2p-floodsub"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	nonerouting "gx/ipfs/QmXtoXbu9ReyV6Q4kDQ5CF9wXQNDY1PdHc4HhfxRR5AHB3/go-ipfs-routing/none"
 	bstore "gx/ipfs/QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY/go-ipfs-blockstore"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	"gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
-	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
+	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	bserv "github.com/ipfs/go-ipfs/blockservice"
 	"github.com/ipfs/go-ipfs/exchange/bitswap"
@@ -37,6 +37,8 @@ var (
 	ErrNoMethod = errors.New("no method in message")
 	// ErrNoRepo is returned when the configs repo is nil
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
+	// ErrNoRewardAddress is returned when the node is not configured to have reward address.
+	ErrNoRewardAddress = errors.New("no reward address configured")
 )
 
 // Node represents a full Filecoin node.
@@ -99,13 +101,16 @@ type Node struct {
 
 	// OfflineMode, when true, disables libp2p
 	OfflineMode bool
+
+	rewardAddress types.Address
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts  []libp2p.Option
-	Repo        repo.Repo
-	OfflineMode bool
+	Libp2pOpts    []libp2p.Option
+	Repo          repo.Repo
+	OfflineMode   bool
+	RewardAddress types.Address
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -119,6 +124,14 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 			panic("Libp2pOptions can only be called once")
 		}
 		nc.Libp2pOpts = opts
+		return nil
+	}
+}
+
+// RewardAddress returns a node config option that sets the reward address on the node.
+func RewardAddress(addr types.Address) ConfigOpt {
+	return func(nc *Config) error {
+		nc.RewardAddress = addr
 		return nil
 	}
 }
@@ -185,32 +198,32 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up floodsub")
 	}
-
-	fcWallet := wallet.New()
-
-	// TODO: load wallet from repo
-	// start up with an address already made
-	_ = fcWallet.NewAddress()
+	backend, err := wallet.NewDSBackend(nc.Repo.WalletDatastore())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to set up wallet backend")
+	}
+	fcWallet := wallet.New(backend)
 
 	le, err := lookup.NewLookupEngine(fsub, fcWallet, host.ID())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to setup lookup engine")
+		return nil, errors.Wrap(err, "failed to set up lookup engine")
 	}
 
 	return &Node{
-		Blockservice: bserv,
-		CborStore:    cst,
-		ChainMgr:     chainMgr,
-		Exchange:     bswap,
-		Host:         host,
-		Lookup:       le,
-		MiningWorker: miningWorker,
-		MsgPool:      msgPool,
-		OfflineMode:  nc.OfflineMode,
-		Ping:         pinger,
-		PubSub:       fsub,
-		Repo:         nc.Repo,
-		Wallet:       fcWallet,
+		Blockservice:  bserv,
+		CborStore:     cst,
+		ChainMgr:      chainMgr,
+		Exchange:      bswap,
+		Host:          host,
+		Lookup:        le,
+		MiningWorker:  miningWorker,
+		MsgPool:       msgPool,
+		OfflineMode:   nc.OfflineMode,
+		Ping:          pinger,
+		PubSub:        fsub,
+		Repo:          nc.Repo,
+		Wallet:        fcWallet,
+		rewardAddress: nc.RewardAddress,
 	}, nil
 }
 
@@ -275,14 +288,9 @@ func (node *Node) isMining() bool {
 	return node.mining.isMining
 }
 
-// TODO this always mines to the 0th address in the wallet.
-// We need to enable setting which address.
-func (node *Node) getRewardAddress() (types.Address, error) {
-	addrs := node.Wallet.GetAddresses()
-	if len(addrs) == 0 {
-		return types.Address{}, errors.New("No addresses in wallet")
-	}
-	return addrs[0], nil
+// RewardAddress returns the configured reward address for this node.
+func (node *Node) RewardAddress() types.Address {
+	return node.rewardAddress
 }
 
 func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
@@ -321,8 +329,7 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 		}
 		head = newHead
 		if node.isMining() {
-			rewardAddress, err := node.getRewardAddress()
-			if err != nil {
+			if node.rewardAddress == (types.Address{}) {
 				log.Error("No mining reward address, mining should not have started!")
 				continue
 			}
@@ -332,7 +339,7 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head, rewardAddress):
+				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress):
 				}
 			}()
 		}
@@ -398,9 +405,8 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 
 // StartMining causes the node to start feeding blocks to the mining worker.
 func (node *Node) StartMining() error {
-	rewardAddress, err := node.getRewardAddress()
-	if err != nil {
-		return err
+	if node.rewardAddress == (types.Address{}) {
+		return ErrNoRewardAddress
 	}
 	node.setIsMining(true)
 	node.miningDoneWg.Add(1)
@@ -409,7 +415,7 @@ func (node *Node) StartMining() error {
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock(), rewardAddress):
+		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock(), node.rewardAddress):
 		}
 	}()
 	return nil
@@ -487,4 +493,15 @@ func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Add
 	m := types.NewMessage(from, to, value, method, params)
 	m.Nonce = nonce
 	return m, nil
+}
+
+// NewAddress creates a new account address on the default wallet backend.
+func (node *Node) NewAddress() (types.Address, error) {
+	backends := node.Wallet.Backends(wallet.DSBackendType)
+	if len(backends) == 0 {
+		return types.Address{}, fmt.Errorf("missing default ds backend")
+	}
+
+	backend := (backends[0]).(*wallet.DSBackend)
+	return backend.NewAddress()
 }

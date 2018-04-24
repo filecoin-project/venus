@@ -39,7 +39,7 @@ message to be mined as this is required to return the address of the new miner.`
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := addressWithDefault(req.Options["from"], n)
+		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
 		if err != nil {
 			return errors.Wrap(err, "invalid from address")
 		}
@@ -96,14 +96,14 @@ var minerAddAskCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := addressWithDefault(req.Options["from"], n)
+		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
 		if err != nil {
-			return (errors.Wrap(err, "invalid from address"))
+			return errors.Wrap(err, "invalid from address")
 		}
 
 		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			return (errors.Wrap(err, "invalid miner address"))
+			return errors.Wrap(err, "invalid miner address")
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[1], 10)
