@@ -29,6 +29,7 @@ func TestAddrSetRoundtrip(t *testing.T) {
 	var setBack AddrSet
 	assert.NoError(cbor.DecodeInto(bytes, &setBack))
 
+	assert.Equal(len(addrs), len(setBack))
 	for _, addr := range addrs {
 		_, ok := setBack[addr]
 		assert.True(ok)

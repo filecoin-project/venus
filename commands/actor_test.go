@@ -92,7 +92,6 @@ func TestActorLs(t *testing.T) {
 		assert.Equal("MinerActor", actorViews[2].ActorType)
 		assert.Equal("UnknownActor", actorViews[3].ActorType)
 	})
-
 }
 
 func TestPresentExports(t *testing.T) {
