@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -312,4 +313,14 @@ func fileExists(file string) bool {
 		return false
 	}
 	return err == nil
+}
+
+// StagingDir satisfies node.SectorDirs
+func (r *FSRepo) StagingDir() string {
+	return path.Join(r.path, "staging")
+}
+
+// SealedDir satisfies node.SectorDirs
+func (r *FSRepo) SealedDir() string {
+	return path.Join(r.path, "sealed")
 }
