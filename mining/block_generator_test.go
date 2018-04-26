@@ -46,12 +46,14 @@ func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
+	accountActor := &types.Actor{Code: types.AccountActorCodeCid}
 
 	// With no messages.
 	nextStateRoot := newCid()
 	mpb, mst := &MockProcessBlock{}, &types.MockStateTree{}
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return([]*types.MessageReceipt{}, nil)
 	mst.On("Flush", context.Background()).Return(nextStateRoot, nil)
+	mst.On("GetActor", context.Background(), mock.AnythingOfType("types.Address")).Return(accountActor, nil)
 	successfulGetStateTree := func(c context.Context, stateRootCid *cid.Cid) (types.StateTree, error) {
 		assert.True(stateRootCid.Equals(baseBlock.StateRoot))
 		return mst, nil
@@ -66,9 +68,10 @@ func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 	mst.AssertExpectations(t)
 
 	// With messages.
-	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
+	mpb, mst, pool = &MockProcessBlock{}, &types.MockStateTree{}, core.NewMessagePool()
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return([]*types.MessageReceipt{}, nil)
 	mst.On("Flush", context.Background()).Return(nextStateRoot, nil)
+	mst.On("GetActor", context.Background(), mock.AnythingOfType("types.Address")).Return(accountActor, nil)
 	newMsg := types.NewMessageForTestGetter()
 	pool.Add(newMsg())
 	pool.Add(newMsg())
@@ -77,8 +80,8 @@ func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 	g = NewBlockGenerator(pool, successfulGetStateTree, mpb.ProcessBlock)
 	next, err = g.Generate(context.Background(), &baseBlock, addr)
 	assert.NoError(err)
-	assert.Len(pool.Pending(), 2)
-	assert.Len(next.Messages, expectedMsgs+1) // Block reward message is in there too.
+	assert.Len(pool.Pending(), expectedMsgs+1) // Block reward message is in there too.
+	assert.Len(next.Messages, expectedMsgs+1)
 	mpb.AssertExpectations(t)
 	mst.AssertExpectations(t)
 
@@ -99,6 +102,7 @@ func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 	// processBlock fails.
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return(nil, errors.New("boom ProcessBlock failed"))
+	mst.On("GetActor", context.Background(), mock.AnythingOfType("types.Address")).Return(accountActor, nil)
 	g = NewBlockGenerator(pool, successfulGetStateTree, mpb.ProcessBlock)
 	_, err = g.Generate(context.Background(), &baseBlock, addr)
 	if assert.Error(err) {
@@ -111,6 +115,7 @@ func TestBlockGenerator_GenerateBehavior(t *testing.T) {
 	mpb, mst = &MockProcessBlock{}, &types.MockStateTree{}
 	mpb.On("ProcessBlock", context.Background(), mock.AnythingOfType("*types.Block"), mst).Return([]*types.MessageReceipt{}, nil)
 	mst.On("Flush", context.Background()).Return(nil, errors.New("boom tree.Flush failed"))
+	mst.On("GetActor", context.Background(), mock.AnythingOfType("types.Address")).Return(accountActor, nil)
 	g = NewBlockGenerator(pool, successfulGetStateTree, mpb.ProcessBlock)
 	_, err = g.Generate(context.Background(), &baseBlock, addr)
 	if assert.Error(err) {

@@ -90,7 +90,7 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 
 func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
 	// TODO: something useful
-	msg := types.NewMessage(types.Address{}, types.Address{}, nil, "", nil)
+	msg := types.NewMessage(types.Address{}, types.Address{}, 0, nil, "", nil)
 	return msg.Cid()
 }
 
@@ -202,4 +202,22 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("ask does not have enough space for bid", resp.Message)
+}
+
+func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	nd := MakeNodesUnstarted(t, 1, false)[0]
+	err := nd.ChainMgr.Genesis(ctx, core.InitGenesis)
+	assert.NoError(err)
+	assert.NoError(nd.Start())
+
+	msa := &stateTreeMarketPeeker{nd}
+
+	data := dag.NewRawNode([]byte("cats"))
+	dealCid, err := msa.AddDeal(ctx, core.TestAddress, uint64(0), 0, string(core.TestAddress[:]), data.Cid())
+
+	assert.NoError(err)
+	assert.NotNil(dealCid)
 }

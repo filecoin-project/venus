@@ -16,6 +16,7 @@ func TestMessageMarshal(t *testing.T) {
 	msg := NewMessage(
 		addrGetter(),
 		addrGetter(),
+		0,
 		NewTokenAmount(17777),
 		"send",
 		[]byte("foobar"),
@@ -42,6 +43,7 @@ func TestMessageCid(t *testing.T) {
 	msg1 := NewMessage(
 		addrGetter(),
 		addrGetter(),
+		0,
 		NewTokenAmount(999),
 		"send",
 		nil,
@@ -50,6 +52,7 @@ func TestMessageCid(t *testing.T) {
 	msg2 := NewMessage(
 		addrGetter(),
 		addrGetter(),
+		0,
 		NewTokenAmount(4004),
 		"send",
 		nil,

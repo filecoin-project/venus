@@ -125,6 +125,16 @@ func RequireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.A
 	return types.NewActorWithMemory(codeCid, types.NewTokenAmount(100), storageBytes)
 }
 
+// MustGetNonce returns the next nonce for an actor at the given address or panics.
+func MustGetNonce(st types.StateTree, a types.Address) uint64 {
+	mp := NewMessagePool()
+	nonce, err := NextNonce(context.Background(), st, mp, a)
+	if err != nil {
+		panic(err)
+	}
+	return nonce
+}
+
 // FakeActorStorage is storage for our fake actor. It contains a single
 // bit that is set when the actor's methods are invoked.
 type FakeActorStorage struct{ Changed bool }

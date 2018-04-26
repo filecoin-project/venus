@@ -515,7 +515,10 @@ func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Addre
 		return nil, errors.Wrap(err, "failed to encode abi values")
 	}
 
-	msg := types.NewMessage(from, core.StorageMarketAddress, nil, "addDeal", pdata)
+	msg, err := NewMessageWithNextNonce(ctx, stsa.nd, from, core.StorageMarketAddress, nil, "addDeal", pdata)
+	if err != nil {
+		return nil, err
+	}
 
 	err = stsa.nd.AddNewMessage(ctx, msg)
 	if err != nil {

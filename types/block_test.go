@@ -53,8 +53,8 @@ func TestDecodeBlock(t *testing.T) {
 		assert := assert.New(t)
 
 		addrGetter := NewAddressForTestGetter()
-		m1 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(10), "hello", []byte("cat"))
-		m2 := NewMessage(addrGetter(), addrGetter(), NewTokenAmount(2), "yes", []byte("dog"))
+		m1 := NewMessage(addrGetter(), addrGetter(), 0, NewTokenAmount(10), "hello", []byte("cat"))
+		m2 := NewMessage(addrGetter(), addrGetter(), 0, NewTokenAmount(2), "yes", []byte("dog"))
 
 		m1Cid, err := m1.Cid()
 		assert.NoError(err)
