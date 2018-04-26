@@ -7,6 +7,9 @@ Project. Feel free to propose changes to this document in a pull
 request. These guidelines can and should change as the project changes
 phases.
 
+Also: these guidelines should not replace common sense. The golden rule
+is __if something feels wrong, stop and surface the issue.__
+
 ### Table Of Contents
 * [Enable Progress](#enable-progress)
 * [Code Reviews](#code-reviews)
@@ -69,6 +72,8 @@ As for approvals:
 
 In order to minimize the time wasted in code review and handoff we have
 the following protocol:
+  * prefer to go to in-person/voice if the PR is open >= 3 days
+  * pinging reviewers to look at a PR considered useful and encouraged
   * comments should be actionable and clearly state what is requested
   * by default code review comments are advisory: reviewee
  should consider them but doesn't _have_ to respond or
@@ -118,6 +123,18 @@ requiring mutiple round trips from someone whose next availability
    - When a PR is merged, the referenced issues are closed and moved to `Done`.
 - All other stages are updated manually.
 - All work you are doing should be tracked through an issue. If an issue doesn't exist, create one.
+
+### Picking up a story
+
+In order to surface design constraints as early as possible clarify an
+implementation plan ahead of implementation with someone knowledgable
+of the issue. That is, when you pick up a story spend some time with
+it and then clarify what you think should happen with someone familiar
+with the issue and code. Typically this is the person who filed the
+issue but a different stakeholder could be called out explicitly in
+the issue or found in slack. Reflect any decisions that were made or
+directives you receive back into the issue to avoid misunderstandings.
+Only implement once you're sure you have a solid plan.
 
 ## Conventions and Style
 
