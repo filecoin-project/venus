@@ -2,13 +2,16 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"testing"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
+	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xeipuuv/gojsonschema"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -91,6 +94,51 @@ func TestActorLs(t *testing.T) {
 		assert.Equal("StorageMarketActor", actorViews[1].ActorType)
 		assert.Equal("MinerActor", actorViews[2].ActorType)
 		assert.Equal("UnknownActor", actorViews[3].ActorType)
+	})
+
+	validateActorView := func(a *actorView, sl gojsonschema.JSONLoader) (*gojsonschema.Result, error) {
+		jsonBytes, err := json.Marshal(a)
+		if err != nil {
+			return nil, err
+		}
+		jsonLoader := gojsonschema.NewBytesLoader(jsonBytes)
+
+		return gojsonschema.Validate(sl, jsonLoader)
+	}
+
+	assertSchemaValid := func(t *testing.T, a *actorView, sl gojsonschema.JSONLoader) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		result, err := validateActorView(a, sl)
+		require.NoError(err)
+
+		assert.True(result.Valid())
+		for _, desc := range result.Errors() {
+			t.Errorf("- %s\n", desc)
+		}
+	}
+
+	t.Run("Emitted AccountActor JSON conforms to schema", func(t *testing.T) {
+
+		wd, _ := os.Getwd()
+		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
+
+		actor, _ := core.NewAccountActor(types.NewTokenAmount(100))
+		a := makeActorView(actor, "address", &core.AccountActor{})
+
+		assertSchemaValid(t, a, schemaLoader)
+
+		actor, _ = core.NewStorageMarketActor()
+		a = makeActorView(actor, "address", &core.StorageMarketActor{})
+
+		assertSchemaValid(t, a, schemaLoader)
+
+		addr, _ := types.NewAddressFromString("minerAddress")
+		actor, _ = core.NewMinerActor(addr, types.NewBytesAmount(50000), types.NewTokenAmount(200))
+		a = makeActorView(actor, "address", &core.MinerActor{})
+
+		assertSchemaValid(t, a, schemaLoader)
 	})
 }
 
