@@ -37,88 +37,144 @@ func TestZeroToken(t *testing.T) {
 	z := NewTokenAmount(0)
 
 	assert.Equal(z, ZeroToken)
+	assert.True(z.Equal(nil))
+	assert.True(ZeroToken.Equal(nil))
 }
 
 func TestTokenAmountComparison(t *testing.T) {
-	assert := assert.New(t)
-
 	a := NewTokenAmount(123)
 	b := NewTokenAmount(123)
 	c := NewTokenAmount(456)
 
-	assert.True(a.Equal(b))
-	assert.True(b.Equal(a))
+	t.Run("handles comparison", func(t *testing.T) {
+		assert := assert.New(t)
 
-	assert.False(a.Equal(c))
-	assert.False(c.Equal(a))
+		assert.True(a.Equal(b))
+		assert.True(b.Equal(a))
 
-	assert.True(a.LessThan(c))
-	assert.True(a.LessEqual(c))
-	assert.True(c.GreaterThan(a))
-	assert.True(c.GreaterEqual(a))
-	assert.True(a.GreaterEqual(b))
-	assert.True(a.LessEqual(b))
+		assert.False(a.Equal(c))
+		assert.False(c.Equal(a))
+
+		assert.True(a.LessThan(c))
+		assert.True(a.LessEqual(c))
+		assert.True(c.GreaterThan(a))
+		assert.True(c.GreaterEqual(a))
+		assert.True(a.GreaterEqual(b))
+		assert.True(a.LessEqual(b))
+	})
+
+	t.Run("treats nil pointers as zero", func(t *testing.T) {
+		assert := assert.New(t)
+		d := ZeroToken.Sub(a)
+		var np *TokenAmount
+
+		assert.True(np.Equal(ZeroToken))
+		assert.True(ZeroToken.Equal(np))
+		assert.True(d.LessThan(np))
+		assert.True(np.GreaterThan(d))
+		assert.True(c.GreaterThan(np))
+		assert.True(np.LessThan(c))
+	})
 }
 
 func TestTokenAmountAddition(t *testing.T) {
-	assert := assert.New(t)
-
 	a := NewTokenAmount(123)
 	b := NewTokenAmount(456)
 
-	aStr := a.String()
-	bStr := b.String()
-	sum := a.Add(b)
+	t.Run("handles addition", func(t *testing.T) {
+		assert := assert.New(t)
 
-	assert.Equal(sum, NewTokenAmount(579))
+		aStr := a.String()
+		bStr := b.String()
+		sum := a.Add(b)
 
-	// Storage is not reused
-	assert.NotEqual(&a, &sum)
-	assert.NotEqual(&b, &sum)
+		assert.Equal(sum, NewTokenAmount(579))
 
-	// Values have not changed.
-	assert.Equal(aStr, a.String())
-	assert.Equal(bStr, b.String())
+		// Storage is not reused
+		assert.NotEqual(&a, &sum)
+		assert.NotEqual(&b, &sum)
+
+		// Values have not changed.
+		assert.Equal(aStr, a.String())
+		assert.Equal(bStr, b.String())
+	})
+
+	t.Run("treats nil pointers as zero", func(t *testing.T) {
+		assert := assert.New(t)
+		var x, z *TokenAmount
+
+		assert.True(z.Add(a).Equal(a))
+		assert.True(a.Add(z).Equal(a))
+		assert.True(a.Add(nil).Equal(a))
+		assert.True(z.Add(x).Equal(nil))
+		assert.True(z.Add(nil).Equal(x))
+	})
 }
 
 func TestTokenAmountSubtraction(t *testing.T) {
-	assert := assert.New(t)
-
 	a := NewTokenAmount(456)
 	b := NewTokenAmount(123)
-	aStr := a.String()
-	bStr := b.String()
-	delta := a.Sub(b)
 
-	assert.Equal(delta, NewTokenAmount(333))
+	t.Run("handles subtraction", func(t *testing.T) {
+		assert := assert.New(t)
 
-	// Storage is not reused
-	assert.NotEqual(&a, &delta)
-	assert.NotEqual(&b, &delta)
+		aStr := a.String()
+		bStr := b.String()
+		delta := a.Sub(b)
 
-	// Values have not changed.
-	assert.Equal(aStr, a.String())
-	assert.Equal(bStr, b.String())
+		assert.Equal(delta, NewTokenAmount(333))
+
+		// Storage is not reused
+		assert.NotEqual(&a, &delta)
+		assert.NotEqual(&b, &delta)
+
+		// Values have not changed.
+		assert.Equal(aStr, a.String())
+		assert.Equal(bStr, b.String())
+	})
+
+	t.Run("treats nil pointers as zero", func(t *testing.T) {
+		assert := assert.New(t)
+		var z *TokenAmount
+
+		assert.True(a.Sub(z).Equal(a))
+		assert.True(a.Sub(nil).Equal(a))
+		assert.True(z.Sub(z).Equal(z))
+		assert.True(z.Sub(nil).Equal(nil))
+	})
 }
 
 func TestTokenAmountPriceCalculation(t *testing.T) {
-	assert := assert.New(t)
-
 	price := NewTokenAmount(123)
 	numBytes := NewBytesAmount(10)
-	priceStr := price.String()
-	numBytesStr := numBytes.String()
 
-	total := price.CalculatePrice(numBytes)
-	assert.Equal(total, NewTokenAmount(1230))
+	t.Run("calculates prices by multiplying with BytesAmount", func(t *testing.T) {
+		assert := assert.New(t)
+		priceStr := price.String()
+		numBytesStr := numBytes.String()
 
-	// Storage is not reused
-	assert.NotEqual(&price, &total)
-	assert.NotEqual(&numBytes, &total)
+		total := price.CalculatePrice(numBytes)
+		assert.Equal(total, NewTokenAmount(1230))
 
-	// Values have not changed.
-	assert.Equal(priceStr, price.String())
-	assert.Equal(numBytesStr, numBytes.String())
+		// Storage is not reused
+		assert.NotEqual(&price, &total)
+		assert.NotEqual(&numBytes, &total)
+
+		// Values have not changed.
+		assert.Equal(priceStr, price.String())
+		assert.Equal(numBytesStr, numBytes.String())
+	})
+
+	t.Run("treats nil pointers as zero", func(t *testing.T) {
+		assert := assert.New(t)
+		var nt *TokenAmount
+		var nb *BytesAmount
+
+		assert.Equal(price.CalculatePrice(nil), ZeroToken)
+		assert.Equal(nt.CalculatePrice(numBytes), ZeroToken)
+		assert.Equal(price.CalculatePrice(nb), ZeroToken)
+		assert.Equal(nt.CalculatePrice(nb), ZeroToken)
+	})
 }
 
 func TestTokenAmountCborMarshaling(t *testing.T) {
@@ -139,6 +195,19 @@ func TestTokenAmountCborMarshaling(t *testing.T) {
 
 			assert.True(preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
 		}
+	})
+	t.Run("cannot CBOR encode nil as *TokenAmount", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var np *TokenAmount
+
+		out, err := cbor.DumpObject(np)
+		assert.NoError(err)
+
+		out2, err := cbor.DumpObject(ZeroToken)
+		assert.NoError(err)
+
+		assert.NotEqual(out, out2)
 	})
 }
 
@@ -161,16 +230,31 @@ func TestTokenAmountJsonMarshaling(t *testing.T) {
 			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
+	t.Run("cannot JSON marshall nil as *TokenAmount", func(t *testing.T) {
+		assert := assert.New(t)
+
+		var np *TokenAmount
+
+		out, err := json.Marshal(np)
+		assert.NoError(err)
+
+		out2, err := json.Marshal(ZeroToken)
+		assert.NoError(err)
+
+		assert.NotEqual(out, out2)
+	})
 }
 
 func TestTokenAmountIsPositive(t *testing.T) {
 	p := NewTokenAmount(100)      // positive
 	z := NewTokenAmount(0)        // zero
 	n := NewTokenAmount(0).Sub(p) // negative
+	var np *TokenAmount
 
 	t.Run("returns false if zero", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(z.IsPositive())
+		assert.False(np.IsPositive())
 	})
 
 	t.Run("returns true if greater than zero", func(t *testing.T) {
@@ -188,10 +272,12 @@ func TestTokenAmountIsNegative(t *testing.T) {
 	p := NewTokenAmount(100)      // positive
 	z := NewTokenAmount(0)        // zero
 	n := NewTokenAmount(0).Sub(p) // negative
+	var np *TokenAmount
 
 	t.Run("returns false if zero", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(z.IsNegative())
+		assert.False(np.IsNegative())
 	})
 
 	t.Run("returns false if greater than zero", func(t *testing.T) {
@@ -209,31 +295,21 @@ func TestTokenAmountIsZero(t *testing.T) {
 	p := NewTokenAmount(100)      // positive
 	z := NewTokenAmount(0)        // zero
 	n := NewTokenAmount(0).Sub(p) // negative
+	var np *TokenAmount
 
-	t.Run("returns true if zero bytes", func(t *testing.T) {
+	t.Run("returns true if zero token", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.True(z.IsZero())
+		assert.True(np.IsZero())
 	})
 
-	t.Run("returns false if greater than zero bytes", func(t *testing.T) {
+	t.Run("returns false if greater than zero token", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(p.IsZero())
 	})
 
-	t.Run("returns false if less than zero bytes", func(t *testing.T) {
+	t.Run("returns false if less than zero token", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(n.IsZero())
 	})
-}
-
-func TestTokenAmountSet(t *testing.T) {
-	assert := assert.New(t)
-
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	for i := 0; i < 100; i++ {
-		x := NewTokenAmount(rng.Uint64())
-		y := NewTokenAmount(0).Set(x)
-		assert.True(y.Equal(x), "should be equal - x: %s y: %s)", x.String(), y.String())
-	}
 }

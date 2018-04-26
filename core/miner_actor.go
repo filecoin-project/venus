@@ -105,8 +105,7 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *typ
 		}
 
 		// compute locked storage + new ask
-		locked := types.NewBytesAmount(0).Set(mstore.LockedStorage)
-		total := locked.Add(size)
+		total := mstore.LockedStorage.Add(size)
 
 		if total.GreaterThan(mstore.PledgeBytes) {
 			// TODO This should probably return a non-zero exit code instead of an error.88
