@@ -159,6 +159,12 @@
       "hash": "QmWM5HhdG5ZQNyHQ5XhMdGmV9CvLpFynQfGpTxN2MEM7Lc",
       "name": "go-ipfs-exchange-offline",
       "version": "0.0.1"
+    },
+    {
+      "author": "dignifiedquire",
+      "hash": "QmPdqSMmiwtQCBC515gFtMW2mP14HsfgnyQ2k5xPQVxMge",
+      "name": "go-fs-lock",
+      "version": "0.1.2"
     }
   ],
   "gxVersion": "0.12.1",

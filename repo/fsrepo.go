@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"sync"
 
 	badgerds "gx/ipfs/QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo/go-ds-badger"
+	lockfile "gx/ipfs/QmPdqSMmiwtQCBC515gFtMW2mP14HsfgnyQ2k5xPQVxMge/go-fs-lock"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
@@ -18,6 +20,7 @@ import (
 )
 
 const configFilename = "config.toml"
+const lockFile = "repo.lock"
 const versionFilename = "version"
 const walletDatastorePrefix = "wallet"
 
@@ -35,11 +38,15 @@ type FSRepo struct {
 	path    string
 	version uint
 
+	// lk protects the config file
 	lk       sync.RWMutex
 	cfg      *config.Config
 	ds       Datastore
 	keystore keystore.Keystore
 	walletDs Datastore
+
+	// lockfile is the file system lock to prevent others from opening the same repo.
+	lockfile io.Closer
 }
 
 var _ Repo = (*FSRepo)(nil)
@@ -62,34 +69,47 @@ func OpenFSRepo(p string) (*FSRepo, error) {
 
 	r := &FSRepo{path: expath}
 
+	r.lockfile, err = lockfile.Lock(r.path, lockFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to take repo lock")
+	}
+
+	if err := r.loadFromDisk(); err != nil {
+		r.lockfile.Close() // nolint: errcheck
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func (r *FSRepo) loadFromDisk() error {
 	localVersion, err := r.loadVersion()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load version")
+		return errors.Wrap(err, "failed to load version")
 	}
 
 	if localVersion != Version {
-		return nil, fmt.Errorf("invalid repo version, got %d expected %d", localVersion, Version)
+		return fmt.Errorf("invalid repo version, got %d expected %d", localVersion, Version)
 	}
 
 	r.version = localVersion
 
 	if err := r.loadConfig(); err != nil {
-		return nil, errors.Wrap(err, "failed to load config file")
+		return errors.Wrap(err, "failed to load config file")
 	}
 
 	if err := r.openDatastore(); err != nil {
-		return nil, errors.Wrap(err, "failed to open datastore")
+		return errors.Wrap(err, "failed to open datastore")
 	}
 
 	if err := r.openKeystore(); err != nil {
-		return nil, errors.Wrap(err, "failed to open keystore")
+		return errors.Wrap(err, "failed to open keystore")
 	}
 
 	if err := r.openWalletDatastore(); err != nil {
-		return nil, errors.Wrap(err, "failed to open wallet datastore")
+		return errors.Wrap(err, "failed to open wallet datastore")
 	}
-
-	return r, nil
+	return nil
 }
 
 // InitFSRepo initializes an fsrepo at the given path using the given configuration
@@ -171,7 +191,7 @@ func (r *FSRepo) Close() error {
 		return errors.Wrap(err, "failed to close datastore")
 	}
 
-	return nil
+	return r.lockfile.Close()
 }
 
 func isInitialized(p string) (bool, error) {

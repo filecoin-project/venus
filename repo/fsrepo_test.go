@@ -124,3 +124,50 @@ func TestFSRepoReplaceConfig(t *testing.T) {
 	assert.Equal("bar", r2.Config().API.Address)
 	assert.NoError(r2.Close())
 }
+
+func TestRepoLock(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "")
+	assert.NoError(err)
+	defer os.RemoveAll(dir)
+
+	cfg := config.NewDefaultConfig()
+	assert.NoError(err, InitFSRepo(dir, cfg))
+
+	r, err := OpenFSRepo(dir)
+	assert.NoError(err)
+
+	assert.FileExists(filepath.Join(r.path, lockFile))
+
+	_, err = OpenFSRepo(dir)
+	assert.Error(err)
+	assert.Contains(err.Error(), "failed to take repo lock")
+
+	assert.NoError(r.Close())
+
+	_, err = os.Lstat(filepath.Join(r.path, lockFile))
+	assert.True(os.IsNotExist(err))
+}
+
+func TestRepoLockFail(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "")
+	assert.NoError(err)
+	defer os.RemoveAll(dir)
+
+	cfg := config.NewDefaultConfig()
+	assert.NoError(err, InitFSRepo(dir, cfg))
+
+	// set invalid version, to make opening the repo fail
+	assert.NoError(
+		ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("hello"), 0644),
+	)
+
+	_, err = OpenFSRepo(dir)
+	assert.Error(err)
+
+	_, err = os.Lstat(filepath.Join(dir, lockFile))
+	assert.True(os.IsNotExist(err))
+}
