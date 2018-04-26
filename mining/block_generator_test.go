@@ -78,7 +78,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
 
 	messages := []*types.Message{msg1, msg2, msg3, msg4}
-	receipts, perm, temp, success, err := ApplyMessages(ctx, messages, st)
+	receipts, perm, temp, success, err := ApplyMessages(ctx, messages, st, types.NewBlockHeight(0))
 
 	assert.Len(perm, 2)
 	assert.Contains(perm, msg3)

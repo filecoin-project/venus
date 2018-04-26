@@ -16,22 +16,24 @@ import (
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
 type Context struct {
-	from    *types.Actor
-	to      *types.Actor
-	message *types.Message
-	state   state.Tree
+	from        *types.Actor
+	to          *types.Actor
+	message     *types.Message
+	state       state.Tree
+	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree, bh *types.BlockHeight) *Context {
 	return &Context{
-		from:    from,
-		to:      to,
-		message: msg,
-		state:   st,
-		deps:    makeDeps(st),
+		from:        from,
+		to:          to,
+		message:     msg,
+		state:       st,
+		blockHeight: bh,
+		deps:        makeDeps(st),
 	}
 }
 
@@ -51,6 +53,16 @@ func (ctx *Context) ReadStorage() []byte {
 func (ctx *Context) WriteStorage(memory []byte) error {
 	ctx.to.WriteStorage(memory)
 	return ctx.state.SetActor(context.Background(), ctx.message.To, ctx.to)
+}
+
+// BlockHeight returns the block height of the block currently being processed
+func (ctx *Context) BlockHeight() *types.BlockHeight {
+	return ctx.blockHeight
+}
+
+// IsFromAccountActor returns true if the message is being sent by an account actor.
+func (ctx *Context) IsFromAccountActor() bool {
+	return types.AccountActorCodeCid.Equals(ctx.from.Code)
 }
 
 // Send sends a message to another actor.
@@ -85,7 +97,8 @@ func (ctx *Context) Send(to types.Address, method string, value *types.TokenAmou
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
-	out, ret, err := deps.Send(context.Background(), fromActor, toActor, msg, ctx.state)
+	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.blockHeight)
+	out, ret, err := deps.Send(context.Background(), innerCtx)
 	if err != nil {
 		return nil, ret, err
 	}
@@ -144,7 +157,7 @@ func makeDeps(st state.Tree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
-	Send             func(context.Context, *types.Actor, *types.Actor, *types.Message, state.Tree) ([]byte, uint8, error)
+	Send             func(context.Context, *Context) ([]byte, uint8, error)
 	SetActor         func(context.Context, types.Address, *types.Actor) error
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

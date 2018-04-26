@@ -136,7 +136,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, msg)
+	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Contains(r.Error, "invalid params: expected 2 parameters, but got 1")
@@ -159,7 +159,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 	badParams := []byte{1, 2, 3, 4, 5}
 	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, msg)
+	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Contains(r.Error, "invalid params: malformed stream")
@@ -182,7 +182,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	})
 	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, msg)
+	_, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Equal(err.(*errors.ApplyErrorPermanent).Cause(), errNonceTooLow)
 }
@@ -203,7 +203,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 	})
 	msg := types.NewMessage(addr1, addr2, 5, types.NewTokenAmount(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, msg)
+	_, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Equal(err.(*errors.ApplyErrorTemporary).Cause(), errNonceTooHigh)
 }
@@ -241,7 +241,7 @@ func TestNestedSendBalance(t *testing.T) {
 	assert.NoError(err)
 	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
 
-	_, err = attemptApplyMessage(ctx, st, msg1)
+	_, err = attemptApplyMessage(ctx, st, msg1, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	gotStCid, err := st.Flush(ctx)

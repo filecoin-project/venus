@@ -36,7 +36,7 @@ func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree,
 	}
 }
 
-type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree) (receipts []*types.MessageReceipt, permanentFailures []*types.Message,
+type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (receipts []*types.MessageReceipt, permanentFailures []*types.Message,
 	successfulMessages []*types.Message, temporaryFailures []*types.Message, err error)
 
 // blockGenerator generates new blocks for inclusion in the chain.
@@ -48,12 +48,12 @@ type blockGenerator struct {
 
 // ApplyMessages applies messages to state tree and returns message receipts,
 // messages with permanent and temporary failures, and any error.
-func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree) (
+func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (
 	receipts []*types.MessageReceipt, permanentFailures []*types.Message, temporaryFailures []*types.Message,
 	successfulMessages []*types.Message, err error) {
 	emptyReceipts := []*types.MessageReceipt{}
 	for _, msg := range messages {
-		r, err := core.ApplyMessage(ctx, st, msg)
+		r, err := core.ApplyMessage(ctx, st, msg, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
@@ -88,13 +88,14 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		return nil, err
 	}
 
+	blockHeight := baseBlock.Height + 1
 	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
 	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.
 	copy(messages[1:], core.OrderMessagesByNonce(b.messagePool.Pending()))
 
-	receipts, permanentFailures, temporaryFailures, successfulMessages, err := b.applyMessages(ctx, messages, stateTree)
+	receipts, permanentFailures, temporaryFailures, successfulMessages, err := b.applyMessages(ctx, messages, stateTree, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, err
 	}

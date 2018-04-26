@@ -11,6 +11,8 @@ var (
 	NetworkAddress types.Address
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market
 	StorageMarketAddress types.Address
+	// PaymentBrokerAddress is the hard-coded address of the filecoin storage market
+	PaymentBrokerAddress types.Address
 )
 
 func init() {
@@ -38,4 +40,11 @@ func init() {
 	}
 
 	StorageMarketAddress = types.NewMainnetAddress(s)
+
+	p, err := types.AddressHash([]byte("payments"))
+	if err != nil {
+		panic(err)
+	}
+
+	PaymentBrokerAddress = types.NewMainnetAddress(p)
 }

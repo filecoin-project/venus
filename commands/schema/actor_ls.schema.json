@@ -64,6 +64,28 @@
       },
       "required": ["Miners", "Orderbook"]
     },
+    "PaymentChannel": {
+      "type": "object",
+      "properties": {
+        "Target": { "type": "string" },
+        "Amount": { "type": "number" },
+        "AmountRedeemed":{ "type": "number" },
+        "Eol": { "type": "number" }
+      }
+    },
+    "PaymentBrokerMemory": {
+      "type": "object",
+      "properties": {
+        "Channels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": { "$ref": "#/definitions/PaymentChannel" }
+          }
+        }
+      },
+      "required": ["Channels"]
+    },
     "Ask": {
       "type": "object",
       "properties": {
@@ -145,6 +167,17 @@
               ]
             },
             "memory": { "$ref": "#/definitions/StorageMarketMemory" }
+          }
+        },
+        {
+          "properties": {
+            "actorType": {
+              "type": "string",
+              "enum": [
+                "PaymentbrokerActor"
+              ]
+            },
+            "memory": { "$ref": "#/definitions/PaymentBrokerMemory" }
           }
         },
         {

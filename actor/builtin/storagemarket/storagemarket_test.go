@@ -34,7 +34,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	outAddr, err := types.NewAddressFromBytes(receipt.Return)
@@ -69,7 +69,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(50))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(receipt.Error, ErrPledgeTooLow.Error())
 }
@@ -89,7 +89,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
@@ -98,7 +98,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// create another bid
 	pdata = actor.MustConvertParams(types.NewTokenAmount(15), types.NewBytesAmount(80))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewTokenAmount(1200), "addBid", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
@@ -107,7 +107,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// try to create a bid, but send wrong value
 	pdata = actor.MustConvertParams(types.NewTokenAmount(90), types.NewBytesAmount(100))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(receipt.Error, "must send price * size funds to create bid")
 }
@@ -134,7 +134,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
@@ -147,7 +147,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewTokenAmount(25), types.NewBytesAmount(35))
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, minerAddr, nonce, nil, "addAsk", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), receipt.ExitCode)
 
@@ -157,7 +157,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(0), big.NewInt(0), sig, ref.Bytes()) // askID, bidID, signature, datacid
 	nonce = core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, nil, "addDeal", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), receipt.ExitCode)
 
@@ -175,7 +175,7 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collatera
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
-	receipt, err := core.ApplyMessage(context.Background(), st, msg)
+	receipt, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	addr, err := types.NewAddressFromBytes(receipt.Return)

@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -48,6 +49,15 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 		return nil, err
 	}
 	if err := st.SetActor(ctx, address.StorageMarketAddress, stAct); err != nil {
+		return nil, err
+	}
+
+	pbAct, err := paymentbroker.NewPaymentBrokerActor()
+	pbAct.Balance = types.NewTokenAmount(0)
+	if err != nil {
+		return nil, err
+	}
+	if err := st.SetActor(ctx, address.PaymentBrokerAddress, pbAct); err != nil {
 		return nil, err
 	}
 

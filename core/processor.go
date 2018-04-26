@@ -44,9 +44,10 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*ty
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*types.MessageReceipt, error) {
 	var receipts []*types.MessageReceipt
 	emptyReceipts := []*types.MessageReceipt{}
+	bh := types.NewBlockHeight(blk.Height)
 
 	for _, msg := range blk.Messages {
-		r, err := ApplyMessage(ctx, st, msg)
+		r, err := ApplyMessage(ctx, st, msg, bh)
 		// If the message should not have been in the block, bail.
 		// TODO: handle faults appropriately at a higher level.
 		if errors.IsFault(err) || errors.IsApplyErrorPermanent(err) || errors.IsApplyErrorTemporary(err) {
@@ -136,9 +137,9 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*types.MessageReceipt, error) {
+func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	ss := st.Snapshot()
-	r, err := attemptApplyMessage(ctx, st, msg)
+	r, err := attemptApplyMessage(ctx, st, msg, bh)
 	if errors.IsFault(err) {
 		return r, err
 	} else if errors.ShouldRevert(err) {
@@ -188,7 +189,7 @@ var (
 // should deal with trying got apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*types.MessageReceipt, error) {
+func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
@@ -225,7 +226,8 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 		return nil, errNonceTooHigh
 	}
 
-	ret, exitCode, vmErr := vm.Send(ctx, fromActor, toActor, msg, st)
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, bh)
+	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVMContextStorage(t *testing.T) {
@@ -32,7 +33,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	msg := types.NewMessage(addrGetter(), toAddr, 0, nil, "hello", nil)
 
-	vmCtx := NewVMContext(nil, toActor, msg, state)
+	vmCtx := NewVMContext(nil, toActor, msg, state, types.NewBlockHeight(0))
 
 	assert.NoError(vmCtx.WriteStorage([]byte("hello")))
 
@@ -40,7 +41,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := state.GetActor(ctx, toAddr)
 	assert.NoError(err)
 
-	storage := NewVMContext(nil, toActorBack, msg, state).ReadStorage()
+	storage := NewVMContext(nil, toActorBack, msg, state, types.NewBlockHeight(0)).ReadStorage()
 	assert.Equal(storage, []byte("hello"))
 }
 
@@ -61,7 +62,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{}, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -87,7 +88,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{}, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -118,7 +119,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, msg, &state.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, msg, &state.MockStateTree{}, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
@@ -148,7 +149,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{}, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -174,7 +175,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			Send: func(ctx context.Context, from, to *types.Actor, msg *types.Message, st state.Tree) ([]byte, uint8, error) {
+			Send: func(ctx context.Context, vmCtx *Context) ([]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},
@@ -188,7 +189,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{}, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -198,4 +199,18 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Equal(expectedVMSendErr, err)
 		assert.Equal([]string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
 	})
+}
+
+func TestVMContextIsAccountActor(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	accountActor, err := account.NewActor(types.NewTokenAmount(1000))
+	require.NoError(err)
+	ctx := NewVMContext(accountActor, nil, nil, nil, nil)
+	assert.True(ctx.IsFromAccountActor())
+
+	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewTokenAmount(1000))
+	ctx = NewVMContext(nonAccountActor, nil, nil, nil, nil)
+	assert.False(ctx.IsFromAccountActor())
 }

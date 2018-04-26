@@ -6,6 +6,7 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -105,6 +106,20 @@ func MustAdd(p *MessagePool, msgs ...*types.Message) {
 			panic(err)
 		}
 	}
+}
+
+// MustConvertParams abi encodes the given parameters into a byte array (or panics)
+func MustConvertParams(params ...interface{}) []byte {
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := abi.EncodeValues(vals)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
 
 // NewChainWithMessages creates a chain of blocks containing the given messages
