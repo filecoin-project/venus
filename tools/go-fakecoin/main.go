@@ -155,10 +155,23 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	}
 	msgPool = core.NewMessagePool()
 
-	ret := blk.MessageReceipts[0].Return
-	minerAddress, err := types.NewAddressFromBytes(ret)
+	cid, err := newMinerMessage.Cid()
 	if err != nil {
+		return err
+	}
+
+	var createMinerReceipt *types.MessageReceipt
+	err = cm.WaitForMessage(ctx, cid, func(b *types.Block, msg *types.Message, rcp *types.MessageReceipt) error {
+		createMinerReceipt = rcp
 		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	minerAddress, err := types.NewAddressFromBytes(createMinerReceipt.Return)
+	if err != nil {
+		return err
 	}
 
 	// Add a new ask to the storage market
