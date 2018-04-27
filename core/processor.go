@@ -37,14 +37,6 @@ type Processor func(ctx context.Context, blk *types.Block, st types.StateTree) (
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
 //
-// TODO Note that this method is also temporarily the entrypoint for
-// block generation when mining: we use it to attempt to apply
-// the messages in the message pool. However since ProcessBlock
-// is all or nothing this isn't really approriate: the mining
-// worker wants to use ApplyMessage directly to attempt to apply
-// the message, then do something specific with the message in the
-// case of a temporary or permanent error; ProcessBlock doesn't make
-// that distinction. This'll be addressed in a follow up.
 func ProcessBlock(ctx context.Context, blk *types.Block, st types.StateTree) ([]*types.MessageReceipt, error) {
 	var receipts []*types.MessageReceipt
 	emptyReceipts := []*types.MessageReceipt{}
@@ -56,7 +48,7 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st types.StateTree) ([]
 		if IsFault(err) || IsApplyErrorPermanent(err) || IsApplyErrorTemporary(err) {
 			return emptyReceipts, err
 		} else if err != nil {
-			return emptyReceipts, faultErrorWrap(err, "someone is a bad progarmmer: must be a fault, perm, or temp error")
+			return emptyReceipts, faultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
 		}
 
 		// TODO fritz check caller assumptions about receipts.

@@ -158,25 +158,24 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	return nil
 }
 
-// OrderPendingByNonce returns the pending messages in the
+// OrderMessagesByNonce returns the pending messages in the
 // pool ordered such that all messages with the same msg.From
 // occur in Nonce order in the slice.
 // TODO can be smarter here by skipping messages with gaps; see
 //      ethereum's abstraction for example
 // TODO order by time of receipt
-func OrderPendingByNonce(pool *MessagePool) []*types.Message {
-	pending := pool.Pending()
+func OrderMessagesByNonce(messages []*types.Message) []*types.Message {
 	// TODO this could all be more efficient.
 	byAddress := make(map[types.Address][]*types.Message)
-	for _, m := range pending {
+	for _, m := range messages {
 		byAddress[m.From] = append(byAddress[m.From], m)
 	}
-	pending = pending[:0]
+	messages = messages[:0]
 	for _, msgs := range byAddress {
 		sort.Slice(msgs, func(i, j int) bool { return msgs[i].Nonce < msgs[j].Nonce })
-		pending = append(pending, msgs...)
+		messages = append(messages, msgs...)
 	}
-	return pending
+	return messages
 }
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.

@@ -190,7 +190,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
 		return types.LoadStateTree(ctx, cst, cid)
-	}, core.ProcessBlock)
+	}, mining.ApplyMessages)
 	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
 	// Set up libp2p pubsub

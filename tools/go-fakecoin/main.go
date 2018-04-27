@@ -103,7 +103,7 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
 	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
 		return types.LoadStateTree(ctx, cst, cid)
-	}, core.ProcessBlock)
+	}, mining.ApplyMessages)
 }
 
 func getStateTree(ctx context.Context, d repo.Datastore) (types.StateTree, *hamt.CborIpldStore, *core.ChainManager, *types.Block, error) {

@@ -247,11 +247,11 @@ func TestUpdateMessagePool(t *testing.T) {
 	})
 }
 
-func TestOrderPendingByNonce(t *testing.T) {
+func TestOrderMessagesByNonce(t *testing.T) {
 	t.Run("Empty pool", func(t *testing.T) {
 		assert := assert.New(t)
 		p := NewMessagePool()
-		ordered := OrderPendingByNonce(p)
+		ordered := OrderMessagesByNonce(p.Pending())
 		assert.Equal(0, len(ordered))
 	})
 
@@ -282,7 +282,7 @@ func TestOrderPendingByNonce(t *testing.T) {
 		m[8].Nonce = 0
 
 		MustAdd(p, m...)
-		ordered := OrderPendingByNonce(p)
+		ordered := OrderMessagesByNonce(p.Pending())
 		assert.Equal(len(p.Pending()), len(ordered))
 
 		lastSeen := make(map[types.Address]uint64)

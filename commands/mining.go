@@ -9,7 +9,6 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -39,7 +38,7 @@ var miningOnceCmd = &cmds.Command{
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
 			return types.LoadStateTree(ctx, fcn.CborStore, cid)
-		}, core.ProcessBlock)
+		}, mining.ApplyMessages)
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur, rewardAddr)
 		if res.Err != nil {
 			return res.Err
