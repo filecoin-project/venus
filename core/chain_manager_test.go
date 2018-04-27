@@ -313,7 +313,7 @@ func TestChainLoad(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 	stm := NewChainManager(ds, cs)
 
-	assert.NoError(putCid(ds, bestBlockKey, block2.Cid()))
+	assert.NoError(putCid(context.Background(), ds, bestBlockKey, block2.Cid()))
 
 	assertPut(assert, cs, testGenesis)
 	assertPut(assert, cs, block1)

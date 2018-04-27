@@ -172,9 +172,12 @@ type mineFunc func(context.Context, Input, BlockGenerator, DoSomeWorkFunc, chan<
 
 // Mine does the actual work. It's the implementation of worker.mine.
 func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+	ctx = log.Start(ctx, "Worker.Mine")
+	defer log.Finish(ctx)
 	next, err := blockGenerator.Generate(ctx, input.MineOn, input.RewardAddress)
 	if err == nil {
 		// TODO whatever happens here, respect the context.
+		log.SetTag(ctx, "block", next)
 		doSomeWork()
 	}
 	if ctx.Err() == nil {

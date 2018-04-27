@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
@@ -17,6 +16,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+
+	logging "github.com/ipfs/go-log"
 )
 
 var log = logging.Logger("chain")
@@ -54,6 +55,20 @@ const (
 	// known good block.
 	InvalidBase
 )
+
+func (bpr BlockProcessResult) String() string {
+	switch bpr {
+	case ChainAccepted:
+		return "accepted"
+	case ChainValid:
+		return "valid"
+	case Unknown:
+		return "unknown"
+	case InvalidBase:
+		return "invalid"
+	}
+	return "" // never hit
+}
 
 // ChainManager manages the current state of the chain and handles validating
 // and applying updates.
@@ -124,6 +139,7 @@ func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
 // genesis block, or to manually set the current selected chain for testing.
 // CALLER MUST HOLD THE bestBlock LOCK.
 func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
+	log.LogKV(ctx, "setBestBlock", b.Cid().String())
 	_, err := s.cstore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "failed to put block to disk")
@@ -131,7 +147,7 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	s.bestBlock.blk = b // TODO: make a copy?
 	s.knownGoodBlocks.Add(b.Cid())
 
-	if err := putCid(s.ds, bestBlockKey, b.Cid()); err != nil {
+	if err := putCid(ctx, s.ds, bestBlockKey, b.Cid()); err != nil {
 		return errors.Wrap(err, "failed to write bestBlockCid to datastore")
 	}
 
@@ -140,7 +156,8 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 	return nil
 }
 
-func putCid(ds datastore.Datastore, k datastore.Key, c *cid.Cid) error {
+func putCid(ctx context.Context, ds datastore.Datastore, k datastore.Key, c *cid.Cid) error {
+	log.LogKV(ctx, "PutCid", c.String())
 	return ds.Put(k, c.Bytes())
 }
 
@@ -219,6 +236,7 @@ func (s *ChainManager) getBestBlock() *types.Block {
 func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
 	// We have to hold the lock at this level to avoid TOCTOU problems
 	// with the new best block.
+	log.LogKV(ctx, "maybeAcceptBlock", blk.Cid().String())
 	s.bestBlock.Lock()
 	defer s.bestBlock.Unlock()
 	if blk.Score() <= s.bestBlock.blk.Score() {
@@ -234,7 +252,12 @@ type NewBlockProcessor func(context.Context, *types.Block) (BlockProcessResult, 
 // ProcessNewBlock sends a new block to the chain manager. If the block is
 // better than our current best, it is accepted as our new best block.
 // Otherwise an error is returned explaining why it was not accepted
-func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (bpr BlockProcessResult, err error) {
+	ctx = log.Start(ctx, "ChainManager.ProcessNewBlock")
+	defer func() {
+		log.SetTag(ctx, "result", bpr.String())
+		log.FinishWithErr(ctx, err)
+	}()
 	log.Infof("processing block [s=%d, h=%s]", blk.Score(), blk.Cid())
 
 	switch err := s.validateBlock(ctx, blk); err {
@@ -254,6 +277,7 @@ func (s *ChainManager) acceptNewBestBlock(ctx context.Context, blk *types.Block)
 		return Unknown, err
 	}
 	log.Infof("accepted new block, [s=%d, h=%s]", blk.Score(), blk.Cid())
+	log.LogKV(ctx, "acceptNewBestBlock", blk.Cid().String())
 	return ChainAccepted, nil
 }
 
@@ -279,6 +303,7 @@ func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // previous block has been validated.
 func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	// TODO: validate signatures on messages
+	log.LogKV(ctx, "validateBlockStructure", b.Cid().String())
 	if b.StateRoot == nil {
 		return fmt.Errorf("block has nil StateRoot")
 	}
@@ -292,6 +317,7 @@ func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Bloc
 //   a) there is a mining reward; and b) the reward is the first message in the block.
 //  We need to do so since this is a part of the consensus rules.
 func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
+	log.LogKV(ctx, "validateBlock", b.Cid().String())
 	if err := s.validateBlockStructure(ctx, b); err != nil {
 		return errors.Wrap(err, "check block valid failed")
 	}
@@ -342,6 +368,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 // that we know to be good. It then returns that known block, and the blocks
 // that form the chain back to it.
 func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (*types.Block, []*types.Block, error) {
+	log.LogKV(ctx, "findKnownAncestor", tip.Cid().String())
 	// TODO: should be some sort of limit here
 	// Some implementations limit the length of a chain that can be swapped.
 	// Historically, bitcoin does not, this is purely for religious and
@@ -369,6 +396,7 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 		baseBlk = next
 	}
 
+	log.LogKV(ctx, "foundAncestor", baseBlk.Cid().String())
 	return baseBlk, validating, nil
 }
 
