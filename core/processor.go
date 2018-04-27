@@ -222,16 +222,8 @@ func attemptApplyMessage(ctx context.Context, st types.StateTree, msg *types.Mes
 	}
 
 	ret, exitCode, vmErr := Send(ctx, fromActor, toActor, msg, st)
-
 	if IsFault(vmErr) {
 		return nil, vmErr
-	}
-
-	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
-		return nil, faultErrorWrap(err, "could not set from actor after send")
-	}
-	if err := st.SetActor(ctx, msg.To, toActor); err != nil {
-		return nil, faultErrorWrap(err, "could not set to actor after send")
 	}
 
 	vmErrString := ""

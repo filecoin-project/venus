@@ -190,41 +190,4 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Equal(expectedVMSendErr, err)
 		assert.Equal([]string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
 	})
-
-	t.Run("returns a fault error if unable to update actor in state tree after sending message", func(t *testing.T) {
-		assert := assert.New(t)
-
-		var calls []string
-		deps := vmContextSendDeps{
-			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
-				calls = append(calls, "EncodeValues")
-				return nil, nil
-			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, f func() (*types.Actor, error)) (*types.Actor, error) {
-				calls = append(calls, "GetOrCreateActor")
-				return f()
-			},
-			Send: func(ctx context.Context, from, to *types.Actor, msg *types.Message, st types.StateTree) ([]byte, uint8, error) {
-				calls = append(calls, "Send")
-				return nil, 0, nil
-			},
-			SetActor: func(_ context.Context, _ types.Address, _ *types.Actor) error {
-				calls = append(calls, "SetActor")
-				return errors.New("error")
-			},
-			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
-				calls = append(calls, "ToValues")
-				return nil, nil
-			},
-		}
-
-		ctx := NewVMContext(actor1, actor2, newMsg(), &types.MockStateTree{})
-
-		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
-
-		assert.Error(err)
-		assert.Equal(1, int(code))
-		assert.True(IsFault(err))
-		assert.Equal([]string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send", "SetActor"}, calls)
-	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
@@ -177,7 +178,12 @@ func (t *stateTree) debugPointer(ps []*hamt.Pointer) {
 	for _, p := range ps {
 		fmt.Println("----")
 		for _, kv := range p.KVs {
-			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
+			res := map[string]interface{}{}
+			if err := cbor.DecodeInto(kv.Value, &res); err != nil {
+				fmt.Printf("%s: %X\n", kv.Key, kv.Value)
+			} else {
+				fmt.Printf("%s: \n%v\n\n", kv.Key, res)
+			}
 		}
 		if p.Link != nil {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)

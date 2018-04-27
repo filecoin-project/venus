@@ -102,10 +102,6 @@ func (ctx *VMContext) send(deps vmContextSendDeps, to types.Address, method stri
 		return nil, ret, err
 	}
 
-	if err := deps.SetActor(context.TODO(), to, toActor); err != nil {
-		return nil, 1, faultErrorWrap(err, "failed to write actor after send")
-	}
-
 	return out, ret, nil
 }
 

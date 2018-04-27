@@ -56,7 +56,7 @@ func TestSendErrorHandling(t *testing.T) {
 			},
 		}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
@@ -77,7 +77,7 @@ func TestSendErrorHandling(t *testing.T) {
 			},
 		}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
@@ -102,7 +102,7 @@ func TestSendErrorHandling(t *testing.T) {
 			},
 		}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))

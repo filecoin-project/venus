@@ -139,12 +139,17 @@ func MustSetActor(st StateTree, address Address, actor *Actor) *cid.Cid {
 // MockStateTree is a testify mock that implements StateTree.
 type MockStateTree struct {
 	mock.Mock
+
+	NoMocks bool
 }
 
 var _ StateTree = &MockStateTree{}
 
 // Flush implements StateTree.Flush.
 func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
+	if m.NoMocks {
+		return
+	}
 	args := m.Called(ctx)
 	if args.Get(0) != nil {
 		c = args.Get(0).(*cid.Cid)
@@ -155,6 +160,10 @@ func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
 
 // GetActor implements StateTree.GetActor.
 func (m *MockStateTree) GetActor(ctx context.Context, address Address) (actor *Actor, err error) {
+	if m.NoMocks {
+		return
+	}
+
 	args := m.Called(ctx, address)
 	if args.Get(0) != nil {
 		actor = args.Get(0).(*Actor)
@@ -165,6 +174,10 @@ func (m *MockStateTree) GetActor(ctx context.Context, address Address) (actor *A
 
 // SetActor implements StateTree.SetActor.
 func (m *MockStateTree) SetActor(ctx context.Context, address Address, actor *Actor) error {
+	if m.NoMocks {
+		return nil
+	}
+
 	args := m.Called(ctx, address, actor)
 	return args.Error(0)
 }

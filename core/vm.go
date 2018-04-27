@@ -34,6 +34,14 @@ func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.
 		}
 	}
 
+	// save balance changes
+	if err := st.SetActor(ctx, msg.From, from); err != nil {
+		return nil, 1, faultErrorWrap(err, "could not set from actor after send")
+	}
+	if err := st.SetActor(ctx, msg.To, to); err != nil {
+		return nil, 1, faultErrorWrap(err, "could not set to actor after send")
+	}
+
 	if msg.Method == "" {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution
@@ -52,20 +60,20 @@ func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.
 	return MakeTypedExport(toExecutable, msg.Method)(vmCtx)
 }
 
-func transfer(from, to *types.Actor, value *types.TokenAmount) error {
+func transfer(fromActor, toActor *types.Actor, value *types.TokenAmount) error {
 	if value.IsNegative() {
 		return ErrCannotTransferNegativeValue
 	}
 
-	if from.Balance.LessThan(value) {
+	if fromActor.Balance.LessThan(value) {
 		return ErrInsufficientBalance
 	}
 
-	if to.Balance == nil {
-		to.Balance = types.ZeroToken // This would be unsafe if TokenAmount could be mutated.
+	if toActor.Balance == nil {
+		toActor.Balance = types.ZeroToken // This would be unsafe if TokenAmount could be mutated.
 	}
-	from.Balance = from.Balance.Sub(value)
-	to.Balance = to.Balance.Add(value)
+	fromActor.Balance = fromActor.Balance.Sub(value)
+	toActor.Balance = toActor.Balance.Add(value)
 
 	return nil
 }

@@ -206,3 +206,52 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 
 // TODO fritz add more test cases that cover the intent expressed
 // in ApplyMessage's comments.
+
+func TestNestedSendBalance(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	// Install the fake actor so we can execute it.
+	fakeActorCodeCid := types.NewCidForTestGetter()()
+	BuiltinActors[fakeActorCodeCid.KeyString()] = &FakeActor{}
+	defer func() {
+		delete(BuiltinActors, fakeActorCodeCid.KeyString())
+	}()
+
+	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
+	act0 := RequireNewAccountActor(require, types.NewTokenAmount(101))
+	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(102))
+	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(0))
+
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr0: act0,
+		addr1: act1,
+		addr2: act2,
+	})
+
+	// send 100 from addr1 -> addr2, by sending a message from addr0 to addr1
+	params1, err := abi.ToEncodedValues(addr2)
+	assert.NoError(err)
+	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
+
+	_, err = attemptApplyMessage(ctx, st, msg1)
+	assert.NoError(err)
+
+	gotStCid, err := st.Flush(ctx)
+	assert.NoError(err)
+
+	expAct0 := RequireNewAccountActor(require, types.NewTokenAmount(101))
+	expAct1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(2))
+	expAct2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(100))
+
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr0: expAct0,
+		addr1: expAct1,
+		addr2: expAct2,
+	})
+
+	assert.True(expStCid.Equals(gotStCid))
+}

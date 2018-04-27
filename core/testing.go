@@ -7,6 +7,7 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
@@ -120,9 +121,15 @@ func RequireNewMinerActor(require *require.Assertions, owner types.Address, pled
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
+	return RequireNewFakeActorWithTokens(require, codeCid, types.NewTokenAmount(100))
+}
+
+// RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
+// that its steps succeed.
+func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid, amt *types.TokenAmount) *types.Actor {
 	storageBytes, err := MarshalStorage(&FakeActorStorage{})
 	require.NoError(err)
-	return types.NewActorWithMemory(codeCid, types.NewTokenAmount(100), storageBytes)
+	return types.NewActorWithMemory(codeCid, amt, storageBytes)
 }
 
 // MustGetNonce returns the next nonce for an actor at the given address or panics.
@@ -151,6 +158,10 @@ var fakeActorExports = Exports{
 	},
 	"goodCall": &FunctionSignature{
 		Params: nil,
+		Return: nil,
+	},
+	"nestedBalance": &FunctionSignature{
+		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
 }
@@ -185,6 +196,12 @@ func (ma *FakeActor) GoodCall(ctx *VMContext) (uint8, error) {
 		panic(err.Error())
 	}
 	return 0, nil
+}
+
+// NestedBalance sents 100 to the given address.
+func (ma *FakeActor) NestedBalance(ctx *VMContext, target types.Address) (uint8, error) {
+	_, code, err := ctx.Send(target, "", types.NewTokenAmount(100), nil)
+	return code, err
 }
 
 // NewStorage returns an empty FakeActorStorage struct
