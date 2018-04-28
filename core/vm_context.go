@@ -18,6 +18,8 @@ type VMContext struct {
 	to      *types.Actor
 	message *types.Message
 	state   state.Tree
+
+	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
@@ -27,6 +29,7 @@ func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *VMC
 		to:      to,
 		message: msg,
 		state:   st,
+		deps:    makeDeps(st),
 	}
 }
 
@@ -50,30 +53,9 @@ func (ctx *VMContext) WriteStorage(memory []byte) error {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8,
-	error) {
-	deps := vmContextSendDeps{
-		EncodeValues:     abi.EncodeValues,
-		GetOrCreateActor: ctx.state.GetOrCreateActor,
-		Send:             Send,
-		SetActor:         ctx.state.SetActor,
-		ToValues:         abi.ToValues,
-	}
+func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error) {
+	deps := ctx.deps
 
-	return ctx.send(deps, to, method, value, params)
-}
-
-type vmContextSendDeps struct {
-	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
-	Send             func(context.Context, *types.Actor, *types.Actor, *types.Message, state.Tree) ([]byte, uint8, error)
-	SetActor         func(context.Context, types.Address, *types.Actor) error
-	ToValues         func([]interface{}) ([]*abi.Value, error)
-}
-
-// send sends a message to another actor. It exists alongside send so that we can inject its dependencies during test.
-func (ctx *VMContext) send(deps vmContextSendDeps, to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8,
-	error) {
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
 	from := ctx.Message().To
 	fromActor := ctx.to
@@ -134,4 +116,28 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 	}
 
 	return types.NewMainnetAddress(hash), nil
+}
+
+// Dependency injection setup.
+
+// makeDeps returns a VMContext's external dependencies with their standard values set.
+func makeDeps(st state.Tree) *deps {
+	deps := deps{
+		EncodeValues: abi.EncodeValues,
+		Send:         Send,
+		ToValues:     abi.ToValues,
+	}
+	if st != nil {
+		deps.SetActor = st.SetActor
+		deps.GetOrCreateActor = st.GetOrCreateActor
+	}
+	return &deps
+}
+
+type deps struct {
+	EncodeValues     func([]*abi.Value) ([]byte, error)
+	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
+	Send             func(context.Context, *types.Actor, *types.Actor, *types.Message, state.Tree) ([]byte, uint8, error)
+	SetActor         func(context.Context, types.Address, *types.Actor) error
+	ToValues         func([]interface{}) ([]*abi.Value, error)
 }
