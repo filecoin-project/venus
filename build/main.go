@@ -51,6 +51,10 @@ func deps() {
 		"gometalinter --install",
 		"go get -u github.com/stretchr/testify",
 		"go get -u github.com/xeipuuv/gojsonschema",
+
+		"go get -u k8s.io/api/...",                       // iptb dep
+		"go get -u k8s.io/client-go/...",                 // iptb dep
+		"go get -u k8s.io/apimachinery/pkg/apis/meta/v1", // iptb dep
 	}
 
 	for _, name := range list {
