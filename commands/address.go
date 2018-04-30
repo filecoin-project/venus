@@ -8,6 +8,8 @@ import (
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -110,7 +112,7 @@ var balanceCmd = &cmds.Command{
 			return ErrLatestBlockStateRootNil
 		}
 
-		tree, err := types.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot)
+		tree, err := state.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot, core.BuiltinActors)
 		if err != nil {
 			return err
 		}
@@ -122,7 +124,7 @@ var balanceCmd = &cmds.Command{
 
 		act, err := tree.GetActor(req.Context, addr)
 		if err != nil {
-			if types.IsActorNotFoundError(err) {
+			if state.IsActorNotFoundError(err) {
 				// if the account doesn't exit, the balance should be zero
 				re.Emit(big.NewInt(0)) // nolint: errcheck
 				return nil

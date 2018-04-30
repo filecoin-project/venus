@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -36,7 +37,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, BuiltinActors)
 	assert.NoError(err)
 
 	pdata := mustConvertParams(types.NewBytesAmount(10000))
@@ -71,7 +72,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, BuiltinActors)
 	assert.NoError(err)
 
 	pdata := mustConvertParams(types.NewBytesAmount(50))
@@ -90,7 +91,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, BuiltinActors)
 	assert.NoError(err)
 
 	// create a bid
@@ -135,7 +136,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, BuiltinActors)
 	assert.NoError(err)
 
 	// create a bid

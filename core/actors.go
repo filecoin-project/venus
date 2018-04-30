@@ -7,45 +7,15 @@ import (
 	"strings"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // BuiltinActors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
-var BuiltinActors = map[string]ExecutableActor{}
-
-// Exports describe the public methods of an actor.
-type Exports map[string]*FunctionSignature
-
-// Has checks if the given method is an exported method.
-func (e Exports) Has(method string) bool {
-	_, ok := e[method]
-	return ok
-}
-
-// TODO fritz require actors to define their exit codes and associate
-// an error string with them.
-
-// ExecutableActor is the interface all builtin actors have to implement.
-type ExecutableActor interface {
-	Exports() Exports
-	NewStorage() interface{}
-}
-
-// ExportedFunc is the signature an exported method of an actor is expected to have.
-type ExportedFunc func(ctx *VMContext) ([]byte, uint8, error)
-
-// FunctionSignature describes the signature of a single function.
-// TODO: convert signatures into non go types, but rather low level agreed up types
-type FunctionSignature struct {
-	// Params is a list of the types of the parameters the function expects.
-	Params []abi.Type
-	// Return is the type of the return value of the function.
-	Return []abi.Type
-}
+var BuiltinActors = map[string]exec.ExecutableActor{}
 
 func init() {
 	// Instance Actors
@@ -55,25 +25,12 @@ func init() {
 	BuiltinActors[types.MinerActorCodeCid.KeyString()] = &MinerActor{}
 }
 
-// LoadCode fetches the code referenced by the passed in CID.
-func LoadCode(codePointer *cid.Cid) (ExecutableActor, error) {
-	if codePointer == nil {
-		return nil, fmt.Errorf("missing code")
-	}
-	actor, ok := BuiltinActors[codePointer.KeyString()]
-	if !ok {
-		return nil, fmt.Errorf("unknown code: %s", codePointer.String())
-	}
-
-	return actor, nil
-}
-
 // MakeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
 //
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
-func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
+func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFunc {
 	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
 	if !ok {
 		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in actor: %s", method))
@@ -113,7 +70,7 @@ func MakeTypedExport(actor ExecutableActor, method string) ExportedFunc {
 		}
 	}
 
-	return func(ctx *VMContext) ([]byte, uint8, error) {
+	return func(ctx exec.VMContext) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
 			return nil, 1, revertErrorWrap(err, "invalid params")
@@ -233,7 +190,7 @@ func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) 
 
 // PresentStorage returns a representation of an actor's storage in a domain-specific form suitable for conversion to
 // JSON.
-func PresentStorage(act ExecutableActor, mem []byte) interface{} {
+func PresentStorage(act exec.ExecutableActor, mem []byte) interface{} {
 	s := act.NewStorage()
 	err := UnmarshalStorage(mem, s)
 	if err != nil {

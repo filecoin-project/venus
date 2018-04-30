@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,8 +39,8 @@ func TestTransfer(t *testing.T) {
 }
 
 func TestSendErrorHandling(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewTokenAmount(100))
-	actor2 := types.NewActor(nil, types.NewTokenAmount(50))
+	actor1 := types.NewActor(types.SomeCid(), types.NewTokenAmount(100))
+	actor2 := types.NewActor(types.SomeCid(), types.NewTokenAmount(50))
 	newMsg := types.NewMessageForTestGetter()
 
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
@@ -56,7 +57,7 @@ func TestSendErrorHandling(t *testing.T) {
 			},
 		}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &state.MockStateTree{NoMocks: true})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
@@ -69,19 +70,12 @@ func TestSendErrorHandling(t *testing.T) {
 		msg := newMsg()
 		msg.Value = nil // such that we don't transfer
 
-		called := false
-		deps := sendDeps{
-			LoadCode: func(_ *cid.Cid) (ExecutableActor, error) {
-				called = true
-				return nil, errors.New("error")
-			},
-		}
+		deps := sendDeps{}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{}})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
-		assert.True(called)
 		assert.True(IsFault(sendErr))
 	})
 
@@ -94,19 +88,14 @@ func TestSendErrorHandling(t *testing.T) {
 
 		assert.False(fakeActorExports.Has(msg.Method))
 
-		called := false
-		deps := sendDeps{
-			LoadCode: func(_ *cid.Cid) (ExecutableActor, error) {
-				called = true
-				return &FakeActor{}, nil
-			},
-		}
+		deps := sendDeps{}
 
-		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &types.MockStateTree{NoMocks: true})
+		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{
+			actor2.Code.KeyString(): &FakeActor{},
+		}})
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
-		assert.True(called)
 		assert.True(shouldRevert(sendErr))
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
@@ -16,7 +17,7 @@ var log = logging.Logger("mining")
 
 // GetStateTree is a function that gets a state tree by cid. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, *cid.Cid) (types.StateTree, error)
+type GetStateTree func(context.Context, *cid.Cid) (state.Tree, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
@@ -32,7 +33,7 @@ func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree,
 	}
 }
 
-type miningApplier func(ctx context.Context, messages []*types.Message, st types.StateTree) (receipts []*types.MessageReceipt, permanentFailures []*types.Message,
+type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree) (receipts []*types.MessageReceipt, permanentFailures []*types.Message,
 	successfulMessages []*types.Message, temporaryFailures []*types.Message, err error)
 
 // blockGenerator generates new blocks for inclusion in the chain.
@@ -44,7 +45,7 @@ type blockGenerator struct {
 
 // ApplyMessages applies messages to state tree and returns message receipts,
 // messages with permanent and temporary failures, and any error.
-func ApplyMessages(ctx context.Context, messages []*types.Message, st types.StateTree) (
+func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree) (
 	receipts []*types.MessageReceipt, permanentFailures []*types.Message, temporaryFailures []*types.Message,
 	successfulMessages []*types.Message, err error) {
 	emptyReceipts := []*types.MessageReceipt{}

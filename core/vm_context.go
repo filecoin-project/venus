@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -15,11 +17,11 @@ type VMContext struct {
 	from    *types.Actor
 	to      *types.Actor
 	message *types.Message
-	state   types.StateTree
+	state   state.Tree
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st types.StateTree) *VMContext {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *VMContext {
 	return &VMContext{
 		from:    from,
 		to:      to,
@@ -27,6 +29,8 @@ func NewVMContext(from, to *types.Actor, msg *types.Message, st types.StateTree)
 		state:   st,
 	}
 }
+
+var _ exec.VMContext = (*VMContext)(nil)
 
 // Message retrieves the message associated with this context.
 func (ctx *VMContext) Message() *types.Message {
@@ -62,7 +66,7 @@ func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAm
 type vmContextSendDeps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
-	Send             func(context.Context, *types.Actor, *types.Actor, *types.Message, types.StateTree) ([]byte, uint8, error)
+	Send             func(context.Context, *types.Actor, *types.Actor, *types.Message, state.Tree) ([]byte, uint8, error)
 	SetActor         func(context.Context, types.Address, *types.Actor) error
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

@@ -5,42 +5,18 @@ import (
 	"math/big"
 	"testing"
 
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestLoadCodeSuccess(t *testing.T) {
-	assert := assert.New(t)
-
-	ex, err := LoadCode(types.AccountActorCodeCid)
-	assert.NoError(err)
-	assert.Equal(ex, &AccountActor{})
-}
-
-func TestLoadCodeFail(t *testing.T) {
-	assert := assert.New(t)
-
-	missingCid, err := cidFromString("missing")
-	assert.NoError(err)
-
-	ex, err := LoadCode(missingCid)
-	assert.Equal(err.Error(), fmt.Sprintf("unknown code: %s", missingCid.String()))
-	assert.Nil(ex)
-
-	ex, err = LoadCode(nil)
-	assert.Equal(err.Error(), "missing code")
-	assert.Nil(ex)
-}
-
 type MockActor struct {
-	exports Exports
+	exports exec.Exports
 }
 
-func (a *MockActor) Exports() Exports {
+func (a *MockActor) Exports() exec.Exports {
 	return a.exports
 }
 func (a *MockActor) NewStorage() interface{} {
@@ -71,7 +47,7 @@ func (a *MockActor) Six(ctx *VMContext) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func NewMockActor(list Exports) *MockActor {
+func NewMockActor(list exec.Exports) *MockActor {
 	return &MockActor{
 		exports: list,
 	}
@@ -86,7 +62,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	t.Run("no return", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := NewMockActor(map[string]*FunctionSignature{
+		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"two": {
 				Params: nil,
 				Return: nil,
@@ -103,7 +79,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	t.Run("with return", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := NewMockActor(map[string]*FunctionSignature{
+		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"four": {
 				Params: nil,
 				Return: []abi.Type{abi.Bytes},
@@ -120,7 +96,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	t.Run("with error return", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := NewMockActor(map[string]*FunctionSignature{
+		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"five": {
 				Params: []abi.Type{},
 				Return: []abi.Type{abi.Bytes},
@@ -137,7 +113,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	t.Run("with error that is not revert or fault", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := NewMockActor(map[string]*FunctionSignature{
+		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"six": {
 				Params: nil,
 				Return: nil,
@@ -160,7 +136,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 	}{
 		{
 			Name: "missing method on actor",
-			Actor: NewMockActor(map[string]*FunctionSignature{
+			Actor: NewMockActor(map[string]*exec.FunctionSignature{
 				"one": {
 					Params: nil,
 					Return: nil,
@@ -181,7 +157,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "too little params",
-			Actor: NewMockActor(map[string]*FunctionSignature{
+			Actor: NewMockActor(map[string]*exec.FunctionSignature{
 				"one": {
 					Params: nil,
 					Return: nil,
@@ -192,7 +168,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "too little return parameters",
-			Actor: NewMockActor(map[string]*FunctionSignature{
+			Actor: NewMockActor(map[string]*exec.FunctionSignature{
 				"three": {
 					Params: nil,
 					Return: nil,
@@ -203,7 +179,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "wrong return parameters",
-			Actor: NewMockActor(map[string]*FunctionSignature{
+			Actor: NewMockActor(map[string]*exec.FunctionSignature{
 				"two": {
 					Params: nil,
 					Return: []abi.Type{abi.Bytes},
@@ -252,9 +228,4 @@ func TestMarshalValue(t *testing.T) {
 		assert.Equal(err.Error(), "unknown type: *big.Rat")
 		assert.Nil(out)
 	})
-}
-
-func cidFromString(input string) (*cid.Cid, error) {
-	prefix := cid.NewPrefixV1(cid.DagCBOR, types.DefaultHashFunction)
-	return prefix.Sum([]byte(input))
 }

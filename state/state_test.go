@@ -1,4 +1,4 @@
-package types
+package state
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,15 +20,15 @@ func TestStatePutGet(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	act1 := NewActor(AccountActorCodeCid, nil)
+	act1 := types.NewActor(types.AccountActorCodeCid, nil)
 	act1.WriteStorage([]byte("hello"))
 	act1.IncNonce()
-	act2 := NewActor(AccountActorCodeCid, nil)
+	act2 := types.NewActor(types.AccountActorCodeCid, nil)
 	act2.WriteStorage([]byte("world"))
 	act2.IncNonce()
 	act2.IncNonce()
 
-	addrGetter := NewAddressForTestGetter()
+	addrGetter := types.NewAddressForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
@@ -45,7 +46,7 @@ func TestStatePutGet(t *testing.T) {
 	tcid, err := tree.Flush(ctx)
 	assert.NoError(err)
 
-	tree2, err := LoadStateTree(ctx, cst, tcid)
+	tree2, err := LoadStateTree(ctx, cst, tcid, nil)
 	assert.NoError(err)
 
 	act1out2, err := tree2.GetActor(ctx, addr1)
@@ -62,7 +63,7 @@ func TestStateErrors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	a, err := tree.GetActor(ctx, NewAddressForTestGetter()())
+	a, err := tree.GetActor(ctx, types.NewAddressForTestGetter()())
 	assert.Nil(a)
 	assert.Error(err)
 	assert.True(IsActorNotFoundError(err))
@@ -70,7 +71,7 @@ func TestStateErrors(t *testing.T) {
 	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
 	assert.NoError(err)
 
-	tr2, err := LoadStateTree(ctx, cst, c)
+	tr2, err := LoadStateTree(ctx, cst, c, nil)
 	assert.EqualError(err, "failed to load node: not found")
 	assert.Nil(tr2)
 }
@@ -80,13 +81,13 @@ func TestStateGetOrCreate(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	addr := NewAddressForTestGetter()()
+	addr := types.NewAddressForTestGetter()()
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {
 		assert := assert.New(t)
 
-		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
+		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*types.Actor, error) {
 			return nil, fmt.Errorf("fail")
 		})
 		assert.EqualError(err, "fail")
@@ -96,21 +97,21 @@ func TestStateGetOrCreate(t *testing.T) {
 	t.Run("no actor - success", func(t *testing.T) {
 		assert := assert.New(t)
 
-		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
-			return &Actor{}, nil
+		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*types.Actor, error) {
+			return &types.Actor{}, nil
 		})
 		assert.NoError(err)
-		assert.Equal(actor, &Actor{})
+		assert.Equal(actor, &types.Actor{})
 	})
 
 	t.Run("actor exists", func(t *testing.T) {
 		assert := assert.New(t)
 
-		actor := NewActor(nil, NewTokenAmount(10))
+		actor := types.NewActor(nil, types.NewTokenAmount(10))
 		assert.NoError(tree.SetActor(ctx, addr, actor))
 
-		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*Actor, error) {
-			return &Actor{}, nil
+		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*types.Actor, error) {
+			return &types.Actor{}, nil
 		})
 		assert.NoError(err)
 		assert.Equal(actorBack, actor)
@@ -119,7 +120,7 @@ func TestStateGetOrCreate(t *testing.T) {
 
 func TestSnapshotAndRevertTo(t *testing.T) {
 	assert := assert.New(t)
-	newAddress := NewAddressForTestGetter()
+	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
@@ -133,16 +134,16 @@ func TestSnapshotAndRevertTo(t *testing.T) {
 	assert.NoError(err)
 	assert.True(emptyCid.Equals(gotCid))
 	// Add an actor that should not affect anything.
-	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	st.SetActor(ctx, newAddress(), types.NewActor(types.AccountActorCodeCid, nil))
 	st.RevertTo(emptyRev)
 
 	// Add two actors, snapshotting each step.
-	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	st.SetActor(ctx, newAddress(), types.NewActor(types.AccountActorCodeCid, nil))
 	oneActorCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	assert.False(oneActorCid.Equals(emptyCid))
 	oneActorRev := st.Snapshot()
-	st.SetActor(ctx, newAddress(), NewActor(AccountActorCodeCid, nil))
+	st.SetActor(ctx, newAddress(), types.NewActor(types.AccountActorCodeCid, nil))
 	twoActorCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	assert.False(twoActorCid.Equals(oneActorCid))
@@ -176,12 +177,12 @@ func TestLoadedStateTreeCanSnapshot(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	act := NewActor(AccountActorCodeCid, nil)
-	assert.NoError(tree.SetActor(ctx, NewAddressForTestGetter()(), act))
+	act := types.NewActor(types.AccountActorCodeCid, nil)
+	assert.NoError(tree.SetActor(ctx, types.NewAddressForTestGetter()(), act))
 	cid, err := tree.Flush(ctx)
 	assert.NoError(err)
 
-	tree2, err := LoadStateTree(ctx, cst, cid)
+	tree2, err := LoadStateTree(ctx, cst, cid, nil)
 	assert.NoError(err)
 	snap := tree2.Snapshot()
 	tree2.RevertTo(snap)
@@ -197,9 +198,9 @@ func TestGetAllActors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	addr := NewAddressForTestGetter()()
+	addr := types.NewAddressForTestGetter()()
 
-	actor := Actor{Code: AccountActorCodeCid, Nonce: 1234, Balance: NewTokenAmount(123)}
+	actor := types.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewTokenAmount(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	tree.Flush(ctx)
 

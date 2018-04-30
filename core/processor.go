@@ -3,11 +3,12 @@ package core
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Processor is the signature a function used to process blocks.
-type Processor func(ctx context.Context, blk *types.Block, st types.StateTree) ([]*types.MessageReceipt, error)
+type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*types.MessageReceipt, error)
 
 // ProcessBlock is the entrypoint for validating the state transitions
 // of the messages in a block. When we receive a new block from the
@@ -37,7 +38,7 @@ type Processor func(ctx context.Context, blk *types.Block, st types.StateTree) (
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
 //
-func ProcessBlock(ctx context.Context, blk *types.Block, st types.StateTree) ([]*types.MessageReceipt, error) {
+func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*types.MessageReceipt, error) {
 	var receipts []*types.MessageReceipt
 	emptyReceipts := []*types.MessageReceipt{}
 
@@ -132,7 +133,7 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st types.StateTree) ([]
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st types.StateTree, msg *types.Message) (*types.MessageReceipt, error) {
+func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*types.MessageReceipt, error) {
 	ss := st.Snapshot()
 	r, err := attemptApplyMessage(ctx, st, msg)
 	if IsFault(err) {
@@ -184,9 +185,9 @@ var (
 // should deal with trying got apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st types.StateTree, msg *types.Message) (*types.MessageReceipt, error) {
+func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
-	if types.IsActorNotFoundError(err) {
+	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
 	} else if err != nil {
 		return nil, faultErrorWrapf(err, "failed to get From actor %s", msg.From)

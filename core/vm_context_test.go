@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -19,7 +20,7 @@ func TestVMContextStorage(t *testing.T) {
 	ctx := context.Background()
 
 	cst := hamt.NewCborStore()
-	state := types.NewEmptyStateTree(cst)
+	state := state.NewEmptyStateTree(cst)
 
 	toActor, err := NewAccountActor(nil)
 	assert.NoError(err)
@@ -58,7 +59,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &types.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
 
 		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
 
@@ -83,7 +84,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &types.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
 
 		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
 
@@ -113,7 +114,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, msg, &types.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, msg, &state.MockStateTree{})
 
 		_, code, err := ctx.send(deps, to, "foo", nil, []interface{}{})
 
@@ -142,7 +143,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &types.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
 
 		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
 
@@ -167,7 +168,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			Send: func(ctx context.Context, from, to *types.Actor, msg *types.Message, st types.StateTree) ([]byte, uint8, error) {
+			Send: func(ctx context.Context, from, to *types.Actor, msg *types.Message, st state.Tree) ([]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},
@@ -181,7 +182,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), &types.MockStateTree{})
+		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
 
 		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
 

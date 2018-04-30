@@ -12,7 +12,9 @@ import (
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -27,7 +29,7 @@ var actorCmd = &cmds.Command{
 
 var actorLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return runActorLs(req.Context, re.Emit, GetNode(env), types.GetAllActorsFromStore)
+		return runActorLs(req.Context, re.Emit, GetNode(env), state.GetAllActorsFromStore)
 	},
 	Type: &actorView{},
 	Encoders: cmds.EncoderMap{
@@ -46,7 +48,7 @@ var actorLsCmd = &cmds.Command{
 	},
 }
 
-func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGetter types.GetAllActorsFromStoreFunc) error {
+func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGetter state.GetAllActorsFromStoreFunc) error {
 	blk := fcn.ChainMgr.GetBestBlock()
 
 	if blk == nil {
@@ -80,7 +82,7 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 	return nil
 }
 
-func makeActorView(act *types.Actor, addr string, actType core.ExecutableActor) *actorView {
+func makeActorView(act *types.Actor, addr string, actType exec.ExecutableActor) *actorView {
 	var actorType string
 	var memory interface{}
 	var exports readableExports
@@ -109,7 +111,7 @@ type readableFunctionSignature struct {
 }
 type readableExports map[string]*readableFunctionSignature
 
-func makeReadable(f *core.FunctionSignature) *readableFunctionSignature {
+func makeReadable(f *exec.FunctionSignature) *readableFunctionSignature {
 	rfs := &readableFunctionSignature{
 		Params: make([]string, len(f.Params)),
 		Return: make([]string, len(f.Return)),
@@ -123,7 +125,7 @@ func makeReadable(f *core.FunctionSignature) *readableFunctionSignature {
 	return rfs
 }
 
-func presentExports(e core.Exports) readableExports {
+func presentExports(e exec.Exports) readableExports {
 	rdx := make(readableExports)
 	for k, v := range e {
 		rdx[k] = makeReadable(v)

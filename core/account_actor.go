@@ -6,6 +6,8 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -36,7 +38,7 @@ func (state *AccountActor) NewStorage() interface{} {
 }
 
 // ensure AccountActor is an ExecutableActor at compile time
-var _ ExecutableActor = (*AccountActor)(nil)
+var _ exec.ExecutableActor = (*AccountActor)(nil)
 
 // NewAccountActor creates a new actor.
 func NewAccountActor(balance *types.TokenAmount) (*types.Actor, error) {
@@ -48,10 +50,10 @@ func NewAccountActor(balance *types.TokenAmount) (*types.Actor, error) {
 }
 
 // accountExports are the publicly (externally callable) methods of the AccountActor.
-var accountExports = Exports{}
+var accountExports = exec.Exports{}
 
 // Exports makes the available methods for this contract available.
-func (state *AccountActor) Exports() Exports {
+func (state *AccountActor) Exports() exec.Exports {
 	return accountExports
 }
 
@@ -59,7 +61,7 @@ func (state *AccountActor) Exports() Exports {
 // Depending on the context, this may or may not be sufficient to select a
 // nonce for a message. See node.NextNonce if you want to select a nonce
 // based on the state of the node (not just on the state of the actor).
-func NextNonce(ctx context.Context, st types.StateTree, mp *MessagePool, address types.Address) (uint64, error) {
+func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address types.Address) (uint64, error) {
 	actor, err := st.GetActor(ctx, address)
 	if err != nil {
 		return 0, err

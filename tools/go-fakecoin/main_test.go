@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,7 @@ func TestAddActors(t *testing.T) {
 	st, cst, cm, bb, err := getStateTree(ctx, ds)
 	require.NoError(err)
 
-	_, allActors := types.GetAllActors(st)
+	_, allActors := state.GetAllActors(st)
 	initialActors := len(allActors)
 
 	err = fakeActors(ctx, cst, cm, bb)
@@ -56,7 +57,7 @@ func TestAddActors(t *testing.T) {
 	st, _, _, _, err = getStateTree(ctx, ds)
 	require.NoError(err)
 
-	_, allActors = types.GetAllActors(st)
+	_, allActors = state.GetAllActors(st)
 	assert.Equal(initialActors+2, len(allActors), "add a account and miner actors")
 
 	sma, err := st.GetActor(ctx, core.StorageMarketAddress)

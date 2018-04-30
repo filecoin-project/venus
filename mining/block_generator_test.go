@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
 	return cst, pool, fakeActorCodeCid
 }
 
-func sharedSetup(t *testing.T) (types.StateTree, *core.MessagePool, []types.Address) {
+func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) {
 	require := require.New(t)
 	newAddress := types.NewAddressForTestGetter()
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
@@ -100,7 +101,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, stateRootCid *cid.Cid) (types.StateTree, error) {
+	getStateTree := func(c context.Context, stateRootCid *cid.Cid) (state.Tree, error) {
 		return st, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, ApplyMessages)
@@ -140,7 +141,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	st, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, stateRootCid *cid.Cid) (types.StateTree, error) {
+	getStateTree := func(c context.Context, stateRootCid *cid.Cid) (state.Tree, error) {
 		return st, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, ApplyMessages)
@@ -167,7 +168,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs := sharedSetup(t)
 
-	explodingGetStateTree := func(c context.Context, stateRootCid *cid.Cid) (types.StateTree, error) {
+	explodingGetStateTree := func(c context.Context, stateRootCid *cid.Cid) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
 			return nil, errors.New("boom no flush")
@@ -195,11 +196,11 @@ func TestGenerateError(t *testing.T) {
 }
 
 type StateTreeForTest struct {
-	types.StateTree
+	state.Tree
 	TestFlush func(ctx context.Context) (*cid.Cid, error)
 }
 
-func WrapStateTreeForTest(st types.StateTree) *StateTreeForTest {
+func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
 	stt := StateTreeForTest{
 		st,
 		st.Flush,

@@ -8,6 +8,8 @@ import (
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
@@ -87,9 +89,9 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root *types.Block, msgSets 
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, types.StateTree) {
+func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, state.Tree) {
 	ctx := context.Background()
-	t := types.NewEmptyStateTree(cst)
+	t := state.NewEmptyStateTreeWithActors(cst, BuiltinActors)
 
 	for addr, act := range acts {
 		err := t.SetActor(ctx, addr, act)
@@ -133,7 +135,7 @@ func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid
 }
 
 // MustGetNonce returns the next nonce for an actor at the given address or panics.
-func MustGetNonce(st types.StateTree, a types.Address) uint64 {
+func MustGetNonce(st state.Tree, a types.Address) uint64 {
 	mp := NewMessagePool()
 	nonce, err := NextNonce(context.Background(), st, mp, a)
 	if err != nil {
@@ -149,25 +151,25 @@ type FakeActorStorage struct{ Changed bool }
 // FakeActor is a fake actor for use in tests.
 type FakeActor struct{}
 
-var _ ExecutableActor = (*FakeActor)(nil)
+var _ exec.ExecutableActor = (*FakeActor)(nil)
 
-var fakeActorExports = Exports{
-	"returnRevertError": &FunctionSignature{
+var fakeActorExports = exec.Exports{
+	"returnRevertError": &exec.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	"goodCall": &FunctionSignature{
+	"goodCall": &exec.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	"nestedBalance": &FunctionSignature{
+	"nestedBalance": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
 }
 
 // Exports returns the list of fake actor exported functions.
-func (ma *FakeActor) Exports() Exports {
+func (ma *FakeActor) Exports() exec.Exports {
 	return fakeActorExports
 }
 

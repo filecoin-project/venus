@@ -7,6 +7,7 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account does not exist", func(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
-		st := types.NewEmptyStateTree(store)
+		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
 		address := types.NewAddressForTestGetter()()
@@ -53,13 +54,13 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account exists but wrong type", func(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
-		st := types.NewEmptyStateTree(store)
+		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
 		address := types.NewAddressForTestGetter()()
 		actor, err := NewStorageMarketActor()
 		assert.NoError(err)
-		_ = types.MustSetActor(st, address, actor)
+		_ = state.MustSetActor(st, address, actor)
 
 		_, err = NextNonce(ctx, st, mp, address)
 		assert.Error(err)
@@ -69,13 +70,13 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account exists, gets correct value", func(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
-		st := types.NewEmptyStateTree(store)
+		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 		address := types.NewAddressForTestGetter()()
 		actor, err := NewAccountActor(types.NewTokenAmount(0))
 		assert.NoError(err)
 		actor.Nonce = 42
-		types.MustSetActor(st, address, actor)
+		state.MustSetActor(st, address, actor)
 
 		nonce, err := NextNonce(ctx, st, mp, address)
 		assert.NoError(err)
@@ -85,13 +86,13 @@ func TestNextNonce(t *testing.T) {
 	t.Run("gets nonce from highest message pool value", func(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
-		st := types.NewEmptyStateTree(store)
+		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 		address := types.NewAddressForTestGetter()()
 		actor, err := NewAccountActor(types.NewTokenAmount(0))
 		assert.NoError(err)
 		actor.Nonce = 2
-		types.MustSetActor(st, address, actor)
+		state.MustSetActor(st, address, actor)
 
 		nonce, err := NextNonce(ctx, st, mp, address)
 		assert.NoError(err)

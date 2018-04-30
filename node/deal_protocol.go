@@ -7,16 +7,18 @@ import (
 	"math/big"
 	"sync"
 
-	dag "github.com/ipfs/go-ipfs/merkledag"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	inet "gx/ipfs/QmXfkENeeBvh3zYA51MaSdGUdBjhQ99cP5WQe8zgr6wchG/go-libp2p-net"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	dag "github.com/ipfs/go-ipfs/merkledag"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -398,9 +400,9 @@ type stateTreeMarketPeeker struct {
 	nd *Node
 }
 
-func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (types.StateTree, error) {
+func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
 	bestBlk := stsa.nd.ChainMgr.GetBestBlock()
-	return types.LoadStateTree(ctx, stsa.nd.CborStore, bestBlk.StateRoot)
+	return state.LoadStateTree(ctx, stsa.nd.CborStore, bestBlk.StateRoot, core.BuiltinActors)
 }
 
 func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*core.StorageMarketStorage, error) {

@@ -10,6 +10,7 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -46,7 +47,7 @@ func (sma *StorageMarketActor) NewStorage() interface{} {
 	return &StorageMarketStorage{}
 }
 
-var _ ExecutableActor = (*StorageMarketActor)(nil)
+var _ exec.ExecutableActor = (*StorageMarketActor)(nil)
 
 // NewStorageMarketActor returns a new storage market actor
 func NewStorageMarketActor() (*types.Actor, error) {
@@ -68,28 +69,28 @@ func NewStorageMarketActor() (*types.Actor, error) {
 }
 
 // Exports returns the actors exports
-func (sma *StorageMarketActor) Exports() Exports {
+func (sma *StorageMarketActor) Exports() exec.Exports {
 	return storageMarketExports
 }
 
-var storageMarketExports = Exports{
-	"createMiner": &FunctionSignature{
+var storageMarketExports = exec.Exports{
+	"createMiner": &exec.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount},
 		Return: []abi.Type{abi.Address},
 	},
-	"addAsk": &FunctionSignature{
+	"addAsk": &exec.FunctionSignature{
 		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
-	"addBid": &FunctionSignature{
+	"addBid": &exec.FunctionSignature{
 		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
-	"addDeal": &FunctionSignature{
+	"addDeal": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Integer, abi.Integer, abi.Bytes, abi.Bytes},
 		Return: []abi.Type{abi.Integer},
 	},
-	"commitDeals": &FunctionSignature{
+	"commitDeals": &exec.FunctionSignature{
 		Params: []abi.Type{abi.UintArray},
 		Return: []abi.Type{abi.Integer},
 	},

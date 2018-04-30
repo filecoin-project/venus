@@ -6,6 +6,7 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -45,7 +46,7 @@ func (ma *MinerActor) NewStorage() interface{} {
 	return &MinerStorage{}
 }
 
-var _ ExecutableActor = (*MinerActor)(nil)
+var _ exec.ExecutableActor = (*MinerActor)(nil)
 
 // NewMinerActor returns a new miner actor
 func NewMinerActor(owner types.Address, pledge *types.BytesAmount, coll *types.TokenAmount) (*types.Actor, error) {
@@ -64,27 +65,27 @@ func NewMinerActor(owner types.Address, pledge *types.BytesAmount, coll *types.T
 	return types.NewActorWithMemory(types.MinerActorCodeCid, nil, storageBytes), nil
 }
 
-var minerExports = Exports{
-	"addAsk": &FunctionSignature{
+var minerExports = exec.Exports{
+	"addAsk": &exec.FunctionSignature{
 		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
-	"getOwner": &FunctionSignature{
+	"getOwner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
-	"addDealsToSector": &FunctionSignature{
+	"addDealsToSector": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Integer, abi.UintArray},
 		Return: []abi.Type{abi.Integer},
 	},
-	"commitSector": &FunctionSignature{
+	"commitSector": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Integer, abi.Bytes, abi.UintArray},
 		Return: []abi.Type{abi.Integer},
 	},
 }
 
 // Exports returns the miner actors exported functions
-func (ma *MinerActor) Exports() Exports {
+func (ma *MinerActor) Exports() exec.Exports {
 	return minerExports
 }
 

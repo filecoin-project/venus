@@ -5,6 +5,7 @@ import (
 
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -51,7 +52,7 @@ func init() {
 // InitGenesis is the default function to create the genesis block.
 func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	ctx := context.Background()
-	st := types.NewEmptyStateTree(cst)
+	st := state.NewEmptyStateTree(cst)
 
 	for addr, val := range defaultAccounts {
 		a, err := NewAccountActor(types.NewTokenAmount(val))

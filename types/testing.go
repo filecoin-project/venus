@@ -1,11 +1,9 @@
 package types
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
@@ -107,99 +105,6 @@ func MsgCidsEqual(m1, m2 *Message) bool {
 		panic(err)
 	}
 	return m1Cid.Equals(m2Cid)
-}
-
-// MustFlush flushes the StateTree or panics if it can't.
-func MustFlush(st StateTree) *cid.Cid {
-	cid, err := st.Flush(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	return cid
-}
-
-// MustGetActor gets the actor or panics if it can't.
-func MustGetActor(st StateTree, a Address) *Actor {
-	actor, err := st.GetActor(context.Background(), a)
-	if err != nil {
-		panic(err)
-	}
-	return actor
-}
-
-// MustSetActor sets the actor or panics if it can't.
-func MustSetActor(st StateTree, address Address, actor *Actor) *cid.Cid {
-	err := st.SetActor(context.Background(), address, actor)
-	if err != nil {
-		panic(err)
-	}
-	return MustFlush(st)
-}
-
-// MockStateTree is a testify mock that implements StateTree.
-type MockStateTree struct {
-	mock.Mock
-
-	NoMocks bool
-}
-
-var _ StateTree = &MockStateTree{}
-
-// Flush implements StateTree.Flush.
-func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
-	if m.NoMocks {
-		return
-	}
-	args := m.Called(ctx)
-	if args.Get(0) != nil {
-		c = args.Get(0).(*cid.Cid)
-	}
-	err = args.Error(1)
-	return
-}
-
-// GetActor implements StateTree.GetActor.
-func (m *MockStateTree) GetActor(ctx context.Context, address Address) (actor *Actor, err error) {
-	if m.NoMocks {
-		return
-	}
-
-	args := m.Called(ctx, address)
-	if args.Get(0) != nil {
-		actor = args.Get(0).(*Actor)
-	}
-	err = args.Error(1)
-	return
-}
-
-// SetActor implements StateTree.SetActor.
-func (m *MockStateTree) SetActor(ctx context.Context, address Address, actor *Actor) error {
-	if m.NoMocks {
-		return nil
-	}
-
-	args := m.Called(ctx, address, actor)
-	return args.Error(0)
-}
-
-// GetOrCreateActor implements StateTree.GetOrCreateActor.
-func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address Address, creator func() (*Actor, error)) (*Actor, error) {
-	panic("do not call me")
-}
-
-// Snapshot implements StateTree.Snapshot.
-func (m *MockStateTree) Snapshot() RevID {
-	panic("do not call me")
-}
-
-// RevertTo implements StateTree.RevertTo.
-func (m *MockStateTree) RevertTo(RevID) {
-	panic("do not call me")
-}
-
-// Debug implements StateTree.Debug
-func (m *MockStateTree) Debug() {
-	panic("do not call me")
 }
 
 // HasCid allows two values with CIDs to be compared.

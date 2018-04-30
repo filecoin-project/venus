@@ -11,7 +11,7 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -91,7 +91,7 @@ var msgSendCmd = &cmds.Command{
 type waitResult struct {
 	Message   *types.Message
 	Receipt   *types.MessageReceipt
-	Signature *core.FunctionSignature
+	Signature *exec.FunctionSignature
 }
 
 var msgWaitCmd = &cmds.Command{

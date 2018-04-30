@@ -14,6 +14,7 @@ import (
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -300,7 +301,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		return err
 	}
 
-	st, err := types.LoadStateTree(ctx, s.cstore, baseBlk.StateRoot)
+	st, err := state.LoadStateTree(ctx, s.cstore, baseBlk.StateRoot, BuiltinActors)
 	if err != nil {
 		return err
 	}

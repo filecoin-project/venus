@@ -9,10 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func createTestMiner(assert *assert.Assertions, st types.StateTree, pledge, collateral int64) types.Address {
+func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64) types.Address {
 	pdata := mustConvertParams(types.NewBytesAmount(10000))
 	nonce := MustGetNonce(st, TestAddress)
 	msg := types.NewMessage(TestAddress, StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
@@ -34,7 +35,7 @@ func TestAddAsk(t *testing.T) {
 	blk, err := InitGenesis(cst)
 	assert.NoError(err)
 
-	st, err := types.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, BuiltinActors)
 	assert.NoError(err)
 
 	outAddr := createTestMiner(assert, st, 10000, 500)

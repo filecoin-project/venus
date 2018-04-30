@@ -23,9 +23,11 @@ import (
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -188,8 +190,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
 	// to simulate the work of generating proofs.
-	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
-		return types.LoadStateTree(ctx, cst, cid)
+	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
+		return state.LoadStateTree(ctx, cst, cid, core.BuiltinActors)
 	}, mining.ApplyMessages)
 	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
@@ -428,8 +430,8 @@ func (node *Node) StopMining() {
 }
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
-func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*core.FunctionSignature, error) {
-	st, err := types.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot)
+func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
+	st, err := state.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot, core.BuiltinActors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
 	}
@@ -439,7 +441,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 		return nil, errors.Wrap(err, "failed to get actor")
 	}
 
-	executable, err := core.LoadCode(actor.Code)
+	executable, err := st.GetBuiltinActorCode(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
@@ -462,7 +464,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // messages.
 func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
 	bb := node.ChainMgr.GetBestBlock()
-	st, err := types.LoadStateTree(ctx, node.CborStore, bb.StateRoot)
+	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, core.BuiltinActors)
 	if err != nil {
 		return 0, err
 	}

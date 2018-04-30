@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -379,11 +380,11 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		address := core.TestAddress // Has an actor.
 
 		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
-		st, err := types.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot)
+		st, err := state.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot, nil)
 		assert.NoError(err)
-		actor := types.MustGetActor(st, address)
+		actor := state.MustGetActor(st, address)
 		actor.Nonce = 42
-		cid := types.MustSetActor(st, address, actor)
+		cid := state.MustSetActor(st, address, actor)
 		bb.StateRoot = cid
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
 		chainMgrForTest.SetBestBlockForTest(ctx, bb)

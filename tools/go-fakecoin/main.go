@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -101,12 +102,12 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 }
 
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
-	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (types.StateTree, error) {
-		return types.LoadStateTree(ctx, cst, cid)
+	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
+		return state.LoadStateTree(ctx, cst, cid, core.BuiltinActors)
 	}, mining.ApplyMessages)
 }
 
-func getStateTree(ctx context.Context, d repo.Datastore) (types.StateTree, *hamt.CborIpldStore, *core.ChainManager, *types.Block, error) {
+func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, *types.Block, error) {
 	cm, cst := getChainManager(d)
 	err := cm.Load()
 	if err != nil {
@@ -115,7 +116,7 @@ func getStateTree(ctx context.Context, d repo.Datastore) (types.StateTree, *hamt
 
 	bb := cm.GetBestBlock()
 	sr := bb.StateRoot
-	st, err := types.LoadStateTree(ctx, cst, sr)
+	st, err := state.LoadStateTree(ctx, cst, sr, core.BuiltinActors)
 	return st, cst, cm, bb, err
 }
 
