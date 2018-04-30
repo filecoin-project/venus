@@ -84,7 +84,8 @@ type Node struct {
 
 	// Repo is the repo this node was created with
 	// it contains all persistent artifacts of the filecoin node
-	Repo repo.Repo
+	Repo          repo.Repo
+	SectorBuilder *SectorBuilder
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -211,7 +212,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to set up lookup engine")
 	}
 
-	return &Node{
+	nd := &Node{
 		Blockservice:  bserv,
 		CborStore:     cst,
 		ChainMgr:      chainMgr,
@@ -226,7 +227,18 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Repo:          nc.Repo,
 		Wallet:        fcWallet,
 		rewardAddress: nc.RewardAddress,
-	}, nil
+	}
+
+	dirs := nd.Repo.(SectorDirs)
+	var sb *SectorBuilder
+	sb, err = NewSectorBuilder(nd, sectorSize, dirs)
+	if err != nil {
+		return nil, err
+	}
+
+	nd.SectorBuilder = sb
+
+	return nd, nil
 }
 
 // Start boots up the node.

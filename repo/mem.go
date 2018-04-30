@@ -9,6 +9,7 @@ import (
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dss "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/sync"
+	"os"
 )
 
 // MemRepo is an in memory implementation of the filecoin repo
@@ -75,5 +76,22 @@ func (mr *MemRepo) Version() uint {
 
 // Close is a noop, just filling out the interface.
 func (mr *MemRepo) Close() error {
+	mr.CleanupSectorDirs()
 	return nil
+}
+
+// StagingDir implements node.StagingDir.
+func (mr *MemRepo) StagingDir() string {
+	return "/tmp/sectors/staging/"
+}
+
+// SealedDir implements node.SectorDirs.
+func (mr *MemRepo) SealedDir() string {
+	return "/tmp/sectors/sealed/"
+}
+
+// CleanupSectorDirs removes all sector directories and their contents.
+func (mr *MemRepo) CleanupSectorDirs() {
+	os.RemoveAll(mr.StagingDir()) // nolint: errcheck
+	os.RemoveAll(mr.SealedDir())  // nolint:errcheck
 }

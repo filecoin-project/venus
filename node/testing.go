@@ -39,3 +39,8 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool) []*Node {
 
 	return out
 }
+
+// MakeOfflineNode returns a single unstarted offline node.
+func MakeOfflineNode(t *testing.T) *Node {
+	return MakeNodesUnstarted(t, 1, true)[0]
+}

@@ -1,21 +1,43 @@
 package node
 
+// TODO: mmap details are commented out but retained for future use.
+
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base32"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
+	"os"
+	"path"
+	"strings"
+
+	dag "github.com/ipfs/go-ipfs/merkledag"
+	uio "github.com/ipfs/go-ipfs/unixfs/io"
+	//	"golang.org/x/exp/mmap"
+
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/paper-porep-drg/go-porep/drg"
 	"github.com/filecoin-project/paper-porep-drg/go-porep/drg/drgraph"
-
-	dag "github.com/ipfs/go-ipfs/merkledag"
-	uio "github.com/ipfs/go-ipfs/unixfs/io"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
+
+// ErrPieceTooLarge is an error indicating that a piece cannot be larger than the sector into which it is written.
+var ErrPieceTooLarge = errors.New("piece too large for sector")
+
+const sectorSize = 1024
+const nodeSize = 16
+
+// SectorDirs describes the methods required to supply sector directories to a SectorBuilder.
+type SectorDirs interface {
+	StagingDir() string
+	SealedDir() string
+}
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
@@ -33,9 +55,13 @@ type Sector struct {
 	Size   uint64
 	Free   uint64
 	Pieces []*PieceInfo
+	ID     int64
 
-	//file     *os.File
-	data []byte
+	filename string
+	file     *os.File
+	data     []byte
+	sealed   *SealedSector
+	//ReaderAt *mmap.ReaderAt
 }
 
 // SectorBuilder manages packing deals into sectors
@@ -50,29 +76,88 @@ type SectorBuilder struct {
 	G      *drgraph.Graph
 	Prover *drg.Prover
 
+	stagingDir string
+	sealedDir  string
+
 	// yada yada don't hold a reference to this here, just take what you need
-	nd *Node
+	nd         *Node
+	sectorSize uint64
 }
 
-const sectorSize = 1024
-const nodeSize = 16
+// NewSector allocates and returns a new Sector with file initialized, along with any error.
+func (smc *SectorBuilder) NewSector() (s *Sector, err error) {
+	s = &Sector{
+		Size: smc.sectorSize,
+		Free: smc.sectorSize,
+	}
+	p := smc.newSectorPath()
+	err = os.MkdirAll(path.Dir(p), os.ModePerm)
+	if err != nil {
+		return s, err
+	}
+	s.filename = p
+	s.file, err = os.Create(p)
+	if err != nil {
+		return s, err
+	}
+	return s, s.file.Close()
+}
+
+// NewSealedSector allocates and returns a new SealedSector from replicaData, merkleRoot, and baseSector, along with any error.
+func (smc *SectorBuilder) NewSealedSector(replicaData []byte, merkleRoot []byte, baseSector *Sector) (ss *SealedSector,
+	err error) {
+	ss = &SealedSector{
+		replicaData: replicaData,
+		merkleRoot:  merkleRoot,
+		baseSector:  baseSector,
+	}
+	p := smc.newSealedSectorPath()
+	err = os.MkdirAll(path.Dir(p), os.ModePerm)
+	if err != nil {
+		return ss, err
+	}
+	ss.filename = p
+	ss.file, err = os.Create(p)
+	if err != nil {
+		return ss, err
+	}
+	return ss, ss.file.Close()
+}
 
 // NewSectorBuilder creates a new sector builder from the given node
-func NewSectorBuilder(nd *Node) *SectorBuilder {
+func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
 	g := drgraph.New(sectorSize / nodeSize)
-	return &SectorBuilder{
-		G:         g,
-		Prover:    drg.NewProver("cats", g, nodeSize),
-		CurSector: new(Sector),
-		nd:        nd,
+	smc := &SectorBuilder{
+		G:          g,
+		Prover:     drg.NewProver("cats", g, nodeSize),
+		nd:         nd,
+		sectorSize: uint64(sectorSize),
 	}
+	smc.stagingDir = fs.StagingDir()
+	smc.sealedDir = fs.SealedDir()
+
+	s, err := smc.NewSector()
+	if err != nil {
+		return nil, err
+	}
+	smc.CurSector = s
+	return smc, nil
 }
 
 // AddPiece writes the given piece into a sector
 func (smc *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
+	if pi.Size > smc.CurSector.Size {
+		return ErrPieceTooLarge
+	}
 	if smc.CurSector.Free < pi.Size {
+		// No room for piece in current sector.
 		curSector := smc.CurSector
-		smc.CurSector = new(Sector)
+		newSector, err := smc.NewSector()
+		if err != nil {
+			return err
+		}
+		smc.CurSector = newSector
+
 		go smc.SealAndPostSector(context.Background(), curSector)
 	}
 
@@ -100,15 +185,37 @@ var filecoinParameters = &PublicParameters{
 	blockSize: nodeSize,
 }
 
+// OpenAppend opens and sets sector's file for appending, returning the *os.file.
+func (s *Sector) OpenAppend() error {
+	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	s.file = f
+	return nil
+}
+
+// OpenMMap opens and sets sector's file for mmap, returning the *mmap.ReaderAt.
+//func (s *Sector) OpenMMap() *mmap.ReaderAt {
+//	r, err := mmap.Open(s.filename)
+//	if err != nil {
+//		panic("could not mmap sector")
+//	}
+//	s.ReaderAt = r
+//	return r
+//}
+
 // SealAndPostSector seals the given sector and posts its commitment on-chain
 func (smc *SectorBuilder) SealAndPostSector(ctx context.Context, s *Sector) {
-	ss, err := s.Seal(smc.MinerAddr, filecoinParameters)
+	ss, err := smc.Seal(s, smc.MinerAddr, filecoinParameters)
 	if err != nil {
 		// Hard to say what to do in this case.
 		// Depending on the error, it could be "try again"
 		// or 'verify data integrity and try again'
 		panic(err)
 	}
+
+	s.sealed = ss
 
 	if err := smc.PostSealedSector(ctx, ss); err != nil {
 		// 'try again'
@@ -127,7 +234,7 @@ func (smc *SectorBuilder) PostSealedSector(ctx context.Context, ss *SealedSector
 	}
 
 	params, err := abi.ToEncodedValues(
-		-1, // NB: we might already know the sector ID from having created it already
+		big.NewInt(-1), // NB: we might already know the sector ID from having created it already
 		ss.merkleRoot,
 		deals,
 	)
@@ -148,16 +255,19 @@ func (smc *SectorBuilder) PostSealedSector(ctx context.Context, ss *SealedSector
 
 // WritePiece writes data from the given reader to the sectors underlying storage
 func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) error {
-	/*
-		n, err := io.Copy(s.file, r)
-		if err != nil {
-			// TODO: make sure we roll back the state of the file to what it was before we started this write
-			// Note, this should be a fault. We likely should already have all the
-			// data locally before calling this method. If that ends up being the
-			// case, this error signifies disk errors of some kind
-			return err
-		}
-	*/
+	if err := s.OpenAppend(); err != nil {
+		return err
+	}
+
+	n, err := io.Copy(s.file, r)
+	if err != nil {
+		// TODO: make sure we roll back the state of the file to what it was before we started this write
+		// Note, this should be a fault. We likely should already have all the
+		// data locally before calling this method. If that ends up being the
+		// case, this error signifies disk errors of some kind
+		return err
+	}
+
 	// TODO: this is temporary. Use the above code later
 	// We should be writing this out to a file in the 'staging' area. Once the
 	// sector is ready to be sealed, we should mmap it and pass it to the
@@ -165,25 +275,16 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) error {
 	// so using mmap will be the fastest option. We could also provide an
 	// interface to just do seeks and reads on the underlying file, but it
 	// won't be as optimized
-	alldata, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
 
-	s.data = append(s.data, alldata...)
-	//
-
-	dataSize := uint64(len(alldata))
-
-	if /* uint64(n)  */ dataSize != pi.Size {
+	if uint64(n) != pi.Size {
 		// TODO: make sure we roll back the state of the file to what it was before we started this write
 		return fmt.Errorf("reported piece size does not match what we read")
 	}
 
-	s.Free -= dataSize
+	s.Free -= pi.Size
 	s.Pieces = append(s.Pieces, pi)
 
-	return nil
+	return s.file.Close()
 }
 
 // PublicParameters is
@@ -197,19 +298,101 @@ type SealedSector struct {
 	replicaData []byte
 	merkleRoot  []byte
 	baseSector  *Sector
+
+	filename string
+	file     *os.File
 }
 
 // Seal runs the PoRep setup process using the given parameters
 // address may turn into a secret key
-func (s *Sector) Seal(minerID types.Address, publicParams *PublicParameters) (*SealedSector, error) {
-	if len(s.data) < sectorSize {
-		s.data = append(s.data, make([]byte, sectorSize-len(s.data))...)
+func (smc *SectorBuilder) Seal(s *Sector, minerID types.Address, publicParams *PublicParameters) (*SealedSector,
+	error) {
+	// TODO: Actually use the mmap.ReaderAt for the sealing, instead of passing s.data.
+	/* defer s.OpenMMap().Close() // nolint: errcheck
+
+	if err := s.ReaderAt.Close(); err != nil {
+		panic(err)
+	}
+	*/
+
+	// TODO: Remove -- eventually we won't pass the data along, but for now it's necessary (and useful for testing).
+	data, err := s.ReadFile()
+	if err != nil {
+		return nil, err
+	}
+	s.data = data
+
+	if uint64(len(s.data)) < s.Size {
+		s.data = append(s.data, make([]byte, s.Size-uint64(len(s.data)))...)
 	}
 	prover := drg.NewProver(string(minerID[:]), publicParams.graph, int(publicParams.blockSize))
 	_, root := prover.Setup(s.data)
-	return &SealedSector{
-		replicaData: prover.Replica,
-		merkleRoot:  root,
-		baseSector:  s,
-	}, nil
+
+	ss, err := smc.NewSealedSector(prover.Replica, root, s)
+	if err != nil {
+		return nil, err
+	}
+	err = ss.Dump()
+	if err != nil {
+		return ss, err
+	}
+	merklePath, err := smc.merkleFilepath(ss)
+	if err != nil {
+		return ss, err
+	}
+	err = os.Rename(ss.filename, merklePath)
+	if err == nil {
+		ss.filename = merklePath
+	}
+	return ss, err
+}
+
+// ReadFile reads the content of a Sector's file into a byte array and returns it along with any error.
+func (s *Sector) ReadFile() ([]byte, error) {
+	return ioutil.ReadFile(s.filename)
+}
+
+// ReadFile reads the content of a SealedSector's file into a byte array and returns it along with any error.
+func (ss *SealedSector) ReadFile() ([]byte, error) {
+	return ioutil.ReadFile(ss.filename)
+}
+
+// Dump dumps ss's replicaData to disk.
+func (ss *SealedSector) Dump() error {
+	return ioutil.WriteFile(ss.filename, ss.replicaData, 0600)
+}
+
+// newSectorFileName returns a newly-generated, random 32-character base32 string.
+func newSectorFileName() string {
+	c := 20
+	b := make([]byte, c)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic("wtf")
+	}
+	encoded := base32.StdEncoding.EncodeToString(b)
+	return encoded
+}
+
+// newSectorPath returns a path to a new (random) filename in the staging directory.
+func (smc *SectorBuilder) newSectorPath() string {
+	// FIXME: Lookup or create by ID in metadata -- Repo.Datastore.
+	return path.Join(smc.stagingDir, newSectorFileName())
+}
+
+// newSealedSectorPath returns a path to a new (random) filename in the sealed directory.
+func (smc *SectorBuilder) newSealedSectorPath() string {
+	// FIXME: Lookup or create by ID in metadata -- Repo.Datastore.
+	return path.Join(smc.sealedDir, newSectorFileName())
+}
+
+// merkleFilepath returns a path in smc's sealed directory, with name derived from ss's merkleRoot.
+func (smc *SectorBuilder) merkleFilepath(ss *SealedSector) (string, error) {
+	if ss.merkleRoot == nil {
+		return "", errors.New("no merkleRoot")
+	}
+	merkleString := base32.StdEncoding.EncodeToString(ss.merkleRoot)
+	merkleString = strings.Trim(merkleString, "=")
+
+	return path.Join(smc.sealedDir, merkleString), nil
 }
