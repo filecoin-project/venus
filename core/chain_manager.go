@@ -122,7 +122,11 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 }
 
 // Genesis creates a new genesis block and sets it as the the best known block.
-func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) error {
+func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) (err error) {
+	ctx = log.Start(ctx, "ChainManager.Genesis")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
 	genesis, err := gen(s.cstore)
 	if err != nil {
 		return err
@@ -464,6 +468,9 @@ type ChainManagerForTest = ChainManager
 // SetBestBlockForTest enables setting the best block directly. Don't
 // use this outside of a testing context.
 func (s *ChainManagerForTest) SetBestBlockForTest(ctx context.Context, b *types.Block) error {
+	// added to make `LogKV` call in `setBestBlock` happy (else it logs an error message)
+	log.Start(ctx, "SetBestBlockForTest")
+	defer log.Finish(ctx)
 	return s.setBestBlock(ctx, b)
 }
 

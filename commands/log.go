@@ -13,7 +13,7 @@ var logCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Interact with the daemon event log output.",
 		ShortDescription: `
-'ipfs log' contains utility commands to affect the event logging
+'go-filecoin log' contains utility commands to affect the event logging
 output of a running daemon.
 `,
 	},
