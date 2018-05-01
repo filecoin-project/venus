@@ -52,7 +52,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert := assert.New(t)
 
 		var calls []string
-		deps := vmContextSendDeps{
+		deps := &deps{
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
 				return nil, errors.New("error")
@@ -60,8 +60,9 @@ func TestVMContextSendFailures(t *testing.T) {
 		}
 
 		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx.deps = deps
 
-		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
@@ -73,7 +74,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert := assert.New(t)
 
 		var calls []string
-		deps := vmContextSendDeps{
+		deps := &deps{
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, errors.New("error")
@@ -85,8 +86,9 @@ func TestVMContextSendFailures(t *testing.T) {
 		}
 
 		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx.deps = deps
 
-		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
@@ -103,7 +105,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		msg.To = to
 
 		var calls []string
-		deps := vmContextSendDeps{
+		deps := &deps{
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
@@ -115,8 +117,9 @@ func TestVMContextSendFailures(t *testing.T) {
 		}
 
 		ctx := NewVMContext(actor1, actor2, msg, &state.MockStateTree{})
+		ctx.deps = deps
 
-		_, code, err := ctx.send(deps, to, "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
@@ -128,7 +131,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert := assert.New(t)
 
 		var calls []string
-		deps := vmContextSendDeps{
+		deps := &deps{
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
@@ -144,8 +147,9 @@ func TestVMContextSendFailures(t *testing.T) {
 		}
 
 		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx.deps = deps
 
-		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
@@ -159,7 +163,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		expectedVMSendErr := errors.New("error")
 
 		var calls []string
-		deps := vmContextSendDeps{
+		deps := &deps{
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
@@ -183,8 +187,9 @@ func TestVMContextSendFailures(t *testing.T) {
 		}
 
 		ctx := NewVMContext(actor1, actor2, newMsg(), &state.MockStateTree{})
+		ctx.deps = deps
 
-		_, code, err := ctx.send(deps, newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
 
 		assert.Error(err)
 		assert.Equal(123, int(code))
