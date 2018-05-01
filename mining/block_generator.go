@@ -86,9 +86,10 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 	}
 
 	rewardMsg := types.NewMessage(core.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
-
-	messages := append(b.messagePool.Pending(), rewardMsg)
-	messages = core.OrderMessagesByNonce(messages)
+	pending := b.messagePool.Pending()
+	messages := make([]*types.Message, len(pending)+1)
+	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.
+	copy(messages[1:], core.OrderMessagesByNonce(b.messagePool.Pending()))
 
 	receipts, permanentFailures, temporaryFailures, successfulMessages, err := b.applyMessages(ctx, messages, stateTree)
 	if err != nil {

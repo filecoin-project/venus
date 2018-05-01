@@ -19,7 +19,6 @@ func TestGenerate(t *testing.T) {
 	// TODO fritz use core.FakeActor for state/contract tests for generate:
 	//  - test nonces out of order
 	//  - test nonce gap
-	//  - test apply errors are skipped
 }
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
@@ -89,7 +88,6 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	assert.Len(receipts, 1)
 	assert.Contains(success, msg2)
-
 	assert.NoError(err)
 }
 
@@ -131,6 +129,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.Contains(pool.Pending(), msg1)
 
 	assert.Len(blk.Messages, 2) // This is the good message + the mining reward.
+
+	// Is the mining reward first? This will fail 50% of the time if we don't force the reward to come first.
+	assert.Equal(core.NetworkAddress, blk.Messages[0].From)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {

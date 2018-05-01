@@ -287,6 +287,9 @@ func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Bloc
 
 // TODO: this method really needs to be thought through carefully. Probably one
 // of the most complicated bits of the system
+// TODO: We don't currently validate that
+//   a) there is a mining reward; and b) the reward is the first message in the block.
+//  We need to do so since this is a part of the consensus rules.
 func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
 	if err := s.validateBlockStructure(ctx, b); err != nil {
 		return errors.Wrap(err, "check block valid failed")

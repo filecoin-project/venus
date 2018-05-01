@@ -31,8 +31,8 @@ func TestMessageSend(t *testing.T) {
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAddress.String(),
-		"--value=10", core.TestAddress.String(),
+		"--from", core.TestAddress.String(),
+		"--value=10", core.TestAddress2.String(),
 	)
 }
 
@@ -45,9 +45,9 @@ func TestMessageWait(t *testing.T) {
 
 		msg := d.RunSuccess(
 			"message", "send",
-			"--from", core.NetworkAddress.String(),
+			"--from", core.TestAddress.String(),
 			"--value=10",
-			core.TestAddress.String(),
+			core.TestAddress2.String(),
 		)
 
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")
