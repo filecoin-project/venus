@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 // BuiltinActors is list of all actors that ship with Filecoin.
@@ -73,7 +74,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 	return func(ctx exec.VMContext) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
-			return nil, 1, revertErrorWrap(err, "invalid params")
+			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
 		}
 
 		args := []reflect.Value{
@@ -91,7 +92,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 		if signature.Return != nil {
 			ret, err := marshalValue(out[0].Interface())
 			if err != nil {
-				return nil, 1, faultErrorWrap(err, "failed to marshal output value")
+				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
 			}
 
 			retVal = ret
@@ -105,7 +106,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 
 		outErr, ok := out[1].Interface().(error)
 		if ok {
-			if !(shouldRevert(outErr) || IsFault(outErr)) {
+			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
 				panic("you are a bad person: error must be either a reverterror or a fault")
 			}
 		} else {

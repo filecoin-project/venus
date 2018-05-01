@@ -4,11 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +48,7 @@ func TestSendErrorHandling(t *testing.T) {
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
 		assert := assert.New(t)
 
-		transferErr := errors.New("error")
+		transferErr := xerrors.New("error")
 
 		msg := newMsg()
 		msg.Value = types.NewTokenAmount(1) // exact value doesn't matter - needs to be non-nil
@@ -76,7 +78,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
-		assert.True(IsFault(sendErr))
+		assert.True(errors.IsFault(sendErr))
 	})
 
 	t.Run("returns exit code 1 and a revert error if code doesn't export a matching method", func(t *testing.T) {
@@ -96,6 +98,6 @@ func TestSendErrorHandling(t *testing.T) {
 
 		assert.Error(sendErr)
 		assert.Equal(1, int(code))
-		assert.True(shouldRevert(sendErr))
+		assert.True(errors.ShouldRevert(sendErr))
 	})
 }

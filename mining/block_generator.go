@@ -2,15 +2,16 @@ package mining
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
+	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 var log = logging.Logger("mining")
@@ -53,12 +54,12 @@ func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree
 		r, err := core.ApplyMessage(ctx, st, msg)
 		// If the message should not have been in the block, bail somehow.
 		switch {
-		case core.IsFault(err):
+		case errors.IsFault(err):
 			return emptyReceipts, permanentFailures, temporaryFailures, successfulMessages, err
-		case core.IsApplyErrorPermanent(err):
+		case errors.IsApplyErrorPermanent(err):
 			permanentFailures = append(permanentFailures, msg)
 			continue
-		case core.IsApplyErrorTemporary(err):
+		case errors.IsApplyErrorTemporary(err):
 			temporaryFailures = append(temporaryFailures, msg)
 			continue
 		case err != nil:
@@ -118,7 +119,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		}
 	}
 	if !rewardSuccessful {
-		return nil, errors.New("mining reward message failed")
+		return nil, xerrors.New("mining reward message failed")
 	}
 	// Mining reward message succeeded -- side effects okay below this point.
 

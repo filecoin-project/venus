@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 // Processor is the signature a function used to process blocks.
@@ -46,10 +47,10 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 		r, err := ApplyMessage(ctx, st, msg)
 		// If the message should not have been in the block, bail.
 		// TODO: handle faults appropriately at a higher level.
-		if IsFault(err) || IsApplyErrorPermanent(err) || IsApplyErrorTemporary(err) {
+		if errors.IsFault(err) || errors.IsApplyErrorPermanent(err) || errors.IsApplyErrorTemporary(err) {
 			return emptyReceipts, err
 		} else if err != nil {
-			return emptyReceipts, faultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
+			return emptyReceipts, errors.FaultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
 		}
 
 		// TODO fritz check caller assumptions about receipts.
@@ -136,19 +137,19 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*types.MessageReceipt, error) {
 	ss := st.Snapshot()
 	r, err := attemptApplyMessage(ctx, st, msg)
-	if IsFault(err) {
+	if errors.IsFault(err) {
 		return r, err
-	} else if shouldRevert(err) {
+	} else if errors.ShouldRevert(err) {
 		st.RevertTo(ss)
 	} else if err != nil {
-		return nil, newFaultError("someone is a bad programmer: only return revert and fault errors")
+		return nil, errors.NewFaultError("someone is a bad programmer: only return revert and fault errors")
 	}
 
 	// Reject invalid state transitions.
 	if err == errAccountNotFound || err == errNonceTooHigh {
-		return nil, applyErrorTemporaryWrapf(err, "apply message failed")
+		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
 	} else if err == errSelfSend || err == errNonceTooLow || err == ErrCannotTransferNegativeValue {
-		return nil, applyErrorPermanentWrapf(err, "apply message failed")
+		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
 		// Do nothing. All other vm errors are ok: the state was rolled back
 		// above but we applied the message successfully. This intentionally
@@ -160,11 +161,11 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*type
 	// the nonce.
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if err != nil {
-		return nil, faultErrorWrap(err, "couldn't load from actor")
+		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
 	fromActor.IncNonce()
 	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
-		return nil, faultErrorWrap(err, "could not set from actor after inc nonce")
+		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
 	return r, nil
@@ -173,11 +174,11 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*type
 var (
 	// These errors are only to be used by ApplyMessage; they shouldn't be
 	// used in any other context as they are an implementation detail.
-	errAccountNotFound = newRevertError("account not found")
-	errNonceTooHigh    = newRevertError("nonce too high")
-	errNonceTooLow     = newRevertError("nonce too low")
+	errAccountNotFound = errors.NewRevertError("account not found")
+	errNonceTooHigh    = errors.NewRevertError("nonce too high")
+	errNonceTooLow     = errors.NewRevertError("nonce too low")
 	// TODO we'll eventually handle sending to self.
-	errSelfSend = newRevertError("cannot send to self")
+	errSelfSend = errors.NewRevertError("cannot send to self")
 )
 
 // attemptApplyMessage encapsulates the work of trying to apply the message in order
@@ -190,7 +191,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
 	} else if err != nil {
-		return nil, faultErrorWrapf(err, "failed to get From actor %s", msg.From)
+		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}
 
 	if msg.From == msg.To {
@@ -207,12 +208,12 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 		return a, st.SetActor(ctx, msg.To, a)
 	})
 	if err != nil {
-		return nil, faultErrorWrap(err, "failed to get To actor")
+		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
 	c, err := msg.Cid()
 	if err != nil {
-		return nil, faultErrorWrap(err, "failed to get CID from the message")
+		return nil, errors.FaultErrorWrap(err, "failed to get CID from the message")
 	}
 
 	if msg.Nonce < fromActor.Nonce {
@@ -223,7 +224,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 	}
 
 	ret, exitCode, vmErr := Send(ctx, fromActor, toActor, msg, st)
-	if IsFault(vmErr) {
+	if errors.IsFault(vmErr) {
 		return nil, vmErr
 	}
 

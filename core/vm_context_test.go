@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func TestVMContextStorage(t *testing.T) {
@@ -55,7 +56,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		deps := &deps{
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
-				return nil, errors.New("error")
+				return nil, xerrors.New("error")
 			},
 		}
 
@@ -66,7 +67,7 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
-		assert.True(IsFault(err))
+		assert.True(errors.IsFault(err))
 		assert.Equal([]string{"ToValues"}, calls)
 	})
 
@@ -77,7 +78,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		deps := &deps{
 			EncodeValues: func(_ []*abi.Value) ([]byte, error) {
 				calls = append(calls, "EncodeValues")
-				return nil, errors.New("error")
+				return nil, xerrors.New("error")
 			},
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
@@ -92,7 +93,7 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
-		assert.True(shouldRevert(err))
+		assert.True(errors.ShouldRevert(err))
 		assert.Equal([]string{"ToValues", "EncodeValues"}, calls)
 	})
 
@@ -123,7 +124,7 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
-		assert.True(IsFault(err))
+		assert.True(errors.IsFault(err))
 		assert.Equal([]string{"ToValues", "EncodeValues"}, calls)
 	})
 
@@ -138,7 +139,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 			GetOrCreateActor: func(_ context.Context, _ types.Address, _ func() (*types.Actor, error)) (*types.Actor, error) {
 				calls = append(calls, "GetOrCreateActor")
-				return nil, errors.New("error")
+				return nil, xerrors.New("error")
 			},
 			ToValues: func(_ []interface{}) ([]*abi.Value, error) {
 				calls = append(calls, "ToValues")
@@ -153,14 +154,14 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Error(err)
 		assert.Equal(1, int(code))
-		assert.True(IsFault(err))
+		assert.True(errors.IsFault(err))
 		assert.Equal([]string{"ToValues", "EncodeValues", "GetOrCreateActor"}, calls)
 	})
 
 	t.Run("propagates any error returned from Send", func(t *testing.T) {
 		assert := assert.New(t)
 
-		expectedVMSendErr := errors.New("error")
+		expectedVMSendErr := xerrors.New("error")
 
 		var calls []string
 		deps := &deps{

@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 // Send executes a message pass inside the VM. If error is set it
@@ -33,10 +34,10 @@ func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.
 
 	// save balance changes
 	if err := st.SetActor(ctx, msg.From, from); err != nil {
-		return nil, 1, faultErrorWrap(err, "could not set from actor after send")
+		return nil, 1, errors.FaultErrorWrap(err, "could not set from actor after send")
 	}
 	if err := st.SetActor(ctx, msg.To, to); err != nil {
-		return nil, 1, faultErrorWrap(err, "could not set to actor after send")
+		return nil, 1, errors.FaultErrorWrap(err, "could not set to actor after send")
 	}
 
 	if msg.Method == "" {
@@ -47,11 +48,11 @@ func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.
 
 	toExecutable, err := st.GetBuiltinActorCode(to.Code)
 	if err != nil {
-		return nil, 1, faultErrorWrap(err, "unable to load code for To actor")
+		return nil, 1, errors.FaultErrorWrap(err, "unable to load code for To actor")
 	}
 
 	if !toExecutable.Exports().Has(msg.Method) {
-		return nil, 1, newRevertErrorf("missing export: %s", msg.Method)
+		return nil, 1, errors.NewRevertErrorf("missing export: %s", msg.Method)
 	}
 
 	return MakeTypedExport(toExecutable, msg.Method)(vmCtx)

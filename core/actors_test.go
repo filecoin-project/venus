@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 type MockActor struct {
@@ -40,7 +41,7 @@ func (a *MockActor) Four(ctx *VMContext) ([]byte, uint8, error) {
 }
 
 func (a *MockActor) Five(ctx *VMContext) ([]byte, uint8, error) {
-	return nil, 2, newRevertError("fail5")
+	return nil, 2, errors.NewRevertError("fail5")
 }
 
 func (a *MockActor) Six(ctx *VMContext) (uint8, error) {

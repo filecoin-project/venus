@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 // VMContext is the only thing exposed to an actor while executing.
@@ -62,25 +63,25 @@ func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAm
 
 	vals, err := deps.ToValues(params)
 	if err != nil {
-		return nil, 1, faultErrorWrap(err, "failed to convert inputs to abi values")
+		return nil, 1, errors.FaultErrorWrap(err, "failed to convert inputs to abi values")
 	}
 
 	paramData, err := deps.EncodeValues(vals)
 	if err != nil {
-		return nil, 1, revertErrorWrap(err, "encoding params failed")
+		return nil, 1, errors.RevertErrorWrap(err, "encoding params failed")
 	}
 
 	msg := types.NewMessage(from, to, 0, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO: handle this
-		return nil, 1, newFaultErrorf("unhandled: sending to self (%s)", msg.From)
+		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
 	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
 		return NewAccountActor(nil)
 	})
 	if err != nil {
-		return nil, 1, faultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
+		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
 	out, ret, err := deps.Send(context.Background(), fromActor, toActor, msg, ctx.state)

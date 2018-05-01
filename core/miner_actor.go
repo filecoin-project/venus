@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func init() {
@@ -90,10 +91,10 @@ func (ma *MinerActor) Exports() exec.Exports {
 }
 
 // ErrCallerUnauthorized signals an unauthorized caller.
-var ErrCallerUnauthorized = newRevertError("not authorized to call the method")
+var ErrCallerUnauthorized = errors.NewRevertError("not authorized to call the method")
 
 // ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
-var ErrInsufficientPledge = newRevertError("not enough pledged")
+var ErrInsufficientPledge = errors.NewRevertError("not enough pledged")
 
 // AddAsk adds an ask via this miner to the storage markets orderbook
 func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
@@ -123,14 +124,14 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *typ
 
 		askID, err := abi.Deserialize(out, abi.Integer)
 		if err != nil {
-			return nil, faultErrorWrap(err, "error deserializing")
+			return nil, errors.FaultErrorWrap(err, "error deserializing")
 		}
 
 		if ret != 0 {
 			// TODO: Log an error maybe? need good ways of signaling *why* failures happened.
 			// I guess we do want to revert all state changes in this case.
 			// Which is usually signalled through an error. Something smells.
-			return nil, newRevertError("call to StorageMarket.addAsk failed")
+			return nil, errors.NewRevertError("call to StorageMarket.addAsk failed")
 		}
 
 		return askID.Val, nil
@@ -141,7 +142,7 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *typ
 
 	askID, ok := out.(*big.Int)
 	if !ok {
-		return nil, 1, newRevertErrorf("expected an Integer return value from call, but got %T instead", out)
+		return nil, 1, errors.NewRevertErrorf("expected an Integer return value from call, but got %T instead", out)
 	}
 
 	return askID, 0, nil
@@ -159,7 +160,7 @@ func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
 
 	a, ok := out.(types.Address)
 	if !ok {
-		return types.Address{}, 1, newFaultErrorf("expected an Address return value from call, but got %T instead", out)
+		return types.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
 	}
 
 	return a, 0, nil
@@ -179,7 +180,7 @@ func (ma *MinerActor) AddDealsToSector(ctx *VMContext, sectorID int64, deals []u
 
 	secIDout, ok := out.(int64)
 	if !ok {
-		return nil, 1, newRevertError("expected an int64")
+		return nil, 1, errors.NewRevertError("expected an int64")
 	}
 
 	return big.NewInt(secIDout), 0, nil
@@ -191,11 +192,11 @@ func (mstore *MinerStorage) upsertDealsToSector(sectorID int64, deals []uint64) 
 		mstore.Sectors = append(mstore.Sectors, new(Sector))
 	}
 	if sectorID >= int64(len(mstore.Sectors)) {
-		return 0, newRevertError("sectorID out of range")
+		return 0, errors.NewRevertError("sectorID out of range")
 	}
 	sector := mstore.Sectors[sectorID]
 	if sector.CommR != nil {
-		return 0, newRevertError("can't add deals to committed sector")
+		return 0, errors.NewRevertError("can't add deals to committed sector")
 	}
 
 	sector.Deals = append(sector.Deals, deals...)
@@ -219,7 +220,7 @@ func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte,
 
 		sector := mstore.Sectors[sectorID]
 		if sector.CommR != nil {
-			return nil, newRevertError("sector already committed")
+			return nil, errors.NewRevertError("sector already committed")
 		}
 
 		resp, ret, err := ctx.Send(StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
@@ -227,7 +228,7 @@ func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte,
 			return nil, err
 		}
 		if ret != 0 {
-			return nil, newRevertError("failed to call commitDeals")
+			return nil, errors.NewRevertError("failed to call commitDeals")
 		}
 
 		sector.CommR = commR
@@ -242,7 +243,7 @@ func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte,
 
 	secIDout, ok := out.(int64)
 	if !ok {
-		return nil, 1, newRevertError("expected an int64")
+		return nil, 1, errors.NewRevertError("expected an int64")
 	}
 
 	return big.NewInt(secIDout), 0, nil

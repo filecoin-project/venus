@@ -12,13 +12,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 // MinimumPledge is the minimum amount of space a user can pledge
 var MinimumPledge = types.NewBytesAmount(10000)
 
 // ErrPledgeTooLow is returned when the pledge is too low
-var ErrPledgeTooLow = newRevertErrorf("pledge must be at least %s bytes", MinimumPledge)
+var ErrPledgeTooLow = errors.NewRevertErrorf("pledge must be at least %s bytes", MinimumPledge)
 
 func init() {
 	cbor.RegisterCborType(StorageMarketStorage{})
@@ -109,7 +110,7 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAm
 		// 'CreateNewActor' (should likely be a method on the vmcontext)
 		addr, err := ctx.AddressForNewActor()
 		if err != nil {
-			return nil, faultErrorWrap(err, "could not get address for new actor")
+			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
 		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
@@ -118,11 +119,11 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAm
 			// never fail. It should call into the vmcontext to do this and the vm context
 			// should "throw" to a higher level handler if there's a system fault. It would
 			// simplify the actor code.
-			return nil, faultErrorWrap(err, "could not get a new miner actor")
+			return nil, errors.FaultErrorWrap(err, "could not get a new miner actor")
 		}
 
 		if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
-			return nil, faultErrorWrap(err, "could not set miner actor in CreateMiner")
+			return nil, errors.FaultErrorWrap(err, "could not set miner actor in CreateMiner")
 		}
 		// -- end --
 
@@ -153,7 +154,7 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price *types.TokenAmount, 
 		_, ok := storage.Miners[miner]
 		if !ok {
 			// TODO This should probably return a non-zero exit code instead of an error.
-			return nil, newRevertErrorf("unknown miner: %s", miner)
+			return nil, errors.NewRevertErrorf("unknown miner: %s", miner)
 		}
 
 		askID := storage.Orderbook.NextAskID
@@ -174,7 +175,7 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price *types.TokenAmount, 
 
 	askID, ok := ret.(*big.Int)
 	if !ok {
-		return nil, 1, newRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, errors.NewRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
 	return askID, 0, nil
@@ -190,7 +191,7 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, 
 		if ctx.Message().Value.LessThan(lockedFunds) {
 			fmt.Println(lockedFunds, ctx.Message().Value)
 			// TODO This should probably return a non-zero exit code instead of an error.
-			return nil, newRevertErrorf("must send price * size funds to create bid")
+			return nil, errors.NewRevertErrorf("must send price * size funds to create bid")
 		}
 
 		bidID := storage.Orderbook.NextBidID
@@ -211,7 +212,7 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, 
 
 	bidID, ok := ret.(*big.Int)
 	if !ok {
-		return nil, 1, newRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, errors.NewRevertErrorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
 	return bidID, 0, nil
@@ -222,7 +223,7 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, 
 func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*big.Int, uint8, error) {
 	ref, err := cid.Cast(refb)
 	if err != nil {
-		return nil, 1, newRevertErrorf("'ref' input was not a valid cid: %s", err)
+		return nil, 1, errors.NewRevertErrorf("'ref' input was not a valid cid: %s", err)
 	}
 
 	var storage StorageMarketStorage
@@ -230,12 +231,12 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bi
 		// TODO: askset is a map from uint64, our input is a big int.
 		ask, ok := storage.Orderbook.Asks[askID.Uint64()]
 		if !ok {
-			return nil, newRevertErrorf("unknown ask %s", askID)
+			return nil, errors.NewRevertErrorf("unknown ask %s", askID)
 		}
 
 		bid, ok := storage.Orderbook.Bids[bidID.Uint64()]
 		if !ok {
-			return nil, newRevertErrorf("unknown bid %s", bidID)
+			return nil, errors.NewRevertErrorf("unknown bid %s", bidID)
 		}
 
 		mown, ret, err := ctx.Send(ask.Owner, "getOwner", nil, nil)
@@ -243,7 +244,7 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bi
 			return nil, err
 		}
 		if ret != 0 {
-			return nil, newRevertErrorf("ask.miner.getOwner() failed")
+			return nil, errors.NewRevertErrorf("ask.miner.getOwner() failed")
 		}
 
 		if !bytes.Equal(ctx.Message().From.Bytes(), mown) {
@@ -251,12 +252,12 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bi
 		}
 
 		if ask.Size.LessThan(bid.Size) {
-			return nil, newRevertErrorf("not enough space in ask for bid")
+			return nil, errors.NewRevertErrorf("not enough space in ask for bid")
 		}
 
 		// TODO: real signature check and stuff
 		if !bytes.Equal(bid.Owner.Bytes(), bidOwnerSig) {
-			return nil, newRevertErrorf("signature failed to validate")
+			return nil, errors.NewRevertErrorf("signature failed to validate")
 		}
 
 		// mark bid as used (note: bid is a pointer)
@@ -301,7 +302,7 @@ func (sma *StorageMarketActor) CommitDeals(ctx *VMContext, deals []uint64) (*typ
 		totalSize := types.NewBytesAmount(0)
 		for _, d := range deals {
 			if d >= uint64(len(storage.Filemap.Deals)) {
-				return nil, newRevertErrorf("invalid deal id %d", d)
+				return nil, errors.NewRevertErrorf("invalid deal id %d", d)
 			}
 
 			deal := storage.Filemap.Deals[d]
@@ -309,11 +310,11 @@ func (sma *StorageMarketActor) CommitDeals(ctx *VMContext, deals []uint64) (*typ
 
 			// make sure that the miner actor who owns the asks calls this
 			if ask.Owner != ctx.Message().From {
-				return nil, newRevertError("miner tried to commit with someone elses deal")
+				return nil, errors.NewRevertError("miner tried to commit with someone elses deal")
 			}
 
 			if deal.Committed {
-				return nil, newRevertErrorf("deal %d already committed", d)
+				return nil, errors.NewRevertErrorf("deal %d already committed", d)
 			}
 
 			deal.Committed = true

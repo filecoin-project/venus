@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -184,7 +185,7 @@ func (ma *FakeActor) ReturnRevertError(ctx *VMContext) (uint8, error) {
 	if err != nil {
 		panic(err.Error())
 	}
-	return 1, newRevertError("boom")
+	return 1, errors.NewRevertError("boom")
 }
 
 // GoodCall sets a bit inside fakeActor's storage.

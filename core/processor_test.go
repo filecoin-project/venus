@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -181,7 +182,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 
 	_, err := ApplyMessage(ctx, st, msg)
 	assert.Error(err)
-	assert.Equal(err.(*applyErrorPermanent).err, errNonceTooLow)
+	assert.Equal(err.(*errors.ApplyErrorPermanent).Cause(), errNonceTooLow)
 }
 
 func TestProcessBlockNonceTooHigh(t *testing.T) {
@@ -202,7 +203,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 
 	_, err := ApplyMessage(ctx, st, msg)
 	assert.Error(err)
-	assert.Equal(err.(*applyErrorTemporary).err, errNonceTooHigh)
+	assert.Equal(err.(*errors.ApplyErrorTemporary).Cause(), errNonceTooHigh)
 }
 
 // TODO fritz add more test cases that cover the intent expressed
