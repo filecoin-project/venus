@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -42,9 +43,9 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) 
 		fakeActorCodeCid), core.RequireNewFakeActor(require, fakeActorCodeCid)
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
-		core.NetworkAddress: fakeNetAct,
-		addr1:               act1,
-		addr2:               act2,
+		address.NetworkAddress: fakeNetAct,
+		addr1: act1,
+		addr2: act2,
 	})
 	return st, pool, []types.Address{addr1, addr2, addr3}
 }
@@ -131,7 +132,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.Len(blk.Messages, 2) // This is the good message + the mining reward.
 
 	// Is the mining reward first? This will fail 50% of the time if we don't force the reward to come first.
-	assert.Equal(core.NetworkAddress, blk.Messages[0].From)
+	assert.Equal(address.NetworkAddress, blk.Messages[0].From)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {

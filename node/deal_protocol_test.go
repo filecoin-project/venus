@@ -10,14 +10,16 @@ import (
 
 	dag "github.com/ipfs/go-ipfs/merkledag"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
 
 type mockStorageMarketPeeker struct {
-	asks []*core.Ask
-	bids []*core.Bid
+	asks []*storagemarket.Ask
+	bids []*storagemarket.Bid
 	//deals []*core.Deal
 
 	minerOwners map[types.Address]types.Address
@@ -29,29 +31,29 @@ func newMockMsp() *mockStorageMarketPeeker {
 	}
 }
 
-func (msa *mockStorageMarketPeeker) GetAsk(ask uint64) (*core.Ask, error) {
+func (msa *mockStorageMarketPeeker) GetAsk(ask uint64) (*storagemarket.Ask, error) {
 	if uint64(len(msa.asks)) <= ask {
 		return nil, fmt.Errorf("no such ask")
 	}
 	return msa.asks[ask], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*core.Bid, error) {
+func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*storagemarket.Bid, error) {
 	if uint64(len(msa.bids)) <= bid {
 		return nil, fmt.Errorf("no such bid")
 	}
 	return msa.bids[bid], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetAskSet() (core.AskSet, error) {
+func (msa *mockStorageMarketPeeker) GetAskSet() (storagemarket.AskSet, error) {
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBidSet() (core.BidSet, error) {
+func (msa *mockStorageMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetDealList() ([]*core.Deal, error) {
+func (msa *mockStorageMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) {
 	return nil, nil
 }
 
@@ -67,7 +69,7 @@ func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a types.A
 // makes mocking existing asks easier
 func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.asks))
-	msa.asks = append(msa.asks, &core.Ask{
+	msa.asks = append(msa.asks, &storagemarket.Ask{
 		ID:    id,
 		Owner: owner,
 		Price: types.NewTokenAmount(price),
@@ -79,7 +81,7 @@ func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint
 // makes mocking existing bids easier
 func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.bids))
-	msa.bids = append(msa.bids, &core.Bid{
+	msa.bids = append(msa.bids, &storagemarket.Bid{
 		ID:    id,
 		Owner: owner,
 		Price: types.NewTokenAmount(price),
@@ -113,19 +115,19 @@ func TestDealProtocol(t *testing.T) {
 	msa := newMockMsp()
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
-	msa.addBid(core.TestAddress, 35, 5000)
+	msa.addBid(address.TestAddress, 35, 5000)
 
 	sm.smi = msa
 
 	data := dag.NewRawNode([]byte("cats"))
 
 	propose := &DealProposal{
-		Deal: &core.Deal{
+		Deal: &storagemarket.Deal{
 			Ask:     0,
 			Bid:     0,
 			DataRef: data.Cid(),
 		},
-		ClientSig: string(core.TestAddress[:]),
+		ClientSig: string(address.TestAddress[:]),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -166,16 +168,16 @@ func TestDealProtocolMissing(t *testing.T) {
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
 	msa.addAsk(minerAddr, 20, 1000)
-	msa.addBid(core.TestAddress, 35, 5000)
-	msa.addBid(core.TestAddress, 15, 2000)
+	msa.addBid(address.TestAddress, 35, 5000)
+	msa.addBid(address.TestAddress, 15, 2000)
 
 	sm.smi = msa
 
 	data := dag.NewRawNode([]byte("cats"))
 
 	propose := &DealProposal{
-		Deal:      &core.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
-		ClientSig: string(core.TestAddress[:]),
+		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
+		ClientSig: string(address.TestAddress[:]),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -184,8 +186,8 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal("unknown bid: no such bid", resp.Message)
 
 	propose = &DealProposal{
-		Deal:      &core.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
-		ClientSig: string(core.TestAddress[:]),
+		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
+		ClientSig: string(address.TestAddress[:]),
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -194,8 +196,8 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal("unknown ask: no such ask", resp.Message)
 
 	propose = &DealProposal{
-		Deal:      &core.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
-		ClientSig: string(core.TestAddress[:]),
+		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
+		ClientSig: string(address.TestAddress[:]),
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -216,7 +218,7 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	msa := &stateTreeMarketPeeker{nd}
 
 	data := dag.NewRawNode([]byte("cats"))
-	dealCid, err := msa.AddDeal(ctx, core.TestAddress, uint64(0), 0, string(core.TestAddress[:]), data.Cid())
+	dealCid, err := msa.AddDeal(ctx, address.TestAddress, uint64(0), 0, string(address.TestAddress[:]), data.Cid())
 
 	assert.NoError(err)
 	assert.NotNil(dealCid)

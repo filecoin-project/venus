@@ -11,6 +11,7 @@ import (
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -286,7 +287,7 @@ func TestGetSignature(t *testing.T) {
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
-		sig, err := nd.GetSignature(ctx, core.TestAddress, "")
+		sig, err := nd.GetSignature(ctx, address.TestAddress, "")
 		assert.Equal(ErrNoMethod, err)
 		assert.Nil(sig)
 	})
@@ -356,12 +357,12 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 		assert.NoError(node.Start())
 
-		address := core.TestAddress // Has an actor.
-		msg := types.NewMessage(address, core.TestAddress, 0, nil, "foo", []byte{})
+		addr := address.TestAddress // Has an actor.
+		msg := types.NewMessage(addr, address.TestAddress, 0, nil, "foo", []byte{})
 		msg.Nonce = 42
 		core.MustAdd(node.MsgPool, msg)
 
-		nonce, err := NextNonce(ctx, node, address)
+		nonce, err := NextNonce(ctx, node, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(43), nonce)
 	})
@@ -377,7 +378,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		assert.NoError(err)
 		assert.NoError(node.Start())
 
-		address := core.TestAddress // Has an actor.
+		address := address.TestAddress // Has an actor.
 
 		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
 		st, err := state.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot, nil)

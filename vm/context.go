@@ -1,4 +1,4 @@
-package core
+package vm
 
 import (
 	"bytes"
@@ -6,15 +6,16 @@ import (
 	"encoding/binary"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// VMContext is the only thing exposed to an actor while executing.
-// All methods on the VMContext are ABI methods exposed to actors.
-type VMContext struct {
+// Context is the only thing exposed to an actor while executing.
+// All methods on the Context are ABI methods exposed to actors.
+type Context struct {
 	from    *types.Actor
 	to      *types.Actor
 	message *types.Message
@@ -24,8 +25,8 @@ type VMContext struct {
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *VMContext {
-	return &VMContext{
+func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *Context {
+	return &Context{
 		from:    from,
 		to:      to,
 		message: msg,
@@ -34,27 +35,27 @@ func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree) *VMC
 	}
 }
 
-var _ exec.VMContext = (*VMContext)(nil)
+var _ exec.VMContext = (*Context)(nil)
 
 // Message retrieves the message associated with this context.
-func (ctx *VMContext) Message() *types.Message {
+func (ctx *Context) Message() *types.Message {
 	return ctx.message
 }
 
 // ReadStorage reads the storage from the associated to actor.
-func (ctx *VMContext) ReadStorage() []byte {
+func (ctx *Context) ReadStorage() []byte {
 	return ctx.to.ReadStorage()
 }
 
 // WriteStorage writes to the storage of the associated to actor.
-func (ctx *VMContext) WriteStorage(memory []byte) error {
+func (ctx *Context) WriteStorage(memory []byte) error {
 	ctx.to.WriteStorage(memory)
 	return ctx.state.SetActor(context.Background(), ctx.message.To, ctx.to)
 }
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error) {
+func (ctx *Context) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -78,7 +79,7 @@ func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAm
 	}
 
 	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
-		return NewAccountActor(nil)
+		return account.NewActor(nil)
 	})
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
@@ -96,7 +97,7 @@ func (ctx *VMContext) Send(to types.Address, method string, value *types.TokenAm
 // way that ethereum does.  Note that this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *VMContext) AddressForNewActor() (types.Address, error) {
+func (ctx *Context) AddressForNewActor() (types.Address, error) {
 	return computeActorAddress(ctx.message.From, ctx.from.Nonce)
 }
 
@@ -117,6 +118,11 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 	}
 
 	return types.NewMainnetAddress(hash), nil
+}
+
+// TEMPCreateActor is a temporary method to create actors.
+func (ctx *Context) TEMPCreateActor(addr types.Address, act *types.Actor) error {
+	return ctx.state.SetActor(context.TODO(), addr, act)
 }
 
 // Dependency injection setup.

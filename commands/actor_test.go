@@ -13,6 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -77,10 +80,10 @@ func TestActorLs(t *testing.T) {
 		tokenAmount := types.NewTokenAmount(100)
 
 		getActors := func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*types.Actor, error) {
-			actor1, _ := core.NewAccountActor(tokenAmount)
-			actor2, _ := core.NewStorageMarketActor()
+			actor1, _ := account.NewActor(tokenAmount)
+			actor2, _ := storagemarket.NewActor()
 			address, _ := types.NewAddressFromString("address")
-			actor3, _ := core.NewMinerActor(address, types.NewBytesAmount(23), types.NewTokenAmount(43))
+			actor3, _ := miner.NewActor(address, types.NewBytesAmount(23), types.NewTokenAmount(43))
 			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewTokenAmount(21), nil)
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}, nil
 		}
@@ -91,7 +94,7 @@ func TestActorLs(t *testing.T) {
 		assert.Equal(4, len(actorViews))
 		assert.Equal("AccountActor", actorViews[0].ActorType)
 		assert.True(tokenAmount.Equal(actorViews[0].Balance))
-		assert.Equal("StorageMarketActor", actorViews[1].ActorType)
+		assert.Equal("StoragemarketActor", actorViews[1].ActorType)
 		assert.Equal("MinerActor", actorViews[2].ActorType)
 		assert.Equal("UnknownActor", actorViews[3].ActorType)
 	})
@@ -124,19 +127,19 @@ func TestActorLs(t *testing.T) {
 		wd, _ := os.Getwd()
 		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
 
-		actor, _ := core.NewAccountActor(types.NewTokenAmount(100))
-		a := makeActorView(actor, "address", &core.AccountActor{})
+		actor, _ := account.NewActor(types.NewTokenAmount(100))
+		a := makeActorView(actor, "address", &account.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)
 
-		actor, _ = core.NewStorageMarketActor()
-		a = makeActorView(actor, "address", &core.StorageMarketActor{})
+		actor, _ = storagemarket.NewActor()
+		a = makeActorView(actor, "address", &storagemarket.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)
 
 		addr, _ := types.NewAddressFromString("minerAddress")
-		actor, _ = core.NewMinerActor(addr, types.NewBytesAmount(50000), types.NewTokenAmount(200))
-		a = makeActorView(actor, "address", &core.MinerActor{})
+		actor, _ = miner.NewActor(addr, types.NewBytesAmount(50000), types.NewTokenAmount(200))
+		a = makeActorView(actor, "address", &miner.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)
 	})
@@ -145,7 +148,7 @@ func TestActorLs(t *testing.T) {
 func TestPresentExports(t *testing.T) {
 	assert := assert.New(t)
 
-	e := (&core.StorageMarketActor{}).Exports()
+	e := (&storagemarket.Actor{}).Exports()
 	r := presentExports(e)
 
 	for name, sig := range r {

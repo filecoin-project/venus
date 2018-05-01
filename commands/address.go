@@ -8,7 +8,7 @@ import (
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -112,7 +112,7 @@ var balanceCmd = &cmds.Command{
 			return ErrLatestBlockStateRootNil
 		}
 
-		tree, err := state.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot, core.BuiltinActors)
+		tree, err := state.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot, builtin.Actors)
 		if err != nil {
 			return err
 		}

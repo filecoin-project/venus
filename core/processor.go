@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -148,7 +150,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message) (*type
 	// Reject invalid state transitions.
 	if err == errAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
-	} else if err == errSelfSend || err == errNonceTooLow || err == ErrCannotTransferNegativeValue {
+	} else if err == errSelfSend || err == errNonceTooLow || err == vm.ErrCannotTransferNegativeValue {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
 		// Do nothing. All other vm errors are ok: the state was rolled back
@@ -200,7 +202,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*types.Actor, error) {
-		a, err := NewAccountActor(nil)
+		a, err := account.NewActor(nil)
 		if err != nil {
 			// Note: we're inside a closure; any error will be wrapped below.
 			return nil, err
@@ -223,7 +225,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message)
 		return nil, errNonceTooHigh
 	}
 
-	ret, exitCode, vmErr := Send(ctx, fromActor, toActor, msg, st)
+	ret, exitCode, vmErr := vm.Send(ctx, fromActor, toActor, msg, st)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
 	}

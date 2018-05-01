@@ -16,7 +16,8 @@ import (
 	uio "github.com/ipfs/go-ipfs/unixfs/io"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -70,7 +71,7 @@ var clientAddBidCmd = &cmds.Command{
 			return err
 		}
 
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, core.StorageMarketAddress, funds, "addBid", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.StorageMarketAddress, funds, "addBid", params)
 		if err != nil {
 			return err
 		}
@@ -166,7 +167,7 @@ var clientProposeDealCmd = &cmds.Command{
 
 		propose := &node.DealProposal{
 			ClientSig: string(defaddr[:]), // TODO: actual crypto
-			Deal: &core.Deal{
+			Deal: &storagemarket.Deal{
 				Ask:     uint64(askID),
 				Bid:     uint64(bidID),
 				DataRef: data,

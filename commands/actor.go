@@ -6,12 +6,16 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 
 	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -68,11 +72,11 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 	for i, a := range actors {
 		switch {
 		case a.Code.Equals(types.AccountActorCodeCid):
-			res = makeActorView(a, addrs[i], &core.AccountActor{})
+			res = makeActorView(a, addrs[i], &account.Actor{})
 		case a.Code.Equals(types.StorageMarketActorCodeCid):
-			res = makeActorView(a, addrs[i], &core.StorageMarketActor{})
+			res = makeActorView(a, addrs[i], &storagemarket.Actor{})
 		case a.Code.Equals(types.MinerActorCodeCid):
-			res = makeActorView(a, addrs[i], &core.MinerActor{})
+			res = makeActorView(a, addrs[i], &miner.Actor{})
 		default:
 			res = makeActorView(a, addrs[i], nil)
 		}
@@ -90,8 +94,8 @@ func makeActorView(act *types.Actor, addr string, actType exec.ExecutableActor) 
 		actorType = "UnknownActor"
 		memory = "unknown actor memory"
 	} else {
-		actorType = reflect.TypeOf(actType).Elem().Name()
-		memory = core.PresentStorage(actType, act.Memory)
+		actorType = getActorType(actType)
+		memory = actor.PresentStorage(actType, act.Memory)
 		exports = presentExports(actType.Exports())
 	}
 	return &actorView{
@@ -141,4 +145,11 @@ type actorView struct {
 	Balance   *types.TokenAmount `json:"balance"`
 	Exports   readableExports    `json:"exports"`
 	Memory    interface{}        `json:"memory"`
+}
+
+func getActorType(actType exec.ExecutableActor) string {
+	t := reflect.TypeOf(actType).Elem()
+	prefixes := strings.Split(t.PkgPath(), "/")
+
+	return strings.Title(prefixes[len(prefixes)-1]) + t.Name()
 }

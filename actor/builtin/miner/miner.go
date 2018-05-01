@@ -1,4 +1,4 @@
-package core
+package miner
 
 import (
 	"math/big"
@@ -6,17 +6,19 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func init() {
-	cbor.RegisterCborType(MinerStorage{})
+	cbor.RegisterCborType(Storage{})
 }
 
-// MinerActor is the miner actor
-type MinerActor struct{}
+// Actor is the miner actor
+type Actor struct{}
 
 // Sector is the on-chain representation of a sector
 type Sector struct {
@@ -24,8 +26,8 @@ type Sector struct {
 	Deals []uint64
 }
 
-// MinerStorage is the miner actors storage
-type MinerStorage struct {
+// Storage is the miner actors storage
+type Storage struct {
 	Owner types.Address
 
 	// Pledge is amount the space being offered up by this miner
@@ -43,22 +45,22 @@ type MinerStorage struct {
 }
 
 // NewStorage returns an empty MinerStorage struct
-func (ma *MinerActor) NewStorage() interface{} {
-	return &MinerStorage{}
+func (ma *Actor) NewStorage() interface{} {
+	return &Storage{}
 }
 
-var _ exec.ExecutableActor = (*MinerActor)(nil)
+var _ exec.ExecutableActor = (*Actor)(nil)
 
-// NewMinerActor returns a new miner actor
-func NewMinerActor(owner types.Address, pledge *types.BytesAmount, coll *types.TokenAmount) (*types.Actor, error) {
-	st := &MinerStorage{
+// NewActor returns a new miner actor
+func NewActor(owner types.Address, pledge *types.BytesAmount, coll *types.TokenAmount) (*types.Actor, error) {
+	st := &Storage{
 		Owner:         owner,
 		PledgeBytes:   pledge,
 		Collateral:    coll,
 		LockedStorage: types.NewBytesAmount(0),
 	}
 
-	storageBytes, err := MarshalStorage(st)
+	storageBytes, err := actor.MarshalStorage(st)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +88,7 @@ var minerExports = exec.Exports{
 }
 
 // Exports returns the miner actors exported functions
-func (ma *MinerActor) Exports() exec.Exports {
+func (ma *Actor) Exports() exec.Exports {
 	return minerExports
 }
 
@@ -97,10 +99,10 @@ var ErrCallerUnauthorized = errors.NewRevertError("not authorized to call the me
 var ErrInsufficientPledge = errors.NewRevertError("not enough pledged")
 
 // AddAsk adds an ask via this miner to the storage markets orderbook
-func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
-	var mstore MinerStorage
-	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+	var mstore Storage
+	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
 		if ctx.Message().From != mstore.Owner {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, ErrCallerUnauthorized
@@ -117,7 +119,7 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *typ
 		mstore.LockedStorage = total
 
 		// TODO: kinda feels weird that I can't get a real type back here
-		out, ret, err := ctx.Send(StorageMarketAddress, "addAsk", nil, []interface{}{price, size})
+		out, ret, err := ctx.Send(address.StorageMarketAddress, "addAsk", nil, []interface{}{price, size})
 		if err != nil {
 			return nil, err
 		}
@@ -149,9 +151,9 @@ func (ma *MinerActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *typ
 }
 
 // GetOwner returns the miners owner
-func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
-	var mstore MinerStorage
-	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
+	var mstore Storage
+	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
 		return mstore.Owner, nil
 	})
 	if err != nil {
@@ -168,10 +170,10 @@ func (ma *MinerActor) GetOwner(ctx *VMContext) (types.Address, uint8, error) {
 
 // AddDealsToSector adds deals to a sector. If the sectorID given is -1, a new
 // sector ID is allocated. The sector ID that deals are added to is returned
-func (ma *MinerActor) AddDealsToSector(ctx *VMContext, sectorID int64, deals []uint64) (*big.Int, uint8,
+func (ma *Actor) AddDealsToSector(ctx exec.VMContext, sectorID int64, deals []uint64) (*big.Int, uint8,
 	error) {
-	var mstore MinerStorage
-	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+	var mstore Storage
+	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
 		return mstore.upsertDealsToSector(sectorID, deals)
 	})
 	if err != nil {
@@ -186,7 +188,7 @@ func (ma *MinerActor) AddDealsToSector(ctx *VMContext, sectorID int64, deals []u
 	return big.NewInt(secIDout), 0, nil
 }
 
-func (mstore *MinerStorage) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
+func (mstore *Storage) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
 	if sectorID == -1 {
 		sectorID = int64(len(mstore.Sectors))
 		mstore.Sectors = append(mstore.Sectors, new(Sector))
@@ -207,9 +209,9 @@ func (mstore *MinerStorage) upsertDealsToSector(sectorID int64, deals []uint64) 
 // if sectorID is -1, a new sector will be allocated.
 // if passing an existing sector ID, any deals given here will be added to the
 // deals already added to that sector
-func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte, deals []uint64) (*big.Int, uint8, error) {
-	var mstore MinerStorage
-	out, err := WithStorage(ctx, &mstore, func() (interface{}, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, deals []uint64) (*big.Int, uint8, error) {
+	var mstore Storage
+	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
 		if len(deals) != 0 {
 			sid, err := mstore.upsertDealsToSector(sectorID, deals)
 			if err != nil {
@@ -223,7 +225,7 @@ func (ma *MinerActor) CommitSector(ctx *VMContext, sectorID int64, commR []byte,
 			return nil, errors.NewRevertError("sector already committed")
 		}
 
-		resp, ret, err := ctx.Send(StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
+		resp, ret, err := ctx.Send(address.StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
 		if err != nil {
 			return nil, err
 		}

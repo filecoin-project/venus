@@ -141,7 +141,7 @@
             "actorType": {
               "type": "string",
               "enum": [
-                "StorageMarketActor"
+                "StoragemarketActor"
               ]
             },
             "memory": { "$ref": "#/definitions/StorageMarketMemory" }

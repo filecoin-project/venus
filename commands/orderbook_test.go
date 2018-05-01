@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/go-filecoin/core"
 )
 
 func TestBidList(t *testing.T) {
@@ -19,7 +18,7 @@ func TestBidList(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		d.RunSuccess("client", "add-bid", "1", fmt.Sprintf("%d", i),
-			"--from", core.TestAddress.String(),
+			"--from", address.TestAddress.String(),
 		)
 	}
 

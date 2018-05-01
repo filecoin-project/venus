@@ -1,4 +1,4 @@
-package core
+package actor_test
 
 import (
 	"fmt"
@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	. "github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -20,6 +22,7 @@ type MockActor struct {
 func (a *MockActor) Exports() exec.Exports {
 	return a.exports
 }
+
 func (a *MockActor) NewStorage() interface{} {
 	return nil
 }
@@ -28,23 +31,23 @@ func (a *MockActor) One() (uint8, error) {
 	return 0, nil
 }
 
-func (a *MockActor) Two(ctx *VMContext) (uint8, error) {
+func (a *MockActor) Two(ctx exec.VMContext) (uint8, error) {
 	return 0, nil
 }
 
-func (a *MockActor) Three(ctx *VMContext) error {
+func (a *MockActor) Three(ctx exec.VMContext) error {
 	return nil
 }
 
-func (a *MockActor) Four(ctx *VMContext) ([]byte, uint8, error) {
+func (a *MockActor) Four(ctx exec.VMContext) ([]byte, uint8, error) {
 	return []byte("hello"), 0, nil
 }
 
-func (a *MockActor) Five(ctx *VMContext) ([]byte, uint8, error) {
+func (a *MockActor) Five(ctx exec.VMContext) ([]byte, uint8, error) {
 	return nil, 2, errors.NewRevertError("fail5")
 }
 
-func (a *MockActor) Six(ctx *VMContext) (uint8, error) {
+func (a *MockActor) Six(ctx exec.VMContext) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
@@ -54,9 +57,9 @@ func NewMockActor(list exec.Exports) *MockActor {
 	}
 }
 
-func makeCtx(method string) *VMContext {
+func makeCtx(method string) exec.VMContext {
 	addrGetter := types.NewAddressForTestGetter()
-	return NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil)
+	return vm.NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil)
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
@@ -216,7 +219,7 @@ func TestMarshalValue(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			out, err := marshalValue(tc.In)
+			out, err := MarshalValue(tc.In)
 			assert.NoError(err)
 			assert.Equal(out, tc.Out)
 		}
@@ -225,7 +228,7 @@ func TestMarshalValue(t *testing.T) {
 	t.Run("failure", func(t *testing.T) {
 		assert := assert.New(t)
 
-		out, err := marshalValue(big.NewRat(1, 2))
+		out, err := MarshalValue(big.NewRat(1, 2))
 		assert.Equal(err.Error(), "unknown type: *big.Rat")
 		assert.Nil(out)
 	})

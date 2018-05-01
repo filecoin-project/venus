@@ -5,6 +5,9 @@ import (
 
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -13,48 +16,14 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
 var (
-	// TestAddress is an account with some initial funds in it
-	TestAddress types.Address
-	// TestAddress2 is an account with some initial funds in it
-	TestAddress2 types.Address
-	// NetworkAddress is the filecoin network
-	NetworkAddress types.Address
-	// StorageMarketAddress is the hard-coded address of the filecoin storage market
-	StorageMarketAddress types.Address
-
 	defaultAccounts map[types.Address]uint64
 )
 
 func init() {
-	t, err := types.AddressHash([]byte("satoshi"))
-	if err != nil {
-		panic(err)
-	}
-	TestAddress = types.NewMainnetAddress(t)
-
-	t, err = types.AddressHash([]byte("nakamoto"))
-	if err != nil {
-		panic(err)
-	}
-	TestAddress2 = types.NewMainnetAddress(t)
-
-	n, err := types.AddressHash([]byte("filecoin"))
-	if err != nil {
-		panic(err)
-	}
-	NetworkAddress = types.NewMainnetAddress(n)
-
-	s, err := types.AddressHash([]byte("storage"))
-	if err != nil {
-		panic(err)
-	}
-
-	StorageMarketAddress = types.NewMainnetAddress(s)
-
 	defaultAccounts = map[types.Address]uint64{
-		NetworkAddress: 10000000,
-		TestAddress:    50000,
-		TestAddress2:   60000,
+		address.NetworkAddress: 10000000,
+		address.TestAddress:    50000,
+		address.TestAddress2:   60000,
 	}
 }
 
@@ -64,7 +33,7 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	st := state.NewEmptyStateTree(cst)
 
 	for addr, val := range defaultAccounts {
-		a, err := NewAccountActor(types.NewTokenAmount(val))
+		a, err := account.NewActor(types.NewTokenAmount(val))
 		if err != nil {
 			return nil, err
 		}
@@ -74,11 +43,11 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 		}
 	}
 
-	stAct, err := NewStorageMarketActor()
+	stAct, err := storagemarket.NewActor()
 	if err != nil {
 		return nil, err
 	}
-	if err := st.SetActor(ctx, StorageMarketAddress, stAct); err != nil {
+	if err := st.SetActor(ctx, address.StorageMarketAddress, stAct); err != nil {
 		return nil, err
 	}
 

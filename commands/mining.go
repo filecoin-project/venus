@@ -9,7 +9,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 )
@@ -38,7 +38,7 @@ var miningOnceCmd = &cmds.Command{
 		rewardAddr := addrs[0]
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-			return state.LoadStateTree(ctx, fcn.CborStore, cid, core.BuiltinActors)
+			return state.LoadStateTree(ctx, fcn.CborStore, cid, builtin.Actors)
 		}, mining.ApplyMessages)
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur, rewardAddr)
 		if res.Err != nil {

@@ -1,4 +1,5 @@
-package core
+// Package actor implements tooling to write and manipulate actors in go.
+package actor
 
 import (
 	"fmt"
@@ -13,18 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
-
-// BuiltinActors is list of all actors that ship with Filecoin.
-// They are indexed by their CID.
-var BuiltinActors = map[string]exec.ExecutableActor{}
-
-func init() {
-	// Instance Actors
-	// TODO: these should probably not be direct instances, but constructors for the actors
-	BuiltinActors[types.AccountActorCodeCid.KeyString()] = &AccountActor{}
-	BuiltinActors[types.StorageMarketActorCodeCid.KeyString()] = &StorageMarketActor{}
-	BuiltinActors[types.MinerActorCodeCid.KeyString()] = &MinerActor{}
-}
 
 // MakeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
@@ -90,7 +79,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 
 		var retVal []byte
 		if signature.Return != nil {
-			ret, err := marshalValue(out[0].Interface())
+			ret, err := MarshalValue(out[0].Interface())
 			if err != nil {
 				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
 			}
@@ -118,10 +107,10 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 	}
 }
 
-// marshalValue serializes a given go type into a byte slice.
+// MarshalValue serializes a given go type into a byte slice.
 // The returned format matches the format that is expected to be interoperapble between VM and
 // the rest of the system.
-func marshalValue(val interface{}) ([]byte, error) {
+func MarshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
 		if t == nil {
@@ -167,7 +156,7 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 //
 // Note that if 'f' returns an error, modifications to the storage are not
 // saved.
-func WithStorage(ctx *VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
+func WithStorage(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
 	if err := UnmarshalStorage(ctx.ReadStorage(), st); err != nil {
 		return nil, err
 	}

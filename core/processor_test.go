@@ -8,6 +8,8 @@ import (
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -17,7 +19,7 @@ import (
 
 func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, state.Tree) {
 	ctx := context.Background()
-	t := state.NewEmptyStateTreeWithActors(cst, BuiltinActors)
+	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
 	for addr, act := range acts {
 		err := t.SetActor(ctx, addr, act)
@@ -72,9 +74,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	BuiltinActors[fakeActorCodeCid.KeyString()] = &FakeActor{}
+	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
 	defer func() {
-		delete(BuiltinActors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid.KeyString())
 	}()
 
 	// Stick two fake actors in the state tree so they can talk.
@@ -218,9 +220,9 @@ func TestNestedSendBalance(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	BuiltinActors[fakeActorCodeCid.KeyString()] = &FakeActor{}
+	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
 	defer func() {
-		delete(BuiltinActors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid.KeyString())
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()

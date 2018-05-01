@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,7 +29,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(0, len(nodes[1].MsgPool.Pending()))
 	require.Equal(0, len(nodes[2].MsgPool.Pending()))
 
-	msg := types.NewMessage(core.NetworkAddress, core.TestAddress, 0, types.NewTokenAmount(123), "", nil)
+	msg := types.NewMessage(address.NetworkAddress, address.TestAddress, 0, types.NewTokenAmount(123), "", nil)
 	nodes[0].AddNewMessage(ctx, msg)
 
 	// Wait for message to propagate across network

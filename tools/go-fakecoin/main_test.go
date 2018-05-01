@@ -6,6 +6,9 @@ import (
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -60,15 +63,15 @@ func TestAddActors(t *testing.T) {
 	_, allActors = state.GetAllActors(st)
 	assert.Equal(initialActors+2, len(allActors), "add a account and miner actors")
 
-	sma, err := st.GetActor(ctx, core.StorageMarketAddress)
+	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
 	require.NoError(err)
 
-	var storage core.StorageMarketStorage
-	err = core.UnmarshalStorage(sma.ReadStorage(), &storage)
+	var storageMkt storagemarket.Storage
+	err = actor.UnmarshalStorage(sma.ReadStorage(), &storageMkt)
 	require.NoError(err)
 
-	assert.Equal(1, len(storage.Miners))
-	assert.Equal(1, len(storage.Orderbook.Asks))
-	assert.Equal(1, len(storage.Orderbook.Bids))
-	assert.Equal(1, len(storage.Filemap.Deals))
+	assert.Equal(1, len(storageMkt.Miners))
+	assert.Equal(1, len(storageMkt.Orderbook.Asks))
+	assert.Equal(1, len(storageMkt.Orderbook.Bids))
+	assert.Equal(1, len(storageMkt.Filemap.Deals))
 }

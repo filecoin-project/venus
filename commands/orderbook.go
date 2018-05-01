@@ -7,7 +7,7 @@ import (
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 )
 
 var orderbookCmd = &cmds.Command{
@@ -33,9 +33,9 @@ var askCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: &core.Ask{},
+	Type: &storagemarket.Ask{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *core.Ask) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *storagemarket.Ask) error {
 			b, err := json.Marshal(ask)
 			if err != nil {
 				return err
@@ -58,9 +58,9 @@ var bidCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: &core.Bid{},
+	Type: &storagemarket.Bid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, bid *core.Bid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, bid *storagemarket.Bid) error {
 			b, err := json.Marshal(bid)
 			if err != nil {
 				return err
@@ -83,9 +83,9 @@ var dealCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: &core.Deal{},
+	Type: &storagemarket.Deal{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *core.Deal) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *storagemarket.Deal) error {
 			b, err := json.Marshal(deal)
 			if err != nil {
 				return err

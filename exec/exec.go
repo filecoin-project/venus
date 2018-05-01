@@ -41,4 +41,8 @@ type VMContext interface {
 	ReadStorage() []byte
 	WriteStorage(memory []byte) error
 	Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error)
+	AddressForNewActor() (types.Address, error)
+
+	// TODO: replace with proper init actor
+	TEMPCreateActor(addr types.Address, act *types.Actor) error
 }

@@ -8,6 +8,7 @@ import (
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -81,12 +82,12 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		return nil, err
 	}
 
-	nonce, err := core.NextNonce(ctx, stateTree, b.messagePool, core.NetworkAddress)
+	nonce, err := core.NextNonce(ctx, stateTree, b.messagePool, address.NetworkAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	rewardMsg := types.NewMessage(core.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
 	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.

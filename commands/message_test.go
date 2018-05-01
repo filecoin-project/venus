@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,22 +17,22 @@ func TestMessageSend(t *testing.T) {
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", core.NetworkAddress.String(),
+		"--from", address.NetworkAddress.String(),
 		"--value=10", "xyz",
 	)
 
 	t.Log("[failure] no from")
-	d.RunFail("missing from", "message", "send", core.TestAddress.String())
+	d.RunFail("missing from", "message", "send", address.TestAddress.String())
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAddress.String(), core.TestAddress.String(),
+		"--from", address.NetworkAddress.String(), address.TestAddress.String(),
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", core.TestAddress.String(),
-		"--value=10", core.TestAddress2.String(),
+		"--from", address.TestAddress.String(),
+		"--value=10", address.TestAddress2.String(),
 	)
 }
 
@@ -45,9 +45,9 @@ func TestMessageWait(t *testing.T) {
 
 		msg := d.RunSuccess(
 			"message", "send",
-			"--from", core.TestAddress.String(),
+			"--from", address.TestAddress.String(),
 			"--value=10",
-			core.TestAddress2.String(),
+			address.TestAddress2.String(),
 		)
 
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")

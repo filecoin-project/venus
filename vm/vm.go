@@ -1,11 +1,25 @@
-package core
+// Package vm implements the Filecoin VM
+// This means this is the _only_ part of the code base that should concern itself
+// with passing data between VM boundaries.
+package vm
 
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
+)
+
+var (
+	// Most errors should live in the actors that throw them. However some
+	// errors will be pervasive so we define them centrally here.
+
+	// ErrCannotTransferNegativeValue signals a transfer error, value must be positive.
+	ErrCannotTransferNegativeValue = errors.NewRevertError("cannot transfer negative values")
+	// ErrInsufficientBalance signals insufficient balance for a transfer.
+	ErrInsufficientBalance = errors.NewRevertError("not enough balance")
 )
 
 // Send executes a message pass inside the VM. If error is set it
@@ -55,7 +69,7 @@ func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.
 		return nil, 1, errors.NewRevertErrorf("missing export: %s", msg.Method)
 	}
 
-	return MakeTypedExport(toExecutable, msg.Method)(vmCtx)
+	return actor.MakeTypedExport(toExecutable, msg.Method)(vmCtx)
 }
 
 func transfer(fromActor, toActor *types.Actor, value *types.TokenAmount) error {

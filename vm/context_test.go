@@ -1,4 +1,4 @@
-package core
+package vm
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -23,7 +24,7 @@ func TestVMContextStorage(t *testing.T) {
 	cst := hamt.NewCborStore()
 	state := state.NewEmptyStateTree(cst)
 
-	toActor, err := NewAccountActor(nil)
+	toActor, err := account.NewActor(nil)
 	assert.NoError(err)
 	toAddr := addrGetter()
 

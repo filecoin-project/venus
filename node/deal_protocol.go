@@ -16,8 +16,12 @@ import (
 	dag "github.com/ipfs/go-ipfs/merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -39,7 +43,7 @@ func init() {
 // deal, add a reference to the data they want stored to the deal,  then add
 // their signature over the deal.
 type DealProposal struct {
-	Deal      *core.Deal
+	Deal      *storagemarket.Deal
 	ClientSig string
 }
 
@@ -385,14 +389,14 @@ func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 }
 
 type storageMarketPeeker interface {
-	GetAsk(uint64) (*core.Ask, error)
-	GetBid(uint64) (*core.Bid, error)
+	GetAsk(uint64) (*storagemarket.Ask, error)
+	GetBid(uint64) (*storagemarket.Bid, error)
 	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
-	GetAskSet() (core.AskSet, error)
-	GetBidSet() (core.BidSet, error)
-	GetDealList() ([]*core.Deal, error)
+	GetAskSet() (storagemarket.AskSet, error)
+	GetBidSet() (storagemarket.BidSet, error)
+	GetDealList() ([]*storagemarket.Deal, error)
 	GetMinerOwner(context.Context, types.Address) (types.Address, error)
 }
 
@@ -402,22 +406,22 @@ type stateTreeMarketPeeker struct {
 
 func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
 	bestBlk := stsa.nd.ChainMgr.GetBestBlock()
-	return state.LoadStateTree(ctx, stsa.nd.CborStore, bestBlk.StateRoot, core.BuiltinActors)
+	return state.LoadStateTree(ctx, stsa.nd.CborStore, bestBlk.StateRoot, builtin.Actors)
 }
 
-func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*core.StorageMarketStorage, error) {
+func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*storagemarket.Storage, error) {
 	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	act, err := st.GetActor(ctx, core.StorageMarketAddress)
+	act, err := st.GetActor(ctx, address.StorageMarketAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	var storage core.StorageMarketStorage
-	if err := core.UnmarshalStorage(act.ReadStorage(), &storage); err != nil {
+	var storage storagemarket.Storage
+	if err := actor.UnmarshalStorage(act.ReadStorage(), &storage); err != nil {
 		return nil, err
 	}
 
@@ -425,7 +429,7 @@ func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Con
 }
 
 // GetAsk returns the given ask from the current state of the storage market actor
-func (stsa *stateTreeMarketPeeker) GetAsk(id uint64) (*core.Ask, error) {
+func (stsa *stateTreeMarketPeeker) GetAsk(id uint64) (*storagemarket.Ask, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
@@ -440,7 +444,7 @@ func (stsa *stateTreeMarketPeeker) GetAsk(id uint64) (*core.Ask, error) {
 }
 
 // GetBid returns the given bid from the current state of the storage market actor
-func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*core.Bid, error) {
+func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*storagemarket.Bid, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
@@ -456,7 +460,7 @@ func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*core.Bid, error) {
 
 // GetAskSet returns the given the entire ask set from the storage market
 // TODO limit number of results
-func (stsa *stateTreeMarketPeeker) GetAskSet() (core.AskSet, error) {
+func (stsa *stateTreeMarketPeeker) GetAskSet() (storagemarket.AskSet, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
@@ -467,7 +471,7 @@ func (stsa *stateTreeMarketPeeker) GetAskSet() (core.AskSet, error) {
 
 // GetBidSet returns the given the entire bid set from the storage market
 // TODO limit number of results
-func (stsa *stateTreeMarketPeeker) GetBidSet() (core.BidSet, error) {
+func (stsa *stateTreeMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
@@ -478,7 +482,7 @@ func (stsa *stateTreeMarketPeeker) GetBidSet() (core.BidSet, error) {
 
 // GetDealList returns the given the entire bid set from the storage market
 // TODO limit the number of results
-func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
+func (stsa *stateTreeMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
@@ -487,13 +491,13 @@ func (stsa *stateTreeMarketPeeker) GetDealList() ([]*core.Deal, error) {
 	return stor.Filemap.Deals, nil
 }
 
-func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, miner types.Address) (types.Address, error) {
+func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
 	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	act, err := st.GetActor(ctx, miner)
+	act, err := st.GetActor(ctx, minerAddress)
 	if err != nil {
 		return types.Address{}, errors.Wrap(err, "failed to find miner actor in state tree")
 	}
@@ -502,8 +506,8 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, miner type
 		return types.Address{}, fmt.Errorf("address given did not belong to a miner actor")
 	}
 
-	var mst core.MinerStorage
-	if err := core.UnmarshalStorage(act.ReadStorage(), &mst); err != nil {
+	var mst miner.Storage
+	if err := actor.UnmarshalStorage(act.ReadStorage(), &mst); err != nil {
 		return types.Address{}, err
 	}
 
@@ -517,7 +521,7 @@ func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Addre
 		return nil, errors.Wrap(err, "failed to encode abi values")
 	}
 
-	msg, err := NewMessageWithNextNonce(ctx, stsa.nd, from, core.StorageMarketAddress, nil, "addDeal", pdata)
+	msg, err := NewMessageWithNextNonce(ctx, stsa.nd, from, address.StorageMarketAddress, nil, "addDeal", pdata)
 	if err != nil {
 		return nil, err
 	}

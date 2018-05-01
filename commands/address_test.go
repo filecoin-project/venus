@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +38,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal(balance.ReadStdoutTrimNewlines(), "0")
 
 	t.Log("[success] balance 10000000")
-	balance = d.RunSuccess("wallet", "balance", core.NetworkAddress.String())
+	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
 	assert.Equal(balance.ReadStdoutTrimNewlines(), "10000000")
 
 	t.Log("[success] newly generated one")

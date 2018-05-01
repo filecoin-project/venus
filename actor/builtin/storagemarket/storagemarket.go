@@ -1,8 +1,7 @@
-package core
+package storagemarket
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"math/big"
 
@@ -10,6 +9,8 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -22,18 +23,18 @@ var MinimumPledge = types.NewBytesAmount(10000)
 var ErrPledgeTooLow = errors.NewRevertErrorf("pledge must be at least %s bytes", MinimumPledge)
 
 func init() {
-	cbor.RegisterCborType(StorageMarketStorage{})
+	cbor.RegisterCborType(Storage{})
 	cbor.RegisterCborType(struct{}{})
 	cbor.RegisterCborType(Filemap{})
 }
 
-// StorageMarketActor implements the filecoin storage market. It is responsible
+// Actor implements the filecoin storage market. It is responsible
 // for starting up new miners, adding bids, asks and deals. It also exposes the
 // power table used to drive filecoin consensus.
-type StorageMarketActor struct{}
+type Actor struct{}
 
-// StorageMarketStorage is the storage markets storage
-type StorageMarketStorage struct {
+// Storage is the storage markets storage
+type Storage struct {
 	Miners types.AddrSet
 
 	Orderbook *Orderbook
@@ -44,15 +45,15 @@ type StorageMarketStorage struct {
 }
 
 // NewStorage returns an empty StorageMarketStorage struct
-func (sma *StorageMarketActor) NewStorage() interface{} {
-	return &StorageMarketStorage{}
+func (sma *Actor) NewStorage() interface{} {
+	return &Storage{}
 }
 
-var _ exec.ExecutableActor = (*StorageMarketActor)(nil)
+var _ exec.ExecutableActor = (*Actor)(nil)
 
-// NewStorageMarketActor returns a new storage market actor
-func NewStorageMarketActor() (*types.Actor, error) {
-	initStorage := &StorageMarketStorage{
+// NewActor returns a new storage market actor
+func NewActor() (*types.Actor, error) {
+	initStorage := &Storage{
 		Miners: make(types.AddrSet),
 		Orderbook: &Orderbook{
 			Asks: make(AskSet),
@@ -62,7 +63,7 @@ func NewStorageMarketActor() (*types.Actor, error) {
 			Files: make(map[string][]uint64),
 		},
 	}
-	storageBytes, err := MarshalStorage(initStorage)
+	storageBytes, err := actor.MarshalStorage(initStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func NewStorageMarketActor() (*types.Actor, error) {
 }
 
 // Exports returns the actors exports
-func (sma *StorageMarketActor) Exports() exec.Exports {
+func (sma *Actor) Exports() exec.Exports {
 	return storageMarketExports
 }
 
@@ -99,9 +100,9 @@ var storageMarketExports = exec.Exports{
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
-func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAmount) (types.Address, uint8, error) {
-	var storage StorageMarketStorage
-	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount) (types.Address, uint8, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		if pledge.LessThan(MinimumPledge) {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, ErrPledgeTooLow
@@ -113,7 +114,7 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAm
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		miner, err := NewMinerActor(ctx.message.From, pledge, ctx.message.Value)
+		minerActor, err := miner.NewActor(ctx.Message().From, pledge, ctx.Message().Value)
 		if err != nil {
 			// TODO? From an Actor's perspective this (and other stuff) should probably
 			// never fail. It should call into the vmcontext to do this and the vm context
@@ -122,12 +123,12 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAm
 			return nil, errors.FaultErrorWrap(err, "could not get a new miner actor")
 		}
 
-		if err := ctx.state.SetActor(context.TODO(), addr, miner); err != nil {
+		if err := ctx.TEMPCreateActor(addr, minerActor); err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not set miner actor in CreateMiner")
 		}
 		// -- end --
 
-		_, _, err = ctx.Send(addr, "", ctx.message.Value, nil)
+		_, _, err = ctx.Send(addr, "", ctx.Message().Value, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -144,10 +145,10 @@ func (sma *StorageMarketActor) CreateMiner(ctx *VMContext, pledge *types.BytesAm
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
 // by this storage market actor
-func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
-	var storage StorageMarketStorage
-	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		// method must be called by a miner that was created by this storage market actor
 		miner := ctx.Message().From
 
@@ -184,9 +185,9 @@ func (sma *StorageMarketActor) AddAsk(ctx *VMContext, price *types.TokenAmount, 
 // AddBid adds a bid order to the orderbook. Can be called by anyone. The
 // message must contain the appropriate amount of funds to be locked up for the
 // bid.
-func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8, error) {
-	var storage StorageMarketStorage
-	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+func (sma *Actor) AddBid(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		lockedFunds := price.CalculatePrice(size)
 		if ctx.Message().Value.LessThan(lockedFunds) {
 			fmt.Println(lockedFunds, ctx.Message().Value)
@@ -220,14 +221,14 @@ func (sma *StorageMarketActor) AddBid(ctx *VMContext, price *types.TokenAmount, 
 
 // AddDeal creates a deal from the given ask and bid
 // It must always called by the owner of the miner in the ask
-func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*big.Int, uint8, error) {
+func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*big.Int, uint8, error) {
 	ref, err := cid.Cast(refb)
 	if err != nil {
 		return nil, 1, errors.NewRevertErrorf("'ref' input was not a valid cid: %s", err)
 	}
 
-	var storage StorageMarketStorage
-	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		// TODO: askset is a map from uint64, our input is a big int.
 		ask, ok := storage.Orderbook.Asks[askID.Uint64()]
 		if !ok {
@@ -296,9 +297,9 @@ func (sma *StorageMarketActor) AddDeal(ctx *VMContext, askID, bidID *big.Int, bi
 // CommitDeals marks the given deals as committed, counts up the total space
 // occupied by those deals, updates the total storage count, and returns the
 // total size of these deals.
-func (sma *StorageMarketActor) CommitDeals(ctx *VMContext, deals []uint64) (*types.BytesAmount, uint8, error) {
-	var storage StorageMarketStorage
-	ret, err := WithStorage(ctx, &storage, func() (interface{}, error) {
+func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesAmount, uint8, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		totalSize := types.NewBytesAmount(0)
 		for _, d := range deals {
 			if d >= uint64(len(storage.Filemap.Deals)) {

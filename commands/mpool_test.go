@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 func TestMpool(t *testing.T) {
@@ -18,8 +18,8 @@ func TestMpool(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("message", "send",
-		"--from", core.NetworkAddress.String(),
-		"--value=10", core.TestAddress.String(),
+		"--from", address.NetworkAddress.String(),
+		"--value=10", address.TestAddress.String(),
 	)
 
 	out := d.RunSuccess("mpool")

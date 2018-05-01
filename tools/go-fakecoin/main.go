@@ -16,6 +16,8 @@ import (
 	bserv "github.com/ipfs/go-ipfs/blockservice"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -103,7 +105,7 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
 	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-		return state.LoadStateTree(ctx, cst, cid, core.BuiltinActors)
+		return state.LoadStateTree(ctx, cst, cid, builtin.Actors)
 	}, mining.ApplyMessages)
 }
 
@@ -116,7 +118,7 @@ func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.Cbor
 
 	bb := cm.GetBestBlock()
 	sr := bb.StateRoot
-	st, err := state.LoadStateTree(ctx, cst, sr, core.BuiltinActors)
+	st, err := state.LoadStateTree(ctx, cst, sr, builtin.Actors)
 	return st, cst, cm, bb, err
 }
 
@@ -144,7 +146,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 		return err
 	}
 
-	newMinerMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 0, types.NewTokenAmount(400), "createMiner", params)
+	newMinerMessage := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(400), "createMiner", params)
 	_, err = msgPool.Add(newMinerMessage)
 	if err != nil {
 		return err
@@ -180,7 +182,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	askMsg := types.NewMessage(minerAddress, core.StorageMarketAddress, 0, types.NewTokenAmount(100), "addAsk", params)
+	askMsg := types.NewMessage(minerAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "addAsk", params)
 	_, err = msgPool.Add(askMsg)
 	if err != nil {
 		return err
@@ -191,7 +193,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	bidMsg := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 1, types.NewTokenAmount(90), "addBid", params)
+	bidMsg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewTokenAmount(90), "addBid", params)
 	_, err = msgPool.Add(bidMsg)
 	if err != nil {
 		return err
@@ -205,11 +207,11 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	msgPool = core.NewMessagePool()
 
 	// Create deal
-	params, err = abi.ToEncodedValues(big.NewInt(0), big.NewInt(0), core.TestAddress, types.NewCidForTestGetter()().Bytes())
+	params, err = abi.ToEncodedValues(big.NewInt(0), big.NewInt(0), address.TestAddress, types.NewCidForTestGetter()().Bytes())
 	if err != nil {
 		return err
 	}
-	newDealMessage := types.NewMessage(core.TestAddress, core.StorageMarketAddress, 2, types.NewTokenAmount(400), "addDeal", params)
+	newDealMessage := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewTokenAmount(400), "addDeal", params)
 	_, err = msgPool.Add(newDealMessage)
 	if err != nil {
 		return err

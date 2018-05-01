@@ -22,6 +22,7 @@ import (
 	"github.com/ipfs/go-ipfs/exchange/bitswap"
 	bsnet "github.com/ipfs/go-ipfs/exchange/bitswap/network"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/lookup"
@@ -192,7 +193,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-		return state.LoadStateTree(ctx, cst, cid, core.BuiltinActors)
+		return state.LoadStateTree(ctx, cst, cid, builtin.Actors)
 	}, mining.ApplyMessages)
 	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
@@ -443,7 +444,7 @@ func (node *Node) StopMining() {
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
 func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
-	st, err := state.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot, core.BuiltinActors)
+	st, err := state.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot, builtin.Actors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
 	}
@@ -476,7 +477,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // messages.
 func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
 	bb := node.ChainMgr.GetBestBlock()
-	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, core.BuiltinActors)
+	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, builtin.Actors)
 	if err != nil {
 		return 0, err
 	}

@@ -1,4 +1,4 @@
-package core
+package vm
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -88,12 +89,12 @@ func TestSendErrorHandling(t *testing.T) {
 		msg.Value = nil // such that we don't transfer
 		msg.Method = "bar"
 
-		assert.False(fakeActorExports.Has(msg.Method))
+		assert.False(actor.FakeActorExports.Has(msg.Method))
 
 		deps := sendDeps{}
 
 		_, code, sendErr := send(context.Background(), deps, actor1, actor2, msg, &state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{
-			actor2.Code.KeyString(): &FakeActor{},
+			actor2.Code.KeyString(): &actor.FakeActor{},
 		}})
 
 		assert.Error(sendErr)
