@@ -3,15 +3,18 @@ package main
 import (
 	"os"
 
-	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/commands"
 )
 
 func main() {
-	// TODO: make configurable
+	// TODO: make configurable - this should be done via a command like go-ipfs
+	// something like:
+	//		`go-filecoin log level "system" "level"`
 	// TODO: find a better home for this
-	logging.Configure(logging.LevelInfo)
+	// TODO fix this in go-log 4 == INFO
+	logging.SetAllLoggers(4)
 
 	// TODO implement help text like so:
 	// https://github.com/ipfs/go-ipfs/blob/master/core/commands/root.go#L91

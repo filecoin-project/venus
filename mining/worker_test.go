@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestMineOnce(t *testing.T) {
@@ -161,7 +162,7 @@ func Test_mine(t *testing.T) {
 	// Success.
 	mockBg := &MockBlockGenerator{}
 	outCh := make(chan Output)
-	mockBg.On("Generate", ctx, baseBlock, addr).Return(next, nil)
+	mockBg.On("Generate", mock.Anything, baseBlock, addr).Return(next, nil)
 	doSomeWorkCalled := false
 	input := NewInput(ctx, baseBlock, addr)
 	go Mine(ctx, input, mockBg, func() { doSomeWorkCalled = true }, outCh)
@@ -174,7 +175,7 @@ func Test_mine(t *testing.T) {
 	// Block generation fails.
 	mockBg = &MockBlockGenerator{}
 	outCh = make(chan Output)
-	mockBg.On("Generate", ctx, baseBlock, addr).Return(nil, errors.New("boom"))
+	mockBg.On("Generate", mock.Anything, baseBlock, addr).Return(nil, errors.New("boom"))
 	doSomeWorkCalled = false
 	input = NewInput(ctx, baseBlock, addr)
 	go Mine(ctx, input, mockBg, func() { doSomeWorkCalled = true }, outCh)

@@ -58,6 +58,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"dag":       dagCmd,
 	"id":        idCmd,
 	"init":      initCmd,
+	"log":       logCmd,
 	"message":   msgCmd,
 	"miner":     minerCmd,
 	"mining":    miningCmd,
