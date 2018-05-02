@@ -67,8 +67,18 @@ func (o *Output) ReadStdout() string {
 	return string(o.stdout)
 }
 
-func (o *Output) ReadStdoutTrimNewlines() string {
+func (o *Output) readStdoutTrimNewlines() string {
 	return strings.Trim(o.ReadStdout(), "\n")
+}
+
+func runSuccessFirstLine(td *TestDaemon, args ...string) string {
+	return runSuccessLines(td, args...)[0]
+}
+
+func runSuccessLines(td *TestDaemon, args ...string) []string {
+	output := td.RunSuccess(args...)
+	result := output.readStdoutTrimNewlines()
+	return strings.Split(result, "\n")
 }
 
 type TestDaemon struct {

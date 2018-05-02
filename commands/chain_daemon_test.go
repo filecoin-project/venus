@@ -21,12 +21,12 @@ func TestChainDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.readStdoutTrimNewlines()
 		c, err := cid.Parse(result1)
 		require.NoError(err)
 
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
-		result2 := op2.ReadStdoutTrimNewlines()
+		result2 := op2.readStdoutTrimNewlines()
 
 		var bs []types.Block
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
@@ -34,6 +34,9 @@ func TestChainDaemon(t *testing.T) {
 			err := json.Unmarshal(line, &b)
 			require.NoError(err)
 			bs = append(bs, b)
+
+			// ensure conformance with JSON schema
+			requireSchemaConformance(t, line, "filecoin_block")
 		}
 
 		assert.Equal(2, len(bs))
@@ -49,7 +52,7 @@ func TestChainDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op := d.RunSuccess("chain", "ls", "--enc", "json")
-		result := op.ReadStdoutTrimNewlines()
+		result := op.readStdoutTrimNewlines()
 
 		var b types.Block
 		err := json.Unmarshal([]byte(result), &b)

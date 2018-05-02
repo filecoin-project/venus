@@ -1,0 +1,144 @@
+{
+  "allOf": [
+    {
+      "$ref": "#/definitions/Block"
+    }
+  ],
+  "definitions": {
+    "Block": {
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "type": "integer"
+        },
+        "messageReceipts": {
+          "items": {
+            "$ref": "#/definitions/MessageReceipt"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/definitions/Message"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "nonce": {
+          "type": "integer"
+        },
+        "parent": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Cid"
+            }
+          ]
+        },
+        "stateRoot": {
+          "$ref": "#/definitions/Cid"
+        }
+      },
+      "required": [
+        "height",
+        "messageReceipts",
+        "messages",
+        "nonce",
+        "parent",
+        "stateRoot"
+      ],
+      "type": "object"
+    },
+    "Cid": {
+      "additionalProperties": false,
+      "properties": {
+        "/": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "/"
+      ],
+      "type": [
+        "object"
+      ]
+    },
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "nonce": {
+          "type": "integer"
+        },
+        "params": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "to": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "to",
+        "from",
+        "nonce",
+        "value",
+        "method",
+        "params"
+      ],
+      "type": "object"
+    },
+    "MessageReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "exitCode": {
+          "type": "integer"
+        },
+        "message": {
+          "$ref": "#/definitions/Cid"
+        },
+        "return": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "error",
+        "exitCode",
+        "message",
+        "return"
+      ],
+      "type": "object"
+    }
+  }
+}

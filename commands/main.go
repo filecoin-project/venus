@@ -5,9 +5,9 @@ import (
 	"net"
 	"os"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds/http"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
 
 const (
@@ -65,6 +65,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"mpool":     mpoolCmd,
 	"orderbook": orderbookCmd,
 	"ping":      pingCmd,
+	"show":      showCmd,
 	"swarm":     swarmCmd,
 	"version":   versionCmd,
 	"wallet":    walletCmd,

@@ -1,5 +1,14 @@
 package commands
 
+import (
+	"fmt"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/xeipuuv/gojsonschema"
+)
+
 // A MockEmitter satisfies the ValueEmitter interface and records its calls.
 type MockEmitter struct {
 	emitterFunc func(value interface{}) error
@@ -21,4 +30,19 @@ func (ce MockEmitter) emit(value interface{}) error {
 
 func (ce MockEmitter) calls() []interface{} {
 	return *ce.captures
+}
+
+func requireSchemaConformance(t *testing.T, jsonBytes []byte, schemaName string) { // nolint: deadcode
+	wdir, _ := os.Getwd()
+	rLoader := gojsonschema.NewReferenceLoader(fmt.Sprintf("file://%s/schema/%s.schema.json", wdir, schemaName))
+	jLoader := gojsonschema.NewBytesLoader(jsonBytes)
+
+	result, err := gojsonschema.Validate(rLoader, jLoader)
+	require.NoError(t, err)
+
+	for _, desc := range result.Errors() {
+		t.Errorf("- %s\n", desc)
+	}
+
+	require.True(t, result.Valid())
 }

@@ -24,7 +24,7 @@ func TestDagDaemon(t *testing.T) {
 		// get the CID of the genesis block from the "chain ls" command output
 
 		op1 := d.RunSuccess("chain", "ls", "--enc", "json")
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.readStdoutTrimNewlines()
 
 		genesisBlockJSONStr := bytes.Split([]byte(result1), []byte{'\n'})[0]
 
@@ -34,7 +34,7 @@ func TestDagDaemon(t *testing.T) {
 		// get an IPLD node from the DAG by its CID
 
 		op2 := d.RunSuccess("dag", "get", expected.Cid().String(), "--enc", "json")
-		result2 := op2.ReadStdoutTrimNewlines()
+		result2 := op2.readStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJson(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
 		require.NoError(err)

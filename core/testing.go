@@ -140,3 +140,13 @@ func MustPut(store *hamt.CborIpldStore, thingy interface{}) *cid.Cid {
 	}
 	return cid
 }
+
+// MustDecodeCid decodes a string to a Cid pointer, panicking on error
+func MustDecodeCid(cidStr string) *cid.Cid {
+	decode, err := cid.Decode(cidStr)
+	if err != nil {
+		panic(err)
+	}
+
+	return decode
+}

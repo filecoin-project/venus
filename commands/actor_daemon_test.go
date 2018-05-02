@@ -3,12 +3,10 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 func TestActorDaemon(t *testing.T) {
@@ -20,26 +18,15 @@ func TestActorDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("actor", "ls", "--enc", "json")
-		result1 := op1.ReadStdoutTrimNewlines()
-
-		wd, _ := os.Getwd()
-		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
+		result1 := op1.readStdoutTrimNewlines()
 
 		var avs []actorView
 		for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {
-			// test that json conforms to our schema
-			jsonLoader := gojsonschema.NewBytesLoader(line)
-			result, err := gojsonschema.Validate(schemaLoader, jsonLoader)
-			require.NoError(err)
-
-			assert.True(result.Valid())
-			for _, desc := range result.Errors() {
-				t.Errorf("- %s\n", desc)
-			}
+			requireSchemaConformance(t, line, "actor_ls")
 
 			// unmarshall JSON to actor view an add to slice
 			var av actorView
-			err = json.Unmarshal(line, &av)
+			err := json.Unmarshal(line, &av)
 			require.NoError(err)
 			avs = append(avs, av)
 		}
