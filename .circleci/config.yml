@@ -24,6 +24,9 @@ jobs:
           name: Build
           command: go run ./build/*.go build
       - run:
+          name: Build fakecoin
+          command: pushd tools/go-fakecoin && go build && popd
+      - run:
           name: Test
           command: |
             go run ./build/*.go test -covermode=atomic -coverprofile=coverage.txt &&

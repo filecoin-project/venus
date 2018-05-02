@@ -387,20 +387,6 @@ func ShouldInit(i bool) func(*TestDaemon) {
 	}
 }
 
-func GetFilecoinBinary() (string, error) {
-	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
-	_, err := os.Stat(bin)
-	if err == nil {
-		return bin, nil
-	}
-
-	if os.IsNotExist(err) {
-		return "", fmt.Errorf("You are missing the filecoin binary...try building, searched in '%s'", bin)
-	}
-
-	return "", err
-}
-
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
 	filecoinBin, err := GetFilecoinBinary()

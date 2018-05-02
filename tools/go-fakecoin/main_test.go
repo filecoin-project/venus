@@ -2,13 +2,19 @@ package main
 
 import (
 	"context"
+	"os/exec"
 	"testing"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -74,4 +80,47 @@ func TestAddActors(t *testing.T) {
 	assert.Equal(1, len(storageMkt.Orderbook.Asks))
 	assert.Equal(1, len(storageMkt.Orderbook.Bids))
 	assert.Equal(1, len(storageMkt.Filemap.Deals))
+}
+
+func GetFakecoinBinary() (string, error) {
+	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/tools/go-fakecoin/go-fakecoin", os.Getenv("GOPATH")))
+	_, err := os.Stat(bin)
+	if err == nil {
+		return bin, nil
+	}
+
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("You are missing the fakecoin binary...try building, searched in '%s'", bin)
+	}
+
+	return "", err
+}
+
+var testRepoPath = filepath.FromSlash("/tmp/fakecoin/")
+
+func TestCommandsSucceed(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	fbin, err := commands.GetFilecoinBinary()
+	require.NoError(err)
+
+	os.RemoveAll(testRepoPath)       // go-filecoin init will fail if repo exists.
+	defer os.RemoveAll(testRepoPath) // clean up when we're done.
+
+	exec.Command(fbin, "init", "--repodir", testRepoPath).Run()
+	require.NoError(err)
+
+	bin, err := GetFakecoinBinary()
+	require.NoError(err)
+
+	// 'go-fakecoin fake' completes without error.
+	cmdFake := exec.Command(bin, "fake", "-repodir", testRepoPath)
+	err = cmdFake.Run()
+	assert.NoError(err)
+
+	// 'go-fakecoin actors' completes without error.
+	cmdActors := exec.Command(bin, "actors", "-repodir", testRepoPath)
+	err = cmdActors.Run()
+	assert.NoError(err)
 }
