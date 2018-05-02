@@ -14,8 +14,8 @@ import (
 	"path"
 	"strings"
 
-	dag "github.com/ipfs/go-ipfs/merkledag"
-	uio "github.com/ipfs/go-ipfs/unixfs/io"
+	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
+	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
 	//	"golang.org/x/exp/mmap"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"

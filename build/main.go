@@ -45,7 +45,6 @@ func deps() {
 	list := []string{
 		"go get -u github.com/whyrusleeping/gx",
 		"go get -u github.com/whyrusleeping/gx-go",
-		"./fetch_go-ipfs_deps.sh",
 		"gx install",
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",

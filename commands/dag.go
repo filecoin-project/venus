@@ -11,7 +11,7 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 
-	dag "github.com/ipfs/go-ipfs/merkledag"
+	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 )
 
 type ipldNodeGetter func(ctx context.Context, c *cid.Cid) (ipld.Node, error)
