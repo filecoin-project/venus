@@ -25,6 +25,10 @@ const (
 	TokenAmount
 	// BytesAmount is a *types.BytesAmount
 	BytesAmount
+	// ChannelID is a *types.ChannelID
+	ChannelID
+	// BlockHeight is a *types.BlockHeight
+	BlockHeight
 	// Integer is a *big.Int
 	Integer
 	// Bytes is a []byte
@@ -45,6 +49,10 @@ func (t Type) String() string {
 		return "*types.TokenAmount"
 	case BytesAmount:
 		return "*types.BytesAmount"
+	case ChannelID:
+		return "*types.ChannelID"
+	case BlockHeight:
+		return "*types.BlockHeight"
 	case Integer:
 		return "*big.Int"
 	case Bytes:
@@ -74,6 +82,10 @@ func (av *Value) String() string {
 		return av.Val.(*types.TokenAmount).String()
 	case BytesAmount:
 		return av.Val.(*types.BytesAmount).String()
+	case ChannelID:
+		return av.Val.(*types.ChannelID).String()
+	case BlockHeight:
+		return av.Val.(*types.BlockHeight).String()
 	case Integer:
 		return av.Val.(*big.Int).String()
 	case Bytes:
@@ -117,6 +129,18 @@ func (av *Value) Serialize() ([]byte, error) {
 		ba, ok := av.Val.(*types.BytesAmount)
 		if !ok {
 			return nil, &typeError{types.BytesAmount{}, av.Val}
+		}
+		return ba.Bytes(), nil
+	case ChannelID:
+		ba, ok := av.Val.(*types.ChannelID)
+		if !ok {
+			return nil, &typeError{types.ChannelID{}, av.Val}
+		}
+		return ba.Bytes(), nil
+	case BlockHeight:
+		ba, ok := av.Val.(*types.BlockHeight)
+		if !ok {
+			return nil, &typeError{types.BlockHeight{}, av.Val}
 		}
 		return ba.Bytes(), nil
 	case Integer:
@@ -166,6 +190,10 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: TokenAmount, Val: v})
 		case *types.BytesAmount:
 			out = append(out, &Value{Type: BytesAmount, Val: v})
+		case *types.ChannelID:
+			out = append(out, &Value{Type: ChannelID, Val: v})
+		case *types.BlockHeight:
+			out = append(out, &Value{Type: BlockHeight, Val: v})
 		case *big.Int:
 			out = append(out, &Value{Type: Integer, Val: v})
 		case []byte:
@@ -219,6 +247,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  types.NewBytesAmountFromBytes(data),
 		}, nil
+	case ChannelID:
+		return &Value{
+			Type: t,
+			Val:  types.NewChannelIDFromBytes(data),
+		}, nil
+	case BlockHeight:
+		return &Value{
+			Type: t,
+			Val:  types.NewBlockHeightFromBytes(data),
+		}, nil
 	case Integer:
 		return &Value{
 			Type: t,
@@ -254,6 +292,8 @@ var typeTable = map[Type]reflect.Type{
 	Address:     reflect.TypeOf(types.Address{}),
 	Bytes:       reflect.TypeOf([]byte{}),
 	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),
+	ChannelID:   reflect.TypeOf(&types.ChannelID{}),
+	BlockHeight: reflect.TypeOf(&types.BlockHeight{}),
 	Integer:     reflect.TypeOf(&big.Int{}),
 	String:      reflect.TypeOf(string("")),
 	TokenAmount: reflect.TypeOf(&types.TokenAmount{}),

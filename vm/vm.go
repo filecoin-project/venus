@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -24,12 +23,12 @@ var (
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, from, to *types.Actor, msg *types.Message, st state.Tree) ([]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx *Context) ([]byte, uint8, error) {
 	deps := sendDeps{
 		transfer: transfer,
 	}
 
-	return send(ctx, deps, from, to, msg, st)
+	return send(ctx, deps, vmCtx)
 }
 
 type sendDeps struct {
@@ -37,39 +36,37 @@ type sendDeps struct {
 }
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, deps sendDeps, from, to *types.Actor, msg *types.Message, st state.Tree) ([]byte, uint8, error) {
-	vmCtx := NewVMContext(from, to, msg, st)
-
-	if msg.Value != nil {
-		if err := deps.transfer(from, to, msg.Value); err != nil {
+func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([]byte, uint8, error) {
+	if vmCtx.message.Value != nil {
+		if err := deps.transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
 			return nil, 1, err
 		}
 	}
 
 	// save balance changes
-	if err := st.SetActor(ctx, msg.From, from); err != nil {
+	if err := vmCtx.state.SetActor(ctx, vmCtx.message.From, vmCtx.from); err != nil {
 		return nil, 1, errors.FaultErrorWrap(err, "could not set from actor after send")
 	}
-	if err := st.SetActor(ctx, msg.To, to); err != nil {
+	if err := vmCtx.state.SetActor(ctx, vmCtx.message.To, vmCtx.to); err != nil {
 		return nil, 1, errors.FaultErrorWrap(err, "could not set to actor after send")
 	}
 
-	if msg.Method == "" {
+	if vmCtx.message.Method == "" {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution
 		return nil, 0, nil
 	}
 
-	toExecutable, err := st.GetBuiltinActorCode(to.Code)
+	toExecutable, err := vmCtx.state.GetBuiltinActorCode(vmCtx.to.Code)
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrap(err, "unable to load code for To actor")
 	}
 
-	if !toExecutable.Exports().Has(msg.Method) {
-		return nil, 1, errors.NewRevertErrorf("missing export: %s", msg.Method)
+	if !toExecutable.Exports().Has(vmCtx.message.Method) {
+		return nil, 1, errors.NewRevertErrorf("missing export: %s", vmCtx.message.Method)
 	}
 
-	return actor.MakeTypedExport(toExecutable, msg.Method)(vmCtx)
+	return actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
 }
 
 func transfer(fromActor, toActor *types.Actor, value *types.TokenAmount) error {

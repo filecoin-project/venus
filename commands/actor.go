@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -75,6 +76,8 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 			res = makeActorView(a, addrs[i], &account.Actor{})
 		case a.Code.Equals(types.StorageMarketActorCodeCid):
 			res = makeActorView(a, addrs[i], &storagemarket.Actor{})
+		case a.Code.Equals(types.PaymentBrokerActorCodeCid):
+			res = makeActorView(a, addrs[i], &paymentbroker.Actor{})
 		case a.Code.Equals(types.MinerActorCodeCid):
 			res = makeActorView(a, addrs[i], &miner.Actor{})
 		default:

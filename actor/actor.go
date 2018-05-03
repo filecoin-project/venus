@@ -20,6 +20,7 @@ import (
 //
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
+// TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
 func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFunc {
 	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
 	if !ok {
@@ -113,6 +114,16 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 func MarshalValue(val interface{}) ([]byte, error) {
 	switch t := val.(type) {
 	case *big.Int:
+		if t == nil {
+			return []byte{}, nil
+		}
+		return t.Bytes(), nil
+	case *types.ChannelID:
+		if t == nil {
+			return []byte{}, nil
+		}
+		return t.Bytes(), nil
+	case *types.BlockHeight:
 		if t == nil {
 			return []byte{}, nil
 		}

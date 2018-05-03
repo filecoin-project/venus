@@ -42,6 +42,9 @@ var AccountActorCodeCid *cid.Cid
 // StorageMarketActorCodeCid is the CID of the builtin storage market actor.
 var StorageMarketActorCodeCid *cid.Cid
 
+// PaymentBrokerActorCodeCid is the CID of the builtin payment broker actor.
+var PaymentBrokerActorCodeCid *cid.Cid
+
 // MinerActorCodeCid is the CID of the builtin miner actor.
 var MinerActorCodeCid *cid.Cid
 
@@ -61,5 +64,6 @@ func mustCidFromString(s string) *cid.Cid {
 func init() {
 	AccountActorCodeCid = mustCidFromString("accountactor")
 	StorageMarketActorCodeCid = mustCidFromString("storagemarket")
+	PaymentBrokerActorCodeCid = mustCidFromString("paymentbroker")
 	MinerActorCodeCid = mustCidFromString("mineractor")
 }

@@ -24,7 +24,7 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collatera
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
-	receipt, err := core.ApplyMessage(context.Background(), st, msg)
+	receipt, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	addr, err := types.NewAddressFromBytes(receipt.Return)
@@ -50,7 +50,7 @@ func TestAddAsk(t *testing.T) {
 	pdata := actor.MustConvertParams(types.NewTokenAmount(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(address.TestAddress, outAddr, 1, nil, "addAsk", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.Return))
 
@@ -73,7 +73,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewTokenAmount(110), types.NewBytesAmount(200))
 	msg = types.NewMessage(address.TestAddress, outAddr, 2, nil, "addAsk", pdata)
 
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(receipt.Return))
 
@@ -96,7 +96,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
 	msg = types.NewMessage(address.TestAddress, outAddr, 3, nil, "addAsk", pdata)
 
-	receipt, err = core.ApplyMessage(ctx, st, msg)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(receipt.Error, ErrInsufficientPledge.Error())
 }

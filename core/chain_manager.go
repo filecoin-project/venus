@@ -525,7 +525,7 @@ func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb f
 	// Historical blocks
 	historyCh := s.BlockHistory(ctx)
 
-	// Merge historical and new block channels.
+	// Merge historical and new block Channels.
 	go func() {
 		// TODO: accommodate a new chain being added, as opposed to just a single block.
 		for raw := range newBlockCh {
