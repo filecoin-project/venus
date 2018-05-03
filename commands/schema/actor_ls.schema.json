@@ -1,5 +1,6 @@
 {
   "definitions": {
+    "BytesAmount": { "type": "string" },
     "Export": {
       "type": "object",
       "properties": {
@@ -16,10 +17,10 @@
     "MinerMemory": {
       "type": "object",
       "properties": {
-        "Collateral": { "type": "number" },
-        "LockedStorage": { "type": "number" },
+        "Collateral": { "$ref": "#/definitions/TokenAmount" },
+        "LockedStorage": { "$ref": "#/definitions/BytesAmount" },
         "Owner": { "type": "string" },
-        "PledgeBytes": { "type": "number" }
+        "PledgeBytes": { "$ref": "#/definitions/BytesAmount" }
       },
       "required": ["Collateral", "LockedStorage", "Owner", "PledgeBytes"]
     },
@@ -68,8 +69,8 @@
       "type": "object",
       "properties": {
         "Target": { "type": "string" },
-        "Amount": { "type": "number" },
-        "AmountRedeemed":{ "type": "number" },
+        "Amount": { "$ref": "#/definitions/TokenAmount" },
+        "AmountRedeemed": { "$ref": "#/definitions/TokenAmount" },
         "Eol": { "type": "number" }
       }
     },
@@ -91,19 +92,19 @@
       "properties": {
         "id": { "type": "number" },
         "owner": { "type": "string" },
-        "price":{ "type": "number" },
-        "size": { "type": "number" }
+        "price":{ "$ref": "#/definitions/TokenAmount" },
+        "size": { "$ref": "#/definitions/BytesAmount" }
       },
       "required": ["id", "owner", "price", "size"]
     },
     "Bid": {
       "type": "object",
       "properties": {
-        "collateral": { "type": ["number", "null"] },
+        "collateral": { "type": ["string", "null"] },
         "id": { "type": "number" },
         "owner": { "type": "string" },
-        "price": { "type": "number" },
-        "size":{ "type": "number" },
+        "price": { "$ref": "#/definitions/TokenAmount" },
+        "size":{ "$ref": "#/definitions/BytesAmount" },
         "used":{ "type": "boolean" }
       },
       "required": ["collateral", "id", "owner", "price", "size", "used"]
@@ -134,7 +135,8 @@
         "memory": { "type": ["object", "null"] }
       },
       "required": ["address", "code", "nonce", "balance", "exports", "actorType", "memory"]
-    }
+    },
+    "TokenAmount": { "type": "string" }
   },
   "allOf": [
     {
@@ -150,9 +152,7 @@
                 "AccountActor"
               ]
             },
-            "balance": {
-              "type": "number"
-            }
+            "balance": { "$ref": "#/definitions/TokenAmount" }
           },
           "required": [
             "balance"

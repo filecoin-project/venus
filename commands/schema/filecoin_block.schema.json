@@ -96,7 +96,7 @@
           "type": "string"
         },
         "value": {
-          "type": "integer"
+          "$ref": "#/definitions/TokenAmount"
         }
       },
       "required": [
@@ -139,6 +139,9 @@
         "return"
       ],
       "type": "object"
+    },
+    "TokenAmount": {
+      "type": "string"
     }
   }
 }

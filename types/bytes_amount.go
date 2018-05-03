@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/json"
-	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 	"math/big"
+
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+	"gx/ipfs/QmbBhyDKsY4mbY6xsKt3qu9Y7FPvMJ6qbD8AMjYYvPRw1g/goleveldb/leveldb/errors"
+	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
 // NOTE -- All *BytesAmount methods must call ensureBytesAmounts with refs to every user-supplied value before use.
@@ -40,18 +42,24 @@ var bytesAmountAtlasEntry = atlas.BuildEntry(BytesAmount{}).Transform().
 
 // UnmarshalJSON converts a byte array to a BytesAmount.
 func (z *BytesAmount) UnmarshalJSON(b []byte) error {
-	var i big.Int
-	if err := json.Unmarshal(b, &i); err != nil {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	*z = BytesAmount{val: &i}
+
+	bytes, ok := NewBytesAmountFromString(s, 10)
+	if !ok {
+		return errors.New("Cannot convert string to bytes amount")
+	}
+
+	*z = *bytes
 
 	return nil
 }
 
 // MarshalJSON converts a BytesAmount to a byte array and returns it.
 func (z BytesAmount) MarshalJSON() ([]byte, error) {
-	return json.Marshal(z.val)
+	return json.Marshal(z.val.String())
 }
 
 // An BytesAmount represents a signed multi-precision integer.

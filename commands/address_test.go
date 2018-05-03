@@ -35,16 +35,16 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] not found, zero")
 	balance := d.RunSuccess("wallet", "balance", addr)
-	assert.Equal(balance.readStdoutTrimNewlines(), "0")
+	assert.Equal("0", balance.readStdoutTrimNewlines())
 
 	t.Log("[success] balance 10000000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal(balance.readStdoutTrimNewlines(), "10000000")
+	assert.Equal("10000000", balance.readStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("wallet addrs new")
 	balance = d.RunSuccess("wallet", "balance", addrNew.readStdoutTrimNewlines())
-	assert.Equal(balance.readStdoutTrimNewlines(), "0")
+	assert.Equal("0", balance.readStdoutTrimNewlines())
 }
 
 func TestAddrsLookup(t *testing.T) {

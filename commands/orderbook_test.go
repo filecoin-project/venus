@@ -28,7 +28,7 @@ func TestBidList(t *testing.T) {
 
 	list := d.RunSuccess("orderbook", "bids").ReadStdout()
 	for i := 0; i < 10; i++ {
-		assert.Contains(list, fmt.Sprintf("\"price\":%d", i))
+		assert.Contains(list, fmt.Sprintf("\"price\":\"%d\"", i))
 	}
 
 }
@@ -53,7 +53,7 @@ func TestAskList(t *testing.T) {
 
 	list := d.RunSuccess("orderbook", "asks").ReadStdout()
 	for i := 0; i < 10; i++ {
-		assert.Contains(list, fmt.Sprintf("\"price\":%d", i))
+		assert.Contains(list, fmt.Sprintf("\"price\":\"%d\"", i))
 	}
 
 }

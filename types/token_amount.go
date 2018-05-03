@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
+	"math/big"
+
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
-	"math/big"
 )
 
 // NOTE -- ALL *TokenAmount methods must call ensureBytesAmounts with refs to every user-supplied value before use.
@@ -40,18 +42,23 @@ var tokenAmountAtlasEntry = atlas.BuildEntry(TokenAmount{}).Transform().
 
 // UnmarshalJSON converts a byte array to a TokenAmount.
 func (z *TokenAmount) UnmarshalJSON(b []byte) error {
-	var i big.Int
-	if err := json.Unmarshal(b, &i); err != nil {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	*z = TokenAmount{val: &i}
+	token, ok := NewTokenAmountFromString(s, 10)
+	if !ok {
+		return errors.New("cannot convert string to token amount")
+	}
+
+	*z = *token
 
 	return nil
 }
 
 // MarshalJSON converts a TokenAmount to a byte array and returns it.
 func (z TokenAmount) MarshalJSON() ([]byte, error) {
-	return json.Marshal(z.val)
+	return json.Marshal(z.val.String())
 }
 
 // An TokenAmount represents a signed multi-precision integer.
