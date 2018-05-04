@@ -58,6 +58,31 @@ func TestAskList(t *testing.T) {
 
 }
 
-// TODO when PR 190 merges
 func TestDealList(t *testing.T) {
+	assert := assert.New(t)
+
+	// make a client
+	client := NewDaemon(t).Start()
+	defer func() { t.Log(client.ReadStderr()) }()
+	defer client.ShutdownSuccess()
+
+	// make a miner
+	miner := NewDaemon(t).Start()
+	defer func() { t.Log(miner.ReadStderr()) }()
+	defer miner.ShutdownSuccess()
+
+	// make friends
+	client.ConnectSuccess(miner)
+
+	// make a deal
+	dealData := "how linked lists will change the world"
+	dealDataCid := client.MakeDeal(dealData, miner)
+
+	// both the miner and client can get the deal
+	// with the expected cid inside
+	cliDealO := client.RunSuccess("orderbook", "deals")
+	minDealO := miner.RunSuccess("orderbook", "deals")
+	assert.Contains(cliDealO.ReadStdout(), dealDataCid)
+	assert.Contains(minDealO.ReadStdout(), dealDataCid)
+
 }

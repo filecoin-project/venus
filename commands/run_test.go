@@ -348,6 +348,54 @@ func (td *TestDaemon) Config() *config.Config {
 	return cfg
 }
 
+// MakeDeal will make a deal with the miner `miner`, using data `dealData`.
+// MakeDeal will return the cid of `dealData`
+func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
+	// need money
+	td.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+	td.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+
+	miner.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+	miner.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20)
+
+	m := miner.CreateMinerAddr()
+
+	askO := miner.RunSuccess(
+		"miner", "add-ask",
+		"--from", miner.Config().Mining.RewardAddress.String(),
+		m.String(), "1200", "1",
+	)
+	miner.RunSuccess("mining", "once")
+	miner.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
+
+	td.RunSuccess(
+		"client", "add-bid",
+		"--from", td.Config().Mining.RewardAddress.String(),
+		"500", "1",
+	)
+	td.RunSuccess("mining", "once")
+	time.Sleep(time.Millisecond * 20) // wait for block propagation
+
+	buf := strings.NewReader(dealData)
+	o := td.RunWithStdin(buf, "client", "import").AssertSuccess()
+	ddCid := strings.TrimSpace(o.ReadStdout())
+
+	negidO := td.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", ddCid)
+
+	time.Sleep(time.Millisecond * 20)
+	miner.RunSuccess("mining", "once")
+
+	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
+	// ensure we have made the deal
+	td.RunSuccess("client", "query-deal", negid)
+	// return the cid for the dealData (ddCid)
+	return ddCid
+}
+
 func tryAPICheck(td *TestDaemon) error {
 	url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
 	resp, err := http.Get(url)
