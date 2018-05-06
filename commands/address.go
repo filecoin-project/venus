@@ -3,10 +3,9 @@ package commands
 import (
 	"fmt"
 	"io"
-	"math/big"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -126,7 +125,7 @@ var balanceCmd = &cmds.Command{
 		if err != nil {
 			if state.IsActorNotFoundError(err) {
 				// if the account doesn't exit, the balance should be zero
-				re.Emit(big.NewInt(0)) // nolint: errcheck
+				re.Emit(types.NewTokenAmount(0)) // nolint: errcheck
 				return nil
 			}
 			return err
