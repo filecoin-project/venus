@@ -103,7 +103,24 @@ func lint(packages ...string) {
 }
 
 func build() {
-	log.Println("Building...")
+	buildFilecoin()
+	buildFakecoin()
+}
+
+func buildFakecoin() {
+	log.Println("Building go-fakecoin...")
+	log.Println(
+		runParts(
+			"go", "build",
+			"-o", "tools/go-fakecoin/go-fakecoin",
+			"-v",
+			"./tools/go-fakecoin",
+		),
+	)
+}
+
+func buildFilecoin() {
+	log.Println("Building go-filecoin...")
 
 	commit := run("git log -n 1 --format=%H")
 
@@ -143,6 +160,10 @@ func main() {
 		deps()
 	case "lint":
 		lint(args[1:]...)
+	case "build-fakecoin":
+		buildFakecoin()
+	case "build-filecoin":
+		buildFilecoin()
 	case "build":
 		build()
 	case "test":
