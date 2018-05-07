@@ -110,7 +110,7 @@ requiring mutiple round trips from someone whose next availability
 
 | Stage | What is it for? |
 |---|---|
-| Icebox | Things we decided not to do for now |
+| Icebox | Things we decided not to do for now. |
 | Backlog | New issues |
 | Ready | Issues move here after they have good descriptions, acceptance criteria, and initial estimates. |
 | This Sprint | Selected by team for current sprint. Looking for work? Start here. |
