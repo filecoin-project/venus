@@ -110,17 +110,18 @@ requiring mutiple round trips from someone whose next availability
 
 | Stage | What is it for? |
 |---|---|
+| Icebox | Things we decided not to do for now. |
 | Backlog | New issues |
 | Ready | Issues move here after they have good descriptions, acceptance criteria, and initial estimates. |
 | This Sprint | Selected by team for current sprint. Looking for work? Start here. |
 | In Progress | When you start work on an issue, move here and assign yourself. |
-| Awaiting Review | For PRs and issues. Move here manually when you create a PR. |
+| Review/QA | For PRs and issues. Move here manually when you create a PR. |
 | Blocked | If you are working on something but get stuck because of external factors. |
-| Done | :tada:|
+| Closed | :tada:|
 
 - The first and last stages are kept up-to-date automatically. 
    - New issues created in `go-filecoin` show up automatically in `Backlog`
-   - When a PR is merged, the referenced issues are closed and moved to `Done`.
+   - When a PR is merged, the referenced issues are closed and moved to `Closed`.
 - All other stages are updated manually.
 - All work you are doing should be tracked through an issue. If an issue doesn't exist, create one.
 
@@ -216,10 +217,10 @@ Likely future requirements:
 
 #### Workflow
 * When creating a pull request:
-  * Move the corresponding issue into `Awaiting Review`
+  * Move the corresponding issue into `Review/QA`
   * Assign reviewers to the pull request
   * Place pull request into `This Sprint`.
-* Once something is merged to `master` close the issue and move it to `Done`. (Closing an issue moves it to `Done` automatically)
+* Once something is merged to `master` close the issue and move it to `Closed`. (Closing an issue moves it to `Closed` automatically)
 * In PRs and commit messages, reference the issue(s) you are addressing with [keywords](https://help.github.com/articles/closing-issues-using-keywords/) like `Closes #123`.
 
 #### Style
