@@ -223,6 +223,10 @@ Likely future requirements:
 * Once something is merged to `master` close the issue and move it to `Closed`. (Closing an issue moves it to `Closed` automatically)
 * In PRs and commit messages, reference the issue(s) you are addressing with [keywords](https://help.github.com/articles/closing-issues-using-keywords/) like `Closes #123`.
 
+#### Size
+* PRs should modify no more than 400 lines or 8 files
+* If unavoidable to make a larger PR break changes into clearly scoped commits.  It is ok if individual commits do not build when making the PR, only squashed commits are required to build.
+
 #### Style
 * Always squash commits.
 * Anyone is free to merge but slight preference to let the creator

@@ -411,10 +411,7 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 	s.Pieces = append(s.Pieces, pi)
 
 	err = s.sectorBuilder.checkpointSectorMeta(s) // TODO: make this a method of Sector.
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // PublicParameters is
