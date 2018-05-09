@@ -13,6 +13,8 @@ func TestMessageSend(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
+	d.RunSuccess("mining", "once")
+
 	t.Log("[failure] invalid target")
 	d.RunFail(
 		"invalid checksum",
@@ -21,8 +23,8 @@ func TestMessageSend(t *testing.T) {
 		"--value=10", "xyz",
 	)
 
-	t.Log("[failure] no from")
-	d.RunFail("missing from", "message", "send", address.TestAddress.String())
+	t.Log("[success] default from")
+	d.RunSuccess("message", "send", address.TestAddress.String())
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",

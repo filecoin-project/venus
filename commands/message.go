@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
@@ -52,12 +51,7 @@ var msgSendCmd = &cmds.Command{
 			val = 0
 		}
 
-		from, ok := req.Options["from"].(string)
-		if !ok {
-			return fmt.Errorf("missing from address")
-		}
-
-		fromAddr, err := types.NewAddressFromString(from)
+		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
 			return err
 		}
