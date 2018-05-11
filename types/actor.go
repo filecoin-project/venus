@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
@@ -99,4 +100,10 @@ func (a *Actor) Unmarshal(b []byte) error {
 // Marshal the actor into bytes.
 func (a *Actor) Marshal() ([]byte, error) {
 	return cbor.DumpObject(a)
+}
+
+// Format implements fmt.Formatter.
+func (a *Actor) Format(f fmt.State, c rune) {
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", ActorCodeTypeName(a.Code), a, a.Balance,
+		a.Nonce)))
 }

@@ -61,9 +61,29 @@ func mustCidFromString(s string) *cid.Cid {
 	return c
 }
 
+// ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
+var ActorCodeCidTypeNames = make(map[*cid.Cid]string)
+
 func init() {
 	AccountActorCodeCid = mustCidFromString("accountactor")
 	StorageMarketActorCodeCid = mustCidFromString("storagemarket")
 	PaymentBrokerActorCodeCid = mustCidFromString("paymentbroker")
 	MinerActorCodeCid = mustCidFromString("mineractor")
+
+	// New Actors need to be added here.
+	// TODO: Make this work with reflection -- but note that nasty import cycles lie on that path.
+	// This is good enough for now.
+	ActorCodeCidTypeNames[AccountActorCodeCid] = "AccountActor"
+	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
+	ActorCodeCidTypeNames[PaymentBrokerActorCodeCid] = "PaymentBrokerActor"
+	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
+}
+
+// ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
+func ActorCodeTypeName(code *cid.Cid) string {
+	name, ok := ActorCodeCidTypeNames[code]
+	if ok {
+		return name
+	}
+	return "UnknownActor"
 }

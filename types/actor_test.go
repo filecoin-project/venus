@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,4 +57,25 @@ func TestActorMemory(t *testing.T) {
 	// write overflow
 	actor.WriteStorage([]byte{1, 2, 3, 4})
 	assert.Equal(actor.ReadStorage(), []byte{1, 2, 3, 4})
+}
+
+func TestActorFormat(t *testing.T) {
+	assert := assert.New(t)
+	accountActor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+
+	formatted := fmt.Sprintf("%v", accountActor)
+	assert.Contains(formatted, "AccountActor")
+	assert.Contains(formatted, "balance: 5")
+	assert.Contains(formatted, "nonce: 0")
+
+	minerActor := NewActorWithMemory(MinerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	formatted = fmt.Sprintf("%v", minerActor)
+
+	assert.Contains(formatted, "MinerActor")
+
+	storageMarketActor := NewActorWithMemory(StorageMarketActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	formatted = fmt.Sprintf("%v", storageMarketActor)
+
+	paymentBrokerActor := NewActorWithMemory(PaymentBrokerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	formatted = fmt.Sprintf("%v", paymentBrokerActor)
 }
