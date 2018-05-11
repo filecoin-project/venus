@@ -163,6 +163,11 @@ func ParseError(addr string) error {
 	return nil
 }
 
+// Empty returns true if the address is empty.
+func (a Address) Empty() bool {
+	return a == (Address{})
+}
+
 // Network returns the network of the address.
 func (a Address) Network() Network {
 	return a[0]

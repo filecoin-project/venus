@@ -20,33 +20,48 @@ func TestMinerCreateSuccess(t *testing.T) {
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
+	tf := func(fromAddress types.Address, expectSuccess bool) {
+		args := []string{"miner", "create"}
+		if !fromAddress.Empty() {
+			args = append(args, "--from", fromAddress.String())
+		}
+		args = append(args, "1000000", "20")
+		if !expectSuccess {
+			d.RunFail(ErrCouldNotDefaultFromAddress.Error(), args...)
+			return
+		}
+		miner := d.RunSuccess(args...)
+		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
+		require.NoError(t, err)
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			wait := d.RunSuccess("message", "wait",
+				"--return",
+				"--message=false",
+				"--receipt=false",
+				minerMessageCid.String(),
+			)
+			addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
+			assert.NoError(err)
+			assert.NotEqual(addr, types.Address{})
+			wg.Done()
+		}()
+
+		d.RunSuccess("mining once")
+		wg.Wait()
+	}
+
+	// If there's one address, --from can be omitted and we should default
+	tf(address.TestAddress, true)
+	tf(types.Address{}, true)
+
+	// If there's more than one, then --from must be specified
 	d.CreateWalletAddr()
-
-	miner := d.RunSuccess("miner", "create",
-		"--from", address.TestAddress.String(), "1000000", "20",
-	)
-	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	require.NoError(t, err)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		wait := d.RunSuccess("message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			minerMessageCid.String(),
-		)
-		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, types.Address{})
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-
-	wg.Wait()
+	tf(types.Address{}, false)
+	tf(address.TestAddress, true)
 }
 
 func TestMinerCreateFail(t *testing.T) {

@@ -19,7 +19,7 @@ func fromAddress(opts cmdkit.OptMap, node *node.Node) (ret types.Address, err er
 		if len(node.Wallet.Addresses()) == 1 {
 			ret = node.Wallet.Addresses()[0]
 		} else {
-			err = errors.New("no from address specified and no default address available")
+			err = ErrCouldNotDefaultFromAddress
 		}
 	}
 	return

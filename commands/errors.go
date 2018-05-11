@@ -35,4 +35,9 @@ var (
 
 	// ErrNoWalletAddresses indicates that there are no addresses in wallet to mine to.
 	ErrNoWalletAddresses = fmt.Errorf("no addresses in wallet to mine to")
+
+	// ErrCouldNotDefaultFromAddress indicates that the user didn't specify the
+	// "from" address and we couldn't default it because there were zero or
+	// more than one to choose from.
+	ErrCouldNotDefaultFromAddress = errors.New("no from address specified and no default address available")
 )
