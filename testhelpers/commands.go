@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -41,9 +40,18 @@ func (to *TextOutput) Equals(s string) bool {
 	return to.Raw == s
 }
 
+// RunCommandJSONEnc delegates to RunCommand, configuring opts to use JSON encoding
+func RunCommandJSONEnc(root *cmds.Command, args []string, opts map[string]interface{}, env cmds.Environment) (*TextOutput, error) {
+	if opts == nil {
+		opts = map[string]interface{}{}
+	}
+	opts[cmds.EncLong] = cmds.JSON
+	return RunCommand(root, args, opts, env)
+}
+
 // RunCommand is used to simulate calls to the commands library
 func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, env cmds.Environment) (*TextOutput, error) {
-	ctx := context.Background()
+	ctx := env.Context()
 	req, err := cmds.NewRequest(ctx, []string{}, opts, args, nil, root)
 	if err != nil {
 		return nil, err
