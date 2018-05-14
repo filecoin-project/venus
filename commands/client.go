@@ -6,7 +6,6 @@ import (
 	"io"
 
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	chunk "gx/ipfs/QmWo8jYc19ppG7YoTsrr2kEtLRbARTJho5oNXFTR6B7Peq/go-ipfs-chunker"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
@@ -49,9 +48,9 @@ var clientAddBidCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
+		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return errors.Wrap(err, "invalid from address")
+			return err
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)

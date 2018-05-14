@@ -20,6 +20,12 @@ func init() {
 	}
 }
 
+func TestEmptyAddress(t *testing.T) {
+	assert := assert.New(t)
+	assert.True((Address{}).Empty())
+	assert.False(NewMainnetAddress(hashes[0]).Empty())
+}
+
 func TestNewAddress(t *testing.T) {
 	assert := assert.New(t)
 

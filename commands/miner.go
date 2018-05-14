@@ -40,9 +40,9 @@ message to be mined as this is required to return the address of the new miner.`
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
+		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return errors.Wrap(err, "invalid from address")
+			return err
 		}
 
 		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
@@ -101,9 +101,9 @@ var minerAddAskCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
-		fromAddr, err := types.NewAddressFromString(req.Options["from"].(string))
+		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return errors.Wrap(err, "invalid from address")
+			return err
 		}
 
 		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
