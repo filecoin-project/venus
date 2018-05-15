@@ -17,7 +17,7 @@ import (
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/keystore"
+	keystore "gx/ipfs/QmReLVNTb7c6eg1w3GTdQ9iNAo9yVu1NUX8QsDyoj7nXNN/go-ipfs-keystore"
 )
 
 const configFilename = "config.toml"

@@ -176,6 +176,12 @@
       "hash": "QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6",
       "name": "go-ipfs",
       "version": "0.4.15-rc1"
+    },
+    {
+      "author": "zenground0",
+      "hash": "QmReLVNTb7c6eg1w3GTdQ9iNAo9yVu1NUX8QsDyoj7nXNN",
+      "name": "go-ipfs-keystore",
+      "version": "0.0.2"
     }
   ],
   "gxVersion": "0.12.1",

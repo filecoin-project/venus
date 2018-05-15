@@ -4,8 +4,7 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/keystore"
-	kss "github.com/filecoin-project/go-filecoin/keystore/sync"
+	keystore "gx/ipfs/QmReLVNTb7c6eg1w3GTdQ9iNAo9yVu1NUX8QsDyoj7nXNN/go-ipfs-keystore"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dss "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/sync"
@@ -30,7 +29,7 @@ func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
 		C:       config.NewDefaultConfig(),
 		D:       dss.MutexWrap(datastore.NewMapDatastore()),
-		Ks:      kss.MutexWrap(keystore.NewMemKeystore()),
+		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
 		version: Version,
 	}

@@ -4,7 +4,7 @@ import (
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/keystore"
+	keystore "gx/ipfs/QmReLVNTb7c6eg1w3GTdQ9iNAo9yVu1NUX8QsDyoj7nXNN/go-ipfs-keystore"
 )
 
 // Version is the current repo version that we require for a valid repo.
