@@ -35,7 +35,6 @@ func TestActorLs(t *testing.T) {
 		})
 		nd := node.MakeNodesUnstarted(t, 1, true)[0]
 		tcm := (*core.ChainManagerForTest)(nd.ChainMgr)
-		tcm.SetBestBlockForTest(ctx, nil)
 		nd.ChainMgr = tcm
 
 		err := runActorLs(ctx, emitter.emit, nd, getActorsNoOp)
