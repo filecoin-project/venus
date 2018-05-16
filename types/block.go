@@ -34,6 +34,15 @@ type Block struct {
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 }
 
+// Parents returns the set of parents for the block.
+// TODO: This is temporary until we change the struct to support parents directly.
+func (b *Block) Parents() []*cid.Cid {
+	if b.Parent == nil {
+		return nil
+	}
+	return []*cid.Cid{b.Parent}
+}
+
 // Cid returns the content id of this block.
 func (b *Block) Cid() *cid.Cid {
 	return b.ToNode().Cid()

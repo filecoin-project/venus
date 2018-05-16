@@ -85,13 +85,19 @@ type ChainManager struct {
 	// genesisCid holds the cid of the chains genesis block for later access
 	genesisCid *cid.Cid
 
+	// Protects knownGoodBlocks and tipsIndex.
+	mu sync.Mutex
+
 	// knownGoodBlocks is a cache of 'good blocks'. It is a cache to prevent us
 	// from having to rescan parts of the blockchain when determining the
 	// validity of a given chain.
 	// In the future we will need a more sophisticated mechanism here.
 	// TODO: this should probably be an LRU, needs more consideration.
 	// For example, the genesis block should always be considered a "good" block.
-	knownGoodBlocks SyncCidSet
+	knownGoodBlocks *cid.Set
+
+	// Tracks tipsets by height/parentset for use by expected consensus. Not currently used.
+	tips tipIndex
 
 	cstore *hamt.CborIpldStore
 
@@ -113,10 +119,11 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 		ds:              ds,
 		processor:       ProcessBlock,
 		BestBlockPubSub: pubsub.New(128),
+		knownGoodBlocks: cid.NewSet(),
+		tips:            tipIndex{},
 	}
 	cm.FetchBlock = cm.fetchBlock
 	cm.GetBestBlock = cm.getBestBlock
-	cm.knownGoodBlocks.set = cid.NewSet()
 
 	return cm
 }
@@ -149,9 +156,11 @@ func (s *ChainManager) setBestBlock(ctx context.Context, b *types.Block) error {
 		return errors.Wrap(err, "failed to put block to disk")
 	}
 	s.bestBlock.blk = b // TODO: make a copy?
-	s.knownGoodBlocks.Add(b.Cid())
 
-	if err := putCid(ctx, s.ds, bestBlockKey, b.Cid()); err != nil {
+	id := b.Cid()
+	s.addBlock(b, id)
+
+	if err := putCid(ctx, s.ds, bestBlockKey, id); err != nil {
 		return errors.Wrap(err, "failed to write bestBlockCid to datastore")
 	}
 
@@ -185,7 +194,7 @@ func (s *ChainManager) Load() error {
 
 	for blk.Parent != nil {
 		// TODO: hrm... adding these in reverse order
-		s.knownGoodBlocks.Add(blk.Cid())
+		s.addBlock(blk, blk.Cid())
 		next, err := s.fetchBlock(context.TODO(), blk.Parent)
 		if err != nil {
 			return errors.Wrap(err, "scanning blockchain failed")
@@ -353,7 +362,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 		}
 
 		// TODO: check that state transitions are valid once we have them
-		s.knownGoodBlocks.Add(cur.Cid())
+		s.addBlock(cur, cur.Cid())
 	}
 
 	outCid, err := st.Flush(ctx)
@@ -405,7 +414,20 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 }
 
 func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
-	return bc.Equals(s.genesisCid) || s.knownGoodBlocks.Has(bc)
+	if bc.Equals(s.genesisCid) {
+		return true
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.knownGoodBlocks.Has(bc)
+}
+
+func (s *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.knownGoodBlocks.Add(id)
+	s.tips.addBlock(b)
 }
 
 // InformNewBlock informs the chainmanager that we learned about a potentially
