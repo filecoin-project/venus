@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	logging "gx/ipfs/QmPuosXfnE2Xrdiw95D78AhW41GYwGqpstKMf4TEsE4f33/go-log"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
-	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"

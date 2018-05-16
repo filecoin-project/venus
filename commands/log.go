@@ -3,10 +3,9 @@ package commands
 import (
 	"io"
 
+	writer "gx/ipfs/QmPuosXfnE2Xrdiw95D78AhW41GYwGqpstKMf4TEsE4f33/go-log/writer"
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
-
-	writer "github.com/ipfs/go-log/writer"
 )
 
 var logCmd = &cmds.Command{
