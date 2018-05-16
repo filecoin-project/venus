@@ -2,6 +2,7 @@ package paymentbroker_test
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -9,13 +10,13 @@ import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -108,7 +109,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	target := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// channel creator's address is our signature for now.
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
@@ -142,7 +143,7 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	target := addressGetter()
 	_, st := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// update message from payer instead of target results in error
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
@@ -179,7 +180,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	wrongTargetActor := core.RequireNewAccountActor(require, types.NewTokenAmount(0))
 	st.SetActor(ctx, wrongTargetAddress, wrongTargetActor)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// message originating from actor other than channel results in revert error
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
@@ -201,7 +202,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// redeeming more than channel contains is an error
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(1100), payer)
@@ -223,7 +224,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// redeem some
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(500), payer)
@@ -255,7 +256,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
@@ -279,7 +280,7 @@ func TestPaymentBrokerClose(t *testing.T) {
 	targetAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, targetAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, targetAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payerAddress, targetAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	payerActor := state.MustGetActor(st, payerAddress)
 
@@ -316,7 +317,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payerAddress, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	payer := state.MustGetActor(st, payerAddress)
 	payerBalancePriorToClose := payer.Balance
@@ -347,7 +348,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	targetAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, targetAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, targetAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payerAddress, targetAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	pdata := core.MustConvertParams(channelID)
 	msg := types.NewMessage(payerAddress, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "reclaim", pdata)
@@ -371,7 +372,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	target := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// extend channel
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(20))
@@ -414,7 +415,7 @@ func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	_ = establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	_ = establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// extend channel
 	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
@@ -435,7 +436,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
 
 	// extend channel setting block height to 5 (<10)
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(5))
@@ -448,9 +449,157 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	assert.Contains(string(receipt.ReturnValue()), "payment channel eol may not be decreased")
 }
 
-func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, amt *types.TokenAmount, eol *types.BlockHeight) *types.ChannelID {
+func TestPaymentBrokerLs(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	t.Run("Successfully returns channels", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		payer := address.TestAddress
+		target1 := types.NewAddressForTestGetter()()
+		target2 := types.NewAddressForTestGetter()()
+		_, st := requireGenesis(ctx, t, target1)
+		targetActor2 := core.RequireNewAccountActor(require, types.NewTokenAmount(0))
+		st.SetActor(ctx, target2, targetActor2)
+
+		channelId1 := establishChannel(ctx, st, payer, target1, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+		channelId2 := establishChannel(ctx, st, payer, target2, 1, types.NewTokenAmount(2000), types.NewBlockHeight(20))
+
+		// retrieve channels
+		params, err := abi.ToEncodedValues(payer)
+		require.NoError(err)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 2, types.NewTokenAmount(0), "ls", params)
+
+		returnValue, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(9))
+		require.NoError(err)
+		assert.Equal(uint8(0), exitCode)
+
+		channels := make(map[string]*PaymentChannel)
+		err = cbor.DecodeInto(returnValue, &channels)
+		require.NoError(err)
+
+		assert.Equal(2, len(channels))
+
+		pc1, found := channels[channelId1.String()]
+		require.True(found)
+		assert.Equal(target1, pc1.Target)
+		assert.Equal(types.NewTokenAmount(1000), pc1.Amount)
+		assert.Equal(types.NewTokenAmount(0), pc1.AmountRedeemed)
+		assert.Equal(types.NewBlockHeight(10), pc1.Eol)
+
+		pc2, found := channels[channelId2.String()]
+		require.True(found)
+		assert.Equal(target2, pc2.Target)
+		assert.Equal(types.NewTokenAmount(2000), pc2.Amount)
+		assert.Equal(types.NewTokenAmount(0), pc2.AmountRedeemed)
+		assert.Equal(types.NewBlockHeight(20), pc2.Eol)
+	})
+
+	t.Run("Returns empty map when payer has no channels", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		payer := address.TestAddress
+		target1 := types.NewAddressForTestGetter()()
+		_, st := requireGenesis(ctx, t, target1)
+
+		// retrieve channels
+		params, err := abi.ToEncodedValues(payer)
+		require.NoError(err)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "ls", params)
+
+		returnValue, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(9))
+		require.NoError(err)
+		assert.Equal(uint8(0), exitCode)
+
+		channels := make(map[string]*PaymentChannel)
+		err = cbor.DecodeInto(returnValue, &channels)
+		require.NoError(err)
+
+		assert.Equal(0, len(channels))
+	})
+}
+
+func TestNewPaymentBrokerVoucher(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	t.Run("Returns valid voucher", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		payer := address.TestAddress
+		target := types.NewAddressForTestGetter()()
+		_, st := requireGenesis(ctx, t, target)
+
+		channelID := establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+
+		// create voucher
+		voucherAmount := types.NewTokenAmount(100)
+		pdata := core.MustConvertParams(channelID, voucherAmount)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "voucher", pdata)
+
+		returnValue, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(9))
+		require.NoError(err)
+		assert.Equal(uint8(0), exitCode)
+
+		voucher := PaymentVoucher{}
+		err = cbor.DecodeInto(returnValue, &voucher)
+		require.NoError(err)
+
+		assert.Equal(*channelID, voucher.Channel)
+		assert.Equal(payer, voucher.Payer)
+		assert.Equal(target, voucher.Target)
+		assert.Equal(*voucherAmount, voucher.Amount)
+	})
+
+	t.Run("Errors when channel does not exist", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		payer := address.TestAddress
+		target := types.NewAddressForTestGetter()()
+		_, st := requireGenesis(ctx, t, target)
+
+		_ = establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+		notChannelID := types.NewChannelID(999)
+
+		// create voucher
+		voucherAmount := types.NewTokenAmount(100)
+		pdata := core.MustConvertParams(notChannelID, voucherAmount)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "voucher", pdata)
+
+		_, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(9))
+		assert.NotEqual(uint8(0), exitCode)
+		assert.Contains(fmt.Sprintf("%v", err), "unknown")
+	})
+
+	t.Run("Errors when voucher exceed channel amount", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		payer := address.TestAddress
+		target := types.NewAddressForTestGetter()()
+		_, st := requireGenesis(ctx, t, target)
+
+		channelID := establishChannel(ctx, st, payer, target, 0, types.NewTokenAmount(1000), types.NewBlockHeight(10))
+
+		// create voucher
+		voucherAmount := types.NewTokenAmount(2000)
+		pdata := core.MustConvertParams(channelID, voucherAmount)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "voucher", pdata)
+
+		_, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(9))
+		assert.NotEqual(uint8(0), exitCode)
+		assert.Contains(fmt.Sprintf("%v", err), "exceeds amount")
+	})
+}
+
+func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, nonce uint64, amt *types.TokenAmount, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
-	msg := types.NewMessage(from, address.PaymentBrokerAddress, 0, amt, "createChannel", pdata)
+	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)

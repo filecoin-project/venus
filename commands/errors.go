@@ -18,11 +18,17 @@ var (
 	// ErrInvalidPrice indicates that the provided price was invalid.
 	ErrInvalidPrice = fmt.Errorf("invalid price")
 
+	// ErrInvalidAmount indicates that the provided amount was invalid.
+	ErrInvalidAmount = fmt.Errorf("invalid amount")
+
 	// ErrInvalidCollateral indicates that provided collateral was invalid.
 	ErrInvalidCollateral = fmt.Errorf("invalid collateral")
 
 	// ErrInvalidPledge indicates that provided pledge was invalid.
 	ErrInvalidPledge = fmt.Errorf("invalid pledge")
+
+	// ErrInvalidBlockHeight indicates that the provided block height was invalid.
+	ErrInvalidBlockHeight = fmt.Errorf("invalid block height")
 
 	// ErrLatestBlockStateRootNil indicates that the state root in latest block was nil.
 	ErrLatestBlockStateRootNil = fmt.Errorf("state root in latest block was nil")

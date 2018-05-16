@@ -184,6 +184,36 @@ var (
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
 
+// ApplyQueryMessage sends a message into the VM to query actor state. Only read-only methods should be called on
+// the actor as the state tree will be rolled back after the execution.
+func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) ([]byte, uint8, error) {
+	fromActor, err := st.GetActor(ctx, msg.From)
+	if state.IsActorNotFoundError(err) {
+		return nil, 1, errAccountNotFound
+	} else if err != nil {
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get From actor %s", msg.From)
+	}
+
+	if msg.From == msg.To {
+		return nil, 1, errSelfSend
+	}
+
+	toActor, err := st.GetActor(ctx, msg.To)
+	if err != nil {
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
+	}
+
+	snap := st.Snapshot()
+
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, bh)
+	ret, retCode, err := vm.Send(ctx, vmCtx)
+
+	// ensure no changes made to state tree live survive ouside this method.
+	st.RevertTo(snap)
+
+	return ret, retCode, err
+}
+
 // attemptApplyMessage encapsulates the work of trying to apply the message in order
 // to make ApplyMessage more readable. The distinction is that attemptApplyMessage
 // should deal with trying got apply the message to the state tree whereas

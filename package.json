@@ -168,6 +168,12 @@
     },
     {
       "author": "whyrusleeping",
+      "hash": "QmexBtiTTEwwn42Yi6ouKt6VqzpA6wjJgiW1oh9VfaRrup",
+      "name": "go-multibase",
+      "version": "0.2.6"
+    },
+    {
+      "author": "whyrusleeping",
       "hash": "QmYMTCRFe7Xgw2v47vqcxwDCPvkqafvdEbrZ2fFGK7u2VR",
       "name": "iptb",
       "version": "1.2.6"

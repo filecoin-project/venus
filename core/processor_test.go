@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
+	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -259,4 +259,48 @@ func TestNestedSendBalance(t *testing.T) {
 	})
 
 	assert.True(expStCid.Equals(gotStCid))
+}
+
+func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	// Install the fake actor so we can execute it.
+	fakeActorCodeCid := types.NewCidForTestGetter()()
+	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	defer func() {
+		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+	}()
+
+	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
+	act0 := RequireNewAccountActor(require, types.NewTokenAmount(101))
+	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(102))
+	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(0))
+
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr0: act0,
+		addr1: act1,
+		addr2: act2,
+	})
+
+	// pre-execution state
+	preCid, err := st.Flush(ctx)
+	require.NoError(err)
+
+	// send 100 from addr1 -> addr2, by sending a message from addr0 to addr1
+	params1, err := abi.ToEncodedValues(addr2)
+	assert.NoError(err)
+	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
+
+	_, exitCode, err := ApplyQueryMessage(ctx, st, msg1, types.NewBlockHeight(0))
+	require.Equal(uint8(0), exitCode)
+	require.NoError(err)
+
+	// post-execution state
+	postCid, err := st.Flush(ctx)
+	require.NoError(err)
+	assert.True(preCid.Equals(postCid))
 }
