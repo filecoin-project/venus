@@ -27,15 +27,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/binpack"
 	"github.com/filecoin-project/paper-porep-drg/go-porep/drg"
 	"github.com/filecoin-project/paper-porep-drg/go-porep/drg/drgraph"
 )
 
 func init() {
 	cbor.RegisterCborType(PieceInfo{})
-	cbor.RegisterCborType(SectorMetadata{})
-	cbor.RegisterCborType(SealedSectorMetadata{})
-	cbor.RegisterCborType(SectorBuilderMetadata{})
 }
 
 // ErrPieceTooLarge is an error indicating that a piece cannot be larger than the sector into which it is written.
@@ -69,6 +67,7 @@ type SectorBuilder struct {
 	SealedSectors []*SealedSector
 	G             *drgraph.Graph
 	Prover        *drg.Prover
+	Packer        binpack.Packer
 
 	stagingDir string
 	sealedDir  string
@@ -114,68 +113,60 @@ type SealedSector struct {
 	file     *os.File
 }
 
-// SectorMetadata represent the persistent metadata associated with a Sector.
-type SectorMetadata struct {
-	StagingPath string
-	Pieces      []*PieceInfo
-	Size        uint64
-	Free        uint64
-	MerkleRoot  []byte
+// Implement binpack.Binner
+
+// AddItem implements binpack.Binner.
+func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin binpack.Bin) error {
+	pi := item.(*PieceInfo)
+	s := bin.(*Sector)
+	root, err := sb.dserv.Get(ctx, pi.Ref)
+	if err != nil {
+		return err
+	}
+
+	r, err := uio.NewDagReader(ctx, root, sb.dserv)
+	if err != nil {
+		return err
+	}
+
+	if err := s.WritePiece(pi, r); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// SealedSectorMetadata represent the persistent metadata associated with a SealedSector.
-type SealedSectorMetadata struct {
-	MerkleRoot      []byte
-	Label           string
-	BaseSectorLabel string
-	SealedPath      string
+// CloseBin implements binpack.Binner.
+func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
+	go func() {
+		err := sb.SealAndPostSector(context.Background(), bin.(*Sector))
+		if err != nil {
+			panic(err)
+		}
+	}()
 }
 
-// SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
-type SectorBuilderMetadata struct {
-	Miner         types.Address
-	Sectors       []string
-	SealedSectors []string
+// NewBin implements binpack.Binner.
+func (sb *SectorBuilder) NewBin() (binpack.Bin, error) {
+	return sb.NewSector()
 }
 
-// SectorMetadata returns the metadata associated with a Sector.
-func (s *Sector) SectorMetadata() *SectorMetadata {
-	meta := &SectorMetadata{
-		StagingPath: s.filename,
-		Pieces:      s.Pieces,
-		Size:        s.Size,
-		Free:        s.Free,
-		MerkleRoot:  []byte{},
-	}
-	if s.sealed != nil {
-		meta.MerkleRoot = s.sealed.merkleRoot
-	}
-	return meta
+// BinSize implements binpack.Binner.
+func (sb *SectorBuilder) BinSize() binpack.Space {
+	return binpack.Space(sb.sectorSize)
 }
 
-// SealedSectorMetadata returns the metadata associated with a SealedSector.
-func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
-	meta := &SealedSectorMetadata{
-		MerkleRoot:      ss.merkleRoot,
-		Label:           ss.label,
-		BaseSectorLabel: ss.baseSector.Label,
-		SealedPath:      ss.filename,
-	}
-	return meta
+// ItemSize implements binpack.Binner.
+func (sb *SectorBuilder) ItemSize(item binpack.Item) binpack.Space {
+	return binpack.Space(item.(*PieceInfo).Size)
 }
 
-// SectorBuilderMetadata returns the metadata associated with a SectorBuilderMetadata.
-func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
-	meta := SectorBuilderMetadata{
-		Miner:         sb.MinerAddr,
-		Sectors:       []string{sb.CurSector.Label},
-		SealedSectors: make([]string, len(sb.SealedSectors)),
-	}
-	for i, sealed := range sb.SealedSectors {
-		meta.SealedSectors[i] = sealed.label
-	}
-	return &meta
+// SpaceAvailable implements binpack.Binner.
+func (sb *SectorBuilder) SpaceAvailable(bin binpack.Bin) binpack.Space {
+	return binpack.Space(bin.(*Sector).Free)
 }
+
+// End binpack.Binner implementation
 
 // NewSector allocates and returns a new Sector with file initialized, along with any error.
 func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
@@ -224,6 +215,7 @@ func (sb *SectorBuilder) NewSealedSector(replicaData []byte, merkleRoot []byte, 
 // NewSectorBuilder creates a new sector builder from the given node
 func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
 	g := drgraph.New(sectorSize / nodeSize)
+
 	sb := &SectorBuilder{
 		G:          g,
 		Prover:     drg.NewProver("cats", g, nodeSize),
@@ -241,61 +233,32 @@ func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, 
 		return nil, err
 	}
 	sb.CurSector = s
+
+	packer, firstBin, err := binpack.NewNaivePacker(sb)
+	if err != nil {
+		return nil, err
+	}
+	sb.CurSector = firstBin.(*Sector)
+	sb.Packer = packer
+
 	return sb, sb.checkpoint()
-}
-
-func (sb *SectorBuilder) checkpoint() error {
-	sector := sb.CurSector
-	if err := sb.checkpointBuilderMeta(); err != nil {
-		return err
-	}
-	if err := sb.checkpointSectorMeta(sector); err != nil {
-		return err
-	}
-	if sector.sealed != nil {
-		return sb.checkpointSealedMeta(sector.sealed)
-	}
-	return nil
-
 }
 
 // AddPiece writes the given piece into a sector
 func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
-	if pi.Size > sb.CurSector.Size {
+	bin, err := sb.Packer.AddItem(ctx, pi)
+	if err == binpack.ErrItemTooLarge {
 		return ErrPieceTooLarge
 	}
-	if sb.CurSector.Free < pi.Size {
-		// No room for piece in current sector.
-		oldSector := sb.CurSector
-		newSector, err := sb.NewSector()
-		if err != nil {
-			return err
+	if err == nil {
+		if bin == nil {
+			// What does this signify? Could use to signal something.
+			panic("no bin returned from Packer.AddItem")
 		}
-		sb.CurSector = newSector
-
-		go func() {
-			err := sb.SealAndPostSector(context.Background(), oldSector)
-			if err != nil {
-				panic(err)
-			}
-		}()
+		sb.CurSector = bin.(*Sector)
 	}
 
-	root, err := sb.dserv.Get(ctx, pi.Ref)
-	if err != nil {
-		return err
-	}
-
-	r, err := uio.NewDagReader(ctx, root, sb.dserv)
-	if err != nil {
-		return err
-	}
-
-	if err := sb.CurSector.WritePiece(pi, r); err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 var filecoinParameters = &PublicParameters{
@@ -522,105 +485,4 @@ func (sb *SectorBuilder) merkleFilepath(ss *SealedSector) (string, error) {
 
 func merkleString(merkleRoot []byte) string {
 	return base32.StdEncoding.EncodeToString(merkleRoot)
-}
-
-func (sb *SectorBuilder) metadataKey(label string) ds.Key {
-	path := []string{"sectors", "metadata"}
-	return ds.KeyWithNamespaces(path).Instance(label)
-}
-
-func (sb *SectorBuilder) sealedMetadataKey(merkleRoot []byte) ds.Key {
-	path := []string{"sealedSectors", "metadata"}
-	return ds.KeyWithNamespaces(path).Instance(merkleString(merkleRoot))
-}
-
-func (sb *SectorBuilder) builderMetadataKey(minerAddress types.Address) ds.Key {
-	path := []string{"sectors", "metadata"}
-	return ds.KeyWithNamespaces(path).Instance(minerAddress.String())
-}
-
-// GetMeta returns SectorMetadata for sector labeled, label, and any error.
-func (sb *SectorBuilder) GetMeta(label string) (*SectorMetadata, error) {
-	key := sb.metadataKey(label)
-
-	data, err := sb.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	var m SectorMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
-		return nil, err
-	}
-	return &m, err
-}
-
-// GetSealedMeta returns SealedSectorMetadata for merkleRoot, and any error.
-func (sb *SectorBuilder) GetSealedMeta(merkleRoot []byte) (*SealedSectorMetadata, error) {
-	key := sb.sealedMetadataKey(merkleRoot)
-
-	data, err := sb.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	var m SealedSectorMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
-		return nil, err
-	}
-
-	return &m, err
-}
-
-// GetBuilderMeta returns SectorBuilderMetadata for SectorBuilder, sb, and any error.
-func (sb *SectorBuilder) GetBuilderMeta(minerAddress types.Address) (*SectorBuilderMetadata, error) {
-	key := sb.builderMetadataKey(minerAddress)
-
-	data, err := sb.store.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	var m SectorBuilderMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
-		return nil, err
-	}
-	return &m, err
-}
-
-func (sb *SectorBuilder) setMeta(label string, meta *SectorMetadata) error {
-	key := sb.metadataKey(label)
-	data, err := cbor.DumpObject(meta)
-	if err != nil {
-		return err
-	}
-	return sb.store.Put(key, data)
-}
-
-func (sb *SectorBuilder) setSealedMeta(merkleRoot []byte, meta *SealedSectorMetadata) error {
-	key := sb.sealedMetadataKey(merkleRoot)
-	data, err := cbor.DumpObject(meta)
-	if err != nil {
-		return err
-	}
-	return sb.store.Put(key, data)
-}
-
-func (sb *SectorBuilder) setBuilderMeta(minerAddress types.Address, meta *SectorBuilderMetadata) error {
-	key := sb.metadataKey(minerAddress.String())
-	data, err := cbor.DumpObject(meta)
-	if err != nil {
-		return err
-	}
-	return sb.store.Put(key, data)
-}
-
-// TODO: only actually set if changed.
-func (sb *SectorBuilder) checkpointSectorMeta(s *Sector) error {
-	return sb.setMeta(s.Label, s.SectorMetadata())
-}
-
-func (sb *SectorBuilder) checkpointSealedMeta(ss *SealedSector) error {
-	return sb.setSealedMeta(ss.merkleRoot, ss.SealedSectorMetadata())
-}
-
-func (sb *SectorBuilder) checkpointBuilderMeta() error {
-	return sb.setBuilderMeta(sb.MinerAddr, sb.SectorBuilderMetadata())
 }

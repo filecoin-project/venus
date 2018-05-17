@@ -17,7 +17,7 @@ import (
 
 var sectorDirsForTest = &repo.MemRepo{}
 
-func TestWhatever(t *testing.T) {
+func TestSimple(t *testing.T) {
 	require := require.New(t)
 	nd := MakeOfflineNode(t)
 	sb := requireSectorBuilder(require, nd, 50)

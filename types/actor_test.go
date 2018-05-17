@@ -70,12 +70,13 @@ func TestActorFormat(t *testing.T) {
 
 	minerActor := NewActorWithMemory(MinerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", minerActor)
-
 	assert.Contains(formatted, "MinerActor")
 
 	storageMarketActor := NewActorWithMemory(StorageMarketActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", storageMarketActor)
+	assert.Contains(formatted, "StorageMarketActor")
 
 	paymentBrokerActor := NewActorWithMemory(PaymentBrokerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", paymentBrokerActor)
+	assert.Contains(formatted, "PaymentBrokerActor")
 }

@@ -236,7 +236,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	// TODO: initialize SectorBuilder from metadata.
 	nd.SectorBuilder = sb
 
 	return nd, nil
