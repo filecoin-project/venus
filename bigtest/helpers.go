@@ -77,13 +77,8 @@ func MustHaveChainLengthBy(r *require.Assertions, size int, wait time.Duration, 
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
-	go func() {
-		wg.Wait()
-		done <- struct{}{}
-	}()
-
-	wg.Add(len(nodes))
 	for _, n := range nodes {
+		wg.Add(1)
 		go func(n iptb.TestbedNode) {
 			for {
 				out := MustRunIPTB(r, n, "go-filecoin", "chain", "ls", "--enc=json")
@@ -96,6 +91,11 @@ func MustHaveChainLengthBy(r *require.Assertions, size int, wait time.Duration, 
 			}
 		}(n)
 	}
+
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
 
 	select {
 	case <-done:
@@ -111,13 +111,8 @@ func MustHaveCidInPoolBy(r *require.Assertions, cid string, wait time.Duration, 
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
-	go func() {
-		wg.Wait()
-		done <- struct{}{}
-	}()
-
-	wg.Add(len(nodes))
 	for _, n := range nodes {
+		wg.Add(1)
 		go func(n iptb.TestbedNode) {
 			for {
 				out := MustRunIPTB(r, n, "go-filecoin", "mpool")
@@ -129,6 +124,11 @@ func MustHaveCidInPoolBy(r *require.Assertions, cid string, wait time.Duration, 
 			}
 		}(n)
 	}
+
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
 
 	select {
 	case <-done:
