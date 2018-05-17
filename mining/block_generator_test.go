@@ -119,7 +119,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	assert.Len(pool.Pending(), 4)
 	baseBlock := types.Block{
-		Parent:    newCid(),
+		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
@@ -150,7 +150,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
-		Parent:    newCid(),
+		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
@@ -186,7 +186,7 @@ func TestGenerateError(t *testing.T) {
 
 	assert.Len(pool.Pending(), 1)
 	baseBlock := types.Block{
-		Parent:    newCid(),
+		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}

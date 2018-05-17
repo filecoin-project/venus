@@ -19,7 +19,7 @@ import (
 // MkChild creates a new block with parent, blk, and supplied nonce.
 func MkChild(blk *types.Block, nonce uint64) *types.Block {
 	return &types.Block{
-		Parent:          blk.Cid(),
+		Parents:         types.NewSortedCidSet(blk.Cid()),
 		Height:          blk.Height + 1,
 		Nonce:           nonce,
 		StateRoot:       blk.StateRoot,
@@ -136,7 +136,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root *types.Block, msgSets 
 	for _, msgs := range msgSets {
 		child := &types.Block{Messages: msgs}
 		if parent != nil {
-			child.Parent = parent.Cid()
+			child.Parents = types.NewSortedCidSet(parent.Cid())
 			child.Height = parent.Height + 1
 		}
 		MustPut(store, child)

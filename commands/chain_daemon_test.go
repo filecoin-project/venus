@@ -40,7 +40,7 @@ func TestChainDaemon(t *testing.T) {
 		}
 
 		assert.Equal(2, len(bs))
-		assert.Nil(bs[1].Parent)
+		assert.True(bs[1].Parents.Empty())
 		assert.True(c.Equals(bs[0].Cid()))
 	})
 
@@ -58,6 +58,6 @@ func TestChainDaemon(t *testing.T) {
 		err := json.Unmarshal([]byte(result), &b)
 		require.NoError(err)
 
-		assert.Nil(b.Parent)
+		assert.True(b.Parents.Empty())
 	})
 }

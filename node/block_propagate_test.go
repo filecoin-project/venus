@@ -49,7 +49,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk := &types.Block{Parent: baseBlk.Cid(), Height: 1, StateRoot: baseBlk.StateRoot}
+	nextBlk := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: 1, StateRoot: baseBlk.StateRoot}
 
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 50)
@@ -71,9 +71,9 @@ func TestChainSync(t *testing.T) {
 	defer stopNodes(nodes)
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk1 := &types.Block{Parent: baseBlk.Cid(), Height: 1, StateRoot: baseBlk.StateRoot}
-	nextBlk2 := &types.Block{Parent: nextBlk1.Cid(), Height: 2, StateRoot: baseBlk.StateRoot}
-	nextBlk3 := &types.Block{Parent: nextBlk2.Cid(), Height: 3, StateRoot: baseBlk.StateRoot}
+	nextBlk1 := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: 1, StateRoot: baseBlk.StateRoot}
+	nextBlk2 := &types.Block{Parents: types.NewSortedCidSet(nextBlk1.Cid()), Height: 2, StateRoot: baseBlk.StateRoot}
+	nextBlk3 := &types.Block{Parents: types.NewSortedCidSet(nextBlk2.Cid()), Height: 3, StateRoot: baseBlk.StateRoot}
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

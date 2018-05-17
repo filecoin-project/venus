@@ -184,27 +184,34 @@ func (s *ChainManager) Load() error {
 	// actually, i think that the chainmanager should only ever fetch from
 	// the local disk unless we're syncing. Its something that needs more
 	// thought at least.
-	blk, err := s.fetchBlock(context.TODO(), bbc)
+	headBlk, err := s.FetchBlock(context.TODO(), bbc)
 	if err != nil {
-		return errors.Wrap(err, "scanning blockchain failed")
+		return errors.Wrap(err, "failed to load head block")
 	}
 
-	headBlk := blk
-
-	for blk.Parent != nil {
-		// TODO: hrm... adding these in reverse order
-		s.addBlock(blk, blk.Cid())
-		next, err := s.fetchBlock(context.TODO(), blk.Parent)
-		if err != nil {
-			return errors.Wrap(err, "scanning blockchain failed")
+	var genesii []*types.Block
+	err = s.walkChain(headBlk, func(tips []*types.Block) (cont bool, err error) {
+		for _, t := range tips {
+			id := t.Cid()
+			s.addBlock(t, id)
 		}
-
-		blk = next
+		genesii = tips
+		return true, nil
+	})
+	if err != nil {
+		return err
 	}
 
-	// TODO: probably want to load the expected genesis block and assert it here?
-	s.genesisCid = blk.Cid()
-	s.bestBlock.blk = headBlk
+	switch len(genesii) {
+	case 1:
+		// TODO: probably want to load the expected genesis block and assert it here?
+		s.genesisCid = genesii[0].Cid()
+		s.bestBlock.blk = headBlk
+	case 0:
+		panic("unreached")
+	default:
+		panic("invalid chain - more than one genesis block found")
+	}
 
 	return nil
 }
@@ -381,35 +388,42 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 // that form the chain back to it.
 func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (*types.Block, []*types.Block, error) {
 	log.LogKV(ctx, "findKnownAncestor", tip.Cid().String())
+
+	var baseBlk *types.Block
+	var path []*types.Block
+
 	// TODO: should be some sort of limit here
 	// Some implementations limit the length of a chain that can be swapped.
 	// Historically, bitcoin does not, this is purely for religious and
 	// idealogical reasons. In reality, if a weeks worth of blocks is about to
 	// be reverted, the system should opt to halt, not just happily switch over
 	// to an entirely different chain.
-	var validating []*types.Block
-	baseBlk := tip
-	for !s.isKnownGoodBlock(baseBlk.Cid()) {
-		if baseBlk.Parent == nil {
-			return nil, nil, ErrInvalidBase
+
+	err := s.walkChain(tip, func(tips []*types.Block) (cont bool, err error) {
+		if len(tips) > 1 {
+			panic("todo - multiple parents not implemented yet")
 		}
-
-		validating = append(validating, baseBlk)
-
-		next, err := s.FetchBlock(ctx, baseBlk.Parent)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "fetch block failed")
+		next := tips[0]
+		if s.isKnownGoodBlock(next.Cid()) {
+			baseBlk = next
+			return false, nil
 		}
-
+		path = append(path, next)
 		if err := s.validateBlockStructure(ctx, next); err != nil {
-			return nil, nil, err
+			return false, errors.Wrap(err, "validate block failed")
 		}
+		return true, nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
 
-		baseBlk = next
+	if baseBlk == nil {
+		return nil, nil, ErrInvalidBase
 	}
 
 	log.LogKV(ctx, "foundAncestor", baseBlk.Cid().String())
-	return baseBlk, validating, nil
+	return baseBlk, path, nil
 }
 
 func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
@@ -504,21 +518,21 @@ func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
 
 	go func() {
 		defer close(out)
-		for {
+		err := s.walkChain(blk, func(tips []*types.Block) (cont bool, err error) {
+			for _, t := range tips {
+				select {
+				case <-ctx.Done():
+					return false, nil
+				case out <- t:
+					continue
+				}
+			}
+			return true, nil
+		})
+		if err != nil {
 			select {
 			case <-ctx.Done():
-				return
-			case out <- blk:
-				if blk.Parent == nil {
-					return
-				}
-				var err error
-				blk, err = s.FetchBlock(ctx, blk.Parent)
-				if err != nil {
-					log.Errorf("failed to fetch block: %s", err)
-					out <- err
-					return
-				}
+			case out <- err:
 			}
 		}
 	}()
@@ -583,4 +597,40 @@ func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb f
 	}
 
 	return retErr
+}
+
+// Called for each step in the walk for walkChain(). The path contains all nodes traversed,
+// including all tips at each height. Return true to continue walking, false to stop.
+type walkChainCallback func(tips []*types.Block) (cont bool, err error)
+
+// walkChain walks backward through the chain, starting at blk, invoking cb() at each height.
+func (s *ChainManager) walkChain(blk *types.Block, cb walkChainCallback) error {
+	tips := []*types.Block{blk}
+
+	for {
+		cont, err := cb(tips)
+		if err != nil {
+			return errors.Wrap(err, "error processing block")
+		}
+		if !cont {
+			return nil
+		}
+
+		ids := tips[0].Parents
+		if ids.Empty() {
+			break
+		}
+
+		tips = tips[:0]
+		for it := ids.Iter(); !it.Complete(); it.Next() {
+			pid := it.Value()
+			p, err := s.FetchBlock(context.TODO(), pid)
+			if err != nil {
+				return errors.Wrap(err, "error fetching block")
+			}
+			tips = append(tips, p)
+		}
+	}
+
+	return nil
 }
