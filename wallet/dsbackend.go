@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dsq "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/query"
+	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -84,34 +85,40 @@ func (backend *DSBackend) HasAddress(addr types.Address) bool {
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
 func (backend *DSBackend) NewAddress() (types.Address, error) {
-	// TODO: do actual crypto
-	fakeAddrBuf := make([]byte, 20)
-	if _, err := rand.Read(fakeAddrBuf); err != nil {
-		// if rand.Read errors we have a problem
-		panic(err)
-	}
-
-	hash, err := types.AddressHash(fakeAddrBuf)
+	// Generate a key pair
+	priv, pub, err := ci.GenerateSecp256k1Key(rand.Reader)
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	// TODO: use the address type we are running on from the config
-	fakeAddr := types.NewMainnetAddress(hash)
+	bpub, err := pub.Bytes()
+	if err != nil {
+		return types.Address{}, err
+	}
 
-	fakePrivKey := make([]byte, 40)
-	if _, err := rand.Read(fakePrivKey); err != nil {
-		panic(err)
+	// address is based on the public key this is what allows you to get
+	// money out of the actor, if you have the matching priv for the address
+	adderHash, err := types.AddressHash(bpub)
+	if err != nil {
+		return types.Address{}, err
+	}
+	// TODO: use the address type we are running on from the config
+	newAdder := types.NewMainnetAddress(adderHash)
+
+	bpriv, err := priv.Bytes()
+	if err != nil {
+		return types.Address{}, err
 	}
 
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
-	if err := backend.ds.Put(ds.NewKey(fakeAddr.String()), fakePrivKey); err != nil {
+	// persist address (pubkey) and its corresponding priv key
+	if err := backend.ds.Put(ds.NewKey(newAdder.String()), bpriv); err != nil {
 		return types.Address{}, errors.Wrap(err, "failed to store new address")
 	}
 
-	backend.cache[fakeAddr] = struct{}{}
+	backend.cache[newAdder] = struct{}{}
 
-	return fakeAddr, nil
+	return newAdder, nil
 }
