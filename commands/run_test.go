@@ -351,14 +351,14 @@ func (td *TestDaemon) Config() *config.Config {
 
 // MineAndPropagate mines a block and ensure the block has propogated to all `peers`
 // by comparing the current head block of `td` with the head block of each peer in `peers`
-func (td *TestDaemon) MineAndPropagate(peers ...*TestDaemon) {
+func (td *TestDaemon) MineAndPropagate(wait time.Duration, peers ...*TestDaemon) {
 	td.RunSuccess("mining", "once")
 	// short circuit
 	if peers == nil {
 		return
 	}
 	// ensure all peers have same chain head as `td`
-	td.MustHaveChainHeadBy((time.Second * 3), peers)
+	td.MustHaveChainHeadBy(wait, peers)
 }
 
 // MustHaveChainHeadBy ensures all `peers` have the same chain head as `td`, by
@@ -423,16 +423,20 @@ func (td *TestDaemon) MustUnmarshalChain(input string) []types.Block {
 // MakeMoney mines a block and receives the block reward
 func (td *TestDaemon) MakeMoney(rewards int) {
 	for i := 0; i < rewards; i++ {
-		td.MineAndPropagate()
+		td.MineAndPropagate(time.Second * 1)
 	}
 }
 
 // MakeDeal will make a deal with the miner `miner`, using data `dealData`.
 // MakeDeal will return the cid of `dealData`
 func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
-	// need 2 monies each
+
+	// The daemons need 2 monies each.
 	td.MakeMoney(2)
 	miner.MakeMoney(2)
+
+	// How long to wait for miner blocks to propagate to other nodes
+	propWait := time.Second * 3
 
 	m := miner.CreateMinerAddr()
 
@@ -441,7 +445,7 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 		"--from", miner.Config().Mining.RewardAddress.String(),
 		m.String(), "1200", "1",
 	)
-	miner.MineAndPropagate(td)
+	miner.MineAndPropagate(propWait, td)
 	miner.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
 
 	td.RunSuccess(
@@ -449,7 +453,7 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 		"--from", td.Config().Mining.RewardAddress.String(),
 		"500", "1",
 	)
-	td.MineAndPropagate(miner)
+	td.MineAndPropagate(propWait, miner)
 
 	buf := strings.NewReader(dealData)
 	o := td.RunWithStdin(buf, "client", "import").AssertSuccess()
@@ -458,7 +462,7 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 	negidO := td.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", ddCid)
 	time.Sleep(time.Millisecond * 20)
 
-	miner.MineAndPropagate(td)
+	miner.MineAndPropagate(propWait, td)
 
 	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
 	// ensure we have made the deal
