@@ -275,11 +275,11 @@ func (td *TestDaemon) ShutdownSuccess() {
 	assert.NotContains(td.test, tdOut, "WARNING")
 }
 
-func (td *TestDaemon) Kill() {
-	if err := td.process.Process.Kill(); err != nil {
-		td.test.Errorf("Daemon Stderr:\n%s", td.ReadStderr())
-		td.test.Fatalf("Failed to kill daemon %s", err)
-	}
+func (td *TestDaemon) ShutdownEasy() {
+	err := td.process.Process.Signal(syscall.SIGINT)
+	assert.NoError(td.test, err)
+	tdOut := td.ReadStderr()
+	assert.NoError(td.test, err, tdOut)
 }
 
 func (td *TestDaemon) WaitForAPI() error {
