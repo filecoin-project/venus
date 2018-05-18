@@ -78,7 +78,7 @@ var dealCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		for deal := range dealList {
+		for _, deal := range dealList {
 			re.Emit(deal) // nolint errcheck
 		}
 		return nil

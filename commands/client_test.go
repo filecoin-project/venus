@@ -73,6 +73,8 @@ func TestClientAddBidFail(t *testing.T) {
 }
 
 func TestProposeDeal(t *testing.T) {
+	assert := assert.New(t)
+
 	dcli := NewDaemon(t).Start()
 	defer func() { t.Log(dcli.ReadStderr()) }()
 	defer dcli.ShutdownSuccess()
@@ -122,7 +124,7 @@ func TestProposeDeal(t *testing.T) {
 	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
 	dcli.RunSuccess("client", "query-deal", negid)
 
-	// TODO: this command doesnt quite work
-	//dealO := dcli.RunSuccess("orderbook", "deals")
-	//t.Fatal(dealO.ReadStdout())
+	dealO := dcli.RunSuccess("orderbook", "deals")
+	// the data (cid) should be in the deals output
+	assert.Contains(dealO.ReadStdout(), data)
 }

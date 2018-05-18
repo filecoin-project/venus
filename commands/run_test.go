@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -346,6 +347,128 @@ func (td *TestDaemon) Config() *config.Config {
 	cfg, err := config.ReadFile(filepath.Join(td.repoDir, "config.toml"))
 	require.NoError(td.test, err)
 	return cfg
+}
+
+// MineAndPropagate mines a block and ensure the block has propogated to all `peers`
+// by comparing the current head block of `td` with the head block of each peer in `peers`
+func (td *TestDaemon) MineAndPropagate(wait time.Duration, peers ...*TestDaemon) {
+	td.RunSuccess("mining", "once")
+	// short circuit
+	if peers == nil {
+		return
+	}
+	// ensure all peers have same chain head as `td`
+	td.MustHaveChainHeadBy(wait, peers)
+}
+
+// MustHaveChainHeadBy ensures all `peers` have the same chain head as `td`, by
+// duration `wait`
+func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemon) {
+	// will signal all nodes have completed check
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+
+	expHead := td.GetChainHead()
+
+	for _, p := range peers {
+		wg.Add(1)
+		go func(p *TestDaemon) {
+			for {
+				actHead := p.GetChainHead()
+				if expHead.Cid().Equals(actHead.Cid()) {
+					wg.Done()
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+		}(p)
+	}
+
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+		return
+	case <-time.After(wait):
+		td.test.Fatal("Timeout waiting for chains to sync")
+	}
+}
+
+// GetChainHead returns the head block from `td`
+func (td *TestDaemon) GetChainHead() types.Block {
+	out := td.RunSuccess("chain", "ls", "--enc=json")
+	bc := td.MustUnmarshalChain(out.ReadStdout())
+	return bc[0]
+}
+
+// MustUnmarshalChain unmarshals the chain from `input` into a slice of blocks
+func (td *TestDaemon) MustUnmarshalChain(input string) []types.Block {
+	chain := strings.Trim(input, "\n")
+	var bs []types.Block
+
+	for _, line := range bytes.Split([]byte(chain), []byte{'\n'}) {
+		var b types.Block
+		if err := json.Unmarshal(line, &b); err != nil {
+			td.test.Fatal(err)
+		}
+		bs = append(bs, b)
+	}
+
+	return bs
+}
+
+// MakeMoney mines a block and receives the block reward
+func (td *TestDaemon) MakeMoney(rewards int) {
+	for i := 0; i < rewards; i++ {
+		td.MineAndPropagate(time.Second * 1)
+	}
+}
+
+// MakeDeal will make a deal with the miner `miner`, using data `dealData`.
+// MakeDeal will return the cid of `dealData`
+func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
+
+	// The daemons need 2 monies each.
+	td.MakeMoney(2)
+	miner.MakeMoney(2)
+
+	// How long to wait for miner blocks to propagate to other nodes
+	propWait := time.Second * 3
+
+	m := miner.CreateMinerAddr()
+
+	askO := miner.RunSuccess(
+		"miner", "add-ask",
+		"--from", miner.Config().Mining.RewardAddress.String(),
+		m.String(), "1200", "1",
+	)
+	miner.MineAndPropagate(propWait, td)
+	miner.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
+
+	td.RunSuccess(
+		"client", "add-bid",
+		"--from", td.Config().Mining.RewardAddress.String(),
+		"500", "1",
+	)
+	td.MineAndPropagate(propWait, miner)
+
+	buf := strings.NewReader(dealData)
+	o := td.RunWithStdin(buf, "client", "import").AssertSuccess()
+	ddCid := strings.TrimSpace(o.ReadStdout())
+
+	negidO := td.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", ddCid)
+	time.Sleep(time.Millisecond * 20)
+
+	miner.MineAndPropagate(propWait, td)
+
+	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
+	// ensure we have made the deal
+	td.RunSuccess("client", "query-deal", negid)
+	// return the cid for the dealData (ddCid)
+	return ddCid
 }
 
 func tryAPICheck(td *TestDaemon) error {
