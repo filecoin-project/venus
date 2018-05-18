@@ -19,7 +19,7 @@ func TestMiningChain(t *testing.T) {
 	assert := assert.New(t)
 
 	// things to fiddle with
-	numNodes := 50
+	numNodes := 5
 	chainPropDuration := 5 * time.Second
 
 	// Start and Connect numNode
