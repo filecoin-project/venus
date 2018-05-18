@@ -85,27 +85,39 @@ func (backend *DSBackend) HasAddress(addr types.Address) bool {
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
 func (backend *DSBackend) NewAddress() (types.Address, error) {
-	// Generate a key pair
+	// Generate a key pair that may be used to authenticate messages
+	// from an address.
 	priv, pub, err := ci.GenerateSecp256k1Key(rand.Reader)
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	bpub, err := pub.Bytes()
+	// Zero out the public and private keys for security reasons.
+	// TODO: We need a common way to zero out sensitive data
+	var bpriv []byte
+	var bpub []byte
+	defer func() {
+		priv = nil
+		pub = nil
+		bpriv = bpriv[:cap(bpriv)]
+		bpub = bpub[:cap(bpriv)]
+	}()
+
+	bpub, err = pub.Bytes()
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	// address is based on the public key this is what allows you to get
-	// money out of the actor, if you have the matching priv for the address
+	// An address is derived from a public key. This is what allows you to get
+	// money out of the actor, if you have the matching private key for the address.
 	adderHash, err := types.AddressHash(bpub)
 	if err != nil {
 		return types.Address{}, err
 	}
-	// TODO: use the address type we are running on from the config
+	// TODO: Use the address type we are running on from the config.
 	newAdder := types.NewMainnetAddress(adderHash)
 
-	bpriv, err := priv.Bytes()
+	bpriv, err = priv.Bytes()
 	if err != nil {
 		return types.Address{}, err
 	}
@@ -113,7 +125,7 @@ func (backend *DSBackend) NewAddress() (types.Address, error) {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
-	// persist address (pubkey) and its corresponding priv key
+	// Persist the address (public key) and its corresponding private key.
 	if err := backend.ds.Put(ds.NewKey(newAdder.String()), bpriv); err != nil {
 		return types.Address{}, errors.Wrap(err, "failed to store new address")
 	}

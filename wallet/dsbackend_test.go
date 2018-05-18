@@ -54,7 +54,7 @@ func TestDSBackendUnmarshalPrivateKey(t *testing.T) {
 	t.Log("address is stored")
 	assert.True(fs.HasAddress(addr))
 
-	t.Log("address points to valid secret key")
+	t.Log("address points to a secret key")
 	bsk, err := ds.Get(datastore.NewKey(addr.String()))
 	assert.NoError(err)
 	sk, err := ci.UnmarshalPrivateKey(bsk.([]byte))
