@@ -14,7 +14,7 @@ func init() {
 
 // Block is a block in the blockchain.
 type Block struct {
-	Parent *cid.Cid `json:"parent"`
+	Parents SortedCidSet `json:"parents"`
 
 	// Height is the chain height of this block.
 	Height uint64 `json:"height"`
@@ -34,17 +34,10 @@ type Block struct {
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 }
 
-// Parents returns the set of parents for the block.
-// TODO: This is temporary until we change the struct to support parents directly.
-func (b *Block) Parents() []*cid.Cid {
-	if b.Parent == nil {
-		return nil
-	}
-	return []*cid.Cid{b.Parent}
-}
-
 // Cid returns the content id of this block.
 func (b *Block) Cid() *cid.Cid {
+	// TODO: Cache ToNode() and/or ToNode().Cid(). We should be able to do this efficiently using
+	// DeepEquals(), or perhaps our own Equals() interface.
 	return b.ToNode().Cid()
 }
 
@@ -54,13 +47,13 @@ func (b *Block) AddParent(p Block) error {
 	if b.Height != p.Height+1 {
 		return fmt.Errorf("child height %v != parent height %v+1", b.Height, p.Height)
 	}
-	b.Parent = p.Cid()
+	b.Parents.Add(p.Cid())
 	return nil
 }
 
-// IsParentOf returns true if the argument is the parent of the receiver.
+// IsParentOf returns true if the argument is a parent of the receiver.
 func (b Block) IsParentOf(c Block) bool {
-	return c.Parent != nil && c.Parent.Equals(b.Cid())
+	return c.Parents.Has(b.Cid())
 }
 
 // ToNode converts the Block to an IPLD node.

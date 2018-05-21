@@ -32,14 +32,13 @@
         "nonce": {
           "type": "integer"
         },
-        "parent": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "$ref": "#/definitions/Cid"
-            }
+        "parents": {
+          "items": {
+            "$ref": "#/definitions/Cid"
+          },
+          "type": [
+            "array",
+            "null"
           ]
         },
         "stateRoot": {
@@ -51,7 +50,7 @@
         "messageReceipts",
         "messages",
         "nonce",
-        "parent",
+        "parents",
         "stateRoot"
       ],
       "type": "object"

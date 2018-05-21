@@ -21,7 +21,7 @@ func (ti tipIndex) addBlock(b *types.Block) {
 type tipSetsByParents map[string]tipSet
 
 func (tsbp tipSetsByParents) addBlock(b *types.Block) {
-	key := keyForParentSet(b.Parents())
+	key := keyForParentSet(b.Parents)
 	ts := tsbp[key]
 	if ts == nil {
 		ts = tipSet{}
@@ -31,12 +31,10 @@ func (tsbp tipSetsByParents) addBlock(b *types.Block) {
 	tsbp[key] = ts
 }
 
-func keyForParentSet(parents []*cid.Cid) string {
-	// TODO: who should be responsible for sorting the cid set?
-	// Proposal: cid.Set should just always be sorted and we should use that here, not a slice.
+func keyForParentSet(parents types.SortedCidSet) string {
 	var k string
-	for _, id := range parents {
-		k += id.String()
+	for it := parents.Iter(); !it.Complete(); it.Next() {
+		k += it.Value().String()
 	}
 	return k
 }

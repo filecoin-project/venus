@@ -68,11 +68,15 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curBlock *types.Bl
 	msgs := []*types.Message{}
 	for curBlock.Height > height {
 		msgs = append(msgs, curBlock.Messages...)
-		if curBlock.Parent == nil {
+		switch curBlock.Parents.Len() {
+		case 0:
 			return msgs, nil
-		}
-		if err := store.Get(context.TODO(), curBlock.Parent, curBlock); err != nil {
-			return nil, err
+		case 1:
+			if err := store.Get(context.TODO(), curBlock.Parents.Iter().Value(), curBlock); err != nil {
+				return nil, err
+			}
+		default:
+			panic("multiple parents not supported yet")
 		}
 	}
 	return msgs, nil
@@ -124,13 +128,16 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	for !old.Cid().Equals(new.Cid()) {
 		addToPool = append(addToPool, old.Messages...)
 		removeFromPool = append(removeFromPool, new.Messages...)
-		if old.Parent == nil || new.Parent == nil {
+		if old.Parents.Empty() || new.Parents.Empty() {
 			break
 		}
-		if err := store.Get(ctx, old.Parent, &old); err != nil {
+		if old.Parents.Len() > 1 || new.Parents.Len() > 1 {
+			panic("unsupported - multiple parents")
+		}
+		if err := store.Get(ctx, old.Parents.Iter().Value(), &old); err != nil {
 			return err
 		}
-		if err := store.Get(ctx, new.Parent, &new); err != nil {
+		if err := store.Get(ctx, new.Parents.Iter().Value(), &new); err != nil {
 			return err
 		}
 	}

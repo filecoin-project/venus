@@ -67,7 +67,7 @@ func TestDecodeBlock(t *testing.T) {
 		assert.NoError(err)
 
 		before := &Block{
-			Parent:    c1,
+			Parents:   NewSortedCidSet(c1),
 			Height:    2,
 			Messages:  []*Message{m1, m2},
 			StateRoot: c2,
@@ -103,10 +103,10 @@ func TestEquals(t *testing.T) {
 	var n1 uint64 = 1234
 	var n2 uint64 = 9876
 
-	b1 := &Block{Parent: c1, Nonce: n1}
-	b2 := &Block{Parent: c1, Nonce: n1}
-	b3 := &Block{Parent: c1, Nonce: n2}
-	b4 := &Block{Parent: c2, Nonce: n1}
+	b1 := &Block{Parents: NewSortedCidSet(c1), Nonce: n1}
+	b2 := &Block{Parents: NewSortedCidSet(c1), Nonce: n1}
+	b3 := &Block{Parents: NewSortedCidSet(c1), Nonce: n2}
+	b4 := &Block{Parents: NewSortedCidSet(c2), Nonce: n1}
 	assert.True(b1.Equals(b1))
 	assert.True(b1.Equals(b2))
 	assert.False(b1.Equals(b3))
@@ -120,7 +120,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	var parent, child Block
 	child.Height = 1
 	child.Nonce = 2
-	child.Parent = parent.Cid()
+	child.Parents = NewSortedCidSet(parent.Cid())
 	child.StateRoot = parent.Cid()
 
 	mkMsg := NewMessageForTestGetter()
