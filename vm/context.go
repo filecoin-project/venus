@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -62,7 +61,7 @@ func (ctx *Context) BlockHeight() *types.BlockHeight {
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.
 func (ctx *Context) IsFromAccountActor() bool {
-	return types.AccountActorCodeCid.Equals(ctx.from.Code)
+	return ctx.from.Code != nil && types.AccountActorCodeCid.Equals(ctx.from.Code)
 }
 
 // Send sends a message to another actor.
@@ -91,7 +90,7 @@ func (ctx *Context) Send(to types.Address, method string, value *types.TokenAmou
 	}
 
 	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
-		return account.NewActor(nil)
+		return &types.Actor{}, nil
 	})
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
@@ -135,6 +134,16 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 
 // TEMPCreateActor is a temporary method to create actors.
 func (ctx *Context) TEMPCreateActor(addr types.Address, act *types.Actor) error {
+	// only allow write over empty actor
+	existingActor, _ := ctx.state.GetActor(context.TODO(), addr)
+	if existingActor != nil {
+		if existingActor.Code == nil {
+			// upgrade actor and transfer balance.
+			act.Balance = act.Balance.Add(existingActor.Balance)
+		} else {
+			return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
+		}
+	}
 	return ctx.state.SetActor(context.TODO(), addr, act)
 }
 

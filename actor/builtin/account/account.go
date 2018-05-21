@@ -37,7 +37,7 @@ func (state *Actor) NewStorage() interface{} {
 // ensure AccountActor is an ExecutableActor at compile time
 var _ exec.ExecutableActor = (*Actor)(nil)
 
-// NewActor creates a new actor.
+// NewActor creates a new account actor.
 func NewActor(balance *types.TokenAmount) (*types.Actor, error) {
 	storageBytes, err := actor.MarshalStorage(&Storage{})
 	if err != nil {

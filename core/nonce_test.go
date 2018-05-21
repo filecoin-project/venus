@@ -45,7 +45,7 @@ func TestNextNonce(t *testing.T) {
 
 		_, err = NextNonce(ctx, st, mp, address)
 		assert.Error(err)
-		assert.Contains(err.Error(), "not an account actor")
+		assert.Contains(err.Error(), "not an account or empty actor")
 	})
 
 	t.Run("account exists, gets correct value", func(t *testing.T) {

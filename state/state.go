@@ -39,7 +39,7 @@ type Tree interface {
 	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*types.Actor, error)) (*types.Actor, error)
 	SetActor(ctx context.Context, a types.Address, act *types.Actor) error
 
-	Snapshot() RevID
+	Snapshot(ctx context.Context) (RevID, error)
 	RevertTo(RevID)
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
@@ -88,11 +88,17 @@ func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 // revid, then set it when RevertTo is called. This obviously keeps
 // a full copy of the underlying tree around for each snapshot,
 // forever. We should eventually do something better/different.
-func (t *tree) Snapshot() RevID {
+func (t *tree) Snapshot(ctx context.Context) (RevID, error) {
+	// TODO: remove this when and if https://github.com/ipfs/go-hamt-ipld/pull/8 is handled
+	_, err := t.Flush(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	thisRevID := t.nextRevID
 	t.revs[thisRevID] = t.root.Copy()
 	t.nextRevID++
-	return thisRevID
+	return thisRevID, nil
 }
 
 // RevertTo reverts to the given RevID. You can revert to a given

@@ -182,7 +182,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	askMsg := types.NewMessage(minerAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "addAsk", params)
+	askMsg := types.NewMessage(address.TestAddress, minerAddress, 1, types.NewTokenAmount(100), "addAsk", params)
 	_, err = msgPool.Add(askMsg)
 	if err != nil {
 		return err
@@ -193,7 +193,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
-	bidMsg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewTokenAmount(90), "addBid", params)
+	bidMsg := types.NewMessage(address.TestAddress2, address.StorageMarketAddress, 0, types.NewTokenAmount(90), "addBid", params)
 	_, err = msgPool.Add(bidMsg)
 	if err != nil {
 		return err
@@ -207,7 +207,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	msgPool = core.NewMessagePool()
 
 	// Create deal
-	params, err = abi.ToEncodedValues(big.NewInt(0), big.NewInt(0), address.TestAddress, types.NewCidForTestGetter()().Bytes())
+	params, err = abi.ToEncodedValues(big.NewInt(0), big.NewInt(0), address.TestAddress2, types.NewCidForTestGetter()().Bytes())
 	if err != nil {
 		return err
 	}

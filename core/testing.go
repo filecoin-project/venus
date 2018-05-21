@@ -58,6 +58,12 @@ func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 	return c, t
 }
 
+// RequireNewEmptyActor creates a new empty actor with the given starting
+// value and requires that its steps succeed.
+func RequireNewEmptyActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {
+	return &types.Actor{Balance: value}
+}
+
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
 func RequireNewAccountActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {

@@ -25,6 +25,9 @@ var (
 // - read & write memory
 // - replay protection, using the `Nonce` field
 //
+// Value sent to a non-existent address will be tracked as an empty actor that has a Balance but
+// nil Code and Memory. You must nil check Code cids before comparing them.
+//
 // More specific capabilities for individual accounts or contract specific must be implemented
 // inside the code.
 //

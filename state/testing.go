@@ -91,7 +91,7 @@ func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address types.Addr
 }
 
 // Snapshot implements StateTree.Snapshot.
-func (m *MockStateTree) Snapshot() RevID {
+func (m *MockStateTree) Snapshot(ctx context.Context) (RevID, error) {
 	panic("do not call me")
 }
 
