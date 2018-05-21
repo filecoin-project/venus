@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -92,18 +91,16 @@ func TestChainLsRun(t *testing.T) {
 	t.Run("emit best block and then time out getting parent", func(t *testing.T) {
 		require := require.New(t)
 
-		// override the default, which is 10 seconds
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
+		ctx := context.Background()
 		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		genBlock := types.NewBlockForTest(nil, 0)
-		chlBlock := types.NewBlockForTest(genBlock, 1)
+		parBlock := types.NewBlockForTest(nil, 0)
+		chlBlock := types.NewBlockForTest(parBlock, 1)
 
 		err := n.ChainMgr.SetBestBlockForTest(ctx, chlBlock)
 		require.NoError(err)
 
+		// parBlock is not known to the chain, which causes the timeout
 		_, err = testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
 			ctx:  ctx,
 			node: n,
