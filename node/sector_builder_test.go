@@ -20,7 +20,7 @@ var sectorDirsForTest = &repo.MemRepo{}
 func TestSimple(t *testing.T) {
 	require := require.New(t)
 	nd := MakeOfflineNode(t)
-	sb := requireSectorBuilder(require, nd, 50)
+	sb := requireSectorBuilder(require, nd, 64)
 	sector, err := sb.NewSector()
 	require.NoError(err)
 
@@ -35,7 +35,7 @@ func TestSimple(t *testing.T) {
 	}
 
 	ag := types.NewAddressForTestGetter()
-	ss, err := sb.Seal(sector, ag(), filecoinParameters)
+	ss, err := sb.Seal(sector, ag(), makeFilecoinParameters(64, nodeSize))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +46,7 @@ func TestSimple(t *testing.T) {
 
 func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
 	smc, err := NewSectorBuilder(nd, sectorSize, sectorDirsForTest)
+	smc.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
 	require.NoError(err)
 	return smc
 }
@@ -72,7 +73,7 @@ func TestSectorBuilder(t *testing.T) {
 
 	nd := MakeOfflineNode(t)
 
-	sb := requireSectorBuilder(require, nd, 60)
+	sb := requireSectorBuilder(require, nd, 64)
 
 	assertMetadataMatch := func(sector *Sector, pieces int) {
 		meta := sector.SectorMetadata()
@@ -171,8 +172,8 @@ func TestSectorBuilder(t *testing.T) {
 
 	meta := sb.CurSector.SectorMetadata()
 	assert.Len(meta.Pieces, 1)
-	assert.Equal(uint64(60), meta.Size)
-	assert.Equal(60-len(text3), int(meta.Free))
+	assert.Equal(uint64(64), meta.Size)
+	assert.Equal(64-len(text3), int(meta.Free))
 
 	text4 := "I am text, and I am long. My reach exceeds my grasp exceeds exceeds my allotted space."
 	err = sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(text4)))
@@ -182,14 +183,13 @@ func TestSectorBuilder(t *testing.T) {
 func TestSectorBuilderMetadata(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	//ctx := context.Background()
 
 	fname := newSectorLabel()
 	assert.Len(fname, 32) // Sanity check, nothing more.
 
 	nd := MakeOfflineNode(t)
 
-	sb := requireSectorBuilder(require, nd, 60)
+	sb := requireSectorBuilder(require, nd, 64)
 
 	label := "SECTORFILENAMEWHATEVER"
 

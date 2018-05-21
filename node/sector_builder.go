@@ -14,22 +14,22 @@ import (
 	"path"
 	"strings"
 
+	"github.com/filecoin-project/go-proofs/data"
+	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
+	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
+
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
 	//	"golang.org/x/exp/mmap"
-
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
-	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/binpack"
-	"github.com/filecoin-project/paper-porep-drg/go-porep/drg"
-	"github.com/filecoin-project/paper-porep-drg/go-porep/drg/drgraph"
 )
 
 func init() {
@@ -63,11 +63,12 @@ type SectorBuilder struct {
 	MinerAddr types.Address
 
 	// TODO: information about all sectors needs to be persisted to disk
-	CurSector     *Sector
-	SealedSectors []*SealedSector
-	G             *drgraph.Graph
-	Prover        *drg.Prover
-	Packer        binpack.Packer
+	CurSector        *Sector
+	SealedSectors    []*SealedSector
+	G                *drgraph.Graph
+	Prover           *drg.Prover
+	Packer           binpack.Packer
+	publicParameters *PublicParameters
 
 	stagingDir string
 	sealedDir  string
@@ -190,15 +191,18 @@ func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
 }
 
 // NewSealedSector allocates and returns a new SealedSector from replicaData, merkleRoot, and baseSector, along with any error.
-func (sb *SectorBuilder) NewSealedSector(replicaData []byte, merkleRoot []byte, baseSector *Sector) (ss *SealedSector,
+func (sb *SectorBuilder) NewSealedSector(replicaData data.ReadWriter, merkleRoot []byte, baseSector *Sector) (ss *SealedSector,
 	err error) {
 	p, label := sb.newSealedSectorPath()
 	ss = &SealedSector{
-		replicaData: replicaData,
-		merkleRoot:  merkleRoot,
-		baseSector:  baseSector,
-		label:       label,
+		merkleRoot: merkleRoot,
+		baseSector: baseSector,
+		label:      label,
 	}
+	if err := replicaData.DataAt(0, 0, func(data []byte) error { ss.replicaData = data; return nil }); err != nil {
+		return nil, errors.Wrap(err, "failed to extract replica data")
+	}
+
 	sb.SealedSectors = append(sb.SealedSectors, ss)
 	err = os.MkdirAll(path.Dir(p), os.ModePerm)
 	if err != nil {
@@ -214,15 +218,16 @@ func (sb *SectorBuilder) NewSealedSector(replicaData []byte, merkleRoot []byte, 
 
 // NewSectorBuilder creates a new sector builder from the given node
 func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
-	g := drgraph.New(sectorSize / nodeSize)
+	g := drgraph.NewDRSample(sectorSize / nodeSize)
 
 	sb := &SectorBuilder{
-		G:          g,
-		Prover:     drg.NewProver("cats", g, nodeSize),
-		nd:         nd,
-		sectorSize: uint64(sectorSize),
-		store:      nd.Repo.Datastore(),
-		dserv:      dag.NewDAGService(nd.Blockservice),
+		G:                g,
+		Prover:           drg.NewProver("cats", g, nodeSize),
+		publicParameters: filecoinParameters,
+		nd:               nd,
+		sectorSize:       uint64(sectorSize),
+		store:            nd.Repo.Datastore(),
+		dserv:            dag.NewDAGService(nd.Blockservice),
 	}
 
 	sb.stagingDir = fs.StagingDir()
@@ -261,10 +266,15 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
 	return err
 }
 
-var filecoinParameters = &PublicParameters{
-	// this will be loaded from disk
-	graph:     drgraph.New(sectorSize / nodeSize),
-	blockSize: nodeSize,
+// These will be loaded from disk.
+var filecoinParameters = makeFilecoinParameters(sectorSize, nodeSize)
+
+// Create filecoin parameters (mainly used for testing).
+func makeFilecoinParameters(sectorSize int, nodeSize int) *PublicParameters {
+	return &PublicParameters{
+		graph:     drgraph.NewDRSample(sectorSize / nodeSize),
+		blockSize: uint64(nodeSize),
+	}
 }
 
 // OpenAppend opens and sets sector's file for appending, returning the *os.file.
@@ -289,7 +299,7 @@ func (s *Sector) OpenAppend() error {
 
 // SealAndPostSector seals the given sector and posts its commitment on-chain
 func (sb *SectorBuilder) SealAndPostSector(ctx context.Context, s *Sector) (err error) {
-	ss, err := sb.Seal(s, sb.MinerAddr, filecoinParameters)
+	ss, err := sb.Seal(s, sb.MinerAddr, sb.publicParameters)
 	if err != nil {
 		// Hard to say what to do in this case.
 		// Depending on the error, it could be "try again"
@@ -405,10 +415,23 @@ func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address, publicParams *Pu
 	if uint64(len(s.data)) < s.Size {
 		s.data = append(s.data, make([]byte, s.Size-uint64(len(s.data)))...)
 	}
-	prover := drg.NewProver(string(minerID[:]), publicParams.graph, int(publicParams.blockSize))
-	_, root := prover.Setup(s.data)
 
+	// AES key must be 16, 24, or 32 bytes. Failure to pad here breaks sealing.
+	// TODO how should this key be derived?
+	minerKey := make([]byte, 32)
+	copy(minerKey[:len(minerID)], minerID[:])
+
+	prover := drg.NewProver(string(minerKey), publicParams.graph, int(publicParams.blockSize))
+
+	var dataCopy = make([]byte, len(s.data))
+	copy(dataCopy, s.data)
+
+	root, err := prover.Setup(NewMemoryReadWriter(dataCopy))
+	if err != nil {
+		return nil, errors.Wrap(err, "prover setup failed")
+	}
 	ss, err := sb.NewSealedSector(prover.Replica, root, s)
+
 	// NOTE: Between here and the call to os.Rename below, the SealedSector has a filename which is never persisted.
 	// FIXME: Does it need to be?
 	if err != nil {
@@ -485,4 +508,23 @@ func (sb *SectorBuilder) merkleFilepath(ss *SealedSector) (string, error) {
 
 func merkleString(merkleRoot []byte) string {
 	return base32.StdEncoding.EncodeToString(merkleRoot)
+}
+
+// MemoryReadWriter implements data.ReadWriter and represents a simple byte slice in memory.
+type MemoryReadWriter struct {
+	data []byte
+}
+
+// NewMemoryReadWriter returns MemoryReadWriter initialized with data.
+func NewMemoryReadWriter(data []byte) MemoryReadWriter {
+	return MemoryReadWriter{data: data}
+}
+
+// DataAt implements data.ReadWriter.
+func (mrw MemoryReadWriter) DataAt(offset, length uint64, cb func([]byte) error) error {
+	if length == 0 {
+		// Define 0 length to mean read/write to end of data.
+		return cb(mrw.data[offset:])
+	}
+	return cb(mrw.data[offset : offset+length])
 }
