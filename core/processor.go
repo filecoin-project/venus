@@ -214,11 +214,6 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message,
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
-	c, err := msg.Cid()
-	if err != nil {
-		return nil, errors.FaultErrorWrap(err, "failed to get CID from the message")
-	}
-
 	if msg.Nonce < fromActor.Nonce {
 		return nil, errNonceTooLow
 	}
@@ -232,10 +227,31 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message,
 		return nil, vmErr
 	}
 
-	vmErrString := ""
+	var retBytes []byte
 	if vmErr != nil {
-		vmErrString = vmErr.Error()
+		// ensure error strings that are too long don't cause another failure
+		retBytes = truncate([]byte(vmErr.Error()), types.ReturnValueLength)
+	} else if len(ret) > types.ReturnValueLength {
+		vmErr = errors.RevertErrorWrap(types.ErrReturnValueTooLarge, "")
+		retBytes = truncate([]byte(vmErr.Error()), types.ReturnValueLength)
+	} else {
+		retBytes = ret
 	}
 
-	return types.NewMessageReceipt(c, exitCode, vmErrString, ret), vmErr
+	retVal, retSize, err := types.SliceToReturnValue(retBytes)
+	if err != nil {
+		// this should never happen, as we take care of larger values above, if it does
+		// then we need to fail
+		return nil, errors.FaultErrorWrap(err, "failed to convert to return value")
+	}
+
+	return types.NewMessageReceipt(exitCode, retVal, retSize), vmErr
+}
+
+func truncate(val []byte, size int) []byte {
+	if len(val) <= size {
+		return val
+	}
+
+	return val[0:size]
 }

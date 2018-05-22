@@ -37,7 +37,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	outAddr, err := types.NewAddressFromBytes(receipt.Return)
+	outAddr, err := types.NewAddressFromBytes(receipt.ReturnValue())
 	assert.NoError(err)
 	minerActor, err := st.GetActor(ctx, outAddr)
 	assert.NoError(err)
@@ -71,7 +71,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(receipt.Error, ErrPledgeTooLow.Error())
+	assert.Contains(string(receipt.ReturnValue()), ErrPledgeTooLow.Error())
 }
 
 func TestStorageMarketAddBid(t *testing.T) {
@@ -93,7 +93,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.Return))
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
 
 	// create another bid
 	pdata = actor.MustConvertParams(types.NewTokenAmount(15), types.NewBytesAmount(80))
@@ -102,14 +102,14 @@ func TestStorageMarketAddBid(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(1), types.NewTokenAmountFromBytes(receipt.Return))
+	assert.Equal(types.NewTokenAmount(1), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
 
 	// try to create a bid, but send wrong value
 	pdata = actor.MustConvertParams(types.NewTokenAmount(90), types.NewBytesAmount(100))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewTokenAmount(600), "addBid", pdata)
 	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(receipt.Error, "must send price * size funds to create bid")
+	assert.Contains(string(receipt.ReturnValue()), "must send price * size funds to create bid")
 }
 
 func TestStorageMarketMakeDeal(t *testing.T) {
@@ -138,7 +138,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.Return))
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
 
 	// create a miner
 	minerAddr := createTestMiner(assert, st, 50000, 45000)
@@ -178,7 +178,7 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collatera
 	receipt, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	addr, err := types.NewAddressFromBytes(receipt.Return)
+	addr, err := types.NewAddressFromBytes(receipt.ReturnValue())
 	assert.NoError(err)
 	return addr
 }

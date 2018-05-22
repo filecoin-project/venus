@@ -27,7 +27,7 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collatera
 	receipt, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	addr, err := types.NewAddressFromBytes(receipt.Return)
+	addr, err := types.NewAddressFromBytes(receipt.ReturnValue())
 	assert.NoError(err)
 	return addr
 }
@@ -52,7 +52,7 @@ func TestAddAsk(t *testing.T) {
 
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.Return))
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
 
 	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
@@ -75,7 +75,7 @@ func TestAddAsk(t *testing.T) {
 
 	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(receipt.Return))
+	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(receipt.ReturnValue()))
 
 	storageMkt, err = st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
@@ -98,5 +98,5 @@ func TestAddAsk(t *testing.T) {
 
 	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(receipt.Error, ErrInsufficientPledge.Error())
+	assert.Contains(string(receipt.ReturnValue()), ErrInsufficientPledge.Error())
 }

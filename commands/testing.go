@@ -41,11 +41,11 @@ func requireSchemaConformance(t *testing.T, jsonBytes []byte, schemaName string)
 	result, err := gojsonschema.Validate(rLoader, jLoader)
 	require.NoError(t, err)
 
-	require.Truef(t, result.Valid(), "Error schema validating: %s", string(jsonBytes))
-
 	for _, desc := range result.Errors() {
 		t.Errorf("- %s\n", desc)
 	}
+
+	require.Truef(t, result.Valid(), "Error schema validating: %s", string(jsonBytes))
 }
 
 //GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.

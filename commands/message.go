@@ -155,7 +155,7 @@ var msgWaitCmd = &cmds.Command{
 			}
 
 			if returnOpt && res.Receipt != nil && res.Signature != nil {
-				val, err := abi.Deserialize(res.Receipt.Return, res.Signature.Return[0])
+				val, err := abi.Deserialize(res.Receipt.ReturnValue(), res.Signature.Return[0])
 				if err != nil {
 					return errors.Wrap(err, "unable to deserialize return value")
 				}

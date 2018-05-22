@@ -56,14 +56,14 @@ func TestDecodeBlock(t *testing.T) {
 		m1 := NewMessage(addrGetter(), addrGetter(), 0, NewTokenAmount(10), "hello", []byte("cat"))
 		m2 := NewMessage(addrGetter(), addrGetter(), 0, NewTokenAmount(2), "yes", []byte("dog"))
 
-		m1Cid, err := m1.Cid()
-		assert.NoError(err)
-		m2Cid, err := m2.Cid()
-		assert.NoError(err)
-
 		c1, err := cidFromString("a")
 		assert.NoError(err)
 		c2, err := cidFromString("b")
+		assert.NoError(err)
+
+		retVal1, retSize1, err := SliceToReturnValue([]byte{1, 2})
+		assert.NoError(err)
+		retVal2, retSize2, err := SliceToReturnValue([]byte{1, 2, 3})
 		assert.NoError(err)
 
 		before := &Block{
@@ -72,8 +72,8 @@ func TestDecodeBlock(t *testing.T) {
 			Messages:  []*Message{m1, m2},
 			StateRoot: c2,
 			MessageReceipts: []*MessageReceipt{
-				NewMessageReceipt(m1Cid, 1, "", []byte{1, 2}),
-				NewMessageReceipt(m2Cid, 1, "", []byte{1, 2}),
+				NewMessageReceipt(1, retVal1, retSize1),
+				NewMessageReceipt(1, retVal2, retSize2),
 			},
 		}
 
@@ -126,7 +126,8 @@ func TestBlockJsonMarshal(t *testing.T) {
 	mkMsg := NewMessageForTestGetter()
 
 	message := mkMsg()
-	receipt := NewMessageReceipt(SomeCid(), 0, "", nil)
+
+	receipt := NewMessageReceipt(0, [ReturnValueLength]byte{}, 0)
 	child.Messages = []*Message{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
 

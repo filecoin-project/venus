@@ -102,7 +102,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// 2. That the VM error is faithfully recorded.
 	assert.Len(receipts, 1)
-	assert.Contains(receipts[0].Error, "boom")
+	assert.Contains(string(receipts[0].ReturnValue()), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
@@ -113,6 +113,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	})
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
+
 	assert.True(expectedStCid.Equals(gotStCid))
 }
 
@@ -139,7 +140,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Contains(r.Error, "invalid params: expected 2 parameters, but got 1")
+	assert.Contains(string(r.ReturnValue()), "invalid params: expected 2 parameters, but got 1")
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
@@ -162,7 +163,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Contains(r.Error, "invalid params: malformed stream")
+	assert.Contains(string(r.ReturnValue()), "invalid params: malformed stream")
 }
 
 func TestProcessBlockNonceTooLow(t *testing.T) {

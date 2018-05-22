@@ -53,7 +53,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	require.NoError(err)
 
 	channelID := big.NewInt(0)
-	channelID.SetBytes(receipt.Return)
+	channelID.SetBytes(receipt.ReturnValue())
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
@@ -95,7 +95,7 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 
 	// expect error
 	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(receipt.Error, "account actor")
+	require.Contains(string(receipt.ReturnValue()), "account actor")
 }
 
 func TestPaymentBrokerUpdate(t *testing.T) {
@@ -151,7 +151,6 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotNil(receipt.Error)
 	require.NotEqual(uint8(0), receipt.ExitCode)
 
 	// invalid channel id results in revert error
@@ -162,8 +161,7 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(receipt.Error, "payment channel")
-	require.Contains(receipt.Error, "unknown")
+	require.Contains(string(receipt.ReturnValue()), "payment channel")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
@@ -191,7 +189,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(receipt.Error, "wrong target account")
+	require.Contains(string(receipt.ReturnValue()), "wrong target account")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testing.T) {
@@ -213,7 +211,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(receipt.Error, "update amount")
+	require.Contains(string(receipt.ReturnValue()), "update amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T) {
@@ -244,7 +242,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(receipt.Error, "update amount")
+	require.Contains(string(receipt.ReturnValue()), "update amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
@@ -268,7 +266,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 
 	// expect an error
 	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.True(strings.Contains(strings.ToLower(receipt.Error), "block height"), "Error should relate to block height")
+	assert.True(strings.Contains(strings.ToLower(string(receipt.ReturnValue())), "block height"), "Error should relate to block height")
 }
 
 func TestPaymentBrokerClose(t *testing.T) {
@@ -359,8 +357,8 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 
 	// fails
 	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.Contains(receipt.Error, "reclaim")
-	assert.Contains(receipt.Error, "eol")
+	assert.Contains(string(receipt.ReturnValue()), "reclaim")
+	assert.Contains(string(receipt.ReturnValue()), "eol")
 }
 
 func TestPaymentBrokerExtend(t *testing.T) {
@@ -447,7 +445,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	require.NoError(err)
 
 	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.Contains(receipt.Error, "payment channel eol may not be decreased")
+	assert.Contains(string(receipt.ReturnValue()), "payment channel eol may not be decreased")
 }
 
 func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, amt *types.TokenAmount, eol *types.BlockHeight) *types.ChannelID {
@@ -458,7 +456,7 @@ func establishChannel(ctx context.Context, st state.Tree, from types.Address, ta
 		panic(err)
 	}
 
-	channelID := types.NewChannelIDFromBytes(receipt.Return)
+	channelID := types.NewChannelIDFromBytes(receipt.ReturnValue())
 	return channelID
 }
 

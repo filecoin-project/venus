@@ -111,31 +111,20 @@
     "MessageReceipt": {
       "additionalProperties": false,
       "properties": {
-        "error": {
-          "type": "string"
-        },
         "exitCode": {
           "type": "integer"
         },
-        "message": {
-          "$ref": "#/definitions/Cid"
+        "returnSize": {
+          "type": "integer"
         },
         "return": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "string"
-            }
-          ]
+          "type": ["array"]
         }
       },
       "required": [
-        "error",
         "exitCode",
-        "message",
-        "return"
+        "return",
+        "returnSize"
       ],
       "type": "object"
     },

@@ -15,15 +15,18 @@ func TestTipIndex(t *testing.T) {
 	block := func(height int, parentCid *cid.Cid, msg string) *types.Block {
 		addrGetter := types.NewAddressForTestGetter()
 		m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewTokenAmount(10), "hello", []byte(msg))
-		m1Cid, err := m1.Cid()
+		ret, retSize, err := types.SliceToReturnValue([]byte{1, 2})
 		assert.NoError(err)
+
 		return &types.Block{
-			Parents:         types.NewSortedCidSet(parentCid),
-			Height:          42 + uint64(height),
-			Nonce:           7,
-			Messages:        []*types.Message{m1},
-			StateRoot:       types.SomeCid(),
-			MessageReceipts: []*types.MessageReceipt{types.NewMessageReceipt(m1Cid, 1, "", []byte{1, 2})},
+			Parents:   types.NewSortedCidSet(parentCid),
+			Height:    42 + uint64(height),
+			Nonce:     7,
+			Messages:  []*types.Message{m1},
+			StateRoot: types.SomeCid(),
+			MessageReceipts: []*types.MessageReceipt{
+				types.NewMessageReceipt(1, ret, retSize),
+			},
 		}
 	}
 
