@@ -46,6 +46,7 @@ func deps() {
 		"go get -u github.com/whyrusleeping/gx",
 		"go get -u github.com/whyrusleeping/gx-go",
 		"gx install",
+		"gx-go rewrite",
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",
 		"go get -u github.com/stretchr/testify",
