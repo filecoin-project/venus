@@ -105,6 +105,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 	}
 
 	next := &types.Block{
+		Miner:           rewardAddress,
 		Height:          baseBlock.Height + 1,
 		Messages:        successfulMessages,
 		MessageReceipts: receipts,

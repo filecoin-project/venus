@@ -34,7 +34,7 @@ func TestTipIndex(t *testing.T) {
 		assert.Equal(expectedHeightEntries, len(idx))
 		assert.Equal(expectedParentSetEntries, len(idx[b.Height]))
 		assert.Equal(expectedBlocks, len(idx[b.Height][keyForParentSet(b.Parents)]))
-		assert.True(b.Cid().Equals(idx[b.Height][keyForParentSet(b.Parents)][b.Cid().String()]))
+		assert.True(b.Cid().Equals(idx[b.Height][keyForParentSet(b.Parents)][b.Cid().String()].Cid()))
 	}
 
 	cidGetter := types.NewCidForTestGetter()

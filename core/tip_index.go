@@ -1,8 +1,6 @@
 package core
 
 import (
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -18,16 +16,16 @@ func (ti tipIndex) addBlock(b *types.Block) {
 	tsbp.addBlock(b)
 }
 
-type tipSetsByParents map[string]tipSet
+type tipSetsByParents map[string]TipSet
 
 func (tsbp tipSetsByParents) addBlock(b *types.Block) {
 	key := keyForParentSet(b.Parents)
 	ts := tsbp[key]
 	if ts == nil {
-		ts = tipSet{}
+		ts = TipSet{}
 	}
 	id := b.Cid()
-	ts[id.String()] = id
+	ts[id.String()] = b
 	tsbp[key] = ts
 }
 
@@ -39,6 +37,29 @@ func keyForParentSet(parents types.SortedCidSet) string {
 	return k
 }
 
-// TODO: We'll need more than just the Cid for each matching block, so define a new struct here
-// that is a subset of types.Block that has just the state needed for EC.
-type tipSet map[string]*cid.Cid
+// Tip is what expected consensus needs from a Block. For now it *is* a
+// Block.
+// TODO This needs to change in the future as holding all Blocks in
+// memory is expensive. We could define a struct encompassing the subset
+// of Block needed for EC and embed it in the block or we could limit the
+// height we index or both.
+type Tip = types.Block
+
+// TipSet is a set of Tips, blocks at the same height with the same parent set,
+// keyed by Cid string.
+type TipSet map[string]*Tip
+
+// BaseBlockFromTipSets is a likely TEMPORARY helper to extract a base block
+// from a tipset. Prior to EC the mining worker mined off of a base block. With
+// EC it is mining off of a set of TipSets. We haven't plumbed the change from
+// block to TipSets all the way through yet, hence this function which extracts
+// a base block from the TipSets.
+func BaseBlockFromTipSets(tipSets []TipSet) *types.Block {
+	tipSet := tipSets[0]
+	var tipSetKey string
+	for k := range tipSet {
+		tipSetKey = k
+		break
+	}
+	return tipSet[tipSetKey]
+}

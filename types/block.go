@@ -14,7 +14,18 @@ func init() {
 
 // Block is a block in the blockchain.
 type Block struct {
+	// Miner is the miner address that mined this block.
+	// TODO use the miner address.
+	Miner Address `json:"miner"`
+	// TODO Ticket
+
 	Parents SortedCidSet `json:"parents"`
+
+	// ParentWeight is the aggregate chain weight of the parent set.
+	// TODO is float64 what we want here?
+	// TODO per the spec this field should be computed and cached locally,
+	// NOT included in the Block.
+	ParentWeight float64 `json:"parentWeight"`
 
 	// Height is the chain height of this block.
 	Height uint64 `json:"height"`
@@ -47,6 +58,7 @@ func (b *Block) AddParent(p Block) error {
 	if b.Height != p.Height+1 {
 		return fmt.Errorf("child height %v != parent height %v+1", b.Height, p.Height)
 	}
+	// TODO validate parent wrt other parents? Eg same weight etc.
 	b.Parents.Add(p.Cid())
 	return nil
 }

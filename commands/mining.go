@@ -10,6 +10,7 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 )
@@ -40,7 +41,9 @@ var miningOnceCmd = &cmds.Command{
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
 			return state.LoadStateTree(ctx, fcn.CborStore, cid, builtin.Actors)
 		}, mining.ApplyMessages)
-		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), cur, rewardAddr)
+		// TODO(aa) Another place we need tipsets.
+		tipSets := []core.TipSet{{cur.Cid().String(): cur}}
+		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), tipSets, rewardAddr)
 		if res.Err != nil {
 			return res.Err
 		}

@@ -30,6 +30,7 @@ var (
 	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 )
 
+// TODO(aa) The notion of best block may need to be replaced given EC.
 var bestBlockKey = datastore.NewKey("/chain/bestBlock")
 
 // BlockTopic is the topic used to publish new best blocks.
@@ -614,4 +615,19 @@ func (s *ChainManager) walkChain(blk *types.Block, cb walkChainCallback) error {
 	}
 
 	return nil
+}
+
+// GetTipSetsByHeight returns all TipSets at the given height. Neither the returned
+// slice or its members will be mutated by the ChainManager once returned.
+func (s *ChainManager) GetTipSetsByHeight(height uint64) (tips []TipSet) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tsbp, ok := s.tips[height]
+	if ok {
+		for _, ts := range tsbp {
+			tips = append(tips, ts)
+		}
+	}
+	return tips
 }

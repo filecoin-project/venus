@@ -322,3 +322,17 @@ func TestChainLoad(t *testing.T) {
 	assert.Equal(block2, stm.GetBestBlock())
 	assert.Equal(testGenesis.Cid(), stm.GetGenesisCid())
 }
+func TestTipSets(t *testing.T) {
+	assert := assert.New(t)
+	ctx := context.Background()
+	cs := hamt.NewCborStore()
+	ds := datastore.NewMapDatastore()
+	stm := NewChainManager(ds, cs)
+
+	assert.Len(stm.GetTipSetsByHeight(0), 0)
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.Len(stm.GetTipSetsByHeight(0), 1)
+	_, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(err)
+	assert.Len(stm.GetTipSetsByHeight(1), 1)
+}

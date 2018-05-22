@@ -3,23 +3,24 @@ package mining
 import (
 	"context"
 	"sync"
-	"time"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Input is the block the worker should mine on, the address
+// Input is the TipSets the worker should mine on, the address
 // to accrue rewards to, and a context that the caller can use
 // to cancel this mining run.
 type Input struct {
-	Ctx           context.Context
-	MineOn        *types.Block
+	Ctx     context.Context
+	TipSets []core.TipSet
+	// TODO This should apparently be a miner actor address.
 	RewardAddress types.Address
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, b *types.Block, a types.Address) Input {
-	return Input{Ctx: ctx, MineOn: b, RewardAddress: a}
+func NewInput(ctx context.Context, tipSets []core.TipSet, a types.Address) Input {
+	return Input{Ctx: ctx, TipSets: tipSets, RewardAddress: a}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -61,11 +62,11 @@ type Worker interface {
 
 // NewWorker instantiates a new Worker.
 func NewWorker(blockGenerator BlockGenerator) Worker {
-	return NewWorkerWithMineAndWork(blockGenerator, Mine, func() {})
+	return NewWorkerWithDeps(blockGenerator, Mine, func() {})
 }
 
-// NewWorkerWithMineAndWork instantiates a new Worker with custom functions.
-func NewWorkerWithMineAndWork(blockGenerator BlockGenerator, mine mineFunc, doSomeWork DoSomeWorkFunc) Worker {
+// NewWorkerWithDeps instantiates a new Worker with custom functions.
+func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, doSomeWork DoSomeWorkFunc) Worker {
 	return &AsyncWorker{
 		blockGenerator: blockGenerator,
 		doSomeWork:     doSomeWork,
@@ -75,40 +76,13 @@ func NewWorkerWithMineAndWork(blockGenerator BlockGenerator, mine mineFunc, doSo
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the worker.
-func MineOnce(ctx context.Context, w Worker, baseBlock *types.Block, rewardAddress types.Address) Output {
+func MineOnce(ctx context.Context, w Worker, tipSets []core.TipSet, rewardAddress types.Address) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 
 	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, baseBlock, rewardAddress) }()
+	go func() { inCh <- NewInput(subCtx, tipSets, rewardAddress) }()
 	return <-outCh
-}
-
-// BlockGetterFunc gets a block.
-type BlockGetterFunc func() *types.Block
-
-// MineEvery is a convenience function to mine by pulling a block from
-// a getter periodically. (This as opposed to Start() which runs on
-// demand, whenever a block is pushed to it through the input channel).
-func MineEvery(ctx context.Context, w Worker, period time.Duration, getBlock BlockGetterFunc, rewardAddress types.Address) (chan<- Input, <-chan Output, *sync.WaitGroup) {
-	inCh, outCh, doneWg := w.Start(ctx)
-
-	doneWg.Add(1)
-	go func() {
-		defer func() {
-			doneWg.Done()
-		}()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(period):
-				go func() { inCh <- NewInput(ctx, getBlock(), rewardAddress) }()
-			}
-		}
-	}()
-
-	return inCh, outCh, doneWg
 }
 
 // Start is the main entrypoint for Worker. Call it to start mining. It returns
@@ -120,6 +94,10 @@ func MineEvery(ctx context.Context, w Worker, period time.Duration, getBlock Blo
 // Closing the input channel does not cause the worker to stop; cancel
 // the Input.Ctx to cancel an individual mining run or the mininCtx to
 // stop all mining and shut down the worker.
+//
+// TODO A potentially simpler interface here would be for the worker to
+// take the input channel from the caller and then shut everything down
+// when the input channel is closed.
 func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
 	inCh := make(chan Input)
 	outCh := make(chan Output)
@@ -139,7 +117,21 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 				return
 			case input, ok := <-inCh:
 				if ok {
-					newBaseBlock := input.MineOn
+					// TODO(aa) select the heaviest tipset
+					// TODO(aa) implement the mining logic described in the spec here:
+					//   https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR83
+					//   specifically:
+					//     - the spec suggests to "wait a little bit" when we see a tipset at a greater
+					//       height than the one we're working on. However it's probably just easier to
+					//       starting mining as soon as we see a tipset from a greater height and then
+					//       cancel it and start over when we see a tipset at that height with greater
+					//       weight. So replace the score check below that cancels the mining run
+					//       with one that cancels and starts a new run if we are currently not running
+					//       (below as currentBlock == nil), if we see a tipset from a greater height
+					//       (replaces score check below), or if we see a tipset from the same height
+					//       but with greater weight. I say ignore for now rational miner strategies that
+					//       wouldn't abandon a lesser-weight mining run that wins the lottery.
+					newBaseBlock := core.BaseBlockFromTipSets(input.TipSets)
 					if currentBlock == nil || currentBlock.Score() <= newBaseBlock.Score() {
 						currentRunCancel()
 						currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
@@ -161,11 +153,8 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 }
 
 // DoSomeWorkFunc is a dummy function that mimics doing something time-consuming
-// in the mining loop. Pass a function that calls Sleep() is a good idea.
-// TODO This should take at least take a context. Ideally, it would take a context
-// and a block, and return a block (with a random nonce or something set on it).
-// The operation in most blockchains is called 'seal' but we have other uses
-// for that name.
+// in the mining loop such as computing proofs. Pass a function that calls Sleep()
+// is a good idea for now.
 type DoSomeWorkFunc func()
 
 type mineFunc func(context.Context, Input, BlockGenerator, DoSomeWorkFunc, chan<- Output)
@@ -174,12 +163,26 @@ type mineFunc func(context.Context, Input, BlockGenerator, DoSomeWorkFunc, chan<
 func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
-	next, err := blockGenerator.Generate(ctx, input.MineOn, input.RewardAddress)
+
+	// TODO(aa) Check ticket. If not a winner then wait (how long?!) and add a null block
+	// and try again. Keep doing that until we get canceled or a winner is found. When
+	// a winner is found proceed with block creation:
+	// https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR87
+	// DoSomeWorkFunc is a placeholder for the thing that computes proofs.
+
+	// TODO(aa) Generate()'s signature might want to change. In order to limit the scope
+	// of changes I'm just pulling a block out here and passing it in.
+	newBaseBlock := core.BaseBlockFromTipSets(input.TipSets)
+	next, err := blockGenerator.Generate(ctx, newBaseBlock, input.RewardAddress)
 	if err == nil {
-		// TODO whatever happens here, respect the context.
 		log.SetTag(ctx, "block", next)
+		// TODO whatever happens here should respect the context, but see caveat below.
 		doSomeWork()
 	}
+	// TODO(aa) Consider what to do if we have found a winning ticket and are mining with
+	// it and a new tipset comes in with greater height. Unless we change the logic the
+	// successful mining run will be canceled if it is still in flight. We should probably
+	// let the successful run proceed unless the context is explicitly canceled.
 	if ctx.Err() == nil {
 		outCh <- NewOutput(next, err)
 	}

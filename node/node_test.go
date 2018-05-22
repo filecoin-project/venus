@@ -98,14 +98,14 @@ func TestNodeMining(t *testing.T) {
 	assert.NoError(node.Start())
 	assert.NoError(node.StartMining())
 	gotInput := <-inCh
-	assert.True(b1.Cid().Equals(gotInput.MineOn.Cid()))
+	assert.True(b1.Cid().Equals(core.BaseBlockFromTipSets(gotInput.TipSets).Cid()))
 	assert.Equal(node.Wallet.Addresses()[0].String(), gotInput.RewardAddress.String())
 
 	// Ensure that the successive inputs (new best blocks) are wired up properly.
 	b2 := &types.Block{StateRoot: newCid()}
 	node.ChainMgr.SetBestBlockForTest(ctx, b2)
 	gotInput = <-inCh
-	assert.True(b2.Cid().Equals(gotInput.MineOn.Cid()))
+	assert.True(b2.Cid().Equals(core.BaseBlockFromTipSets(gotInput.TipSets).Cid()))
 
 	// Ensure we don't mine when stopped.
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))

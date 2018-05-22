@@ -195,7 +195,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
 		return state.LoadStateTree(ctx, cst, cid, builtin.Actors)
 	}, mining.ApplyMessages)
-	miningWorker := mining.NewWorkerWithMineAndWork(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
+	miningWorker := mining.NewWorkerWithDeps(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
 
 	// Set up libp2p pubsub
 	fsub, err := floodsub.NewFloodSub(ctx, host)
@@ -337,8 +337,19 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 }
 
 func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
+	// TODO(aa) The current mining code is driven by the promotion of a new best
+	// block. This should probably change for EC: we want to tell the mining worker
+	// about *all* arriving tipsets at the current height. So the way we currently
+	// feed best blocks should probably be changed to feed tipsets at the current
+	// height.
 	for blk := range node.BestBlockCh {
 		newHead := blk.(*types.Block)
+		// TODO(aa) When a new best block is promoted we remove messages in it from the
+		// message pool (and add them back in if we have a re-org). The way we update the
+		// message pool should probably change for EC -- tipsets have multiple blocks, not
+		// a single block. See also note in BlockGenerator that suggests we shouldn't be
+		// clearing the pool out there; I think I agree, we should instead do something more
+		// like garbage collection periodically.
 		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore, head, newHead); err != nil {
 			panic(err)
 		}
@@ -351,10 +362,13 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
+				// TODO(aa) for now wrap the new best block (head of the chain) in a
+				// TipSet. TipSet arrival hasn't yet been plumbed through here.
+				tipSets := []core.TipSet{{head.Cid().String(): head}}
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress):
+				case node.miningInCh <- mining.NewInput(context.Background(), tipSets, node.rewardAddress):
 				}
 			}()
 		}
@@ -427,10 +441,14 @@ func (node *Node) StartMining() error {
 	node.miningDoneWg.Add(1)
 	go func() {
 		defer func() { node.miningDoneWg.Done() }()
+		// TODO(aa) Here is where we kick mining off when we start off. Will
+		// probably need to change for EC to pass in all the tipsets at current height.
+		bb := node.ChainMgr.GetBestBlock()
+		tipSets := []core.TipSet{{bb.Cid().String(): bb}}
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), node.ChainMgr.GetBestBlock(), node.rewardAddress):
+		case node.miningInCh <- mining.NewInput(context.Background(), tipSets, node.rewardAddress):
 		}
 	}()
 	return nil

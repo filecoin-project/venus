@@ -29,6 +29,9 @@
             "null"
           ]
         },
+        "miner": {
+          "type": "string"
+        },
         "nonce": {
           "type": "integer"
         },
@@ -40,6 +43,9 @@
             "array",
             "null"
           ]
+        },
+        "parentWeight": {
+          "type": "number"
         },
         "stateRoot": {
           "$ref": "#/definitions/Cid"

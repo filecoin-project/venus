@@ -135,6 +135,31 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.Equal(address.NetworkAddress, blk.Messages[0].From)
 }
 
+func TestGenerateSetsBasicFields(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+
+	st, pool, addrs := sharedSetup(t)
+
+	getStateTree := func(c context.Context, stateRootCid *cid.Cid) (state.Tree, error) {
+		return st, nil
+	}
+	generator := NewBlockGenerator(pool, getStateTree, ApplyMessages)
+
+	h := uint64(100)
+	baseBlock := types.Block{
+		Height:    h,
+		StateRoot: newCid(),
+	}
+	blk, err := generator.Generate(ctx, &baseBlock, addrs[0])
+	assert.NoError(err)
+
+	assert.Equal(h+1, blk.Height)
+	assert.Equal(addrs[0], blk.Miner)
+}
+
 func TestGenerateWithoutMessages(t *testing.T) {
 	assert := assert.New(t)
 
