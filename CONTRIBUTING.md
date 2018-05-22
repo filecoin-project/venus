@@ -150,6 +150,7 @@ There are always exceptions but generally:
    * `Warning`: noteworthy but not completely unexpected
    * `Error`: a truly unexpected condition that should not happen in Real Life and that a dev should go look at
  * Protocol messages are nouns (eg, `DealQuery`, `DealResponse`) and their handlers are verbs (eg, `QueryDeal`)
+ * Do not put implementation inline in command functions. Command implementation should be minimal, calling out functionality that exists elsewhere (eg on the node). Commands implementation is an important API which gets muddled when implementation happens inline in command functions.
 
 ## Error Handling
 
