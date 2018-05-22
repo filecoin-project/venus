@@ -3,19 +3,25 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds/http"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
+
+var apiFile = "api"
 
 // exposed here, to be available during testing
 var sigCh = make(chan os.Signal, 1)
@@ -74,14 +80,14 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		}
 	}
 
-	return runAPIAndWait(req.Context, fcn, rep.Config())
+	return runAPIAndWait(req.Context, fcn, rep.Config(), req)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
 	return repo.OpenFSRepo(getRepoDir(req))
 }
 
-func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config) error {
+func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, req *cmds.Request) error {
 	if err := node.Start(); err != nil {
 		return err
 	}
@@ -112,6 +118,13 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config) 
 		}
 	}()
 
+	// write our api address to file
+	err := writeEndpointToDisk(config.API.Address, req)
+	if err != nil {
+		return errors.Wrap(err, "Could not save API address to repo")
+	}
+	defer removeEndpointFromDisk(config.API.Address, req) // nolint: errcheck
+
 	<-sigCh
 	fmt.Println("Got interrupt, shutting down...")
 
@@ -125,4 +138,32 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config) 
 	node.Stop()
 
 	return nil
+}
+
+func apiFilePath(req *cmds.Request) (string, error) {
+	dir := getRepoDir(req)
+	repoDir, err := homedir.Expand(dir)
+	if err != nil {
+		return "", errors.Wrap(err, "Could not expand repo dir")
+	}
+
+	return filepath.Join(repoDir, apiFile), nil
+}
+
+func writeEndpointToDisk(addr string, req *cmds.Request) error {
+	apiPath, err := apiFilePath(req)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(apiPath, []byte(addr), 0644)
+}
+
+func removeEndpointFromDisk(addr string, req *cmds.Request) error {
+	apiPath, err := apiFilePath(req)
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(apiPath)
 }
