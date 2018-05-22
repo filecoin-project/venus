@@ -451,26 +451,7 @@ func (s *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
 // TODO: sync logic should be decoupled and off in a separate worker. This
 // method should not block
 func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
-	deps := informNewBlockDeps{
-		GetBestBlock:    s.GetBestBlock,
-		FetchBlock:      s.FetchBlock,
-		ProcessNewBlock: s.ProcessNewBlock,
-	}
-
-	s.informNewBlock(deps, from, c, h)
-}
-
-type informNewBlockDeps struct {
-	GetBestBlock    func() *types.Block
-	FetchBlock      func(context.Context, *cid.Cid) (*types.Block, error)
-	ProcessNewBlock func(context.Context, *types.Block) (BlockProcessResult, error)
-}
-
-// informNewBlock informs the chainmanager that we learned about a potentially
-// new block from the given peer. It exists alongside InformNewBlock so that we
-// can inject its dependencies during test.
-func (s *ChainManager) informNewBlock(deps informNewBlockDeps, from peer.ID, c *cid.Cid, h uint64) {
-	b := deps.GetBestBlock()
+	b := s.GetBestBlock()
 	if b.Height >= h {
 		return
 	}
@@ -478,13 +459,13 @@ func (s *ChainManager) informNewBlock(deps informNewBlockDeps, from peer.ID, c *
 	// Naive sync.
 	// TODO: more dedicated sync protocols, like "getBlockHashes(range)"
 	ctx := context.TODO()
-	blk, err := deps.FetchBlock(ctx, c)
+	blk, err := s.FetchBlock(ctx, c)
 	if err != nil {
 		log.Error("failed to fetch block: ", err)
 		return
 	}
 
-	_, err = deps.ProcessNewBlock(ctx, blk)
+	_, err = s.ProcessNewBlock(ctx, blk)
 	if err != nil {
 		log.Error("processing new block: ", err)
 		return
