@@ -22,7 +22,7 @@ func TestMpoolSync(t *testing.T) {
 
 	// things to fiddle with
 	// would be cool if `msgPropDuration` was derived from `numNodes`
-	numNodes := 50
+	numNodes := 5
 	msgPropDuration := 5 * time.Second
 
 	// initialize numNodes filecoin nodes locally and start them

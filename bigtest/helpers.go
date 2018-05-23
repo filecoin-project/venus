@@ -2,6 +2,7 @@ package bigtest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"sort"
@@ -71,25 +72,19 @@ func MustConnectIPTB(r *require.Assertions, nodes []iptb.TestbedNode) { // nolin
 	wg.Wait()
 }
 
-// MustHaveChainLengthBy requires every node in `nodes` to have a chain of length `size`
-// by a duration `wait`.
-func MustHaveChainLengthBy(r *require.Assertions, size int, wait time.Duration, nodes []iptb.TestbedNode) { // nolint: deadcode
+// MustHaveConditionBy requires every nodes in `nodes` to meet some condition
+// defined in the function `cfn` within the duration `by`.
+// The `cfn` accepts a slice of nodes to assert some condition on and a
+// waitgroup for synchronization of node state.
+func MustHaveConditionBy(r *require.Assertions, nodes []iptb.TestbedNode, wait time.Duration, cfn func(ctx context.Context, node iptb.TestbedNode, wg *sync.WaitGroup)) {
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for _, n := range nodes {
 		wg.Add(1)
-		go func(n iptb.TestbedNode) {
-			for {
-				out := MustRunIPTB(r, n, "go-filecoin", "chain", "ls", "--enc=json")
-				bc := MustUnmarshalChain(r, out)
-				if len(bc) == size {
-					wg.Done()
-					return
-				}
-				time.Sleep(100 * time.Millisecond)
-			}
-		}(n)
+		go cfn(ctx, n, &wg)
 	}
 
 	go func() {
@@ -101,41 +96,47 @@ func MustHaveChainLengthBy(r *require.Assertions, size int, wait time.Duration, 
 	case <-done:
 		return
 	case <-time.After(wait):
-		r.FailNow("Timeout waiting for chains to sync")
+		// Kill the remaining goroutines.
+		r.FailNow("Timeout waiting for node state to sync")
 	}
+}
+
+// MustHaveChainLengthBy requires every node in `nodes` to have a chain of length `size`
+// by a duration `wait`.
+func MustHaveChainLengthBy(r *require.Assertions, size int, wait time.Duration, nodes []iptb.TestbedNode) { // nolint: deadcode
+	MustHaveConditionBy(r, nodes, wait, func(ctx context.Context, n iptb.TestbedNode, wg *sync.WaitGroup) {
+		for {
+			out := MustRunIPTB(r, n, "go-filecoin", "chain", "ls", "--enc=json")
+			bc := MustUnmarshalChain(r, out)
+			if len(bc) == size {
+				wg.Done()
+				return
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	})
+
 }
 
 // MustHaveCidInPoolBy requires every node in `nodes` to have a message with cid `cid`
 // in their message pool by duration `wait`.
 func MustHaveCidInPoolBy(r *require.Assertions, cid string, wait time.Duration, nodes []iptb.TestbedNode) { // nolint: deadcode
-	done := make(chan struct{})
-	var wg sync.WaitGroup
-
-	for _, n := range nodes {
-		wg.Add(1)
-		go func(n iptb.TestbedNode) {
-			for {
-				out := MustRunIPTB(r, n, "go-filecoin", "mpool")
-				if strings.Contains(out, cid) {
-					wg.Done()
-					return
-				}
-				time.Sleep(100 * time.Millisecond)
+	MustHaveConditionBy(r, nodes, wait, func(ctx context.Context, n iptb.TestbedNode, wg *sync.WaitGroup) {
+		for {
+			out := MustRunIPTB(r, n, "go-filecoin", "mpool")
+			if strings.Contains(out, cid) {
+				wg.Done()
+				return
 			}
-		}(n)
-	}
-
-	go func() {
-		wg.Wait()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-		return
-	case <-time.After(wait):
-		r.FailNow("Timeout waiting for message pools to sync")
-	}
+			if ctx.Err() != nil {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	})
 }
 
 // MustUnmarshalChain accepts an ndjson string and unmarshal it to a slice of blocks.
