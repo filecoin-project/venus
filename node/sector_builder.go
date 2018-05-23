@@ -14,18 +14,19 @@ import (
 	"path"
 	"strings"
 
-	"github.com/filecoin-project/go-proofs/data"
 	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
 	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
+	mmap "golang.org/x/sys/unix"
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
-	//	"golang.org/x/exp/mmap"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
+
+	"syscall"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -80,6 +81,8 @@ type SectorBuilder struct {
 	dserv ipld.DAGService
 
 	sectorSize uint64
+
+	setup func([]byte, *PublicParameters, []byte) ([]byte, error)
 }
 
 // Sector is a filecoin storage sector. A miner fills this up with data, and
@@ -99,19 +102,17 @@ type Sector struct {
 	data          []byte
 	sealed        *SealedSector
 	sectorBuilder *SectorBuilder
-	//ReaderAt *mmap.ReaderAt
+	mmappedData   []byte
 }
 
 // SealedSector is a sector that has been sealed by the PoRep setup process
 type SealedSector struct {
-	replicaData []byte
-	merkleRoot  []byte
-	baseSector  *Sector
+	merkleRoot []byte
+	baseSector *Sector
 
 	label string
 
 	filename string
-	file     *os.File
 }
 
 // Implement binpack.Binner
@@ -191,7 +192,7 @@ func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
 }
 
 // NewSealedSector allocates and returns a new SealedSector from replicaData, merkleRoot, and baseSector, along with any error.
-func (sb *SectorBuilder) NewSealedSector(replicaData data.ReadWriter, merkleRoot []byte, baseSector *Sector) (ss *SealedSector,
+func (sb *SectorBuilder) NewSealedSector(merkleRoot []byte, baseSector *Sector) (ss *SealedSector,
 	err error) {
 	p, label := sb.newSealedSectorPath()
 	ss = &SealedSector{
@@ -199,21 +200,30 @@ func (sb *SectorBuilder) NewSealedSector(replicaData data.ReadWriter, merkleRoot
 		baseSector: baseSector,
 		label:      label,
 	}
-	if err := replicaData.DataAt(0, 0, func(data []byte) error { ss.replicaData = data; return nil }); err != nil {
-		return nil, errors.Wrap(err, "failed to extract replica data")
-	}
 
 	sb.SealedSectors = append(sb.SealedSectors, ss)
 	err = os.MkdirAll(path.Dir(p), os.ModePerm)
 	if err != nil {
-		return ss, err
+		return nil, err
 	}
-	ss.filename = p
-	ss.file, err = os.Create(p)
+
+	if err := mmap.Munmap(baseSector.mmappedData); err != nil {
+		return nil, err
+	}
+
+	if err := baseSector.file.Close(); err != nil {
+		return nil, err
+	}
+
+	// move the now-sealed file out of staging
+	err = os.Rename(baseSector.filename, p)
 	if err != nil {
-		return ss, err
+		return nil, err
 	}
-	return ss, ss.file.Close()
+
+	ss.filename = p
+
+	return ss, nil
 }
 
 // NewSectorBuilder creates a new sector builder from the given node
@@ -228,6 +238,7 @@ func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, 
 		sectorSize:       uint64(sectorSize),
 		store:            nd.Repo.Datastore(),
 		dserv:            dag.NewDAGService(nd.Blockservice),
+		setup:            proverSetup,
 	}
 
 	sb.stagingDir = fs.StagingDir()
@@ -287,15 +298,30 @@ func (s *Sector) OpenAppend() error {
 	return nil
 }
 
-// OpenMMap opens and sets sector's file for mmap, returning the *mmap.ReaderAt.
-//func (s *Sector) OpenMMap() *mmap.ReaderAt {
-//	r, err := mmap.Open(s.filename)
-//	if err != nil {
-//		panic("could not mmap sector")
-//	}
-//	s.ReaderAt = r
-//	return r
-//}
+// OpenMMap opens and sets sector's file for mmap
+func (s *Sector) OpenMmap() error {
+	var err error
+	if err := os.Truncate(s.filename, int64(s.Size)); err != nil {
+		errors.Wrap(err, "failed to truncate sector file")
+	}
+	if err != nil {
+		return err
+	}
+	s.file, err = os.OpenFile(s.filename, os.O_RDWR, 0600)
+	fd := s.file.Fd()
+	offset := 0
+
+	data, err := mmap.Mmap(int(fd), int64(offset), int(s.Size), syscall.PROT_READ|syscall.PROT_WRITE,
+		syscall.MAP_SHARED)
+	if err != nil {
+		// panic?
+		return err
+	}
+
+	s.mmappedData = data
+
+	return nil
+}
 
 // SealAndPostSector seals the given sector and posts its commitment on-chain
 func (sb *SectorBuilder) SealAndPostSector(ctx context.Context, s *Sector) (err error) {
@@ -355,8 +381,13 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 	if err := s.OpenAppend(); err != nil {
 		return err
 	}
-	// Capture any error from the deferred close as the value to return.
-	defer func() { finalErr = s.file.Close() }()
+	// Capture any error from the deferred close as the value to return unless previous error was being returned.
+	defer func() {
+		err := s.file.Close()
+		if err != nil && finalErr == nil {
+			finalErr = err
+		}
+	}()
 
 	n, err := io.Copy(s.file, r)
 	if err != nil {
@@ -393,27 +424,23 @@ type PublicParameters struct {
 	blockSize uint64
 }
 
+func proverSetup(minerKey []byte, publicParams *PublicParameters, data []byte) ([]byte, error) {
+	prover := drg.NewProver(string(minerKey), publicParams.graph, int(publicParams.blockSize))
+	root, err := prover.Setup(NewMemoryReadWriter(data))
+
+	if err != nil {
+		return nil, errors.Wrap(err, "prover setup failed")
+	}
+
+	return root, nil
+}
+
 // Seal runs the PoRep setup process using the given parameters
 // address may turn into a secret key
-func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address, publicParams *PublicParameters) (*SealedSector,
-	error) {
-	// TODO: Actually use the mmap.ReaderAt for the sealing, instead of passing s.data.
-	/* defer s.OpenMMap().Close() // nolint: errcheck
-
-	if err := s.ReaderAt.Close(); err != nil {
-		panic(err)
-	}
-	*/
-
-	// TODO: Remove -- eventually we won't pass the data along, but for now it's necessary (and useful for testing).
-	data, err := s.ReadFile()
-	if err != nil {
+func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address, publicParams *PublicParameters) (_ *SealedSector,
+	finalErr error) {
+	if err := s.OpenMmap(); err != nil {
 		return nil, err
-	}
-	s.data = data
-
-	if uint64(len(s.data)) < s.Size {
-		s.data = append(s.data, make([]byte, s.Size-uint64(len(s.data)))...)
 	}
 
 	// AES key must be 16, 24, or 32 bytes. Failure to pad here breaks sealing.
@@ -421,37 +448,15 @@ func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address, publicParams *Pu
 	minerKey := make([]byte, 32)
 	copy(minerKey[:len(minerID)], minerID[:])
 
-	prover := drg.NewProver(string(minerKey), publicParams.graph, int(publicParams.blockSize))
-
-	var dataCopy = make([]byte, len(s.data))
-	copy(dataCopy, s.data)
-
-	root, err := prover.Setup(NewMemoryReadWriter(dataCopy))
-	if err != nil {
-		return nil, errors.Wrap(err, "prover setup failed")
-	}
-	ss, err := sb.NewSealedSector(prover.Replica, root, s)
-
-	// NOTE: Between here and the call to os.Rename below, the SealedSector has a filename which is never persisted.
-	// FIXME: Does it need to be?
+	root, err := sb.setup(minerKey, publicParams, s.mmappedData)
 	if err != nil {
 		return nil, err
 	}
-	err = ss.Dump()
-	if err != nil {
-		return ss, err
-	}
-	merklePath, err := sb.merkleFilepath(ss)
-	if err != nil {
-		return ss, err
-	}
-	err = os.Rename(ss.filename, merklePath)
-	if err == nil {
-		ss.filename = merklePath
-	} else {
-		return ss, err
-	}
-	return ss, nil
+
+	var copiedRoot = make([]byte, len(root))
+	copy(copiedRoot, root)
+
+	return sb.NewSealedSector(copiedRoot, s)
 }
 
 // ReadFile reads the content of a Sector's file into a byte array and returns it along with any error.
@@ -462,11 +467,6 @@ func (s *Sector) ReadFile() ([]byte, error) {
 // ReadFile reads the content of a SealedSector's file into a byte array and returns it along with any error.
 func (ss *SealedSector) ReadFile() ([]byte, error) {
 	return ioutil.ReadFile(ss.filename)
-}
-
-// Dump dumps ss's replicaData to disk.
-func (ss *SealedSector) Dump() error {
-	return ioutil.WriteFile(ss.filename, ss.replicaData, 0600)
 }
 
 // newSectorLabel returns a newly-generated, random 32-character base32 string.
