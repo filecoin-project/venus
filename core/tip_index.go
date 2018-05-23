@@ -49,6 +49,15 @@ type Tip = types.Block
 // keyed by Cid string.
 type TipSet map[string]*Tip
 
+// Clone returns a shallow copy of the TipSet.
+func (ts TipSet) Clone() TipSet {
+	r := TipSet{}
+	for k, v := range ts {
+		r[k] = v
+	}
+	return r
+}
+
 // BaseBlockFromTipSets is a likely TEMPORARY helper to extract a base block
 // from a tipset. Prior to EC the mining worker mined off of a base block. With
 // EC it is mining off of a set of TipSets. We haven't plumbed the change from

@@ -117,8 +117,8 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 				return
 			case input, ok := <-inCh:
 				if ok {
-					// TODO(aa) select the heaviest tipset
-					// TODO(aa) implement the mining logic described in the spec here:
+					// TODO(EC): select the heaviest tipset
+					// TODO(EC): implement the mining logic described in the spec here:
 					//   https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR83
 					//   specifically:
 					//     - the spec suggests to "wait a little bit" when we see a tipset at a greater
@@ -164,13 +164,13 @@ func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSom
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 
-	// TODO(aa) Check ticket. If not a winner then wait (how long?!) and add a null block
+	// TODO(EC): Check ticket. If not a winner then wait (how long?!) and add a null block
 	// and try again. Keep doing that until we get canceled or a winner is found. When
 	// a winner is found proceed with block creation:
 	// https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR87
 	// DoSomeWorkFunc is a placeholder for the thing that computes proofs.
 
-	// TODO(aa) Generate()'s signature might want to change. In order to limit the scope
+	// TODO(EC): Generate()'s signature might want to change. In order to limit the scope
 	// of changes I'm just pulling a block out here and passing it in.
 	newBaseBlock := core.BaseBlockFromTipSets(input.TipSets)
 	next, err := blockGenerator.Generate(ctx, newBaseBlock, input.RewardAddress)
@@ -179,7 +179,7 @@ func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSom
 		// TODO whatever happens here should respect the context, but see caveat below.
 		doSomeWork()
 	}
-	// TODO(aa) Consider what to do if we have found a winning ticket and are mining with
+	// TODO(EC): Consider what to do if we have found a winning ticket and are mining with
 	// it and a new tipset comes in with greater height. Unless we change the logic the
 	// successful mining run will be canceled if it is still in flight. We should probably
 	// let the successful run proceed unless the context is explicitly canceled.
