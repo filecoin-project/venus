@@ -1,22 +1,24 @@
 package paymentbroker
 
 import (
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
-	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 )
 
 func init() {
 	cbor.RegisterCborType(PaymentChannel{})
 	cbor.RegisterCborType(Storage{})
+	cbor.RegisterCborType(PaymentVoucher{})
 }
 
 // Signature signs an update request
-type Signature []byte
+type Signature = []byte
 
 // allPaymentChannels are keyed by payer address
 type allPaymentChannels map[string]accountPaymentChannels
@@ -26,10 +28,19 @@ type accountPaymentChannels map[string]*PaymentChannel
 
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
-	Target         types.Address
-	Amount         *types.TokenAmount
-	AmountRedeemed *types.TokenAmount
-	Eol            *types.BlockHeight
+	Target         types.Address      `json:"target"`
+	Amount         *types.TokenAmount `json:"amount"`
+	AmountRedeemed *types.TokenAmount `json:"amount_redeemed"`
+	Eol            *types.BlockHeight `json:"eol"`
+}
+
+// PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
+type PaymentVoucher struct {
+	Channel   types.ChannelID   `json:"channel"`
+	Payer     types.Address     `json:"payer"`
+	Target    types.Address     `json:"target"`
+	Amount    types.TokenAmount `json:"amount"`
+	Signature Signature         `json:"signature"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -55,7 +66,7 @@ func (pb *Actor) Exports() exec.Exports {
 
 var _ exec.ExecutableActor = (*Actor)(nil)
 
-// NewPaymentBrokerActor returns a new payment broker actor
+// NewPaymentBrokerActor returns a new payment broker actor.
 func NewPaymentBrokerActor() (*types.Actor, error) {
 	initStorage := &Storage{
 		Channels: make(allPaymentChannels),
@@ -80,6 +91,10 @@ var paymentBrokerExports = exec.Exports{
 		Params: []abi.Type{abi.ChannelID, abi.BlockHeight},
 		Return: nil,
 	},
+	"ls": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address},
+		Return: []abi.Type{abi.Bytes},
+	},
 	"reclaim": &exec.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
@@ -87,6 +102,10 @@ var paymentBrokerExports = exec.Exports{
 	"update": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.TokenAmount, abi.Bytes},
 		Return: nil,
+	},
+	"voucher": &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID, abi.TokenAmount},
+		Return: []abi.Type{abi.Bytes},
 	},
 }
 
@@ -248,6 +267,57 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 	}
 
 	return 0, nil
+}
+
+// Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
+// It errors if the channel doesn't exist or contains less than request amount.
+func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.TokenAmount) ([]byte, uint8, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+		channel, err := findChannel(&storage, ctx.Message().From, chid)
+		if err != nil {
+			return nil, err
+		}
+
+		// voucher must be for less than total amount in channel
+		if channel.Amount.LessThan(amount) {
+			return nil, errors.NewRevertErrorf("voucher amount exceeds amount in channel (%s > %s)", amount, channel.Amount)
+		}
+
+		// return voucher
+		voucher := PaymentVoucher{
+			Channel: *chid,
+			Payer:   ctx.Message().From,
+			Target:  channel.Target,
+			Amount:  *amount,
+		}
+
+		return cbor.DumpObject(voucher)
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	return ret.([]byte), 0, nil
+}
+
+// Ls returns all payment channels for a given payer address.
+// The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
+func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error) {
+	var storage Storage
+	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+		byPayer, found := storage.Channels[payer.String()]
+		if !found {
+			byPayer = make(map[string]*PaymentChannel)
+		}
+
+		return cbor.DumpObject(byPayer)
+	})
+	if err != nil {
+		return nil, 1, err
+	}
+
+	return ret.([]byte), 0, nil
 }
 
 func findChannel(storage *Storage, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {

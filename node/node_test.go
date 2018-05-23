@@ -11,6 +11,7 @@ import (
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -19,6 +20,7 @@ import (
 	types "github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeConstruct(t *testing.T) {
@@ -393,5 +395,29 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		msg, err := NewMessageWithNextNonce(ctx, node, address, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
 		assert.NoError(err)
 		assert.Equal(uint64(42), msg.Nonce)
+	})
+}
+
+func TestQueryMessage(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("can contact payment broker", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+		node := MakeNodesUnstarted(t, 1, true)[0]
+		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		assert.NoError(err)
+		assert.NoError(node.Start())
+
+		params, err := abi.ToEncodedValues(address.TestAddress)
+		require.NoError(err)
+		msg, err := NewMessageWithNextNonce(ctx, node, address.TestAddress, address.PaymentBrokerAddress, nil, "ls", params)
+		require.NoError(err)
+
+		returnValue, exitCode, err := node.QueryMessage(msg)
+		require.NoError(err)
+		require.Equal(uint8(0), exitCode)
+
+		assert.NotNil(returnValue)
 	})
 }

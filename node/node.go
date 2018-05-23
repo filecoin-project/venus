@@ -527,3 +527,15 @@ func (node *Node) NewAddress() (types.Address, error) {
 	backend := (backends[0]).(*wallet.DSBackend)
 	return backend.NewAddress()
 }
+
+// QueryMessage sends a read-only message to an actor to retrieve some of its current (best block) state.
+func (node *Node) QueryMessage(msg *types.Message) ([]byte, uint8, error) {
+	ctx := context.Background()
+	bb := node.ChainMgr.GetBestBlock()
+	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, builtin.Actors)
+	if err != nil {
+		return nil, 1, err
+	}
+
+	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(bb.Height))
+}
