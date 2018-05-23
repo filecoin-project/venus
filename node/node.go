@@ -337,14 +337,14 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 }
 
 func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
-	// TODO(aa) The current mining code is driven by the promotion of a new best
+	// TODO(EC): The current mining code is driven by the promotion of a new best
 	// block. This should probably change for EC: we want to tell the mining worker
 	// about *all* arriving tipsets at the current height. So the way we currently
 	// feed best blocks should probably be changed to feed tipsets at the current
 	// height.
 	for blk := range node.BestBlockCh {
 		newHead := blk.(*types.Block)
-		// TODO(aa) When a new best block is promoted we remove messages in it from the
+		// TODO(EC): When a new best block is promoted we remove messages in it from the
 		// message pool (and add them back in if we have a re-org). The way we update the
 		// message pool should probably change for EC -- tipsets have multiple blocks, not
 		// a single block. See also note in BlockGenerator that suggests we shouldn't be
@@ -362,7 +362,7 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
-				// TODO(aa) for now wrap the new best block (head of the chain) in a
+				// TODO(EC): for now wrap the new best block (head of the chain) in a
 				// TipSet. TipSet arrival hasn't yet been plumbed through here.
 				tipSets := []core.TipSet{{head.Cid().String(): head}}
 				select {
@@ -441,8 +441,8 @@ func (node *Node) StartMining() error {
 	node.miningDoneWg.Add(1)
 	go func() {
 		defer func() { node.miningDoneWg.Done() }()
-		// TODO(aa) Here is where we kick mining off when we start off. Will
-		// probably need to change for EC to pass in all the tipsets at current height.
+		// TODO(EC): Here is where we kick mining off when we start off. Will
+		// need to change to pass in best tipsets, of which there can be multiple.
 		bb := node.ChainMgr.GetBestBlock()
 		tipSets := []core.TipSet{{bb.Cid().String(): bb}}
 		select {

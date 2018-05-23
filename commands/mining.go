@@ -41,7 +41,7 @@ var miningOnceCmd = &cmds.Command{
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
 			return state.LoadStateTree(ctx, fcn.CborStore, cid, builtin.Actors)
 		}, mining.ApplyMessages)
-		// TODO(aa) Another place we need tipsets.
+		// TODO(EC): Need to read best tipsets from storage and pass in. See also Node::StartMining().
 		tipSets := []core.TipSet{{cur.Cid().String(): cur}}
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), tipSets, rewardAddr)
 		if res.Err != nil {
