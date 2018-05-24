@@ -3,118 +3,109 @@ package commands
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChainHead(t *testing.T) {
 	t.Run("returns an error if no best block", func(t *testing.T) {
-		assert := assert.New(t)
+		require := require.New(t)
 
-		getter := func() *types.Block {
-			return nil
-		}
+		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		emitter := NewMockEmitter(func(v interface{}) error {
-			return nil
+		_, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
+			ctx:  context.Background(),
+			node: n,
 		})
 
-		err := runChainHead(getter, emitter.emit)
-		assert.Error(err)
-		assert.Equal(0, len(emitter.calls()))
+		require.Error(err)
+		require.Contains(err.Error(), "best block not found")
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
+		require := require.New(t)
 		assert := assert.New(t)
 
-		block := types.NewBlockForTest(nil, 1)
+		ctx := context.Background()
+		blk := types.NewBlockForTest(nil, 1)
+		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		getter := func() *types.Block {
-			return block
-		}
+		n.ChainMgr.SetBestBlockForTest(ctx, blk)
 
-		emitter := NewMockEmitter(func(v interface{}) error {
-			types.AssertCidsEqual(assert, block.Cid(), v.(cmds.Single).Value.(*cid.Cid))
-			return nil
+		out, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
+			ctx:  ctx,
+			node: n,
 		})
+		require.NoError(err)
 
-		err := runChainHead(getter, emitter.emit)
-		assert.NoError(err)
-		assert.Equal(1, len(emitter.calls()))
+		assert.Contains(out.Raw, blk.Cid().String())
 	})
 }
 
 func TestChainLsRun(t *testing.T) {
-	ctx := context.Background()
-
 	t.Run("chain of height two", func(t *testing.T) {
+		require := require.New(t)
 		assert := assert.New(t)
 
-		genBlock := types.NewBlockForTest(nil, 1)
-		chlBlock := types.NewBlockForTest(genBlock, 2)
+		ctx := context.Background()
+		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		getter := func(ctx context.Context) <-chan interface{} {
-			out := make(chan interface{})
+		err := n.ChainMgr.Genesis(ctx, core.InitGenesis)
+		require.NoError(err)
 
-			go func() {
-				defer close(out)
+		genBlock := n.ChainMgr.GetBestBlock()
+		chlBlock := types.NewBlockForTest(genBlock, 1)
 
-				bs := []*types.Block{chlBlock, genBlock}
-				for _, b := range bs {
-					out <- b
-				}
-			}()
+		err = n.ChainMgr.SetBestBlockForTest(ctx, chlBlock)
+		require.NoError(err)
 
-			return out
+		out, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
+			ctx:  ctx,
+			node: n,
+		})
+		require.NoError(err)
+
+		lines := strings.Split(strings.Trim(out.Raw, "\n"), "\n")
+
+		var bs []*types.Block
+		for _, line := range lines {
+			var b types.Block
+			err := json.Unmarshal([]byte(line), &b)
+			require.NoError(err)
+			bs = append(bs, &b)
 		}
 
-		emitter := NewMockEmitter(func(v interface{}) error {
-			return nil
-		})
-
-		err := runChainLs(ctx, getter, emitter.emit)
-		assert.NoError(err)
-
-		assert.Equal(2, len(emitter.calls()))
-		types.AssertHaveSameCid(assert, chlBlock, emitter.calls()[0].(*types.Block))
-		types.AssertHaveSameCid(assert, genBlock, emitter.calls()[1].(*types.Block))
+		assert.Equal(2, len(bs))
+		types.AssertHaveSameCid(assert, chlBlock, bs[0])
+		types.AssertHaveSameCid(assert, genBlock, bs[1])
 	})
 
-	t.Run("emit best block and then fail getting parent", func(t *testing.T) {
-		assert := assert.New(t)
+	t.Run("emit best block and then time out getting parent", func(t *testing.T) {
+		require := require.New(t)
 
-		genBlock := types.NewBlockForTest(nil, 1)
-		chlBlock := types.NewBlockForTest(genBlock, 2)
+		ctx := context.Background()
+		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		getter := func(ctx context.Context) <-chan interface{} {
-			out := make(chan interface{})
+		parBlock := types.NewBlockForTest(nil, 0)
+		chlBlock := types.NewBlockForTest(parBlock, 1)
 
-			go func() {
-				defer close(out)
+		err := n.ChainMgr.SetBestBlockForTest(ctx, chlBlock)
+		require.NoError(err)
 
-				out <- chlBlock
-				out <- errors.New("context deadline exceeded")
-			}()
-
-			return out
-		}
-
-		emitter := NewMockEmitter(func(v interface{}) error {
-			types.AssertHaveSameCid(assert, chlBlock, v.(*types.Block))
-			return nil
+		// parBlock is not known to the chain, which causes the timeout
+		_, err = testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
+			ctx:  ctx,
+			node: n,
 		})
-
-		err := runChainLs(ctx, getter, emitter.emit)
-		assert.Error(err)
-		assert.Contains(err.Error(), "context deadline exceeded")
-		assert.Equal(1, len(emitter.calls()))
+		require.Error(err)
 	})
 
 	t.Run("JSON marshaling", func(t *testing.T) {
