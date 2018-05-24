@@ -152,6 +152,37 @@ There are always exceptions but generally:
  * Protocol messages are nouns (eg, `DealQuery`, `DealResponse`) and their handlers are verbs (eg, `QueryDeal`)
  * Do not put implementation inline in command functions. Command implementation should be minimal, calling out functionality that exists elsewhere (eg on the node). Commands implementation is an important API which gets muddled when implementation happens inline in command functions.
 
+We use the following import ordering. 
+```
+import (
+        [stdlib packages, alpha-sorted]
+        <single, empty line>
+        [gx-installed packages]
+        <single, empty line>
+        [go get-installed packages (not part of go-filecoin)]
+        <single, empty line>
+        [go-filecoin packages]
+)
+```
+
+Example:
+
+```go
+import (
+	"context"
+	"testing"
+
+	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
+)
+```
+
 ## Error Handling
 
 The overarching concern is safety of the user: do not give the user an
