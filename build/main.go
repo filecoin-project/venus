@@ -45,13 +45,13 @@ func deps() {
 	list := []string{
 		"go get -u github.com/whyrusleeping/gx",
 		"go get -u github.com/whyrusleeping/gx-go",
-		"go get -u golang.org/x/sys/unix",
 		"gx install",
 		"gx-go rewrite",
 		"go get -u github.com/alecthomas/gometalinter",
 		"gometalinter --install",
 		"go get -u github.com/stretchr/testify",
 		"go get -u github.com/xeipuuv/gojsonschema",
+		"go get -u golang.org/x/sys/unix",
 
 		"go get -u k8s.io/api/...",                       // iptb dep
 		"go get -u k8s.io/client-go/...",                 // iptb dep

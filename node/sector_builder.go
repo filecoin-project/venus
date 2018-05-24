@@ -13,10 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
-
-	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
-	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
-	mmap "golang.org/x/sys/unix"
+	"syscall"
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
@@ -26,7 +23,9 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
 
-	"syscall"
+	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
+	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
+	mmap "golang.org/x/sys/unix"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
