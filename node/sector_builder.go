@@ -1,7 +1,5 @@
 package node
 
-// TODO: mmap details are commented out but retained for future use.
-
 import (
 	"context"
 	"crypto/rand"
@@ -195,13 +193,6 @@ func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
 // file into the sealed directory from the staging directory.
 func (sb *SectorBuilder) NewSealedSector(merkleRoot []byte, s *Sector) (ss *SealedSector, err error) {
 	p, label := sb.newSealedSectorPath()
-	ss = &SealedSector{
-		merkleRoot: merkleRoot,
-		baseSector: s,
-		label:      label,
-	}
-
-	sb.SealedSectors = append(sb.SealedSectors, ss)
 
 	// On some distros (OSX/Darwin), munmap with MAP_SHARED will cause memory
 	// to be written back to disk "automatically at some point in the future."
@@ -220,8 +211,16 @@ func (sb *SectorBuilder) NewSealedSector(merkleRoot []byte, s *Sector) (ss *Seal
 		return nil, errors.Wrap(err, "failed to move file from staging to sealed directory")
 	}
 
-	ss.filename = p
 	s.filename = ""
+
+	ss = &SealedSector{
+		merkleRoot: merkleRoot,
+		baseSector: s,
+		label:      label,
+		filename:   p,
+	}
+
+	sb.SealedSectors = append(sb.SealedSectors, ss)
 
 	return ss, nil
 }
@@ -410,8 +409,7 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 		return err
 	}
 
-	// TODO:
-	// We should be writing this out to a file in the 'staging' area. Once the
+	// TODO: We should be writing this out to a file in the 'staging' area. Once the
 	// sector is ready to be sealed, we should mmap it and pass it to the
 	// sealing code. The sealing code prefers fairly random access to the data,
 	// so using mmap will be the fastest option. We could also provide an
@@ -426,7 +424,7 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 	s.Free -= pi.Size
 	s.Pieces = append(s.Pieces, pi)
 
-	err = s.sectorBuilder.checkpointSectorMeta(s) // TODO: make this a method of Sector.
+	err = s.sectorBuilder.checkpointSectorMeta(s)
 	return err
 }
 
