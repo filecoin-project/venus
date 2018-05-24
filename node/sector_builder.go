@@ -244,12 +244,6 @@ func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, 
 	sb.stagingDir = fs.StagingDir()
 	sb.sealedDir = fs.SealedDir()
 
-	s, err := sb.NewSector()
-	if err != nil {
-		return nil, err
-	}
-	sb.CurSector = s
-
 	packer, firstBin, err := binpack.NewNaivePacker(sb)
 	if err != nil {
 		return nil, err
