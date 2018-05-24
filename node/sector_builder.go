@@ -294,7 +294,6 @@ func (s *Sector) OpenAppend() error {
 
 // OpenMmap opens a sector's file and maps it into memory.
 func (s *Sector) OpenMmap() error {
-	// TODO: why does this exist?
 	if err := os.Truncate(s.filename, int64(s.Size)); err != nil {
 		return errors.Wrap(err, "failed to truncate sector file")
 	}
