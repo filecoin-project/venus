@@ -310,6 +310,10 @@ func (s *Sector) OpenMmap() error {
 		return errors.Wrap(err, "failed to mmap sector file")
 	}
 
+	if err := mmap.Madvise(data, syscall.MADV_RANDOM); err != nil {
+		return errors.Wrap(err, "failed to madvise mmap")
+	}
+
 	s.file = file
 	s.data = data
 
