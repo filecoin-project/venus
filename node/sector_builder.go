@@ -220,8 +220,8 @@ func (sb *SectorBuilder) NewSealedSector(merkleRoot []byte, s *Sector) (ss *Seal
 		return nil, errors.Wrap(err, "failed to move file from staging to sealed directory")
 	}
 
-	// TODO: should we wipe the sector's filename at this point?
 	ss.filename = p
+	s.filename = ""
 
 	return ss, nil
 }
