@@ -152,12 +152,6 @@ func TestSectorBuilder(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
 	assert.NotEqual(sector, sb.CurSector)
 
-	// TODO: need to test that old sector has just the old values and not the new piece.
-	/*d3 := requireReadAll(require, sector)
-	assert.Equal(all, string(d3)) // Initial sector still contains initial data.
-
-	assert.Contains(string(sector.data), string(d3)) // Sector data has been set. 'Contains' because it is padded.
-	*/
 	// persisted and calculated metadata match after a sector is sealed.
 	assertMetadataMatch(sector, 2)
 
