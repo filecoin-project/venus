@@ -23,7 +23,7 @@ import (
 
 	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
 	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
-	mmap "golang.org/x/sys/unix"
+	mmap "gx/ipfs/QmPXvegq26x982cQjSfbTvSzZXn7GiaMwhhVPHkeTEhrPT/sys/unix"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
