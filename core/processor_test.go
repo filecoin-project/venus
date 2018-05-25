@@ -56,7 +56,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
-	expAct1, expAct2 := RequireNewAccountActor(require, types.NewTokenAmount(10000-550)), RequireNewAccountActor(require, types.NewTokenAmount(550))
+	expAct1, expAct2 := RequireNewAccountActor(require, types.NewTokenAmount(10000-550)), RequireNewEmptyActor(require, types.NewTokenAmount(550))
 	expAct1.IncNonce()
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expAct1,
@@ -79,9 +79,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		delete(builtin.Actors, fakeActorCodeCid.KeyString())
 	}()
 
-	// Stick two fake actors in the state tree so they can talk.
+	// Stick one empty actor and one fake actor in the state tree so they can talk.
 	addr1, addr2 := newAddress(), newAddress()
-	act1, act2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
+	act1, act2 := RequireNewEmptyActor(require, types.NewTokenAmount(0)), RequireNewFakeActor(require, fakeActorCodeCid)
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -105,7 +105,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	assert.Contains(string(receipts[0].ReturnValue()), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
-	expectedAct1, expectedAct2 := RequireNewFakeActor(require, fakeActorCodeCid), RequireNewFakeActor(require, fakeActorCodeCid)
+	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewTokenAmount(0)), RequireNewFakeActor(require, fakeActorCodeCid)
 	expectedAct1.IncNonce()
 	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: expectedAct1,
@@ -259,6 +259,44 @@ func TestNestedSendBalance(t *testing.T) {
 	})
 
 	assert.True(expStCid.Equals(gotStCid))
+}
+
+func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+	})
+
+	// send 500 from addr1 to addr2
+	msg := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(500), "", []byte{})
+	_, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	require.NoError(err)
+
+	// send 250 along from addr2 to addr3
+	msg = types.NewMessage(addr2, addr3, 0, types.NewTokenAmount(300), "", []byte{})
+	_, err = ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	require.NoError(err)
+
+	// get all 3 actors
+	act1 = state.MustGetActor(st, addr1)
+	assert.Equal(types.NewTokenAmount(500), act1.Balance)
+	assert.True(types.AccountActorCodeCid.Equals(act1.Code))
+
+	act2 := state.MustGetActor(st, addr2)
+	assert.Equal(types.NewTokenAmount(200), act2.Balance)
+	assert.True(types.AccountActorCodeCid.Equals(act2.Code))
+
+	act3 := state.MustGetActor(st, addr3)
+	assert.Equal(types.NewTokenAmount(300), act3.Balance)
+	assert.Nil(act3.Code)
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {

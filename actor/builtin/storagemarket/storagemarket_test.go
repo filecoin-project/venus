@@ -1,14 +1,14 @@
 package storagemarket_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"math/big"
 	"testing"
 
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -18,6 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStorageMarketCreateMiner(t *testing.T) {
@@ -72,6 +74,46 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(string(receipt.ReturnValue()), ErrPledgeTooLow.Error())
+}
+
+func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := core.InitGenesis(cst)
+	assert.NoError(err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	assert.NoError(err)
+
+	// create account of future miner actor by sending FIL to the predicted address
+	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
+	require.NoError(err)
+
+	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewTokenAmount(100), "", []byte{})
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	require.NoError(err)
+	require.Equal(uint8(0), receipt.ExitCode)
+
+	pdata := actor.MustConvertParams(types.NewBytesAmount(15000))
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
+	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	require.NoError(err)
+	require.Equal(uint8(0), receipt.ExitCode)
+
+	// ensure our derived address is the address storage market creates
+	createdAddress, err := types.NewAddressFromBytes(receipt.ReturnValue())
+	require.NoError(err)
+	assert.Equal(minerAddr, createdAddress)
+
+	miner, err := st.GetActor(ctx, minerAddr)
+	require.NoError(err)
+
+	// miner balance should be sum of messages
+	assert.Equal(types.NewTokenAmount(300), miner.Balance)
 }
 
 func TestStorageMarketAddBid(t *testing.T) {
@@ -167,6 +209,29 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.NoError(actor.UnmarshalStorage(sma.ReadStorage(), &sms))
 	assert.Len(sms.Filemap.Deals, 1)
 	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
+}
+
+// this is used to simulate an attack where someone derives the likely address of another miner's
+// minerActor and sends some FIL. If that FIL creates an actor tha cannot be upgraded to a miner
+// actor, this action will block the other user. Another possibility is that the miner actor will
+// overwrite the account with the balance thereby obliterating the FIL.
+func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, error) {
+	buf := new(bytes.Buffer)
+
+	if _, err := buf.Write(creator.Bytes()); err != nil {
+		return types.Address{}, err
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
+		return types.Address{}, err
+	}
+
+	hash, err := types.AddressHash(buf.Bytes())
+	if err != nil {
+		return types.Address{}, err
+	}
+
+	return types.NewMainnetAddress(hash), nil
 }
 
 // TODO: deduplicate with code in miner/miner_test.go

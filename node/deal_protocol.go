@@ -502,7 +502,7 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddre
 		return types.Address{}, errors.Wrap(err, "failed to find miner actor in state tree")
 	}
 
-	if !act.Code.Equals(types.MinerActorCodeCid) {
+	if act.Code == nil || !act.Code.Equals(types.MinerActorCodeCid) {
 		return types.Address{}, fmt.Errorf("address given did not belong to a miner actor")
 	}
 

@@ -72,6 +72,8 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 	var res *actorView
 	for i, a := range actors {
 		switch {
+		case a.Code == nil: // empty (balance only) actors have no Code.
+			res = makeActorView(a, addrs[i], nil)
 		case a.Code.Equals(types.AccountActorCodeCid):
 			res = makeActorView(a, addrs[i], &account.Actor{})
 		case a.Code.Equals(types.StorageMarketActorCodeCid):

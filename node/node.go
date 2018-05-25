@@ -468,7 +468,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 	}
 
 	actor, err := st.GetActor(ctx, actorAddr)
-	if err != nil {
+	if err != nil || actor.Code == nil {
 		return nil, errors.Wrap(err, "failed to get actor")
 	}
 

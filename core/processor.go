@@ -138,7 +138,11 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
 func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
-	ss := st.Snapshot()
+	ss, err := st.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	r, err := attemptApplyMessage(ctx, st, msg, bh)
 	if errors.IsFault(err) {
 		return r, err
@@ -151,7 +155,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *ty
 	// Reject invalid state transitions.
 	if err == errAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
-	} else if err == errSelfSend || err == errNonceTooLow || err == vm.ErrCannotTransferNegativeValue {
+	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == vm.ErrCannotTransferNegativeValue {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
 		// Do nothing. All other vm errors are ok: the state was rolled back
@@ -180,6 +184,7 @@ var (
 	errAccountNotFound = errors.NewRevertError("account not found")
 	errNonceTooHigh    = errors.NewRevertError("nonce too high")
 	errNonceTooLow     = errors.NewRevertError("nonce too low")
+	errNonAccountActor = errors.NewRevertError("message from non-account actor")
 	// TODO we'll eventually handle sending to self.
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
@@ -203,7 +208,10 @@ func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, b
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
 	}
 
-	snap := st.Snapshot()
+	snap, err := st.Snapshot(ctx)
+	if err != nil {
+		return nil, 1, err
+	}
 
 	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, bh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
@@ -233,15 +241,27 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message,
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*types.Actor, error) {
-		a, err := account.NewActor(nil)
-		if err != nil {
-			// Note: we're inside a closure; any error will be wrapped below.
-			return nil, err
-		}
-		return a, st.SetActor(ctx, msg.To, a)
+		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
+		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
+		// actor to collect any balance that may be transferred.
+		a := types.Actor{}
+		return &a, st.SetActor(ctx, msg.To, &a)
 	})
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
+	}
+
+	// processing an exernal message from an empty actor upgrades it to an account actor.
+	if fromActor.Code == nil {
+		fromActor, err = upgradeEmptyActor(ctx, st, msg.From, *fromActor)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
+		}
+	}
+
+	// if from actor is not an account actor revert message
+	if !fromActor.Code.Equals(types.AccountActorCodeCid) {
+		return nil, errNonAccountActor
 	}
 
 	if msg.Nonce < fromActor.Nonce {
@@ -284,4 +304,14 @@ func truncate(val []byte, size int) []byte {
 	}
 
 	return val[0:size]
+}
+
+func upgradeEmptyActor(ctx context.Context, st state.Tree, addr types.Address, actor types.Actor) (*types.Actor, error) {
+	accountActor, err := account.NewActor(actor.Balance)
+	if err != nil {
+		return nil, err
+	}
+
+	err = st.SetActor(ctx, addr, accountActor)
+	return accountActor, err
 }

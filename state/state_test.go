@@ -120,6 +120,7 @@ func TestStateGetOrCreate(t *testing.T) {
 
 func TestSnapshotAndRevertTo(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
@@ -128,7 +129,9 @@ func TestSnapshotAndRevertTo(t *testing.T) {
 	st := NewEmptyStateTree(cst)
 	emptyCid, err := st.Flush(ctx)
 	assert.NoError(err)
-	emptyRev := st.Snapshot()
+	emptyRev, err := st.Snapshot(ctx)
+	require.NoError(err)
+
 	st.RevertTo(emptyRev)
 	gotCid, err := st.Flush(ctx)
 	assert.NoError(err)
@@ -142,12 +145,15 @@ func TestSnapshotAndRevertTo(t *testing.T) {
 	oneActorCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	assert.False(oneActorCid.Equals(emptyCid))
-	oneActorRev := st.Snapshot()
+	oneActorRev, err := st.Snapshot(ctx)
+	require.NoError(err)
+
 	st.SetActor(ctx, newAddress(), types.NewActor(types.AccountActorCodeCid, nil))
 	twoActorCid, err := st.Flush(ctx)
 	assert.NoError(err)
 	assert.False(twoActorCid.Equals(oneActorCid))
-	twoActorRev := st.Snapshot()
+	twoActorRev, err := st.Snapshot(ctx)
+	require.NoError(err)
 
 	// Roll back to same state.
 	st.RevertTo(twoActorRev)
@@ -173,6 +179,8 @@ func TestLoadedStateTreeCanSnapshot(t *testing.T) {
 	// differently than the constructor, hence this test. If it
 	// doesn't crash in Snapshot() we are winning.
 	assert := assert.New(t)
+	require := require.New(t)
+
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
@@ -184,7 +192,9 @@ func TestLoadedStateTreeCanSnapshot(t *testing.T) {
 
 	tree2, err := LoadStateTree(ctx, cst, cid, nil)
 	assert.NoError(err)
-	snap := tree2.Snapshot()
+	snap, err := tree2.Snapshot(ctx)
+	require.NoError(err)
+
 	tree2.RevertTo(snap)
 	gotCid, err := tree.Flush(ctx)
 	assert.NoError(err)

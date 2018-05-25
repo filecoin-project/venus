@@ -81,6 +81,10 @@ func init() {
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
 func ActorCodeTypeName(code *cid.Cid) string {
+	if code == nil {
+		return "EmptyActor"
+	}
+
 	name, ok := ActorCodeCidTypeNames[code]
 	if ok {
 		return name

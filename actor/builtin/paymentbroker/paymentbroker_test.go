@@ -91,12 +91,10 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 
 	pdata := core.MustConvertParams(payee, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewTokenAmount(1000), "createChannel", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
-	require.NoError(err)
+	_, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 
 	// expect error
-	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(string(receipt.ReturnValue()), "account actor")
+	require.Error(err)
 }
 
 func TestPaymentBrokerUpdate(t *testing.T) {
