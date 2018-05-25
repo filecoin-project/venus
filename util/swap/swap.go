@@ -17,7 +17,7 @@ import (
 func Swap(dst, new interface{}) (unswap func()) {
 	dstrv := reflect.ValueOf(dst)
 	newrv := reflect.ValueOf(new)
-	chk.Equal(reflect.Ptr, dstrv.Kind(), "Destination of swap must be a pointer")
+	chk.True(reflect.Ptr == dstrv.Kind(), "Destination of swap must be a pointer")
 
 	oldrv := reflect.Indirect(dstrv)
 	chk.True(oldrv.CanSet(), "Destination of swap must be settable")

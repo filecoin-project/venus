@@ -1,12 +1,28 @@
 package mining
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
+	"math/big"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
+
+	sha256 "gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
 )
+
+var (
+	ticketDomain *big.Int
+)
+
+func init() {
+	ticketDomain = &big.Int{}
+	ticketDomain.Exp(big.NewInt(2), big.NewInt(256), nil)
+	ticketDomain.Sub(ticketDomain, big.NewInt(1))
+}
 
 // Input is the TipSets the worker should mine on, the address
 // to accrue rewards to, and a context that the caller can use
@@ -39,9 +55,9 @@ func NewOutput(b *types.Block, e error) Output {
 // AsyncWorker implements the plumbing that drives mining.
 type AsyncWorker struct {
 	blockGenerator BlockGenerator
-	// doSomeWork is a function like Sleep() that we call to simulate mining.
-	doSomeWork DoSomeWorkFunc
-	mine       mineFunc
+	createPoST     DoSomeWorkFunc // TODO: rename createPoSTFunc?
+	mine           mineFunc
+	nullBlockTimer NullBlockTimerFunc
 }
 
 // Worker is the mining interface consumers use. When you Start() a worker
@@ -62,15 +78,16 @@ type Worker interface {
 
 // NewWorker instantiates a new Worker.
 func NewWorker(blockGenerator BlockGenerator) Worker {
-	return NewWorkerWithDeps(blockGenerator, Mine, func() {})
+	return NewWorkerWithDeps(blockGenerator, Mine, createPoST, nullBlockTimer)
 }
 
 // NewWorkerWithDeps instantiates a new Worker with custom functions.
-func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, doSomeWork DoSomeWorkFunc) Worker {
+func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, createPoST DoSomeWorkFunc, nullBlockTimer NullBlockTimerFunc) Worker {
 	return &AsyncWorker{
 		blockGenerator: blockGenerator,
-		doSomeWork:     doSomeWork,
+		createPoST:     createPoST,
 		mine:           mine,
+		nullBlockTimer: nullBlockTimer,
 	}
 }
 
@@ -137,7 +154,7 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 						currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
 						doneWg.Add(1)
 						go func() {
-							w.mine(currentRunCtx, input, w.blockGenerator, w.doSomeWork, outCh)
+							w.mine(currentRunCtx, input, w.nullBlockTimer, w.blockGenerator, w.createPoST, outCh)
 							doneWg.Done()
 						}()
 						currentBlock = newBaseBlock
@@ -157,33 +174,114 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 // is a good idea for now.
 type DoSomeWorkFunc func()
 
-type mineFunc func(context.Context, Input, BlockGenerator, DoSomeWorkFunc, chan<- Output)
+type mineFunc func(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, bg BlockGenerator, createPoST DoSomeWorkFunc, out chan<- Output)
+
+// NullBlockTimerFunc blocks until it is time to add a null block.
+type NullBlockTimerFunc func()
 
 // Mine does the actual work. It's the implementation of worker.mine.
-func Mine(ctx context.Context, input Input, blockGenerator BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
+func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, blockGenerator BlockGenerator, createPoST DoSomeWorkFunc, outCh chan<- Output) {
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 
-	// TODO(EC): Check ticket. If not a winner then wait (how long?!) and add a null block
-	// and try again. Keep doing that until we get canceled or a winner is found. When
-	// a winner is found proceed with block creation:
-	// https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR87
-	// DoSomeWorkFunc is a placeholder for the thing that computes proofs.
+	// TODO: derive these from actual storage power
+	const myPower = 1
+	const totalPower = 5
 
-	// TODO(EC): Generate()'s signature might want to change. In order to limit the scope
-	// of changes I'm just pulling a block out here and passing it in.
-	newBaseBlock := core.BaseBlockFromTipSets(input.TipSets)
-	next, err := blockGenerator.Generate(ctx, newBaseBlock, input.RewardAddress)
-	if err == nil {
-		log.SetTag(ctx, "block", next)
-		// TODO whatever happens here should respect the context, but see caveat below.
-		doSomeWork()
+	for nullBlockCount := uint64(0); ; nullBlockCount++ {
+		if ctx.Err() != nil {
+			break
+		}
+
+		parents := selectParents(input)
+		challenge := createChallenge(parents, nullBlockCount)
+		proof := createProof(challenge, createPoST)
+		ticket := createTicket(proof)
+
+		// TODO: Test the interplay of isWinningTicket() and createPoST()
+		if isWinningTicket(ticket, myPower, totalPower) {
+			// TODO(EC): Generate should take parents, not a single block
+			baseBlock := core.BaseBlockFromTipSets(input.TipSets)
+			next, err := blockGenerator.Generate(ctx, baseBlock, ticket, nullBlockCount, input.RewardAddress)
+			if err == nil {
+				log.SetTag(ctx, "block", next)
+			}
+
+			// TODO(EC): Consider what to do if we have found a winning ticket and are mining with
+			// it and a new tipset comes in with greater height. Currently Worker.Start() will cancel us.
+			// We should instead let the successful run proceed unless the context is explicitly canceled.
+			if ctx.Err() == nil {
+				outCh <- NewOutput(next, err)
+			} else {
+				log.Warningf("Abandoning successfully mined block without publishing: %v", baseBlock)
+			}
+
+			break
+		}
+
+		nullBlockTimer()
 	}
-	// TODO(EC): Consider what to do if we have found a winning ticket and are mining with
-	// it and a new tipset comes in with greater height. Unless we change the logic the
-	// successful mining run will be canceled if it is still in flight. We should probably
-	// let the successful run proceed unless the context is explicitly canceled.
-	if ctx.Err() == nil {
-		outCh <- NewOutput(next, err)
+}
+
+func selectParents(input Input) core.TipSet {
+	if len(input.TipSets) != 1 {
+		panic("unreached")
 	}
+	// TODO: Pick heaviest chain.
+	return input.TipSets[0]
+}
+
+func createChallenge(parents core.TipSet, nullBlockCount uint64) []byte {
+	// Find the smallest ticket from parent set
+	var smallest types.Signature
+	for _, v := range parents {
+		if smallest == nil || bytes.Compare(v.Ticket, smallest) < 0 {
+			smallest = v.Ticket
+		}
+	}
+
+	buf := make([]byte, 4)
+	n := binary.PutUvarint(buf, nullBlockCount)
+	buf = append(smallest, buf[:n]...)
+
+	h := sha256.Sum256(buf)
+	return h[:]
+}
+
+func createProof(challenge []byte, createPoST DoSomeWorkFunc) []byte {
+	// TODO: Actually use the results of the PoST once it is implemented.
+	createPoST()
+	return challenge
+}
+
+func createTicket(proof []byte) []byte {
+	h := sha256.Sum256(proof)
+	// TODO: sign h once we have keys.
+	return h[:]
+}
+
+var isWinningTicket = func(ticket []byte, myPower, totalPower int64) bool {
+	// See https://github.com/filecoin-project/aq/issues/70 for an explanation of the math here.
+	lhs := &big.Int{}
+	lhs.SetBytes(ticket)
+	lhs.Mul(lhs, big.NewInt(totalPower))
+
+	rhs := &big.Int{}
+	rhs.Mul(big.NewInt(myPower), ticketDomain)
+
+	return lhs.Cmp(rhs) < 0
+}
+
+// How long the node's mining Worker should sleep to simulate mining.
+const mineSleepTime = time.Millisecond * 10
+
+// createPoST is the default implementation of DoSomeWorkFunc. Contrary to the
+// advertisement, it doesn't do anything yet.
+func createPoST() {
+	time.Sleep(mineSleepTime)
+}
+
+// nullBlockTimer is the default implementation of NullBlockTimerFunc.
+func nullBlockTimer() {
+	time.Sleep(mineSleepTime)
 }

@@ -73,9 +73,7 @@ func NewBlockForTest(parent *Block, nonce uint64) *Block {
 	if parent != nil {
 		block.Height = parent.Height + 1
 		block.StateRoot = parent.StateRoot
-		if err := block.AddParent(*parent); err != nil {
-			panic(err)
-		}
+		block.Parents.Add(parent.Cid())
 	}
 
 	return block

@@ -23,7 +23,7 @@ type GetStateTree func(context.Context, *cid.Cid) (state.Tree, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(context.Context, *types.Block, types.Address) (*types.Block, error)
+	Generate(_ context.Context, _ *types.Block, _ types.Signature, nullBlockCount uint64, _ types.Address) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
@@ -76,7 +76,7 @@ func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree
 }
 
 // Generate returns a new block created from the messages in the pool.
-func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, rewardAddress types.Address) (*types.Block, error) {
+func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address) (*types.Block, error) {
 	stateTree, err := b.getStateTree(ctx, baseBlock.StateRoot)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 		return nil, err
 	}
 
-	blockHeight := baseBlock.Height + 1
+	blockHeight := baseBlock.Height + nullBlockCount + 1
 	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
@@ -106,13 +106,12 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, re
 
 	next := &types.Block{
 		Miner:           rewardAddress,
-		Height:          baseBlock.Height + 1,
+		Height:          blockHeight,
 		Messages:        successfulMessages,
 		MessageReceipts: receipts,
+		Parents:         types.NewSortedCidSet(baseBlock.Cid()),
 		StateRoot:       newStateTreeCid,
-	}
-	if err := next.AddParent(*baseBlock); err != nil {
-		return nil, err
+		Ticket:          ticket,
 	}
 
 	var rewardSuccessful bool

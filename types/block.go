@@ -1,8 +1,6 @@
 package types
 
 import (
-	"fmt"
-
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
@@ -17,8 +15,13 @@ type Block struct {
 	// Miner is the miner address that mined this block.
 	// TODO use the miner address.
 	Miner Address `json:"miner"`
-	// TODO Ticket
 
+	// Ticket is the winning ticket that was submitted with this block.
+	Ticket Signature `json:"ticket"`
+
+	// Parents is the set of parents this block was based on. Typically one,
+	// but can be several in the case where there were multiple winning ticket-
+	// holders for an epoch.
 	Parents SortedCidSet `json:"parents"`
 
 	// ParentWeight is the aggregate chain weight of the parent set.
@@ -50,17 +53,6 @@ func (b *Block) Cid() *cid.Cid {
 	// TODO: Cache ToNode() and/or ToNode().Cid(). We should be able to do this efficiently using
 	// DeepEquals(), or perhaps our own Equals() interface.
 	return b.ToNode().Cid()
-}
-
-// AddParent sets the parent pointer of the receiver to the argument if it
-// is a valid assignment, else returns an error.
-func (b *Block) AddParent(p Block) error {
-	if b.Height != p.Height+1 {
-		return fmt.Errorf("child height %v != parent height %v+1", b.Height, p.Height)
-	}
-	// TODO validate parent wrt other parents? Eg same weight etc.
-	b.Parents.Add(p.Cid())
-	return nil
 }
 
 // IsParentOf returns true if the argument is a parent of the receiver.
