@@ -90,16 +90,6 @@ func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address types.Addr
 	panic("do not call me")
 }
 
-// Snapshot implements StateTree.Snapshot.
-func (m *MockStateTree) Snapshot(ctx context.Context) (RevID, error) {
-	panic("do not call me")
-}
-
-// RevertTo implements StateTree.RevertTo.
-func (m *MockStateTree) RevertTo(RevID) {
-	panic("do not call me")
-}
-
 // Debug implements StateTree.Debug
 func (m *MockStateTree) Debug() {
 	panic("do not call me")

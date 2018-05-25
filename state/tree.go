@@ -16,12 +16,7 @@ import (
 // tree is a state tree that maps addresses to actors.
 type tree struct {
 	// root is the root of the state merklehamt
-	root *hamt.Node
-
-	// Snapshot-related fields. See comment on Snapshot().
-	nextRevID RevID
-	revs      map[RevID]*hamt.Node
-
+	root  *hamt.Node
 	store *hamt.CborIpldStore
 
 	builtinActors map[string]exec.ExecutableActor
@@ -38,9 +33,6 @@ type Tree interface {
 	GetActor(ctx context.Context, a types.Address) (*types.Actor, error)
 	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*types.Actor, error)) (*types.Actor, error)
 	SetActor(ctx context.Context, a types.Address, act *types.Actor) error
-
-	Snapshot(ctx context.Context) (RevID, error)
-	RevertTo(RevID)
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
 }
@@ -76,41 +68,9 @@ func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[st
 func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
 		root:          hamt.NewNode(store),
-		revs:          make(map[RevID]*hamt.Node),
 		store:         store,
 		builtinActors: map[string]exec.ExecutableActor{},
 	}
-}
-
-// Snapshot returns an identifier that can be used to revert to a
-// previous state of the tree. Present implementation is quick and
-// easy: we copy the underlying tree and keep it in a map by
-// revid, then set it when RevertTo is called. This obviously keeps
-// a full copy of the underlying tree around for each snapshot,
-// forever. We should eventually do something better/different.
-func (t *tree) Snapshot(ctx context.Context) (RevID, error) {
-	// TODO: remove this when and if https://github.com/ipfs/go-hamt-ipld/pull/8 is handled
-	_, err := t.Flush(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	thisRevID := t.nextRevID
-	t.revs[thisRevID] = t.root.Copy()
-	t.nextRevID++
-	return thisRevID, nil
-}
-
-// RevertTo reverts to the given RevID. You can revert to a given
-// RevID multiple times.
-func (t *tree) RevertTo(revID RevID) {
-	root, ok := t.revs[revID]
-	if !ok {
-		panic("RevId does not exist")
-	}
-	// We have to return another copy here in case they roll back
-	// to this state multiple times.
-	t.root = root.Copy()
 }
 
 // Flush serialized the state tree and flushes unflushed changes to the backing

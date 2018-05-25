@@ -18,14 +18,14 @@ type Context struct {
 	from        *types.Actor
 	to          *types.Actor
 	message     *types.Message
-	state       state.Tree
+	state       *state.CachedTree
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st state.Tree, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
@@ -51,7 +51,7 @@ func (ctx *Context) ReadStorage() []byte {
 // WriteStorage writes to the storage of the associated to actor.
 func (ctx *Context) WriteStorage(memory []byte) error {
 	ctx.to.WriteStorage(memory)
-	return ctx.state.SetActor(context.Background(), ctx.message.To, ctx.to)
+	return nil
 }
 
 // BlockHeight returns the block height of the block currently being processed
@@ -134,30 +134,37 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 
 // TEMPCreateActor is a temporary method to create actors.
 func (ctx *Context) TEMPCreateActor(addr types.Address, act *types.Actor) error {
-	// only allow write over empty actor
-	existingActor, _ := ctx.state.GetActor(context.TODO(), addr)
-	if existingActor != nil {
-		if existingActor.Code == nil {
-			// upgrade actor and transfer balance.
-			act.Balance = act.Balance.Add(existingActor.Balance)
-		} else {
-			return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
-		}
+	// Check existing address. If nothing there, create empty actor.
+	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*types.Actor, error) {
+		return &types.Actor{}, nil
+	})
+
+	if err != nil {
+		return errors.FaultErrorWrap(err, "Error retrieving or creating actor")
 	}
-	return ctx.state.SetActor(context.TODO(), addr, act)
+
+	if newActor.Code != nil {
+		return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
+	}
+
+	// upgrade actor and transfer balance.
+	newActor.Code = act.Code
+	newActor.Nonce = act.Nonce
+	newActor.Balance = act.Balance.Add(newActor.Balance)
+	newActor.WriteStorage(act.ReadStorage())
+	return nil
 }
 
 // Dependency injection setup.
 
 // makeDeps returns a VMContext's external dependencies with their standard values set.
-func makeDeps(st state.Tree) *deps {
+func makeDeps(st *state.CachedTree) *deps {
 	deps := deps{
 		EncodeValues: abi.EncodeValues,
 		Send:         Send,
 		ToValues:     abi.ToValues,
 	}
 	if st != nil {
-		deps.SetActor = st.SetActor
 		deps.GetOrCreateActor = st.GetOrCreateActor
 	}
 	return &deps
@@ -167,6 +174,5 @@ type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
 	Send             func(context.Context, *Context) ([]byte, uint8, error)
-	SetActor         func(context.Context, types.Address, *types.Actor) error
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

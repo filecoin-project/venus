@@ -46,6 +46,17 @@ func NewActor(balance *types.TokenAmount) (*types.Actor, error) {
 	return types.NewActorWithMemory(types.AccountActorCodeCid, balance, storageBytes), nil
 }
 
+// UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place
+func UpgradeActor(act *types.Actor) error {
+	act.Code = types.AccountActorCodeCid
+	storageBytes, err := actor.MarshalStorage(&Storage{})
+	if err != nil {
+		return err
+	}
+	act.WriteStorage(storageBytes)
+	return nil
+}
+
 // accountExports are the publicly (externally callable) methods of the AccountActor.
 var accountExports = exec.Exports{}
 
