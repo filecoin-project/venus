@@ -15,6 +15,7 @@ import (
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
+	mmap "gx/ipfs/QmPXvegq26x982cQjSfbTvSzZXn7GiaMwhhVPHkeTEhrPT/sys/unix"
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
@@ -23,7 +24,6 @@ import (
 
 	drg "github.com/filecoin-project/go-proofs/porep/drgporep"
 	"github.com/filecoin-project/go-proofs/porep/drgporep/drgraph"
-	mmap "gx/ipfs/QmPXvegq26x982cQjSfbTvSzZXn7GiaMwhhVPHkeTEhrPT/sys/unix"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -471,7 +471,7 @@ func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address, params *PublicPa
 		return nil, errors.Wrap(err, "PoRep setup process failed")
 	}
 
-	var copiedRoot = make([]byte, len(root))
+	copiedRoot := make([]byte, len(root))
 	copy(copiedRoot, root)
 
 	return sb.NewSealedSector(copiedRoot, s)
