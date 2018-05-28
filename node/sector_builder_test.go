@@ -16,11 +16,12 @@ import (
 )
 
 var sectorDirsForTest = &repo.MemRepo{}
+var testSectorSize = 64
 
 func TestSimple(t *testing.T) {
 	require := require.New(t)
 	nd := MakeOfflineNode(t)
-	sb := requireSectorBuilder(require, nd, 64)
+	sb := requireSectorBuilder(require, nd, testSectorSize)
 	sector, err := sb.NewSector()
 	require.NoError(err)
 
@@ -35,20 +36,24 @@ func TestSimple(t *testing.T) {
 	}
 
 	ag := types.NewAddressForTestGetter()
-	ss, err := sb.Seal(sector, ag(), makeFilecoinParameters(64, nodeSize))
+	ss, err := sb.Seal(sector, ag(), makeFilecoinParameters(testSectorSize, nodeSize))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log(ss.merkleRoot)
-	t.Log(ss.replicaData)
 }
 
 func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
-	smc, err := NewSectorBuilder(nd, sectorSize, sectorDirsForTest)
-	smc.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
+	sb, err := NewSectorBuilder(nd, sectorSize, sectorDirsForTest)
+	sb.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
+	sb.setup = func(minerKey []byte, parameters *PublicParameters, data []byte) ([]byte, error) {
+		reverseBytes(data)
+		return data, nil
+	}
+
 	require.NoError(err)
-	return smc
+	return sb
 }
 
 func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *PieceInfo {
@@ -73,7 +78,7 @@ func TestSectorBuilder(t *testing.T) {
 
 	nd := MakeOfflineNode(t)
 
-	sb := requireSectorBuilder(require, nd, 64)
+	sb := requireSectorBuilder(require, nd, testSectorSize)
 
 	assertMetadataMatch := func(sector *Sector, pieces int) {
 		meta := sector.SectorMetadata()
@@ -96,7 +101,6 @@ func TestSectorBuilder(t *testing.T) {
 	requireAddPiece := func(s string) {
 		err := sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(s)))
 		assert.NoError(err)
-
 	}
 
 	assertMetadataMatch(sb.CurSector, 0)
@@ -148,11 +152,6 @@ func TestSectorBuilder(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
 	assert.NotEqual(sector, sb.CurSector)
 
-	d3 := requireReadAll(require, sector)
-	assert.Equal(all, string(d3)) // Initial sector still contains initial data.
-
-	assert.Contains(string(sector.data), string(d3)) // Sector data has been set. 'Contains' because it is padded.
-
 	// persisted and calculated metadata match after a sector is sealed.
 	assertMetadataMatch(sector, 2)
 
@@ -168,12 +167,18 @@ func TestSectorBuilder(t *testing.T) {
 	assert.Equal(sealed.baseSector, sector)
 	sealedData, err := sealed.ReadFile()
 	assert.NoError(err)
-	assert.Equal(sealed.replicaData, sealedData)
+
+	// Create a padded copy of 'all' and reverse it -- which is what our bogus setup function does.
+	bytes := make([]byte, testSectorSize)
+	copy(bytes, all)
+	reverseBytes(bytes)
+
+	assert.Equal(string(bytes), string(sealedData))
 
 	meta := sb.CurSector.SectorMetadata()
 	assert.Len(meta.Pieces, 1)
-	assert.Equal(uint64(64), meta.Size)
-	assert.Equal(64-len(text3), int(meta.Free))
+	assert.Equal(uint64(testSectorSize), meta.Size)
+	assert.Equal(testSectorSize-len(text3), int(meta.Free))
 
 	text4 := "I am text, and I am long. My reach exceeds my grasp exceeds exceeds my allotted space."
 	err = sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(text4)))
@@ -189,7 +194,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 	nd := MakeOfflineNode(t)
 
-	sb := requireSectorBuilder(require, nd, 64)
+	sb := requireSectorBuilder(require, nd, testSectorSize)
 
 	label := "SECTORFILENAMEWHATEVER"
 
@@ -212,4 +217,10 @@ func requireReadAll(require *require.Assertions, sector *Sector) string {
 	require.NoError(err)
 
 	return string(data)
+}
+
+func reverseBytes(s []byte) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
