@@ -126,7 +126,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
-	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -152,7 +152,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
-	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -176,7 +176,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
 	act1.Nonce = 5
-	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -197,7 +197,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
-	act2 := RequireNewMinerActor(require, addr1, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewTokenAmount(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,

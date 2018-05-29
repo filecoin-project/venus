@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64) types.Address {
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000))
+func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64, key []byte) types.Address {
+	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
@@ -44,7 +44,7 @@ func TestAddAsk(t *testing.T) {
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	assert.NoError(err)
 
-	outAddr := createTestMiner(assert, st, 10000, 500)
+	outAddr := createTestMiner(assert, st, 10000, 500, []byte{})
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewTokenAmount(100), types.NewBytesAmount(150))
@@ -99,4 +99,28 @@ func TestAddAsk(t *testing.T) {
 	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(string(receipt.ReturnValue()), ErrInsufficientPledge.Error())
+}
+
+func TestGetKey(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := core.InitGenesis(cst)
+	assert.NoError(err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	assert.NoError(err)
+
+	signature := []byte("my public key")
+	outAddr := createTestMiner(assert, st, 10000, 500, signature)
+
+	// retrieve key
+	msg := types.NewMessage(address.TestAddress, outAddr, 0, nil, "getKey", []byte{})
+
+	result, errorCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(0))
+	assert.NoError(err)
+	assert.Equal(uint8(0), errorCode)
+	assert.Equal(result, signature)
 }

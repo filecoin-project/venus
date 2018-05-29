@@ -34,7 +34,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	assert.NoError(err)
 
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000))
+	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{})
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
@@ -69,7 +69,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	assert.NoError(err)
 
-	pdata := actor.MustConvertParams(types.NewBytesAmount(50))
+	pdata := actor.MustConvertParams(types.NewBytesAmount(50), []byte{})
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
 	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
@@ -98,7 +98,7 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(err)
 	require.Equal(uint8(0), receipt.ExitCode)
 
-	pdata := actor.MustConvertParams(types.NewBytesAmount(15000))
+	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), []byte{})
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
 	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
@@ -114,6 +114,27 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 
 	// miner balance should be sum of messages
 	assert.Equal(types.NewTokenAmount(300), miner.Balance)
+}
+
+func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cst := hamt.NewCborStore()
+	blk, err := core.InitGenesis(cst)
+	require.NoError(err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	require.NoError(err)
+
+	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
+	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), publicKey)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
+	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	require.NoError(err)
+	assert.Contains(string(receipt.ReturnValue()), miner.ErrPublicKeyTooBig.Error())
 }
 
 func TestStorageMarketAddBid(t *testing.T) {
@@ -236,7 +257,7 @@ func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, err
 
 // TODO: deduplicate with code in miner/miner_test.go
 func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64) types.Address {
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000))
+	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{})
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
