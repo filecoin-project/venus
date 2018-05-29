@@ -49,6 +49,12 @@
         },
         "stateRoot": {
           "$ref": "#/definitions/Cid"
+        },
+        "ticket": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
@@ -57,7 +63,8 @@
         "messages",
         "nonce",
         "parents",
-        "stateRoot"
+        "stateRoot",
+        "ticket"
       ],
       "type": "object"
     },

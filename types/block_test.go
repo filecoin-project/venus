@@ -9,24 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBlockAddParent(t *testing.T) {
+func TestBlockIsParentOf(t *testing.T) {
 	var p, c Block
 	assert.False(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
 
-	// c.Height is 0
-	err := c.AddParent(p)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "height")
-	}
-	c.Height = 100
-	err = c.AddParent(p)
-	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "height")
-	}
-
-	c.Height = p.Height + 1
-	assert.NoError(t, c.AddParent(p))
+	c.Parents.Add(p.Cid())
 	assert.True(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
 }

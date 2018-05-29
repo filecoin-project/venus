@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
@@ -195,7 +194,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
 		return state.LoadStateTree(ctx, cst, cid, builtin.Actors)
 	}, mining.ApplyMessages)
-	miningWorker := mining.NewWorkerWithDeps(blockGenerator, mining.Mine, func() { time.Sleep(mineSleepTime) })
+	miningWorker := mining.NewWorker(blockGenerator)
 
 	// Set up libp2p pubsub
 	fsub, err := floodsub.NewFloodSub(ctx, host)
@@ -417,10 +416,6 @@ func (node *Node) Stop() {
 
 	fmt.Println("stopping filecoin :(")
 }
-
-// How long the node's mining Worker should sleep after it
-// generates a new block.
-const mineSleepTime = 20 * time.Second
 
 type newBlockFunc func(context.Context, *types.Block)
 

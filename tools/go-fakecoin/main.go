@@ -225,7 +225,8 @@ func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStor
 	bg := getBlockGenerator(mp, cm, cst)
 	ra := types.MakeTestAddress("rewardaddress")
 
-	blk, err := bg.Generate(ctx, bb, ra)
+	const nullBlockCount = 0
+	blk, err := bg.Generate(ctx, bb, nil, nullBlockCount, ra)
 	if err != nil {
 		return nil, err
 	}

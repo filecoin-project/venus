@@ -123,7 +123,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, &baseBlock, addrs[0])
+	blk, err := generator.Generate(ctx, &baseBlock, nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -153,10 +153,16 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Height:    h,
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, &baseBlock, addrs[0])
+	blk, err := generator.Generate(ctx, &baseBlock, nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Equal(h+1, blk.Height)
+	assert.Equal(addrs[0], blk.Miner)
+
+	blk, err = generator.Generate(ctx, &baseBlock, nil, 1, addrs[0])
+	assert.NoError(err)
+
+	assert.Equal(h+2, blk.Height)
 	assert.Equal(addrs[0], blk.Miner)
 }
 
@@ -179,7 +185,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, &baseBlock, addrs[0])
+	blk, err := generator.Generate(ctx, &baseBlock, nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -215,7 +221,7 @@ func TestGenerateError(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, &baseBlock, addrs[0])
+	blk, err := generator.Generate(ctx, &baseBlock, nil, 0, addrs[0])
 	assert.Error(err, "boom")
 	assert.Nil(blk)
 
