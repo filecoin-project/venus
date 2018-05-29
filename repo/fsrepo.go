@@ -21,6 +21,7 @@ import (
 )
 
 const configFilename = "config.toml"
+const tempConfigFilename = ".config.toml.temp"
 const lockFile = "repo.lock"
 const versionFilename = "version"
 const walletDatastorePrefix = "wallet"
@@ -158,8 +159,17 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	defer r.lk.Unlock()
 
 	r.cfg = cfg
+	tmp := filepath.Join(r.path, tempConfigFilename)
+	err := os.RemoveAll(tmp)
+	if err != nil {
+		return err
+	}
+	err = r.cfg.WriteFile(tmp)
+	if err != nil {
+		return err
+	}
+	return os.Rename(tmp, filepath.Join(r.path, configFilename))
 
-	return r.cfg.WriteFile(filepath.Join(r.path, configFilename))
 }
 
 // Datastore returns the datastore.
