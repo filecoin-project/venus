@@ -38,7 +38,9 @@ func TestWriteFile(t *testing.T) {
 	assert.Equal(
 		`[api]
   address = ":3453"
-  accessControlAllowOrigin = ["http://localhost:8080"]
+  accessControlAllowOrigin = ["http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1"]
+  accessControlAllowCredentials = false
+  accessControlAllowMethods = ["GET", "POST", "PUT"]
 
 [bootstrap]
   addresses = ["TODO"]

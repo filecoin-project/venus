@@ -100,6 +100,8 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
 	cfg.SetAllowedOrigins(config.API.AccessControlAllowOrigin...)
+	cfg.SetAllowedMethods(config.API.AccessControlAllowMethods...)
+	cfg.SetAllowCredentials(config.API.AccessControlAllowCredentials)
 
 	handler := cmdhttp.NewHandler(servenv, rootCmd, cfg)
 
