@@ -6,6 +6,10 @@ jobs:
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+
       - checkout
 
       - restore_cache:

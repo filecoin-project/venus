@@ -1,0 +1,4 @@
+[submodule "vendor/github.com/filecoin-project/go-proofs"]
+	path = vendor/github.com/filecoin-project/go-proofs
+	url = git@github.com:filecoin-project/go-proofs.git
+	branch = master

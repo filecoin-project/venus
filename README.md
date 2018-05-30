@@ -15,6 +15,7 @@ by providing storage to clients.
   - [Install Go](#install-go)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
+  - [Managing Submodules](#managing-submodules)
   - [Testing](#testing)
   - [Supported Commands](#supported-commands)
 - [Contribute](#contribute)
@@ -43,6 +44,24 @@ other build and test dependencies, run:
 > cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 > go run ./build/*.go deps
 ```
+
+### Managing Submodules
+
+Filecoin uses Git Submodules to consume `go-proofs`. To initialize the submodule, either run `deps` (as per above), or
+initialize the submodule manually:
+
+```sh
+> cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+> git submodule update --init
+```
+
+Later, when the head of the `go-proofs` `master` branch changes, you may want to update `go-filecoin` to use these changes:
+
+```sh
+> git submodule update --remote
+```
+
+Note that updating the `go-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
 ### Testing
 

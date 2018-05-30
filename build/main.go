@@ -43,6 +43,7 @@ func deps() {
 	log.Println("Installing dependencies...")
 
 	list := []string{
+		"git submodule update --init",
 		"go get -u github.com/whyrusleeping/gx",
 		"go get -u github.com/whyrusleeping/gx-go",
 		"gx install",
