@@ -125,30 +125,29 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-// TODO need to document what the contract is with callees of ApplyMessage,
 // for example squintinig at this perhaps:
-//   - ApplyMessage loads the to and from actor and sets the result on the tree
+//   - ApplyMessage creates a read-through cache of the state tree
+//   - it loads the to and from actor into the cache
 //   - changes should accumulate in the actor in callees
-//   - no callee including actor invocations should set to/from actor on the
-//     state tree (see above: changes should accumulate)
+//   - nothing deeper than this method has direct access to the state tree
 //   - no callee should get a different pointer to the to/from actors
 //       (we assume the pointer we have accumulates all the changes)
-//   - if a callee creates another actor it must set it on the state tree
+//   - callees must call GetOrCreate on the cache to create a new actor that will be persisted
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
 func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
-	ss, err := st.Snapshot(ctx)
-	if err != nil {
-		return nil, err
-	}
+	cachedStateTree := state.NewCachedStateTree(st)
 
-	r, err := attemptApplyMessage(ctx, st, msg, bh)
-	if errors.IsFault(err) {
+	r, err := attemptApplyMessage(ctx, cachedStateTree, msg, bh)
+	if err == nil {
+		err = cachedStateTree.Commit(ctx)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not commit state tree")
+		}
+	} else if errors.IsFault(err) {
 		return r, err
-	} else if errors.ShouldRevert(err) {
-		st.RevertTo(ss)
-	} else if err != nil {
+	} else if !errors.ShouldRevert(err) {
 		return nil, errors.NewFaultError("someone is a bad programmer: only return revert and fault errors")
 	}
 
@@ -208,16 +207,11 @@ func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, b
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
 	}
 
-	snap, err := st.Snapshot(ctx)
-	if err != nil {
-		return nil, 1, err
-	}
+	// guarantees changes won't make it to stored state tree
+	cachedSt := state.NewCachedStateTree(st)
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, bh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, bh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
-
-	// ensure no changes made to state tree live survive ouside this method.
-	st.RevertTo(snap)
 
 	return ret, retCode, err
 }
@@ -227,7 +221,7 @@ func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, b
 // should deal with trying got apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func attemptApplyMessage(ctx context.Context, st *state.CachedTree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
@@ -244,8 +238,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message,
 		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
 		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
 		// actor to collect any balance that may be transferred.
-		a := types.Actor{}
-		return &a, st.SetActor(ctx, msg.To, &a)
+		return &types.Actor{}, nil
 	})
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
@@ -253,7 +246,7 @@ func attemptApplyMessage(ctx context.Context, st state.Tree, msg *types.Message,
 
 	// processing an exernal message from an empty actor upgrades it to an account actor.
 	if fromActor.Code == nil {
-		fromActor, err = upgradeEmptyActor(ctx, st, msg.From, *fromActor)
+		err = account.UpgradeActor(fromActor)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
 		}
@@ -304,14 +297,4 @@ func truncate(val []byte, size int) []byte {
 	}
 
 	return val[0:size]
-}
-
-func upgradeEmptyActor(ctx context.Context, st state.Tree, addr types.Address, actor types.Actor) (*types.Actor, error) {
-	accountActor, err := account.NewActor(actor.Balance)
-	if err != nil {
-		return nil, err
-	}
-
-	err = st.SetActor(ctx, addr, accountActor)
-	return accountActor, err
 }

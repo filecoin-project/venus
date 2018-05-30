@@ -36,6 +36,22 @@ var FakeActorExports = exec.Exports{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
+	"sendTokens": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address},
+		Return: nil,
+	},
+	"callSendTokens": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.Address},
+		Return: nil,
+	},
+	"attemptMultiSpend1": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.Address},
+		Return: nil,
+	},
+	"attemptMultiSpend2": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.Address},
+		Return: nil,
+	},
 }
 
 // Exports returns the list of fake actor exported functions.
@@ -79,6 +95,49 @@ func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target types.Address) (ui
 // NewStorage returns an empty FakeActorStorage struct
 func (ma *FakeActor) NewStorage() interface{} {
 	return &FakeActorStorage{}
+}
+
+// SendTokens sends 100 to the given address.
+func (ma *FakeActor) SendTokens(ctx exec.VMContext, target types.Address) (uint8, error) {
+	_, code, err := ctx.Send(target, "", types.NewTokenAmount(100), nil)
+	return code, err
+}
+
+// CallSendTokens tells the target to invoke SendTokens to send tokens to the
+// to address (that is, it calls target.SendTokens(to)).
+func (ma *FakeActor) CallSendTokens(ctx exec.VMContext, target types.Address, to types.Address) (uint8, error) {
+	_, code, err := ctx.Send(target, "sendTokens", types.ZeroToken, []interface{}{to})
+	return code, err
+}
+
+// AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
+func (ma *FakeActor) AttemptMultiSpend1(ctx exec.VMContext, self, target types.Address) (uint8, error) {
+	// This will transfer 100 tokens legitimately.
+	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroToken, []interface{}{self, target})
+	if code != 0 || err != nil {
+		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
+	}
+	// Try to double spend
+	_, code, err = ctx.Send(target, "callSendTokens", types.ZeroToken, []interface{}{self, target})
+	if code != 0 || err != nil {
+		return code, errors.FaultErrorWrap(err, "failed second callSendTokens")
+	}
+	return code, err
+}
+
+// AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
+func (ma *FakeActor) AttemptMultiSpend2(ctx exec.VMContext, self, target types.Address) (uint8, error) {
+	// This will transfer 100 tokens legitimately.
+	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroToken, []interface{}{self, target})
+	if code != 0 || err != nil {
+		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
+	}
+	// Try to triple spend
+	code, err = ma.SendTokens(ctx, target)
+	if code != 0 || err != nil {
+		return code, errors.FaultErrorWrap(err, "failed sendTokens")
+	}
+	return code, err
 }
 
 // MustConvertParams encodes the given params and panics if it fails to do so.

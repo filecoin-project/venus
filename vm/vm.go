@@ -43,14 +43,6 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([]byte, uint8, er
 		}
 	}
 
-	// save balance changes
-	if err := vmCtx.state.SetActor(ctx, vmCtx.message.From, vmCtx.from); err != nil {
-		return nil, 1, errors.FaultErrorWrap(err, "could not set from actor after send")
-	}
-	if err := vmCtx.state.SetActor(ctx, vmCtx.message.To, vmCtx.to); err != nil {
-		return nil, 1, errors.FaultErrorWrap(err, "could not set to actor after send")
-	}
-
 	if vmCtx.message.Method == "" {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution

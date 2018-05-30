@@ -242,13 +242,14 @@ func TestNestedSendBalance(t *testing.T) {
 	assert.NoError(err)
 	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
 
-	_, err = attemptApplyMessage(ctx, st, msg1, types.NewBlockHeight(0))
+	_, err = ApplyMessage(ctx, st, msg1, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
 
 	expAct0 := RequireNewAccountActor(require, types.NewTokenAmount(101))
+	expAct0.IncNonce() // because this actor has sent one message
 	expAct1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(2))
 	expAct2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(100))
 
@@ -259,6 +260,50 @@ func TestNestedSendBalance(t *testing.T) {
 	})
 
 	assert.True(expStCid.Equals(gotStCid))
+}
+
+func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	// Install the fake actor so we can execute it.
+	fakeActorCodeCid := types.NewCidForTestGetter()()
+	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	defer func() {
+		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+	}()
+
+	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
+	act0 := RequireNewAccountActor(require, types.NewTokenAmount(0))
+	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(100))
+	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewTokenAmount(0))
+
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr0: act0,
+		addr1: act1,
+		addr2: act2,
+	})
+
+	// addr1 will attempt to double spend to addr2 by sending a reentrant message that spends twice
+	params, err := abi.ToEncodedValues(addr1, addr2)
+	assert.NoError(err)
+	msg := types.NewMessage(addr0, addr1, 0, types.ZeroToken, "attemptMultiSpend1", params)
+	_, err = ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	assert.Error(err)
+	assert.Contains(err.Error(), "second callSendTokens")
+	assert.Contains(err.Error(), "not enough balance")
+
+	// addr1 will attempt to double spend to addr2 by sending a reentrant message that spends and then spending directly
+	params, err = abi.ToEncodedValues(addr1, addr2)
+	assert.NoError(err)
+	msg = types.NewMessage(addr0, addr1, 0, types.ZeroToken, "attemptMultiSpend2", params)
+	_, err = ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	assert.Error(err)
+	assert.Contains(err.Error(), "failed sendTokens")
+	assert.Contains(err.Error(), "not enough balance")
 }
 
 func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
