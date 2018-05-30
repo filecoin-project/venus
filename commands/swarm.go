@@ -9,13 +9,13 @@ import (
 	swarm "gx/ipfs/QmSwZMWwFZSUpe5muU2xgTUwppH24KfMwdPXiwbEp2c6G5/go-libp2p-swarm"
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	ma "gx/ipfs/QmWWQ2Txc2c6tqjsBpzg5Ar652cHPGNsQQp2SejkNmkUMb/go-multiaddr"
-	pstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	ipfsaddr "gx/ipfs/QmQViVWBHbU6HmYjXcdNq7tVASCNgdg64ZGcauuDkLCivW/go-ipfs-addr"
+	"github.com/filecoin-project/go-filecoin/filnet"
 )
 
 // COPIED FROM go-ipfs core/commands/swarm.go
+// TODO a lot of this functionality should migrate to the filnet package.
 
 // swarmCmd contains swarm commands.
 var swarmCmd = &cmds.Command{
@@ -34,36 +34,6 @@ libp2p peers on the internet.
 		//"filters":    swarmFiltersCmd,
 		"peers": swarmPeersCmd,
 	},
-}
-
-// parseAddresses is a function that takes in a slice of string peer addresses
-// (multiaddr + peerid) and returns slices of multiaddrs and peerids.
-func parseAddresses(addrs []string) (iaddrs []ipfsaddr.IPFSAddr, err error) {
-	iaddrs = make([]ipfsaddr.IPFSAddr, len(addrs))
-	for i, saddr := range addrs {
-		iaddrs[i], err = ipfsaddr.ParseString(saddr)
-		if err != nil {
-			return nil, cmds.ClientError("invalid peer address: " + err.Error())
-		}
-	}
-	return
-}
-
-// peersWithAddresses is a function that takes in a slice of string peer addresses
-// (multiaddr + peerid) and returns a slice of properly constructed peers
-func peersWithAddresses(addrs []string) (pis []pstore.PeerInfo, err error) {
-	iaddrs, err := parseAddresses(addrs)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, iaddr := range iaddrs {
-		pis = append(pis, pstore.PeerInfo{
-			ID:    iaddr.ID(),
-			Addrs: []ma.Multiaddr{iaddr.Transport()},
-		})
-	}
-	return pis, nil
 }
 
 type streamInfo struct {
@@ -237,7 +207,7 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 
 		swrm := snet.Swarm()
 
-		pis, err := peersWithAddresses(addrs)
+		pis, err := filnet.PeerAddrsToPeerInfos(addrs)
 		if err != nil {
 			return err
 		}

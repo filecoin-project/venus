@@ -14,9 +14,7 @@ func TestDefaults(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	bs := []string{
-		"TODO",
-	}
+	bs := []string{}
 	assert.Equal(":3453", cfg.API.Address)
 	assert.Equal("/ip4/127.0.0.1/tcp/6000", cfg.Swarm.Address)
 	assert.Equal(bs, cfg.Bootstrap.Addresses)
@@ -43,7 +41,7 @@ func TestWriteFile(t *testing.T) {
   accessControlAllowMethods = ["GET", "POST", "PUT"]
 
 [bootstrap]
-  addresses = ["TODO"]
+  addresses = []
 
 [datastore]
   type = "badgerds"
@@ -163,9 +161,10 @@ func TestConfigGet(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(cfg.Datastore.Path, out)
 
-		out, err = cfg.Get("bootstrap.addresses.0")
-		assert.NoError(err)
-		assert.Equal(cfg.Bootstrap.Addresses[0], out)
+		// TODO we can test this as soon as we have bootstrap addresses.
+		// out, err = cfg.Get("bootstrap.addresses.0")
+		// assert.NoError(err)
+		// assert.Equal(cfg.Bootstrap.Addresses[0], out)
 	})
 
 	t.Run("invalid gets", func(t *testing.T) {
@@ -185,6 +184,10 @@ func TestConfigGet(t *testing.T) {
 		assert.Error(err)
 
 		_, err = cfg.Get("api-address")
+		assert.Error(err)
+
+		// TODO: temporary as we don't have any ATM.
+		_, err = cfg.Get("bootstrap.addresses.0")
 		assert.Error(err)
 	})
 }
@@ -209,10 +212,10 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(out, cfg.API.AccessControlAllowOrigin)
 
 		// set slice element
-		out, err = cfg.Set("bootstrap.addresses.0", `"ODOT"`)
+		out, err = cfg.Set("api.accessControlAllowOrigin.0", `"http://localhost:1234"`)
 		assert.NoError(err)
-		assert.Equal(cfg.Bootstrap.Addresses[0], "ODOT")
-		assert.Equal(out, "ODOT")
+		assert.Equal(cfg.API.AccessControlAllowOrigin[0], "http://localhost:1234")
+		assert.Equal(out, cfg.API.AccessControlAllowOrigin[0])
 	})
 
 	t.Run("set table value", func(t *testing.T) {

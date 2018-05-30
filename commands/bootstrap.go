@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	config "github.com/filecoin-project/go-filecoin/config"
-
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 )
@@ -25,10 +23,8 @@ var bootstrapCmd = &cmds.Command{
 
 var bootstrapLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		// TODO load from config file once implemented
-		cfg := config.NewDefaultConfig()
-
-		peers := cfg.Bootstrap.Addresses
+		n := GetNode(env)
+		peers := n.Repo.Config().Bootstrap.Addresses
 
 		re.Emit(&bootstrapResult{peers}) // nolint: errcheck
 		return nil

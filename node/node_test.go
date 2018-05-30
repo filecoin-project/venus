@@ -51,6 +51,57 @@ func TestNodeNetworking(t *testing.T) {
 	nd2.Stop()
 }
 
+func TestConnectsToBootstrapNodes(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("no bootstrap nodes no problem", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		r := repo.NewInMemoryRepo()
+		require.NoError(Init(ctx, r))
+		r.Config().Bootstrap.Addresses = []string{}
+		opts, err := OptionsFromRepo(r)
+		require.NoError(err)
+
+		nd, err := New(ctx, opts...)
+		require.NoError(err)
+		assert.NoError(nd.Start())
+		defer nd.Stop()
+	})
+
+	t.Run("connects to bootstrap nodes", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		// These are two bootstrap nodes we'll connect to.
+		nds := MakeNodesStarted(t, 2, false)
+		nd1, nd2 := nds[0], nds[1]
+
+		// Gotta be a better way to do this?
+		peer1 := fmt.Sprintf("%s/ipfs/%s", nd1.Host.Addrs()[0].String(), nd1.Host.ID().Pretty())
+		peer2 := fmt.Sprintf("%s/ipfs/%s", nd2.Host.Addrs()[0].String(), nd2.Host.ID().Pretty())
+
+		// Create a node with the nodes above as bootstrap nodes.
+		r := repo.NewInMemoryRepo()
+		require.NoError(Init(ctx, r))
+		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
+		opts, err := OptionsFromRepo(r)
+		require.NoError(err)
+		nd, err := New(ctx, opts...)
+		require.NoError(err)
+		nd.Bootstrapper.MinPeerThreshold = 2
+		nd.Bootstrapper.Period = 10 * time.Millisecond
+		assert.NoError(nd.Start())
+		defer nd.Stop()
+
+		// Ensure they're connected.
+		time.Sleep(100 * time.Millisecond)
+		assert.Len(nd.Host.Network().ConnsToPeer(nd1.Host.ID()), 1)
+		assert.Len(nd.Host.Network().ConnsToPeer(nd2.Host.ID()), 1)
+	})
+}
+
 func TestNodeInit(t *testing.T) {
 	assert := assert.New(t)
 

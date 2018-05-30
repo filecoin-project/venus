@@ -73,12 +73,10 @@ type BootstrapConfig struct {
 	Addresses []string `toml:"addresses"`
 }
 
-// TODO: define default bootstrap node addresses
+// TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
-		Addresses: []string{
-			"TODO",
-		},
+		Addresses: []string{},
 	}
 }
 

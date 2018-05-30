@@ -24,20 +24,30 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool) []*Node {
 		}
 
 		opts, err := OptionsFromRepo(r)
+		require.NoError(t, err)
 
 		// disables libp2p
 		opts = append(opts, func(c *Config) error {
 			c.OfflineMode = offlineMode
 			return nil
 		})
-
-		require.NoError(t, err)
 		nd, err := New(context.Background(), opts...)
 		require.NoError(t, err)
 		out = append(out, nd)
 	}
 
 	return out
+}
+
+// MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
+// applies options from the InMemoryRepo and returns a slice of the nodes
+func MakeNodesStarted(t *testing.T, n int, offlineMode bool) []*Node {
+	t.Helper()
+	nds := MakeNodesUnstarted(t, n, offlineMode)
+	for _, n := range nds {
+		require.NoError(t, n.Start())
+	}
+	return nds
 }
 
 // MakeOfflineNode returns a single unstarted offline node.

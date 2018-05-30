@@ -34,7 +34,7 @@ func TestFSRepoInit(t *testing.T) {
   accessControlAllowMethods = ["GET", "POST", "PUT"]
 
 [bootstrap]
-  addresses = ["TODO"]
+  addresses = []
 
 [datastore]
   type = "badgerds"

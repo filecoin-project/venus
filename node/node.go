@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	bserv "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/blockservice"
+	"gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap"
+	bsnet "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap/network"
 	libp2p "gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p"
 	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
 	host "gx/ipfs/QmNmJZL7FQySMtE2BQuLMuZg2EB2CLEunJJUSVSc9YnnbV/go-libp2p-host"
@@ -17,13 +20,10 @@ import (
 	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
-	bserv "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/blockservice"
-	"gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap"
-	bsnet "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap/network"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -74,11 +74,12 @@ type Node struct {
 	StorageMarket *StorageMarket
 
 	// Network Fields
-	PubSub     *floodsub.PubSub
-	BlockSub   *floodsub.Subscription
-	MessageSub *floodsub.Subscription
-	Ping       *ping.PingService
-	HelloSvc   *core.Hello
+	PubSub       *floodsub.PubSub
+	BlockSub     *floodsub.Subscription
+	MessageSub   *floodsub.Subscription
+	Ping         *ping.PingService
+	HelloSvc     *core.Hello
+	Bootstrapper *filnet.Bootstrapper
 
 	// Data Storage Fields
 
@@ -238,6 +239,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// TODO: initialize SectorBuilder from metadata.
 	nd.SectorBuilder = sb
 
+	// Bootstrapping network peers.
+	ba := nd.Repo.Config().Bootstrap.Addresses
+	bpi, err := filnet.PeerAddrsToPeerInfos(ba)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
+	}
+	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network())
+
 	return nd, nil
 }
 
@@ -286,6 +295,10 @@ func (node *Node) Start() error {
 	node.BestBlockHandled = func() {}
 	node.BestBlockCh = node.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
 	go node.handleNewBestBlock(ctx, node.ChainMgr.GetBestBlock())
+
+	if !node.OfflineMode {
+		node.Bootstrapper.Start(context.Background())
+	}
 
 	return nil
 }
@@ -413,6 +426,8 @@ func (node *Node) Stop() {
 	if err := node.Repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
+
+	node.Bootstrapper.Stop()
 
 	fmt.Println("stopping filecoin :(")
 }
