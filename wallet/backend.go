@@ -1,6 +1,9 @@
 package wallet
 
-import "github.com/filecoin-project/go-filecoin/types"
+import (
+	"crypto/ecdsa"
+	"github.com/filecoin-project/go-filecoin/types"
+)
 
 // Backend is the interface to represent different storage backends
 // that can contain many addresses.
@@ -10,4 +13,21 @@ type Backend interface {
 
 	// Contains returns true if this backend stores the passed in address.
 	HasAddress(addr types.Address) bool
+
+	// Sign cryptographically signs `data` using the private key `priv`.
+	Sign(addr types.Address, data []byte) ([]byte, error)
+
+	// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
+	// the public key `pk`.
+	Verify(pk, data, sig []byte) (bool, error)
+
+	// Ecrecover returns an uncompressed public key that could produce the given
+	// signature from data.
+	// Note: The returned public key should not be used to verify `data` is valid
+	// since a public key may have N private key pairs
+	Ecrecover(data, sig []byte) ([]byte, error)
+
+	// GetKeyPair will return the private & public keys associated with address `addr`
+	// iff backend contains the addr.
+	GetKeyPair(addr types.Address) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error)
 }

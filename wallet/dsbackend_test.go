@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
-	ci "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -38,7 +38,7 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.True(fs2.HasAddress(addr))
 }
 
-func TestDSBackendUnmarshalPrivateKey(t *testing.T) {
+func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -54,19 +54,53 @@ func TestDSBackendUnmarshalPrivateKey(t *testing.T) {
 	t.Log("address is stored")
 	assert.True(fs.HasAddress(addr))
 
-	t.Log("address points to a secret key")
-	bsk, err := ds.Get(datastore.NewKey(addr.String()))
-	assert.NoError(err)
-	sk, err := ci.UnmarshalPrivateKey(bsk.([]byte))
+	t.Log("address references to a secret key")
+	_, pk, err := fs.GetKeyPair(addr)
 	assert.NoError(err)
 
+	pkb := crypto.ECDSAPubToBytes(pk)
+
 	t.Log("generated address and stored address should match")
-	bpk, err := sk.GetPublic().Bytes()
 	assert.NoError(err)
-	dAdderHash, err := types.AddressHash(bpk)
+	dAdderHash, err := types.AddressHash(pkb)
 	assert.NoError(err)
 	dAdder := types.NewMainnetAddress(dAdderHash)
 	assert.Equal(addr, dAdder)
+
+}
+
+func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
+	assert := assert.New(t)
+
+	// create 2 backends
+	ds1 := datastore.NewMapDatastore()
+	defer ds1.Close()
+	fs1, err := NewDSBackend(ds1)
+	assert.NoError(err)
+
+	ds2 := datastore.NewMapDatastore()
+	defer ds2.Close()
+	fs2, err := NewDSBackend(ds2)
+	assert.NoError(err)
+
+	t.Log("can create new address in fs1")
+	addr, err := fs1.NewAddress()
+	assert.NoError(err)
+
+	t.Log("address is stored fs1")
+	assert.True(fs1.HasAddress(addr))
+
+	t.Log("address is not stored fs2")
+	assert.False(fs2.HasAddress(addr))
+
+	t.Log("address references to a secret key in fs1")
+	_, _, err = fs1.GetKeyPair(addr)
+	assert.NoError(err)
+
+	t.Log("address does not references to a secret key in fs2")
+	_, _, err = fs2.GetKeyPair(addr)
+	assert.Error(err)
+	assert.Contains("backend does not contain address", err.Error())
 
 }
 
