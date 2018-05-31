@@ -77,7 +77,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount},
+		Params: []abi.Type{abi.BytesAmount, abi.Bytes},
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &exec.FunctionSignature{
@@ -100,7 +100,7 @@ var storageMarketExports = exec.Exports{
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount) (types.Address, uint8, error) {
+func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte) (types.Address, uint8, error) {
 	var storage Storage
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		if pledge.LessThan(MinimumPledge) {
@@ -114,13 +114,16 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount) (ty
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerActor, err := miner.NewActor(ctx.Message().From, pledge, ctx.Message().Value)
+		minerActor, err := miner.NewActor(ctx.Message().From, publicKey, pledge, ctx.Message().Value)
 		if err != nil {
-			// TODO? From an Actor's perspective this (and other stuff) should probably
-			// never fail. It should call into the vmcontext to do this and the vm context
-			// should "throw" to a higher level handler if there's a system fault. It would
-			// simplify the actor code.
-			return nil, errors.FaultErrorWrap(err, "could not get a new miner actor")
+			if !errors.ShouldRevert(err) {
+				// TODO? From an Actor's perspective this (and other stuff) should probably
+				// never fail. It should call into the vmcontext to do this and the vm context
+				// should "throw" to a higher level handler if there's a system fault. It would
+				// simplify the actor code.
+				err = errors.FaultErrorWrap(err, "could not get a new miner actor")
+			}
+			return nil, err
 		}
 
 		if err := ctx.TEMPCreateActor(addr, minerActor); err != nil {

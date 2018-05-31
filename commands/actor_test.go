@@ -82,7 +82,7 @@ func TestActorLs(t *testing.T) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			address, _ := types.NewAddressFromString("address")
-			actor3, _ := miner.NewActor(address, types.NewBytesAmount(23), types.NewTokenAmount(43))
+			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), types.NewTokenAmount(43))
 			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewTokenAmount(21), nil)
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}, nil
 		}
@@ -137,7 +137,7 @@ func TestActorLs(t *testing.T) {
 		assertSchemaValid(t, a, schemaLoader)
 
 		addr, _ := types.NewAddressFromString("minerAddress")
-		actor, _ = miner.NewActor(addr, types.NewBytesAmount(50000), types.NewTokenAmount(200))
+		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), types.NewTokenAmount(200))
 		a = makeActorView(actor, "address", &miner.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)

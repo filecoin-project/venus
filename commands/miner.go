@@ -55,7 +55,7 @@ message to be mined as this is required to return the address of the new miner.`
 			return ErrInvalidCollateral
 		}
 
-		params, err := abi.ToEncodedValues(pledge)
+		params, err := abi.ToEncodedValues(pledge, []byte{})
 		if err != nil {
 			return err
 		}
