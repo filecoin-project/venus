@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"os"
 	"path"
-	"strings"
 	"syscall"
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
@@ -511,17 +510,6 @@ func (sb *SectorBuilder) newSealedSectorPath() (pathname string, label string) {
 	label = newSectorLabel()
 	pathname = path.Join(sb.sealedDir, label)
 	return pathname, label
-}
-
-// merkleFilepath returns a path in smc's sealed directory, with name derived from ss's merkleRoot.
-func (sb *SectorBuilder) merkleFilepath(ss *SealedSector) (string, error) {
-	if ss.merkleRoot == nil {
-		return "", errors.New("no merkleRoot")
-	}
-	merkleString := merkleString(ss.merkleRoot)
-	merkleString = strings.Trim(merkleString, "=")
-
-	return path.Join(sb.sealedDir, merkleString), nil
 }
 
 func merkleString(merkleRoot []byte) string {

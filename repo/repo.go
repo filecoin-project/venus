@@ -2,9 +2,9 @@ package repo
 
 import (
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
+	"gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 )
 
 // Version is the current repo version that we require for a valid repo.
@@ -31,6 +31,12 @@ type Repo interface {
 
 	// WalletDatastore is a specifc storage solution, only used to store sensitive wallet information.
 	WalletDatastore() Datastore
+
+	// SetAPIAddr sets the address of the running API.
+	SetAPIAddr(string) error
+
+	// APIAddr returns the address of the running API.
+	APIAddr() (string, error)
 
 	Version() uint
 	Close() error

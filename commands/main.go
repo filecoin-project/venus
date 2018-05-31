@@ -7,7 +7,10 @@ import (
 
 	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds/http"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+
+	"github.com/filecoin-project/go-filecoin/repo"
 )
 
 const (
@@ -121,7 +124,11 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 }
 
 func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
-	api := req.Options[OptionAPI].(string)
+	api, err := getAPIAddress(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get API address")
+	}
+
 	isDaemonRunning, err := daemonRunning(api)
 	if err != nil {
 		return nil, err
@@ -140,6 +147,19 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		exec:    cmds.NewExecutor(rootCmd),
 		running: isDaemonRunning,
 	}, nil
+}
+
+func getAPIAddress(req *cmds.Request) (string, error) {
+	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
+		return apiAddress, nil
+	}
+
+	fsRepo, err := repo.OpenFSRepo(getRepoDir(req))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to open FSRepo")
+	}
+
+	return fsRepo.APIAddr()
 }
 
 func requiresDaemon(req *cmds.Request) bool {

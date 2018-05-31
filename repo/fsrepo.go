@@ -14,12 +14,13 @@ import (
 	badgerds "gx/ipfs/QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo/go-ds-badger"
 	lockfile "gx/ipfs/QmPdqSMmiwtQCBC515gFtMW2mP14HsfgnyQ2k5xPQVxMge/go-fs-lock"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 )
 
+const apiFile = "api"
 const configFilename = "config.toml"
 const tempConfigFilename = ".config.toml.temp"
 const lockFile = "repo.lock"
@@ -202,7 +203,23 @@ func (r *FSRepo) Close() error {
 		return errors.Wrap(err, "failed to close datastore")
 	}
 
+	if err := r.removeAPIFile(); err != nil {
+		return errors.Wrap(err, "error removing API file")
+	}
+
 	return r.lockfile.Close()
+}
+
+func (r *FSRepo) removeFile(path string) error {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}
+
+func (r *FSRepo) removeAPIFile() error {
+	return r.removeFile(filepath.Join(r.path, apiFile))
 }
 
 func isInitialized(p string) (bool, error) {
@@ -333,4 +350,41 @@ func (r *FSRepo) StagingDir() string {
 // SealedDir satisfies node.SectorDirs
 func (r *FSRepo) SealedDir() string {
 	return path.Join(r.path, "sealed")
+}
+
+// SetAPIAddr writes the address to the API file.
+func (r *FSRepo) SetAPIAddr(addr string) error {
+	f, err := os.Create(filepath.Join(r.path, apiFile))
+	if err != nil {
+		return errors.Wrap(err, "could not create API file")
+	}
+
+	defer f.Close() // nolint: errcheck
+
+	_, err = f.WriteString(addr)
+	if err != nil {
+		// If we encounter an error writing to the API file,
+		// delete the API file. The error encountered while
+		// deleting the API file will be returned (if one
+		// exists) instead of the write-error.
+		if err := r.removeAPIFile(); err != nil {
+			return errors.Wrap(err, "failed to remove API file")
+		}
+
+		return errors.Wrap(err, "failed to write to API file")
+	}
+
+	return nil
+}
+
+// APIAddr reads the address from the API file.
+func (r *FSRepo) APIAddr() (string, error) {
+	apiFilePath := filepath.Join(filepath.Clean(r.path), apiFile)
+
+	contents, err := ioutil.ReadFile(apiFilePath)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read API file")
+	}
+
+	return string(contents), nil
 }

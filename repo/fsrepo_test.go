@@ -9,6 +9,7 @@ import (
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )
@@ -172,4 +173,125 @@ func TestRepoLockFail(t *testing.T) {
 
 	_, err = os.Lstat(filepath.Join(dir, lockFile))
 	assert.True(os.IsNotExist(err))
+}
+
+func TestRepoAPIFile(t *testing.T) {
+	t.Run("APIAddr returns last value written to API file", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			mustSetAPIAddr(t, r, ":1234")
+
+			addr := mustGetAPIAddr(t, r)
+			assert.Equal(":1234", addr)
+
+			mustSetAPIAddr(t, r, ":4567")
+
+			addr = mustGetAPIAddr(t, r)
+			assert.Equal(":4567", addr)
+		})
+	})
+
+	t.Run("SetAPIAddr is idempotent", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			mustSetAPIAddr(t, r, ":1234")
+
+			addr := mustGetAPIAddr(t, r)
+			assert.Equal(":1234", addr)
+
+			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, ":1234")
+
+			addr = mustGetAPIAddr(t, r)
+			assert.Equal(":1234", addr)
+		})
+	})
+
+	t.Run("APIAddr fails if called before SetAPIAddr", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			addr, err := r.APIAddr()
+			assert.Error(err)
+			assert.Equal("", addr)
+		})
+	})
+
+	t.Run("Close deletes API file", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			mustSetAPIAddr(t, r, ":1234")
+
+			info, err := os.Stat(filepath.Join(r.path, apiFile))
+			assert.NoError(err)
+			assert.Equal(apiFile, info.Name())
+
+			r.Close()
+
+			_, err = os.Stat(filepath.Join(r.path, apiFile))
+			assert.Error(err)
+		})
+	})
+
+	t.Run("Close will succeed in spite of missing API file", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			mustSetAPIAddr(t, r, ":1234")
+
+			err := os.Remove(filepath.Join(r.path, apiFile))
+			assert.NoError(err)
+
+			assert.NoError(r.Close())
+		})
+	})
+
+	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
+		assert := assert.New(t)
+
+		withFSRepo(t, func(r *FSRepo) {
+			// create a file with permission bits that prevent us from truncating
+			err := ioutil.WriteFile(filepath.Join(r.path, apiFile), []byte(":9999"), 0000)
+			assert.NoError(err)
+
+			// try to os.Create to same path - will see a failure
+			err = r.SetAPIAddr(":1234")
+			assert.Error(err)
+		})
+	})
+}
+
+func withFSRepo(t *testing.T, f func(*FSRepo)) {
+	require := require.New(t)
+
+	dir, err := ioutil.TempDir("", "")
+	require.NoError(err)
+	defer os.RemoveAll(dir)
+
+	cfg := config.NewDefaultConfig()
+	require.NoError(err, InitFSRepo(dir, cfg))
+
+	r, err := OpenFSRepo(dir)
+	require.NoError(err)
+
+	f(r)
+}
+
+func mustGetAPIAddr(t *testing.T, r *FSRepo) string {
+	require := require.New(t)
+
+	addr, err := r.APIAddr()
+	require.NoError(err)
+
+	return addr
+}
+
+func mustSetAPIAddr(t *testing.T, r *FSRepo, addr string) {
+	require := require.New(t)
+	require.NoError(r.SetAPIAddr(addr))
 }

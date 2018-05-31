@@ -1,25 +1,26 @@
 package repo
 
 import (
+	"os"
 	"sync"
-
-	"github.com/filecoin-project/go-filecoin/config"
-	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dss "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/sync"
-	"os"
+	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
+
+	"github.com/filecoin-project/go-filecoin/config"
 )
 
 // MemRepo is an in memory implementation of the filecoin repo
 type MemRepo struct {
 	// lk guards the config
-	lk      sync.RWMutex
-	C       *config.Config
-	D       Datastore
-	Ks      keystore.Keystore
-	W       Datastore
-	version uint
+	lk         sync.RWMutex
+	C          *config.Config
+	D          Datastore
+	Ks         keystore.Keystore
+	W          Datastore
+	version    uint
+	apiAddress string
 }
 
 var _ Repo = (*MemRepo)(nil)
@@ -93,4 +94,15 @@ func (mr *MemRepo) SealedDir() string {
 func (mr *MemRepo) CleanupSectorDirs() {
 	os.RemoveAll(mr.StagingDir()) // nolint: errcheck
 	os.RemoveAll(mr.SealedDir())  // nolint:errcheck
+}
+
+// SetAPIAddr writes the address of the running API to memory.
+func (mr *MemRepo) SetAPIAddr(addr string) error {
+	mr.apiAddress = addr
+	return nil
+}
+
+// APIAddr reads the address of the running API from memory.
+func (mr *MemRepo) APIAddr() (string, error) {
+	return mr.apiAddress, nil
 }
