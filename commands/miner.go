@@ -3,13 +3,12 @@ package commands
 import (
 	"io"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -55,33 +54,17 @@ message to be mined as this is required to return the address of the new miner.`
 			return ErrInvalidCollateral
 		}
 
-		params, err := abi.ToEncodedValues(pledge, []byte{})
+		addr, err := n.CreateMiner(req.Context, fromAddr, *pledge, *collateral)
 		if err != nil {
 			return err
 		}
 
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.StorageMarketAddress, collateral, "createMiner", params)
-		if err != nil {
-			return err
-		}
-
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			return err
-		}
-
-		msgCid, err := msg.Cid()
-		if err != nil {
-			return err
-		}
-
-		re.Emit(msgCid) // nolint: errcheck
-
-		return nil
+		return re.Emit(addr)
 	},
-	Type: cid.Cid{},
+	Type: types.Address{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *types.Address) error {
+			return PrintString(w, a)
 		}),
 	},
 }

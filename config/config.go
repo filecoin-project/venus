@@ -82,11 +82,14 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	RewardAddress types.Address `toml:"rewardAddress,omitempty"`
+	RewardAddress  types.Address   `toml:"rewardAddress,omitempty"`
+	MinerAddresses []types.Address `toml:"minerAddresses"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
-	return &MiningConfig{}
+	return &MiningConfig{
+		MinerAddresses: make([]types.Address, 0),
+	}
 }
 
 // NewDefaultConfig returns a config object with all the fields filled out to

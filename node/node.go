@@ -20,7 +20,9 @@ import (
 	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/filnet"
@@ -548,4 +550,50 @@ func (node *Node) QueryMessage(msg *types.Message) ([]byte, uint8, error) {
 	}
 
 	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(bb.Height))
+}
+
+// CreateMiner creates a new miner actor for the given account and returns its address.
+// It will wait for the the actor to appear on-chain and add it's address to mining.minerAddresses in the config.
+// TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
+func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, collateral types.TokenAmount) (*types.Address, error) {
+	// TODO: pull public key from wallet
+	params, err := abi.ToEncodedValues(&pledge, []byte{})
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := NewMessageWithNextNonce(ctx, node, accountAddr, address.StorageMarketAddress, &collateral, "createMiner", params)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := node.AddNewMessage(ctx, msg); err != nil {
+		return nil, err
+	}
+
+	msgCid, err := msg.Cid()
+	if err != nil {
+		return nil, err
+	}
+
+	var minerAddress types.Address
+	err = node.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.Message,
+		receipt *types.MessageReceipt) error {
+		minerAddress, err = types.NewAddressFromBytes(receipt.ReturnValue())
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = node.saveMinerAddressToConfig(minerAddress)
+	return &minerAddress, err
+}
+
+func (node *Node) saveMinerAddressToConfig(addr types.Address) error {
+	r := node.Repo
+	newConfig := r.Config()
+	newConfig.Mining.MinerAddresses = append(newConfig.Mining.MinerAddresses, addr)
+
+	return r.ReplaceConfig(newConfig)
 }

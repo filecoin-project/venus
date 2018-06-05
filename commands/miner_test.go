@@ -17,6 +17,9 @@ import (
 func TestMinerCreateSuccess(t *testing.T) {
 	assert := assert.New(t)
 
+	var err error
+	var addr types.Address
+
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
@@ -30,21 +33,13 @@ func TestMinerCreateSuccess(t *testing.T) {
 			d.RunFail(ErrCouldNotDefaultFromAddress.Error(), args...)
 			return
 		}
-		miner := d.RunSuccess(args...)
-		minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-		require.NoError(t, err)
 
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
-			wait := d.RunSuccess("message", "wait",
-				"--return",
-				"--message=false",
-				"--receipt=false",
-				minerMessageCid.String(),
-			)
-			addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
+			miner := d.RunSuccess(args...)
+			addr, err = types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 			assert.NoError(err)
 			assert.NotEqual(addr, types.Address{})
 			wg.Done()
@@ -52,6 +47,10 @@ func TestMinerCreateSuccess(t *testing.T) {
 
 		d.RunSuccess("mining once")
 		wg.Wait()
+
+		// expect address to have been written in config
+		config := d.RunSuccess("config mining.minerAddresses")
+		assert.Contains(config.ReadStdout(), addr.String())
 	}
 
 	// If there's one address, --from can be omitted and we should default
@@ -98,26 +97,13 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 	d.CreateWalletAddr()
 
-	miner := d.RunSuccess(
-		"miner", "create",
-		"--from", address.TestAddress.String(), "1000000", "20",
-	)
-	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	require.NoError(t, err)
-
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess(
-			"message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			minerMessageCid.String(),
-		)
-		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
+		miner := d.RunSuccess("miner", "create", "--from", address.TestAddress.String(), "1000000", "20")
+		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
 		assert.NotEqual(addr, types.Address{})
 		minerAddr = addr
@@ -153,24 +139,15 @@ func TestMinerAddAskFail(t *testing.T) {
 
 	d.CreateWalletAddr()
 
-	miner := d.RunSuccess("miner", "create",
-		"--from", address.TestAddress.String(), "1000000", "20",
-	)
-	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	require.NoError(t, err)
-
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		wait := d.RunSuccess("message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			minerMessageCid.String(),
+		miner := d.RunSuccess("miner", "create",
+			"--from", address.TestAddress.String(), "1000000", "20",
 		)
-		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
+		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
 		assert.NotEqual(addr, types.Address{})
 		minerAddr = addr

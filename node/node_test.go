@@ -12,6 +12,7 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -471,4 +472,42 @@ func TestQueryMessage(t *testing.T) {
 
 		assert.NotNil(returnValue)
 	})
+}
+
+func TestCreateMiner(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	node := MakeNodesUnstarted(t, 1, true)[0]
+	err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+	assert.NoError(err)
+	assert.NoError(node.Start())
+
+	var minerAddr *types.Address
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go func() {
+		minerAddr, err = node.CreateMiner(ctx, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+		wg.Done()
+	}()
+
+	time.Sleep(10 * time.Millisecond) // give us enough time to get the mining message in the pool
+
+	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
+		return state.LoadStateTree(ctx, node.CborStore, cid, builtin.Actors)
+	}, mining.ApplyMessages)
+	cur := node.ChainMgr.GetBestBlock()
+	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), []core.TipSet{{cur.Cid().String(): cur}}, address.TestAddress)
+	require.NoError(out.Err)
+	(*core.ChainManagerForTest)(node.ChainMgr).SetBestBlockForTest(ctx, out.NewBlock)
+
+	wg.Wait()
+	require.NoError(err)
+
+	assert.NotNil(minerAddr)
+
+	config := node.Repo.Config()
+	assert.Equal(minerAddr, &config.Mining.MinerAddresses[0])
 }

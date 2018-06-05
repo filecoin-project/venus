@@ -22,8 +22,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 )
 
 // Output manages running, inprocess, a filecoin command.
@@ -302,24 +300,16 @@ func (td *TestDaemon) CreateMinerAddr() types.Address {
 	td.RunSuccess("mining", "once")
 
 	addr := td.Config().Mining.RewardAddress
-	miner := td.RunSuccess("miner", "create", "--from", addr.String(), "1000000", "1000")
-	minerMessageCid, err := cid.Parse(strings.Trim(miner.ReadStdout(), "\n"))
-	require.NoError(td.test, err)
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		wait := td.RunSuccess("message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			minerMessageCid.String(),
-		)
-		addr, err := types.NewAddressFromString(strings.Trim(wait.ReadStdout(), "\n"))
-		require.NoError(td.test, err)
-		require.NotEqual(td.test, addr, types.Address{})
+		miner := td.RunSuccess("miner", "create", "--from", addr.String(), "1000000", "1000")
+		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(td.test, err)
+		assert.NotEqual(td.test, addr, types.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()

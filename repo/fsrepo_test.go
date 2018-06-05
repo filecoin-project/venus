@@ -46,6 +46,7 @@ func TestFSRepoInit(t *testing.T) {
 
 [mining]
   rewardAddress = ""
+  minerAddresses = []
 `,
 		string(content),
 	)
