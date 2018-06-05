@@ -2,6 +2,7 @@ package core
 
 import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"sort"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -58,6 +59,63 @@ func TestTipSet(t *testing.T) {
 	oldB1 := ts[b1.Cid().String()]
 	ts[oldB1.Cid().String()].Nonce = 17
 	assert.Equal(ts2, ts)
+}
+
+// Test methods: String, ToSortedCidSet, ToSlice, Score, MinTicket, Height, NewTipSet, Equals
+func TestTipSetMethods(t *testing.T) {
+	assert := assert.New(t)
+
+	cidGetter := types.NewCidForTestGetter()
+	cid1 := cidGetter()
+
+	b1 := block(assert, 1, cid1, "1")
+	b1.Ticket = []byte{0}
+	b2 := block(assert, 1, cid1, "2")
+	b2.Ticket = []byte{1}
+	b3 := block(assert, 1, cid1, "3")
+	b3.Ticket = []byte{0}
+
+	// NewTipSet
+	tips := []*types.Block{b1, b2, b3}
+	ts := NewTipSet(tips...)
+	assert.Equal(ts[b1.Cid().String()], b1)
+	assert.Equal(ts[b2.Cid().String()], b2)
+	assert.Equal(ts[b3.Cid().String()], b3)
+	assert.Equal(3, len(ts))
+
+	// MinTicket
+	mt := ts.MinTicket()
+	assert.Equal(types.Signature([]byte{0}), mt)
+
+	// Height
+	h := ts.Height()
+	assert.Equal(uint64(43), h)
+
+	// Score
+	sc := ts.Score()
+	assert.Equal(uint64(43*103), sc)
+
+	// ToSortedCidSet
+	cidsExp := types.NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
+	strExp := cidsExp.String()
+	assert.Equal(strExp, ts.String())
+	assert.Equal(cidsExp, ts.ToSortedCidSet())
+
+	// ToSlice
+	blks := ts.ToSlice()
+	sort.Slice(tips, func(i, j int) bool {
+		return tips[i].Cid().String() < tips[j].Cid().String()
+	})
+	sort.Slice(blks, func(i, j int) bool {
+		return blks[i].Cid().String() < blks[j].Cid().String()
+	})
+	assert.Equal(tips, blks)
+
+	// Equals & AddBlock
+	ts2 := NewTipSet(b1, b2)
+	assert.True(!ts2.Equals(ts))
+	ts2.AddBlock(b3)
+	assert.True(ts.Equals(ts2))
 }
 
 func TestTipIndex(t *testing.T) {

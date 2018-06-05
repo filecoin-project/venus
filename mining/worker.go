@@ -28,15 +28,15 @@ func init() {
 // to accrue rewards to, and a context that the caller can use
 // to cancel this mining run.
 type Input struct {
-	Ctx     context.Context
-	TipSets []core.TipSet
+	Ctx    context.Context
+	TipSet core.TipSet
 	// TODO This should apparently be a miner actor address.
 	RewardAddress types.Address
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, tipSets []core.TipSet, a types.Address) Input {
-	return Input{Ctx: ctx, TipSets: tipSets, RewardAddress: a}
+func NewInput(ctx context.Context, ts core.TipSet, a types.Address) Input {
+	return Input{Ctx: ctx, TipSet: ts, RewardAddress: a}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -93,12 +93,12 @@ func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, createPoST 
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the worker.
-func MineOnce(ctx context.Context, w Worker, tipSets []core.TipSet, rewardAddress types.Address) Output {
+func MineOnce(ctx context.Context, w Worker, ts core.TipSet, rewardAddress types.Address) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 
 	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, tipSets, rewardAddress) }()
+	go func() { inCh <- NewInput(subCtx, ts, rewardAddress) }()
 	return <-outCh
 }
 
@@ -125,7 +125,7 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 		defer doneWg.Done()
 		var currentRunCtx context.Context
 		var currentRunCancel = func() {}
-		var currentBlock *types.Block
+		currentTipSet := core.TipSet{}
 		for {
 			select {
 			case <-miningCtx.Done():
@@ -134,7 +134,6 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 				return
 			case input, ok := <-inCh:
 				if ok {
-					// TODO(EC): select the heaviest tipset
 					// TODO(EC): implement the mining logic described in the spec here:
 					//   https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR83
 					//   specifically:
@@ -148,8 +147,8 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 					//       (replaces score check below), or if we see a tipset from the same height
 					//       but with greater weight. I say ignore for now rational miner strategies that
 					//       wouldn't abandon a lesser-weight mining run that wins the lottery.
-					newBaseBlock := core.BaseBlockFromTipSets(input.TipSets)
-					if currentBlock == nil || currentBlock.Score() <= newBaseBlock.Score() {
+					newTipSet := input.TipSet
+					if len(currentTipSet) == 0 || currentTipSet.Score() <= newTipSet.Score() {
 						currentRunCancel()
 						currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
 						doneWg.Add(1)
@@ -157,7 +156,7 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 							w.mine(currentRunCtx, input, w.nullBlockTimer, w.blockGenerator, w.createPoST, outCh)
 							doneWg.Done()
 						}()
-						currentBlock = newBaseBlock
+						currentTipSet = newTipSet
 					}
 				} else {
 					// Sender closed the channel. Set it to nil to ignore it.
@@ -193,16 +192,13 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 			break
 		}
 
-		parents := selectParents(input)
-		challenge := createChallenge(parents, nullBlockCount)
+		challenge := createChallenge(input.TipSet, nullBlockCount)
 		proof := createProof(challenge, createPoST)
 		ticket := createTicket(proof)
 
 		// TODO: Test the interplay of isWinningTicket() and createPoST()
 		if isWinningTicket(ticket, myPower, totalPower) {
-			// TODO(EC): Generate should take parents, not a single block
-			baseBlock := core.BaseBlockFromTipSets(input.TipSets)
-			next, err := blockGenerator.Generate(ctx, baseBlock, ticket, nullBlockCount, input.RewardAddress)
+			next, err := blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, input.RewardAddress)
 			if err == nil {
 				log.SetTag(ctx, "block", next)
 			}
@@ -213,7 +209,7 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 			if ctx.Err() == nil {
 				outCh <- NewOutput(next, err)
 			} else {
-				log.Warningf("Abandoning successfully mined block without publishing: %v", baseBlock)
+				log.Warningf("Abandoning successfully mined block without publishing: %s", input.TipSet.String())
 			}
 
 			break
@@ -221,14 +217,6 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 
 		nullBlockTimer()
 	}
-}
-
-func selectParents(input Input) core.TipSet {
-	if len(input.TipSets) != 1 {
-		panic("unreached")
-	}
-	// TODO: Pick heaviest chain.
-	return input.TipSets[0]
 }
 
 func createChallenge(parents core.TipSet, nullBlockCount uint64) []byte {

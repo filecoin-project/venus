@@ -42,7 +42,7 @@ type Hello struct {
 	chainSyncCB syncCallback
 
 	// getBestBlock is used to retrieve the current best block for filling out
-	// our hello messages
+	// our hello messages.  TODO this should be updated to use the best tipset
 	getBestBlock getBlockFunc
 }
 

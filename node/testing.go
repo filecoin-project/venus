@@ -5,9 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -109,13 +106,13 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	_, err = subscription.Next(ctx)
 	require.NoError(err)
 
-	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-		return state.LoadStateTree(ctx, node.CborStore, cid, builtin.Actors)
-	}, mining.ApplyMessages)
-	cur := node.ChainMgr.GetBestBlock()
-	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), []core.TipSet{{cur.Cid().String(): cur}}, address.TestAddress)
+	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+		return node.ChainMgr.LoadStateTreeTS(ctx, ts)
+	}, core.ApplyMessages)
+	cur := node.ChainMgr.GetHeaviestTipSet()
+	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), cur, address.TestAddress)
 	require.NoError(out.Err)
-	require.NoError(node.ChainMgr.SetBestBlockForTest(ctx, out.NewBlock))
+	require.NoError(node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(out.NewBlock)))
 
 	require.NoError(err)
 

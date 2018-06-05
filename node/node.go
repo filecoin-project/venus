@@ -15,12 +15,11 @@ import (
 	nonerouting "gx/ipfs/QmXtoXbu9ReyV6Q4kDQ5CF9wXQNDY1PdHc4HhfxRR5AHB3/go-ipfs-routing/none"
 	bstore "gx/ipfs/QmaG4DZ4JaqEfvPWt5nPPgoTzhc1tr1T3f4Nu9Jpdm8ymY/go-ipfs-blockstore"
 	hamt "gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+
 	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -51,12 +50,12 @@ type Node struct {
 	Host host.Host
 
 	ChainMgr *core.ChainManager
-	// BestBlockCh is a subscription to the best block topic on the chainmgr.
-	BestBlockCh chan interface{}
-	// BestBlockHandled is a hook for tests because pubsub notifications
-	// arrive async. It's called after handling a new best block.
-	BestBlockHandled func()
-	MsgPool          *core.MessagePool
+	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chainmgr.
+	HeaviestTipSetCh chan interface{}
+	// HeavyTipSetHandled is a hook for tests because pubsub notifications
+	// arrive async. It's called after handling a new heaviest tipset.
+	HeaviestTipSetHandled func()
+	MsgPool               *core.MessagePool
 
 	Wallet *wallet.Wallet
 
@@ -197,9 +196,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
 	// to simulate the work of generating proofs.
-	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-		return state.LoadStateTree(ctx, cst, cid, builtin.Actors)
-	}, mining.ApplyMessages)
+	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+		return chainMgr.LoadStateTreeTS(ctx, ts)
+	}, core.ApplyMessages)
 	miningWorker := mining.NewWorker(blockGenerator)
 
 	// Set up libp2p pubsub
@@ -289,9 +288,9 @@ func (node *Node) Start() error {
 	node.miningDoneWg.Add(1)
 	go node.handleNewMiningOutput(outCh)
 
-	node.BestBlockHandled = func() {}
-	node.BestBlockCh = node.ChainMgr.BestBlockPubSub.Sub(core.BlockTopic)
-	go node.handleNewBestBlock(ctx, node.ChainMgr.GetBestBlock())
+	node.HeaviestTipSetHandled = func() {}
+	node.HeaviestTipSetCh = node.ChainMgr.HeaviestTipSetPubSub.Sub(core.HeaviestTipSetTopic)
+	go node.handleNewHeaviestTipSet(ctx, node.ChainMgr.GetHeaviestTipSet())
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -345,20 +344,16 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 
 }
 
-func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
-	// TODO(EC): The current mining code is driven by the promotion of a new best
-	// block. This should probably change for EC: we want to tell the mining worker
-	// about *all* arriving tipsets at the current height. So the way we currently
-	// feed best blocks should probably be changed to feed tipsets at the current
-	// height.
-	for blk := range node.BestBlockCh {
-		newHead := blk.(*types.Block)
-		// TODO(EC): When a new best block is promoted we remove messages in it from the
-		// message pool (and add them back in if we have a re-org). The way we update the
-		// message pool should probably change for EC -- tipsets have multiple blocks, not
-		// a single block. See also note in BlockGenerator that suggests we shouldn't be
-		// clearing the pool out there; I think I agree, we should instead do something more
-		// like garbage collection periodically.
+func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet) {
+	for ts := range node.HeaviestTipSetCh {
+		newHead := ts.(core.TipSet)
+		if len(newHead) == 0 {
+			log.Error("TipSet of size 0 published on HeaviestTipSetCh:")
+			log.Error("ignoring and waiting for a new Heaviest TipSet.")
+		}
+
+		// When a new best TipSet is promoted we remove messages in it from the
+		// message pool (and add them back in if we have a re-org).
 		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore, head, newHead); err != nil {
 			panic(err)
 		}
@@ -371,17 +366,14 @@ func (node *Node) handleNewBestBlock(ctx context.Context, head *types.Block) {
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
-				// TODO(EC): for now wrap the new best block (head of the chain) in a
-				// TipSet. TipSet arrival hasn't yet been plumbed through here.
-				tipSets := []core.TipSet{{head.Cid().String(): head}}
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), tipSets, node.rewardAddress):
+				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress):
 				}
 			}()
 		}
-		node.BestBlockHandled()
+		node.HeaviestTipSetHandled()
 	}
 }
 
@@ -403,7 +395,7 @@ func (node *Node) cancelSubscriptions() {
 
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop() {
-	node.ChainMgr.BestBlockPubSub.Unsub(node.BestBlockCh)
+	node.ChainMgr.HeaviestTipSetPubSub.Unsub(node.HeaviestTipSetCh)
 	if node.cancelMining != nil {
 		node.cancelMining()
 	}
@@ -459,12 +451,11 @@ func (node *Node) StartMining() error {
 		defer func() { node.miningDoneWg.Done() }()
 		// TODO(EC): Here is where we kick mining off when we start off. Will
 		// need to change to pass in best tipsets, of which there can be multiple.
-		bb := node.ChainMgr.GetBestBlock()
-		tipSets := []core.TipSet{{bb.Cid().String(): bb}}
+		hts := node.ChainMgr.GetHeaviestTipSet()
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), tipSets, node.rewardAddress):
+		case node.miningInCh <- mining.NewInput(context.Background(), hts, node.rewardAddress):
 		}
 	}()
 	return nil
@@ -493,7 +484,7 @@ func (node *Node) StopMining() {
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
 func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
-	st, err := state.LoadStateTree(ctx, node.CborStore, node.ChainMgr.GetBestBlock().StateRoot, builtin.Actors)
+	st, err := node.ChainMgr.LoadStateTreeTS(ctx, node.ChainMgr.GetHeaviestTipSet())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
 	}
@@ -525,8 +516,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // the actor's memory and also scans the message pool for any pending
 // messages.
 func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
-	bb := node.ChainMgr.GetBestBlock()
-	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, builtin.Actors)
+	st, err := node.ChainMgr.LoadStateTreeTS(ctx, node.ChainMgr.GetHeaviestTipSet())
 	if err != nil {
 		return 0, err
 	}
@@ -559,16 +549,16 @@ func (node *Node) NewAddress() (types.Address, error) {
 	return backend.NewAddress()
 }
 
-// QueryMessage sends a read-only message to an actor to retrieve some of its current (best block) state.
+// QueryMessage sends a read-only message to an actor to retrieve some of its current (best tipset) state.
 func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
 	ctx := context.Background()
-	bb := node.ChainMgr.GetBestBlock()
-	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, builtin.Actors)
+	bts := node.ChainMgr.GetHeaviestTipSet()
+	st, err := node.ChainMgr.LoadStateTreeTS(ctx, bts)
 	if err != nil {
 		return nil, 1, err
 	}
 
-	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(bb.Height))
+	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(bts.Height()))
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.

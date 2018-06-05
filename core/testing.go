@@ -17,28 +17,42 @@ import (
 )
 
 // MkChild creates a new block with parent, blk, and supplied nonce.
-func MkChild(blk *types.Block, nonce uint64) *types.Block {
+func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block {
+	parents := types.NewSortedCidSet()
+	for _, blk := range blks {
+		parents.Add(blk.Cid())
+	}
 	return &types.Block{
-		Parents:         types.NewSortedCidSet(blk.Cid()),
-		Height:          blk.Height + 1,
+		Parents:         parents,
+		Height:          blks[0].Height + 1,
 		Nonce:           nonce,
-		StateRoot:       blk.StateRoot,
+		StateRoot:       stateRoot,
 		Messages:        []*types.Message{},
 		MessageReceipts: []*types.MessageReceipt{},
 	}
 }
 
 // AddChain creates and processes new, empty chain of length, beginning from blk.
-func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, blk *types.Block, length int) (*types.Block, error) {
+func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, blks []*types.Block, length int) (*types.Block, error) {
+	st, err := loadStateTreeTS(ctx, NewTipSet(blks[0]))
+	if err != nil {
+		return nil, err
+	}
+	stateRoot, err := st.Flush(ctx)
+	if err != nil {
+		return nil, err
+	}
 	l := uint64(length)
+	var blk *types.Block
 	for i := uint64(0); i < l; i++ {
-		blk = MkChild(blk, i)
+		blk = MkChild(blks, stateRoot, i)
 		_, err := processNewBlock(ctx, blk)
 		if err != nil {
 			return nil, err
 		}
+		blks = []*types.Block{blk}
 	}
-	return blk, nil
+	return blks[0], nil
 }
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
@@ -128,29 +142,47 @@ func MustConvertParams(params ...interface{}) []byte {
 	return out
 }
 
-// NewChainWithMessages creates a chain of blocks containing the given messages
-// and stores them in the given store. Note the msg arguments are slices of
-// messages -- each slice goes into a successive block.
-func NewChainWithMessages(store *hamt.CborIpldStore, root *types.Block, msgSets ...[]*types.Message) []*types.Block {
-	parent := root
-	blocks := []*types.Block{}
-	if parent != nil {
-		MustPut(store, parent)
-		blocks = append(blocks, parent)
-	}
-
-	for _, msgs := range msgSets {
-		child := &types.Block{Messages: msgs}
-		if parent != nil {
-			child.Parents = types.NewSortedCidSet(parent.Cid())
-			child.Height = parent.Height + 1
+// NewChainWithMessages creates a chain of tipsets containing the given messages
+// and stores them in the given store.  Note the msg arguments are slices of
+// slices of messages -- each slice of slices goes into a successive tipset,
+// and each slice within this slice goes into a block of that tipset
+func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][]*types.Message) []TipSet {
+	tipSets := []TipSet{}
+	parents := root
+	// only add root to the chain if it is not the zero-valued-tipset
+	if len(parents) != 0 {
+		for _, blk := range parents {
+			MustPut(store, blk)
 		}
-		MustPut(store, child)
-		blocks = append(blocks, child)
-		parent = child
+		tipSets = append(tipSets, parents)
 	}
 
-	return blocks
+	for _, tsMsgs := range msgSets {
+		ts := TipSet{}
+		// If a message set does not contain a slice of messages then
+		// add a tipset with no messages and a single block to the chain
+		if len(tsMsgs) == 0 {
+			child := &types.Block{
+				Height:  parents.Height() + 1,
+				Parents: parents.ToSortedCidSet(),
+			}
+			MustPut(store, child)
+			ts[child.Cid().String()] = child
+		}
+		for _, msgs := range tsMsgs {
+			child := &types.Block{
+				Messages: msgs,
+				Parents:  parents.ToSortedCidSet(),
+				Height:   parents.Height() + 1,
+			}
+			MustPut(store, child)
+			ts[child.Cid().String()] = child
+		}
+		tipSets = append(tipSets, ts)
+		parents = ts
+	}
+
+	return tipSets
 }
 
 // MustPut stores the thingy in the store or panics if it cannot.

@@ -27,8 +27,8 @@ func TestAddChain(t *testing.T) {
 
 	assert.Equal(1, countBlocks(chm))
 
-	bb := chm.GetBestBlock()
-	AddChain(ctx, chm.ProcessNewBlock, bb, 9)
+	bts := chm.GetHeaviestTipSet()
+	AddChain(ctx, chm.ProcessNewBlock, chm.LoadStateTreeTS, bts.ToSlice(), 9)
 
 	assert.Equal(10, countBlocks(chm))
 }

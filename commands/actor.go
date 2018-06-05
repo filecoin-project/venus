@@ -54,11 +54,13 @@ var actorLsCmd = &cmds.Command{
 }
 
 func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGetter state.GetAllActorsFromStoreFunc) error {
-	blk := fcn.ChainMgr.GetBestBlock()
+	blks := fcn.ChainMgr.GetHeaviestTipSet().ToSlice()
 
-	if blk == nil {
+	if len(blks) == 0 {
 		return errors.New("best block not found") // panic?
 	}
+	// TODO: report all blocks of a tipset, not just a random one
+	blk := blks[0]
 
 	if blk.StateRoot == nil {
 		return ErrLatestBlockStateRootNil

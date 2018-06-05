@@ -119,6 +119,15 @@ func (s SortedCidSet) Equals(s2 SortedCidSet) bool {
 	return true
 }
 
+// String returns a string listing the cids in the set.
+func (s SortedCidSet) String() string {
+	out := "{"
+	for it := s.Iter(); !it.Complete(); it.Next() {
+		out = fmt.Sprintf("%s %s", out, it.Value().String())
+	}
+	return out + " }"
+}
+
 // MarshalJSON serializes the set to JSON.
 func (s SortedCidSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.s)

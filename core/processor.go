@@ -1,7 +1,9 @@
 package core
 
 import (
+	"bytes"
 	"context"
+	"sort"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -10,8 +12,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// Processor is the signature a function used to process blocks.
+// Processor is the signature of a function used to process blocks.
 type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*ApplicationResult, error)
+
+// TipSetProcessor is the signature of a function used to process tipsets
+type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSetResponse, error)
 
 // ProcessBlock is the entrypoint for validating the state transitions
 // of the messages in a block. When we receive a new block from the
@@ -41,24 +46,19 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*Ap
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*ApplicationResult, error) {
-	var results []*ApplicationResult
 	var emptyResults []*ApplicationResult
 	bh := types.NewBlockHeight(blk.Height)
-
-	for _, msg := range blk.Messages {
-		r, err := ApplyMessage(ctx, st, msg, bh)
-		// If the message should not have been in the block, bail.
-		// TODO: handle faults appropriately at a higher level.
-		if errors.IsFault(err) || errors.IsApplyErrorPermanent(err) || errors.IsApplyErrorTemporary(err) {
-			return emptyResults, err
-		} else if err != nil {
-			return emptyResults, errors.FaultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
-		}
-
-		// TODO fritz check caller assumptions about receipts.
-		results = append(results, r)
+	res, faultErr := ApplyMessages(ctx, blk.Messages, st, bh)
+	if faultErr != nil {
+		return emptyResults, faultErr
 	}
-	return results, nil
+	if len(res.PermanentErrors) > 0 {
+		return emptyResults, res.PermanentErrors[0]
+	}
+	if len(res.TemporaryErrors) > 0 {
+		return emptyResults, res.TemporaryErrors[0]
+	}
+	return res.Results, nil
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -67,6 +67,84 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*Appl
 type ApplicationResult struct {
 	Receipt        *types.MessageReceipt
 	ExecutionError error
+}
+
+// ProcessTipSetResponse records the results of successfully applied messages,
+// and the sets of successful and failed message cids.  Information of successes
+// and failues is key for helping match user messages with receipts in the case
+// of message conflicts
+type ProcessTipSetResponse struct {
+	Results   []*ApplicationResult
+	Successes types.SortedCidSet
+	Failures  types.SortedCidSet
+}
+
+// ProcessTipSet computes the state transition specified by the messages in all
+// blocks in a TipSet.  It is similar to ProcessBlock with a few key differences.
+// Most importantly ProcessTipSet relies on the precondition that each input block
+// is valid with respect to the base state st, that is, ProcessBlock is free of
+// errors when applied to each block individually over the given state.
+// ProcessTipSet only returns errors in the case of faults.  Other errors
+// coming from calls to ApplyMessage can be traced to different blocks in the
+// TipSet containing conflicting messages and are ignored.  Blocks are applied
+// in the sorted order of their tickets.
+func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSetResponse, error) {
+	var res ProcessTipSetResponse
+	var emptyRes ProcessTipSetResponse
+	bh := types.NewBlockHeight(ts.Height())
+	msgFilter := make(map[string]struct{})
+
+	tips := ts.ToSlice()
+	sort.Slice(tips, func(i, j int) bool {
+		return bytes.Compare(tips[i].Ticket, tips[j].Ticket) == -1
+	})
+
+	for _, blk := range tips {
+		// filter out duplicates within TipSet
+		var msgs []*types.Message
+		for _, msg := range blk.Messages {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+			}
+			if _, ok := msgFilter[mCid.String()]; ok {
+				continue
+			}
+			msgs = append(msgs, msg)
+			// filter all messages that we attempted to apply
+			// TODO is there ever a reason to try a duplicate failed message again within the same tipset?
+			msgFilter[mCid.String()] = struct{}{}
+		}
+		amRes, err := ApplyMessages(ctx, msgs, st, bh)
+		if err != nil {
+			return &emptyRes, err
+		}
+		res.Results = append(res.Results, amRes.Results...)
+		for _, msg := range amRes.SuccessfulMessages {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+			}
+			(&res.Successes).Add(mCid)
+		}
+		for _, msg := range amRes.PermanentFailures {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+			}
+			(&res.Failures).Add(mCid)
+		}
+		for _, msg := range amRes.TemporaryFailures {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+			}
+			(&res.Failures).Add(mCid)
+		}
+
+	}
+
+	return &res, nil
 }
 
 // ApplyMessage attempts to apply a message to a state tree. It is the
@@ -292,4 +370,48 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, msg *types.M
 	}
 
 	return receipt, vmErr
+}
+
+// Apply
+
+// ApplyMessagesResponse is the output struct of ApplyMessages.  It exists to
+// prevent callers from mistakenly mixing up outputs of the same type
+type ApplyMessagesResponse struct {
+	Results            []*ApplicationResult
+	PermanentFailures  []*types.Message
+	TemporaryFailures  []*types.Message
+	SuccessfulMessages []*types.Message
+
+	// Application Errors
+	PermanentErrors []error
+	TemporaryErrors []error
+}
+
+// ApplyMessages applies messages to state tree and returns message receipts,
+// messages with permanent and temporary failures, and any error.
+func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
+	var emptyRet ApplyMessagesResponse
+	var ret ApplyMessagesResponse
+	for _, msg := range messages {
+		r, err := ApplyMessage(ctx, st, msg, bh)
+		// If the message should not have been in the block, bail somehow.
+		switch {
+		case errors.IsFault(err):
+			return emptyRet, err
+		case errors.IsApplyErrorPermanent(err):
+			ret.PermanentFailures = append(ret.PermanentFailures, msg)
+			ret.PermanentErrors = append(ret.PermanentErrors, err)
+			continue
+		case errors.IsApplyErrorTemporary(err):
+			ret.TemporaryFailures = append(ret.TemporaryFailures, msg)
+			ret.TemporaryErrors = append(ret.TemporaryErrors, err)
+			continue
+		case err != nil:
+			panic("someone is a bad programmer: error is neither fault, perm or temp")
+		default:
+			ret.SuccessfulMessages = append(ret.SuccessfulMessages, msg)
+			ret.Results = append(ret.Results, r)
+		}
+	}
+	return ret, nil
 }

@@ -61,25 +61,44 @@ func NewMessagePool() *MessagePool {
 	}
 }
 
+// getParentTips returns the parent tipset of the provided tipset
+func getParentTipSet(store *hamt.CborIpldStore, ts TipSet) (TipSet, error) {
+	newTipSet := TipSet{}
+	for it := ts.Parents().Iter(); !it.Complete(); it.Next() {
+		var newBlk types.Block
+		if err := store.Get(context.TODO(), it.Value(), &newBlk); err != nil {
+			return nil, err
+		}
+		newTipSet.AddBlock(&newBlk)
+	}
+	return newTipSet, nil
+}
+
 // collectChainsMessagesToHeight is a helper that collects all the messages
 // from block `b` down the chain to but not including its ancestor of
-// height `height`. It updates and re-uses the space pointed to by curBlock.
-func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curBlock *types.Block, height uint64) ([]*types.Message, error) {
-	msgs := []*types.Message{}
-	for curBlock.Height > height {
-		msgs = append(msgs, curBlock.Messages...)
-		switch curBlock.Parents.Len() {
+// height `height`.  This function returns the messages collected along with
+// the tipset at the final height.
+// TODO ripe for optimizing away lots of allocations
+func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, height uint64) ([]*types.Message, TipSet, error) {
+	var msgs []*types.Message
+	h := curTipSet.Height()
+	for h > height {
+		for _, blk := range curTipSet {
+			msgs = append(msgs, blk.Messages...)
+		}
+		switch curTipSet.Parents().Len() {
 		case 0:
-			return msgs, nil
-		case 1:
-			if err := store.Get(context.TODO(), curBlock.Parents.Iter().Value(), curBlock); err != nil {
-				return nil, err
-			}
+			return msgs, curTipSet, nil
 		default:
-			panic("multiple parents not supported yet")
+			nextTipSet, err := getParentTipSet(store, curTipSet)
+			if err != nil {
+				return []*types.Message{}, TipSet{}, err
+			}
+			curTipSet = nextTipSet
+			h = curTipSet.Height()
 		}
 	}
-	return msgs, nil
+	return msgs, curTipSet, nil
 }
 
 // UpdateMessagePool brings the message pool into the correct state after
@@ -92,52 +111,44 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curBlock *types.Bl
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, oldHead, newHead *types.Block) error {
-	// Strategy: walk pointers oldHead and newHead back until they are at the same
+func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new TipSet) error {
+	// Strategy: walk head-of-chain pointers old and new back until they are at the same
 	// height, then walk back in lockstep to find the common ancesetor.
-
-	// Use new storage for oldHead and newHead to avoid aliasing with
-	// the nodes pointed to by the arguments when loading blocks.
-	var old, new types.Block
-	if err := store.Get(ctx, oldHead.Cid(), &old); err != nil {
-		return err
-	}
-	if err := store.Get(ctx, newHead.Cid(), &new); err != nil {
-		return err
-	}
 
 	// If old is higher/longer than new, collect all the messages
 	// from old's chain down to the height of new.
-	addToPool, err := collectChainsMessagesToHeight(store, &old, new.Height)
+	addToPool, old, err := collectChainsMessagesToHeight(store, old, new.Height())
 	if err != nil {
 		return err
 	}
 	// If new is higher/longer than old, collect all the messages
-	// from its chain down to the height of new.
-	removeFromPool, err := collectChainsMessagesToHeight(store, &new, old.Height)
+	// from new's chain down to the height of old.
+	removeFromPool, new, err := collectChainsMessagesToHeight(store, new, old.Height())
 	if err != nil {
 		return err
 	}
-
 	// Old and new are now at the same height. Keep walking them down a
-	// block at a time in lockstep until they are pointing to the same
-	// node, the common ancestor. Collect their messages to add/remove
+	// tipset at a time in lockstep until they are pointing to the same
+	// tipset, the common ancestor. Collect their messages to add/remove
 	// along the way.
 	//
 	// TODO probably should limit depth here.
-	for !old.Cid().Equals(new.Cid()) {
-		addToPool = append(addToPool, old.Messages...)
-		removeFromPool = append(removeFromPool, new.Messages...)
-		if old.Parents.Empty() || new.Parents.Empty() {
+	for !old.Equals(new) {
+		for _, blk := range old {
+			addToPool = append(addToPool, blk.Messages...)
+		}
+		for _, blk := range new {
+			removeFromPool = append(removeFromPool, blk.Messages...)
+		}
+		if old.Parents().Empty() || new.Parents().Empty() {
 			break
 		}
-		if old.Parents.Len() > 1 || new.Parents.Len() > 1 {
-			panic("unsupported - multiple parents")
-		}
-		if err := store.Get(ctx, old.Parents.Iter().Value(), &old); err != nil {
+		old, err = getParentTipSet(store, old)
+		if err != nil {
 			return err
 		}
-		if err := store.Get(ctx, new.Parents.Iter().Value(), &new); err != nil {
+		new, err = getParentTipSet(store, new)
+		if err != nil {
 			return err
 		}
 	}
