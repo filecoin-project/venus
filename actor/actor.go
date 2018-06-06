@@ -35,30 +35,46 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 
 	val := f.Func
 	t := f.Type
-	// number of input args, struct receiver + context + dynamic params
-	numIn := 2 + len(signature.Params)
 
-	if t.Kind() != reflect.Func || t.NumIn() != numIn {
-		fmt.Println(t.Kind())
-		panic(fmt.Sprintf("MakeTypedExport must receive a function with %d parameters for %s", numIn, method))
+	badImpl := func() {
+		params := []string{"exec.VMContext"}
+		for _, p := range signature.Params {
+			params = append(params, p.String())
+		}
+		ret := []string{}
+		for _, r := range signature.Return {
+			ret = append(ret, r.String())
+		}
+		ret = append(ret, "uint8", "error")
+		sig := fmt.Sprintf("func (Actor, %s) (%s)", strings.Join(params, ", "), strings.Join(ret, ", "))
+		panic(fmt.Sprintf("MakeTypedExport must receive a function with signature: %s, but got: %s", sig, t))
+	}
+
+	if t.Kind() != reflect.Func || t.NumIn() != 2+len(signature.Params) || t.NumOut() != 2+len(signature.Return) {
+		badImpl()
+	}
+
+	for i, p := range signature.Params {
+		if !abi.TypeMatches(p, t.In(i+2)) {
+			badImpl()
+		}
+	}
+
+	for i, r := range signature.Return {
+		if !abi.TypeMatches(r, t.Out(i)) {
+			badImpl()
+		}
 	}
 
 	exitType := reflect.Uint8
 	errorType := reflect.TypeOf((*error)(nil)).Elem()
 
-	if signature.Return != nil {
-		if len(signature.Return) != 1 {
-			panic("FunctionSignature.Return must be either nil or have exactly one value")
-		}
+	if t.Out(t.NumOut()-2).Kind() != exitType {
+		badImpl()
+	}
 
-		if t.NumOut() != 3 || !abi.TypeMatches(signature.Return[0], t.Out(0)) ||
-			t.Out(1).Kind() != exitType || !t.Out(2).Implements(errorType) {
-			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (%s, uint8, error) for %s", signature.Return[0], method))
-		}
-	} else {
-		if t.NumOut() != 2 || t.Out(0).Kind() != exitType || !t.Out(1).Implements(errorType) {
-			panic(fmt.Sprintf("MakeTypedExport must receive a function that returns (uint8, error) for %s", method))
-		}
+	if !t.Out(t.NumOut() - 1).Implements(errorType) {
+		badImpl()
 	}
 
 	return func(ctx exec.VMContext) ([]byte, uint8, error) {
@@ -76,25 +92,23 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 			args = append(args, reflect.ValueOf(param.Val))
 		}
 
-		out := val.Call(args)
-
-		var retVal []byte
-		if signature.Return != nil {
-			ret, err := MarshalValue(out[0].Interface())
-			if err != nil {
-				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
+		toInterfaces := func(v []reflect.Value) []interface{} {
+			r := make([]interface{}, 0, len(v))
+			for _, vv := range v {
+				r = append(r, vv.Interface())
 			}
-
-			retVal = ret
-			out = out[1:]
+			return r
 		}
 
-		exitCode, ok := out[0].Interface().(uint8)
+		out := toInterfaces(val.Call(args))
+
+		exitCode, ok := out[len(out)-2].(uint8)
 		if !ok {
 			panic("invalid return value")
 		}
 
-		outErr, ok := out[1].Interface().(error)
+		var retVal []byte
+		outErr, ok := out[len(out)-1].(error)
 		if ok {
 			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
 				panic("you are a bad person: error must be either a reverterror or a fault")
@@ -102,6 +116,11 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 		} else {
 			// The value of the returned error was nil.
 			outErr = nil
+
+			retVal, err = abi.ToEncodedValues(out[:len(out)-2]...)
+			if err != nil {
+				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
+			}
 		}
 
 		return retVal, exitCode, outErr

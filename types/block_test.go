@@ -49,19 +49,14 @@ func TestDecodeBlock(t *testing.T) {
 		c2, err := cidFromString("b")
 		assert.NoError(err)
 
-		retVal1, retSize1, err := SliceToReturnValue([]byte{1, 2})
-		assert.NoError(err)
-		retVal2, retSize2, err := SliceToReturnValue([]byte{1, 2, 3})
-		assert.NoError(err)
-
 		before := &Block{
 			Parents:   NewSortedCidSet(c1),
 			Height:    2,
 			Messages:  []*Message{m1, m2},
 			StateRoot: c2,
 			MessageReceipts: []*MessageReceipt{
-				NewMessageReceipt(1, retVal1, retSize1),
-				NewMessageReceipt(1, retVal2, retSize2),
+				{ExitCode: 1, Return: []Bytes{[]byte{1, 2}}},
+				{ExitCode: 1, Return: []Bytes{[]byte{1, 2, 3}}},
 			},
 		}
 
@@ -115,7 +110,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 	message := mkMsg()
 
-	receipt := NewMessageReceipt(0, [ReturnValueLength]byte{}, 0)
+	receipt := &MessageReceipt{ExitCode: 0}
 	child.Messages = []*Message{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
 

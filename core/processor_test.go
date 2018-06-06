@@ -50,9 +50,9 @@ func TestProcessBlockSuccess(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.Message{msg},
 	}
-	receipts, err := ProcessBlock(ctx, blk, st)
+	results, err := ProcessBlock(ctx, blk, st)
 	assert.NoError(err)
-	assert.Len(receipts, 1)
+	assert.Len(results, 1)
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
@@ -95,14 +95,15 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
-	receipts, err := ProcessBlock(ctx, blk, st)
+	results, err := ProcessBlock(ctx, blk, st)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(err)
 
 	// 2. That the VM error is faithfully recorded.
-	assert.Len(receipts, 1)
-	assert.Contains(string(receipts[0].ReturnValue()), "boom")
+	assert.Len(results, 1)
+	assert.Len(results[0].Receipt.Return, 0)
+	assert.Contains(results[0].ExecutionError.Error(), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewTokenAmount(0)), RequireNewFakeActor(require, fakeActorCodeCid)
@@ -140,7 +141,8 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Contains(string(r.ReturnValue()), "invalid params: expected 2 parameters, but got 1")
+	assert.Empty(r.Receipt.Return)
+	assert.Contains(r.ExecutionError.Error(), "invalid params: expected 2 parameters, but got 1")
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
@@ -163,7 +165,8 @@ func TestProcessBlockParamsError(t *testing.T) {
 	r, err := ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Contains(string(r.ReturnValue()), "invalid params: malformed stream")
+	assert.Empty(r.Receipt.Return)
+	assert.Contains(r.ExecutionError.Error(), "invalid params: malformed stream")
 }
 
 func TestProcessBlockNonceTooLow(t *testing.T) {

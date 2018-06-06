@@ -559,7 +559,7 @@ func (node *Node) NewAddress() (types.Address, error) {
 }
 
 // QueryMessage sends a read-only message to an actor to retrieve some of its current (best block) state.
-func (node *Node) QueryMessage(msg *types.Message) ([]byte, uint8, error) {
+func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
 	ctx := context.Background()
 	bb := node.ChainMgr.GetBestBlock()
 	st, err := state.LoadStateTree(ctx, node.CborStore, bb.StateRoot, builtin.Actors)
@@ -597,7 +597,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pl
 	var minerAddress types.Address
 	err = node.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.Message,
 		receipt *types.MessageReceipt) error {
-		minerAddress, err = types.NewAddressFromBytes(receipt.ReturnValue())
+		minerAddress, err = types.NewAddressFromBytes(receipt.Return[0])
 		return err
 	})
 	if err != nil {

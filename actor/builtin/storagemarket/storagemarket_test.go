@@ -36,10 +36,10 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{})
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	outAddr, err := types.NewAddressFromBytes(receipt.ReturnValue())
+	outAddr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
 	assert.NoError(err)
 	minerActor, err := st.GetActor(ctx, outAddr)
 	assert.NoError(err)
@@ -71,9 +71,9 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(50), []byte{})
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(string(receipt.ReturnValue()), ErrPledgeTooLow.Error())
+	assert.Contains(result.ExecutionError.Error(), ErrPledgeTooLow.Error())
 }
 
 func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
@@ -94,18 +94,18 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(err)
 
 	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewTokenAmount(100), "", []byte{})
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
-	require.Equal(uint8(0), receipt.ExitCode)
+	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), []byte{})
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
-	require.Equal(uint8(0), receipt.ExitCode)
+	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// ensure our derived address is the address storage market creates
-	createdAddress, err := types.NewAddressFromBytes(receipt.ReturnValue())
+	createdAddress, err := types.NewAddressFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 	assert.Equal(minerAddr, createdAddress)
 
@@ -132,9 +132,9 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), publicKey)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
-	assert.Contains(string(receipt.ReturnValue()), miner.ErrPublicKeyTooBig.Error())
+	assert.Contains(result.ExecutionError.Error(), miner.ErrPublicKeyTooBig.Error())
 }
 
 func TestStorageMarketAddBid(t *testing.T) {
@@ -152,27 +152,27 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
 
 	// create another bid
 	pdata = actor.MustConvertParams(types.NewTokenAmount(15), types.NewBytesAmount(80))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewTokenAmount(1200), "addBid", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(1), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
+	assert.Equal(types.NewTokenAmount(1), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
 
 	// try to create a bid, but send wrong value
 	pdata = actor.MustConvertParams(types.NewTokenAmount(90), types.NewBytesAmount(100))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(string(receipt.ReturnValue()), "must send price * size funds to create bid")
+	assert.Contains(result.ExecutionError.Error(), "must send price * size funds to create bid")
 }
 
 func TestStorageMarketMakeDeal(t *testing.T) {
@@ -197,11 +197,11 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	assert.Equal(uint8(0), receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(receipt.ReturnValue()))
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
+	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
 
 	// create a miner
 	minerAddr := createTestMiner(assert, st, 50000, 45000)
@@ -210,9 +210,9 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewTokenAmount(25), types.NewBytesAmount(35))
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, minerAddr, nonce, nil, "addAsk", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// now make a deal
 	ref := types.NewCidForTestGetter()()
@@ -220,9 +220,9 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(0), big.NewInt(0), sig, ref.Bytes()) // askID, bidID, signature, datacid
 	nonce = core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, nil, "addDeal", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
@@ -261,10 +261,10 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collatera
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
 
-	receipt, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	addr, err := types.NewAddressFromBytes(receipt.ReturnValue())
+	addr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
 	assert.NoError(err)
 	return addr
 }

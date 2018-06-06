@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
@@ -103,6 +104,7 @@ var msgWaitCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
+		fmt.Println("waiting for", req.Arguments[0])
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
 			return errors.Wrap(err, "invalid message cid")
@@ -155,7 +157,7 @@ var msgWaitCmd = &cmds.Command{
 			}
 
 			if returnOpt && res.Receipt != nil && res.Signature != nil {
-				val, err := abi.Deserialize(res.Receipt.ReturnValue(), res.Signature.Return[0])
+				val, err := abi.Deserialize(res.Receipt.Return[0], res.Signature.Return[0])
 				if err != nil {
 					return errors.Wrap(err, "unable to deserialize return value")
 				}

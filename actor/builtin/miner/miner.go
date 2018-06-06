@@ -144,7 +144,7 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *type
 			return nil, err
 		}
 
-		askID, err := abi.Deserialize(out, abi.Integer)
+		askID, err := abi.Deserialize(out[0], abi.Integer)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "error deserializing")
 		}
@@ -254,7 +254,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, 
 		}
 
 		sector.CommR = commR
-		power := types.NewBytesAmountFromBytes(resp)
+		power := types.NewBytesAmountFromBytes(resp[0])
 		mstore.Power = mstore.Power.Add(power)
 
 		return nil, nil

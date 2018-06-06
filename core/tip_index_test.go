@@ -11,18 +11,15 @@ import (
 func block(assert *assert.Assertions, height int, parentCid *cid.Cid, msg string) *types.Block {
 	addrGetter := types.NewAddressForTestGetter()
 	m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewTokenAmount(10), "hello", []byte(msg))
-	ret, retSize, err := types.SliceToReturnValue([]byte{1, 2})
-	assert.NoError(err)
+	ret := []byte{1, 2}
 
 	return &types.Block{
-		Parents:   types.NewSortedCidSet(parentCid),
-		Height:    42 + uint64(height),
-		Nonce:     7,
-		Messages:  []*types.Message{m1},
-		StateRoot: types.SomeCid(),
-		MessageReceipts: []*types.MessageReceipt{
-			types.NewMessageReceipt(1, ret, retSize),
-		},
+		Parents:         types.NewSortedCidSet(parentCid),
+		Height:          42 + uint64(height),
+		Nonce:           7,
+		Messages:        []*types.Message{m1},
+		StateRoot:       types.SomeCid(),
+		MessageReceipts: []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
 	}
 }
 

@@ -251,7 +251,7 @@ func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig
 			return nil, errors.NewRevertErrorf("ask.miner.getOwner() failed")
 		}
 
-		if !bytes.Equal(ctx.Message().From.Bytes(), mown) {
+		if !bytes.Equal(ctx.Message().From.Bytes(), mown[0]) {
 			return nil, fmt.Errorf("cannot create a deal for someone elses ask")
 		}
 
