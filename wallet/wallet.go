@@ -1,9 +1,10 @@
 package wallet
 
 import (
-	"errors"
 	"reflect"
 	"sync"
+
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -84,4 +85,28 @@ func (w *Wallet) Backends(kind reflect.Type) []Backend {
 	cpy := make([]Backend, len(w.backends[kind]))
 	copy(cpy, w.backends[kind])
 	return cpy
+}
+
+// Sign cryptographically signs `data` using the private key `priv`.
+func (w *Wallet) Sign(addr types.Address, data []byte) ([]byte, error) {
+	// Check that we are storing the address to sign for.
+	backend, err := w.Find(addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign data")
+	}
+	return backend.Sign(addr, data)
+}
+
+// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
+// the public key `pk`.
+func (w *Wallet) Verify(pk, data, sig []byte) (bool, error) {
+	return verify(pk, data, sig)
+}
+
+// Ecrecover returns an uncompressed public key that could produce the given
+// signature from data.
+// Note: The returned public key should not be used to verify `data` is valid
+// since a public key may have N private key pairs
+func (w *Wallet) Ecrecover(data, sig []byte) ([]byte, error) {
+	return ecrecover(data, sig)
 }
