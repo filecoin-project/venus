@@ -10,9 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	badgerds "gx/ipfs/QmPAiAmc3qhTFwzWnKpxr6WCXGZ5mqpaQ2YEwSTnwyduHo/go-ds-badger"
 	lockfile "gx/ipfs/QmPdqSMmiwtQCBC515gFtMW2mP14HsfgnyQ2k5xPQVxMge/go-fs-lock"
+	logging "gx/ipfs/QmPuosXfnE2Xrdiw95D78AhW41GYwGqpstKMf4TEsE4f33/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	keystore "gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
@@ -20,17 +22,23 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 )
 
-const apiFile = "api"
-const configFilename = "config.toml"
-const tempConfigFilename = ".config.toml.temp"
-const lockFile = "repo.lock"
-const versionFilename = "version"
-const walletDatastorePrefix = "wallet"
+const (
+	apiFile                = "api"
+	configFilename         = "config.toml"
+	tempConfigFilename     = ".config.toml.temp"
+	lockFile               = "repo.lock"
+	versionFilename        = "version"
+	walletDatastorePrefix  = "wallet"
+	snapshotStorePrefix    = "snapshots"
+	snapshotFilenamePrefix = "snapshot"
+)
 
 // NoRepoError is returned when trying to open a repo where one does not exist
 type NoRepoError struct {
 	Path string
 }
+
+var log = logging.Logger("repo")
 
 func (err NoRepoError) Error() string {
 	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'go-filecoin init [--repodir=%s]'", err.Path, err.Path)
@@ -156,6 +164,9 @@ func (r *FSRepo) Config() *config.Config {
 
 // ReplaceConfig replaces the current config with the newly passed in one.
 func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
+	if err := r.SnapshotConfig(r.Config()); err != nil {
+		log.Warningf("failed to create snapshot: %s", err.Error())
+	}
 	r.lk.Lock()
 	defer r.lk.Unlock()
 
@@ -170,7 +181,17 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 		return err
 	}
 	return os.Rename(tmp, filepath.Join(r.path, configFilename))
+}
 
+// SnapshotConfig stores a copy `cfg` in <repo_path>/snapshots/ appending the
+// time of snapshot to the filename.
+func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
+	snapshotFile := filepath.Join(r.path, snapshotStorePrefix, genSnapshotFileName())
+	if fileExists(snapshotFile) {
+		// this should never happen
+		return fmt.Errorf("file already exists: %s", snapshotFile)
+	}
+	return cfg.WriteFile(snapshotFile)
 }
 
 // Datastore returns the datastore.
@@ -313,7 +334,17 @@ func initConfig(p string, cfg *config.Config) error {
 		return fmt.Errorf("file already exists: %s", configFile)
 	}
 
-	return cfg.WriteFile(configFile)
+	if err := cfg.WriteFile(configFile); err != nil {
+		return err
+	}
+
+	// make the snapshot dir
+	snapshotDir := filepath.Join(p, snapshotStorePrefix)
+	return checkWritable(snapshotDir)
+}
+
+func genSnapshotFileName() string {
+	return fmt.Sprintf("%s-%d.toml", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
 }
 
 func checkWritable(dir string) error {

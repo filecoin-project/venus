@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
@@ -14,21 +15,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 )
 
-func TestFSRepoInit(t *testing.T) {
-	assert := assert.New(t)
-
-	dir, err := ioutil.TempDir("", "")
-	assert.NoError(err)
-	defer os.RemoveAll(dir)
-
-	assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
-
-	content, err := ioutil.ReadFile(filepath.Join(dir, configFilename))
-	assert.NoError(err)
-
-	// TODO: asserting the exact content here is gonna get old real quick
-	assert.Equal(
-		`[api]
+const (
+	expectContent = `[api]
   address = ":3453"
   accessControlAllowOrigin = ["http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1"]
   accessControlAllowCredentials = false
@@ -47,13 +35,50 @@ func TestFSRepoInit(t *testing.T) {
 [mining]
   rewardAddress = ""
   minerAddresses = []
-`,
+`
+)
+
+func TestFSRepoInit(t *testing.T) {
+	assert := assert.New(t)
+
+	dir, err := ioutil.TempDir("", "")
+	assert.NoError(err)
+	defer os.RemoveAll(dir)
+
+	t.Log("init FSRepo")
+	assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
+
+	content, err := ioutil.ReadFile(filepath.Join(dir, configFilename))
+	assert.NoError(err)
+
+	t.Log("snapshot dir was created during FSRepo Init")
+	assert.True(fileExists(filepath.Join(dir, snapshotStorePrefix)))
+
+	// TODO: asserting the exact content here is gonna get old real quick
+	t.Log("config file matches expected value")
+	assert.Equal(
+		expectContent,
 		string(content),
 	)
 
 	version, err := ioutil.ReadFile(filepath.Join(dir, versionFilename))
 	assert.NoError(err)
 	assert.Equal("1", string(version))
+}
+
+func getSnapshotFilenames(t *testing.T, dir string) []string {
+	require := require.New(t)
+
+	files, err := ioutil.ReadDir(dir)
+	require.NoError(err)
+
+	var snpFiles []string
+	for _, f := range files {
+		if strings.Contains(f.Name(), "snapshot") {
+			snpFiles = append(snpFiles, f.Name())
+		}
+	}
+	return snpFiles
 }
 
 func TestFSRepoOpen(t *testing.T) {
@@ -102,21 +127,25 @@ func TestFSRepoRoundtrip(t *testing.T) {
 	assert.NoError(r2.Close())
 }
 
-func TestFSRepoReplaceConfig(t *testing.T) {
+func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(dir)
 
 	cfg := config.NewDefaultConfig()
 	cfg.API.Address = "foo"
 	assert.NoError(err, InitFSRepo(dir, cfg))
 
+	expSnpsht, err := ioutil.ReadFile(filepath.Join(dir, configFilename))
+	require.NoError(err)
+
 	r1, err := OpenFSRepo(dir)
 	assert.NoError(err)
 
-	newCfg := r1.Config()
+	newCfg := config.NewDefaultConfig()
 	newCfg.API.Address = "bar"
 
 	assert.NoError(r1.ReplaceConfig(newCfg))
@@ -127,6 +156,15 @@ func TestFSRepoReplaceConfig(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("bar", r2.Config().API.Address)
 	assert.NoError(r2.Close())
+
+	// assert that a single snapshot was created when replacing the config
+	// get the snapshot file name
+	snpFiles := getSnapshotFilenames(t, filepath.Join(dir, snapshotStorePrefix))
+	require.Equal(1, len(snpFiles))
+
+	snpsht, err := ioutil.ReadFile(filepath.Join(dir, snapshotStorePrefix, snpFiles[0]))
+	require.NoError(err)
+	assert.Equal(string(expSnpsht), string(snpsht))
 }
 
 func TestRepoLock(t *testing.T) {
