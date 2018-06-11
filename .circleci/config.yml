@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Test
           command: |
-            go run ./build/*.go test -covermode=atomic -coverprofile=coverage.txt &&
+            go test ./... -v -covermode=atomic -coverprofile=coverage.txt &&
             bash <(curl -s https://codecov.io/bash)
       - run:
           name: Lint
