@@ -249,7 +249,7 @@ func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, 
 	sb.CurSector = firstBin.(*Sector)
 	sb.Packer = packer
 
-	return sb, sb.checkpoint()
+	return sb, sb.checkpoint(sb.CurSector)
 }
 
 // AddPiece writes the given piece into a sector
@@ -342,13 +342,12 @@ func (sb *SectorBuilder) SealAndPostSector(ctx context.Context, s *Sector) (err 
 		// or 'verify data integrity and try again'
 		return
 	}
-	if err := sb.checkpointSealedMeta(ss); err != nil {
-		return err
-	}
+
 	s.sealed = ss
-	if err := sb.checkpointSectorMeta(s); err != nil {
-		return err
+	if err := sb.checkpoint(s); err != nil {
+		return errors.Wrap(err, "failed to create checkpoint")
 	}
+
 	if err := sb.PostSealedSector(ctx, ss); err != nil {
 		// 'try again'
 		// This can fail if the miners owner doesnt have enough funds to pay gas.
@@ -423,7 +422,7 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 	s.Free -= pi.Size
 	s.Pieces = append(s.Pieces, pi)
 
-	err = s.sectorBuilder.checkpointSectorMeta(s)
+	err = s.sectorBuilder.checkpoint(s)
 	return err
 }
 

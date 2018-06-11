@@ -81,20 +81,20 @@ func TestSectorBuilder(t *testing.T) {
 	sb := requireSectorBuilder(require, nd, testSectorSize)
 
 	assertMetadataMatch := func(sector *Sector, pieces int) {
-		meta := sector.SectorMetadata()
-		assert.Len(meta.Pieces, pieces)
-
-		// persisted and calculated metadata match.
-		metaPersisted, err := sb.GetMeta(sector.Label)
-		assert.NoError(err)
-		assert.Equal(metaPersisted, meta)
-
 		sealed := sector.sealed
 		if sealed != nil {
 			sealedMeta := sealed.SealedSectorMetadata()
 			sealedMetaPersisted, err := sb.GetSealedMeta(sealed.merkleRoot)
 			assert.NoError(err)
 			assert.Equal(sealedMeta, sealedMetaPersisted)
+		} else {
+			meta := sector.SectorMetadata()
+			assert.Len(meta.Pieces, pieces)
+
+			// persisted and calculated metadata match.
+			metaPersisted, err := sb.GetMeta(sector.Label)
+			assert.NoError(err)
+			assert.Equal(metaPersisted, meta)
 		}
 	}
 
@@ -210,6 +210,56 @@ func TestSectorBuilderMetadata(t *testing.T) {
 	assert.Contains(k2, "sealedSectors")
 	assert.Contains(k2, "metadata")
 	assert.Contains(k2, merkleString(merkleRoot))
+}
+
+func TestSealingMovesMetadata(t *testing.T) {
+	require := require.New(t)
+
+	ctx := context.Background()
+
+	nd := MakeOfflineNode(t)
+
+	bytesA := make([]byte, 10+(sectorSize/2))
+	bytesB := make([]byte, (sectorSize/2)-10)
+
+	sb := nd.SectorBuilder
+	sector := sb.CurSector
+
+	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+	sectormeta, err := sb.GetMeta(sector.Label)
+	require.NoError(err)
+	require.NotNil(sectormeta)
+
+	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
+
+	sectormeta, err = sb.GetMeta(sector.Label)
+	require.Error(err)
+	require.Contains(err.Error(), "not found")
+
+	sealedmeta, err := sb.GetSealedMeta(sector.sealed.merkleRoot)
+	require.NoError(err)
+	require.NotNil(sealedmeta)
+
+	require.Equal(sector.Size, sealedmeta.Size)
+	require.Equal(len(sector.Pieces), len(sealedmeta.Pieces))
+	for i := 0; i < len(sector.Pieces); i++ {
+		pieceInfoMustEqual(t, sector.Pieces[i], sealedmeta.Pieces[i])
+	}
+}
+
+func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
+	if p1.Size != p2.Size {
+		t.Fatalf("p1.Size(%d) != p2.Size(%d)\n", p1.Size, p2.Size)
+	}
+
+	if p1.DealID != p2.DealID {
+		t.Fatalf("p1.DealID(%d) != p2.DealID(%d)\n", p1.DealID, p2.DealID)
+	}
+
+	if !p1.Ref.Equals(p2.Ref) {
+		t.Fatalf("p1.Ref(%s) != p2.Ref(%s)\n", p1.Ref.String(), p2.Ref.String())
+	}
 }
 
 func requireReadAll(require *require.Assertions, sector *Sector) string {

@@ -29,6 +29,11 @@ func TestNaivePacker(t *testing.T) {
 	assert.Equal(Space(18), binner.currentBinUsed)
 	assert.Equal(0, binner.closeCount)
 
+	_, err = packer.AddItem(context.Background(), newItem(2))
+	assert.NoError(err)
+	assert.Equal(Space(0), binner.currentBinUsed)
+	assert.Equal(1, binner.closeCount)
+
 	_, err = packer.AddItem(context.Background(), newItem(5))
 	assert.NoError(err)
 	assert.Equal(Space(5), binner.currentBinUsed)

@@ -2,6 +2,7 @@ package node
 
 import (
 	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -19,7 +20,6 @@ type SectorMetadata struct {
 	Pieces      []*PieceInfo
 	Size        uint64
 	Free        uint64
-	MerkleRoot  []byte
 }
 
 // SealedSectorMetadata represent the persistent metadata associated with a SealedSector.
@@ -28,6 +28,8 @@ type SealedSectorMetadata struct {
 	Label           string
 	BaseSectorLabel string
 	SealedPath      string
+	Pieces          []*PieceInfo
+	Size            uint64
 }
 
 // SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
@@ -44,11 +46,8 @@ func (s *Sector) SectorMetadata() *SectorMetadata {
 		Pieces:      s.Pieces,
 		Size:        s.Size,
 		Free:        s.Free,
-		MerkleRoot:  []byte{},
 	}
-	if s.sealed != nil {
-		meta.MerkleRoot = s.sealed.merkleRoot
-	}
+
 	return meta
 }
 
@@ -59,6 +58,8 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 		Label:           ss.label,
 		BaseSectorLabel: ss.baseSector.Label,
 		SealedPath:      ss.filename,
+		Size:            ss.baseSector.Size,
+		Pieces:          ss.baseSector.Pieces,
 	}
 	return meta
 }
@@ -146,6 +147,11 @@ func (sb *SectorBuilder) setMeta(label string, meta *SectorMetadata) error {
 	return sb.store.Put(key, data)
 }
 
+func (sb *SectorBuilder) unsetMeta(label string) error {
+	key := sb.metadataKey(label)
+	return sb.store.Delete(key)
+}
+
 func (sb *SectorBuilder) setSealedMeta(merkleRoot []byte, meta *SealedSectorMetadata) error {
 	key := sb.sealedMetadataKey(merkleRoot)
 	data, err := cbor.DumpObject(meta)
@@ -164,29 +170,31 @@ func (sb *SectorBuilder) setBuilderMeta(minerAddress types.Address, meta *Sector
 	return sb.store.Put(key, data)
 }
 
-func (sb *SectorBuilder) checkpoint() error {
-	sector := sb.CurSector
-	if err := sb.checkpointBuilderMeta(); err != nil {
-		return err
+// TODO: Sealed sector metadata and sector metadata shouldn't exist in the
+// datastore at the same time, and sector builder metadata needs to be kept
+// in sync with sealed sector metadata (e.g. which sectors are sealed).
+// This is the method to enforce these rules. Unfortunately this means that
+// we're making more writes to the datastore than we really need to be
+// doing. As the SectorBuilder evolves, we will introduce some checks which
+// will optimize away redundant writes to the datastore.
+func (sb *SectorBuilder) checkpoint(s *Sector) error {
+	if err := sb.setBuilderMeta(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
+		return errors.Wrap(err, "failed to save builder metadata")
 	}
-	if err := sb.checkpointSectorMeta(sector); err != nil {
-		return err
+
+	if s.sealed == nil {
+		if err := sb.setMeta(s.Label, s.SectorMetadata()); err != nil {
+			return errors.Wrap(err, "failed to save sector metadata")
+		}
+	} else {
+		if err := sb.setSealedMeta(s.sealed.merkleRoot, s.sealed.SealedSectorMetadata()); err != nil {
+			return errors.Wrap(err, "failed to save sealed sector metadata")
+		}
+
+		if err := sb.unsetMeta(s.Label); err != nil {
+			return errors.Wrap(err, "failed to remove sector metadata")
+		}
 	}
-	if sector.sealed != nil {
-		return sb.checkpointSealedMeta(sector.sealed)
-	}
+
 	return nil
-}
-
-// TODO: only actually set if changed.
-func (sb *SectorBuilder) checkpointSectorMeta(s *Sector) error {
-	return sb.setMeta(s.Label, s.SectorMetadata())
-}
-
-func (sb *SectorBuilder) checkpointSealedMeta(ss *SealedSector) error {
-	return sb.setSealedMeta(ss.merkleRoot, ss.SealedSectorMetadata())
-}
-
-func (sb *SectorBuilder) checkpointBuilderMeta() error {
-	return sb.setBuilderMeta(sb.MinerAddr, sb.SectorBuilderMetadata())
 }

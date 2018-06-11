@@ -62,7 +62,7 @@ func NewNaivePacker(binner Binner) (Packer, Bin, error) {
 }
 
 // AddItem takes a context and an Item, and adds the Item according to the naive packing strategy.
-// Returns the Bin to which item was added, and any error.
+// Returns the Bin to which the next Item should be added and any error
 func (np *NaivePacker) AddItem(ctx context.Context, item Item) (Bin, error) {
 	binner := np.binner
 	bin := np.bin
@@ -71,14 +71,57 @@ func (np *NaivePacker) AddItem(ctx context.Context, item Item) (Bin, error) {
 	if size > binner.BinSize() {
 		return nil, ErrItemTooLarge
 	}
+
+	var nextBin Bin
+
 	if size > binner.SpaceAvailable(bin) {
-		binner.CloseBin(bin)
-		newBin, err := binner.NewBin()
+		newBin, err := np.closeBinAndOpenNew(ctx, bin)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create new bin")
+			return nil, err
 		}
-		bin = newBin
+
+		if err := np.addItemToBin(ctx, item, newBin); err != nil {
+			return nil, err
+		}
+
+		nextBin = newBin
+	} else if size == binner.SpaceAvailable(bin) {
+		if err := np.addItemToBin(ctx, item, bin); err != nil {
+			return nil, err
+		}
+
+		newBin, err := np.closeBinAndOpenNew(ctx, bin)
+		if err != nil {
+			return nil, err
+		}
+
+		nextBin = newBin
+	} else {
+		if err := np.addItemToBin(ctx, item, bin); err != nil {
+			return nil, err
+		}
+
+		nextBin = bin
 	}
 
-	return bin, binner.AddItem(ctx, item, bin)
+	return nextBin, nil
+}
+
+func (np *NaivePacker) addItemToBin(ctx context.Context, item Item, bin Bin) error {
+	if err := np.binner.AddItem(ctx, item, bin); err != nil {
+		return errors.Wrap(err, "failed to add item to bin")
+	}
+
+	return nil
+}
+
+func (np *NaivePacker) closeBinAndOpenNew(ctx context.Context, bin Bin) (Bin, error) {
+	np.binner.CloseBin(bin)
+
+	newBin, err := np.binner.NewBin()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new bin")
+	}
+
+	return newBin, nil
 }
