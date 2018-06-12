@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
@@ -110,6 +111,8 @@ func TestMinerAddAskSuccess(t *testing.T) {
 		wg.Done()
 	}()
 
+	// ensure mining runs after the command in our goroutine
+	time.Sleep(time.Millisecond * 500)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
@@ -125,8 +128,6 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 		wg.Done()
 	}()
-
-	d.RunSuccess("mining once")
 
 	wg.Wait()
 }
@@ -154,6 +155,8 @@ func TestMinerAddAskFail(t *testing.T) {
 		wg.Done()
 	}()
 
+	// ensure mining runs after the command in our goroutine
+	time.Sleep(time.Millisecond * 500)
 	d.RunSuccess("mining once")
 
 	wg.Wait()
