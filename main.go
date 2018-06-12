@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	logging "gx/ipfs/QmPuosXfnE2Xrdiw95D78AhW41GYwGqpstKMf4TEsE4f33/go-log"
+	logging "gx/ipfs/QmQCqiR5F3NeJRr7LuWq8i8FgtT65ypZw5v9V6Es6nwFBD/go-log"
 
 	"github.com/filecoin-project/go-filecoin/commands"
 )
