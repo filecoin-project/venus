@@ -95,7 +95,7 @@ func MustCreateMiner(t *testing.T, node *Node) types.Address {
 	cur := node.ChainMgr.GetBestBlock()
 	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), []core.TipSet{{cur.Cid().String(): cur}}, address.TestAddress)
 	require.NoError(out.Err)
-	require.NoError((*core.ChainManagerForTest)(node.ChainMgr).SetBestBlockForTest(ctx, out.NewBlock))
+	require.NoError(node.ChainMgr.SetBestBlockForTest(ctx, out.NewBlock))
 
 	wg.Wait()
 	require.NoError(err)

@@ -228,7 +228,7 @@ func TestSealingMovesMetadata(t *testing.T) {
 	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
 	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
 
-	sectormeta, err = sb.GetMeta(sector.Label)
+	_, err = sb.GetMeta(sector.Label)
 	require.Error(err)
 	require.Contains(err.Error(), "not found")
 
