@@ -45,7 +45,7 @@ func TestSimple(t *testing.T) {
 }
 
 func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
-	sb, err := NewSectorBuilder(nd, sectorSize, sectorDirsForTest)
+	sb, err := NewSectorBuilder(nd, types.MakeTestAddress("bar"), sectorSize, sectorDirsForTest)
 	sb.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
 	sb.setup = func(minerKey []byte, parameters *PublicParameters, data []byte) ([]byte, error) {
 		reverseBytes(data)
@@ -187,25 +187,20 @@ func TestSectorBuilder(t *testing.T) {
 
 func TestSectorBuilderMetadata(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 
 	fname := newSectorLabel()
 	assert.Len(fname, 32) // Sanity check, nothing more.
 
-	nd := MakeOfflineNode(t)
-
-	sb := requireSectorBuilder(require, nd, testSectorSize)
-
 	label := "SECTORFILENAMEWHATEVER"
 
-	k := sb.metadataKey(label).String()
+	k := metadataKey(label).String()
 	// Don't accidentally test Datastore namespacing implementation.
 	assert.Contains(k, "sectors")
 	assert.Contains(k, "metadata")
 	assert.Contains(k, label)
 
 	merkleRoot := ([]byte)("someMerkleRootLOL")
-	k2 := sb.sealedMetadataKey(merkleRoot).String()
+	k2 := sealedMetadataKey(merkleRoot).String()
 	// Don't accidentally test Datastore namespacing implementation.
 	assert.Contains(k2, "sealedSectors")
 	assert.Contains(k2, "metadata")
@@ -222,7 +217,7 @@ func TestSealingMovesMetadata(t *testing.T) {
 	bytesA := make([]byte, 10+(sectorSize/2))
 	bytesB := make([]byte, (sectorSize/2)-10)
 
-	sb := nd.SectorBuilder
+	sb := requireSectorBuilder(require, nd, sectorSize)
 	sector := sb.CurSector
 
 	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))

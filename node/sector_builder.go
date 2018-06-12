@@ -85,6 +85,8 @@ type SectorBuilder struct {
 	setup func([]byte, *PublicParameters, []byte) ([]byte, error)
 }
 
+var _ binpack.Binner = &SectorBuilder{}
+
 // Sector is a filecoin storage sector. A miner fills this up with data, and
 // then seals it. The first part I can do, the second part needs to be figured out more.
 // Somehow, I turn this piecemap and backing data buffer into something that the chain can verify.
@@ -225,18 +227,19 @@ func (sb *SectorBuilder) NewSealedSector(merkleRoot []byte, s *Sector) (ss *Seal
 }
 
 // NewSectorBuilder creates a new sector builder from the given node
-func NewSectorBuilder(nd *Node, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
+func NewSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
 	g := drgraph.NewDRSample(sectorSize / nodeSize)
 
 	sb := &SectorBuilder{
-		G:                g,
-		Prover:           drg.NewProver("cats", g, nodeSize),
-		publicParameters: filecoinParameters,
-		nd:               nd,
-		sectorSize:       uint64(sectorSize),
-		store:            nd.Repo.Datastore(),
 		dserv:            dag.NewDAGService(nd.Blockservice),
+		G:                g,
+		MinerAddr:        minerAddr,
+		nd:               nd,
+		Prover:           drg.NewProver("cats", g, nodeSize),
+		publicParameters: makeFilecoinParameters(sectorSize, nodeSize),
+		sectorSize:       uint64(sectorSize),
 		setup:            proverSetup,
+		store:            nd.Repo.Datastore(),
 	}
 
 	sb.stagingDir = fs.StagingDir()
@@ -268,9 +271,6 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
 
 	return err
 }
-
-// These will be loaded from disk.
-var filecoinParameters = makeFilecoinParameters(sectorSize, nodeSize)
 
 // Create filecoin parameters (mainly used for testing).
 func makeFilecoinParameters(sectorSize int, nodeSize int) *PublicParameters {

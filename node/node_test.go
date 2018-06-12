@@ -8,17 +8,16 @@ import (
 	"testing"
 	"time"
 
-	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -477,37 +476,51 @@ func TestQueryMessage(t *testing.T) {
 func TestCreateMiner(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true)[0]
-	err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
-	assert.NoError(err)
-	assert.NoError(node.Start())
 
-	var minerAddr *types.Address
-	var wg sync.WaitGroup
+	node := MakeOfflineNode(t)
+	require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
+	require.NoError(node.Start())
+	assert.Equal(0, len(node.SectorBuilders))
 
-	wg.Add(1)
+	addr := MustCreateMiner(t, node)
 
-	go func() {
-		minerAddr, err = node.CreateMiner(ctx, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
-		wg.Done()
-	}()
+	assert.NotNil(addr)
 
-	time.Sleep(10 * time.Millisecond) // give us enough time to get the mining message in the pool
+	assert.Equal(addr, node.Repo.Config().Mining.MinerAddresses[0])
+}
 
-	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
-		return state.LoadStateTree(ctx, node.CborStore, cid, builtin.Actors)
-	}, mining.ApplyMessages)
-	cur := node.ChainMgr.GetBestBlock()
-	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), []core.TipSet{{cur.Cid().String(): cur}}, address.TestAddress)
-	require.NoError(out.Err)
-	(*core.ChainManagerForTest)(node.ChainMgr).SetBestBlockForTest(ctx, out.NewBlock)
+func TestCreateSectorBuilders(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
 
-	wg.Wait()
-	require.NoError(err)
+	ctx := context.Background()
 
-	assert.NotNil(minerAddr)
+	node := MakeOfflineNode(t)
+	require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
+	require.NoError(node.Start())
+	assert.Equal(0, len(node.SectorBuilders))
 
-	config := node.Repo.Config()
-	assert.Equal(minerAddr, &config.Mining.MinerAddresses[0])
+	MustCreateMiner(t, node)
+	MustCreateMiner(t, node)
+	assert.Equal(0, len(node.SectorBuilders))
+
+	node.StartMining()
+	assert.Equal(2, len(node.SectorBuilders))
+
+	// ensure that that the sector builders have been configured
+	// with the mining address of each of the node's miners
+
+	sbaddrs := make(map[types.Address]struct{})
+	for _, sb := range node.SectorBuilders {
+		sbaddrs[sb.MinerAddr] = struct{}{}
+	}
+
+	cfaddrs := make(map[types.Address]struct{})
+	for _, addr := range node.Repo.Config().Mining.MinerAddresses {
+		cfaddrs[addr] = struct{}{}
+	}
+
+	assert.Equal(cfaddrs, sbaddrs)
 }

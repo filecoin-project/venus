@@ -87,8 +87,10 @@ type Node struct {
 
 	// Repo is the repo this node was created with
 	// it contains all persistent artifacts of the filecoin node
-	Repo          repo.Repo
-	SectorBuilder *SectorBuilder
+	Repo repo.Repo
+
+	// SectorBuilders are used by the miners to fill and seal sectors
+	SectorBuilders map[types.Address]*SectorBuilder
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -216,30 +218,22 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	nd := &Node{
-		Blockservice:  bserv,
-		CborStore:     cst,
-		ChainMgr:      chainMgr,
-		Exchange:      bswap,
-		Host:          host,
-		Lookup:        le,
-		MiningWorker:  miningWorker,
-		MsgPool:       msgPool,
-		OfflineMode:   nc.OfflineMode,
-		Ping:          pinger,
-		PubSub:        fsub,
-		Repo:          nc.Repo,
-		Wallet:        fcWallet,
-		rewardAddress: nc.RewardAddress,
+		Blockservice:   bserv,
+		CborStore:      cst,
+		ChainMgr:       chainMgr,
+		Exchange:       bswap,
+		Host:           host,
+		Lookup:         le,
+		MiningWorker:   miningWorker,
+		MsgPool:        msgPool,
+		OfflineMode:    nc.OfflineMode,
+		Ping:           pinger,
+		PubSub:         fsub,
+		Repo:           nc.Repo,
+		SectorBuilders: make(map[types.Address]*SectorBuilder),
+		Wallet:         fcWallet,
+		rewardAddress:  nc.RewardAddress,
 	}
-
-	dirs := nd.Repo.(SectorDirs)
-	var sb *SectorBuilder
-	sb, err = NewSectorBuilder(nd, sectorSize, dirs)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: initialize SectorBuilder from metadata.
-	nd.SectorBuilder = sb
 
 	// Bootstrapping network peers.
 	ba := nd.Repo.Config().Bootstrap.Addresses
@@ -444,11 +438,20 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	}
 }
 
-// StartMining causes the node to start feeding blocks to the mining worker.
+// StartMining causes the node to start feeding blocks to the mining worker and initializes
+// a SectorBuilder for each mining address.
 func (node *Node) StartMining() error {
 	if node.rewardAddress == (types.Address{}) {
 		return ErrNoRewardAddress
 	}
+
+	// initialize one SectorBuilder per configured miner address
+	for _, addr := range node.Repo.Config().Mining.MinerAddresses {
+		if err := node.initSectorBuilder(addr); err != nil {
+			return errors.Wrap(err, "failed to initialize sector builder")
+		}
+	}
+
 	node.setIsMining(true)
 	node.miningDoneWg.Add(1)
 	go func() {
@@ -463,6 +466,21 @@ func (node *Node) StartMining() error {
 		case node.miningInCh <- mining.NewInput(context.Background(), tipSets, node.rewardAddress):
 		}
 	}()
+	return nil
+}
+
+func (node *Node) initSectorBuilder(minerAddr types.Address) error {
+	dirs := node.Repo.(SectorDirs)
+
+	// TODO: use the miner's address to look up persisted SectorBuilder
+	// metadata in the node's datastore
+	sb, err := NewSectorBuilder(node, minerAddr, sectorSize, dirs)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
+	}
+
+	node.SectorBuilders[minerAddr] = sb
+
 	return nil
 }
 
@@ -587,6 +605,10 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pl
 	}
 
 	err = node.saveMinerAddressToConfig(minerAddress)
+
+	// TODO: if the node is mining, should we now create a sector builder
+	// for this miner?
+
 	return &minerAddress, err
 }
 

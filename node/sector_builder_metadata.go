@@ -77,24 +77,24 @@ func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
 	return &meta
 }
 
-func (sb *SectorBuilder) metadataKey(label string) ds.Key {
+func metadataKey(label string) ds.Key {
 	path := []string{"sectors", "metadata"}
 	return ds.KeyWithNamespaces(path).Instance(label)
 }
 
-func (sb *SectorBuilder) sealedMetadataKey(merkleRoot []byte) ds.Key {
+func sealedMetadataKey(merkleRoot []byte) ds.Key {
 	path := []string{"sealedSectors", "metadata"}
 	return ds.KeyWithNamespaces(path).Instance(merkleString(merkleRoot))
 }
 
-func (sb *SectorBuilder) builderMetadataKey(minerAddress types.Address) ds.Key {
-	path := []string{"sectors", "metadata"}
+func builderMetadataKey(minerAddress types.Address) ds.Key {
+	path := []string{"builder", "metadata"}
 	return ds.KeyWithNamespaces(path).Instance(minerAddress.String())
 }
 
 // GetMeta returns SectorMetadata for sector labeled, label, and any error.
 func (sb *SectorBuilder) GetMeta(label string) (*SectorMetadata, error) {
-	key := sb.metadataKey(label)
+	key := metadataKey(label)
 
 	data, err := sb.store.Get(key)
 	if err != nil {
@@ -109,7 +109,7 @@ func (sb *SectorBuilder) GetMeta(label string) (*SectorMetadata, error) {
 
 // GetSealedMeta returns SealedSectorMetadata for merkleRoot, and any error.
 func (sb *SectorBuilder) GetSealedMeta(merkleRoot []byte) (*SealedSectorMetadata, error) {
-	key := sb.sealedMetadataKey(merkleRoot)
+	key := sealedMetadataKey(merkleRoot)
 
 	data, err := sb.store.Get(key)
 	if err != nil {
@@ -125,7 +125,7 @@ func (sb *SectorBuilder) GetSealedMeta(merkleRoot []byte) (*SealedSectorMetadata
 
 // GetBuilderMeta returns SectorBuilderMetadata for SectorBuilder, sb, and any error.
 func (sb *SectorBuilder) GetBuilderMeta(minerAddress types.Address) (*SectorBuilderMetadata, error) {
-	key := sb.builderMetadataKey(minerAddress)
+	key := builderMetadataKey(minerAddress)
 
 	data, err := sb.store.Get(key)
 	if err != nil {
@@ -139,7 +139,7 @@ func (sb *SectorBuilder) GetBuilderMeta(minerAddress types.Address) (*SectorBuil
 }
 
 func (sb *SectorBuilder) setMeta(label string, meta *SectorMetadata) error {
-	key := sb.metadataKey(label)
+	key := metadataKey(label)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err
@@ -148,12 +148,12 @@ func (sb *SectorBuilder) setMeta(label string, meta *SectorMetadata) error {
 }
 
 func (sb *SectorBuilder) unsetMeta(label string) error {
-	key := sb.metadataKey(label)
+	key := metadataKey(label)
 	return sb.store.Delete(key)
 }
 
 func (sb *SectorBuilder) setSealedMeta(merkleRoot []byte, meta *SealedSectorMetadata) error {
-	key := sb.sealedMetadataKey(merkleRoot)
+	key := sealedMetadataKey(merkleRoot)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func (sb *SectorBuilder) setSealedMeta(merkleRoot []byte, meta *SealedSectorMeta
 }
 
 func (sb *SectorBuilder) setBuilderMeta(minerAddress types.Address, meta *SectorBuilderMetadata) error {
-	key := sb.metadataKey(minerAddress.String())
+	key := metadataKey(minerAddress.String())
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err

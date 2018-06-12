@@ -25,6 +25,8 @@ type NaivePacker struct {
 	binner Binner
 }
 
+var _ Packer = &NaivePacker{}
+
 // Future work to include implementing FirstFitPacker, then ModifiedFirstFitPacker, as needed.
 
 // Packer is implemented by types defining a packing strategy.
