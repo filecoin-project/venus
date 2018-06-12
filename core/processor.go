@@ -11,7 +11,7 @@ import (
 )
 
 // Processor is the signature a function used to process blocks.
-type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*types.MessageReceipt, error)
+type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*ApplicationResult, error)
 
 // ProcessBlock is the entrypoint for validating the state transitions
 // of the messages in a block. When we receive a new block from the
@@ -40,10 +40,9 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree) ([]*ty
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-//
-func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*types.MessageReceipt, error) {
-	var receipts []*types.MessageReceipt
-	emptyReceipts := []*types.MessageReceipt{}
+func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*ApplicationResult, error) {
+	var results []*ApplicationResult
+	var emptyResults []*ApplicationResult
 	bh := types.NewBlockHeight(blk.Height)
 
 	for _, msg := range blk.Messages {
@@ -51,15 +50,23 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 		// If the message should not have been in the block, bail.
 		// TODO: handle faults appropriately at a higher level.
 		if errors.IsFault(err) || errors.IsApplyErrorPermanent(err) || errors.IsApplyErrorTemporary(err) {
-			return emptyReceipts, err
+			return emptyResults, err
 		} else if err != nil {
-			return emptyReceipts, errors.FaultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
+			return emptyResults, errors.FaultErrorWrap(err, "someone is a bad programmer: must be a fault, perm, or temp error")
 		}
 
 		// TODO fritz check caller assumptions about receipts.
-		receipts = append(receipts, r)
+		results = append(results, r)
 	}
-	return receipts, nil
+	return results, nil
+}
+
+// ApplicationResult contains the result of successfully applying one message.
+// A message can return an error and still be applied successfully.
+// See ApplyMessage() for details.
+type ApplicationResult struct {
+	Receipt        *types.MessageReceipt
+	ExecutionError error
 }
 
 // ApplyMessage attempts to apply a message to a state tree. It is the
@@ -136,7 +143,7 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*type
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
 	r, err := attemptApplyMessage(ctx, cachedStateTree, msg, bh)
@@ -146,21 +153,25 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *ty
 			return nil, errors.FaultErrorWrap(err, "could not commit state tree")
 		}
 	} else if errors.IsFault(err) {
-		return r, err
+		return nil, err
 	} else if !errors.ShouldRevert(err) {
 		return nil, errors.NewFaultError("someone is a bad programmer: only return revert and fault errors")
 	}
 
 	// Reject invalid state transitions.
+	var executionError error
 	if err == errAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
 	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == vm.ErrCannotTransferNegativeValue {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
-		// Do nothing. All other vm errors are ok: the state was rolled back
+		// Return the executionError to caller for informational purposes, but otherwise
+		// do nothing. All other vm errors are ok: the state was rolled back
 		// above but we applied the message successfully. This intentionally
 		// includes errInsufficientFunds because we don't want the message
 		// to be replayable.
+		executionError = err
+		log.Warningf("ApplyMessage execution error: %s", executionError)
 	}
 
 	// At this point we consider the message successfully applied so inc
@@ -174,7 +185,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *ty
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
-	return r, nil
+	return &ApplicationResult{Receipt: r, ExecutionError: executionError}, nil
 }
 
 var (
@@ -190,7 +201,7 @@ var (
 
 // ApplyQueryMessage sends a message into the VM to query actor state. Only read-only methods should be called on
 // the actor as the state tree will be rolled back after the execution.
-func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) ([]byte, uint8, error) {
+func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) ([][]byte, uint8, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, 1, errAccountNotFound
@@ -270,31 +281,15 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, msg *types.M
 		return nil, vmErr
 	}
 
-	var retBytes []byte
-	if vmErr != nil {
-		// ensure error strings that are too long don't cause another failure
-		retBytes = truncate([]byte(vmErr.Error()), types.ReturnValueLength)
-	} else if len(ret) > types.ReturnValueLength {
-		vmErr = errors.RevertErrorWrap(types.ErrReturnValueTooLarge, "")
-		retBytes = truncate([]byte(vmErr.Error()), types.ReturnValueLength)
-	} else {
-		retBytes = ret
+	receipt := &types.MessageReceipt{
+		ExitCode: exitCode,
 	}
 
-	retVal, retSize, err := types.SliceToReturnValue(retBytes)
-	if err != nil {
-		// this should never happen, as we take care of larger values above, if it does
-		// then we need to fail
-		return nil, errors.FaultErrorWrap(err, "failed to convert to return value")
+	// :( - necessary because go slices aren't covariant and we need to convert
+	// from [][]byte to []Bytes
+	for _, b := range ret {
+		receipt.Return = append(receipt.Return, b)
 	}
 
-	return types.NewMessageReceipt(exitCode, retVal, retSize), vmErr
-}
-
-func truncate(val []byte, size int) []byte {
-	if len(val) <= size {
-		return val
-	}
-
-	return val[0:size]
+	return receipt, vmErr
 }

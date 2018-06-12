@@ -50,11 +50,11 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 
 	pdata := core.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewTokenAmount(1000), "createChannel", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	channelID := big.NewInt(0)
-	channelID.SetBytes(receipt.ReturnValue())
+	channelID.SetBytes(result.Receipt.Return[0])
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
@@ -112,9 +112,9 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	// channel creator's address is our signature for now.
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
-	require.Equal(uint8(0), receipt.ExitCode)
+	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
@@ -147,20 +147,20 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotEqual(uint8(0), receipt.ExitCode)
+	require.NotEqual(uint8(0), result.Receipt.ExitCode)
 
 	// invalid channel id results in revert error
 	pdata = core.MustConvertParams(payer, types.NewChannelID(39932), types.NewTokenAmount(100), payer)
 	msg = types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(string(receipt.ReturnValue()), "payment channel")
+	require.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.Contains(result.ExecutionError.Error(), "payment channel")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
@@ -184,11 +184,11 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(100), payer)
 	msg := types.NewMessage(wrongTargetAddress, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(string(receipt.ReturnValue()), "wrong target account")
+	require.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.Contains(result.ExecutionError.Error(), "wrong target account")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testing.T) {
@@ -206,11 +206,11 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(1100), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(string(receipt.ReturnValue()), "update amount")
+	require.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.Contains(result.ExecutionError.Error(), "update amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T) {
@@ -228,20 +228,20 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	pdata := core.MustConvertParams(payer, channelID, types.NewTokenAmount(500), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.Equal(uint8(0), receipt.ExitCode)
+	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// redeeming funds already redeemed is an error
 	pdata = core.MustConvertParams(payer, channelID, types.NewTokenAmount(400), payer)
 	msg = types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "update", pdata)
 
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
-	require.NotEqual(uint8(0), receipt.ExitCode)
-	require.Contains(string(receipt.ReturnValue()), "update amount")
+	require.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.Contains(result.ExecutionError.Error(), "update amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
@@ -260,12 +260,12 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
 
 	// set block height to Eol
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(10))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(10))
 	require.NoError(err)
 
 	// expect an error
-	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.True(strings.Contains(strings.ToLower(string(receipt.ReturnValue())), "block height"), "Error should relate to block height")
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height"), "Error should relate to block height")
 }
 
 func TestPaymentBrokerClose(t *testing.T) {
@@ -351,13 +351,13 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	pdata := core.MustConvertParams(channelID)
 	msg := types.NewMessage(payerAddress, address.PaymentBrokerAddress, 1, types.NewTokenAmount(0), "reclaim", pdata)
 	// block height is before Eol
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// fails
-	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.Contains(string(receipt.ReturnValue()), "reclaim")
-	assert.Contains(string(receipt.ReturnValue()), "eol")
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	assert.Contains(result.ExecutionError.Error(), "reclaim")
+	assert.Contains(result.ExecutionError.Error(), "eol")
 }
 
 func TestPaymentBrokerExtend(t *testing.T) {
@@ -376,18 +376,18 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(20))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(1000), "extend", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
 	require.NoError(err)
-	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// try to request too high an amount after the eol for the original channel
 	pdata = core.MustConvertParams(payer, channelID, types.NewTokenAmount(1100), payer)
 	msg = types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "update", pdata)
-	receipt, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(12))
+	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(12))
 
 	// expect success
 	require.NoError(err)
-	assert.Equal(uint8(0), receipt.ExitCode)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// check memory
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
@@ -419,9 +419,9 @@ func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
 	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(1000), "extend", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
 	require.NoError(err)
-	assert.NotEqual(uint8(0), receipt.ExitCode)
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
 }
 
 func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
@@ -440,11 +440,11 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(5))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewTokenAmount(1000), "extend", pdata)
 
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(9))
 	require.NoError(err)
 
-	assert.NotEqual(uint8(0), receipt.ExitCode)
-	assert.Contains(string(receipt.ReturnValue()), "payment channel eol may not be decreased")
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	assert.Contains(result.ExecutionError.Error(), "payment channel eol may not be decreased")
 }
 
 func TestPaymentBrokerLs(t *testing.T) {
@@ -475,7 +475,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
-		err = cbor.DecodeInto(returnValue, &channels)
+		err = cbor.DecodeInto(returnValue[0], &channels)
 		require.NoError(err)
 
 		assert.Equal(2, len(channels))
@@ -513,7 +513,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
-		err = cbor.DecodeInto(returnValue, &channels)
+		err = cbor.DecodeInto(returnValue[0], &channels)
 		require.NoError(err)
 
 		assert.Equal(0, len(channels))
@@ -544,7 +544,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(uint8(0), exitCode)
 
 		voucher := PaymentVoucher{}
-		err = cbor.DecodeInto(returnValue, &voucher)
+		err = cbor.DecodeInto(returnValue[0], &voucher)
 		require.NoError(err)
 
 		assert.Equal(*channelID, voucher.Channel)
@@ -598,12 +598,12 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, nonce uint64, amt *types.TokenAmount, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
-	receipt, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
 	}
 
-	channelID := types.NewChannelIDFromBytes(receipt.ReturnValue())
+	channelID := types.NewChannelIDFromBytes(result.Receipt.Return[0])
 	return channelID
 }
 

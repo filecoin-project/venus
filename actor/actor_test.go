@@ -94,7 +94,10 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		assert.NoError(err)
 		assert.Equal(exitCode, uint8(0))
-		assert.Equal(string(ret), "hello")
+		vv, err := abi.DecodeValues(ret, a.Exports()["four"].Return)
+		assert.NoError(err)
+		assert.Equal(1, len(vv))
+		assert.Equal(vv[0].Val, []byte("hello"))
 	})
 
 	t.Run("with error return", func(t *testing.T) {
@@ -167,7 +170,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with 2 parameters for one",
+			Error:  "MakeTypedExport must receive a function with signature: func (Actor, exec.VMContext) (uint8, error), but got: func(*actor_test.MockActor) (uint8, error)",
 			Method: "one",
 		},
 		{
@@ -178,7 +181,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function that returns (uint8, error) for three",
+			Error:  "MakeTypedExport must receive a function with signature: func (Actor, exec.VMContext) (uint8, error), but got: func(*actor_test.MockActor, exec.VMContext) error",
 			Method: "three",
 		},
 		{
@@ -189,7 +192,18 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes},
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function that returns ([]byte, uint8, error) for two",
+			Error:  "MakeTypedExport must receive a function with signature: func (Actor, exec.VMContext) ([]byte, uint8, error), but got: func(*actor_test.MockActor, exec.VMContext) (uint8, error)",
+			Method: "two",
+		},
+		{
+			Name: "multiple return parameters",
+			Actor: NewMockActor(map[string]*exec.FunctionSignature{
+				"two": {
+					Params: nil,
+					Return: []abi.Type{abi.Bytes, abi.Bytes},
+				},
+			}),
+			Error:  "MakeTypedExport must receive a function with signature: func (Actor, exec.VMContext) ([]byte, []byte, uint8, error), but got: func(*actor_test.MockActor, exec.VMContext) (uint8, error)",
 			Method: "two",
 		},
 	}

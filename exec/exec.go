@@ -40,7 +40,7 @@ type VMContext interface {
 	Message() *types.Message
 	ReadStorage() []byte
 	WriteStorage(memory []byte) error
-	Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error)
+	Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (types.Address, error)
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool

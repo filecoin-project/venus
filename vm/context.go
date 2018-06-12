@@ -66,7 +66,7 @@ func (ctx *Context) IsFromAccountActor() bool {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *Context) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([]byte, uint8, error) {
+func (ctx *Context) Send(to types.Address, method string, value *types.TokenAmount, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -173,6 +173,6 @@ func makeDeps(st *state.CachedTree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
-	Send             func(context.Context, *Context) ([]byte, uint8, error)
+	Send             func(context.Context, *Context) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

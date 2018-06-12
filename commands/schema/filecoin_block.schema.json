@@ -127,17 +127,20 @@
         "exitCode": {
           "type": "integer"
         },
-        "returnSize": {
-          "type": "integer"
-        },
         "return": {
-          "type": ["array"]
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
         }
       },
       "required": [
         "exitCode",
-        "return",
-        "returnSize"
+        "return"
       ],
       "type": "object"
     },

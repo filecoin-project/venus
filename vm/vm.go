@@ -6,6 +6,8 @@ package vm
 import (
 	"context"
 
+	cbor "gx/ipfs/QmRVSCwQtW1rjHCay9NqKXDwbtKTgDcN4iY7PrpSqfKM5D/go-ipld-cbor"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -23,7 +25,7 @@ var (
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx *Context) ([]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
 	deps := sendDeps{
 		transfer: transfer,
 	}
@@ -36,7 +38,7 @@ type sendDeps struct {
 }
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([]byte, uint8, error) {
+func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, error) {
 	if vmCtx.message.Value != nil {
 		if err := deps.transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
 			return nil, 1, err
@@ -58,7 +60,16 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([]byte, uint8, er
 		return nil, 1, errors.NewRevertErrorf("missing export: %s", vmCtx.message.Method)
 	}
 
-	return actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
+	r, code, err := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
+	if r != nil {
+		var rv [][]byte
+		err = cbor.DecodeInto(r, &rv)
+		if err != nil {
+			return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
+		}
+		return rv, code, err
+	}
+	return nil, code, err
 }
 
 func transfer(fromActor, toActor *types.Actor, value *types.TokenAmount) error {

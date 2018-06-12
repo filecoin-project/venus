@@ -10,11 +10,11 @@ import (
 
 func TestRoundtrip(t *testing.T) {
 	assert := assert.New(t)
-	cases := []Signature{Signature(nil), {}, Signature([]byte("signature"))}
+	cases := []Bytes{Bytes(nil), {}, Bytes([]byte("bytes"))}
 	for _, c := range cases {
 		b, err := cbor.WrapObject(c, DefaultHashFunction, -1)
 		assert.NoError(err)
-		var out Signature
+		var out Bytes
 		err = cbor.DecodeInto(b.RawData(), &out)
 		assert.NoError(err)
 		switch {

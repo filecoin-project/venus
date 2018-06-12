@@ -115,9 +115,11 @@ func TestChainLsRun(t *testing.T) {
 		child := types.NewBlockForTest(parent, 1)
 
 		message := types.NewMessageForTestGetter()()
-		retVal, retSize, err := types.SliceToReturnValue([]byte{1, 2, 3})
-		assert.NoError(err)
-		receipt := types.NewMessageReceipt(123, retVal, retSize)
+		retVal := []byte{1, 2, 3}
+		receipt := &types.MessageReceipt{
+			ExitCode: 123,
+			Return:   []types.Bytes{retVal},
+		}
 		child.Messages = []*types.Message{message}
 		child.MessageReceipts = []*types.MessageReceipt{receipt}
 
@@ -135,7 +137,7 @@ func TestChainLsRun(t *testing.T) {
 		assert.NoError(e2)
 
 		assert.Equal(uint8(123), unmarshalled.MessageReceipts[0].ExitCode)
-		assert.Equal([]byte{1, 2, 3}, unmarshalled.MessageReceipts[0].ReturnValue())
+		assert.Equal([]types.Bytes{[]byte{1, 2, 3}}, unmarshalled.MessageReceipts[0].Return)
 
 		types.AssertHaveSameCid(assert, child, &unmarshalled)
 	})

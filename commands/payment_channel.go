@@ -147,7 +147,7 @@ var lsCmd = &cmds.Command{
 		}
 
 		var channels map[string]*paymentbroker.PaymentChannel
-		err = cbor.DecodeInto(retValue, &channels)
+		err = cbor.DecodeInto(retValue[0], &channels)
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ var voucherCmd = &cmds.Command{
 		}
 
 		var voucher paymentbroker.PaymentVoucher
-		err = cbor.DecodeInto(retValue, &voucher)
+		err = cbor.DecodeInto(retValue[0], &voucher)
 		if err != nil {
 			return err
 		}

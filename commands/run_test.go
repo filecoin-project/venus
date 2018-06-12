@@ -115,7 +115,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
 
-	td.test.Logf("run: %q", strings.Join(finalArgs, " "))
+	td.test.Logf("run: %q\n", strings.Join(finalArgs, " "))
 	cmd := exec.Command(bin, finalArgs...)
 
 	if stdin != nil {

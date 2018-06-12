@@ -172,7 +172,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 		return err
 	}
 
-	minerAddress, err := types.NewAddressFromBytes(createMinerReceipt.ReturnValue())
+	minerAddress, err := types.NewAddressFromBytes(createMinerReceipt.Return[0])
 	if err != nil {
 		return err
 	}

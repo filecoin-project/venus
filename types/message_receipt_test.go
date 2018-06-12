@@ -11,57 +11,25 @@ import (
 func TestMessageReceiptMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	retVal, retSize, err := SliceToReturnValue([]byte{1, 2, 3})
-	assert.NoError(err)
-
-	receipt := NewMessageReceipt(8, retVal, retSize)
-	bytes, err := cbor.DumpObject(receipt)
-	assert.NoError(err)
-
-	var receiptBack MessageReceipt
-	err = cbor.DecodeInto(bytes, &receiptBack)
-	assert.NoError(err)
-
-	assert.Equal(receipt, &receiptBack)
-}
-
-func TestSliceToReturnValue(t *testing.T) {
-	assert := assert.New(t)
-
-	// empty
-	ret, size, err := SliceToReturnValue([]byte{})
-	assert.NoError(err)
-	assert.Equal(uint(0), size)
-	assert.Equal(make([]byte, 64), ret[:])
-
-	ret, size, err = SliceToReturnValue(nil)
-	assert.NoError(err)
-	assert.Equal(uint(0), size)
-	assert.Equal(make([]byte, 64), ret[:])
-
-	// smaller than 64 bytes
-	ret, size, err = SliceToReturnValue([]byte{1, 2, 3})
-	assert.NoError(err)
-	assert.Equal(uint(3), size)
-	assert.Equal([]byte{1, 2, 3}, ret[0:3])
-	var empty [61]byte
-	assert.Equal(empty[:], ret[3:])
-
-	// exactly 64 bytes
-	input := make([]byte, 64)
-	for i := range input {
-		input[i] = byte(i)
+	cases := []MessageReceipt{
+		{
+			ExitCode: 1,
+		},
+		{
+			ExitCode: 0,
+			Return:   []Bytes{[]byte{1, 2, 3}},
+		},
+		{},
 	}
-	ret, size, err = SliceToReturnValue(input)
-	assert.NoError(err)
-	assert.Equal(uint(64), size)
-	assert.Equal(input, ret[:])
 
-	// larger than 64 bytes
-	input = make([]byte, 128)
-	for i := range input {
-		input[i] = byte(i)
+	for _, expected := range cases {
+		bytes, err := cbor.DumpObject(expected)
+		assert.NoError(err)
+
+		var actual MessageReceipt
+		err = cbor.DecodeInto(bytes, &actual)
+
+		assert.NoError(err)
+		assert.Equal(expected, actual)
 	}
-	_, _, err = SliceToReturnValue(input)
-	assert.EqualError(err, ErrReturnValueTooLarge.Error())
 }
