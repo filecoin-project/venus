@@ -450,7 +450,6 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 	ddCid := strings.TrimSpace(o.ReadStdout())
 
 	negidO := td.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", ddCid)
-	time.Sleep(time.Millisecond * 20)
 
 	miner.MineAndPropagate(propWait, td)
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
