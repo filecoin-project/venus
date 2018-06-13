@@ -339,7 +339,7 @@ func (td *TestDaemon) Config() *config.Config {
 	return cfg
 }
 
-// MineAndPropagate mines a block and ensure the block has propogated to all `peers`
+// MineAndPropagate mines a block and ensure the block has propagated to all `peers`
 // by comparing the current head block of `td` with the head block of each peer in `peers`
 func (td *TestDaemon) MineAndPropagate(wait time.Duration, peers ...*TestDaemon) {
 	td.RunSuccess("mining", "once")
@@ -410,10 +410,10 @@ func (td *TestDaemon) MustUnmarshalChain(input string) []types.Block {
 	return bs
 }
 
-// MakeMoney mines a block and receives the block reward
-func (td *TestDaemon) MakeMoney(rewards int) {
+// MakeMoney mines a block and ensures that the block has been propagated to all peers.
+func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 	for i := 0; i < rewards; i++ {
-		td.MineAndPropagate(time.Second * 1)
+		td.MineAndPropagate(time.Second*1, peers...)
 	}
 }
 

@@ -85,14 +85,11 @@ func TestProposeDeal(t *testing.T) {
 	dcli.ConnectSuccess(dmin)
 
 	// mine here to get some moneys
-	dcli.RunSuccess("mining", "once")
-	time.Sleep(time.Millisecond * 20)
-	dcli.RunSuccess("mining", "once")
-	time.Sleep(time.Millisecond * 20)
-	dmin.RunSuccess("mining", "once")
-	time.Sleep(time.Millisecond * 20)
-	dmin.RunSuccess("mining", "once")
-	time.Sleep(time.Millisecond * 20)
+	dmin.MakeMoney(2, dcli)
+	dcli.MakeMoney(2, dmin)
+
+	// max amt of time we'll wait for block propagation
+	maxWait := time.Second * 1
 
 	miner := dmin.CreateMinerAddr()
 
@@ -101,7 +98,7 @@ func TestProposeDeal(t *testing.T) {
 		"--from", dmin.Config().Mining.RewardAddress.String(),
 		miner.String(), "1200", "1",
 	)
-	dmin.RunSuccess("mining", "once")
+	dmin.MineAndPropagate(maxWait, dcli)
 	dmin.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
 
 	dcli.RunSuccess(
@@ -109,8 +106,7 @@ func TestProposeDeal(t *testing.T) {
 		"--from", dcli.Config().Mining.RewardAddress.String(),
 		"500", "1",
 	)
-	dcli.RunSuccess("mining", "once")
-	time.Sleep(time.Millisecond * 20) // wait for block propagation
+	dcli.MineAndPropagate(maxWait, dmin)
 
 	buf := strings.NewReader("filecoin is a blockchain")
 	o := dcli.RunWithStdin(buf, "client", "import").AssertSuccess()
@@ -118,8 +114,7 @@ func TestProposeDeal(t *testing.T) {
 
 	negidO := dcli.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", data)
 
-	time.Sleep(time.Millisecond * 20)
-	dmin.RunSuccess("mining", "once")
+	dmin.MineAndPropagate(maxWait, dcli)
 
 	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
 	dcli.RunSuccess("client", "query-deal", negid)
