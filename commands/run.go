@@ -126,6 +126,7 @@ func CliRun(ctx context.Context, root *cmds.Command,
 	// use JSON if text was requested but the command doesn't have a text-encoder
 	if _, ok := cmd.Encoders[encType]; encType == cmds.Text && !ok {
 		req.Options[cmds.EncLong] = cmds.JSON
+		encType = cmds.JSON
 	}
 
 	// first if condition checks the command's encoder map, second checks global encoder map (cmd vs. cmds)
