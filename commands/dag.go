@@ -5,8 +5,9 @@ import (
 	"context"
 	"time"
 
+	path "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/path"
+	resolver "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/path/resolver"
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
@@ -35,12 +36,31 @@ var dagGetCmd = &cmds.Command{
 		cmdkit.StringArg("ref", true, false, "CID of object to get"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		cid, err := cid.Decode(req.Arguments[0])
+		n := GetNode(env)
+
+		p, err := path.ParsePath(req.Arguments[0])
 		if err != nil {
-			return errors.New("could not parse argument as CID")
+			return err
 		}
 
-		return runDagGetByCid(req.Context, dag.NewDAGService(GetNode(env).Blockservice).Get, re.Emit, cid)
+		dserv := dag.NewDAGService(n.Blockservice)
+		resolver := resolver.NewBasicResolver(dserv)
+		obj, rem, err := resolver.ResolveToLastNode(req.Context, p)
+		if err != nil {
+			return err
+		}
+
+		var out interface{} = obj
+		if len(rem) > 0 {
+			final, _, err := obj.Resolve(rem)
+			if err != nil {
+				return err
+			}
+			out = final
+		}
+
+		re.Emit(out)
+		return nil
 	},
 }
 
