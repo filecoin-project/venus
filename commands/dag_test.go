@@ -20,7 +20,7 @@ func TestDagGet(t *testing.T) {
 
 		_, err := testhelpers.RunCommand(dagGetCmd, []string{"awful"}, nil, &Env{})
 		assert.Error(err)
-		assert.Contains(err.Error(), "could not parse argument as CID")
+		assert.Contains(err.Error(), "invalid 'ipfs ref' path")
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {

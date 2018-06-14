@@ -59,7 +59,7 @@ var dagGetCmd = &cmds.Command{
 			out = final
 		}
 
-		re.Emit(out)
+		re.Emit(out) // nolint: errcheck
 		return nil
 	},
 }
