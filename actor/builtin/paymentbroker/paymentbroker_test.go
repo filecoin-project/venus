@@ -210,7 +210,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
-	require.Contains(result.ExecutionError.Error(), "update amount")
+	require.Contains(result.ExecutionError.Error(), "exceeds amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T) {

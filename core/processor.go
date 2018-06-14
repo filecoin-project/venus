@@ -162,7 +162,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *ty
 	var executionError error
 	if err == errAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
-	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == vm.ErrCannotTransferNegativeValue {
+	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
 		// Return the executionError to caller for informational purposes, but otherwise

@@ -11,6 +11,40 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+const (
+	// ErrNonAccountActor indicates an non-account actor attempted to create a payment channel
+	ErrNonAccountActor = 33
+	// ErrDuplicateChannel indicates an attempt to create a payment channel with an existing id
+	ErrDuplicateChannel = 34
+	// ErrEolTooLow indicates an attempt to lower the Eol of a payment channel
+	ErrEolTooLow = 35
+	// ErrReclaimBeforeEol indicates an attempt to reclaim funds before the eol of the channel
+	ErrReclaimBeforeEol = 36
+	// ErrInsufficientChannelFunds indicates an attempt to take more funds than the channel contains
+	ErrInsufficientChannelFunds = 37
+	// ErrUnknownChannel indicates an invalid channel id
+	ErrUnknownChannel = 38
+	// ErrWrongTarget indicates attempt to redeem from wrong target account
+	ErrWrongTarget = 39
+	// ErrExpired indicates the block height has exceeded the eol
+	ErrExpired = 40
+	// ErrAlreadyWithdrawn indicates amount of the voucher has already been withdrawn
+	ErrAlreadyWithdrawn = 41
+)
+
+// Errors map error codes to revert errors this actor may return
+var Errors = map[uint8]error{
+	ErrNonAccountActor:          errors.NewCodedRevertError(ErrNonAccountActor, "Only account actors may create payment channels"),
+	ErrDuplicateChannel:         errors.NewCodedRevertError(ErrDuplicateChannel, "Duplicate create channel attempt"),
+	ErrEolTooLow:                errors.NewCodedRevertError(ErrEolTooLow, "payment channel eol may not be decreased"),
+	ErrReclaimBeforeEol:         errors.NewCodedRevertError(ErrReclaimBeforeEol, "payment channel may not reclaimed before eol"),
+	ErrInsufficientChannelFunds: errors.NewCodedRevertError(ErrInsufficientChannelFunds, "voucher amount exceeds amount in channel"),
+	ErrUnknownChannel:           errors.NewCodedRevertError(ErrUnknownChannel, "payment channel is unknown"),
+	ErrWrongTarget:              errors.NewCodedRevertError(ErrWrongTarget, "attempt to redeem channel from wrong target account"),
+	ErrExpired:                  errors.NewCodedRevertError(ErrExpired, "block height has exceeded channel's end of life"),
+	ErrAlreadyWithdrawn:         errors.NewCodedRevertError(ErrAlreadyWithdrawn, "update amount has already been redeemed"),
+}
+
 func init() {
 	cbor.RegisterCborType(PaymentChannel{})
 	cbor.RegisterCborType(Storage{})
@@ -117,7 +151,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		// require that from account be an account actor to ensure nonce is a valid id
 		if !ctx.IsFromAccountActor() {
-			return nil, errors.NewRevertError("Only account actors may create payment channels")
+			return nil, Errors[ErrNonAccountActor]
 		}
 
 		byPayer, found := storage.Channels[ctx.Message().From.String()]
@@ -129,7 +163,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 		channelID := types.NewChannelID(ctx.Message().Nonce)
 
 		if _, found := byPayer[channelID.String()]; found {
-			return nil, errors.NewRevertError("Duplicate create channel attempt")
+			return nil, Errors[ErrDuplicateChannel]
 		}
 
 		paymentChannel := &PaymentChannel{
@@ -144,7 +178,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 		return channelID, nil
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	return ret.(*types.ChannelID), 0, nil
@@ -177,7 +211,7 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 		return nil, err
 	})
 	if err != nil {
-		return 1, err
+		return errors.CodeError(err), err
 	}
 
 	return 0, nil
@@ -206,7 +240,7 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 		return nil, err
 	})
 	if err != nil {
-		return 1, err
+		return errors.CodeError(err), err
 	}
 
 	return 0, nil
@@ -224,7 +258,7 @@ func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.Block
 
 		// eol can only be increased
 		if channel.Eol.GreaterThan(eol) {
-			return nil, errors.NewRevertErrorf("payment channel eol may not be decreased (%s < %s)", eol, channel.Eol)
+			return nil, Errors[ErrEolTooLow]
 		}
 
 		// set new eol
@@ -237,7 +271,7 @@ func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.Block
 		return nil, err
 	})
 	if err != nil {
-		return 1, err
+		return errors.CodeError(err), err
 	}
 
 	return 0, nil
@@ -255,7 +289,7 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 
 		// reclaim may only be called at or after Eol
 		if ctx.BlockHeight().LessThan(channel.Eol) {
-			return nil, errors.NewRevertErrorf("payment channel may not reclaimed before eol (%s)", channel.Eol)
+			return nil, Errors[ErrReclaimBeforeEol]
 		}
 
 		// return funds to payer
@@ -263,7 +297,7 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 		return nil, err
 	})
 	if err != nil {
-		return 1, err
+		return errors.CodeError(err), err
 	}
 
 	return 0, nil
@@ -281,7 +315,7 @@ func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.T
 
 		// voucher must be for less than total amount in channel
 		if channel.Amount.LessThan(amount) {
-			return nil, errors.NewRevertErrorf("voucher amount exceeds amount in channel (%s > %s)", amount, channel.Amount)
+			return nil, Errors[ErrInsufficientChannelFunds]
 		}
 
 		// return voucher
@@ -295,7 +329,7 @@ func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.T
 		return cbor.DumpObject(voucher)
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	return ret.([]byte), 0, nil
@@ -314,7 +348,7 @@ func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error)
 		return cbor.DumpObject(byPayer)
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	return ret.([]byte), 0, nil
@@ -323,12 +357,12 @@ func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error)
 func findChannel(storage *Storage, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {
 	actorsChannels, found := storage.Channels[payer.String()]
 	if !found {
-		return nil, errors.NewRevertErrorf("payment channel %s for %s is unknown", chid, payer)
+		return nil, Errors[ErrUnknownChannel]
 	}
 
 	channel, found := actorsChannels[chid.String()]
 	if !found {
-		return nil, errors.NewRevertErrorf("payment channel %s for %s is unknown", chid, payer)
+		return nil, Errors[ErrUnknownChannel]
 	}
 
 	return channel, nil
@@ -336,19 +370,19 @@ func findChannel(storage *Storage, payer types.Address, chid *types.ChannelID) (
 
 func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChannel, amt *types.TokenAmount) error {
 	if target != channel.Target {
-		return errors.NewRevertErrorf("attempt to redeem channel from wrong target account")
+		return Errors[ErrWrongTarget]
 	}
 
 	if ctx.BlockHeight().GreaterEqual(channel.Eol) {
-		return errors.NewRevertErrorf("block height has exceeded channel's end of life")
+		return Errors[ErrExpired]
 	}
 
 	if amt.GreaterThan(channel.Amount) {
-		return errors.NewRevertErrorf("update amount %s exceeds funds in channel", amt)
+		return Errors[ErrInsufficientChannelFunds]
 	}
 
 	if amt.LessEqual(channel.AmountRedeemed) {
-		return errors.NewRevertErrorf("update amount %s has already been redeemed", amt)
+		return Errors[ErrAlreadyWithdrawn]
 	}
 
 	// transfer funds to sender

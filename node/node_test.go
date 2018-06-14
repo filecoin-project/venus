@@ -477,18 +477,46 @@ func TestCreateMiner(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ctx := context.Background()
+	t.Run("success", func(t *testing.T) {
+		ctx := context.Background()
 
-	node := MakeOfflineNode(t)
-	require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
-	require.NoError(node.Start())
-	assert.Equal(0, len(node.SectorBuilders))
+		node := MakeOfflineNode(t)
+		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
+		require.NoError(node.Start())
+		assert.Equal(0, len(node.SectorBuilders))
 
-	addr := MustCreateMiner(t, node)
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+		require.NoError(result.err)
+		assert.NotNil(result.minerAddress)
 
-	assert.NotNil(addr)
+		assert.Equal(*result.minerAddress, node.Repo.Config().Mining.MinerAddresses[0])
+	})
 
-	assert.Equal(addr, node.Repo.Config().Mining.MinerAddresses[0])
+	t.Run("fail with pledge too low", func(t *testing.T) {
+		ctx := context.Background()
+
+		node := MakeOfflineNode(t)
+		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
+		require.NoError(node.Start())
+		assert.Equal(0, len(node.SectorBuilders))
+
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(10), *types.NewTokenAmount(10))
+		assert.Error(result.err)
+		assert.Contains(result.err.Error(), "pledge must be at least")
+	})
+
+	t.Run("fail with insufficient funds", func(t *testing.T) {
+		ctx := context.Background()
+
+		node := MakeOfflineNode(t)
+		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
+		require.NoError(node.Start())
+		assert.Equal(0, len(node.SectorBuilders))
+
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(20000), *types.NewTokenAmount(1000000))
+		assert.Error(result.err)
+		assert.Contains(result.err.Error(), "not enough balance")
+	})
 }
 
 func TestCreateSectorBuilders(t *testing.T) {

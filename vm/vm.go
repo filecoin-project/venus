@@ -13,16 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-var (
-	// Most errors should live in the actors that throw them. However some
-	// errors will be pervasive so we define them centrally here.
-
-	// ErrCannotTransferNegativeValue signals a transfer error, value must be positive.
-	ErrCannotTransferNegativeValue = errors.NewRevertError("cannot transfer negative values")
-	// ErrInsufficientBalance signals insufficient balance for a transfer.
-	ErrInsufficientBalance = errors.NewRevertError("not enough balance")
-)
-
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
 func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
@@ -41,6 +31,9 @@ type sendDeps struct {
 func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, error) {
 	if vmCtx.message.Value != nil {
 		if err := deps.transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
+			if errors.ShouldRevert(err) {
+				return nil, err.(*errors.RevertError).Code(), err
+			}
 			return nil, 1, err
 		}
 	}
@@ -57,7 +50,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 	}
 
 	if !toExecutable.Exports().Has(vmCtx.message.Method) {
-		return nil, 1, errors.NewRevertErrorf("missing export: %s", vmCtx.message.Method)
+		return nil, 1, errors.Errors[errors.ErrMissingExport]
 	}
 
 	r, code, err := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
@@ -74,11 +67,11 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 
 func transfer(fromActor, toActor *types.Actor, value *types.TokenAmount) error {
 	if value.IsNegative() {
-		return ErrCannotTransferNegativeValue
+		return errors.Errors[errors.ErrCannotTransferNegativeValue]
 	}
 
 	if fromActor.Balance.LessThan(value) {
-		return ErrInsufficientBalance
+		return errors.Errors[errors.ErrInsufficientBalance]
 	}
 
 	if toActor.Balance == nil {

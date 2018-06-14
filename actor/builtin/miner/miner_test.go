@@ -98,7 +98,7 @@ func TestAddAsk(t *testing.T) {
 
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(result.ExecutionError.Error(), ErrInsufficientPledge.Error())
+	assert.Contains(result.ExecutionError.Error(), Errors[ErrInsufficientPledge].Error())
 }
 
 func TestGetKey(t *testing.T) {
@@ -119,8 +119,8 @@ func TestGetKey(t *testing.T) {
 	// retrieve key
 	msg := types.NewMessage(address.TestAddress, outAddr, 0, nil, "getKey", []byte{})
 
-	result, errorCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(uint8(0), errorCode)
+	assert.Equal(uint8(0), exitCode)
 	assert.Equal(result[0], signature)
 }

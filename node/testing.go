@@ -68,6 +68,23 @@ func MakeOfflineNode(t *testing.T) *Node {
 // been initialized with a genesis block and that it has been started.
 func MustCreateMiner(t *testing.T, node *Node) types.Address {
 	require := require.New(t)
+	result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+
+	require.NoError(result.err)
+
+	return *result.minerAddress
+}
+
+// MustCreateMinerResult contains the result of a CreateMiner command
+type MustCreateMinerResult struct {
+	minerAddress *types.Address
+	err          error
+}
+
+// RunCreateMiner runs create miner and then runs a given assertion with the result.
+func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, collateral types.TokenAmount) chan MustCreateMinerResult {
+	resultChan := make(chan MustCreateMinerResult)
+	require := require.New(t)
 
 	if node.ChainMgr.GetGenesisCid() == nil {
 		panic("must initialize with genesis block first")
@@ -75,7 +92,6 @@ func MustCreateMiner(t *testing.T, node *Node) types.Address {
 
 	ctx := context.Background()
 
-	var minerAddr *types.Address
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -84,7 +100,8 @@ func MustCreateMiner(t *testing.T, node *Node) types.Address {
 	require.NoError(err)
 
 	go func() {
-		minerAddr, err = node.CreateMiner(ctx, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+		minerAddr, err := node.CreateMiner(ctx, from, pledge, collateral)
+		resultChan <- MustCreateMinerResult{minerAddress: minerAddr, err: err}
 		wg.Done()
 	}()
 
@@ -100,8 +117,7 @@ func MustCreateMiner(t *testing.T, node *Node) types.Address {
 	require.NoError(out.Err)
 	require.NoError(node.ChainMgr.SetBestBlockForTest(ctx, out.NewBlock))
 
-	wg.Wait()
 	require.NoError(err)
 
-	return *minerAddr
+	return resultChan
 }

@@ -18,8 +18,9 @@ import (
 // have a constructor that checked for this or do more elaborate
 // wrapping (basically duplicating what's in errors.Wrap).
 type RevertError struct {
-	err error
-	msg string
+	err  error
+	msg  string
+	code uint8
 }
 
 func (re RevertError) Error() string {
@@ -36,12 +37,22 @@ func (re RevertError) ShouldRevert() bool {
 
 // NewRevertError creates a new RevertError using the passed in message.
 func NewRevertError(msg string) error {
-	return &RevertError{err: nil, msg: msg}
+	return &RevertError{err: nil, msg: msg, code: 1}
 }
 
 // NewRevertErrorf creates a new RevertError, but with Sprintf formatting.
 func NewRevertErrorf(format string, args ...interface{}) error {
 	return NewRevertError(fmt.Sprintf(format, args...))
+}
+
+// NewCodedRevertError creates a new RevertError using the passed in message.
+func NewCodedRevertError(code uint8, msg string) error {
+	return &RevertError{err: nil, msg: msg, code: code}
+}
+
+// NewCodedRevertErrorf creates a new RevertError, but with Sprintf formatting.
+func NewCodedRevertErrorf(code uint8, format string, args ...interface{}) error {
+	return NewCodedRevertError(code, fmt.Sprintf(format, args...))
 }
 
 // RevertErrorWrap wraps a given error in a RevertError.
@@ -52,7 +63,12 @@ func RevertErrorWrap(err error, msg string) error {
 // RevertErrorWrapf wraps a given error in a RevertError and adds a message
 // using Sprintf formatting.
 func RevertErrorWrapf(err error, format string, args ...interface{}) error { // nolint: deadcode
-	return &RevertError{err: err, msg: fmt.Sprintf(format, args...)}
+	return &RevertError{err: err, msg: fmt.Sprintf(format, args...), code: 1}
+}
+
+// Code returns the error code for this error
+func (re RevertError) Code() uint8 {
+	return re.code
 }
 
 type reverterror interface {
@@ -65,6 +81,14 @@ func ShouldRevert(err error) bool {
 	cause := errors.Cause(err)
 	re, ok := cause.(reverterror)
 	return ok && re.ShouldRevert()
+}
+
+// CodeError returns the RevertError's error code if it is a revert error, or 1 otherwise.
+func CodeError(err error) uint8 {
+	if ShouldRevert(err) {
+		return err.(*RevertError).Code()
+	}
+	return 1
 }
 
 // FaultError is an error wrapper that signifies a system fault (corrupted
