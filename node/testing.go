@@ -4,9 +4,8 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -81,13 +80,17 @@ func MustCreateMiner(t *testing.T, node *Node) types.Address {
 
 	wg.Add(1)
 
-	var err error
+	subscription, err := node.PubSub.Subscribe(MessageTopic)
+	require.NoError(err)
+
 	go func() {
 		minerAddr, err = node.CreateMiner(ctx, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
 		wg.Done()
 	}()
 
-	time.Sleep(10 * time.Millisecond) // give us enough time to get the mining message in the pool
+	// wait for create miner call to put a message in the pool
+	_, err = subscription.Next(ctx)
+	require.NoError(err)
 
 	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, cid *cid.Cid) (state.Tree, error) {
 		return state.LoadStateTree(ctx, node.CborStore, cid, builtin.Actors)
