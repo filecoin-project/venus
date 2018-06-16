@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"sync"
 	"testing"
-	"time"
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -36,12 +37,10 @@ func TestSimple(t *testing.T) {
 	}
 
 	ag := types.NewAddressForTestGetter()
-	ss, err := sb.Seal(sector, ag(), makeFilecoinParameters(testSectorSize, nodeSize))
+	_, err = sb.Seal(sector, ag(), makeFilecoinParameters(testSectorSize, nodeSize))
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Log(ss.merkleRoot)
 }
 
 func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
@@ -78,7 +77,19 @@ func TestSectorBuilder(t *testing.T) {
 
 	nd := MakeOfflineNode(t)
 
+	var sealingWg sync.WaitGroup
+	var sealingErr error
+	sealingWg.Add(1)
+
 	sb := requireSectorBuilder(require, nd, testSectorSize)
+	sector := sb.CurSector
+
+	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+		if ss.baseSector.Label == sector.Label {
+			sealingErr = err
+			sealingWg.Done()
+		}
+	}
 
 	assertMetadataMatch := func(sector *Sector, pieces int) {
 		sealed := sector.sealed
@@ -117,7 +128,6 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotEqual(stagingPath, stpath2)
 	assert.NotEqual(sealedPath, sepath2)
 
-	sector := sb.CurSector
 	assert.NotNil(sector.file)
 	assert.IsType(&os.File{}, sector.file)
 
@@ -149,7 +159,11 @@ func TestSectorBuilder(t *testing.T) {
 
 	text3 := "I'm too sexy for this sector." // len(text3) = 29
 	requireAddPiece(text3)
-	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
+
+	// wait for sector sealing to complete
+	sealingWg.Wait()
+	require.NoError(sealingErr)
+
 	assert.NotEqual(sector, sb.CurSector)
 
 	// persisted and calculated metadata match after a sector is sealed.
@@ -214,11 +228,22 @@ func TestSealingMovesMetadata(t *testing.T) {
 
 	nd := MakeOfflineNode(t)
 
+	var sealingWg sync.WaitGroup
+	var sealingErr error
+	sealingWg.Add(1)
+
 	bytesA := make([]byte, 10+(sectorSize/2))
 	bytesB := make([]byte, (sectorSize/2)-10)
 
 	sb := requireSectorBuilder(require, nd, sectorSize)
 	sector := sb.CurSector
+
+	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+		if ss.baseSector.Label == sector.Label {
+			sealingErr = err
+			sealingWg.Done()
+		}
+	}
 
 	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
 	sectormeta, err := sb.GetMeta(sector.Label)
@@ -226,7 +251,10 @@ func TestSealingMovesMetadata(t *testing.T) {
 	require.NotNil(sectormeta)
 
 	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
-	time.Sleep(100 * time.Millisecond) // Wait for sealing to finish: FIXME, don't sleep.
+
+	// wait for sector sealing to complete
+	sealingWg.Wait()
+	require.NoError(sealingErr)
 
 	_, err = sb.GetMeta(sector.Label)
 	require.Error(err)

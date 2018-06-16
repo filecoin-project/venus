@@ -71,11 +71,14 @@ type SectorBuilder struct {
 	Packer           binpack.Packer
 	publicParameters *PublicParameters
 
+	// OnCommitmentAddedToMempool is called when a sector has been sealed
+	// and its commitment added to the message pool.
+	OnCommitmentAddedToMempool func(*SealedSector, *cid.Cid, error)
+
 	stagingDir string
 	sealedDir  string
 
 	// yada yada don't hold a reference to this here, just take what you need
-
 	nd    *Node
 	store ds.Datastore
 	dserv ipld.DAGService
@@ -140,10 +143,15 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 // CloseBin implements binpack.Binner.
 func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
 	go func() {
-		err := sb.SealAndPostSector(context.Background(), bin.(*Sector))
+		sector := bin.(*Sector)
+		msgCid, err := sb.SealAndAddCommitmentToMempool(context.Background(), sector)
 		if err != nil {
-			panic(err)
+			sb.OnCommitmentAddedToMempool(nil, nil, errors.Wrap(err, "failed to seal and commit sector"))
 		}
+
+		// TODO: maybe send these values to a channel instead of calling the
+		// callback directly
+		sb.OnCommitmentAddedToMempool(sector.sealed, msgCid, nil)
 	}()
 }
 
@@ -245,6 +253,8 @@ func NewSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sect
 	sb.stagingDir = fs.StagingDir()
 	sb.sealedDir = fs.SealedDir()
 
+	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
+
 	packer, firstBin, err := binpack.NewNaivePacker(sb)
 	if err != nil {
 		return nil, err
@@ -253,6 +263,11 @@ func NewSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sect
 	sb.Packer = packer
 
 	return sb, sb.checkpoint(sb.CurSector)
+}
+
+func (sb *SectorBuilder) onCommitmentAddedToMempool(*SealedSector, *cid.Cid, error) {
+	// TODO: wait for commitSector message to be included in a block so that we
+	// can update sealed sector metadata with the miner-created SectorID
 }
 
 // AddPiece writes the given piece into a sector
@@ -333,56 +348,64 @@ func (s *Sector) CloseMmap() error {
 	return nil
 }
 
-// SealAndPostSector seals the given sector and posts its commitment on-chain
-func (sb *SectorBuilder) SealAndPostSector(ctx context.Context, s *Sector) (err error) {
+// SealAndAddCommitmentToMempool seals the given sector, adds the sealed sector's commitment to the message pool, and
+// then returns the CID of the commitment message.
+func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *Sector) (*cid.Cid, error) {
 	ss, err := sb.Seal(s, sb.MinerAddr, sb.publicParameters)
 	if err != nil {
 		// Hard to say what to do in this case.
 		// Depending on the error, it could be "try again"
 		// or 'verify data integrity and try again'
-		return
+		return nil, errors.Wrap(err, "failed to seal sector")
 	}
 
 	s.sealed = ss
 	if err := sb.checkpoint(s); err != nil {
-		return errors.Wrap(err, "failed to create checkpoint")
+		return nil, errors.Wrap(err, "failed to create checkpoint")
 	}
 
-	if err := sb.PostSealedSector(ctx, ss); err != nil {
+	msgCid, err := sb.AddCommitmentToMempool(ctx, ss)
+	if err != nil {
 		// 'try again'
 		// This can fail if the miners owner doesnt have enough funds to pay gas.
 		// It can also happen if the miner included a deal in this sector that
 		// is already sealed in a different sector.
-		return err
+		return nil, errors.Wrap(err, "failed to seal and add sector commitment")
 	}
-	return nil
+
+	return msgCid, nil
 }
 
-// PostSealedSector posts the given sealed sector's commitment to the chain
-func (sb *SectorBuilder) PostSealedSector(ctx context.Context, ss *SealedSector) error {
+// AddCommitmentToMempool adds the sealed sector's commitment to the message pool and returns the CID of the commitment
+// message.
+func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedSector) (*cid.Cid, error) {
 	var deals []uint64
 	for _, p := range ss.baseSector.Pieces {
 		deals = append(deals, p.DealID)
 	}
 
-	params, err := abi.ToEncodedValues(
+	args, err := abi.ToEncodedValues(
 		noSectorID, // NB: we might already know the sector ID from having created it already
 		ss.merkleRoot,
 		deals,
 	)
 	if err != nil {
-		return err
+		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
 	minerOwner := types.Address{} // TODO: get the miner owner to send this from
-	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", params)
+	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", args)
 
 	if err := sb.nd.AddNewMessage(ctx, msg); err != nil {
-		return errors.Wrap(err, "pushing out commitSector message failed")
+		return nil, errors.Wrap(err, "pushing out commitSector message failed")
 	}
 
-	// TODO: maybe wait for the message to clear on chain?
-	return nil
+	msgCid, err := msg.Cid()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get commitSector message CID")
+	}
+
+	return msgCid, nil
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage
