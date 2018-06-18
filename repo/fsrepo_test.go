@@ -35,6 +35,9 @@ const (
 [mining]
   rewardAddress = ""
   minerAddresses = []
+
+[wallet]
+  defaultAddress = ""
 `
 )
 

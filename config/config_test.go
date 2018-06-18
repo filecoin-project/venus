@@ -53,6 +53,9 @@ func TestWriteFile(t *testing.T) {
 [mining]
   rewardAddress = ""
   minerAddresses = []
+
+[wallet]
+  defaultAddress = ""
 `,
 		string(content),
 	)

@@ -20,6 +20,7 @@ type Config struct {
 	Datastore *DatastoreConfig `toml:"datastore"`
 	Swarm     *SwarmConfig     `toml:"swarm"`
 	Mining    *MiningConfig    `toml:"mining"`
+	Wallet    *WalletConfig    `toml:"wallet"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -92,6 +93,17 @@ func newDefaultMiningConfig() *MiningConfig {
 	}
 }
 
+// WalletConfig holds all configuration options related to the wallet.
+type WalletConfig struct {
+	DefaultAddress types.Address `toml:"defaultAddress,omitempty"`
+}
+
+func newDefaultWalletConfig() *WalletConfig {
+	return &WalletConfig{
+		DefaultAddress: types.Address{},
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -101,6 +113,7 @@ func NewDefaultConfig() *Config {
 		Datastore: newDefaultDatastoreConfig(),
 		Swarm:     newDefaultSwarmConfig(),
 		Mining:    newDefaultMiningConfig(),
+		Wallet:    newDefaultWalletConfig(),
 	}
 }
 
