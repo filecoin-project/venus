@@ -73,7 +73,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Contains(result.ExecutionError.Error(), ErrPledgeTooLow.Error())
+	assert.Contains(result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
 }
 
 func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
@@ -134,7 +134,7 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
-	assert.Contains(result.ExecutionError.Error(), miner.ErrPublicKeyTooBig.Error())
+	assert.Contains(result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
 }
 
 func TestStorageMarketAddBid(t *testing.T) {

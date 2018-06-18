@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"sync"
-
 	bserv "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/blockservice"
 	"gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap"
 	bsnet "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/exchange/bitswap/network"
@@ -19,9 +17,11 @@ import (
 	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	exchange "gx/ipfs/QmdcAXgEHUueP4A7b5hjabKn2EooeHgMreMvFC249dGCgc/go-ipfs-exchange-interface"
 	hamt "gx/ipfs/QmdtiofXbibTe6Day9ii5zjBZpSRm8vhfoerrNuY3sAQ7e/go-hamt-ipld"
+	"sync"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -597,6 +598,9 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pl
 	var minerAddress types.Address
 	err = node.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.Message,
 		receipt *types.MessageReceipt) error {
+		if receipt.ExitCode != uint8(0) {
+			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+		}
 		minerAddress, err = types.NewAddressFromBytes(receipt.Return[0])
 		return err
 	})

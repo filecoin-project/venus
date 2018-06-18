@@ -18,10 +18,32 @@ func init() {
 }
 
 // MaximumPublicKeySize is a limit on how big a public key can be
-var MaximumPublicKeySize = 100
+const MaximumPublicKeySize = 100
 
-// ErrPublicKeyTooBig is returned when publicKey is too big
-var ErrPublicKeyTooBig = errors.NewRevertErrorf("public key must be less than %d bytes", MaximumPublicKeySize)
+const (
+	// ErrPublicKeyTooBig indicates an invalid public key
+	ErrPublicKeyTooBig = 33
+	// ErrInvalidSector indicates and invalid sector id
+	ErrInvalidSector = 34
+	// ErrSectorCommited indicates the sector has already been committed
+	ErrSectorCommited = 35
+	// ErrStoragemarketCallFailed indicates the call to commit the deal failed
+	ErrStoragemarketCallFailed = 36
+	// ErrCallerUnauthorized signals an unauthorized caller.
+	ErrCallerUnauthorized = 37
+	// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
+	ErrInsufficientPledge = 38
+)
+
+// Errors map error codes to revert errors this actor may return
+var Errors = map[uint8]error{
+	ErrPublicKeyTooBig:         errors.NewCodedRevertErrorf(ErrPublicKeyTooBig, "public key must be less than %d bytes", MaximumPublicKeySize),
+	ErrInvalidSector:           errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
+	ErrSectorCommited:          errors.NewCodedRevertErrorf(ErrSectorCommited, "sector already committed"),
+	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
+	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
+	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
+}
 
 // Actor is the miner actor
 type Actor struct{}
@@ -65,7 +87,7 @@ func NewActor(owner types.Address, publicKey []byte, pledge *types.BytesAmount, 
 	// TODO: we should validate this is actually a public key (possibly the owner's public key) once we have a better
 	// TODO: idea what crypto looks like.
 	if len(publicKey) > MaximumPublicKeySize {
-		return nil, ErrPublicKeyTooBig
+		return nil, Errors[ErrPublicKeyTooBig]
 	}
 
 	st := &Storage{
@@ -112,28 +134,20 @@ func (ma *Actor) Exports() exec.Exports {
 	return minerExports
 }
 
-// ErrCallerUnauthorized signals an unauthorized caller.
-var ErrCallerUnauthorized = errors.NewRevertError("not authorized to call the method")
-
-// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
-var ErrInsufficientPledge = errors.NewRevertError("not enough pledged")
-
 // AddAsk adds an ask via this miner to the storage markets orderbook
 func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
 	var mstore Storage
 	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
 		if ctx.Message().From != mstore.Owner {
-			// TODO This should probably return a non-zero exit code instead of an error.
-			return nil, ErrCallerUnauthorized
+			return nil, Errors[ErrCallerUnauthorized]
 		}
 
 		// compute locked storage + new ask
 		total := mstore.LockedStorage.Add(size)
 
 		if total.GreaterThan(mstore.PledgeBytes) {
-			// TODO This should probably return a non-zero exit code instead of an error.88
-			return nil, ErrInsufficientPledge
+			return nil, Errors[ErrInsufficientPledge]
 		}
 
 		mstore.LockedStorage = total
@@ -150,16 +164,13 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *type
 		}
 
 		if ret != 0 {
-			// TODO: Log an error maybe? need good ways of signaling *why* failures happened.
-			// I guess we do want to revert all state changes in this case.
-			// Which is usually signalled through an error. Something smells.
-			return nil, errors.NewRevertError("call to StorageMarket.addAsk failed")
+			return nil, Errors[ErrStoragemarketCallFailed]
 		}
 
 		return askID.Val, nil
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	askID, ok := out.(*big.Int)
@@ -177,7 +188,7 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
 		return mstore.Owner, nil
 	})
 	if err != nil {
-		return types.Address{}, 1, err
+		return types.Address{}, errors.CodeError(err), err
 	}
 
 	a, ok := out.(types.Address)
@@ -197,7 +208,7 @@ func (ma *Actor) AddDealsToSector(ctx exec.VMContext, sectorID int64, deals []ui
 		return mstore.upsertDealsToSector(sectorID, deals)
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	secIDout, ok := out.(int64)
@@ -214,11 +225,11 @@ func (mstore *Storage) upsertDealsToSector(sectorID int64, deals []uint64) (int6
 		mstore.Sectors = append(mstore.Sectors, new(Sector))
 	}
 	if sectorID >= int64(len(mstore.Sectors)) {
-		return 0, errors.NewRevertError("sectorID out of range")
+		return 0, Errors[ErrInvalidSector]
 	}
 	sector := mstore.Sectors[sectorID]
 	if sector.CommR != nil {
-		return 0, errors.NewRevertError("can't add deals to committed sector")
+		return 0, Errors[ErrSectorCommited]
 	}
 
 	sector.Deals = append(sector.Deals, deals...)
@@ -242,7 +253,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, 
 
 		sector := mstore.Sectors[sectorID]
 		if sector.CommR != nil {
-			return nil, errors.NewRevertError("sector already committed")
+			return nil, Errors[ErrSectorCommited]
 		}
 
 		resp, ret, err := ctx.Send(address.StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
@@ -250,7 +261,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, 
 			return nil, err
 		}
 		if ret != 0 {
-			return nil, errors.NewRevertError("failed to call commitDeals")
+			return nil, Errors[ErrStoragemarketCallFailed]
 		}
 
 		sector.CommR = commR
@@ -260,7 +271,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, 
 		return nil, nil
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	secIDout, ok := out.(int64)
@@ -278,7 +289,7 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 		return mstore.PublicKey, nil
 	})
 	if err != nil {
-		return nil, 1, err
+		return nil, errors.CodeError(err), err
 	}
 
 	validOut, ok := out.([]byte)

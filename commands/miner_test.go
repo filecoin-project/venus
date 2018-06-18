@@ -14,79 +14,98 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestMinerCreateSuccess(t *testing.T) {
+func TestMinerCreate(t *testing.T) {
 	assert := assert.New(t)
 
-	var err error
-	var addr types.Address
+	t.Run("success", func(t *testing.T) {
+		var err error
+		var addr types.Address
 
-	d := NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+		d := NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
 
-	tf := func(fromAddress types.Address, expectSuccess bool) {
-		args := []string{"miner", "create"}
-		if !fromAddress.Empty() {
-			args = append(args, "--from", fromAddress.String())
+		tf := func(fromAddress types.Address, expectSuccess bool) {
+			args := []string{"miner", "create"}
+			if !fromAddress.Empty() {
+				args = append(args, "--from", fromAddress.String())
+			}
+			args = append(args, "1000000", "20")
+			if !expectSuccess {
+				d.RunFail(ErrCouldNotDefaultFromAddress.Error(), args...)
+				return
+			}
+
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				miner := d.RunSuccess(args...)
+				addr, err = types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+				assert.NoError(err)
+				assert.NotEqual(addr, types.Address{})
+				wg.Done()
+			}()
+
+			d.RunSuccess("mining once")
+			wg.Wait()
+
+			// expect address to have been written in config
+			config := d.RunSuccess("config mining.minerAddresses")
+			assert.Contains(config.ReadStdout(), addr.String())
 		}
-		args = append(args, "1000000", "20")
-		if !expectSuccess {
-			d.RunFail(ErrCouldNotDefaultFromAddress.Error(), args...)
-			return
-		}
+
+		// If there's one address, --from can be omitted and we should default
+		tf(address.TestAddress, true)
+		tf(types.Address{}, true)
+
+		// If there's more than one, then --from must be specified
+		d.CreateWalletAddr()
+		tf(types.Address{}, false)
+		tf(address.TestAddress, true)
+	})
+
+	t.Run("validation failure", func(t *testing.T) {
+		d := NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
+
+		d.CreateWalletAddr()
+
+		d.RunFail("invalid from address",
+			"miner", "create",
+			"--from", "hello", "1000000", "20",
+		)
+		d.RunFail("invalid pledge",
+			"miner", "create",
+			"--from", address.TestAddress.String(), "'-123'", "20",
+		)
+		d.RunFail("invalid pledge",
+			"miner", "create",
+			"--from", address.TestAddress.String(), "1f", "20",
+		)
+		d.RunFail("invalid collateral",
+			"miner", "create",
+			"--from", address.TestAddress.String(), "100", "2f",
+		)
+	})
+
+	t.Run("creation failure", func(t *testing.T) {
+		d := NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
 
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
-			miner := d.RunSuccess(args...)
-			addr, err = types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
-			assert.NoError(err)
-			assert.NotEqual(addr, types.Address{})
+			d.RunFail("pledge must be at least",
+				"miner", "create",
+				"--from", address.TestAddress.String(), "10", "10",
+			)
 			wg.Done()
 		}()
 
 		d.RunSuccess("mining once")
 		wg.Wait()
-
-		// expect address to have been written in config
-		config := d.RunSuccess("config mining.minerAddresses")
-		assert.Contains(config.ReadStdout(), addr.String())
-	}
-
-	// If there's one address, --from can be omitted and we should default
-	tf(address.TestAddress, true)
-	tf(types.Address{}, true)
-
-	// If there's more than one, then --from must be specified
-	d.CreateWalletAddr()
-	tf(types.Address{}, false)
-	tf(address.TestAddress, true)
-}
-
-func TestMinerCreateFail(t *testing.T) {
-
-	d := NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
-
-	d.CreateWalletAddr()
-
-	d.RunFail("invalid from address",
-		"miner", "create",
-		"--from", "hello", "1000000", "20",
-	)
-	d.RunFail("invalid pledge",
-		"miner", "create",
-		"--from", address.TestAddress.String(), "'-123'", "20",
-	)
-	d.RunFail("invalid pledge",
-		"miner", "create",
-		"--from", address.TestAddress.String(), "1f", "20",
-	)
-	d.RunFail("invalid collateral",
-		"miner", "create",
-		"--from", address.TestAddress.String(), "100", "2f",
-	)
-
+	})
 }
 
 func TestMinerAddAskSuccess(t *testing.T) {
