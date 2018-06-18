@@ -65,6 +65,91 @@ func TestProcessBlockSuccess(t *testing.T) {
 	assert.True(expStCid.Equals(gotStCid))
 }
 
+func TestProcessTipSetSuccess(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(10000))
+	act2 := RequireNewAccountActor(require, types.NewTokenAmount(10000))
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	msg1 := types.NewMessage(addr1, addr3, 0, types.NewTokenAmount(550), "", nil)
+	msg2 := types.NewMessage(addr2, addr3, 0, types.NewTokenAmount(50), "", nil)
+	blk1 := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.Message{msg1},
+	}
+	blk2 := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.Message{msg2},
+	}
+	res, err := ProcessTipSet(ctx, NewTipSet(blk1, blk2), st)
+	assert.NoError(err)
+	assert.Len(res.Results, 2)
+
+	gotStCid, err := st.Flush(ctx)
+	assert.NoError(err)
+	expAct1, expAct2, expAct3 := RequireNewAccountActor(require, types.NewTokenAmount(10000-550)), RequireNewAccountActor(require, types.NewTokenAmount(10000-50)), RequireNewEmptyActor(require, types.NewTokenAmount(550+50))
+	expAct1.IncNonce()
+	expAct2.IncNonce()
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: expAct1,
+		addr2: expAct2,
+		addr3: expAct3,
+	})
+	assert.True(expStCid.Equals(gotStCid))
+}
+
+func TestProcessTipsConflicts(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	newAddress := types.NewAddressForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	addr1, addr2 := newAddress(), newAddress()
+	act1 := RequireNewAccountActor(require, types.NewTokenAmount(1000))
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+	})
+	msg1 := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(501), "", nil)
+	msg2 := types.NewMessage(addr1, addr2, 0, types.NewTokenAmount(502), "", nil)
+	blk1 := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.Message{msg1},
+		Ticket:    []byte{0, 0}, // Block with smaller ticket
+	}
+	blk2 := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.Message{msg2},
+		Ticket:    []byte{1, 1},
+	}
+	res, err := ProcessTipSet(ctx, NewTipSet(blk1, blk2), st)
+	assert.NoError(err)
+	assert.Len(res.Results, 1)
+
+	gotStCid, err := st.Flush(ctx)
+	assert.NoError(err)
+
+	expAct1, expAct2 := RequireNewAccountActor(require, types.NewTokenAmount(1000-501)), RequireNewEmptyActor(require, types.NewTokenAmount(501))
+	expAct1.IncNonce()
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: expAct1,
+		addr2: expAct2,
+	})
+	assert.True(expStCid.Equals(gotStCid))
+}
+
 func TestProcessBlockVMErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

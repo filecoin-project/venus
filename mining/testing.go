@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/mock"
 )
@@ -16,7 +17,7 @@ type MockBlockGenerator struct {
 var _ BlockGenerator = &MockBlockGenerator{}
 
 // Generate is a testify mock implementation.
-func (bg *MockBlockGenerator) Generate(ctx context.Context, h *types.Block, ticket types.Signature, nullBlockCount uint64, a types.Address) (b *types.Block, err error) {
+func (bg *MockBlockGenerator) Generate(ctx context.Context, h core.TipSet, ticket types.Signature, nullBlockCount uint64, a types.Address) (b *types.Block, err error) {
 	args := bg.Called(ctx, h, nullBlockCount, a)
 	if args.Get(0) != nil {
 		b = args.Get(0).(*types.Block)

@@ -38,7 +38,7 @@ func TestChainHead(t *testing.T) {
 		blk := types.NewBlockForTest(nil, 1)
 		n := node.MakeNodesUnstarted(t, 1, true)[0]
 
-		n.ChainMgr.SetBestBlockForTest(ctx, blk)
+		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(blk))
 
 		out, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
 			ctx:  ctx,
@@ -64,7 +64,7 @@ func TestChainLsRun(t *testing.T) {
 		genBlock := n.ChainMgr.GetBestBlock()
 		chlBlock := types.NewBlockForTest(genBlock, 1)
 
-		err = n.ChainMgr.SetBestBlockForTest(ctx, chlBlock)
+		err = n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(chlBlock))
 		require.NoError(err)
 
 		out, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
@@ -97,7 +97,7 @@ func TestChainLsRun(t *testing.T) {
 		parBlock := types.NewBlockForTest(nil, 0)
 		chlBlock := types.NewBlockForTest(parBlock, 1)
 
-		err := n.ChainMgr.SetBestBlockForTest(ctx, chlBlock)
+		err := n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(chlBlock))
 		require.NoError(err)
 
 		// parBlock is not known to the chain, which causes the timeout

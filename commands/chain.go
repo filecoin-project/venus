@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,10 +26,12 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "get the best block CID",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		blk := GetNode(env).ChainMgr.GetBestBlock()
-		if blk == nil {
+		blks := GetNode(env).ChainMgr.GetHeaviestTipSet().ToSlice()
+		if len(blks) == 0 {
 			return errors.New("best block not found")
 		}
+		// TODO report all blocks of tipset, not a random one
+		blk := blks[0]
 
 		re.Emit(cmds.Single{Value: blk.Cid()}) // nolint: errcheck
 
@@ -46,8 +49,13 @@ var chainLsCmd = &cmds.Command{
 			switch v := raw.(type) {
 			case error:
 				return v
-			case *types.Block:
-				re.Emit(v) // nolint: errcheck
+			case core.TipSet:
+				// TODO handle multi-block tipsets well
+				// right now we just take one random block from each tipset
+				if len(v) == 0 {
+					panic("tipsets from this channel should have at least one member")
+				}
+				re.Emit(v.ToSlice()[0]) // nolint: errcheck
 			default:
 				return errors.New("unexpected type")
 			}

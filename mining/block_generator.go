@@ -2,28 +2,25 @@ package mining
 
 import (
 	"context"
-	"fmt"
 
 	logging "gx/ipfs/QmQCqiR5F3NeJRr7LuWq8i8FgtT65ypZw5v9V6Es6nwFBD/go-log"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 var log = logging.Logger("mining")
 
 // GetStateTree is a function that gets a state tree by cid. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, *cid.Cid) (state.Tree, error)
+type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(_ context.Context, _ *types.Block, _ types.Signature, nullBlockCount uint64, _ types.Address) (*types.Block, error)
+	Generate(context.Context, core.TipSet, types.Signature, uint64, types.Address) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
@@ -35,8 +32,7 @@ func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree,
 	}
 }
 
-type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (results []*core.ApplicationResult, permanentFailures []*types.Message,
-	successfulMessages []*types.Message, temporaryFailures []*types.Message, err error)
+type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (core.ApplyMessagesResponse, error)
 
 // blockGenerator generates new blocks for inclusion in the chain.
 type blockGenerator struct {
@@ -45,39 +41,9 @@ type blockGenerator struct {
 	applyMessages miningApplier
 }
 
-// ApplyMessages applies messages to state tree and returns results,
-// messages with permanent and temporary failures, and any error.
-func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (
-	results []*core.ApplicationResult, permanentFailures []*types.Message, temporaryFailures []*types.Message,
-	successfulMessages []*types.Message, err error) {
-	var emptyResults []*core.ApplicationResult
-	for _, msg := range messages {
-		r, err := core.ApplyMessage(ctx, st, msg, bh)
-		// If the message should not have been in the block, bail somehow.
-		switch {
-		case errors.IsFault(err):
-			return emptyResults, permanentFailures, temporaryFailures, successfulMessages, err
-		case errors.IsApplyErrorPermanent(err):
-			permanentFailures = append(permanentFailures, msg)
-			continue
-		case errors.IsApplyErrorTemporary(err):
-			temporaryFailures = append(temporaryFailures, msg)
-			continue
-		case err != nil:
-			err = fmt.Errorf("someone is a bad programmer: must be a fault, perm, or temp error: %s", err.Error())
-			return emptyResults, permanentFailures, temporaryFailures, successfulMessages, err
-		default:
-			// TODO fritz check caller assumptions about receipts.
-			successfulMessages = append(successfulMessages, msg)
-			results = append(results, r)
-		}
-	}
-	return results, permanentFailures, temporaryFailures, successfulMessages, nil
-}
-
 // Generate returns a new block created from the messages in the pool.
-func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address) (*types.Block, error) {
-	stateTree, err := b.getStateTree(ctx, baseBlock.StateRoot)
+func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address) (*types.Block, error) {
+	stateTree, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, err
 	}
@@ -87,14 +53,14 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ti
 		return nil, err
 	}
 
-	blockHeight := baseBlock.Height + nullBlockCount + 1
+	blockHeight := baseTipSet.Height() + nullBlockCount + 1
 	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
 	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.
 	copy(messages[1:], core.OrderMessagesByNonce(b.messagePool.Pending()))
 
-	results, permanentFailures, temporaryFailures, successfulMessages, err := b.applyMessages(ctx, messages, stateTree, types.NewBlockHeight(blockHeight))
+	res, err := b.applyMessages(ctx, messages, stateTree, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, err
 	}
@@ -105,22 +71,22 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ti
 	}
 
 	var receipts []*types.MessageReceipt
-	for _, r := range results {
+	for _, r := range res.Results {
 		receipts = append(receipts, r.Receipt)
 	}
 
 	next := &types.Block{
 		Miner:           rewardAddress,
 		Height:          blockHeight,
-		Messages:        successfulMessages,
+		Messages:        res.SuccessfulMessages,
 		MessageReceipts: receipts,
-		Parents:         types.NewSortedCidSet(baseBlock.Cid()),
+		Parents:         baseTipSet.ToSortedCidSet(),
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
 	}
 
 	var rewardSuccessful bool
-	for _, msg := range successfulMessages {
+	for _, msg := range res.SuccessfulMessages {
 		if msg == rewardMsg {
 			rewardSuccessful = true
 		}
@@ -130,7 +96,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ti
 	}
 	// Mining reward message succeeded -- side effects okay below this point.
 
-	for _, msg := range successfulMessages {
+	for _, msg := range res.SuccessfulMessages {
 		mc, err := msg.Cid()
 		if err == nil {
 			b.messagePool.Remove(mc)
@@ -138,7 +104,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ti
 	}
 
 	// TODO: Should we really be pruning the message pool here at all? Maybe this should happen elsewhere.
-	for _, msg := range permanentFailures {
+	for _, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.
 		// Therefore, we will remove it from the MessagePool now.
 		mc, err := msg.Cid()
@@ -149,7 +115,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseBlock *types.Block, ti
 		}
 	}
 
-	for _, msg := range temporaryFailures {
+	for _, msg := range res.TemporaryFailures {
 		// We might be able to apply this message in the future because the error was temporary.
 		// Therefore, we will leave it in the MessagePool for now.
 		mc, _ := msg.Cid()

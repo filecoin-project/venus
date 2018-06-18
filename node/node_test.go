@@ -129,6 +129,7 @@ func TestStartMiningNoRewardAddress(t *testing.T) {
 
 func TestNodeMining(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	newCid := types.NewCidForTestGetter()
 	ctx := context.Background()
 
@@ -143,27 +144,29 @@ func TestNodeMining(t *testing.T) {
 	mockWorker.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
 	node.MiningWorker = mockWorker
 
-	// Ensure that the initial input (the best block) is wired up properly.
+	// Ensure that the initial input (the best tipset) is wired up properly.
 	b1 := &types.Block{StateRoot: newCid()}
 	var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 	chainMgrForTest = node.ChainMgr
-	chainMgrForTest.SetBestBlockForTest(ctx, b1)
-	assert.NoError(node.Start())
-	assert.NoError(node.StartMining())
+	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b1))
+	require.NoError(node.Start())
+	require.NoError(node.StartMining())
 	gotInput := <-inCh
-	assert.True(b1.Cid().Equals(core.BaseBlockFromTipSets(gotInput.TipSets).Cid()))
+	require.Equal(1, len(gotInput.TipSet))
+	assert.True(b1.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
 	assert.Equal(node.Wallet.Addresses()[0].String(), gotInput.RewardAddress.String())
 
-	// Ensure that the successive inputs (new best blocks) are wired up properly.
-	b2 := &types.Block{StateRoot: newCid()}
-	node.ChainMgr.SetBestBlockForTest(ctx, b2)
+	// Ensure that the successive inputs (new best tipsets) are wired up properly.
+	b2 := core.MkChild([]*types.Block{b1}, newCid(), 0)
+	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b2))
 	gotInput = <-inCh
-	assert.True(b2.Cid().Equals(core.BaseBlockFromTipSets(gotInput.TipSets).Cid()))
+	require.Equal(1, len(gotInput.TipSet))
+	assert.True(b2.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
 
 	// Ensure we don't mine when stopped.
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
 	node.StopMining()
-	node.ChainMgr.SetBestBlockForTest(ctx, b2)
+	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b2))
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
 
@@ -173,7 +176,7 @@ func TestNodeMining(t *testing.T) {
 	node = MakeNodesUnstarted(t, 1, true)[0]
 
 	chainMgrForTest = node.ChainMgr
-	chainMgrForTest.SetBestBlockForTest(ctx, b1)
+	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b1))
 	assert.NoError(node.Start())
 	assert.NoError(node.StartMining())
 	workerDone := false
@@ -217,21 +220,20 @@ func TestUpdateMessagePool(t *testing.T) {
 	node := MakeNodesUnstarted(t, 1, true)[0]
 
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
-	type msgs []*types.Message
 
 	// Msg pool: [m0, m1],   Chain: b[m2, m3]
 	// to
-	// Msg pool: [m0, m3],   Chain: b[m1, m2]
+	// Msg pool: [m0, m3],   Chain: b[] -> b[m1, m2]
 	m := types.NewMsgs(4)
 	core.MustAdd(node.MsgPool, m[0], m[1])
-	oldChain := core.NewChainWithMessages(node.CborStore, nil, msgs{m[2], m[3]})
-	newChain := core.NewChainWithMessages(node.CborStore, nil, msgs{m[1], m[2]})
-	chainMgrForTest.SetBestBlockForTest(ctx, oldChain[len(oldChain)-1])
+	oldChain := core.NewChainWithMessages(node.CborStore, nil, msgsSet{msgs{m[2], m[3]}})
+	newChain := core.NewChainWithMessages(node.CborStore, nil, msgsSet{msgs{}}, msgsSet{msgs{m[1], m[2]}})
+	chainMgrForTest.SetHeaviestTipSetForTest(ctx, oldChain[len(oldChain)-1])
 	assert.NoError(node.Start())
 	updateMsgPoolDoneCh := make(chan struct{})
-	node.BestBlockHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
+	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
 	// Triggers a notification, node should update the message pool as a result.
-	chainMgrForTest.SetBestBlockForTest(ctx, newChain[len(newChain)-1])
+	chainMgrForTest.SetHeaviestTipSetForTest(ctx, newChain[len(newChain)-1])
 	<-updateMsgPoolDoneCh
 	assert.Equal(2, len(node.MsgPool.Pending()))
 	pending := node.MsgPool.Pending()
@@ -258,6 +260,7 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainM
 }
 
 type msgs []*types.Message
+type msgsSet [][]*types.Message
 
 func TestWaitForMessage(t *testing.T) {
 	assert := assert.New(t)
@@ -291,9 +294,9 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node
 	newMsg := types.NewMessageForTestGetter()
 
 	m1, m2 := newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m1, m2}})
 
-	stm.SetBestBlockForTest(ctx, chain[len(chain)-1])
+	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
 
 	testWaitHelp(nil, assert, stm, m1, false)
 	testWaitHelp(nil, assert, stm, m2, false)
@@ -304,15 +307,16 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 	var wg sync.WaitGroup
 	newMsg := types.NewMessageForTestGetter()
 
-	m1, m2 := newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
+	_, _ = newMsg(), newMsg() // flush out so we get distinct messages from testWaitExisting
+	m3, m4 := newMsg(), newMsg()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m3, m4}})
 
 	wg.Add(2)
-	go testWaitHelp(&wg, assert, stm, m1, false)
-	go testWaitHelp(&wg, assert, stm, m2, false)
+	go testWaitHelp(&wg, assert, stm, m3, false)
+	go testWaitHelp(&wg, assert, stm, m4, false)
 	time.Sleep(10 * time.Millisecond)
 
-	stm.SetBestBlockForTest(ctx, chain[len(chain)-1])
+	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
 	wg.Wait()
 }
 
@@ -324,9 +328,9 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, s
 	}
 
 	m1, m2, m3, m4 := newMsg(), newMsg(), newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetBestBlock(), msgs{m1, m2})
-	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], msgs{m3, m4})
-	stm.SetBestBlockForTest(ctx, chain2[len(chain2)-1])
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m1, m2}})
+	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], msgsSet{msgs{m3, m4}})
+	stm.SetHeaviestTipSetForTest(ctx, chain2[len(chain2)-1])
 
 	testWaitHelp(nil, assert, stm, m2, true)
 }
@@ -441,7 +445,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		cid := state.MustSetActor(st, address, actor)
 		bb.StateRoot = cid
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
-		chainMgrForTest.SetBestBlockForTest(ctx, bb)
+		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(bb))
 
 		msg, err := NewMessageWithNextNonce(ctx, node, address, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
 		assert.NoError(err)

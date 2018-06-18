@@ -128,7 +128,7 @@ func assertPoolEquals(assert *assert.Assertions, p *MessagePool, expMsgs ...*typ
 	}
 }
 
-func headOf(chain []*types.Block) *types.Block {
+func headOf(chain []TipSet) TipSet {
 	return chain[len(chain)-1]
 }
 
@@ -136,6 +136,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 	type msgs []*types.Message
+	type msgsSet [][]*types.Message
 
 	t.Run("Replace head", func(t *testing.T) {
 		// Msg pool: [m0, m1], Chain: b[]
@@ -145,9 +146,11 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(2)
 		MustAdd(p, m[0], m[1])
-		oldChain := NewChainWithMessages(store, nil, msgs{})
-		newChain := NewChainWithMessages(store, nil, msgs{m[1]})
-		assert.NoError(UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain)))
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[1]}})
+		newTipSet := headOf(newChain)
+		assert.NoError(UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[0])
 	})
 
@@ -159,22 +162,51 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(3)
 		MustAdd(p, m[0], m[1])
-		oldChain := NewChainWithMessages(store, nil, msgs{m[2]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(oldChain)) // sic
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[2]}})
+		oldTipSet := headOf(oldChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, oldTipSet) // sic
 		assertPoolEquals(assert, p, m[0], m[1])
 	})
 
 	t.Run("Replace head with a long chain", func(t *testing.T) {
-		// Msg pool: [m2, m5],     Chain: b[m0, m12]
+		// Msg pool: [m2, m5],     Chain: b[m0, m1]
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
 		store := hamt.NewCborStore()
 		p := NewMessagePool()
 		m := types.NewMsgs(7)
 		MustAdd(p, m[2], m[5])
-		oldChain := NewChainWithMessages(store, nil, msgs{m[0], m[1]})
-		newChain := NewChainWithMessages(store, nil, msgs{m[2], m[3]}, msgs{m[4]}, msgs{m[0]}, msgs{}, msgs{m[5], m[6]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain))
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0], m[1]}})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[2], m[3]}},
+			msgsSet{msgs{m[4]}},
+			msgsSet{msgs{m[0]}},
+			msgsSet{msgs{}},
+			msgsSet{msgs{m[5], m[6]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		assertPoolEquals(assert, p, m[1])
+	})
+
+	t.Run("Replace head with multi-block tipset chains", func(t *testing.T) {
+		// Msg pool: [m2, m5],     Chain: {b[m0], b[m1]}
+		// to
+		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
+		store := hamt.NewCborStore()
+		p := NewMessagePool()
+		m := types.NewMsgs(7)
+		MustAdd(p, m[2], m[5])
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}, msgs{m[1]}})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[2], m[3]}},
+			msgsSet{msgs{m[4]}, msgs{m[0]}, msgs{}, msgs{}},
+			msgsSet{msgs{}, msgs{m[5], m[6]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[1])
 	})
 
@@ -186,9 +218,11 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(6)
 		MustAdd(p, m[3], m[5])
-		oldChain := NewChainWithMessages(store, nil, msgs{m[0]}, msgs{m[1]}, msgs{m[2]})
-		newChain := NewChainWithMessages(store, oldChain[0], msgs{m[3]}, msgs{m[4], m[5]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain))
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[1], m[2])
 	})
 
@@ -200,10 +234,66 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(7)
 		MustAdd(p, m[6])
-		oldChain := NewChainWithMessages(store, nil, msgs{m[0]}, msgs{m[1]}, msgs{m[2]})
-		newChain := NewChainWithMessages(store, oldChain[0], msgs{m[3]}, msgs{m[4]}, msgs{m[5]}, msgs{m[1], m[2]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain))
+		oldChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[0]}},
+			msgsSet{msgs{m[1]}},
+			msgsSet{msgs{m[2]}},
+		)
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, oldChain[0],
+			msgsSet{msgs{m[3]}},
+			msgsSet{msgs{m[4]}},
+			msgsSet{msgs{m[5]}},
+			msgsSet{msgs{m[1], m[2]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[6])
+	})
+
+	t.Run("Replace internal node with multi-block tipset chains", func(t *testing.T) {
+		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m2]
+		// to
+		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
+		store := hamt.NewCborStore()
+		p := NewMessagePool()
+		m := types.NewMsgs(7)
+		MustAdd(p, m[6])
+		oldChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[0]}, msgs{m[1]}},
+			msgsSet{msgs{m[2]}},
+		)
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, oldChain[0],
+			msgsSet{msgs{m[3]}},
+			msgsSet{msgs{m[4]}},
+			msgsSet{msgs{m[5]}, msgs{m[1], m[2]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		assertPoolEquals(assert, p, m[6])
+	})
+
+	t.Run("Replace with same messages in different block structure", func(t *testing.T) {
+		// Msg pool: [m3, m5],     Chain: b[m0] -> b[m1] -> b[m2]
+		// to
+		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
+		store := hamt.NewCborStore()
+		p := NewMessagePool()
+		m := types.NewMsgs(6)
+		MustAdd(p, m[3], m[5])
+		oldChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[0]}},
+			msgsSet{msgs{m[1]}},
+			msgsSet{msgs{m[2]}},
+		)
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[0]}, msgs{m[1]}, msgs{m[2]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		assertPoolEquals(assert, p, m[3], m[5])
 	})
 
 	t.Run("Truncate to internal node", func(t *testing.T) {
@@ -213,8 +303,15 @@ func TestUpdateMessagePool(t *testing.T) {
 		store := hamt.NewCborStore()
 		p := NewMessagePool()
 		m := types.NewMsgs(4)
-		oldChain := NewChainWithMessages(store, nil, msgs{m[0]}, msgs{m[1]}, msgs{m[2]}, msgs{m[3]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), oldChain[1])
+		oldChain := NewChainWithMessages(store, TipSet{},
+			msgsSet{msgs{m[0]}},
+			msgsSet{msgs{m[1]}},
+			msgsSet{msgs{m[2]}},
+			msgsSet{msgs{m[3]}},
+		)
+		oldTipSet := headOf(oldChain)
+		oldTipSetPrev := oldChain[1]
+		UpdateMessagePool(ctx, p, store, oldTipSet, oldTipSetPrev)
 		assertPoolEquals(assert, p, m[2], m[3])
 	})
 
@@ -226,9 +323,11 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(3)
 		MustAdd(p, m[0], m[1])
-		oldChain := NewChainWithMessages(store, nil, msgs{})
-		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgs{m[1], m[2]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain))
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{}})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[0])
 	})
 
@@ -240,9 +339,15 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewMsgs(7)
 		MustAdd(p, m[2], m[5])
-		oldChain := NewChainWithMessages(store, nil, msgs{m[0]}, msgs{m[1]})
-		newChain := NewChainWithMessages(store, oldChain[1], msgs{m[2], m[3]}, msgs{m[4]}, msgs{m[5], m[6]})
-		UpdateMessagePool(ctx, p, store, headOf(oldChain), headOf(newChain))
+		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
+		oldTipSet := headOf(oldChain)
+		newChain := NewChainWithMessages(store, oldChain[1],
+			msgsSet{msgs{m[2], m[3]}},
+			msgsSet{msgs{m[4]}},
+			msgsSet{msgs{m[5], m[6]}},
+		)
+		newTipSet := headOf(newChain)
+		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p)
 	})
 }

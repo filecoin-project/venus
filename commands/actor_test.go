@@ -74,7 +74,7 @@ func TestActorLs(t *testing.T) {
 		b1 := &types.Block{StateRoot: types.NewCidForTestGetter()()}
 		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 		chainMgrForTest = nd.ChainMgr
-		chainMgrForTest.SetBestBlockForTest(ctx, b1)
+		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b1))
 		assert.NoError(nd.Start())
 		tokenAmount := types.NewTokenAmount(100)
 

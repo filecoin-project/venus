@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
+	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 
 	"fmt"
 	"os"
@@ -29,15 +30,19 @@ func TestAddFakeChain(t *testing.T) {
 	var gbbCount, pbCount int
 	ctx := context.Background()
 
-	getBestBlock := func() *types.Block {
+	getHeaviestTipSet := func() core.TipSet {
 		gbbCount++
-		return new(types.Block)
+		return core.NewTipSet(new(types.Block))
 	}
 	processBlock := func(context context.Context, block *types.Block) (core.BlockProcessResult, error) {
 		pbCount++
 		return 0, nil
 	}
-	fake(ctx, length, getBestBlock, processBlock)
+	loadState := func(context context.Context, ts core.TipSet) (state.Tree, error) {
+		return state.NewEmptyStateTree(hamt.NewCborStore()), nil
+
+	}
+	fake(ctx, length, getHeaviestTipSet, processBlock, loadState)
 	assert.Equal(1, gbbCount)
 	assert.Equal(length, pbCount)
 }
@@ -54,13 +59,13 @@ func TestAddActors(t *testing.T) {
 	err := cm.Genesis(ctx, core.InitGenesis)
 	require.NoError(err)
 
-	st, cst, cm, bb, err := getStateTree(ctx, ds)
+	st, cst, cm, bts, err := getStateTree(ctx, ds)
 	require.NoError(err)
 
 	_, allActors := state.GetAllActors(st)
 	initialActors := len(allActors)
 
-	err = fakeActors(ctx, cst, cm, bb)
+	err = fakeActors(ctx, cst, cm, bts)
 	assert.NoError(err)
 
 	st, _, _, _, err = getStateTree(ctx, ds)
