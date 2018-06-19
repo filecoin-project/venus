@@ -58,7 +58,7 @@ func TestBlockHeightCborMarshaling(t *testing.T) {
 		out, err := cbor.DumpObject(np)
 		assert.NoError(err)
 
-		out2, err := cbor.DumpObject(ZeroToken)
+		out2, err := cbor.DumpObject(ZeroAttoFIL)
 		assert.NoError(err)
 
 		assert.NotEqual(out, out2)
@@ -92,7 +92,7 @@ func TestBlockHeightJsonMarshaling(t *testing.T) {
 		out, err := json.Marshal(np)
 		assert.NoError(err)
 
-		out2, err := json.Marshal(ZeroToken)
+		out2, err := json.Marshal(ZeroAttoFIL)
 		assert.NoError(err)
 
 		assert.NotEqual(out, out2)

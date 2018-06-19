@@ -49,7 +49,7 @@ message to be mined as this is required to return the address of the new miner.`
 			return ErrInvalidPledge
 		}
 
-		collateral, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
+		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
 			return ErrInvalidCollateral
 		}
@@ -99,7 +99,7 @@ var minerAddAskCmd = &cmds.Command{
 			return ErrInvalidSize
 		}
 
-		price, ok := types.NewTokenAmountFromString(req.Arguments[2], 10)
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[2], 10)
 		if !ok {
 			return ErrInvalidPrice
 		}

@@ -14,8 +14,8 @@ func TestAskSetMarshaling(t *testing.T) {
 	addrGetter := types.NewAddressForTestGetter()
 
 	as := make(AskSet)
-	ask4 := &Ask{ID: 4, Owner: addrGetter(), Price: types.NewTokenAmount(19), Size: types.NewBytesAmount(105)}
-	ask5 := &Ask{ID: 5, Owner: addrGetter(), Price: types.NewTokenAmount(909), Size: types.NewBytesAmount(435)}
+	ask4 := &Ask{ID: 4, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(19), Size: types.NewBytesAmount(105)}
+	ask5 := &Ask{ID: 5, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(909), Size: types.NewBytesAmount(435)}
 	as[4] = ask4
 	as[5] = ask5
 
@@ -38,8 +38,8 @@ func TestBidSetMarshaling(t *testing.T) {
 	bs := make(BidSet)
 	addrGetter := types.NewAddressForTestGetter()
 
-	bid4 := &Bid{ID: 4, Owner: addrGetter(), Price: types.NewTokenAmount(19), Size: types.NewBytesAmount(105)}
-	bid5 := &Bid{ID: 5, Owner: addrGetter(), Price: types.NewTokenAmount(909), Size: types.NewBytesAmount(435)}
+	bid4 := &Bid{ID: 4, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(19), Size: types.NewBytesAmount(105)}
+	bid5 := &Bid{ID: 5, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(909), Size: types.NewBytesAmount(435)}
 	bs[4] = bid4
 	bs[5] = bid5
 

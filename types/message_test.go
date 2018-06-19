@@ -17,7 +17,7 @@ func TestMessageMarshal(t *testing.T) {
 		addrGetter(),
 		addrGetter(),
 		0,
-		NewTokenAmount(17777),
+		NewAttoFILFromFIL(17777),
 		"send",
 		[]byte("foobar"),
 	)
@@ -44,7 +44,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		addrGetter(),
 		0,
-		NewTokenAmount(999),
+		NewAttoFILFromFIL(999),
 		"send",
 		nil,
 	)
@@ -53,7 +53,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		addrGetter(),
 		0,
-		NewTokenAmount(4004),
+		NewAttoFILFromFIL(4004),
 		"send",
 		nil,
 	)

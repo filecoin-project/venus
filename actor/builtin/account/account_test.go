@@ -14,7 +14,7 @@ func TestAccountActorCborMarshaling(t *testing.T) {
 	t.Run("CBOR decode(encode(Actor)) == identity(Actor)", func(t *testing.T) {
 		require := require.New(t)
 
-		preEncode, _ := NewActor(types.NewTokenAmount(100))
+		preEncode, _ := NewActor(types.NewAttoFILFromFIL(100))
 		out, err := cbor.DumpObject(preEncode)
 		require.NoError(err)
 

@@ -59,7 +59,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
-		amt := types.NewTokenAmount(10000)
+		amt := types.NewAttoFILFromFIL(10000)
 
 		daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 
@@ -73,7 +73,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
-		amt := types.NewTokenAmount(10000)
+		amt := types.NewAttoFILFromFIL(10000)
 
 		daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 
@@ -91,7 +91,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
-		amt := types.NewTokenAmount(10000)
+		amt := types.NewAttoFILFromFIL(10000)
 
 		daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 
@@ -106,14 +106,14 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
-	amt := types.NewTokenAmount(10000)
+	amt := types.NewAttoFILFromFIL(10000)
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
-		voucher := mustCreateVoucher(t, d, channelID, types.NewTokenAmount(100), payer)
+		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(100), payer)
 
-		assert.Equal(*types.NewTokenAmount(100), voucher.Amount)
+		assert.Equal(*types.NewAttoFILFromFIL(100), voucher.Amount)
 	})
 }
 
@@ -121,12 +121,12 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
-	amt := types.NewTokenAmount(10000)
+	amt := types.NewAttoFILFromFIL(10000)
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
-		voucher := mustCreateVoucher(t, d, channelID, types.NewTokenAmount(111), payer)
+		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(111), payer)
 
 		mustRedeemVoucher(t, d, voucher, target)
 
@@ -139,13 +139,13 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
-	amt := types.NewTokenAmount(10000)
+	amt := types.NewAttoFILFromFIL(10000)
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := mustCreateVoucher(t, d, channelID, types.NewTokenAmount(10), payer)
+		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(10), payer)
 
 		// target redeems the voucher (on-chain)
 		mustRedeemVoucher(t, d, voucher, target)
@@ -175,13 +175,13 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(100)
-	amt := types.NewTokenAmount(10000)
+	amt := types.NewAttoFILFromFIL(10000)
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := mustCreateVoucher(t, d, channelID, types.NewTokenAmount(10), payer)
+		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(10), payer)
 
 		// target redeems the voucher (on-chain) and simultaneously closes the channel
 		mustCloseChannel(t, d, voucher, target)
@@ -207,13 +207,13 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(5)
-	amt := types.NewTokenAmount(10000)
+	amt := types.NewAttoFILFromFIL(10000)
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		extendedEOL := types.NewBlockHeight(6)
-		extendedAmt := types.NewTokenAmount(10001)
+		extendedAmt := types.NewAttoFILFromFIL(10001)
 
 		lsStr := listChannelsAsStrs(d, payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: %s", channelID, target.String(), eol.String()), lsStr)
@@ -225,7 +225,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	})
 }
 
-func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, targetAddress *types.Address, fundsToLock *types.TokenAmount, eol *types.BlockHeight, f func(*TestDaemon, *types.ChannelID)) {
+func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, targetAddress *types.Address, fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*TestDaemon, *types.ChannelID)) {
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -261,7 +261,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, tar
 	wg.Wait()
 }
 
-func mustCreateVoucher(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.TokenAmount, fromAddress *types.Address) paymentbroker.PaymentVoucher {
+func mustCreateVoucher(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, fromAddress *types.Address) paymentbroker.PaymentVoucher {
 	require := require.New(t)
 
 	voucherString := createVoucherStr(t, d, channelID, amount, fromAddress)
@@ -276,7 +276,7 @@ func mustCreateVoucher(t *testing.T, d *TestDaemon, channelID *types.ChannelID, 
 	return voucher
 }
 
-func createVoucherStr(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.TokenAmount, payerAddress *types.Address) string {
+func createVoucherStr(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *types.Address) string {
 	args := []string{"paych", "voucher", channelID.String(), amount.String()}
 	args = append(args, "--from", payerAddress.String())
 
@@ -290,7 +290,7 @@ func listChannelsAsStrs(d *TestDaemon, fromAddress *types.Address) []string {
 	return runSuccessLines(d, args...)
 }
 
-func mustExtendChannel(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.TokenAmount, eol *types.BlockHeight, payerAddress *types.Address) {
+func mustExtendChannel(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight, payerAddress *types.Address) {
 	require := require.New(t)
 
 	args := []string{"paych", "extend"}

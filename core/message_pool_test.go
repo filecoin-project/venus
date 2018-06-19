@@ -67,7 +67,7 @@ func TestMessagePoolAsync(t *testing.T) {
 			addrGetter(),
 			addrGetter(),
 			0,
-			types.NewTokenAmount(1),
+			types.NewAttoFILFromFIL(1),
 			"send",
 			nil,
 		)

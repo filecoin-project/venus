@@ -145,13 +145,13 @@ func presentExports(e exec.Exports) readableExports {
 }
 
 type actorView struct {
-	ActorType string             `json:"actorType"`
-	Address   string             `json:"address"`
-	Code      *cid.Cid           `json:"code"`
-	Nonce     uint64             `json:"nonce"`
-	Balance   *types.TokenAmount `json:"balance"`
-	Exports   readableExports    `json:"exports"`
-	Memory    interface{}        `json:"memory"`
+	ActorType string          `json:"actorType"`
+	Address   string          `json:"address"`
+	Code      *cid.Cid        `json:"code"`
+	Nonce     uint64          `json:"nonce"`
+	Balance   *types.AttoFIL  `json:"balance"`
+	Exports   readableExports `json:"exports"`
+	Memory    interface{}     `json:"memory"`
 }
 
 func getActorType(actType exec.ExecutableActor) string {

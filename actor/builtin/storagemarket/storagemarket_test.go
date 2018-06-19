@@ -35,7 +35,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	assert.NoError(err)
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{})
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
@@ -47,13 +47,13 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
 
-	assert.Equal(types.NewTokenAmount(0), storageMkt.Balance)
-	assert.Equal(types.NewTokenAmount(100), minerActor.Balance)
+	assert.Equal(types.NewAttoFILFromFIL(0), storageMkt.Balance)
+	assert.Equal(types.NewAttoFILFromFIL(100), minerActor.Balance)
 
 	var mstor miner.Storage
 	assert.NoError(cbor.DecodeInto(minerActor.ReadStorage(), &mstor))
 
-	assert.Equal(mstor.Collateral, types.NewTokenAmount(100))
+	assert.Equal(mstor.Collateral, types.NewAttoFILFromFIL(100))
 	assert.Equal(mstor.PledgeBytes, types.NewBytesAmount(10000))
 }
 
@@ -70,7 +70,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	assert.NoError(err)
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(50), []byte{})
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
@@ -93,13 +93,13 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
 	require.NoError(err)
 
-	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewTokenAmount(100), "", []byte{})
+	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), []byte{})
-	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
@@ -113,7 +113,7 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(err)
 
 	// miner balance should be sum of messages
-	assert.Equal(types.NewTokenAmount(300), miner.Balance)
+	assert.Equal(types.NewAttoFILFromFIL(300), miner.Balance)
 }
 
 func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
@@ -131,7 +131,7 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 
 	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), publicKey)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(200), "createMiner", pdata)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
@@ -150,26 +150,26 @@ func TestStorageMarketAddBid(t *testing.T) {
 	assert.NoError(err)
 
 	// create a bid
-	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
+	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(20), types.NewBytesAmount(30))
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(600), "addBid", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
+	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	// create another bid
-	pdata = actor.MustConvertParams(types.NewTokenAmount(15), types.NewBytesAmount(80))
-	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewTokenAmount(1200), "addBid", pdata)
+	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(15), types.NewBytesAmount(80))
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewAttoFILFromFIL(1200), "addBid", pdata)
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(1), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
+	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	// try to create a bid, but send wrong value
-	pdata = actor.MustConvertParams(types.NewTokenAmount(90), types.NewBytesAmount(100))
-	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewTokenAmount(600), "addBid", pdata)
+	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(90), types.NewBytesAmount(100))
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewAttoFILFromFIL(600), "addBid", pdata)
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), "must send price * size funds to create bid")
@@ -195,19 +195,19 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	assert.NoError(err)
 
 	// create a bid
-	pdata := actor.MustConvertParams(types.NewTokenAmount(20), types.NewBytesAmount(30))
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewTokenAmount(600), "addBid", pdata)
+	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(20), types.NewBytesAmount(30))
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(600), "addBid", pdata)
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
+	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	// create a miner
 	minerAddr := createTestMiner(assert, st, 50000, 45000)
 
 	// add an ask on it
-	pdata = actor.MustConvertParams(types.NewTokenAmount(25), types.NewBytesAmount(35))
+	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(25), types.NewBytesAmount(35))
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, minerAddr, nonce, nil, "addAsk", pdata)
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
@@ -259,7 +259,7 @@ func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, err
 func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64) types.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{})
 	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 
 	result, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)

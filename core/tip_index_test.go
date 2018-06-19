@@ -11,7 +11,7 @@ import (
 
 func block(assert *assert.Assertions, height int, parentCid *cid.Cid, msg string) *types.Block {
 	addrGetter := types.NewAddressForTestGetter()
-	m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewTokenAmount(10), "hello", []byte(msg))
+	m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
 	ret := []byte{1, 2}
 
 	return &types.Block{

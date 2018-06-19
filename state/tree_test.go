@@ -107,7 +107,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	t.Run("actor exists", func(t *testing.T) {
 		assert := assert.New(t)
 
-		actor := types.NewActor(nil, types.NewTokenAmount(10))
+		actor := types.NewActor(nil, types.NewAttoFILFromFIL(10))
 		assert.NoError(tree.SetActor(ctx, addr, actor))
 
 		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*types.Actor, error) {
@@ -127,7 +127,7 @@ func TestGetAllActors(t *testing.T) {
 
 	addr := types.NewAddressForTestGetter()()
 
-	actor := types.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewTokenAmount(123)}
+	actor := types.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)
 	tree.Flush(ctx)
 

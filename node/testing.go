@@ -65,7 +65,7 @@ func MakeOfflineNode(t *testing.T) *Node {
 // been initialized with a genesis block and that it has been started.
 func MustCreateMiner(t *testing.T, node *Node) types.Address {
 	require := require.New(t)
-	result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+	result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
 
 	require.NoError(result.err)
 
@@ -79,7 +79,7 @@ type MustCreateMinerResult struct {
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, collateral types.TokenAmount) chan MustCreateMinerResult {
+func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, collateral types.AttoFIL) chan MustCreateMinerResult {
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 

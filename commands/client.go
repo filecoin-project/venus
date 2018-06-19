@@ -58,7 +58,7 @@ var clientAddBidCmd = &cmds.Command{
 			return ErrInvalidSize
 		}
 
-		price, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
 			return ErrInvalidPrice
 		}

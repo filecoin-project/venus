@@ -27,7 +27,7 @@ type Orderbook struct {
 
 // Ask is a storage market ask order.
 type Ask struct {
-	Price *types.TokenAmount `json:"price":` // nolint vet
+	Price *types.AttoFIL     `json:"price":` // nolint vet
 	Size  *types.BytesAmount `json:"size"`
 	Owner types.Address      `json:"owner"`
 	ID    uint64             `json:"id"`
@@ -36,10 +36,10 @@ type Ask struct {
 // Bid is a storage market bid order.
 type Bid struct {
 	//Expiry *big.Int
-	Price *types.TokenAmount `json:"price"`
+	Price *types.AttoFIL     `json:"price"`
 	Size  *types.BytesAmount `json:"size"`
 	//Duration *big.Int
-	Collateral *types.TokenAmount `json:"collateral"`
+	Collateral *types.AttoFIL `json:"collateral"`
 	//Coding ???
 	Owner types.Address `json:"owner"`
 	ID    uint64        `json:"id"`

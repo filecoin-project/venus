@@ -22,7 +22,7 @@ import (
 func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64, key []byte) types.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key)
 	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewTokenAmount(100), "createMiner", pdata)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 
 	result, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
@@ -47,12 +47,12 @@ func TestAddAsk(t *testing.T) {
 	outAddr := createTestMiner(assert, st, 10000, 500, []byte{})
 
 	// make an ask, and then make sure it all looks good
-	pdata := actor.MustConvertParams(types.NewTokenAmount(100), types.NewBytesAmount(150))
+	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(address.TestAddress, outAddr, 1, nil, "addAsk", pdata)
 
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(types.NewTokenAmount(0), types.NewTokenAmountFromBytes(result.Receipt.Return[0]))
+	assert.Equal(types.NewAttoFILFromFIL(0), types.NewAttoFILFromBytes(result.Receipt.Return[0]))
 
 	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
@@ -70,7 +70,7 @@ func TestAddAsk(t *testing.T) {
 	assert.Equal(types.NewBytesAmount(150), minerStorage.LockedStorage)
 
 	// make another ask!
-	pdata = actor.MustConvertParams(types.NewTokenAmount(110), types.NewBytesAmount(200))
+	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), types.NewBytesAmount(200))
 	msg = types.NewMessage(address.TestAddress, outAddr, 2, nil, "addAsk", pdata)
 
 	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))

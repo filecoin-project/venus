@@ -121,11 +121,11 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &exec.FunctionSignature{
-		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
+		Params: []abi.Type{abi.AttoFIL, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"addBid": &exec.FunctionSignature{
-		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
+		Params: []abi.Type{abi.AttoFIL, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"addDeal": &exec.FunctionSignature{
@@ -188,7 +188,7 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, pub
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
 // by this storage market actor
-func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
 	var storage Storage
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
@@ -227,7 +227,7 @@ func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *typ
 // AddBid adds a bid order to the orderbook. Can be called by anyone. The
 // message must contain the appropriate amount of funds to be locked up for the
 // bid.
-func (sma *Actor) AddBid(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8, error) {
+func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8, error) {
 	var storage Storage
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		lockedFunds := price.CalculatePrice(size)

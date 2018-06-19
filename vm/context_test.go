@@ -49,8 +49,8 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewTokenAmount(100))
-	actor2 := types.NewActor(nil, types.NewTokenAmount(50))
+	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 	newAddress := types.NewAddressForTestGetter()
 
@@ -205,12 +205,12 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	accountActor, err := account.NewActor(types.NewTokenAmount(1000))
+	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)
 	ctx := NewVMContext(accountActor, nil, nil, nil, nil)
 	assert.True(ctx.IsFromAccountActor())
 
-	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewTokenAmount(1000))
+	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
 	ctx = NewVMContext(nonAccountActor, nil, nil, nil, nil)
 	assert.False(ctx.IsFromAccountActor())
 }

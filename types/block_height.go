@@ -41,7 +41,7 @@ func (z BlockHeight) MarshalJSON() ([]byte, error) {
 // An BlockHeight is a signed multi-precision integer.
 type BlockHeight struct{ val *big.Int }
 
-// NewBlockHeight allocates and returns a new TokenAmount set to x.
+// NewBlockHeight allocates and returns a new BlockHeight set to x.
 func NewBlockHeight(x uint64) *BlockHeight {
 	return &BlockHeight{val: big.NewInt(0).SetUint64(x)}
 }

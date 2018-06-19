@@ -54,7 +54,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 		address := types.NewAddressForTestGetter()()
-		actor, err := account.NewActor(types.NewTokenAmount(0))
+		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 42
 		state.MustSetActor(st, address, actor)
@@ -70,7 +70,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 		addr := types.NewAddressForTestGetter()()
-		actor, err := account.NewActor(types.NewTokenAmount(0))
+		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 2
 		state.MustSetActor(st, addr, actor)

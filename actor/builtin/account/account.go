@@ -38,7 +38,7 @@ func (state *Actor) NewStorage() interface{} {
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 // NewActor creates a new account actor.
-func NewActor(balance *types.TokenAmount) (*types.Actor, error) {
+func NewActor(balance *types.AttoFIL) (*types.Actor, error) {
 	storageBytes, err := actor.MarshalStorage(&Storage{})
 	if err != nil {
 		return nil, err

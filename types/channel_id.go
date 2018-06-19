@@ -41,7 +41,7 @@ func (z ChannelID) MarshalJSON() ([]byte, error) {
 // An ChannelID is a signed multi-precision integer.
 type ChannelID struct{ val *big.Int }
 
-// NewChannelID allocates and returns a new TokenAmount set to x.
+// NewChannelID allocates and returns a new ChannelID set to x.
 func NewChannelID(x uint64) *ChannelID {
 	return &ChannelID{val: big.NewInt(0).SetUint64(x)}
 }

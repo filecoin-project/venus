@@ -67,7 +67,7 @@ type Storage struct {
 
 	// Collateral is the total amount of filecoin being held as collateral for
 	// the miners pledge
-	Collateral *types.TokenAmount
+	Collateral *types.AttoFIL
 
 	Sectors []*Sector
 
@@ -83,7 +83,7 @@ func (ma *Actor) NewStorage() interface{} {
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 // NewActor returns a new miner actor
-func NewActor(owner types.Address, publicKey []byte, pledge *types.BytesAmount, coll *types.TokenAmount) (*types.Actor, error) {
+func NewActor(owner types.Address, publicKey []byte, pledge *types.BytesAmount, coll *types.AttoFIL) (*types.Actor, error) {
 	// TODO: we should validate this is actually a public key (possibly the owner's public key) once we have a better
 	// TODO: idea what crypto looks like.
 	if len(publicKey) > MaximumPublicKeySize {
@@ -108,7 +108,7 @@ func NewActor(owner types.Address, publicKey []byte, pledge *types.BytesAmount, 
 
 var minerExports = exec.Exports{
 	"addAsk": &exec.FunctionSignature{
-		Params: []abi.Type{abi.TokenAmount, abi.BytesAmount},
+		Params: []abi.Type{abi.AttoFIL, abi.BytesAmount},
 		Return: []abi.Type{abi.Integer},
 	},
 	"getOwner": &exec.FunctionSignature{
@@ -135,7 +135,7 @@ func (ma *Actor) Exports() exec.Exports {
 }
 
 // AddAsk adds an ask via this miner to the storage markets orderbook
-func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.TokenAmount, size *types.BytesAmount) (*big.Int, uint8,
+func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
 	var mstore Storage
 	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {

@@ -125,7 +125,7 @@ var balanceCmd = &cmds.Command{
 		if err != nil {
 			if state.IsActorNotFoundError(err) {
 				// if the account doesn't exit, the balance should be zero
-				re.Emit(types.NewTokenAmount(0)) // nolint: errcheck
+				re.Emit(types.NewAttoFILFromFIL(0)) // nolint: errcheck
 				return nil
 			}
 			return err
@@ -134,9 +134,9 @@ var balanceCmd = &cmds.Command{
 		re.Emit(act.Balance) // nolint: errcheck
 		return nil
 	},
-	Type: &types.TokenAmount{},
+	Type: &types.AttoFIL{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *types.TokenAmount) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *types.AttoFIL) error {
 			return PrintString(w, b)
 		}),
 	},

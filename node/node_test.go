@@ -489,7 +489,7 @@ func TestCreateMiner(t *testing.T) {
 		require.NoError(node.Start())
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewTokenAmount(100))
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
 		require.NoError(result.err)
 		assert.NotNil(result.minerAddress)
 
@@ -504,7 +504,7 @@ func TestCreateMiner(t *testing.T) {
 		require.NoError(node.Start())
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(10), *types.NewTokenAmount(10))
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(10), *types.NewAttoFILFromFIL(10))
 		assert.Error(result.err)
 		assert.Contains(result.err.Error(), "pledge must be at least")
 	})
@@ -517,7 +517,7 @@ func TestCreateMiner(t *testing.T) {
 		require.NoError(node.Start())
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(20000), *types.NewTokenAmount(1000000))
+		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(20000), *types.NewAttoFILFromFIL(1000000))
 		assert.Error(result.err)
 		assert.Contains(result.err.Error(), "not enough balance")
 	})

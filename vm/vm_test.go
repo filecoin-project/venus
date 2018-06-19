@@ -16,34 +16,34 @@ import (
 )
 
 func TestTransfer(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewTokenAmount(100))
-	actor2 := types.NewActor(nil, types.NewTokenAmount(50))
+	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
 	actor3 := types.NewActor(nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 
-		assert.NoError(transfer(actor1, actor2, types.NewTokenAmount(10)))
-		assert.Equal(actor1.Balance, types.NewTokenAmount(90))
-		assert.Equal(actor2.Balance, types.NewTokenAmount(60))
+		assert.NoError(transfer(actor1, actor2, types.NewAttoFILFromFIL(10)))
+		assert.Equal(actor1.Balance, types.NewAttoFILFromFIL(90))
+		assert.Equal(actor2.Balance, types.NewAttoFILFromFIL(60))
 
-		assert.NoError(transfer(actor1, actor3, types.NewTokenAmount(20)))
-		assert.Equal(actor1.Balance, types.NewTokenAmount(70))
-		assert.Equal(actor3.Balance, types.NewTokenAmount(20))
+		assert.NoError(transfer(actor1, actor3, types.NewAttoFILFromFIL(20)))
+		assert.Equal(actor1.Balance, types.NewAttoFILFromFIL(70))
+		assert.Equal(actor3.Balance, types.NewAttoFILFromFIL(20))
 	})
 
 	t.Run("fail", func(t *testing.T) {
 		assert := assert.New(t)
 
-		negval := types.NewTokenAmount(0).Sub(types.NewTokenAmount(1000))
-		assert.EqualError(transfer(actor2, actor3, types.NewTokenAmount(1000)), "not enough balance")
+		negval := types.NewAttoFILFromFIL(0).Sub(types.NewAttoFILFromFIL(1000))
+		assert.EqualError(transfer(actor2, actor3, types.NewAttoFILFromFIL(1000)), "not enough balance")
 		assert.EqualError(transfer(actor2, actor3, negval), "cannot transfer negative values")
 	})
 }
 
 func TestSendErrorHandling(t *testing.T) {
-	actor1 := types.NewActor(types.SomeCid(), types.NewTokenAmount(100))
-	actor2 := types.NewActor(types.SomeCid(), types.NewTokenAmount(50))
+	actor1 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
+	actor2 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
@@ -52,10 +52,10 @@ func TestSendErrorHandling(t *testing.T) {
 		transferErr := xerrors.New("error")
 
 		msg := newMsg()
-		msg.Value = types.NewTokenAmount(1) // exact value doesn't matter - needs to be non-nil
+		msg.Value = types.NewAttoFILFromFIL(1) // exact value doesn't matter - needs to be non-nil
 
 		deps := sendDeps{
-			transfer: func(_ *types.Actor, _ *types.Actor, _ *types.TokenAmount) error {
+			transfer: func(_ *types.Actor, _ *types.Actor, _ *types.AttoFIL) error {
 				return transferErr
 			},
 		}

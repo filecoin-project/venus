@@ -61,7 +61,7 @@ message to be mined to get the channelID.`,
 			return err
 		}
 
-		amount, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
 			return ErrInvalidAmount
 		}
@@ -135,7 +135,7 @@ var lsCmd = &cmds.Command{
 		}
 
 		// TODO: Sign this message if needed
-		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "ls", params)
+		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "ls", params)
 
 		retValue, retCode, err := n.QueryMessage(msg)
 		if err != nil {
@@ -198,7 +198,7 @@ var voucherCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		amount, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
 			return ErrInvalidAmount
 		}
@@ -209,7 +209,7 @@ var voucherCmd = &cmds.Command{
 		}
 
 		// TODO: Sign this message if needed
-		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewTokenAmount(0), "voucher", params)
+		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "voucher", params)
 
 		retValue, retCode, err := n.QueryMessage(msg)
 		if err != nil {
@@ -283,7 +283,7 @@ var redeemCmd = &cmds.Command{
 		}
 
 		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewTokenAmount(0), "update", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "update", params)
 		if err != nil {
 			return err
 		}
@@ -337,7 +337,7 @@ var reclaimCmd = &cmds.Command{
 		}
 
 		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewTokenAmount(0), "reclaim", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "reclaim", params)
 		if err != nil {
 			return err
 		}
@@ -397,7 +397,7 @@ var closeCmd = &cmds.Command{
 		}
 
 		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewTokenAmount(0), "close", params)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "close", params)
 		if err != nil {
 			return err
 		}
@@ -447,7 +447,7 @@ var extendCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		amount, ok := types.NewTokenAmountFromString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
 			return ErrInvalidAmount
 		}

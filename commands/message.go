@@ -57,7 +57,7 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, target, types.NewTokenAmount(uint64(val)), "", nil)
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), "", nil)
 		if err != nil {
 			return err
 		}

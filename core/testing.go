@@ -74,13 +74,13 @@ func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 
 // RequireNewEmptyActor creates a new empty actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewEmptyActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {
+func RequireNewEmptyActor(require *require.Assertions, value *types.AttoFIL) *types.Actor {
 	return &types.Actor{Balance: value}
 }
 
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewAccountActor(require *require.Assertions, value *types.TokenAmount) *types.Actor {
+func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *types.Actor {
 	act, err := account.NewActor(value)
 	require.NoError(err)
 	return act
@@ -88,7 +88,7 @@ func RequireNewAccountActor(require *require.Assertions, value *types.TokenAmoun
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, owner types.Address, key []byte, pledge *types.BytesAmount, coll *types.TokenAmount) *types.Actor {
+func RequireNewMinerActor(require *require.Assertions, owner types.Address, key []byte, pledge *types.BytesAmount, coll *types.AttoFIL) *types.Actor {
 	act, err := miner.NewActor(owner, key, pledge, coll)
 	require.NoError(err)
 	return act
@@ -97,12 +97,12 @@ func RequireNewMinerActor(require *require.Assertions, owner types.Address, key 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
 func RequireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
-	return RequireNewFakeActorWithTokens(require, codeCid, types.NewTokenAmount(100))
+	return RequireNewFakeActorWithTokens(require, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid, amt *types.TokenAmount) *types.Actor {
+func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid, amt *types.AttoFIL) *types.Actor {
 	storageBytes, err := actor.MarshalStorage(&actor.FakeActorStorage{})
 	require.NoError(err)
 	return types.NewActorWithMemory(codeCid, amt, storageBytes)

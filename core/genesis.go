@@ -17,14 +17,14 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
 
 var (
-	defaultAccounts map[types.Address]uint64
+	defaultAccounts map[types.Address]*types.AttoFIL
 )
 
 func init() {
-	defaultAccounts = map[types.Address]uint64{
-		address.NetworkAddress: 10000000,
-		address.TestAddress:    50000,
-		address.TestAddress2:   60000,
+	defaultAccounts = map[types.Address]*types.AttoFIL{
+		address.NetworkAddress: types.NewAttoFILFromFIL(10000000),
+		address.TestAddress:    types.NewAttoFILFromFIL(50000),
+		address.TestAddress2:   types.NewAttoFILFromFIL(60000),
 	}
 }
 
@@ -34,7 +34,7 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	st := state.NewEmptyStateTree(cst)
 
 	for addr, val := range defaultAccounts {
-		a, err := account.NewActor(types.NewTokenAmount(val))
+		a, err := account.NewActor(val)
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +53,7 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	}
 
 	pbAct, err := paymentbroker.NewPaymentBrokerActor()
-	pbAct.Balance = types.NewTokenAmount(0)
+	pbAct.Balance = types.NewAttoFILFromFIL(0)
 	if err != nil {
 		return nil, err
 	}

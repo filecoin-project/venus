@@ -63,18 +63,18 @@ type accountPaymentChannels map[string]*PaymentChannel
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
 	Target         types.Address      `json:"target"`
-	Amount         *types.TokenAmount `json:"amount"`
-	AmountRedeemed *types.TokenAmount `json:"amount_redeemed"`
+	Amount         *types.AttoFIL     `json:"amount"`
+	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
 	Eol            *types.BlockHeight `json:"eol"`
 }
 
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
-	Channel   types.ChannelID   `json:"channel"`
-	Payer     types.Address     `json:"payer"`
-	Target    types.Address     `json:"target"`
-	Amount    types.TokenAmount `json:"amount"`
-	Signature Signature         `json:"signature"`
+	Channel   types.ChannelID `json:"channel"`
+	Payer     types.Address   `json:"payer"`
+	Target    types.Address   `json:"target"`
+	Amount    types.AttoFIL   `json:"amount"`
+	Signature Signature       `json:"signature"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -109,12 +109,12 @@ func NewPaymentBrokerActor() (*types.Actor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return types.NewActorWithMemory(types.PaymentBrokerActorCodeCid, types.NewTokenAmount(0), storageBytes), nil
+	return types.NewActorWithMemory(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(0), storageBytes), nil
 }
 
 var paymentBrokerExports = exec.Exports{
 	"close": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.TokenAmount, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
 		Return: nil,
 	},
 	"createChannel": &exec.FunctionSignature{
@@ -134,11 +134,11 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"update": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.TokenAmount, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
 		Return: nil,
 	},
 	"voucher": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.TokenAmount},
+		Params: []abi.Type{abi.ChannelID, abi.AttoFIL},
 		Return: []abi.Type{abi.Bytes},
 	},
 }
@@ -169,7 +169,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 		paymentChannel := &PaymentChannel{
 			Target:         target,
 			Amount:         ctx.Message().Value,
-			AmountRedeemed: types.NewTokenAmount(0),
+			AmountRedeemed: types.NewAttoFILFromFIL(0),
 			Eol:            eol,
 		}
 
@@ -196,7 +196,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 // target Update(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.TokenAmount, sig Signature) (uint8, error) {
+func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var storage Storage
 	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 
@@ -219,7 +219,7 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.TokenAmount, sig Signature) (uint8, error) {
+func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var storage Storage
 	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 
@@ -305,7 +305,7 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 
 // Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
 // It errors if the channel doesn't exist or contains less than request amount.
-func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.TokenAmount) ([]byte, uint8, error) {
+func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
 	var storage Storage
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		channel, err := findChannel(&storage, ctx.Message().From, chid)
@@ -368,7 +368,7 @@ func findChannel(storage *Storage, payer types.Address, chid *types.ChannelID) (
 	return channel, nil
 }
 
-func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChannel, amt *types.TokenAmount) error {
+func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
@@ -400,7 +400,7 @@ func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChanne
 
 func reclaim(ctx *vm.Context, storage *Storage, payer types.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
-	if amt.LessEqual(types.ZeroToken) {
+	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
 	}
 

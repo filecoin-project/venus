@@ -21,8 +21,8 @@ const (
 	Invalid = Type(iota)
 	// Address is a types.Address
 	Address
-	// TokenAmount is a *types.TokenAmount
-	TokenAmount
+	// AttoFIL is a *types.AttoFIL
+	AttoFIL
 	// BytesAmount is a *types.BytesAmount
 	BytesAmount
 	// ChannelID is a *types.ChannelID
@@ -45,8 +45,8 @@ func (t Type) String() string {
 		return "<invalid>"
 	case Address:
 		return "types.Address"
-	case TokenAmount:
-		return "*types.TokenAmount"
+	case AttoFIL:
+		return "*types.AttoFIL"
 	case BytesAmount:
 		return "*types.BytesAmount"
 	case ChannelID:
@@ -78,8 +78,8 @@ func (av *Value) String() string {
 		return "<invalid>"
 	case Address:
 		return av.Val.(types.Address).String()
-	case TokenAmount:
-		return av.Val.(*types.TokenAmount).String()
+	case AttoFIL:
+		return av.Val.(*types.AttoFIL).String()
 	case BytesAmount:
 		return av.Val.(*types.BytesAmount).String()
 	case ChannelID:
@@ -119,10 +119,10 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.Address{}, av.Val}
 		}
 		return addr.Bytes(), nil
-	case TokenAmount:
-		ba, ok := av.Val.(*types.TokenAmount)
+	case AttoFIL:
+		ba, ok := av.Val.(*types.AttoFIL)
 		if !ok {
-			return nil, &typeError{types.TokenAmount{}, av.Val}
+			return nil, &typeError{types.AttoFIL{}, av.Val}
 		}
 		return ba.Bytes(), nil
 	case BytesAmount:
@@ -186,8 +186,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 		switch v := v.(type) {
 		case types.Address:
 			out = append(out, &Value{Type: Address, Val: v})
-		case *types.TokenAmount:
-			out = append(out, &Value{Type: TokenAmount, Val: v})
+		case *types.AttoFIL:
+			out = append(out, &Value{Type: AttoFIL, Val: v})
 		case *types.BytesAmount:
 			out = append(out, &Value{Type: BytesAmount, Val: v})
 		case *types.ChannelID:
@@ -237,6 +237,11 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  addr,
 		}, nil
+	case AttoFIL:
+		return &Value{
+			Type: t,
+			Val:  types.NewAttoFILFromBytes(data),
+		}, nil
 	case Bytes:
 		return &Value{
 			Type: t,
@@ -267,11 +272,6 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  string(data),
 		}, nil
-	case TokenAmount:
-		return &Value{
-			Type: t,
-			Val:  types.NewTokenAmountFromBytes(data),
-		}, nil
 	case UintArray:
 		var arr []uint64
 		if err := cbor.DecodeInto(data, &arr); err != nil {
@@ -290,13 +290,13 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 
 var typeTable = map[Type]reflect.Type{
 	Address:     reflect.TypeOf(types.Address{}),
+	AttoFIL:     reflect.TypeOf(&types.AttoFIL{}),
 	Bytes:       reflect.TypeOf([]byte{}),
 	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),
 	ChannelID:   reflect.TypeOf(&types.ChannelID{}),
 	BlockHeight: reflect.TypeOf(&types.BlockHeight{}),
 	Integer:     reflect.TypeOf(&big.Int{}),
 	String:      reflect.TypeOf(string("")),
-	TokenAmount: reflect.TypeOf(&types.TokenAmount{}),
 	UintArray:   reflect.TypeOf([]uint64{}),
 }
 

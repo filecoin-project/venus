@@ -530,7 +530,7 @@ func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, 
 // NewMessageWithNextNonce returns a new types.Message whose
 // nonce is set to our best guess at the next appropriate value
 // (see NextNonce).
-func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.TokenAmount, method string, params []byte) (*types.Message, error) {
+func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.AttoFIL, method string, params []byte) (*types.Message, error) {
 	nonce, err := NextNonce(ctx, node, from)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get next nonce")
@@ -564,7 +564,7 @@ func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add it's address to mining.minerAddresses in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, collateral types.TokenAmount) (*types.Address, error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, collateral types.AttoFIL) (*types.Address, error) {
 	// TODO: pull public key from wallet
 	params, err := abi.ToEncodedValues(&pledge, []byte{})
 	if err != nil {

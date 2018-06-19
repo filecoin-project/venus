@@ -28,7 +28,7 @@ type Message struct {
 	// This prevents replay attacks.
 	Nonce uint64 `json:"nonce"`
 
-	Value *TokenAmount `json:"value"`
+	Value *AttoFIL `json:"value"`
 
 	Method string `json:"method"`
 	Params []byte `json:"params"`
@@ -56,7 +56,7 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, nonce uint64, value *TokenAmount, method string, params []byte) *Message {
+func NewMessage(from, to Address, nonce uint64, value *AttoFIL, method string, params []byte) *Message {
 	return &Message{
 		From:   from,
 		To:     to,

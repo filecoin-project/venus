@@ -76,14 +76,14 @@ func TestActorLs(t *testing.T) {
 		chainMgrForTest = nd.ChainMgr
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(b1))
 		assert.NoError(nd.Start())
-		tokenAmount := types.NewTokenAmount(100)
+		tokenAmount := types.NewAttoFILFromFIL(100)
 
 		getActors := func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*types.Actor, error) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			address, _ := types.NewAddressFromString("address")
-			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), types.NewTokenAmount(43))
-			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewTokenAmount(21), nil)
+			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), types.NewAttoFILFromFIL(43))
+			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21), nil)
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}, nil
 		}
 
@@ -126,7 +126,7 @@ func TestActorLs(t *testing.T) {
 		wd, _ := os.Getwd()
 		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
 
-		actor, _ := account.NewActor(types.NewTokenAmount(100))
+		actor, _ := account.NewActor(types.NewAttoFILFromFIL(100))
 		a := makeActorView(actor, "address", &account.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)
@@ -137,7 +137,7 @@ func TestActorLs(t *testing.T) {
 		assertSchemaValid(t, a, schemaLoader)
 
 		addr, _ := types.NewAddressFromString("minerAddress")
-		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), types.NewTokenAmount(200))
+		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), types.NewAttoFILFromFIL(200))
 		a = makeActorView(actor, "address", &miner.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)

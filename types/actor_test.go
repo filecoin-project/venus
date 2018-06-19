@@ -9,7 +9,7 @@ import (
 
 func TestActorMarshal(t *testing.T) {
 	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(1), []byte{1, 2, 3})
+	actor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(1), []byte{1, 2, 3})
 	actor.IncNonce()
 
 	marshalled, err := actor.Marshal()
@@ -34,7 +34,7 @@ func TestActorCid(t *testing.T) {
 	assert := assert.New(t)
 
 	actor1 := NewActor(AccountActorCodeCid, nil)
-	actor2 := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	actor2 := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 	actor1.IncNonce()
 
 	c1, err := actor1.Cid()
@@ -47,7 +47,7 @@ func TestActorCid(t *testing.T) {
 
 func TestActorMemory(t *testing.T) {
 	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	actor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 
 	assert.Equal(actor.ReadStorage(), []byte{1, 2, 3})
 	// write at the beginning
@@ -61,22 +61,22 @@ func TestActorMemory(t *testing.T) {
 
 func TestActorFormat(t *testing.T) {
 	assert := assert.New(t)
-	accountActor := NewActorWithMemory(AccountActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	accountActor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 
 	formatted := fmt.Sprintf("%v", accountActor)
 	assert.Contains(formatted, "AccountActor")
 	assert.Contains(formatted, "balance: 5")
 	assert.Contains(formatted, "nonce: 0")
 
-	minerActor := NewActorWithMemory(MinerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	minerActor := NewActorWithMemory(MinerActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", minerActor)
 	assert.Contains(formatted, "MinerActor")
 
-	storageMarketActor := NewActorWithMemory(StorageMarketActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	storageMarketActor := NewActorWithMemory(StorageMarketActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", storageMarketActor)
 	assert.Contains(formatted, "StorageMarketActor")
 
-	paymentBrokerActor := NewActorWithMemory(PaymentBrokerActorCodeCid, NewTokenAmount(5), []byte{1, 2, 3})
+	paymentBrokerActor := NewActorWithMemory(PaymentBrokerActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
 	formatted = fmt.Sprintf("%v", paymentBrokerActor)
 	assert.Contains(formatted, "PaymentBrokerActor")
 }

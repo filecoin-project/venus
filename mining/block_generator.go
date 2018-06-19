@@ -54,7 +54,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	}
 
 	blockHeight := baseTipSet.Height() + nullBlockCount + 1
-	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewTokenAmount(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewAttoFILFromFIL(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
 	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.

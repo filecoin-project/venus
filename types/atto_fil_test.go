@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"math/big"
 	"math/rand"
 	"testing"
 	"time"
@@ -11,40 +12,53 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTokenAmountCreation(t *testing.T) {
+func TestFILToAttoFIL(t *testing.T) {
 	assert := assert.New(t)
 
-	a := NewTokenAmount(123)
-	assert.IsType(&TokenAmount{}, a)
+	x := NewAttoFILFromFIL(2)
+	v := big.NewInt(10)
+	v = v.Exp(v, big.NewInt(18), nil)
+	v = v.Mul(v, big.NewInt(2))
+	assert.True(NewAttoFIL(v).Equal(x))
+}
+
+func TestAttoFILCreation(t *testing.T) {
+	assert := assert.New(t)
+
+	a := NewAttoFILFromFIL(123)
+	assert.IsType(&AttoFIL{}, a)
 
 	ab := a.Bytes()
-	b := NewTokenAmountFromBytes(ab)
+	b := NewAttoFILFromBytes(ab)
 	assert.Equal(a, b)
 
 	as := a.String()
 	assert.Equal(as, "123")
-	c, ok := NewTokenAmountFromString(as, 10)
+	c, ok := NewAttoFILFromFILString(as, 10)
 	assert.True(ok)
 	assert.Equal(a, c)
+	d, ok := NewAttoFILFromString("123000000000000000000", 10)
+	assert.True(ok)
+	assert.Equal(a, d)
 
-	_, ok = NewTokenAmountFromString("asdf", 10)
+	_, ok = NewAttoFILFromFILString("asdf", 10)
 	assert.False(ok)
 }
 
-func TestZeroToken(t *testing.T) {
+func TestZeroAttoFIL(t *testing.T) {
 	assert := assert.New(t)
 
-	z := NewTokenAmount(0)
+	z := NewAttoFILFromFIL(0)
 
-	assert.Equal(z, ZeroToken)
+	assert.Equal(z, ZeroAttoFIL)
 	assert.True(z.Equal(nil))
-	assert.True(ZeroToken.Equal(nil))
+	assert.True(ZeroAttoFIL.Equal(nil))
 }
 
-func TestTokenAmountComparison(t *testing.T) {
-	a := NewTokenAmount(123)
-	b := NewTokenAmount(123)
-	c := NewTokenAmount(456)
+func TestAttoFILComparison(t *testing.T) {
+	a := NewAttoFILFromFIL(123)
+	b := NewAttoFILFromFIL(123)
+	c := NewAttoFILFromFIL(456)
 
 	t.Run("handles comparison", func(t *testing.T) {
 		assert := assert.New(t)
@@ -65,11 +79,11 @@ func TestTokenAmountComparison(t *testing.T) {
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
 		assert := assert.New(t)
-		d := ZeroToken.Sub(a)
-		var np *TokenAmount
+		d := ZeroAttoFIL.Sub(a)
+		var np *AttoFIL
 
-		assert.True(np.Equal(ZeroToken))
-		assert.True(ZeroToken.Equal(np))
+		assert.True(np.Equal(ZeroAttoFIL))
+		assert.True(ZeroAttoFIL.Equal(np))
 		assert.True(d.LessThan(np))
 		assert.True(np.GreaterThan(d))
 		assert.True(c.GreaterThan(np))
@@ -77,9 +91,9 @@ func TestTokenAmountComparison(t *testing.T) {
 	})
 }
 
-func TestTokenAmountAddition(t *testing.T) {
-	a := NewTokenAmount(123)
-	b := NewTokenAmount(456)
+func TestAttoFILAddition(t *testing.T) {
+	a := NewAttoFILFromFIL(123)
+	b := NewAttoFILFromFIL(456)
 
 	t.Run("handles addition", func(t *testing.T) {
 		assert := assert.New(t)
@@ -88,7 +102,7 @@ func TestTokenAmountAddition(t *testing.T) {
 		bStr := b.String()
 		sum := a.Add(b)
 
-		assert.Equal(sum, NewTokenAmount(579))
+		assert.Equal(NewAttoFILFromFIL(579), sum)
 
 		// Storage is not reused
 		assert.NotEqual(&a, &sum)
@@ -101,7 +115,7 @@ func TestTokenAmountAddition(t *testing.T) {
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
 		assert := assert.New(t)
-		var x, z *TokenAmount
+		var x, z *AttoFIL
 
 		assert.True(z.Add(a).Equal(a))
 		assert.True(a.Add(z).Equal(a))
@@ -111,9 +125,9 @@ func TestTokenAmountAddition(t *testing.T) {
 	})
 }
 
-func TestTokenAmountSubtraction(t *testing.T) {
-	a := NewTokenAmount(456)
-	b := NewTokenAmount(123)
+func TestAttoFILSubtraction(t *testing.T) {
+	a := NewAttoFILFromFIL(456)
+	b := NewAttoFILFromFIL(123)
 
 	t.Run("handles subtraction", func(t *testing.T) {
 		assert := assert.New(t)
@@ -122,7 +136,7 @@ func TestTokenAmountSubtraction(t *testing.T) {
 		bStr := b.String()
 		delta := a.Sub(b)
 
-		assert.Equal(delta, NewTokenAmount(333))
+		assert.Equal(delta, NewAttoFILFromFIL(333))
 
 		// Storage is not reused
 		assert.NotEqual(&a, &delta)
@@ -135,7 +149,7 @@ func TestTokenAmountSubtraction(t *testing.T) {
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
 		assert := assert.New(t)
-		var z *TokenAmount
+		var z *AttoFIL
 
 		assert.True(a.Sub(z).Equal(a))
 		assert.True(a.Sub(nil).Equal(a))
@@ -144,8 +158,8 @@ func TestTokenAmountSubtraction(t *testing.T) {
 	})
 }
 
-func TestTokenAmountPriceCalculation(t *testing.T) {
-	price := NewTokenAmount(123)
+func TestPriceCalculation(t *testing.T) {
+	price := NewAttoFILFromFIL(123)
 	numBytes := NewBytesAmount(10)
 
 	t.Run("calculates prices by multiplying with BytesAmount", func(t *testing.T) {
@@ -154,7 +168,7 @@ func TestTokenAmountPriceCalculation(t *testing.T) {
 		numBytesStr := numBytes.String()
 
 		total := price.CalculatePrice(numBytes)
-		assert.Equal(total, NewTokenAmount(1230))
+		assert.Equal(total, NewAttoFILFromFIL(1230))
 
 		// Storage is not reused
 		assert.NotEqual(&price, &total)
@@ -167,25 +181,25 @@ func TestTokenAmountPriceCalculation(t *testing.T) {
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
 		assert := assert.New(t)
-		var nt *TokenAmount
+		var nt *AttoFIL
 		var nb *BytesAmount
 
-		assert.Equal(price.CalculatePrice(nil), ZeroToken)
-		assert.Equal(nt.CalculatePrice(numBytes), ZeroToken)
-		assert.Equal(price.CalculatePrice(nb), ZeroToken)
-		assert.Equal(nt.CalculatePrice(nb), ZeroToken)
+		assert.Equal(price.CalculatePrice(nil), ZeroAttoFIL)
+		assert.Equal(nt.CalculatePrice(numBytes), ZeroAttoFIL)
+		assert.Equal(price.CalculatePrice(nb), ZeroAttoFIL)
+		assert.Equal(nt.CalculatePrice(nb), ZeroAttoFIL)
 	})
 }
 
-func TestTokenAmountCborMarshaling(t *testing.T) {
-	t.Run("CBOR decode(encode(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
+func TestAttoFILCborMarshaling(t *testing.T) {
+	t.Run("CBOR decode(encode(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
-			preEncode := NewTokenAmount(rng.Uint64())
-			postDecode := TokenAmount{}
+			preEncode := NewAttoFILFromFIL(rng.Uint64())
+			postDecode := AttoFIL{}
 
 			out, err := cbor.DumpObject(preEncode)
 			assert.NoError(err)
@@ -196,60 +210,60 @@ func TestTokenAmountCborMarshaling(t *testing.T) {
 			assert.True(preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
 		}
 	})
-	t.Run("cannot CBOR encode nil as *TokenAmount", func(t *testing.T) {
+	t.Run("cannot CBOR encode nil as *AttoFIL", func(t *testing.T) {
 		assert := assert.New(t)
 
-		var np *TokenAmount
+		var np *AttoFIL
 
 		out, err := cbor.DumpObject(np)
 		assert.NoError(err)
 
-		out2, err := cbor.DumpObject(ZeroToken)
+		out2, err := cbor.DumpObject(ZeroAttoFIL)
 		assert.NoError(err)
 
 		assert.NotEqual(out, out2)
 	})
 }
 
-func TestTokenAmountJsonMarshaling(t *testing.T) {
-	t.Run("JSON unmarshal(marshal(TokenAmount)) == identity(TokenAmount)", func(t *testing.T) {
+func TestAttoFILJsonMarshaling(t *testing.T) {
+	t.Run("JSON unmarshal(marshal(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		assert := assert.New(t)
 
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
-			toBeMarshaled := NewTokenAmount(rng.Uint64())
+			toBeMarshaled := NewAttoFILFromFIL(rng.Uint64())
 
 			marshaled, err := json.Marshal(toBeMarshaled)
 			assert.NoError(err)
 
-			var unmarshaled TokenAmount
+			var unmarshaled AttoFIL
 			err = json.Unmarshal(marshaled, &unmarshaled)
 			assert.NoError(err)
 
 			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
-	t.Run("cannot JSON marshall nil as *TokenAmount", func(t *testing.T) {
+	t.Run("cannot JSON marshall nil as *AttoFIL", func(t *testing.T) {
 		assert := assert.New(t)
 
-		var np *TokenAmount
+		var np *AttoFIL
 
 		out, err := json.Marshal(np)
 		assert.NoError(err)
 
-		out2, err := json.Marshal(ZeroToken)
+		out2, err := json.Marshal(ZeroAttoFIL)
 		assert.NoError(err)
 
 		assert.NotEqual(out, out2)
 	})
 }
 
-func TestTokenAmountIsPositive(t *testing.T) {
-	p := NewTokenAmount(100)      // positive
-	z := NewTokenAmount(0)        // zero
-	n := NewTokenAmount(0).Sub(p) // negative
-	var np *TokenAmount
+func TestAttoFILIsPositive(t *testing.T) {
+	p := NewAttoFILFromFIL(100)      // positive
+	z := NewAttoFILFromFIL(0)        // zero
+	n := NewAttoFILFromFIL(0).Sub(p) // negative
+	var np *AttoFIL
 
 	t.Run("returns false if zero", func(t *testing.T) {
 		assert := assert.New(t)
@@ -268,11 +282,11 @@ func TestTokenAmountIsPositive(t *testing.T) {
 	})
 }
 
-func TestTokenAmountIsNegative(t *testing.T) {
-	p := NewTokenAmount(100)      // positive
-	z := NewTokenAmount(0)        // zero
-	n := NewTokenAmount(0).Sub(p) // negative
-	var np *TokenAmount
+func TestAttoFILIsNegative(t *testing.T) {
+	p := NewAttoFILFromFIL(100)      // positive
+	z := NewAttoFILFromFIL(0)        // zero
+	n := NewAttoFILFromFIL(0).Sub(p) // negative
+	var np *AttoFIL
 
 	t.Run("returns false if zero", func(t *testing.T) {
 		assert := assert.New(t)
@@ -291,11 +305,11 @@ func TestTokenAmountIsNegative(t *testing.T) {
 	})
 }
 
-func TestTokenAmountIsZero(t *testing.T) {
-	p := NewTokenAmount(100)      // positive
-	z := NewTokenAmount(0)        // zero
-	n := NewTokenAmount(0).Sub(p) // negative
-	var np *TokenAmount
+func TestAttoFILIsZero(t *testing.T) {
+	p := NewAttoFILFromFIL(100)      // positive
+	z := NewAttoFILFromFIL(0)        // zero
+	n := NewAttoFILFromFIL(0).Sub(p) // negative
+	var np *AttoFIL
 
 	t.Run("returns true if zero token", func(t *testing.T) {
 		assert := assert.New(t)

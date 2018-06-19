@@ -72,7 +72,7 @@ func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint
 	msa.asks = append(msa.asks, &storagemarket.Ask{
 		ID:    id,
 		Owner: owner,
-		Price: types.NewTokenAmount(price),
+		Price: types.NewAttoFILFromFIL(price),
 		Size:  types.NewBytesAmount(size),
 	})
 	return id
@@ -84,7 +84,7 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 	msa.bids = append(msa.bids, &storagemarket.Bid{
 		ID:    id,
 		Owner: owner,
-		Price: types.NewTokenAmount(price),
+		Price: types.NewAttoFILFromFIL(price),
 		Size:  types.NewBytesAmount(size),
 	})
 	return id

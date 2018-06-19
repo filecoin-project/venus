@@ -36,7 +36,7 @@ type Actor struct {
 	Code    *cid.Cid
 	Memory  []byte
 	Nonce   uint64
-	Balance *TokenAmount
+	Balance *AttoFIL
 }
 
 // IncNonce increments the nonce of this actor by 1.
@@ -76,7 +76,7 @@ func (a *Actor) Cid() (*cid.Cid, error) {
 }
 
 // NewActor constructs a new actor.
-func NewActor(code *cid.Cid, balance *TokenAmount) *Actor {
+func NewActor(code *cid.Cid, balance *AttoFIL) *Actor {
 	return &Actor{
 		Code:    code,
 		Memory:  []byte{},
@@ -86,7 +86,7 @@ func NewActor(code *cid.Cid, balance *TokenAmount) *Actor {
 }
 
 // NewActorWithMemory constructs a new actor with a predefined memory.
-func NewActorWithMemory(code *cid.Cid, balance *TokenAmount, memory []byte) *Actor {
+func NewActorWithMemory(code *cid.Cid, balance *AttoFIL, memory []byte) *Actor {
 	return &Actor{
 		Code:    code,
 		Memory:  memory,
