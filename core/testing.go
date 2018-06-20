@@ -19,14 +19,20 @@ import (
 )
 
 // MkChild creates a new block with parent, blk, and supplied nonce.
-func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block {
-	parents := types.NewSortedCidSet()
+func MkChild(blks []*types.Block, parentState state.Tree, stateRoot *cid.Cid, nonce uint64) *types.Block {
+	var weight uint64
+	var height uint64
+	var parents types.SortedCidSet
+	weight = uint64(len(blks))*10 + blks[0].ParentWeight
+	height = blks[0].Height + 1
+	parents = types.SortedCidSet{}
 	for _, blk := range blks {
-		parents.Add(blk.Cid())
+		(&parents).Add(blk.Cid())
 	}
 	return &types.Block{
 		Parents:         parents,
-		Height:          blks[0].Height + 1,
+		Height:          height,
+		ParentWeight:    weight,
 		Nonce:           nonce,
 		StateRoot:       stateRoot,
 		Messages:        []*types.Message{},
@@ -36,7 +42,8 @@ func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block
 
 // AddChain creates and processes new, empty chain of length, beginning from blk.
 func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, blks []*types.Block, length int) (*types.Block, error) {
-	st, err := loadStateTreeTS(ctx, NewTipSet(blks[0]))
+	ts, _ := NewTipSet(blks[0])
+	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +54,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	l := uint64(length)
 	var blk *types.Block
 	for i := uint64(0); i < l; i++ {
-		blk = MkChild(blks, stateRoot, i)
+		blk = MkChild(blks, st, stateRoot, i)
 		_, err := processNewBlock(ctx, blk)
 		if err != nil {
 			return nil, err
@@ -120,6 +127,21 @@ func RequireRandomPeerID() peer.ID {
 	return pid
 }
 
+// RequireNewTipSet instantiates and returns a new tipset of the given blocks
+// and requires that the setup validation succeed.
+func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) TipSet {
+	ts, err := NewTipSet(blks...)
+	require.NoError(err)
+	return ts
+}
+
+// RequireTipSetAdd adds the input block to the tipset and requires that no
+// errors occur.
+func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts TipSet) {
+	err := ts.AddBlock(blk)
+	require.NoError(err)
+}
+
 // MustGetNonce returns the next nonce for an actor at the given address or panics.
 func MustGetNonce(st state.Tree, a types.Address) uint64 {
 	mp := NewMessagePool()
@@ -161,6 +183,7 @@ func MustConvertParams(params ...interface{}) []byte {
 func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][]*types.Message) []TipSet {
 	tipSets := []TipSet{}
 	parents := root
+
 	// only add root to the chain if it is not the zero-valued-tipset
 	if len(parents) != 0 {
 		for _, blk := range parents {
@@ -170,12 +193,13 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][
 	}
 
 	for _, tsMsgs := range msgSets {
+		height, _ := parents.Height()
 		ts := TipSet{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
-				Height:  parents.Height() + 1,
+				Height:  height + 1,
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
@@ -185,7 +209,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][
 			child := &types.Block{
 				Messages: msgs,
 				Parents:  parents.ToSortedCidSet(),
-				Height:   parents.Height() + 1,
+				Height:   height + 1,
 			}
 			MustPut(store, child)
 			ts[child.Cid().String()] = child

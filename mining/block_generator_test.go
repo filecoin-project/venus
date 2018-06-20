@@ -96,6 +96,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 func TestGenerateMultiBlockTipSet(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
@@ -104,30 +105,42 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, core.ApplyMessages)
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
+		pW, err := ts.ParentWeight()
+		if err != nil {
+			return uint64(0), err
+		}
+		return pW + uint64(len(ts))*core.ECV, nil
+	}
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
 	baseBlock1 := types.Block{
-		Parents:   parents,
-		Height:    uint64(100),
-		StateRoot: stateRoot,
+		Parents:      parents,
+		Height:       uint64(100),
+		ParentWeight: uint64(1000),
+		StateRoot:    stateRoot,
 	}
 	baseBlock2 := types.Block{
-		Parents:   parents,
-		Height:    uint64(100),
-		StateRoot: stateRoot,
-		Nonce:     1,
+		Parents:      parents,
+		Height:       uint64(100),
+		ParentWeight: uint64(1000),
+		StateRoot:    stateRoot,
+		Nonce:        1,
 	}
-	blk, err := generator.Generate(ctx, core.NewTipSet(&baseBlock1, &baseBlock2), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
+	assert.Equal(uint64(101), blk.Height)
+	assert.Equal(uint64(1020.0), blk.ParentWeight)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
@@ -136,7 +149,14 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, core.ApplyMessages)
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
+		pW, err := ts.ParentWeight()
+		if err != nil {
+			return uint64(0), err
+		}
+		return pW + uint64(len(ts))*core.ECV, nil
+	}
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -156,7 +176,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.NewTipSet(&baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -170,6 +190,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 func TestGenerateSetsBasicFields(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
@@ -179,14 +200,23 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, core.ApplyMessages)
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
+		pW, err := ts.ParentWeight()
+		if err != nil {
+			return uint64(0), err
+		}
+		return pW + uint64(len(ts))*core.ECV, nil
+	}
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	h := uint64(100)
+	pw := uint64(1000)
 	baseBlock := types.Block{
-		Height:    h,
-		StateRoot: newCid(),
+		Height:       h,
+		ParentWeight: pw,
+		StateRoot:    newCid(),
 	}
-	baseTipSet := core.NewTipSet(&baseBlock)
+	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
 	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
 	assert.NoError(err)
 
@@ -197,11 +227,13 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
+	assert.Equal(pw+10.0, blk.ParentWeight)
 	assert.Equal(addrs[0], blk.Miner)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
@@ -211,7 +243,14 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, core.ApplyMessages)
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
+		pW, err := ts.ParentWeight()
+		if err != nil {
+			return uint64(0), err
+		}
+		return pW + uint64(len(ts))*core.ECV, nil
+	}
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -219,7 +258,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.NewTipSet(&baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -230,6 +269,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 // no block should be returned, and the message pool should not be pruned.
 func TestGenerateError(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
@@ -243,7 +283,14 @@ func TestGenerateError(t *testing.T) {
 
 		return stt, nil
 	}
-	generator := NewBlockGenerator(pool, explodingGetStateTree, core.ApplyMessages)
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
+		pW, err := ts.ParentWeight()
+		if err != nil {
+			return uint64(0), err
+		}
+		return pW + uint64(len(ts))*core.ECV, nil
+	}
+	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
@@ -255,7 +302,7 @@ func TestGenerateError(t *testing.T) {
 		Height:    uint64(100),
 		StateRoot: newCid(),
 	}
-	baseTipSet := core.NewTipSet(&baseBlock)
+	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
 	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
 	assert.Error(err, "boom")
 	assert.Nil(blk)

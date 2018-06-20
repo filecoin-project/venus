@@ -199,6 +199,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return chainMgr.LoadStateTreeTS(ctx, ts)
+	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
+		return chainMgr.Weight(ctx, ts)
 	}, core.ApplyMessages)
 	miningWorker := mining.NewWorker(blockGenerator)
 
@@ -556,8 +558,11 @@ func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
 	if err != nil {
 		return nil, 1, err
 	}
-
-	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(bts.Height()))
+	h, err := bts.Height()
+	if err != nil {
+		return nil, 1, err
+	}
+	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(h))
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.

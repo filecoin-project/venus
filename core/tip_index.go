@@ -1,10 +1,9 @@
 package core
 
 import (
-	//	"fmt"
 	"bytes"
 
-	//	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -12,25 +11,29 @@ import (
 // tipIndex tracks tipsets by height and parent set, mainly for use in expected consensus.
 type tipIndex map[uint64]tipSetsByParents
 
-func (ti tipIndex) addBlock(b *types.Block) {
+func (ti tipIndex) addBlock(b *types.Block) error {
 	tsbp, ok := ti[b.Height]
 	if !ok {
 		tsbp = tipSetsByParents{}
 		ti[b.Height] = tsbp
 	}
-	tsbp.addBlock(b)
+	return tsbp.addBlock(b)
 }
 
 type tipSetsByParents map[string]TipSet
 
-func (tsbp tipSetsByParents) addBlock(b *types.Block) {
+func (tsbp tipSetsByParents) addBlock(b *types.Block) error {
 	key := keyForParentSet(b.Parents)
 	ts := tsbp[key]
 	if ts == nil {
 		ts = TipSet{}
 	}
-	ts.AddBlock(b)
+	err := ts.AddBlock(b)
+	if err != nil {
+		return err
+	}
 	tsbp[key] = ts
+	return nil
 }
 
 func keyForParentSet(parents types.SortedCidSet) string {
@@ -53,48 +56,56 @@ type Tip = types.Block
 // keyed by Cid string.
 type TipSet map[string]*Tip
 
+var (
+	// ErrBadTipSetCreate is returned when there is an error creating a new tipset
+	ErrBadTipSetCreate = errors.New("tipset contains blocks of different heights, or different parent sets or weights")
+	// ErrBadTipSetAdd is returned when there is an error adding a block to a tipset
+	ErrBadTipSetAdd = errors.New("block has invalid height, parent set or parent weight to be a member of tipset")
+	// ErrEmptyTipSet is returned when a method requiring a non-empty tipset is called on an empty tipset
+	ErrEmptyTipSet = errors.New("empty tipset calling unallowed method")
+)
+
 // NewTipSet returns a TipSet wrapping the input blocks.
 // PRECONDITION: all blocks are the same height and have the same parent set.
-func NewTipSet(blks ...*types.Block) TipSet {
+func NewTipSet(blks ...*types.Block) (TipSet, error) {
+	if len(blks) == 0 {
+		return nil, ErrBadTipSetCreate
+	}
 	ts := TipSet{}
-	var h uint64
-	var p types.SortedCidSet
-	if len(blks) > 0 {
-		h = blks[0].Height
-		p = blks[0].Parents
-	}
 	for _, b := range blks {
-		if b.Height != h {
-			panic("constructing a tipset with blocks of different heights")
+		if err := ts.AddBlock(b); err != nil {
+			return nil, ErrBadTipSetCreate
 		}
-		if !b.Parents.Equals(p) {
-			panic("constructing a tipset with blocks of unequal parent sets")
-		}
-		id := b.Cid()
-		ts[id.String()] = b
 	}
-	return ts
+	return ts, nil
 }
 
 // AddBlock adds the provided block to this tipset.
 // PRECONDITION: this block has the same height parent set as other members of ts.
-func (ts TipSet) AddBlock(b *types.Block) {
-	var h uint64
-	var p types.SortedCidSet
+func (ts TipSet) AddBlock(b *types.Block) error {
 	if len(ts) == 0 {
 		id := b.Cid()
 		ts[id.String()] = b
+		return nil
 	}
-	h = b.Height
-	p = b.Parents
-	if b.Height != h {
-		panic("constructing a tipset with blocks of different heights")
+	h, err := ts.Height()
+	if err != nil {
+		return err
 	}
-	if !b.Parents.Equals(p) {
-		panic("constructing a tipset with blocks of unequal parent sets")
+	p, err := ts.Parents()
+	if err != nil {
+		return err
+	}
+	pW, err := ts.ParentWeight()
+	if err != nil {
+		return err
+	}
+	if b.Height != h || !b.Parents.Equals(p) || b.ParentWeight != pW {
+		return ErrBadTipSetAdd
 	}
 	id := b.Cid()
 	ts[id.String()] = b
+	return nil
 }
 
 // Clone returns a shallow copy of the TipSet.
@@ -140,19 +151,10 @@ func (ts TipSet) ToSlice() []*types.Block {
 	return sl
 }
 
-// Score returns the numeric score of a tipset.
-// TODO this is a dummy calculation, this needs to change to reflect the spec.
-func (ts TipSet) Score() uint64 {
-	if len(ts) == 0 {
-		return 0
-	}
-	return ts.Height() * (uint64(100 + len(ts)))
-}
-
 // MinTicket returns the smallest ticket of all blocks in the tipset.
-func (ts TipSet) MinTicket() types.Signature {
-	if len(ts) <= 0 {
-		return []byte{0}
+func (ts TipSet) MinTicket() (types.Signature, error) {
+	if len(ts) == 0 {
+		return nil, ErrEmptyTipSet
 	}
 	blks := ts.ToSlice()
 	min := blks[0].Ticket
@@ -161,25 +163,31 @@ func (ts TipSet) MinTicket() types.Signature {
 			min = blks[i].Ticket
 		}
 	}
-	return min
+	return min, nil
 }
 
 // Height returns the height of a tipset.
-func (ts TipSet) Height() uint64 {
-	var h uint64
-	if len(ts) > 0 {
-		h = ts.ToSlice()[0].Height
+func (ts TipSet) Height() (uint64, error) {
+	if len(ts) == 0 {
+		return uint64(0), ErrEmptyTipSet
 	}
-	return h
+	return ts.ToSlice()[0].Height, nil
 }
 
 // Parents returns the parents of a tipset.
-func (ts TipSet) Parents() types.SortedCidSet {
-	var p types.SortedCidSet
-	if len(ts) > 0 {
-		p = ts.ToSlice()[0].Parents
+func (ts TipSet) Parents() (types.SortedCidSet, error) {
+	if len(ts) < 0 {
+		return types.SortedCidSet{}, ErrEmptyTipSet
 	}
-	return p
+	return ts.ToSlice()[0].Parents, nil
+}
+
+// ParentWeight returns the ParentWeight of the TipSet.
+func (ts TipSet) ParentWeight() (uint64, error) {
+	if len(ts) == 0 {
+		return uint64(0), ErrEmptyTipSet
+	}
+	return ts.ToSlice()[0].ParentWeight, nil
 }
 
 // BaseBlockFromTipSets is a likely TEMPORARY helper to extract a base block

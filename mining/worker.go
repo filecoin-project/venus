@@ -125,7 +125,6 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 		defer doneWg.Done()
 		var currentRunCtx context.Context
 		var currentRunCancel = func() {}
-		currentTipSet := core.TipSet{}
 		for {
 			select {
 			case <-miningCtx.Done():
@@ -137,27 +136,13 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 					// TODO(EC): implement the mining logic described in the spec here:
 					//   https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR83
 					//   specifically:
-					//     - the spec suggests to "wait a little bit" when we see a tipset at a greater
-					//       height than the one we're working on. However it's probably just easier to
-					//       starting mining as soon as we see a tipset from a greater height and then
-					//       cancel it and start over when we see a tipset at that height with greater
-					//       weight. So replace the score check below that cancels the mining run
-					//       with one that cancels and starts a new run if we are currently not running
-					//       (below as currentBlock == nil), if we see a tipset from a greater height
-					//       (replaces score check below), or if we see a tipset from the same height
-					//       but with greater weight. I say ignore for now rational miner strategies that
-					//       wouldn't abandon a lesser-weight mining run that wins the lottery.
-					newTipSet := input.TipSet
-					if len(currentTipSet) == 0 || currentTipSet.Score() <= newTipSet.Score() {
-						currentRunCancel()
-						currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
-						doneWg.Add(1)
-						go func() {
-							w.mine(currentRunCtx, input, w.nullBlockTimer, w.blockGenerator, w.createPoST, outCh)
-							doneWg.Done()
-						}()
-						currentTipSet = newTipSet
-					}
+					currentRunCancel()
+					currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
+					doneWg.Add(1)
+					go func() {
+						w.mine(currentRunCtx, input, w.nullBlockTimer, w.blockGenerator, w.createPoST, outCh)
+						doneWg.Done()
+					}()
 				} else {
 					// Sender closed the channel. Set it to nil to ignore it.
 					inCh = nil

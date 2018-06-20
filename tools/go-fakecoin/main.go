@@ -104,6 +104,8 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
 	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.LoadStateTreeTS(ctx, ts)
+	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
+		return cm.Weight(ctx, ts)
 	}, core.ApplyMessages)
 }
 
@@ -222,7 +224,11 @@ func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStor
 	ra := types.MakeTestAddress("rewardaddress")
 
 	const nullBlockCount = 0
-	blk, err := bg.Generate(ctx, core.NewTipSet(blks...), nil, nullBlockCount, ra)
+	ts, err := core.NewTipSet(blks...)
+	if err != nil {
+		return nil, err
+	}
+	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ra)
 	if err != nil {
 		return nil, err
 	}

@@ -142,35 +142,38 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 }
 
 // Genesis creates a new genesis block and sets it as the the best known block.
-func (s *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) (err error) {
+func (cm *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) (err error) {
 	ctx = log.Start(ctx, "ChainManager.Genesis")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-	genesis, err := gen(s.cstore)
+	genesis, err := gen(cm.cstore)
 	if err != nil {
 		return err
 	}
 
-	s.genesisCid = genesis.Cid()
+	cm.genesisCid = genesis.Cid()
 
-	s.heaviestTipSet.Lock()
-	defer s.heaviestTipSet.Unlock()
-	s.addBlock(genesis, s.genesisCid)
-	genTipSet := NewTipSet(genesis)
-	return s.setHeaviestTipSet(ctx, genTipSet)
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
+	cm.addBlock(genesis, cm.genesisCid)
+	genTipSet, err := NewTipSet(genesis)
+	if err != nil {
+		return err
+	}
+	return cm.setHeaviestTipSet(ctx, genTipSet)
 }
 
 // setHeaviestTipSet sets the best tipset.  CALLER MUST HOLD THE heaviestTipSet LOCK.
-func (s *ChainManager) setHeaviestTipSet(ctx context.Context, ts TipSet) error {
+func (cm *ChainManager) setHeaviestTipSet(ctx context.Context, ts TipSet) error {
 	log.LogKV(ctx, "setHeaviestTipSet", ts.String())
-	if err := putCidSet(ctx, s.ds, heaviestTipSetKey, ts.ToSortedCidSet()); err != nil {
+	if err := putCidSet(ctx, cm.ds, heaviestTipSetKey, ts.ToSortedCidSet()); err != nil {
 		return errors.Wrap(err, "failed to write TipSet cids to datastore")
 	}
-	s.HeaviestTipSetPubSub.Pub(ts, HeaviestTipSetTopic)
+	cm.HeaviestTipSetPubSub.Pub(ts, HeaviestTipSetTopic)
 	// The heaviest tipset should not pick up changes from adding new blocks to the index.
 	// It only changes explicitly when set through this function.
-	s.heaviestTipSet.ts = ts.Clone()
+	cm.heaviestTipSet.ts = ts.Clone()
 
 	return nil
 }
@@ -186,8 +189,8 @@ func putCidSet(ctx context.Context, ds datastore.Datastore, k datastore.Key, cid
 }
 
 // Load reads the cids of the best tipset from disk and reparses the chain backwards from there.
-func (s *ChainManager) Load() error {
-	tipCids, err := s.readHeaviestTipSetCids()
+func (cm *ChainManager) Load() error {
+	tipCids, err := cm.readHeaviestTipSetCids()
 	if err != nil {
 		return err
 	}
@@ -198,18 +201,21 @@ func (s *ChainManager) Load() error {
 		// actually, i think that the chainmanager should only ever fetch from
 		// the local disk unless we're syncing. Its something that needs more
 		// thought at least.
-		blk, err := s.FetchBlock(context.TODO(), it.Value())
+		blk, err := cm.FetchBlock(context.TODO(), it.Value())
 		if err != nil {
 			return errors.Wrap(err, "failed to load block in head TipSet")
 		}
-		ts.AddBlock(blk)
+		err = ts.AddBlock(blk)
+		if err != nil {
+			return errors.Wrap(err, "failed to add validated block to TipSet")
+		}
 	}
 
 	var genesii []*types.Block
-	err = s.walkChain(ts.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
+	err = cm.walkChain(ts.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
 		for _, t := range tips {
 			id := t.Cid()
-			s.addBlock(t, id)
+			cm.addBlock(t, id)
 		}
 		genesii = tips
 		return true, nil
@@ -220,8 +226,8 @@ func (s *ChainManager) Load() error {
 	switch len(genesii) {
 	case 1:
 		// TODO: probably want to load the expected genesis block and assert it here?
-		s.genesisCid = genesii[0].Cid()
-		s.heaviestTipSet.ts = ts
+		cm.genesisCid = genesii[0].Cid()
+		cm.heaviestTipSet.ts = ts
 	case 0:
 		panic("unreached")
 	default:
@@ -231,8 +237,8 @@ func (s *ChainManager) Load() error {
 	return nil
 }
 
-func (s *ChainManager) readHeaviestTipSetCids() (*types.SortedCidSet, error) {
-	bbi, err := s.ds.Get(heaviestTipSetKey)
+func (cm *ChainManager) readHeaviestTipSetCids() (*types.SortedCidSet, error) {
+	bbi, err := cm.ds.Get(heaviestTipSetKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read heaviestTipSetKey")
 	}
@@ -251,8 +257,8 @@ func (s *ChainManager) readHeaviestTipSetCids() (*types.SortedCidSet, error) {
 }
 
 // GetGenesisCid returns the cid of the current genesis block.
-func (s *ChainManager) GetGenesisCid() *cid.Cid {
-	return s.genesisCid
+func (cm *ChainManager) GetGenesisCid() *cid.Cid {
+	return cm.genesisCid
 }
 
 // BestBlockGetter is the signature for a function used to get the current best block.
@@ -266,43 +272,71 @@ type HeaviestTipSetGetter func() TipSet
 // getBestBlock returns a random member of the tipset at the head of our
 // currently selected 'best' chain.  TODO: this is only being used by callers that
 // haven't been updated to use getHeaviestTipSet.  Update and remove this
-func (s *ChainManager) getBestBlock() *types.Block {
-	s.heaviestTipSet.Lock()
-	defer s.heaviestTipSet.Unlock()
-	return s.heaviestTipSet.ts.ToSlice()[0]
+func (cm *ChainManager) getBestBlock() *types.Block {
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
+	return cm.heaviestTipSet.ts.ToSlice()[0]
 }
 
 // GetHeaviestTipSet returns the tipset at the head of our current 'best' chain.
-func (s *ChainManager) getHeaviestTipSet() TipSet {
-	s.heaviestTipSet.Lock()
-	defer s.heaviestTipSet.Unlock()
-	return s.heaviestTipSet.ts
+func (cm *ChainManager) getHeaviestTipSet() TipSet {
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
+	return cm.heaviestTipSet.ts
+}
+
+// weightCmp is a function for comparing tipset weights.
+func weightCmp(w1 uint64, w2 uint64) int {
+	if w1 < w2 {
+		return -1
+	}
+	if w2 < w1 {
+		return 1
+	}
+	return 0
 }
 
 // maybeAcceptBlock attempts to accept blk if its score is greater than the current best block,
 // otherwise returning ChainValid.
-func (s *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
+func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
 	// We have to hold the lock at this level to avoid TOCTOU problems
 	// with the new heaviest tipset.
 	log.LogKV(ctx, "maybeAcceptBlock", blk.Cid().String())
-	s.heaviestTipSet.Lock()
-	defer s.heaviestTipSet.Unlock()
-	ts, err := s.GetTipSetByBlock(blk)
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
+	ts, err := cm.GetTipSetByBlock(blk)
 	if err != nil {
 		return Unknown, err
 	}
-	if ts.Score() < s.heaviestTipSet.ts.Score() ||
-		(ts.Score() == s.heaviestTipSet.ts.Score() &&
+	// Calculate weights of TipSets for comparison.
+	heaviestWeight, err := cm.Weight(ctx, cm.heaviestTipSet.ts)
+	if err != nil {
+		return Unknown, err
+	}
+	newWeight, err := cm.Weight(ctx, ts)
+	if err != nil {
+		return Unknown, err
+	}
+	heaviestTicket, err := cm.heaviestTipSet.ts.MinTicket()
+	if err != nil {
+		return Unknown, err
+	}
+	newTicket, err := ts.MinTicket()
+	if err != nil {
+		return Unknown, err
+	}
+	if weightCmp(newWeight, heaviestWeight) == -1 ||
+		(weightCmp(newWeight, heaviestWeight) == 0 &&
 			// break ties by choosing tipset with smaller ticket
-			bytes.Compare(ts.MinTicket(), s.heaviestTipSet.ts.MinTicket()) >= 0) {
+			bytes.Compare(newTicket, heaviestTicket) >= 0) {
 		return ChainValid, nil
 	}
 
 	// set the given tipset as our current heaviest tipset
-	if err := s.setHeaviestTipSet(ctx, ts); err != nil {
+	if err := cm.setHeaviestTipSet(ctx, ts); err != nil {
 		return Unknown, err
 	}
-	log.Infof("new heaviest tipset, [s=%d, hs=%s]", ts.Score(), ts.String())
+	log.Infof("new heaviest tipset, [s=%f, hs=%s]", newWeight, ts.String())
 	log.LogKV(ctx, "maybeAcceptBlock", ts.String())
 	return ChainAccepted, nil
 }
@@ -313,33 +347,33 @@ type NewBlockProcessor func(context.Context, *types.Block) (BlockProcessResult, 
 // ProcessNewBlock sends a new block to the chain manager. If the block is in a
 // tipset heavier than our current heaviest, this tipset is accepted as our
 // heaviest tipset. Otherwise an error is returned explaining why it was not accepted.
-func (s *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (bpr BlockProcessResult, err error) {
+func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (bpr BlockProcessResult, err error) {
 	ctx = log.Start(ctx, "ChainManager.ProcessNewBlock")
 	defer func() {
 		log.SetTag(ctx, "result", bpr.String())
 		log.FinishWithErr(ctx, err)
 	}()
-	log.Infof("processing block [s=%d, h=%s]", blk.Score(), blk.Cid())
+	log.Infof("processing block [s=%d, cid=%s]", blk.Score(), blk.Cid())
 
-	switch err := s.validateBlock(ctx, blk); err {
+	switch err := cm.validateBlock(ctx, blk); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
 	case ErrInvalidBase:
 		return InvalidBase, ErrInvalidBase
 	case nil:
-		return s.maybeAcceptBlock(ctx, blk)
+		return cm.maybeAcceptBlock(ctx, blk)
 	}
 }
 
 // fetchBlock gets the requested block, either from disk or from the network.
-func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
+func (cm *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
 	log.Infof("fetching block, [%s]", c.String())
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
 	var blk types.Block
-	if err := s.cstore.Get(ctx, c, &blk); err != nil {
+	if err := cm.cstore.Get(ctx, c, &blk); err != nil {
 		return nil, err
 	}
 
@@ -349,7 +383,7 @@ func (s *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Block
 // validateTipSetStructure verifies that the input blocks form a valid tipset.
 // validating each block structurally and making sure that this tipset contains
 // only blocks with the same height and same parent set
-func (s *ChainManager) validateTipSetStructure(ctx context.Context, blks []*types.Block) error {
+func (cm *ChainManager) validateTipSetStructure(ctx context.Context, blks []*types.Block) error {
 	var h uint64
 	var p types.SortedCidSet
 	if len(blks) > 0 {
@@ -357,7 +391,7 @@ func (s *ChainManager) validateTipSetStructure(ctx context.Context, blks []*type
 		p = blks[0].Parents
 	}
 	for _, blk := range blks {
-		if err := s.validateBlockStructure(ctx, blk); err != nil {
+		if err := cm.validateBlockStructure(ctx, blk); err != nil {
 			return err
 		}
 		if blk.Height != h {
@@ -376,7 +410,7 @@ func (s *ChainManager) validateTipSetStructure(ctx context.Context, blks []*type
 // properly filled out and its signatures are correct. Checking the validity of
 // state changes must be done separately and only once the state of the
 // previous block has been validated. TODO: not yet signature checking
-func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
+func (cm *ChainManager) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	// TODO: validate signatures on messages
 	log.LogKV(ctx, "validateBlockStructure", b.Cid().String())
 	if b.StateRoot == nil {
@@ -391,22 +425,22 @@ func (s *ChainManager) validateBlockStructure(ctx context.Context, b *types.Bloc
 // TODO: We don't currently validate that
 //   a) there is a mining reward; and b) the reward is the first message in the block.
 //  We need to do so since this is a part of the consensus rules.
-func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
+func (cm *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
 	log.LogKV(ctx, "validateBlock", b.Cid().String())
-	if err := s.validateBlockStructure(ctx, b); err != nil {
+	if err := cm.validateBlockStructure(ctx, b); err != nil {
 		return errors.Wrap(err, "check block valid failed")
 	}
 
-	if _, err := s.cstore.Put(ctx, b); err != nil {
+	if _, err := cm.cstore.Put(ctx, b); err != nil {
 		return errors.Wrap(err, "failed to store block")
 	}
 
-	baseTipSet, chain, err := s.findKnownAncestor(ctx, b)
+	baseTipSet, chain, err := cm.findKnownAncestor(ctx, b)
 	if err != nil {
 		return err
 	}
 
-	st, err := s.LoadStateTreeTS(ctx, baseTipSet)
+	st, err := cm.LoadStateTreeTS(ctx, baseTipSet)
 	if err != nil {
 		return err
 	}
@@ -421,12 +455,12 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 			if err != nil {
 				return err
 			}
-			cpySt, err = state.LoadStateTree(ctx, s.cstore, cpyCid, builtin.Actors)
+			cpySt, err = state.LoadStateTree(ctx, cm.cstore, cpyCid, builtin.Actors)
 			if err != nil {
 				return err
 			}
 
-			receipts, err := s.blockProcessor(ctx, blk, cpySt)
+			receipts, err := cm.blockProcessor(ctx, blk, cpySt)
 			if err != nil {
 				return err
 			}
@@ -435,14 +469,14 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 			if len(receipts) != len(blk.MessageReceipts) {
 				return fmt.Errorf("found invalid message receipts: %v %v", receipts, blk.MessageReceipts)
 			}
-			s.addBlock(blk, blk.Cid())
+			cm.addBlock(blk, blk.Cid())
 		}
 		if len(curTipSet) == 1 { // block validation state == aggregate parent state
 			st = cpySt
 			continue
 		}
 		// Multiblock tipset, reapply messages to get aggregate parent state
-		_, err = s.tipSetProcessor(ctx, curTipSet, st)
+		_, err = cm.tipSetProcessor(ctx, curTipSet, st)
 		if err != nil {
 			return err
 		}
@@ -462,7 +496,7 @@ func (s *ChainManager) validateBlock(ctx context.Context, b *types.Block) error 
 // findKnownAncestor walks backwards from the given block until it finds a tipset
 // that we know to be good. It then returns that known tipset, and the tipsets
 // that form the chain back to it.
-func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (TipSet, []TipSet, error) {
+func (cm *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (TipSet, []TipSet, error) {
 	log.LogKV(ctx, "findKnownAncestor", tip.Cid().String())
 
 	var baseTipSet TipSet
@@ -475,11 +509,11 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	// be reverted, the system should opt to halt, not just happily switch over
 	// to an entirely different chain.
 
-	err := s.walkChain([]*types.Block{tip}, func(tips []*types.Block) (cont bool, err error) {
+	err := cm.walkChain([]*types.Block{tip}, func(tips []*types.Block) (cont bool, err error) {
 		// The tipset is known if all tips are known.
 		known := true
 		for _, blk := range tips {
-			if !s.isKnownGoodBlock(blk.Cid()) {
+			if !cm.isKnownGoodBlock(blk.Cid()) {
 				known = false
 			}
 		}
@@ -487,11 +521,14 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 		// For example the tipset could contain all known blocks of
 		// different heights.  TipSet validation includes validating each
 		// block
-		if err := s.validateTipSetStructure(ctx, tips); err != nil {
+		if err := cm.validateTipSetStructure(ctx, tips); err != nil {
 			return false, errors.Wrap(err, "validate tipset failed")
 		}
 
-		next := NewTipSet(tips...) // must come after validation, otherwise may panic
+		next, err := NewTipSet(tips...)
+		if err != nil {
+			return false, err
+		}
 		if known {
 			baseTipSet = next
 			return false, nil
@@ -513,27 +550,29 @@ func (s *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) 
 	return baseTipSet, path, nil
 }
 
-func (s *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
-	if bc.Equals(s.genesisCid) {
+func (cm *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
+	if bc.Equals(cm.genesisCid) {
 		return true
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.knownGoodBlocks.Has(bc)
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	return cm.knownGoodBlocks.Has(bc)
 }
 
-func (s *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.knownGoodBlocks.Add(id)
-	s.tips.addBlock(b)
+func (cm *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.knownGoodBlocks.Add(id)
+	if err := cm.tips.addBlock(b); err != nil {
+		panic("Invalid block added to tipset.  Validation should have caught earlier")
+	}
 }
 
 // AggregateStateTreeComputer is the signature for a function used to get the state of a tipset.
 type AggregateStateTreeComputer func(context.Context, TipSet) (state.Tree, error)
 
-// loadParentStateTree returns the aggregate state tree of the input tipset's parent.
+// LoadParentStateTree returns the aggregate state tree of the input tipset's parent.
 // Only tipsets that are already known to be valid by the chain manager should
 // be provided as arguments.  Otherwise there is no guarantee that the returned
 // state is valid or that this function won't panic.
@@ -542,22 +581,27 @@ type AggregateStateTreeComputer func(context.Context, TipSet) (state.Tree, error
 // can be read directly from the block.  Alternatively the traversal ends if
 // the tipset's state tree has been cached by the chain manager from a previous
 // traversal.
-func (s *ChainManager) loadParentStateTree(ctx context.Context, ts TipSet) (state.Tree, error) {
+func (cm *ChainManager) LoadParentStateTree(ctx context.Context, ts TipSet) (state.Tree, error) {
 	// Get base state and gather tipsets to apply.
 	var path []TipSet
 	var st state.Tree
-	err := s.walkChain(ts.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		if NewTipSet(tips...).Equals(ts) { // skip the head tipset
+	err := cm.walkChain(ts.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
+		next, err := NewTipSet(tips...)
+		if err != nil {
+			return false, errors.Wrap(err, "error creating TipSet from already validated chain section")
+		}
+		// Skip the head tipset.
+		if next.Equals(ts) {
 			return true, nil
 		}
+
 		if len(tips) == 1 {
-			st, err = state.LoadStateTree(ctx, s.cstore, tips[0].StateRoot, builtin.Actors)
+			st, err = state.LoadStateTree(ctx, cm.cstore, tips[0].StateRoot, builtin.Actors)
 			return false, err
 		}
-		next := NewTipSet(tips...)
 		tipsID := next.String()
-		if stateRoot, ok := s.stateCache[tipsID]; ok {
-			st, err = state.LoadStateTree(ctx, s.cstore, stateRoot, builtin.Actors)
+		if stateRoot, ok := cm.stateCache[tipsID]; ok {
+			st, err = state.LoadStateTree(ctx, cm.cstore, stateRoot, builtin.Actors)
 			return false, err
 		}
 		path = append(path, next)
@@ -569,7 +613,7 @@ func (s *ChainManager) loadParentStateTree(ctx context.Context, ts TipSet) (stat
 
 	for i := len(path) - 1; i >= 0; i-- {
 		next := path[i]
-		_, err = s.tipSetProcessor(ctx, next, st)
+		_, err = cm.tipSetProcessor(ctx, next, st)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to process tipset")
 		}
@@ -577,28 +621,28 @@ func (s *ChainManager) loadParentStateTree(ctx context.Context, ts TipSet) (stat
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to flush tree after applying state transitions")
 		}
-		s.stateCache[next.String()] = stateRoot
+		cm.stateCache[next.String()] = stateRoot
 	}
 	return st, nil
 }
 
 // LoadStateTreeTS returns the aggregate state of the input tipset.  This should
 // only be called on tipsets that are already validated by the chain manager
-func (s *ChainManager) LoadStateTreeTS(ctx context.Context, ts TipSet) (state.Tree, error) {
+func (cm *ChainManager) LoadStateTreeTS(ctx context.Context, ts TipSet) (state.Tree, error) {
 	// Return immediately if this tipset's state can be computed directly or is cached
 	if len(ts) == 1 {
-		return state.LoadStateTree(ctx, s.cstore, ts.ToSlice()[0].StateRoot, builtin.Actors)
+		return state.LoadStateTree(ctx, cm.cstore, ts.ToSlice()[0].StateRoot, builtin.Actors)
 	}
-	if stateRoot, ok := s.stateCache[ts.String()]; ok {
-		return state.LoadStateTree(ctx, s.cstore, stateRoot, builtin.Actors)
+	if stateRoot, ok := cm.stateCache[ts.String()]; ok {
+		return state.LoadStateTree(ctx, cm.cstore, stateRoot, builtin.Actors)
 	}
 
 	// Calculate by processing tipset on parent state
-	st, err := s.loadParentStateTree(ctx, ts)
+	st, err := cm.LoadParentStateTree(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
-	_, err = s.tipSetProcessor(ctx, ts, st)
+	_, err = cm.tipSetProcessor(ctx, ts, st)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to process tipset")
 	}
@@ -606,7 +650,7 @@ func (s *ChainManager) LoadStateTreeTS(ctx context.Context, ts TipSet) (state.Tr
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to flush tree after applying state transitions")
 	}
-	s.stateCache[ts.String()] = stateRoot
+	cm.stateCache[ts.String()] = stateRoot
 	return st, nil
 }
 
@@ -617,8 +661,8 @@ func (s *ChainManager) LoadStateTreeTS(ctx context.Context, ts TipSet) (state.Tr
 // synchronizing the blockchain and downloading it efficiently.
 // TODO: sync logic should be decoupled and off in a separate worker. This
 // method should not block
-func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
-	ts := s.GetHeaviestTipSet()
+func (cm *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
+	ts := cm.GetHeaviestTipSet()
 	if len(ts) == 0 {
 		panic("best tip set must have at least one block")
 	}
@@ -630,13 +674,13 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 	// Naive sync.
 	// TODO: more dedicated sync protocols, like "getBlockHashes(range)"
 	ctx := context.TODO()
-	blk, err := s.FetchBlock(ctx, c)
+	blk, err := cm.FetchBlock(ctx, c)
 	if err != nil {
 		log.Error("failed to fetch block: ", err)
 		return
 	}
 
-	_, err = s.ProcessNewBlock(ctx, blk)
+	_, err = cm.ProcessNewBlock(ctx, blk)
 	if err != nil {
 		log.Error("processing new block: ", err)
 		return
@@ -644,8 +688,8 @@ func (s *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 }
 
 // Stop stops all activities and cleans up.
-func (s *ChainManager) Stop() {
-	s.HeaviestTipSetPubSub.Shutdown()
+func (cm *ChainManager) Stop() {
+	cm.HeaviestTipSetPubSub.Shutdown()
 }
 
 // ChainManagerForTest provides backdoor access to internal fields to make
@@ -654,35 +698,40 @@ type ChainManagerForTest = ChainManager
 
 // SetHeaviestTipSetForTest enables setting the best tipset directly. Don't use this
 // outside of a testing context.
-func (s *ChainManagerForTest) SetHeaviestTipSetForTest(ctx context.Context, ts TipSet) error {
+func (cm *ChainManagerForTest) SetHeaviestTipSetForTest(ctx context.Context, ts TipSet) error {
 	// added to make `LogKV` call in `setHeaviestTipSet` happy (else it logs an error message)
 	log.Start(ctx, "SetHeaviestTipSetForTest")
 	for _, b := range ts {
-		_, err := s.cstore.Put(ctx, b)
+		_, err := cm.cstore.Put(ctx, b)
 		if err != nil {
 			return errors.Wrap(err, "failed to put block to disk")
 		}
 		id := b.Cid()
-		s.addBlock(b, id)
+		cm.addBlock(b, id)
 	}
 	defer log.Finish(ctx)
-	return s.setHeaviestTipSet(ctx, ts)
+	return cm.setHeaviestTipSet(ctx, ts)
 }
 
 // BlockHistory returns a channel of block pointers (or errors), starting with the current best tipset's blocks
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
+func (cm *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
 	out := make(chan interface{})
-	tips := s.GetHeaviestTipSet().ToSlice()
+	tips := cm.GetHeaviestTipSet().ToSlice()
 
 	go func() {
 		defer close(out)
-		err := s.walkChain(tips, func(tips []*types.Block) (cont bool, err error) {
+		err := cm.walkChain(tips, func(tips []*types.Block) (cont bool, err error) {
+			var raw interface{}
+			raw, err = NewTipSet(tips...)
+			if err != nil {
+				raw = err
+			}
 			select {
 			case <-ctx.Done():
 				return false, nil
-			case out <- NewTipSet(tips...):
+			case out <- raw:
 			}
 			return true, nil
 		})
@@ -700,7 +749,7 @@ func (s *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
 // by ticket size.  This can differ from the jth's message receipt stored
 // in the ith block in the case that the jth message is in conflict with another
 // message of the tipset.
-func (s *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet) (*types.MessageReceipt, error) {
+func (cm *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -716,11 +765,11 @@ func (s *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet) 
 	}
 
 	// Apply all the tipset's messages to determine the correct receipts.
-	st, err := s.loadParentStateTree(ctx, ts)
+	st, err := cm.LoadParentStateTree(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
-	res, err := s.tipSetProcessor(ctx, ts, st)
+	res, err := cm.tipSetProcessor(ctx, ts, st)
 	if err != nil {
 		return nil, err
 	}
@@ -769,26 +818,59 @@ func (s *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet) 
 	return rcpt, nil
 }
 
+// ECV is the constant V defined in the EC spec.  TODO: the value of V needs
+//  motivation at the protocol design level
+const ECV uint64 = 10
+
+// ECPrM is the power ratio magnitude defined in the EC spec.  TODO: the value
+// of this constant needs motivation at the protocol level
+const ECPrM uint64 = 100
+
+// Weight returns the EC weight of this TipSet
+func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, error) {
+	var w uint64
+	st, err := cm.LoadParentStateTree(ctx, ts)
+	if err != nil {
+		return w, err
+	}
+	_ = st // TODO: remove when we start reading power table
+	w, err = ts.ParentWeight()
+	if err != nil {
+		return w, err
+	}
+
+	for i := 0; i < len(ts); i++ {
+		// TODO: 0.0 needs to be replaced with the block miner's power
+		// as derived from the power table in the aggregate parent
+		// state of this tipset (EC pt 7):
+		//
+		// pT := st.GetActor(ctx, address.StorageMarketAddress).PowerTable()
+		// pwr, err := pT.PowerOf(blk.Miner)
+		w += ECV + (ECPrM * 0.0)
+	}
+	return w, nil
+}
+
 // WaitForMessage searches for a message with Cid, msgCid, then passes it, along with the containing Block and any
 // MessageRecipt, to the supplied callback, cb. If an error is encountered, it is returned. Note that it is logically
 // possible that an error is returned and the success callback is called. In that case, the error can be safely ignored.
 // TODO: This implementation will become prohibitively expensive since it involves traversing the entire blockchain.
 //       We should replace with an index later.
-func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
+func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
 	*types.MessageReceipt) error) (retErr error) {
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
 	ch := make(chan (interface{}))
 
 	// New blocks
-	newTipSetCh := s.HeaviestTipSetPubSub.Sub(HeaviestTipSetTopic)
-	defer s.HeaviestTipSetPubSub.Unsub(newTipSetCh, HeaviestTipSetTopic)
+	newTipSetCh := cm.HeaviestTipSetPubSub.Sub(HeaviestTipSetTopic)
+	defer cm.HeaviestTipSetPubSub.Unsub(newTipSetCh, HeaviestTipSetTopic)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Historical blocks
-	historyCh := s.BlockHistory(ctx)
+	historyCh := cm.BlockHistory(ctx)
 
 	// Merge historical and new block Channels.
 	go func() {
@@ -823,7 +905,7 @@ func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb f
 						return err
 					}
 					if c.Equals(msgCid) {
-						recpt, err := s.receiptFromTipSet(ctx, msgTotal+j, ts)
+						recpt, err := cm.receiptFromTipSet(ctx, msgTotal+j, ts)
 						if err != nil {
 							return errors.Wrap(err, "error retrieving receipt from tipset")
 						}
@@ -843,7 +925,7 @@ func (s *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb f
 type walkChainCallback func(tips []*types.Block) (cont bool, err error)
 
 // walkChain walks backward through the chain, starting at tips, invoking cb() at each height.
-func (s *ChainManager) walkChain(tips []*types.Block, cb walkChainCallback) error {
+func (cm *ChainManager) walkChain(tips []*types.Block, cb walkChainCallback) error {
 	for {
 		cont, err := cb(tips)
 		if err != nil {
@@ -860,7 +942,7 @@ func (s *ChainManager) walkChain(tips []*types.Block, cb walkChainCallback) erro
 		tips = tips[:0]
 		for it := ids.Iter(); !it.Complete(); it.Next() {
 			pid := it.Value()
-			p, err := s.FetchBlock(context.TODO(), pid)
+			p, err := cm.FetchBlock(context.TODO(), pid)
 			if err != nil {
 				return errors.Wrap(err, "error fetching block")
 			}
@@ -874,10 +956,10 @@ func (s *ChainManager) walkChain(tips []*types.Block, cb walkChainCallback) erro
 // GetTipSetByBlock returns the tipset associated with a given block by
 // performing a lookup on its parent set.  The tipset returned is a
 // cloned shallow copy of the version stored in the index
-func (s *ChainManager) GetTipSetByBlock(blk *types.Block) (TipSet, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	ts, ok := s.tips[blk.Height][keyForParentSet(blk.Parents)]
+func (cm *ChainManager) GetTipSetByBlock(blk *types.Block) (TipSet, error) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	ts, ok := cm.tips[blk.Height][keyForParentSet(blk.Parents)]
 	if !ok {
 		return TipSet{}, errors.New("block's tipset not indexed by chain_mgr")
 	}
@@ -886,11 +968,11 @@ func (s *ChainManager) GetTipSetByBlock(blk *types.Block) (TipSet, error) {
 
 // GetTipSetsByHeight returns all tipsets at the given height. Neither the returned
 // slice nor its members will be mutated by the ChainManager once returned.
-func (s *ChainManager) GetTipSetsByHeight(height uint64) (tips []TipSet) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (cm *ChainManager) GetTipSetsByHeight(height uint64) (tips []TipSet) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	tsbp, ok := s.tips[height]
+	tsbp, ok := cm.tips[height]
 	if ok {
 		for _, ts := range tsbp {
 			// Assumption here that the blocks contained in `ts` are never mutated.

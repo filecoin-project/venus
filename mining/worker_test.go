@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -75,7 +74,7 @@ func TestWorker_Start(t *testing.T) {
 	// Test that multi-block tipsets are passed faithfully
 	mineCalled = false
 	ctx, cancel = context.WithCancel(context.Background())
-	tipSet = core.NewTipSet([]*types.Block{{StateRoot: newCid()}, {StateRoot: newCid()}}...)
+	tipSet = core.RequireNewTipSet(require, []*types.Block{{StateRoot: newCid()}, {StateRoot: newCid()}}...)
 	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
 		mineCalled = true
 		require.Equal(2, len(i.TipSet))
@@ -106,27 +105,6 @@ func TestWorker_Start(t *testing.T) {
 	<-outCh
 	<-outCh
 	<-outCh
-	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
-	cancel() // Makes vet happy.
-
-	// Test that it ignores blocks with lower score.
-	ctx, cancel = context.WithCancel(context.Background())
-	b1 := &types.Block{Height: 1}
-	b1TipSet := core.NewTipSet(b1)
-	bWorseScore := &types.Block{Height: 0}
-	bWorseScoreTipSet := core.NewTipSet(bWorseScore)
-	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		require.Equal(1, len(i.TipSet))
-		gotBlock := i.TipSet.ToSlice()[0]
-		assert.True(b1.Cid().Equals(gotBlock.Cid()))
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
-	inCh, outCh, _ = worker.Start(ctx)
-	inCh <- NewInput(context.Background(), b1TipSet, rewardAddr)
-	<-outCh
-	inCh <- NewInput(context.Background(), bWorseScoreTipSet, rewardAddr)
-	time.Sleep(20 * time.Millisecond)
 	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
 	cancel() // Makes vet happy.
 
