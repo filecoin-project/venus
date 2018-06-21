@@ -590,7 +590,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 }
 
 func RunInit(opts ...string) ([]byte, error) {
-	filecoinBin, err := th.GetFilecoinBinary()
 	return RunCommand("init", opts...)
 }
 

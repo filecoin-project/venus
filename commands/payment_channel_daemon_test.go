@@ -54,9 +54,11 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelLs(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	t.Run("Works with default payer", func(t *testing.T) {
+		t.Parallel()
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
@@ -71,6 +73,7 @@ func TestPaymentChannelLs(t *testing.T) {
 	})
 
 	t.Run("Works with specified payer", func(t *testing.T) {
+		t.Parallel()
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
@@ -89,6 +92,7 @@ func TestPaymentChannelLs(t *testing.T) {
 	})
 
 	t.Run("Notifies when channels not found", func(t *testing.T) {
+		t.Parallel()
 		payer := &address.TestAddress
 		target := &address.TestAddress2
 		eol := types.NewBlockHeight(20)
@@ -104,6 +108,7 @@ func TestPaymentChannelLs(t *testing.T) {
 }
 
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
+	t.Parallel()
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
@@ -119,6 +124,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
+	t.Parallel()
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
@@ -137,6 +143,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
+	t.Parallel()
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(20)
@@ -173,6 +180,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
+	t.Parallel()
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(100)
@@ -205,6 +213,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
+	t.Parallel()
 	payer := &address.TestAddress
 	target := &address.TestAddress2
 	eol := types.NewBlockHeight(5)

@@ -21,6 +21,7 @@ func TestFromAddress(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("when option is specified", func(t *testing.T) {
+		t.Parallel()
 		nd, _ := createNodeAndBackend(t)
 
 		opts := make(cmdkit.OptMap)
@@ -37,6 +38,7 @@ func TestFromAddress(t *testing.T) {
 	})
 
 	t.Run("when no option specified and no addresses are in wallet, error out", func(t *testing.T) {
+		t.Parallel()
 		nd, _ := createNodeAndBackend(t)
 
 		opts := make(cmdkit.OptMap)
@@ -46,6 +48,7 @@ func TestFromAddress(t *testing.T) {
 	})
 
 	t.Run("when no option specified and too many addresses, error out", func(t *testing.T) {
+		t.Parallel()
 		nd, fs := createNodeAndBackend(t)
 
 		// create 2 addresses in wallet
@@ -63,6 +66,7 @@ func TestFromAddress(t *testing.T) {
 	})
 
 	t.Run("when no option specified, use only address in wallet", func(t *testing.T) {
+		t.Parallel()
 		nd, fs := createNodeAndBackend(t)
 
 		// create one addresses
@@ -77,6 +81,7 @@ func TestFromAddress(t *testing.T) {
 	})
 
 	t.Run("when no option specified but default exists in config, use config address", func(t *testing.T) {
+		t.Parallel()
 		nd, fs := createNodeAndBackend(t)
 
 		// create two addresses

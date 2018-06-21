@@ -18,6 +18,7 @@ func TestMpool(t *testing.T) {
 	assert := assert.New(t)
 
 	t.Run("return all messages", func(t *testing.T) {
+		t.Parallel()
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -34,6 +35,7 @@ func TestMpool(t *testing.T) {
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {
+		t.Parallel()
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 

@@ -23,6 +23,7 @@ type addressesWrapper struct {
 func TestConfigDaemon(t *testing.T) {
 	t.Parallel()
 	t.Run("config <key> prints config value", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		d := NewDaemon(t).Start()
@@ -48,6 +49,7 @@ func TestConfigDaemon(t *testing.T) {
 	})
 
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		d := NewDaemon(t).Start()

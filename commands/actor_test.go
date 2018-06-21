@@ -29,6 +29,7 @@ func TestActorLs(t *testing.T) {
 	}
 
 	t.Run("returns an error if no best block", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 		ctx := context.Background()
 		emitter := NewMockEmitter(func(v interface{}) error {
@@ -43,6 +44,7 @@ func TestActorLs(t *testing.T) {
 	})
 
 	t.Run("returns an error if best block has nil state root", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 		ctx := context.Background()
 		emitter := NewMockEmitter(func(v interface{}) error {
@@ -62,6 +64,7 @@ func TestActorLs(t *testing.T) {
 	})
 
 	t.Run("emits json object for each actor in state", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 		ctx := context.Background()
@@ -123,6 +126,8 @@ func TestActorLs(t *testing.T) {
 	}
 
 	t.Run("Emitted AccountActor JSON conforms to schema", func(t *testing.T) {
+		t.Parallel()
+
 		wd, _ := os.Getwd()
 		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
 

@@ -17,6 +17,7 @@ import (
 func TestDagGet(t *testing.T) {
 	t.Parallel()
 	t.Run("bad arg", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		_, err := testhelpers.RunCommand(dagGetCmd, []string{"awful"}, nil, &Env{})
@@ -25,6 +26,7 @@ func TestDagGet(t *testing.T) {
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		someCid := types.SomeCid()
@@ -45,6 +47,7 @@ func TestDagGet(t *testing.T) {
 	})
 
 	t.Run("matching IPLD node is emitted", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		ipldnode := types.NewBlockForTest(nil, 1234).ToNode()

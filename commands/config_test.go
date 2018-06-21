@@ -19,6 +19,7 @@ import (
 func TestConfigGet(t *testing.T) {
 	t.Parallel()
 	t.Run("emits the referenced config value", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -40,6 +41,7 @@ func TestConfigGet(t *testing.T) {
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		ctx := context.Background()
 		n := node.MakeNodesUnstarted(t, 1, true)[0]
@@ -69,6 +71,7 @@ func TestConfigGet(t *testing.T) {
 func TestConfigSet(t *testing.T) {
 	t.Parallel()
 	t.Run("sets the config value", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -108,6 +111,7 @@ func TestConfigSet(t *testing.T) {
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		ctx := context.Background()
@@ -154,6 +158,7 @@ func TestConfigSet(t *testing.T) {
 func TestConfigMakeKey(t *testing.T) {
 	t.Parallel()
 	t.Run("all of table key printed", func(t *testing.T) {
+		t.Parallel()
 		var testStruct config.DatastoreConfig
 		var testStructPtr *config.DatastoreConfig
 		var testStructSlice []config.DatastoreConfig
@@ -172,6 +177,7 @@ func TestConfigMakeKey(t *testing.T) {
 	})
 
 	t.Run("last substring of other keys printed", func(t *testing.T) {
+		t.Parallel()
 		var testInt int
 		var testString string
 		var testStringSlice []string
