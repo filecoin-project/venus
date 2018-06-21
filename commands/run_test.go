@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/pkg/errors"
@@ -113,7 +113,7 @@ func (td *TestDaemon) Run(args ...string) *Output {
 
 func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	td.test.Helper()
-	bin, err := GetFilecoinBinary()
+	bin, err := th.GetFilecoinBinary()
 	require.NoError(td.test, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), td.cmdTimeout)
@@ -522,17 +522,17 @@ func CmdTimeout(t time.Duration) func(*TestDaemon) {
 
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
-	filecoinBin, err := GetFilecoinBinary()
+	filecoinBin, err := th.GetFilecoinBinary()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//Ask the kernel for a port to avoid conflicts
-	cmdPort, err := GetFreePort()
+	cmdPort, err := th.GetFreePort()
 	if err != nil {
 		t.Fatal(err)
 	}
-	swarmPort, err := GetFreePort()
+	swarmPort, err := th.GetFreePort()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -589,23 +589,13 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	return td
 }
 
-// Credit: https://github.com/phayes/freeport
-func GetFreePort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
-	if err != nil {
-		return 0, err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
+func RunInit(opts ...string) ([]byte, error) {
+	filecoinBin, err := th.GetFilecoinBinary()
+	return RunCommand("init", opts...)
 }
 
-func RunInit(opts ...string) ([]byte, error) {
-	filecoinBin, err := GetFilecoinBinary()
+func RunCommand(cmd string, opts ...string) ([]byte, error) {
+	filecoinBin, err := th.GetFilecoinBinary()
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,19 +45,4 @@ func requireSchemaConformance(t *testing.T, jsonBytes []byte, schemaName string)
 	}
 
 	require.Truef(t, result.Valid(), "Error schema validating: %s", string(jsonBytes))
-}
-
-//GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.
-func GetFilecoinBinary() (string, error) {
-	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
-	_, err := os.Stat(bin)
-	if err == nil {
-		return bin, nil
-	}
-
-	if os.IsNotExist(err) {
-		return "", fmt.Errorf("You are missing the filecoin binary...try building, searched in '%s'", bin)
-	}
-
-	return "", err
 }

@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +107,7 @@ func TestCommandsSucceed(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	fbin, err := commands.GetFilecoinBinary()
+	fbin, err := th.GetFilecoinBinary()
 	require.NoError(err)
 
 	os.RemoveAll(testRepoPath)       // go-filecoin init will fail if repo exists.
