@@ -57,6 +57,12 @@ type testBinner struct {
 	closeCount     int
 }
 
+var _ Binner = &testBinner{}
+
+func (tb *testBinner) GetCurrentBin() Bin {
+	return tb.currentBinUsed
+}
+
 func (tb *testBinner) AddItem(ctx context.Context, item Item, bin Bin) error {
 	tb.currentBinUsed += item.(testItem).size
 	return nil

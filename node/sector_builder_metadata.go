@@ -5,6 +5,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -20,32 +21,35 @@ type SectorMetadata struct {
 	Pieces      []*PieceInfo
 	Size        uint64
 	Free        uint64
+	Filename    string
+	ID          int64
 }
 
 // SealedSectorMetadata represent the persistent metadata associated with a SealedSector.
 type SealedSectorMetadata struct {
-	MerkleRoot      []byte
-	Label           string
-	BaseSectorLabel string
-	SealedPath      string
-	Pieces          []*PieceInfo
-	Size            uint64
+	Filename    string
+	Label       string
+	MerkleRoot  []byte
+	Pieces      []*PieceInfo
+	SectorLabel string
+	Size        uint64
 }
 
 // SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
 type SectorBuilderMetadata struct {
-	Miner         types.Address
-	Sectors       []string
-	SealedSectors []string
+	CurSectorLabel          string
+	MinerAddr               types.Address
+	SealedSectorMerkleRoots [][]byte
 }
 
 // SectorMetadata returns the metadata associated with a Sector.
 func (s *Sector) SectorMetadata() *SectorMetadata {
 	meta := &SectorMetadata{
-		StagingPath: s.filename,
+		Filename:    s.filename,
+		Free:        s.Free,
 		Pieces:      s.Pieces,
 		Size:        s.Size,
-		Free:        s.Free,
+		StagingPath: s.filename,
 	}
 
 	return meta
@@ -54,25 +58,26 @@ func (s *Sector) SectorMetadata() *SectorMetadata {
 // SealedSectorMetadata returns the metadata associated with a SealedSector.
 func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 	meta := &SealedSectorMetadata{
-		MerkleRoot:      ss.merkleRoot,
-		Label:           ss.label,
-		BaseSectorLabel: ss.baseSector.Label,
-		SealedPath:      ss.filename,
-		Size:            ss.baseSector.Size,
-		Pieces:          ss.baseSector.Pieces,
+		Filename:    ss.filename,
+		Label:       ss.label,
+		MerkleRoot:  ss.merkleRoot,
+		Pieces:      ss.pieces,
+		SectorLabel: ss.sectorLabel,
+		Size:        ss.size,
 	}
+
 	return meta
 }
 
 // SectorBuilderMetadata returns the metadata associated with a SectorBuilderMetadata.
 func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
 	meta := SectorBuilderMetadata{
-		Miner:         sb.MinerAddr,
-		Sectors:       []string{sb.CurSector.Label},
-		SealedSectors: make([]string, len(sb.SealedSectors)),
+		MinerAddr:               sb.MinerAddr,
+		CurSectorLabel:          sb.CurSector.Label,
+		SealedSectorMerkleRoots: make([][]byte, len(sb.SealedSectors)),
 	}
 	for i, sealed := range sb.SealedSectors {
-		meta.SealedSectors[i] = sealed.label
+		meta.SealedSectorMerkleRoots[i] = sealed.merkleRoot
 	}
 	return &meta
 }
@@ -92,11 +97,55 @@ func builderMetadataKey(minerAddress types.Address) ds.Key {
 	return ds.KeyWithNamespaces(path).Instance(minerAddress.String())
 }
 
-// GetMeta returns SectorMetadata for sector labeled, label, and any error.
-func (sb *SectorBuilder) GetMeta(label string) (*SectorMetadata, error) {
+type sectorStore struct {
+	store repo.Datastore
+}
+
+// getSealedSector returns the sealed sector with the given merkle root or an error if no match was found.
+func (st *sectorStore) getSealedSector(merkleRoot []byte) (*SealedSector, error) {
+	metadata, err := st.getSealedSectorMetadata(merkleRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SealedSector{
+		filename:    metadata.Filename,
+		label:       metadata.Label,
+		merkleRoot:  metadata.MerkleRoot,
+		pieces:      metadata.Pieces,
+		sectorLabel: metadata.SectorLabel,
+		size:        metadata.Size,
+	}, nil
+}
+
+// getSector returns the sector with the given label or an error if no match was found.
+func (st *sectorStore) getSector(label string) (*Sector, error) {
+	metadata, err := st.getSectorMetadata(label)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Sector{
+		Size:     metadata.Size,
+		Free:     metadata.Free,
+		Pieces:   metadata.Pieces,
+		ID:       metadata.ID,
+		Label:    label,
+		filename: metadata.Filename,
+	}
+
+	if err := s.OpenAppend(); err != nil {
+		return nil, errors.Wrap(err, "failed to open sector file")
+	}
+
+	return s, nil
+}
+
+// getSectorMetadata returns the metadata for a sector with the given label or an error if no match was found.
+func (st *sectorStore) getSectorMetadata(label string) (*SectorMetadata, error) {
 	key := metadataKey(label)
 
-	data, err := sb.store.Get(key)
+	data, err := st.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -107,11 +156,11 @@ func (sb *SectorBuilder) GetMeta(label string) (*SectorMetadata, error) {
 	return &m, err
 }
 
-// GetSealedMeta returns SealedSectorMetadata for merkleRoot, and any error.
-func (sb *SectorBuilder) GetSealedMeta(merkleRoot []byte) (*SealedSectorMetadata, error) {
+// getSealedSectorMetadata returns the metadata for a sealed sector with the given merkle root.
+func (st *sectorStore) getSealedSectorMetadata(merkleRoot []byte) (*SealedSectorMetadata, error) {
 	key := sealedMetadataKey(merkleRoot)
 
-	data, err := sb.store.Get(key)
+	data, err := st.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +172,11 @@ func (sb *SectorBuilder) GetSealedMeta(merkleRoot []byte) (*SealedSectorMetadata
 	return &m, err
 }
 
-// GetBuilderMeta returns SectorBuilderMetadata for SectorBuilder, sb, and any error.
-func (sb *SectorBuilder) GetBuilderMeta(minerAddress types.Address) (*SectorBuilderMetadata, error) {
-	key := builderMetadataKey(minerAddress)
+// getSectorBuilderMetadata returns the metadata for a miner's SectorBuilder.
+func (st *sectorStore) getSectorBuilderMetadata(minerAddr types.Address) (*SectorBuilderMetadata, error) {
+	key := builderMetadataKey(minerAddr)
 
-	data, err := sb.store.Get(key)
+	data, err := st.store.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -138,36 +187,36 @@ func (sb *SectorBuilder) GetBuilderMeta(minerAddress types.Address) (*SectorBuil
 	return &m, err
 }
 
-func (sb *SectorBuilder) setMeta(label string, meta *SectorMetadata) error {
+func (st *sectorStore) setSectorMetadata(label string, meta *SectorMetadata) error {
 	key := metadataKey(label)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err
 	}
-	return sb.store.Put(key, data)
+	return st.store.Put(key, data)
 }
 
-func (sb *SectorBuilder) unsetMeta(label string) error {
+func (st *sectorStore) deleteSectorMetadata(label string) error {
 	key := metadataKey(label)
-	return sb.store.Delete(key)
+	return st.store.Delete(key)
 }
 
-func (sb *SectorBuilder) setSealedMeta(merkleRoot []byte, meta *SealedSectorMetadata) error {
+func (st *sectorStore) setSealedSectorMetadata(merkleRoot []byte, meta *SealedSectorMetadata) error {
 	key := sealedMetadataKey(merkleRoot)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err
 	}
-	return sb.store.Put(key, data)
+	return st.store.Put(key, data)
 }
 
-func (sb *SectorBuilder) setBuilderMeta(minerAddress types.Address, meta *SectorBuilderMetadata) error {
-	key := metadataKey(minerAddress.String())
+func (st *sectorStore) setSectorBuilderMetadata(minerAddress types.Address, meta *SectorBuilderMetadata) error {
+	key := builderMetadataKey(minerAddress)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
 		return err
 	}
-	return sb.store.Put(key, data)
+	return st.store.Put(key, data)
 }
 
 // TODO: Sealed sector metadata and sector metadata shouldn't exist in the
@@ -178,20 +227,20 @@ func (sb *SectorBuilder) setBuilderMeta(minerAddress types.Address, meta *Sector
 // doing. As the SectorBuilder evolves, we will introduce some checks which
 // will optimize away redundant writes to the datastore.
 func (sb *SectorBuilder) checkpoint(s *Sector) error {
-	if err := sb.setBuilderMeta(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
+	if err := sb.store.setSectorBuilderMetadata(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
 		return errors.Wrap(err, "failed to save builder metadata")
 	}
 
 	if s.sealed == nil {
-		if err := sb.setMeta(s.Label, s.SectorMetadata()); err != nil {
+		if err := sb.store.setSectorMetadata(s.Label, s.SectorMetadata()); err != nil {
 			return errors.Wrap(err, "failed to save sector metadata")
 		}
 	} else {
-		if err := sb.setSealedMeta(s.sealed.merkleRoot, s.sealed.SealedSectorMetadata()); err != nil {
+		if err := sb.store.setSealedSectorMetadata(s.sealed.merkleRoot, s.sealed.SealedSectorMetadata()); err != nil {
 			return errors.Wrap(err, "failed to save sealed sector metadata")
 		}
 
-		if err := sb.unsetMeta(s.Label); err != nil {
+		if err := sb.store.deleteSectorMetadata(s.Label); err != nil {
 			return errors.Wrap(err, "failed to remove sector metadata")
 		}
 	}

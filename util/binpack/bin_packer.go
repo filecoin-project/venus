@@ -31,7 +31,8 @@ var _ Packer = &NaivePacker{}
 
 // Packer is implemented by types defining a packing strategy.
 type Packer interface {
-	Init(Binner) (Bin, error)
+	InitWithNewBin(Binner) (Bin, error)
+	InitWithCurrentBin(Binner)
 	AddItem(context.Context, Item) (Bin, error)
 }
 
@@ -43,10 +44,11 @@ type Binner interface {
 	ItemSize(Item) Space
 	NewBin() (Bin, error)
 	SpaceAvailable(bin Bin) Space
+	GetCurrentBin() Bin
 }
 
-// Init implements Packer, associating it with a concrete Binner.
-func (np *NaivePacker) Init(binner Binner) (Bin, error) {
+// InitWithNewBin implements Packer, associating it with a concrete Binner.
+func (np *NaivePacker) InitWithNewBin(binner Binner) (Bin, error) {
 	np.binner = binner
 	bin, err := binner.NewBin()
 	if err != nil {
@@ -56,10 +58,16 @@ func (np *NaivePacker) Init(binner Binner) (Bin, error) {
 	return bin, nil
 }
 
+// InitWithCurrentBin implements Packer, associating it with a concrete Binner which has been previously initialized.
+func (np *NaivePacker) InitWithCurrentBin(binner Binner) {
+	np.binner = binner
+	np.bin = binner.GetCurrentBin()
+}
+
 // NewNaivePacker allocates and initializes a NaivePacker and an initial Binner, returning them along with any error.
 func NewNaivePacker(binner Binner) (Packer, Bin, error) {
 	packer := &NaivePacker{}
-	bin, err := packer.Init(binner)
+	bin, err := packer.InitWithNewBin(binner)
 	return packer, bin, errors.Wrap(err, "failed to initialize packer")
 }
 

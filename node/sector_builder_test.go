@@ -44,7 +44,9 @@ func TestSimple(t *testing.T) {
 }
 
 func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
-	sb, err := NewSectorBuilder(nd, types.MakeTestAddress("bar"), sectorSize, sectorDirsForTest)
+	sb, err := InitSectorBuilder(nd, types.MakeTestAddress("bar"), sectorSize, sectorDirsForTest)
+	require.NoError(err)
+
 	sb.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
 	sb.setup = func(minerKey []byte, parameters *PublicParameters, data []byte) ([]byte, error) {
 		reverseBytes(data)
@@ -85,27 +87,9 @@ func TestSectorBuilder(t *testing.T) {
 	sector := sb.CurSector
 
 	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-		if ss.baseSector.Label == sector.Label {
+		if ss.sectorLabel == sector.Label {
 			sealingErr = err
 			sealingWg.Done()
-		}
-	}
-
-	assertMetadataMatch := func(sector *Sector, pieces int) {
-		sealed := sector.sealed
-		if sealed != nil {
-			sealedMeta := sealed.SealedSectorMetadata()
-			sealedMetaPersisted, err := sb.GetSealedMeta(sealed.merkleRoot)
-			assert.NoError(err)
-			assert.Equal(sealedMeta, sealedMetaPersisted)
-		} else {
-			meta := sector.SectorMetadata()
-			assert.Len(meta.Pieces, pieces)
-
-			// persisted and calculated metadata match.
-			metaPersisted, err := sb.GetMeta(sector.Label)
-			assert.NoError(err)
-			assert.Equal(metaPersisted, meta)
 		}
 	}
 
@@ -114,7 +98,7 @@ func TestSectorBuilder(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	assertMetadataMatch(sb.CurSector, 0)
+	metadataMustMatch(require, sb, sb.CurSector, 0)
 
 	// New paths are in the right places.
 	stagingPath, _ := sb.newSectorPath()
@@ -131,13 +115,13 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotNil(sector.file)
 	assert.IsType(&os.File{}, sector.file)
 
-	assertMetadataMatch(sb.CurSector, 0)
+	metadataMustMatch(require, sb, sb.CurSector, 0)
 	text := "What's our vector, sector?" // len(text) = 26
 	requireAddPiece(text)
 	assert.Equal(sector, sb.CurSector)
 	all := text
 
-	assertMetadataMatch(sector, 1)
+	metadataMustMatch(require, sb, sector, 1)
 
 	d := requireReadAll(require, sector)
 	assert.Equal(all, string(d))
@@ -152,10 +136,8 @@ func TestSectorBuilder(t *testing.T) {
 	assert.Equal(all, string(d2))
 	assert.Nil(sector.sealed)
 
-	assert.NotContains(string(sector.data), string(d2)) // Document behavior: data only set at sealing time.
-
 	// persisted and calculated metadata match.
-	assertMetadataMatch(sector, 2)
+	metadataMustMatch(require, sb, sector, 2)
 
 	text3 := "I'm too sexy for this sector." // len(text3) = 29
 	requireAddPiece(text3)
@@ -167,18 +149,20 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotEqual(sector, sb.CurSector)
 
 	// persisted and calculated metadata match after a sector is sealed.
-	assertMetadataMatch(sector, 2)
+	metadataMustMatch(require, sb, sector, 2)
 
 	newSector := sb.CurSector
 	d4 := requireReadAll(require, newSector)
-	assertMetadataMatch(newSector, 1)
+	metadataMustMatch(require, sb, newSector, 1)
 
 	assert.Equal(text3, d4)
 	sealed := sector.sealed
 	assert.NotNil(sealed)
 	assert.Nil(newSector.sealed)
 
-	assert.Equal(sealed.baseSector, sector)
+	assert.Equal(sealed.sectorLabel, sector.Label)
+	assert.Equal(sealed.pieces, sector.Pieces)
+	assert.Equal(sealed.size, sector.Size)
 	sealedData, err := sealed.ReadFile()
 	assert.NoError(err)
 
@@ -200,28 +184,141 @@ func TestSectorBuilder(t *testing.T) {
 }
 
 func TestSectorBuilderMetadata(t *testing.T) {
-	assert := assert.New(t)
+	t.Run("creating datastore keys", func(t *testing.T) {
+		assert := assert.New(t)
 
-	fname := newSectorLabel()
-	assert.Len(fname, 32) // Sanity check, nothing more.
+		fname := newSectorLabel()
+		assert.Len(fname, 32) // Sanity check, nothing more.
 
-	label := "SECTORFILENAMEWHATEVER"
+		label := "SECTORFILENAMEWHATEVER"
 
-	k := metadataKey(label).String()
-	// Don't accidentally test Datastore namespacing implementation.
-	assert.Contains(k, "sectors")
-	assert.Contains(k, "metadata")
-	assert.Contains(k, label)
+		k := metadataKey(label).String()
+		// Don't accidentally test Datastore namespacing implementation.
+		assert.Contains(k, "sectors")
+		assert.Contains(k, "metadata")
+		assert.Contains(k, label)
 
-	merkleRoot := ([]byte)("someMerkleRootLOL")
-	k2 := sealedMetadataKey(merkleRoot).String()
-	// Don't accidentally test Datastore namespacing implementation.
-	assert.Contains(k2, "sealedSectors")
-	assert.Contains(k2, "metadata")
-	assert.Contains(k2, merkleString(merkleRoot))
+		merkleRoot := ([]byte)("someMerkleRootLOL")
+		k2 := sealedMetadataKey(merkleRoot).String()
+		// Don't accidentally test Datastore namespacing implementation.
+		assert.Contains(k2, "sealedSectors")
+		assert.Contains(k2, "metadata")
+		assert.Contains(k2, merkleString(merkleRoot))
+	})
+
+	t.Run("sealing sector moves metadata", func(t *testing.T) {
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd := MakeOfflineNode(t)
+
+		var sealingWg sync.WaitGroup
+		var sealingErr error
+		sealingWg.Add(1)
+
+		bytesA := make([]byte, 10+(sectorSize/2))
+		bytesB := make([]byte, (sectorSize/2)-10)
+
+		sb := requireSectorBuilder(require, nd, sectorSize)
+		sector := sb.CurSector
+
+		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+			if ss.sectorLabel == sector.Label {
+				sealingErr = err
+				sealingWg.Done()
+			}
+		}
+
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+		sectormeta, err := sb.store.getSectorMetadata(sector.Label)
+		require.NoError(err)
+		require.NotNil(sectormeta)
+
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+
+		// wait for sector sealing to complete
+		sealingWg.Wait()
+		require.NoError(sealingErr)
+
+		_, err = sb.store.getSectorMetadata(sector.Label)
+		require.Error(err)
+		require.Contains(err.Error(), "not found")
+
+		sealedmeta, err := sb.store.getSealedSectorMetadata(sector.sealed.merkleRoot)
+		require.NoError(err)
+		require.NotNil(sealedmeta)
+
+		require.Equal(sector.Size, sealedmeta.Size)
+		require.Equal(len(sector.Pieces), len(sealedmeta.Pieces))
+		for i := 0; i < len(sector.Pieces); i++ {
+			pieceInfoMustEqual(t, sector.Pieces[i], sealedmeta.Pieces[i])
+		}
+	})
 }
 
-func TestSealingMovesMetadata(t *testing.T) {
+func TestSectorStore(t *testing.T) {
+	t.Run("it loads a persisted sector", func(t *testing.T) {
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd := MakeOfflineNode(t)
+
+		bytesA := make([]byte, 10+(sectorSize/2))
+
+		sb := requireSectorBuilder(require, nd, sectorSize)
+		sector := sb.CurSector
+
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+
+		loaded, err := sb.store.getSector(sector.Label)
+		require.NoError(err)
+
+		sectorsMustEqual(t, sector, loaded)
+	})
+
+	t.Run("it loads a persisted, sealed sector", func(t *testing.T) {
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd := MakeOfflineNode(t)
+
+		var sealingWg sync.WaitGroup
+		var sealingErr error
+		sealingWg.Add(1)
+
+		bytesA := make([]byte, 10+(sectorSize/2))
+		bytesB := make([]byte, (sectorSize/2)-10)
+
+		sb := requireSectorBuilder(require, nd, sectorSize)
+		sector := sb.CurSector
+
+		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+			if ss.sectorLabel == sector.Label {
+				sealingErr = err
+				sealingWg.Done()
+			}
+		}
+
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+
+		// wait for sector sealing to complete
+		sealingWg.Wait()
+		require.NoError(sealingErr)
+
+		require.Equal(1, len(sb.SealedSectors))
+		sealedSector := sb.SealedSectors[0]
+
+		loaded, err := sb.store.getSealedSector(sealedSector.merkleRoot)
+		require.NoError(err)
+		sealedSectorsMustEqual(t, sealedSector, loaded)
+	})
+}
+
+func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	require := require.New(t)
 
 	ctx := context.Background()
@@ -235,40 +332,58 @@ func TestSealingMovesMetadata(t *testing.T) {
 	bytesA := make([]byte, 10+(sectorSize/2))
 	bytesB := make([]byte, (sectorSize/2)-10)
 
-	sb := requireSectorBuilder(require, nd, sectorSize)
-	sector := sb.CurSector
+	sbA := requireSectorBuilder(require, nd, sectorSize)
+	sector := sbA.CurSector
 
-	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-		if ss.baseSector.Label == sector.Label {
+	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+		if ss.sectorLabel == sector.Label {
 			sealingErr = err
 			sealingWg.Done()
 		}
 	}
 
-	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
-	sectormeta, err := sb.GetMeta(sector.Label)
-	require.NoError(err)
-	require.NotNil(sectormeta)
+	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
 
-	sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+	// sector builder B should have the same state as sector builder A
+	sbB := requireSectorBuilder(require, nd, sectorSize)
 
-	// wait for sector sealing to complete
+	// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
+	sectorBuildersMustEqual(t, sbA, sbB)
+
+	// trigger sealing by adding a second piece
+	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+
+	// wait for sealing to complete
 	sealingWg.Wait()
 	require.NoError(sealingErr)
 
-	_, err = sb.GetMeta(sector.Label)
-	require.Error(err)
-	require.Contains(err.Error(), "not found")
+	// sector builder C should have the same state as sector builder A
+	sbC := requireSectorBuilder(require, nd, sectorSize)
 
-	sealedmeta, err := sb.GetSealedMeta(sector.sealed.merkleRoot)
-	require.NoError(err)
-	require.NotNil(sealedmeta)
+	sectorBuildersMustEqual(t, sbA, sbC)
+}
 
-	require.Equal(sector.Size, sealedmeta.Size)
-	require.Equal(len(sector.Pieces), len(sealedmeta.Pieces))
-	for i := 0; i < len(sector.Pieces); i++ {
-		pieceInfoMustEqual(t, sector.Pieces[i], sealedmeta.Pieces[i])
+func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *Sector, pieces int) {
+	sealed := sector.sealed
+	if sealed != nil {
+		sealedMeta := sealed.SealedSectorMetadata()
+		sealedMetaPersisted, err := sb.store.getSealedSectorMetadata(sealed.merkleRoot)
+		require.NoError(err)
+		require.Equal(sealedMeta, sealedMetaPersisted)
+	} else {
+		meta := sector.SectorMetadata()
+		require.Len(meta.Pieces, pieces)
+
+		// persisted and calculated metadata match.
+		metaPersisted, err := sb.store.getSectorMetadata(sector.Label)
+		require.NoError(err)
+		require.Equal(metaPersisted, meta)
 	}
+
+	builderMeta := sb.SectorBuilderMetadata()
+	builderMetaPersisted, err := sb.store.getSectorBuilderMetadata(sb.MinerAddr)
+	require.NoError(err)
+	require.Equal(builderMeta, builderMetaPersisted)
 }
 
 func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
@@ -282,6 +397,58 @@ func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
 
 	if !p1.Ref.Equals(p2.Ref) {
 		t.Fatalf("p1.Ref(%s) != p2.Ref(%s)\n", p1.Ref.String(), p2.Ref.String())
+	}
+}
+
+func sectorBuildersMustEqual(t *testing.T, sb1 *SectorBuilder, sb2 *SectorBuilder) {
+	require := require.New(t)
+
+	require.Equal(sb1.MinerAddr, sb2.MinerAddr)
+	require.Equal(sb1.sealedDir, sb2.sealedDir)
+	require.Equal(sb1.sectorSize, sb2.sectorSize)
+	require.Equal(sb1.stagingDir, sb2.stagingDir)
+
+	sectorsMustEqual(t, sb1.CurSector, sb2.CurSector)
+
+	require.Equal(len(sb1.SealedSectors), len(sb2.SealedSectors))
+	for i := 0; i < len(sb1.SealedSectors); i++ {
+		sealedSectorsMustEqual(t, sb1.SealedSectors[i], sb2.SealedSectors[i])
+	}
+}
+
+func sealedSectorsMustEqual(t *testing.T, ss1 *SealedSector, ss2 *SealedSector) {
+	require := require.New(t)
+
+	if ss1 == nil && ss2 == nil {
+		return
+	}
+
+	require.Equal(ss1.filename, ss2.filename)
+	require.Equal(ss1.label, ss2.label)
+	require.Equal(ss1.sectorLabel, ss2.sectorLabel)
+	require.Equal(ss1.size, ss2.size)
+	require.True(bytes.Equal(ss1.merkleRoot, ss2.merkleRoot))
+
+	require.Equal(len(ss1.pieces), len(ss2.pieces))
+	for i := 0; i < len(ss1.pieces); i++ {
+		pieceInfoMustEqual(t, ss1.pieces[i], ss2.pieces[i])
+	}
+}
+
+func sectorsMustEqual(t *testing.T, s1 *Sector, s2 *Sector) {
+	require := require.New(t)
+
+	require.Equal(s1.filename, s2.filename)
+	require.Equal(s1.Free, s2.Free)
+	require.Equal(s1.ID, s2.ID)
+	require.Equal(s1.Label, s2.Label)
+	require.Equal(s1.Size, s2.Size)
+
+	sealedSectorsMustEqual(t, s1.sealed, s2.sealed)
+
+	require.Equal(len(s1.Pieces), len(s2.Pieces))
+	for i := 0; i < len(s1.Pieces); i++ {
+		pieceInfoMustEqual(t, s1.Pieces[i], s2.Pieces[i])
 	}
 }
 

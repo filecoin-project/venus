@@ -464,9 +464,7 @@ func (node *Node) StartMining() error {
 func (node *Node) initSectorBuilder(minerAddr types.Address) error {
 	dirs := node.Repo.(SectorDirs)
 
-	// TODO: use the miner's address to look up persisted SectorBuilder
-	// metadata in the node's datastore
-	sb, err := NewSectorBuilder(node, minerAddr, sectorSize, dirs)
+	sb, err := InitSectorBuilder(node, minerAddr, sectorSize, dirs)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}
