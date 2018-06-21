@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/json"
-	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 	"math/big"
+
+	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
 func init() {
@@ -49,9 +51,9 @@ func NewChannelID(x uint64) *ChannelID {
 // NewChannelIDFromBytes allocates and returns a new ChannelID set
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewChannelIDFromBytes(buf []byte) *ChannelID {
-	ta := NewChannelID(0)
-	ta.val.SetBytes(buf)
-	return ta
+	ci := NewChannelID(0)
+	ci.val = leb128.ToBigInt(buf)
+	return ci
 }
 
 // NewChannelIDFromString allocates a new ChannelID set to the value of s,
@@ -65,7 +67,7 @@ func NewChannelIDFromString(s string, base int) (*ChannelID, bool) {
 
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z *ChannelID) Bytes() []byte {
-	return z.val.Bytes()
+	return leb128.FromBigInt(z.val)
 }
 
 // Equal returns true if z = y

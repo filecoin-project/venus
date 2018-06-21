@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	"gx/ipfs/QmbBhyDKsY4mbY6xsKt3qu9Y7FPvMJ6qbD8AMjYYvPRw1g/goleveldb/leveldb/errors"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
@@ -74,18 +75,18 @@ func NewBytesAmount(x uint64) *BytesAmount {
 // NewBytesAmountFromBytes allocates and returns a new BytesAmount set
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewBytesAmountFromBytes(buf []byte) *BytesAmount {
-	ta := NewBytesAmount(0)
-	ta.val.SetBytes(buf)
-	return ta
+	ba := NewBytesAmount(0)
+	ba.val = leb128.ToBigInt(buf)
+	return ba
 }
 
 // NewBytesAmountFromString allocates a new BytesAmount set to the value of s,
 // interpreted in the given base, and returns it and a boolean indicating success.
 func NewBytesAmountFromString(s string, base int) (*BytesAmount, bool) {
-	ta := NewBytesAmount(0)
-	val, ok := ta.val.SetString(s, base)
-	ta.val = val // overkill
-	return ta, ok
+	ba := NewBytesAmount(0)
+	val, ok := ba.val.SetString(s, base)
+	ba.val = val // overkill
+	return ba, ok
 }
 
 // Add sets z to the sum x+y and returns z.
@@ -157,7 +158,7 @@ func (z *BytesAmount) IsZero() bool {
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z *BytesAmount) Bytes() []byte {
 	ensureBytesAmounts(&z)
-	return z.val.Bytes()
+	return leb128.FromBigInt(z.val)
 }
 
 func (z *BytesAmount) String() string {

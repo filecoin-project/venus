@@ -2,9 +2,11 @@ package types
 
 import (
 	"encoding/json"
-	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 	"math/big"
+
+	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
 func init() {
@@ -49,23 +51,23 @@ func NewBlockHeight(x uint64) *BlockHeight {
 // NewBlockHeightFromBytes allocates and returns a new BlockHeight set
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewBlockHeightFromBytes(buf []byte) *BlockHeight {
-	ta := NewBlockHeight(0)
-	ta.val.SetBytes(buf)
-	return ta
+	bh := NewBlockHeight(0)
+	bh.val = leb128.ToBigInt(buf)
+	return bh
 }
 
 // NewBlockHeightFromString allocates a new BlockHeight set to the value of s,
 // interpreted in the given base, and returns it and a boolean indicating success.
 func NewBlockHeightFromString(s string, base int) (*BlockHeight, bool) {
-	ta := NewBlockHeight(0)
-	val, ok := ta.val.SetString(s, base)
-	ta.val = val // overkill
-	return ta, ok
+	bh := NewBlockHeight(0)
+	val, ok := bh.val.SetString(s, base)
+	bh.val = val // overkill
+	return bh, ok
 }
 
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z *BlockHeight) Bytes() []byte {
-	return z.val.Bytes()
+	return leb128.FromBigInt(z.val)
 }
 
 // Equal returns true if z = y
