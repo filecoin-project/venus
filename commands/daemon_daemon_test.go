@@ -11,6 +11,7 @@ import (
 )
 
 func TestDaemonStartupMessage(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	daemon := NewDaemon(t).Start()
 	daemon.ShutdownSuccess()
@@ -21,6 +22,7 @@ func TestDaemonStartupMessage(t *testing.T) {
 }
 
 func TestDaemonApiFile(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	daemon := NewDaemon(t).Start()
 
@@ -35,6 +37,7 @@ func TestDaemonApiFile(t *testing.T) {
 }
 
 func TestDaemonCORS(t *testing.T) {
+	t.Parallel()
 	t.Run("default allowed origins work", func(t *testing.T) {
 		assert := assert.New(t)
 		td := NewDaemon(t).Start()

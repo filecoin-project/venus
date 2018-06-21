@@ -10,6 +10,7 @@ import (
 )
 
 func TestBlockDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a Filecoin block", func(t *testing.T) {
 		require := require.New(t)
 

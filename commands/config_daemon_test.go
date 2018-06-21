@@ -21,6 +21,7 @@ type addressesWrapper struct {
 }
 
 func TestConfigDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("config <key> prints config value", func(t *testing.T) {
 		assert := assert.New(t)
 

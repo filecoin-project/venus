@@ -14,6 +14,7 @@ import (
 )
 
 func TestMpool(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	t.Run("return all messages", func(t *testing.T) {

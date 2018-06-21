@@ -13,6 +13,7 @@ import (
 )
 
 func TestChainDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("chain ls returns the whole chain", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)

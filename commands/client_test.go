@@ -16,6 +16,7 @@ import (
 )
 
 func TestClientAddBidSuccess(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -51,6 +52,7 @@ func TestClientAddBidSuccess(t *testing.T) {
 }
 
 func TestClientAddBidFail(t *testing.T) {
+	t.Parallel()
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 	d.CreateWalletAddr()
@@ -73,6 +75,7 @@ func TestClientAddBidFail(t *testing.T) {
 }
 
 func TestProposeDeal(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	dcli := NewDaemon(t).Start()

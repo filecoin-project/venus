@@ -9,6 +9,7 @@ import (
 )
 
 func TestBidList(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -34,6 +35,7 @@ func TestBidList(t *testing.T) {
 }
 
 func TestAskList(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -59,6 +61,7 @@ func TestAskList(t *testing.T) {
 }
 
 func TestDealList(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	// make a client
