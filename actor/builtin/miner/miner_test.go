@@ -52,7 +52,7 @@ func TestAddAsk(t *testing.T) {
 
 	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(types.NewAttoFILFromFIL(0), types.NewAttoFILFromBytes(result.Receipt.Return[0]))
+	assert.Equal(0, big.NewInt(0).Cmp(big.NewInt(0).SetBytes(result.Receipt.Return[0])))
 
 	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)

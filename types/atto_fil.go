@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
@@ -89,28 +90,28 @@ func NewAttoFILFromFIL(x uint64) *AttoFIL {
 // NewAttoFILFromBytes allocates and returns a new AttoFIL set
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewAttoFILFromBytes(buf []byte) *AttoFIL {
-	ta := NewZeroAttoFIL()
-	ta.val.SetBytes(buf)
-	return ta
+	af := NewZeroAttoFIL()
+	af.val = leb128.ToBigInt(buf)
+	return af
 }
 
 // NewAttoFILFromFILString allocates a new AttoFIL set to the value of s filecoin,
 // interpreted in the given base, and returns it and a boolean indicating success.
 func NewAttoFILFromFILString(s string, base int) (*AttoFIL, bool) {
-	ta := NewZeroAttoFIL()
-	_, ok := ta.val.SetString(s, base)
+	af := NewZeroAttoFIL()
+	_, ok := af.val.SetString(s, base)
 	if ok {
-		ta.val = ta.val.Mul(ta.val, tenToTheEighteen)
+		af.val = af.val.Mul(af.val, tenToTheEighteen)
 	}
-	return ta, ok
+	return af, ok
 }
 
 // NewAttoFILFromString allocates a new AttoFIL set to the value of s attofilecoin,
 // interpreted in the given base, and returns it and a boolean indicating success.
 func NewAttoFILFromString(s string, base int) (*AttoFIL, bool) {
-	ta := NewZeroAttoFIL()
-	_, ok := ta.val.SetString(s, base)
-	return ta, ok
+	af := NewZeroAttoFIL()
+	_, ok := af.val.SetString(s, base)
+	return af, ok
 }
 
 // Add sets z to the sum x+y and returns z.
@@ -182,7 +183,7 @@ func (z *AttoFIL) IsZero() bool {
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z *AttoFIL) Bytes() []byte {
 	ensureZeroAmounts(&z)
-	return z.val.Bytes()
+	return leb128.FromBigInt(z.val)
 }
 
 // String prints the quantity of *FILECOIN* -- *NOT* attofilecoin -- that
