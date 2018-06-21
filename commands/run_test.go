@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,8 +21,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	DefaultDaemonCmdTimeout = 1 * time.Minute
 )
 
 // Output manages running, inprocess, a filecoin command.
@@ -96,6 +102,8 @@ type TestDaemon struct {
 	Stderr io.Reader
 
 	test *testing.T
+
+	cmdTimeout time.Duration
 }
 
 func (td *TestDaemon) Run(args ...string) *Output {
@@ -108,6 +116,9 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	bin, err := GetFilecoinBinary()
 	require.NoError(td.test, err)
 
+	ctx, cancel := context.WithTimeout(context.Background(), td.cmdTimeout)
+	defer cancel()
+
 	// handle Run("cmd subcmd")
 	if len(args) == 1 {
 		args = strings.Split(args[0], " ")
@@ -116,7 +127,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
 
 	td.test.Logf("run: %q\n", strings.Join(finalArgs, " "))
-	cmd := exec.Command(bin, finalArgs...)
+	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 
 	if stdin != nil {
 		cmd.Stdin = stdin
@@ -149,6 +160,10 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	switch err := err.(type) {
 	case *exec.ExitError:
+		if ctx.Err() == context.DeadlineExceeded {
+			o.Error = errors.Wrapf(err, "context deadline exceeded for command: %q", strings.Join(finalArgs, " "))
+		}
+
 		// TODO: its non-trivial to get the 'exit code' cross platform...
 		o.Code = 1
 	default:
@@ -499,6 +514,12 @@ func ShouldInit(i bool) func(*TestDaemon) {
 	}
 }
 
+func CmdTimeout(t time.Duration) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.cmdTimeout = t
+	}
+}
+
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
 	filecoinBin, err := GetFilecoinBinary()
@@ -522,11 +543,12 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-		cmdAddr:   fmt.Sprintf(":%d", cmdPort),
-		swarmAddr: fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-		test:      t,
-		repoDir:   dir,
-		init:      true, // we want to init unless told otherwise
+		cmdAddr:    fmt.Sprintf(":%d", cmdPort),
+		swarmAddr:  fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+		test:       t,
+		repoDir:    dir,
+		init:       true, // we want to init unless told otherwise
+		cmdTimeout: DefaultDaemonCmdTimeout,
 	}
 
 	// configure TestDaemon options
@@ -534,9 +556,13 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		option(td)
 	}
 
-	repodirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
+	// build command options
+	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
+	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
+	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
+
 	if td.init {
-		out, err := RunInit(repodirFlag)
+		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)
@@ -544,11 +570,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	// define filecoin daemon process
-	td.process = exec.Command(filecoinBin, "daemon",
-		fmt.Sprintf("--repodir=%s", td.repoDir),
-		fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr),
-		fmt.Sprintf("--swarmlisten=%s", td.swarmAddr),
-	)
+	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag)
 
 	// setup process pipes
 	td.Stdout, err = td.process.StdoutPipe()
@@ -583,16 +605,12 @@ func GetFreePort() (int, error) {
 }
 
 func RunInit(opts ...string) ([]byte, error) {
-	return RunCommand("init", opts...)
-}
-
-func RunCommand(cmd string, opts ...string) ([]byte, error) {
 	filecoinBin, err := GetFilecoinBinary()
 	if err != nil {
 		return nil, err
 	}
 
-	process := exec.Command(filecoinBin, append([]string{cmd}, opts...)...)
+	process := exec.Command(filecoinBin, append([]string{"init"}, opts...)...)
 	return process.CombinedOutput()
 }
 

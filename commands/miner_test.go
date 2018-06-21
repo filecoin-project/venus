@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
@@ -154,7 +155,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 func TestMinerAddAskFail(t *testing.T) {
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
