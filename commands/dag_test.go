@@ -15,6 +15,7 @@ import (
 )
 
 func TestDagGet(t *testing.T) {
+	t.Parallel()
 	t.Run("bad arg", func(t *testing.T) {
 		assert := assert.New(t)
 

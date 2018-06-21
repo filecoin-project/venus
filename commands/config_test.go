@@ -17,6 +17,7 @@ import (
 )
 
 func TestConfigGet(t *testing.T) {
+	t.Parallel()
 	t.Run("emits the referenced config value", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -66,12 +67,18 @@ func TestConfigGet(t *testing.T) {
 }
 
 func TestConfigSet(t *testing.T) {
+	t.Parallel()
 	t.Run("sets the config value", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		defaultCfg := config.NewDefaultConfig()
+
+		n := node.MakeNodesUnstarted(t, 1, true, func(c *node.Config) error {
+			c.Repo.Config().API.Address = defaultCfg.API.Address
+			return nil
+		})[0]
 		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
 
 		out, err := testhelpers.RunCommand(configCmd,
@@ -92,13 +99,12 @@ func TestConfigSet(t *testing.T) {
 
 		// validate config write
 		cfg := n.Repo.Config()
-		defaultCfg := config.NewDefaultConfig()
 		defaultCfg.Mining.RewardAddress = n.RewardAddress()
-		assert.Equal(cfg.Bootstrap, wrapped.Bootstrap)
-		assert.Equal(cfg.API, defaultCfg.API)
-		assert.Equal(cfg.Datastore, defaultCfg.Datastore)
-		assert.Equal(cfg.Mining, defaultCfg.Mining)
-		assert.Equal(cfg.Swarm, defaultCfg.Swarm)
+		assert.Equal(wrapped.Bootstrap, cfg.Bootstrap)
+		assert.Equal(defaultCfg.API, cfg.API)
+		assert.Equal(defaultCfg.Datastore, cfg.Datastore)
+		assert.Equal(defaultCfg.Mining, cfg.Mining)
+		assert.Equal(defaultCfg.Swarm, cfg.Swarm)
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {
@@ -146,6 +152,7 @@ func TestConfigSet(t *testing.T) {
 }
 
 func TestConfigMakeKey(t *testing.T) {
+	t.Parallel()
 	t.Run("all of table key printed", func(t *testing.T) {
 		var testStruct config.DatastoreConfig
 		var testStructPtr *config.DatastoreConfig

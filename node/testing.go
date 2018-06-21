@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -10,20 +11,28 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/require"
 )
 
 // MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the initialized
 // nodes
-func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool) []*Node {
+func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, options ...func(c *Config) error) []*Node {
 	t.Helper()
 	var out []*Node
 	for i := 0; i < n; i++ {
 		r := repo.NewInMemoryRepo()
 		err := Init(context.Background(), r)
 		require.NoError(t, err)
+
+		// set a random port here so things don't break in the event we make
+		// a parallel request
+		port, err := th.GetFreePort()
+		require.NoError(t, err)
+		r.Config().API.Address = fmt.Sprintf(":%d", port)
 
 		if !offlineMode {
 			r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
@@ -32,11 +41,16 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool) []*Node {
 		opts, err := OptionsFromRepo(r)
 		require.NoError(t, err)
 
+		for _, o := range options {
+			opts = append(opts, o)
+		}
+
 		// disables libp2p
 		opts = append(opts, func(c *Config) error {
 			c.OfflineMode = offlineMode
 			return nil
 		})
+
 		nd, err := New(context.Background(), opts...)
 		require.NoError(t, err)
 		out = append(out, nd)

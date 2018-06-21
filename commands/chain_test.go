@@ -16,6 +16,7 @@ import (
 )
 
 func TestChainHead(t *testing.T) {
+	t.Parallel()
 	t.Run("returns an error if no best block", func(t *testing.T) {
 		require := require.New(t)
 
@@ -51,6 +52,7 @@ func TestChainHead(t *testing.T) {
 }
 
 func TestChainLsRun(t *testing.T) {
+	t.Parallel()
 	t.Run("chain of height two", func(t *testing.T) {
 		require := require.New(t)
 		assert := assert.New(t)

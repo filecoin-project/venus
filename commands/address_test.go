@@ -10,6 +10,7 @@ import (
 )
 
 func TestAddrsNewAndList(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -27,6 +28,7 @@ func TestAddrsNewAndList(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()

@@ -22,6 +22,7 @@ import (
 )
 
 func TestActorLs(t *testing.T) {
+	t.Parallel()
 	getActorsNoOp := func(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string,
 		[]*types.Actor, error) {
 		return nil, nil, nil
@@ -144,6 +145,7 @@ func TestActorLs(t *testing.T) {
 }
 
 func TestPresentExports(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	e := (&storagemarket.Actor{}).Exports()

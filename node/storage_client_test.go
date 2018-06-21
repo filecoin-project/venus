@@ -13,6 +13,7 @@ import (
 )
 
 func TestDealProtocolClient(t *testing.T) {
+	t.Parallel()
 	ctx := context.TODO()
 	assert := assert.New(t)
 	nds := MakeNodesUnstarted(t, 2, false)

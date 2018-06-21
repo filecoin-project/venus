@@ -101,6 +101,7 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 - test deal fails once posted on chain (maybe)
 */
 func TestDealProtocol(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	nd := MakeNodesUnstarted(t, 1, false)[0]
 
@@ -154,6 +155,7 @@ func TestDealProtocol(t *testing.T) {
 }
 
 func TestDealProtocolMissing(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	nd := MakeNodesUnstarted(t, 1, false)[0]
 
@@ -207,6 +209,7 @@ func TestDealProtocolMissing(t *testing.T) {
 }
 
 func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ctx := context.Background()
