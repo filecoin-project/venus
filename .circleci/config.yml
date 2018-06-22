@@ -35,3 +35,8 @@ jobs:
       - run:
           name: Lint
           command: go run ./build/*.go lint
+experimental:
+  notify:
+    branches:
+      only:
+        - master
