@@ -47,6 +47,9 @@ func TestMinerCreate(t *testing.T) {
 				wg.Done()
 			}()
 
+			// ensure mining runs after the command in our goroutine
+			d.RunSuccess("mpool --wait-for-count=1")
+
 			d.RunSuccess("mining once")
 			wg.Wait()
 
@@ -103,6 +106,9 @@ func TestMinerCreate(t *testing.T) {
 			)
 			wg.Done()
 		}()
+
+		// ensure mining runs after the command in our goroutine
+		d.RunSuccess("mpool --wait-for-count=1")
 
 		d.RunSuccess("mining once")
 		wg.Wait()
