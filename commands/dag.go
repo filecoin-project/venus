@@ -64,7 +64,8 @@ var dagGetCmd = &cmds.Command{
 	},
 }
 
-func runDagGetByCid(ctx context.Context, get ipldNodeGetter, emit valueEmitter, cid *cid.Cid) error {
+// runDagGetByCid is used in dag_test.go
+func runDagGetByCid(ctx context.Context, get ipldNodeGetter, emit valueEmitter, cid *cid.Cid) error { // nolint: deadcode
 	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 	defer cancel()
 
