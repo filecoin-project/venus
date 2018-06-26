@@ -6,7 +6,8 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -117,7 +118,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount, abi.Bytes},
+		Params: []abi.Type{abi.BytesAmount, abi.Bytes, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &exec.FunctionSignature{
@@ -140,7 +141,7 @@ var storageMarketExports = exec.Exports{
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte) (types.Address, uint8, error) {
+func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (types.Address, uint8, error) {
 	var storage Storage
 	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
 		if pledge.LessThan(MinimumPledge) {
@@ -154,7 +155,7 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, pub
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerActor, err := miner.NewActor(ctx.Message().From, publicKey, pledge, ctx.Message().Value)
+		minerActor, err := miner.NewActor(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
 		if err != nil {
 			if !errors.ShouldRevert(err) {
 				// TODO? From an Actor's perspective this (and other stuff) should probably

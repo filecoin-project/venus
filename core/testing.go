@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 
-	hamt "gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer/test"
+	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -88,8 +90,8 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, owner types.Address, key []byte, pledge *types.BytesAmount, coll *types.AttoFIL) *types.Actor {
-	act, err := miner.NewActor(owner, key, pledge, coll)
+func RequireNewMinerActor(require *require.Assertions, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *types.Actor {
+	act, err := miner.NewActor(owner, key, pledge, pid, coll)
 	require.NoError(err)
 	return act
 }
@@ -106,6 +108,16 @@ func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid
 	storageBytes, err := actor.MarshalStorage(&actor.FakeActorStorage{})
 	require.NoError(err)
 	return types.NewActorWithMemory(codeCid, amt, storageBytes)
+}
+
+// RequireRandomPeerID returns a new libp2p peer ID or panics.
+func RequireRandomPeerID() peer.ID {
+	pid, err := testutil.RandPeerID()
+	if err != nil {
+		panic(err)
+	}
+
+	return pid
 }
 
 // MustGetNonce returns the next nonce for an actor at the given address or panics.

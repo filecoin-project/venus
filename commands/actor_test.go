@@ -82,7 +82,7 @@ func TestActorLs(t *testing.T) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			address, _ := types.NewAddressFromString("address")
-			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), types.NewAttoFILFromFIL(43))
+			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(43))
 			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21), nil)
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}, nil
 		}
@@ -122,7 +122,6 @@ func TestActorLs(t *testing.T) {
 	}
 
 	t.Run("Emitted AccountActor JSON conforms to schema", func(t *testing.T) {
-
 		wd, _ := os.Getwd()
 		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
 
@@ -137,7 +136,7 @@ func TestActorLs(t *testing.T) {
 		assertSchemaValid(t, a, schemaLoader)
 
 		addr, _ := types.NewAddressFromString("minerAddress")
-		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), types.NewAttoFILFromFIL(200))
+		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(200))
 		a = makeActorView(actor, "address", &miner.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)

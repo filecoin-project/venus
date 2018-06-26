@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func createTestMiner(assert *assert.Assertions, st state.Tree, pledge, collateral int64, key []byte) types.Address {
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key)
+func createTestMiner(assert *assert.Assertions, st state.Tree, key []byte) types.Address {
+	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, core.RequireRandomPeerID())
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 
@@ -44,7 +44,7 @@ func TestAddAsk(t *testing.T) {
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	assert.NoError(err)
 
-	outAddr := createTestMiner(assert, st, 10000, 500, []byte{})
+	outAddr := createTestMiner(assert, st, []byte{})
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(100), types.NewBytesAmount(150))
@@ -114,7 +114,7 @@ func TestGetKey(t *testing.T) {
 	assert.NoError(err)
 
 	signature := []byte("my public key")
-	outAddr := createTestMiner(assert, st, 10000, 500, signature)
+	outAddr := createTestMiner(assert, st, signature)
 
 	// retrieve key
 	msg := types.NewMessage(address.TestAddress, outAddr, 0, nil, "getKey", []byte{})

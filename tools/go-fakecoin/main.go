@@ -137,7 +137,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	msgPool := core.NewMessagePool()
 
 	//// Have the storage market actor create a new miner
-	params, err := abi.ToEncodedValues(types.NewBytesAmount(100000), []byte{})
+	params, err := abi.ToEncodedValues(types.NewBytesAmount(100000), []byte{}, core.RequireRandomPeerID())
 	if err != nil {
 		return err
 	}

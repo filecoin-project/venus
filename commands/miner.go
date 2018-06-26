@@ -5,6 +5,7 @@ import (
 
 	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
@@ -35,11 +36,17 @@ message to be mined as this is required to return the address of the new miner.`
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
+		cmdkit.StringOption("peerid", "b58-encoded libp2p peer ID that the miner will operate"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		n := GetNode(env)
 
 		fromAddr, err := fromAddress(req.Options, n)
+		if err != nil {
+			return err
+		}
+
+		pid, err := peerID(req.Options, n)
 		if err != nil {
 			return err
 		}
@@ -54,7 +61,7 @@ message to be mined as this is required to return the address of the new miner.`
 			return ErrInvalidCollateral
 		}
 
-		addr, err := n.CreateMiner(req.Context, fromAddr, *pledge, *collateral)
+		addr, err := n.CreateMiner(req.Context, fromAddr, *pledge, pid, *collateral)
 		if err != nil {
 			return err
 		}
@@ -133,4 +140,17 @@ var minerAddAskCmd = &cmds.Command{
 			return PrintString(w, c)
 		}),
 	},
+}
+
+func peerID(opts cmdkit.OptMap, node *node.Node) (ret peer.ID, err error) {
+	o := opts["peerid"]
+	if o != nil {
+		ret, err = peer.IDB58Decode(o.(string))
+		if err != nil {
+			err = errors.Wrap(err, "invalid peer id")
+		}
+	} else {
+		ret = node.Host.ID()
+	}
+	return
 }

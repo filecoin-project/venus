@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -37,6 +38,8 @@ const (
 	String
 	// UintArray is an array of uint64
 	UintArray
+	// PeerID is a libp2p peer ID
+	PeerID
 )
 
 func (t Type) String() string {
@@ -61,6 +64,8 @@ func (t Type) String() string {
 		return "string"
 	case UintArray:
 		return "[]uint64"
+	case PeerID:
+		return "peer.ID"
 	default:
 		return "<unknown type>"
 	}
@@ -94,6 +99,8 @@ func (av *Value) String() string {
 		return av.Val.(string)
 	case UintArray:
 		return fmt.Sprint(av.Val.([]uint64))
+	case PeerID:
+		return av.Val.(peer.ID).String()
 	default:
 		return "<unknown type>"
 	}
@@ -169,6 +176,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(arr)
+	case PeerID:
+		pid, ok := av.Val.(peer.ID)
+		if !ok {
+			return nil, &typeError{peer.ID(""), av.Val}
+		}
+
+		return []byte(pid), nil
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -202,6 +216,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: String, Val: v})
 		case []uint64:
 			out = append(out, &Value{Type: UintArray, Val: v})
+		case peer.ID:
+			out = append(out, &Value{Type: PeerID, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -281,6 +297,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  arr,
 		}, nil
+	case PeerID:
+		id, err := peer.IDFromBytes(data)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Value{
+			Type: t,
+			Val:  id,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -298,6 +324,7 @@ var typeTable = map[Type]reflect.Type{
 	Integer:     reflect.TypeOf(&big.Int{}),
 	String:      reflect.TypeOf(string("")),
 	UintArray:   reflect.TypeOf([]uint64{}),
+	PeerID:      reflect.TypeOf(peer.ID("")),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

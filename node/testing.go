@@ -97,7 +97,7 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	require.NoError(err)
 
 	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, pledge, collateral)
+		minerAddr, err := node.CreateMiner(ctx, from, pledge, core.RequireRandomPeerID(), collateral)
 		resultChan <- MustCreateMinerResult{minerAddress: minerAddr, err: err}
 		wg.Done()
 	}()

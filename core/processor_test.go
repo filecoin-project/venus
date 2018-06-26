@@ -212,7 +212,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -239,7 +239,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -264,7 +264,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act1.Nonce = 5
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -285,7 +285,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,

@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,11 +27,16 @@ func TestMinerCreate(t *testing.T) {
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		tf := func(fromAddress types.Address, expectSuccess bool) {
+		tf := func(fromAddress types.Address, pid peer.ID, expectSuccess bool) {
 			args := []string{"miner", "create"}
 			if !fromAddress.Empty() {
 				args = append(args, "--from", fromAddress.String())
 			}
+
+			if pid.Pretty() != peer.ID("").Pretty() {
+				args = append(args, "--peerid", pid.Pretty())
+			}
+
 			args = append(args, "1000000", "20")
 			if !expectSuccess {
 				d.RunFail(ErrCouldNotDefaultFromAddress.Error(), args...)
@@ -59,13 +66,16 @@ func TestMinerCreate(t *testing.T) {
 		}
 
 		// If there's one address, --from can be omitted and we should default
-		tf(address.TestAddress, true)
-		tf(types.Address{}, true)
+		tf(address.TestAddress, peer.ID(""), true)
+		tf(types.Address{}, peer.ID(""), true)
 
-		// If there's more than one, then --from must be specified
+		// If there's more than one address, then --from must be specified
 		d.CreateWalletAddr()
-		tf(types.Address{}, false)
-		tf(address.TestAddress, true)
+		tf(types.Address{}, peer.ID(""), false)
+		tf(address.TestAddress, peer.ID(""), true)
+
+		// Will accept a peer ID if one is provided
+		tf(address.TestAddress, core.RequireRandomPeerID(), true)
 	})
 
 	t.Run("validation failure", func(t *testing.T) {
@@ -74,6 +84,10 @@ func TestMinerCreate(t *testing.T) {
 
 		d.CreateWalletAddr()
 
+		d.RunFail("invalid peer id",
+			"miner", "create",
+			"--from", address.TestAddress.String(), "--peerid", "flarp", "1000000", "20",
+		)
 		d.RunFail("invalid from address",
 			"miner", "create",
 			"--from", "hello", "1000000", "20",
@@ -172,7 +186,9 @@ func TestMinerAddAskFail(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		miner := d.RunSuccess("miner", "create",
-			"--from", address.TestAddress.String(), "1000000", "20",
+			"--from", address.TestAddress.String(),
+			"--peerid", core.RequireRandomPeerID().Pretty(),
+			"1000000", "20",
 		)
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
