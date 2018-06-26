@@ -10,6 +10,7 @@ import (
 )
 
 func TestMessageSend(t *testing.T) {
+	t.Parallel()
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
@@ -39,6 +40,7 @@ func TestMessageSend(t *testing.T) {
 }
 
 func TestMessageWait(t *testing.T) {
+	t.Parallel()
 	d := NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 

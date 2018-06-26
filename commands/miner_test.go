@@ -18,9 +18,11 @@ import (
 )
 
 func TestMinerCreate(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		var err error
 		var addr types.Address
 
@@ -79,6 +81,7 @@ func TestMinerCreate(t *testing.T) {
 	})
 
 	t.Run("validation failure", func(t *testing.T) {
+		t.Parallel()
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -107,6 +110,7 @@ func TestMinerCreate(t *testing.T) {
 	})
 
 	t.Run("creation failure", func(t *testing.T) {
+		t.Parallel()
 		d := NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -130,6 +134,7 @@ func TestMinerCreate(t *testing.T) {
 }
 
 func TestMinerAddAskSuccess(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -173,6 +178,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 }
 
 func TestMinerAddAskFail(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()

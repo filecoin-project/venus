@@ -10,6 +10,7 @@ import (
 )
 
 func TestActorDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
 		require := require.New(t)
 		assert := assert.New(t)

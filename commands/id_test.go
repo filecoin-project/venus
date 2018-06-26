@@ -28,6 +28,7 @@ func makeSwarmAddressOption(t *testing.T, adder string) libp2p.Option {
 }
 
 func TestIdOutput(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	ctx := context.Background()

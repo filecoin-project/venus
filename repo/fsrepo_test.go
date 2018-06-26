@@ -42,6 +42,7 @@ const (
 )
 
 func TestFSRepoInit(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -85,6 +86,7 @@ func getSnapshotFilenames(t *testing.T, dir string) []string {
 }
 
 func TestFSRepoOpen(t *testing.T) {
+	t.Parallel()
 	t.Run("[fail] wrong version", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -103,6 +105,7 @@ func TestFSRepoOpen(t *testing.T) {
 }
 
 func TestFSRepoRoundtrip(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -131,6 +134,7 @@ func TestFSRepoRoundtrip(t *testing.T) {
 }
 
 func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -171,6 +175,7 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 }
 
 func TestRepoLock(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -196,6 +201,7 @@ func TestRepoLock(t *testing.T) {
 }
 
 func TestRepoLockFail(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -218,7 +224,9 @@ func TestRepoLockFail(t *testing.T) {
 }
 
 func TestRepoAPIFile(t *testing.T) {
+	t.Parallel()
 	t.Run("APIAddr returns last value written to API file", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -235,6 +243,7 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("SetAPIAddr is idempotent", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -254,6 +263,7 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("APIAddr fails if called before SetAPIAddr", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -264,6 +274,7 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("Close deletes API file", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -281,6 +292,7 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("Close will succeed in spite of missing API file", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -294,6 +306,7 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {

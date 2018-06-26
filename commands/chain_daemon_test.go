@@ -13,7 +13,9 @@ import (
 )
 
 func TestChainDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("chain ls returns the whole chain", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -45,6 +47,7 @@ func TestChainDaemon(t *testing.T) {
 	})
 
 	t.Run("chain head with chain of size 1 returns genesis block", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 

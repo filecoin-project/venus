@@ -14,6 +14,7 @@ import (
 )
 
 func TestDagDaemon(t *testing.T) {
+	t.Parallel()
 	t.Run("dag get <cid> returning the genesis block", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)

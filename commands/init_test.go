@@ -18,6 +18,7 @@ func TestInitSuccess(t *testing.T) {
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
+		// TODO pass cmdapi flag to RunInit to allow for parallel test running
 		out, err := RunInit("--repodir", dir)
 		assert.NoError(err)
 		assert.Contains(string(out), fmt.Sprintf("initializing filecoin node at %s", dir))

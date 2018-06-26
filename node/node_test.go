@@ -24,6 +24,7 @@ import (
 )
 
 func TestNodeConstruct(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	nd := MakeNodesUnstarted(t, 1, false)[0]
@@ -33,6 +34,7 @@ func TestNodeConstruct(t *testing.T) {
 }
 
 func TestNodeNetworking(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	assert := assert.New(t)
 
@@ -52,6 +54,7 @@ func TestNodeNetworking(t *testing.T) {
 }
 
 func TestConnectsToBootstrapNodes(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("no bootstrap nodes no problem", func(t *testing.T) {
@@ -103,6 +106,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 }
 
 func TestNodeInit(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	nd := MakeNodesUnstarted(t, 1, true)[0]
@@ -114,6 +118,7 @@ func TestNodeInit(t *testing.T) {
 }
 
 func TestStartMiningNoRewardAddress(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	nd := MakeNodesUnstarted(t, 1, true)[0]
@@ -128,6 +133,7 @@ func TestStartMiningNoRewardAddress(t *testing.T) {
 }
 
 func TestNodeMining(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 	newCid := types.NewCidForTestGetter()
@@ -213,6 +219,7 @@ func TestNodeMining(t *testing.T) {
 }
 
 func TestUpdateMessagePool(t *testing.T) {
+	t.Parallel()
 	// Note: majority of tests are in message_pool_test. This test
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
@@ -263,6 +270,7 @@ type msgs []*types.Message
 type msgsSet [][]*types.Message
 
 func TestWaitForMessage(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -278,6 +286,7 @@ func TestWaitForMessage(t *testing.T) {
 }
 
 func TestWaitForMessageError(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -336,6 +345,7 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, s
 }
 
 func TestGetSignature(t *testing.T) {
+	t.Parallel()
 	t.Run("no method", func(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
@@ -351,6 +361,7 @@ func TestGetSignature(t *testing.T) {
 }
 
 func TestOptionWithError(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
@@ -372,6 +383,7 @@ func TestOptionWithError(t *testing.T) {
 }
 
 func TestMakePrivateKey(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	// should fail if less than 1024
@@ -391,6 +403,7 @@ func TestMakePrivateKey(t *testing.T) {
 }
 
 func TestNextNonce(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("account does not exist", func(t *testing.T) {
@@ -426,6 +439,7 @@ func TestNextNonce(t *testing.T) {
 }
 
 func TestNewMessageWithNextNonce(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("includes correct nonce", func(t *testing.T) {
@@ -454,6 +468,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 }
 
 func TestQueryMessage(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("can contact payment broker", func(t *testing.T) {
@@ -478,6 +493,7 @@ func TestQueryMessage(t *testing.T) {
 }
 
 func TestCreateMiner(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -524,6 +540,7 @@ func TestCreateMiner(t *testing.T) {
 }
 
 func TestCreateSectorBuilders(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 

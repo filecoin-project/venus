@@ -9,6 +9,7 @@ import (
 )
 
 func TestId(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -23,6 +24,7 @@ func TestId(t *testing.T) {
 }
 
 func TestIdFormat(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	d := NewDaemon(t).Start()
@@ -39,6 +41,7 @@ func TestIdFormat(t *testing.T) {
 }
 
 func TestPersistId(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	// we need to control this

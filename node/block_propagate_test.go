@@ -39,6 +39,7 @@ func startNodes(t *testing.T, nds []*Node) {
 }
 
 func TestBlockPropTwoNodes(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
@@ -63,6 +64,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	assert := assert.New(t)
 

@@ -16,7 +16,9 @@ import (
 )
 
 func TestChainHead(t *testing.T) {
+	t.Parallel()
 	t.Run("returns an error if no best block", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		n := node.MakeNodesUnstarted(t, 1, true)[0]
@@ -31,6 +33,7 @@ func TestChainHead(t *testing.T) {
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 		assert := assert.New(t)
 
@@ -51,7 +54,9 @@ func TestChainHead(t *testing.T) {
 }
 
 func TestChainLsRun(t *testing.T) {
+	t.Parallel()
 	t.Run("chain of height two", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 		assert := assert.New(t)
 
@@ -89,6 +94,7 @@ func TestChainLsRun(t *testing.T) {
 	})
 
 	t.Run("emit best block and then time out getting parent", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -109,6 +115,7 @@ func TestChainLsRun(t *testing.T) {
 	})
 
 	t.Run("JSON marshaling", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		parent := types.NewBlockForTest(nil, 0)
