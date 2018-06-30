@@ -1,9 +1,7 @@
 package core
 
 import (
-	"bytes"
 	"context"
-	"sort"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -24,8 +22,8 @@ type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree) (*Proce
 // state tree ensuring that all transitions are valid, accumulating
 // changes in the state tree, and returning the message receipts.
 //
-// ProcessBlock returns an error if it hits a message the application
-// of which would result in an invalid state transition (eg, a
+// ProcessBlock returns an error if the block contains a message, the
+// application of which would result in an invalid state transition (eg, a
 // message to transfer value from an unknown account). ProcessBlock
 // can return one of three kinds of errors (see ApplyMessage: fault
 // error, permanent error, temporary error). For the purposes of
@@ -99,10 +97,10 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSe
 	msgFilter := make(map[string]struct{})
 
 	tips := ts.ToSlice()
-	sort.Slice(tips, func(i, j int) bool {
-		return bytes.Compare(tips[i].Ticket, tips[j].Ticket) == -1
-	})
+	types.SortBlocks(tips)
 
+	// TODO: this can be made slightly more efficient by reusing the validation
+	// transition of the first validated block (currently done in chain_manager fns).
 	for _, blk := range tips {
 		// filter out duplicates within TipSet
 		var msgs []*types.Message
@@ -383,10 +381,8 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 	return receipt, vmErr
 }
 
-// Apply
-
 // ApplyMessagesResponse is the output struct of ApplyMessages.  It exists to
-// prevent callers from mistakenly mixing up outputs of the same type
+// prevent callers from mistakenly mixing up outputs of the same type.
 type ApplyMessagesResponse struct {
 	Results            []*ApplicationResult
 	PermanentFailures  []*types.Message
@@ -398,8 +394,11 @@ type ApplyMessagesResponse struct {
 	TemporaryErrors []error
 }
 
-// ApplyMessages applies messages to state tree and returns message receipts,
-// messages with permanent and temporary failures, and any error.
+// ApplyMessages applies messages to a state tree.  It returns an
+// ApplyMessagesResponse which wraps the results of message application,
+// groupings of messages with permanent failures, temporary failures, and
+// successes, and the permanent and temporary errors raised during application.
+// ApplyMessages will return an error iff a fault message occurs.
 func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse

@@ -107,6 +107,7 @@ var balanceCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
+		// TODO fix #543: Improve UX for multiblock tipset
 		blk := fcn.ChainMgr.GetBestBlock()
 		if blk.StateRoot == nil {
 			return ErrLatestBlockStateRootNil

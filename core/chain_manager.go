@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
@@ -125,14 +124,15 @@ type ChainManager struct {
 // NewChainManager creates a new filecoin chain manager.
 func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
-		cstore:               cs,
-		ds:                   ds,
-		blockProcessor:       ProcessBlock,
-		tipSetProcessor:      ProcessTipSet,
+		cstore:          cs,
+		ds:              ds,
+		blockProcessor:  ProcessBlock,
+		tipSetProcessor: ProcessTipSet,
+		knownGoodBlocks: cid.NewSet(),
+		tips:            tipIndex{},
+		stateCache:      make(map[string]*cid.Cid),
+
 		HeaviestTipSetPubSub: pubsub.New(128),
-		knownGoodBlocks:      cid.NewSet(),
-		tips:                 tipIndex{},
-		stateCache:           make(map[string]*cid.Cid),
 	}
 	cm.FetchBlock = cm.fetchBlock
 	cm.GetBestBlock = cm.getBestBlock
@@ -745,11 +745,42 @@ func (cm *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
 	return out
 }
 
-// receiptFromTipSet finds the receipt for the jth message of the tipset ordered by
-// by ticket size.  This can differ from the jth's message receipt stored
-// in the ith block in the case that the jth message is in conflict with another
+// msgIndexOfTipSet returns the order in which  msgCid apperas in the canonical
+// message ordering of the given tipset, or an error if it is not in the
+// tipset.
+func msgIndexOfTipSet(msgCid *cid.Cid, ts TipSet, fails types.SortedCidSet) (int, error) {
+	blks := ts.ToSlice()
+	types.SortBlocks(blks)
+	var duplicates types.SortedCidSet
+	var msgCnt int
+	for _, b := range blks {
+		for _, msg := range b.Messages {
+			c, err := msg.Cid()
+			if err != nil {
+				return -1, err
+			}
+			if fails.Has(c) {
+				continue
+			}
+			if duplicates.Has(c) {
+				continue
+			}
+			(&duplicates).Add(c)
+			if c.Equals(msgCid) {
+				return msgCnt, nil
+			}
+			msgCnt++
+		}
+	}
+
+	return -1, fmt.Errorf("message cid %s not in tipset", msgCid.String())
+}
+
+// receiptFromTipSet finds the receipt for the message with msgCid in the input
+// input tipset.  This can differ from the message's receipt as stored in its
+// parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (cm *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet) (*types.MessageReceipt, error) {
+func (cm *ChainManager) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -758,6 +789,10 @@ func (cm *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet)
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
+		j, err := msgIndexOfTipSet(msgCid, ts, types.SortedCidSet{})
+		if err != nil {
+			return nil, err
+		}
 		if j < len(b.MessageReceipts) {
 			rcpt = b.MessageReceipts[j]
 		}
@@ -773,45 +808,17 @@ func (cm *ChainManager) receiptFromTipSet(ctx context.Context, j int, ts TipSet)
 	if err != nil {
 		return nil, err
 	}
-	// If no conflicts original index applies
-	// TODO: as noted above an out of bounds receipt index should
-	// eventually return an error.
-	if res.Failures.Empty() {
-		if j < len(res.Results) {
-			rcpt = res.Results[j].Receipt
-		}
-		return rcpt, nil
+
+	// If this is a failing conflict message there is no application receipt.
+	if res.Failures.Has(msgCid) {
+		return nil, nil
 	}
 
-	// Calculate a new index accounting for conflicting messages
-	sort.Slice(blks, func(i, j int) bool {
-		return bytes.Compare(blks[i].Ticket, blks[j].Ticket) == -1
-	})
-	var msgCnt int
-	for _, b := range blks {
-		for _, msg := range b.Messages {
-			mCid, err := msg.Cid()
-			if err != nil {
-				return nil, err
-			}
-			if res.Failures.Has(mCid) {
-				// Selected message was a conflict-failure, return empty receipt.
-				if msgCnt == j {
-					return rcpt, nil
-				}
-				j--
-			} else {
-				msgCnt++
-			}
-			if j < msgCnt {
-				j = msgCnt
-				break
-			}
-		}
+	j, err := msgIndexOfTipSet(msgCid, ts, res.Failures)
+	if err != nil {
+		return nil, err
 	}
-
-	// TODO: as noted above an out of bounds receipt index should
-	// eventually return an error.
+	// TODO: and of bounds receipt index should return an error.
 	if j < len(res.Results) {
 		rcpt = res.Results[j].Receipt
 	}
@@ -892,27 +899,21 @@ func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb 
 			log.Errorf("chainManager.WaitForMessage: %s", ts)
 			return ts
 		case TipSet:
-			blks := ts.ToSlice()
-			sort.Slice(blks, func(i, j int) bool {
-				return bytes.Compare(blks[i].Ticket, blks[j].Ticket) == -1
-			})
-			var msgTotal int
-			for _, blk := range blks {
-				for j, msg := range blk.Messages {
+			for _, blk := range ts {
+				for _, msg := range blk.Messages {
 					c, err := msg.Cid()
 					if err != nil {
 						log.Errorf("chainManager.WaitForMessage: %s", err)
 						return err
 					}
 					if c.Equals(msgCid) {
-						recpt, err := cm.receiptFromTipSet(ctx, msgTotal+j, ts)
+						recpt, err := cm.receiptFromTipSet(ctx, msgCid, ts)
 						if err != nil {
 							return errors.Wrap(err, "error retrieving receipt from tipset")
 						}
 						return cb(blk, msg, recpt)
 					}
 				}
-				msgTotal += len(blk.Messages)
 			}
 		}
 	}
