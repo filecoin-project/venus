@@ -17,7 +17,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -409,13 +411,23 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account does not exist", func(t *testing.T) {
 		assert := assert.New(t)
 		node := MakeNodesUnstarted(t, 1, true)[0]
-		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+
+		err = node.ChainMgr.Genesis(ctx, tif)
 		assert.NoError(err)
 		assert.NoError(node.Start())
 
-		address := types.NewAddressForTestGetter()() // Won't have an actor.
+		noActorAddress, err := node.NewAddress() // Won't have an actor.
+		assert.NoError(err)
 
-		_, err = NextNonce(ctx, node, address)
+		_, err = NextNonce(ctx, node, noActorAddress)
 		assert.Error(err)
 		assert.Contains(err.Error(), "not found")
 	})
