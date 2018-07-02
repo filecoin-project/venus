@@ -8,7 +8,6 @@ import (
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +21,8 @@ func TestDealProtocolClient(t *testing.T) {
 
 	sm := NewStorageMarket(nds[0])
 	client := NewStorageClient(nds[1])
+	clientAddr, err := nds[1].NewAddress()
+	assert.NoError(err)
 
 	minerAddr, err := nds[0].NewAddress()
 	assert.NoError(err)
@@ -32,7 +33,7 @@ func TestDealProtocolClient(t *testing.T) {
 	client.smi = msa
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5000)
-	msa.addBid(address.TestAddress, 35, 5000)
+	msa.addBid(clientAddr, 35, 5000)
 	sm.smi = msa
 
 	data := dag.NewRawNode([]byte("cats"))
@@ -43,7 +44,7 @@ func TestDealProtocolClient(t *testing.T) {
 			Bid:     0,
 			DataRef: data.Cid(),
 		},
-		ClientSig: string(address.TestAddress[:]),
+		ClientSig: clientAddr.String(),
 	}
 
 	resp, err := client.ProposeDeal(ctx, propose)
