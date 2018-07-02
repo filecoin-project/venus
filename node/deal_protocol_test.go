@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,20 +103,25 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 func TestDealProtocol(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	nd := MakeNodesUnstarted(t, 1, false)[0]
+	nodes := MakeNodesUnstarted(t, 2, false)
+	miner := nodes[0]
+	client := nodes[1]
 
-	sm := NewStorageMarket(nd)
+	sm := NewStorageMarket(miner)
 
-	minerAddr, err := nd.NewAddress()
+	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
-	minerOwner, err := nd.NewAddress()
+	minerOwner, err := miner.NewAddress()
 	assert.NoError(err)
 	_ = minerOwner
+
+	clientAddr, err := client.NewAddress()
+	assert.NoError(err)
 
 	msa := newMockMsp()
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
-	msa.addBid(address.TestAddress, 35, 5000)
+	msa.addBid(clientAddr, 35, 5000)
 
 	sm.smi = msa
 
@@ -128,7 +133,7 @@ func TestDealProtocol(t *testing.T) {
 			Bid:     0,
 			DataRef: data.Cid(),
 		},
-		ClientSig: string(address.TestAddress[:]),
+		ClientSig: clientAddr.String(),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -143,7 +148,7 @@ func TestDealProtocol(t *testing.T) {
 
 	assert.Equal(Started, resp.State)
 
-	err = nd.Blockservice.AddBlock(data)
+	err = miner.Blockservice.AddBlock(data)
 	assert.NoError(err)
 
 	time.Sleep(time.Millisecond * 50)
@@ -157,21 +162,26 @@ func TestDealProtocol(t *testing.T) {
 func TestDealProtocolMissing(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	nd := MakeNodesUnstarted(t, 1, false)[0]
+	nodes := MakeNodesUnstarted(t, 2, false)
+	miner := nodes[0]
+	client := nodes[1]
 
-	sm := NewStorageMarket(nd)
+	sm := NewStorageMarket(miner)
 
-	minerAddr, err := nd.NewAddress()
+	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
-	minerOwner, err := nd.NewAddress()
+	minerOwner, err := miner.NewAddress()
+	assert.NoError(err)
+
+	clientAddr, err := client.NewAddress()
 	assert.NoError(err)
 
 	msa := newMockMsp()
 	msa.minerOwners[minerAddr] = minerOwner
 	msa.addAsk(minerAddr, 40, 5500)
 	msa.addAsk(minerAddr, 20, 1000)
-	msa.addBid(address.TestAddress, 35, 5000)
-	msa.addBid(address.TestAddress, 15, 2000)
+	msa.addBid(clientAddr, 35, 5000)
+	msa.addBid(clientAddr, 15, 2000)
 
 	sm.smi = msa
 
@@ -179,7 +189,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose := &DealProposal{
 		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
-		ClientSig: string(address.TestAddress[:]),
+		ClientSig: clientAddr.String(),
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -189,7 +199,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose = &DealProposal{
 		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
-		ClientSig: string(address.TestAddress[:]),
+		ClientSig: clientAddr.String(),
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -199,7 +209,7 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	propose = &DealProposal{
 		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
-		ClientSig: string(address.TestAddress[:]),
+		ClientSig: clientAddr.String(),
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -213,15 +223,21 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := context.Background()
-	nd := MakeNodesUnstarted(t, 1, false)[0]
-	err := nd.ChainMgr.Genesis(ctx, core.InitGenesis)
+	nd := MakeNodesUnstarted(t, 1, true)[0]
+	nodeAddr, err := nd.NewAddress()
+	assert.NoError(err)
+
+	tif := th.MakeGenesisFunc(
+		th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+	)
+	nd.ChainMgr.Genesis(ctx, tif)
 	assert.NoError(err)
 	assert.NoError(nd.Start())
 
 	msa := &stateTreeMarketPeeker{nd}
 
 	data := dag.NewRawNode([]byte("cats"))
-	dealCid, err := msa.AddDeal(ctx, address.TestAddress, uint64(0), 0, string(address.TestAddress[:]), data.Cid())
+	dealCid, err := msa.AddDeal(ctx, nodeAddr, uint64(0), 0, string(address.TestAddress[:]), data.Cid())
 
 	assert.NoError(err)
 	assert.NotNil(dealCid)
