@@ -329,6 +329,9 @@ func (td *TestDaemon) CreateMinerAddr() types.Address {
 		wg.Done()
 	}()
 
+	// ensure mining runs after the command in our goroutine
+	td.RunSuccess("mpool --wait-for-count=1")
+
 	td.RunSuccess("mining", "once")
 
 	wg.Wait()

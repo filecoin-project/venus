@@ -132,6 +132,14 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.Bytes},
 	},
+	"getPeerID": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.PeerID},
+	},
+	"updatePeerID": &exec.FunctionSignature{
+		Params: []abi.Type{abi.PeerID},
+		Return: []abi.Type{},
+	},
 }
 
 // Exports returns the miner actors exported functions
@@ -303,4 +311,35 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 	}
 
 	return validOut, 0, nil
+}
+
+// GetPeerID returns the libp2p peer ID that this miner can be reached at.
+func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
+	var mstore Storage
+
+	if err := actor.UnmarshalStorage(ctx.ReadStorage(), &mstore); err != nil {
+		return peer.ID(""), errors.CodeError(err), err
+	}
+
+	return mstore.PeerID, 0, nil
+}
+
+// UpdatePeerID is used to update the peerID this miner is operating under.
+func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
+	var storage Storage
+	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+		// verify that the caller is authorized to perform update
+		if ctx.Message().From != storage.Owner {
+			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		storage.PeerID = pid
+
+		return nil, nil
+	})
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
 }

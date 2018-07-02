@@ -20,7 +20,6 @@ var sectorDirsForTest = &repo.MemRepo{}
 var testSectorSize = 64
 
 func TestSimple(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 	nd := MakeOfflineNode(t)
 	sb := requireSectorBuilder(require, nd, testSectorSize)
@@ -70,7 +69,6 @@ func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *Piec
 }
 
 func TestSectorBuilder(t *testing.T) {
-	t.Parallel()
 	defer sectorDirsForTest.CleanupSectorDirs()
 	assert := assert.New(t)
 	require := require.New(t)
@@ -186,7 +184,6 @@ func TestSectorBuilder(t *testing.T) {
 }
 
 func TestSectorBuilderMetadata(t *testing.T) {
-	t.Parallel()
 	t.Run("creating datastore keys", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -322,7 +319,6 @@ func TestSectorStore(t *testing.T) {
 }
 
 func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 
 	ctx := context.Background()
