@@ -30,7 +30,10 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(0, len(nodes[1].MsgPool.Pending()))
 	require.Equal(0, len(nodes[2].MsgPool.Pending()))
 
-	msg := types.NewMessage(address.NetworkAddress, address.TestAddress, 0, types.NewAttoFILFromFIL(123), "", nil)
+	nd0Addr, err := nodes[0].NewAddress()
+	require.NoError(err)
+
+	msg := types.NewMessage(address.NetworkAddress, nd0Addr, 0, types.NewAttoFILFromFIL(123), "", nil)
 	nodes[0].AddNewMessage(ctx, msg)
 
 	// Wait for message to propagate across network
