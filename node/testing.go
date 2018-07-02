@@ -75,17 +75,6 @@ func MakeOfflineNode(t *testing.T) *Node {
 	return MakeNodesUnstarted(t, 1, true)[0]
 }
 
-// MustCreateMiner creates a miner owned by address.TestAddress and returns its address. It requires that the node has
-// been initialized with a genesis block and that it has been started.
-func MustCreateMiner(t *testing.T, node *Node) types.Address {
-	require := require.New(t)
-	result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
-
-	require.NoError(result.err)
-
-	return *result.minerAddress
-}
-
 // MustCreateMinerResult contains the result of a CreateMiner command
 type MustCreateMinerResult struct {
 	minerAddress *types.Address
