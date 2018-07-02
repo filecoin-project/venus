@@ -353,10 +353,18 @@ func TestGetSignature(t *testing.T) {
 		assert := assert.New(t)
 
 		nd := MakeNodesUnstarted(t, 1, true)[0]
+		nodeAddr, err := nd.NewAddress()
+		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		nd.ChainMgr.Genesis(ctx, tif)
+
 		assert.NoError(nd.Start())
 		defer nd.Stop()
 
-		sig, err := nd.GetSignature(ctx, address.TestAddress, "")
+		sig, err := nd.GetSignature(ctx, nodeAddr, "")
 		assert.Equal(ErrNoMethod, err)
 		assert.Nil(sig)
 	})
@@ -434,17 +442,24 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
 		assert := assert.New(t)
+
 		node := MakeNodesUnstarted(t, 1, true)[0]
-		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+
 		assert.NoError(node.Start())
 
-		addr := address.TestAddress // Has an actor.
-		msg := types.NewMessage(addr, address.TestAddress, 0, nil, "foo", []byte{})
+		// TODO: does sending a message to ourselves fit the spirit of the test?
+		msg := types.NewMessage(nodeAddr, nodeAddr, 0, nil, "foo", []byte{})
 		msg.Nonce = 42
 		core.MustAdd(node.MsgPool, msg)
 
-		nonce, err := NextNonce(ctx, node, addr)
+		nonce, err := NextNonce(ctx, node, nodeAddr)
 		assert.NoError(err)
 		assert.Equal(uint64(43), nonce)
 	})
@@ -457,23 +472,26 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 	t.Run("includes correct nonce", func(t *testing.T) {
 		assert := assert.New(t)
 		node := MakeNodesUnstarted(t, 1, true)[0]
-		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
-		assert.NoError(node.Start())
 
-		address := address.TestAddress // Has an actor.
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		assert.NoError(node.Start())
 
 		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
 		st, err := state.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot, nil)
 		assert.NoError(err)
-		actor := state.MustGetActor(st, address)
+		actor := state.MustGetActor(st, nodeAddr)
 		actor.Nonce = 42
-		cid := state.MustSetActor(st, address, actor)
+		cid := state.MustSetActor(st, nodeAddr, actor)
 		bb.StateRoot = cid
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.NewTipSet(bb))
 
-		msg, err := NewMessageWithNextNonce(ctx, node, address, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
+		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
 		assert.NoError(err)
 		assert.Equal(uint64(42), msg.Nonce)
 	})
@@ -487,13 +505,18 @@ func TestQueryMessage(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 		node := MakeNodesUnstarted(t, 1, true)[0]
-		err := node.ChainMgr.Genesis(ctx, core.InitGenesis)
+		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
 		assert.NoError(node.Start())
 
-		params, err := abi.ToEncodedValues(address.TestAddress)
+		params, err := abi.ToEncodedValues(nodeAddr)
 		require.NoError(err)
-		msg, err := NewMessageWithNextNonce(ctx, node, address.TestAddress, address.PaymentBrokerAddress, nil, "ls", params)
+		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, address.PaymentBrokerAddress, nil, "ls", params)
 		require.NoError(err)
 
 		returnValue, exitCode, err := node.QueryMessage(msg)
@@ -513,11 +536,19 @@ func TestCreateMiner(t *testing.T) {
 		ctx := context.Background()
 
 		node := MakeOfflineNode(t)
-		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
-		require.NoError(node.Start())
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		assert.NoError(node.Start())
+
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
 		require.NoError(result.err)
 		assert.NotNil(result.minerAddress)
 
@@ -528,11 +559,19 @@ func TestCreateMiner(t *testing.T) {
 		ctx := context.Background()
 
 		node := MakeOfflineNode(t)
-		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
-		require.NoError(node.Start())
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		assert.NoError(node.Start())
+
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(10), *types.NewAttoFILFromFIL(10))
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(10), *types.NewAttoFILFromFIL(10))
 		assert.Error(result.err)
 		assert.Contains(result.err.Error(), "pledge must be at least")
 	})
@@ -541,11 +580,19 @@ func TestCreateMiner(t *testing.T) {
 		ctx := context.Background()
 
 		node := MakeOfflineNode(t)
-		require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
-		require.NoError(node.Start())
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		assert.NoError(node.Start())
+
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, address.TestAddress, *types.NewBytesAmount(20000), *types.NewAttoFILFromFIL(1000000))
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(20000), *types.NewAttoFILFromFIL(1000000))
 		assert.Error(result.err)
 		assert.Contains(result.err.Error(), "not enough balance")
 	})
