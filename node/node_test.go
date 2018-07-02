@@ -606,12 +606,27 @@ func TestCreateSectorBuilders(t *testing.T) {
 	ctx := context.Background()
 
 	node := MakeOfflineNode(t)
-	require.NoError(node.ChainMgr.Genesis(ctx, core.InitGenesis))
-	require.NoError(node.Start())
+	minerAddr1, err := node.NewAddress()
+	assert.NoError(err)
+	minerAddr2, err := node.NewAddress()
+	assert.NoError(err)
+
+	tif := th.MakeGenesisFunc(
+		th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+		th.ActorAccount(minerAddr1, types.NewAttoFILFromFIL(10000)),
+		th.ActorAccount(minerAddr2, types.NewAttoFILFromFIL(10000)),
+	)
+	assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+	assert.NoError(node.Start())
+
 	assert.Equal(0, len(node.SectorBuilders))
 
-	MustCreateMiner(t, node)
-	MustCreateMiner(t, node)
+	result := <-RunCreateMiner(t, node, minerAddr1, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
+	require.NoError(result.err)
+
+	result = <-RunCreateMiner(t, node, minerAddr2, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
+	require.NoError(result.err)
+
 	assert.Equal(0, len(node.SectorBuilders))
 
 	node.StartMining()
