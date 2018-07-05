@@ -13,17 +13,20 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: v1-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+          key: v2-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
 
       - run:
           name: Install Dependencies
-          command: go run ./build/*.go deps
+          command: go run ./build/*.go smartdeps
 
       - save_cache:
           key: v1-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
           paths:
             - "/go/pkg"
-            - "/go/src/gx" # gx deps
+            - "/go/src/gx"
+            - "/go/src/github.com"
+            - "/go/src/golang.org"
+
       - run:
           name: Build
           command: go run ./build/*.go build
