@@ -107,6 +107,5 @@ func (a *Actor) Marshal() ([]byte, error) {
 
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
-	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", ActorCodeTypeName(a.Code), a, a.Balance,
-		a.Nonce)))
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", ActorCodeTypeName(a.Code), a, a.Balance, a.Nonce))) // nolint: errcheck
 }

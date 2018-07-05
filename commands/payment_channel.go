@@ -158,7 +158,7 @@ var lsCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pcs *map[string]*paymentbroker.PaymentChannel) error {
 			if len(*pcs) == 0 {
-				fmt.Fprintln(w, "no channels")
+				fmt.Fprintln(w, "no channels") // nolint: errcheck
 				return nil
 			}
 
@@ -242,7 +242,7 @@ var voucherCmd = &cmds.Command{
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, voucher string) error {
-			fmt.Fprintln(w, voucher)
+			fmt.Fprintln(w, voucher) // nolint: errcheck
 			return nil
 		}),
 	},
@@ -356,7 +356,7 @@ var reclaimCmd = &cmds.Command{
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			fmt.Fprintln(w, c)
+			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),
 	},
@@ -482,7 +482,7 @@ var extendCmd = &cmds.Command{
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			fmt.Fprintln(w, c)
+			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),
 	},

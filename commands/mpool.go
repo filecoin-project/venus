@@ -51,7 +51,7 @@ var mpoolCmd = &cmds.Command{
 				if err != nil {
 					return err
 				}
-				fmt.Fprintln(w, c.String())
+				fmt.Fprintln(w, c.String()) // nolint: errcheck
 			}
 			return nil
 		}),

@@ -25,7 +25,7 @@ func CliRun(ctx context.Context, root *cmds.Command,
 	buildEnv cmds.MakeEnvironment, makeExecutor cmds.MakeExecutor) (int, error) {
 
 	printErr := func(err error) {
-		fmt.Fprintf(stderr, "%s\n", err)
+		fmt.Fprintf(stderr, "%s\n", err) // nolint: errcheck
 	}
 
 	req, errParse := cmdsCli.Parse(ctx, cmdline[1:], stdin, root)
@@ -46,7 +46,7 @@ func CliRun(ctx context.Context, root *cmds.Command,
 	// this is a message to tell the user how to get the help text
 	printMetaHelp := func(w io.Writer) {
 		cmdPath := strings.Join(req.Path, " ")
-		fmt.Fprintf(w, "Use '%s %s --help' for information about this command\n", cmdline[0], cmdPath)
+		fmt.Fprintf(w, "Use '%s %s --help' for information about this command\n", cmdline[0], cmdPath) // nolint: errcheck
 	}
 
 	printHelp := func(long bool, w io.Writer) {
@@ -83,7 +83,7 @@ func CliRun(ctx context.Context, root *cmds.Command,
 
 		// this was a user error, print help
 		if req != nil && req.Command != nil {
-			fmt.Fprintln(stderr) // i need some space
+			fmt.Fprintln(stderr) // nolint: errcheck
 			printHelp(false, stderr)
 		}
 

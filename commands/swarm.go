@@ -150,21 +150,21 @@ var swarmPeersCmd = &cmds.Command{
 			for _, info := range ci.Peers {
 				ids := fmt.Sprintf("/%s/%s", pipfs, info.Peer)
 				if strings.HasSuffix(info.Addr, ids) {
-					fmt.Fprintf(w, "%s", info.Addr)
+					fmt.Fprintf(w, "%s", info.Addr) // nolint: errcheck
 				} else {
-					fmt.Fprintf(w, "%s%s", info.Addr, ids)
+					fmt.Fprintf(w, "%s%s", info.Addr, ids) // nolint: errcheck
 				}
 				if info.Latency != "" {
-					fmt.Fprintf(w, " %s", info.Latency)
+					fmt.Fprintf(w, " %s", info.Latency) // nolint: errcheck
 				}
-				fmt.Fprintln(w)
+				fmt.Fprintln(w) // nolint: errcheck
 
 				for _, s := range info.Streams {
 					if s.Protocol == "" {
 						s.Protocol = "<no protocol name>"
 					}
 
-					fmt.Fprintf(w, "  %s\n", s.Protocol)
+					fmt.Fprintf(w, "  %s\n", s.Protocol) // nolint: errcheck
 				}
 			}
 
@@ -232,7 +232,7 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]connectResult) error {
 			for _, a := range *res {
-				fmt.Fprintf(w, "connect %s success\n", a.Peer)
+				fmt.Fprintf(w, "connect %s success\n", a.Peer) // nolint: errcheck
 			}
 			return nil
 		}),

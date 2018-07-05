@@ -184,8 +184,8 @@ var clientProposeDealCmd = &cmds.Command{
 	Type: node.DealResponse{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.DealResponse) error {
-			fmt.Fprintf(w, "Status: %s\n", resp.State.String())
-			fmt.Fprintf(w, "ID: %x\n", resp.ID)
+			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "ID: %x\n", resp.ID)                 // nolint: errcheck
 			return nil
 		}),
 	},
@@ -225,11 +225,11 @@ var clientQueryDealCmd = &cmds.Command{
 	Type: node.DealResponse{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.DealResponse) error {
-			fmt.Fprintf(w, "Status: %s\n", resp.State.String())
-			fmt.Fprintf(w, "ID: %x\n", resp.ID)
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)
+			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "ID: %x\n", resp.ID)                 // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			if resp.MsgCid != nil {
-				fmt.Fprintf(w, "MsgCid: %s\n", resp.MsgCid)
+				fmt.Fprintf(w, "MsgCid: %s\n", resp.MsgCid) // nolint: errcheck
 			}
 			return nil
 		}),

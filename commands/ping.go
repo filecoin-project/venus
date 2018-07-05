@@ -58,11 +58,11 @@ trip latency information.
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *pingResult) error {
 			if len(p.Text) > 0 {
-				fmt.Fprintln(w, p.Text)
+				fmt.Fprintln(w, p.Text) // nolint: errcheck
 			} else if p.Success {
-				fmt.Fprintf(w, "Pong received: time=%.2f ms\n", p.Time.Seconds()*1000)
+				fmt.Fprintf(w, "Pong received: time=%.2f ms\n", p.Time.Seconds()*1000) // nolint: errcheck
 			} else {
-				fmt.Fprintf(w, "Pong failed\n")
+				fmt.Fprintf(w, "Pong failed\n") // nolint: errcheck
 			}
 			return nil
 		}),

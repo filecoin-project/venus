@@ -187,11 +187,11 @@ func (a Address) Hash() []byte {
 func (a Address) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
-		fmt.Fprintf(f, "[%s - %x - %x]", NetworkToString(a.Network()), a.Version(), a.Hash())
+		fmt.Fprintf(f, "[%s - %x - %x]", NetworkToString(a.Network()), a.Version(), a.Hash()) // nolint: errcheck
 	case 's':
-		fmt.Fprintf(f, "%s", a.String())
+		fmt.Fprintf(f, "%s", a.String()) // nolint: errcheck
 	default:
-		fmt.Fprintf(f, "%"+string(c), a.Bytes())
+		fmt.Fprintf(f, "%"+string(c), a.Bytes()) // nolint: errcheck
 	}
 }
 
