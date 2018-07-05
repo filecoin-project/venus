@@ -90,6 +90,7 @@ func TestBasicAddBlock(t *testing.T) {
 	res, err := stm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
+
 	assert.Equal(stm.GetBestBlock().Cid(), block1.Cid())
 	assert.True(stm.knownGoodBlocks.Has(block1.Cid()))
 	res, err = stm.ProcessNewBlock(ctx, block2)
@@ -252,27 +253,6 @@ func TestRejectShorterChain(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(ChainValid, res)
 	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
-}
-
-func TestKnownAncestor(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx, cs, _, stm := newTestUtils()
-
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	addBlocks(t, cs, block1)
-	res, err := stm.ProcessNewBlock(ctx, block2)
-	assert.NoError(err)
-	assert.Equal(ChainAccepted, res)
-
-	addBlocks(t, cs, fork1, fork2)
-	base, chain, err := stm.findKnownAncestor(ctx, fork3)
-	assert.NoError(err)
-	assert.Equal(RequireNewTipSet(require, testGenesis), base)
-	assert.Len(chain, 3)
-	assert.Equal(RequireNewTipSet(require, fork3), chain[0])
-	assert.Equal(RequireNewTipSet(require, fork2), chain[1])
-	assert.Equal(RequireNewTipSet(require, fork1), chain[2])
 }
 
 func TestGenesis(t *testing.T) {

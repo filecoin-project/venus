@@ -283,11 +283,11 @@ func (td *TestDaemon) Shutdown() {
 func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
-	tdOut := td.ReadStderr()
-	assert.NoError(td.test, err, tdOut)
-	assert.NotContains(td.test, tdOut, "CRITICAL")
-	assert.NotContains(td.test, tdOut, "ERROR")
-	assert.NotContains(td.test, tdOut, "WARNING")
+	tdErr := td.ReadStderr()
+	assert.NoError(td.test, err, tdErr)
+	assert.NotContains(td.test, tdErr, "CRITICAL")
+	assert.NotContains(td.test, tdErr, "ERROR")
+	assert.NotContains(td.test, tdErr, "WARNING")
 }
 
 func (td *TestDaemon) ShutdownEasy() {

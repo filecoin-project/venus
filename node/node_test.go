@@ -538,22 +538,17 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 
 		tif := th.MakeGenesisFunc(
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+			th.ActorNonce(nodeAddr, 42),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
 		assert.NoError(node.Start())
 
 		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
-		st, err := state.LoadStateTree(context.Background(), node.CborStore, bb.StateRoot, nil)
-		assert.NoError(err)
-		actor := state.MustGetActor(st, nodeAddr)
-		actor.Nonce = 42
-		cid := state.MustSetActor(st, nodeAddr, actor)
-		bb.StateRoot = cid
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, bb))
 
 		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
-		assert.NoError(err)
+		require.NoError(err)
 		assert.Equal(uint64(42), uint64(msg.Nonce))
 	})
 }

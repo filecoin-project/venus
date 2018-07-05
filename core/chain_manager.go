@@ -17,8 +17,9 @@ import (
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/state"
+	statetree "github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	pp "github.com/filecoin-project/go-filecoin/util/prettyprint"
 )
 
 var log = logging.Logger("chain")
@@ -355,7 +356,7 @@ func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (
 	}()
 	log.Infof("processing block [s=%d, cid=%s]", blk.Score(), blk.Cid())
 
-	switch err := cm.validateBlock(ctx, blk); err {
+	switch _, err := cm.state(ctx, []*types.Block{blk}); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
 	case ErrInvalidBase:
@@ -380,29 +381,17 @@ func (cm *ChainManager) fetchBlock(ctx context.Context, c *cid.Cid) (*types.Bloc
 	return &blk, nil
 }
 
-// validateTipSetStructure verifies that the input blocks form a valid tipset.
-// validating each block structurally and making sure that this tipset contains
-// only blocks with the same height and same parent set
-func (cm *ChainManager) validateTipSetStructure(ctx context.Context, blks []*types.Block) error {
-	var h uint64
-	var p types.SortedCidSet
-	if len(blks) > 0 {
-		h = uint64(blks[0].Height)
-		p = blks[0].Parents
-	}
+// newValidTipSet creates a new tipset from the input blocks that is guaranteed
+// to be valid.  It operates by validating each block and further checking that
+// this tipset contains only blocks with the same heights, parent weights,
+// and parent sets.
+func (cm *ChainManager) newValidTipSet(ctx context.Context, blks []*types.Block) (TipSet, error) {
 	for _, blk := range blks {
 		if err := cm.validateBlockStructure(ctx, blk); err != nil {
-			return err
-		}
-		if uint64(blk.Height) != h {
-			return ErrBadTipSet
-		}
-		if !p.Equals(blk.Parents) {
-			return ErrBadTipSet
+			return nil, err
 		}
 	}
-
-	return nil
+	return NewTipSet(blks...)
 }
 
 // validateBlockStructure verifies that this block, on its own, is structurally and
@@ -417,147 +406,151 @@ func (cm *ChainManager) validateBlockStructure(ctx context.Context, b *types.Blo
 		return fmt.Errorf("block has nil StateRoot")
 	}
 
-	return nil
-}
-
-// TODO: this method really needs to be thought through carefully. Probably one
-// of the most complicated bits of the system
-// TODO: We don't currently validate that
-//   a) there is a mining reward; and b) the reward is the first message in the block.
-//  We need to do so since this is a part of the consensus rules.
-func (cm *ChainManager) validateBlock(ctx context.Context, b *types.Block) error {
-	log.LogKV(ctx, "validateBlock", b.Cid().String())
-	if err := cm.validateBlockStructure(ctx, b); err != nil {
-		return errors.Wrap(err, "check block valid failed")
-	}
-
-	if _, err := cm.cstore.Put(ctx, b); err != nil {
-		return errors.Wrap(err, "failed to store block")
-	}
-
-	baseTipSet, chain, err := cm.findKnownAncestor(ctx, b)
-	if err != nil {
-		return err
-	}
-
-	st, err := cm.LoadStateTreeTS(ctx, baseTipSet)
-	if err != nil {
-		return err
-	}
-
-	for i := len(chain) - 1; i >= 0; i-- {
-		curTipSet := chain[i]
-		var cpySt state.Tree
-		// validate each block within tipset
-		for _, blk := range curTipSet {
-			// state copied so changes don't propagate between block validations
-			cpyCid, err := st.Flush(ctx)
-			if err != nil {
-				return err
-			}
-			cpySt, err = state.LoadStateTree(ctx, cm.cstore, cpyCid, builtin.Actors)
-			if err != nil {
-				return err
-			}
-
-			receipts, err := cm.blockProcessor(ctx, blk, cpySt)
-			if err != nil {
-				return err
-			}
-
-			// TODO: check that the receipts actually match
-			if len(receipts) != len(blk.MessageReceipts) {
-				return fmt.Errorf("found invalid message receipts: %v %v", receipts, blk.MessageReceipts)
-			}
-			cm.addBlock(blk, blk.Cid())
-		}
-		if len(curTipSet) == 1 { // block validation state == aggregate parent state
-			st = cpySt
-			continue
-		}
-		// Multiblock tipset, reapply messages to get aggregate parent state
-		_, err = cm.tipSetProcessor(ctx, curTipSet, st)
-		if err != nil {
-			return err
-		}
-	}
-
-	outCid, err := st.Flush(ctx)
-	if err != nil {
-		return errors.Wrap(err, "failed to flush tree after applying state transitions")
-	}
-	if !outCid.Equals(b.StateRoot) {
-		return ErrStateRootMismatch
-	}
+	// TODO: validate that this miner had a winning ticket last block.
+	// In general this may depend on block farther back in the chain (lookback param).
 
 	return nil
 }
 
-// findKnownAncestor walks backwards from the given block until it finds a tipset
-// that we know to be good. It then returns that known tipset, and the tipsets
-// that form the chain back to it.
-func (cm *ChainManager) findKnownAncestor(ctx context.Context, tip *types.Block) (TipSet, []TipSet, error) {
-	log.LogKV(ctx, "findKnownAncestor", tip.Cid().String())
-
-	var baseTipSet TipSet
-	var path []TipSet
-
-	// TODO: should be some sort of limit here
-	// Some implementations limit the length of a chain that can be swapped.
-	// Historically, bitcoin does not, this is purely for religious and
-	// idealogical reasons. In reality, if a weeks worth of blocks is about to
-	// be reverted, the system should opt to halt, not just happily switch over
-	// to an entirely different chain.
-
-	err := cm.walkChain([]*types.Block{tip}, func(tips []*types.Block) (cont bool, err error) {
-		// The tipset is known if all tips are known.
-		known := true
-		for _, blk := range tips {
-			if !cm.isKnownGoodBlock(blk.Cid()) {
-				known = false
-			}
-		}
-		// Even if the tipset is known its structure must be validated.
-		// For example the tipset could contain all known blocks of
-		// different heights.  TipSet validation includes validating each
-		// block
-		if err := cm.validateTipSetStructure(ctx, tips); err != nil {
-			return false, errors.Wrap(err, "validate tipset failed")
-		}
-
-		next, err := NewTipSet(tips...)
-		if err != nil {
-			return false, err
-		}
-		if known {
-			baseTipSet = next
-			return false, nil
-		}
-
-		path = append(path, next)
-
-		return true, nil
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(baseTipSet) == 0 {
-		return nil, nil, ErrInvalidBase
-	}
-
-	log.LogKV(ctx, "foundAncestorTipSet", baseTipSet.String())
-	return baseTipSet, path, nil
+// State is a wrapper for state that logs a trace. before returning the
+// validated state of the input blocks.  initializing a trace can't happen
+// within state because it is a recursive function and would log a new
+// trace for each invocation.
+func (cm *ChainManager) State(ctx context.Context, blks []*types.Block) (statetree.Tree, error) {
+	ctx = log.Start(ctx, "State")
+	log.Info("Calling State")
+	return cm.state(ctx, blks)
 }
 
-func (cm *ChainManager) isKnownGoodBlock(bc *cid.Cid) bool {
-	if bc.Equals(cm.genesisCid) {
-		return true
+// state returns the aggregate state tree for the blocks or an error if the
+// blocks are not a valid tipset or are not part of a valid chain.
+func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetree.Tree, error) {
+	ts, err := cm.newValidTipSet(ctx, blks)
+	if err != nil {
+		return nil, errors.Wrapf(err, "blks do not form a valid tipset: %s", pp.StringFromBlocks(blks))
 	}
 
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	return cm.knownGoodBlocks.Has(bc)
+	// Return cache hit
+	if root, ok := cm.stateCache[ts.String()]; ok { // tipset in cache
+		return statetree.LoadStateTree(ctx, cm.cstore, root, builtin.Actors)
+	}
+	// Base case is the genesis block
+	if len(ts) == 1 && blks[0].Cid().Equals(cm.genesisCid) { // genesis tipset
+		return statetree.LoadStateTree(ctx, cm.cstore, blks[0].StateRoot, builtin.Actors)
+	}
+
+	// Recursive case: construct valid tipset from valid parent
+	pBlks, err := cm.fetchParentBlks(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+	if len(pBlks) == 0 { // invalid genesis tipset
+		return nil, ErrInvalidBase
+	}
+	st, err := cm.state(ctx, pBlks)
+	if err != nil {
+		return nil, err
+	}
+	st, err = cm.runMessages(ctx, st, ts)
+	if err != nil {
+		return nil, err
+	}
+	if err = cm.flushAndCache(ctx, st, ts); err != nil {
+		return nil, err
+	}
+	return st, nil
+}
+
+// fetchParentBlks returns the blocks in the parent set of the input tipset.
+func (cm *ChainManager) fetchParentBlks(ctx context.Context, ts TipSet) ([]*types.Block, error) {
+	ids, err := ts.Parents()
+	if err != nil {
+		return nil, err
+	}
+	return cm.fetchBlksForIDs(ctx, ids)
+}
+
+// fetchBlks returns the blocks in the input cid set.
+func (cm *ChainManager) fetchBlksForIDs(ctx context.Context, ids types.SortedCidSet) ([]*types.Block, error) {
+	var pBlks []*types.Block
+	for it := ids.Iter(); !it.Complete(); it.Next() {
+		pid := it.Value()
+		p, err := cm.FetchBlock(ctx, pid)
+		if err != nil {
+			return nil, errors.Wrap(err, "error fetching block")
+		}
+		pBlks = append(pBlks, p)
+	}
+	return pBlks, nil
+}
+
+// runMessages applies the messages of all blocks within the input
+// tipset to the input base state.  Messages are applied block by
+// block with blocks sorted by their ticket bytes.  The output state must be
+// flushed after calling to guarantee that the state transitions propagate.
+//
+// An error is returned if individual blocks contain messages that do not
+// lead to successful state transitions.  An error is also returned if the node
+// faults while running aggregate state computation.
+func (cm *ChainManager) runMessages(ctx context.Context, st statetree.Tree, ts TipSet) (statetree.Tree, error) {
+	var cpySt statetree.Tree
+	for _, blk := range ts {
+		cpyCid, err := st.Flush(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "error validating block state")
+		}
+		// state copied so changes don't propagate between block validations
+		cpySt, err = statetree.LoadStateTree(ctx, cm.cstore, cpyCid, builtin.Actors)
+		if err != nil {
+			return nil, errors.Wrap(err, "error validating block state")
+		}
+
+		receipts, err := cm.blockProcessor(ctx, blk, cpySt)
+		if err != nil {
+			return nil, errors.Wrap(err, "error validating block state")
+		}
+		// TODO: check that receipts actually match
+		if len(receipts) != len(blk.MessageReceipts) {
+			return nil, fmt.Errorf("found invalid message receipts: %v %v", receipts, blk.MessageReceipts)
+		}
+
+		outCid, err := cpySt.Flush(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "error validating block state")
+		}
+		if !outCid.Equals(blk.StateRoot) {
+			return nil, ErrStateRootMismatch
+		}
+	}
+	if len(ts) == 1 { // block validation state == aggregate parent state
+		return cpySt, nil
+	}
+	// multiblock tipsets require reapplying messages to get aggregate state
+	// NOTE: It is possible to optimize further by applying block validation
+	// in sorted order to reuse first block transitions as the starting state
+	// for the tipSetProcessor.
+	_, err := cm.tipSetProcessor(ctx, ts, st)
+	if err != nil {
+		return nil, errors.Wrap(err, "error validating tipset")
+	}
+	return st, nil
+}
+
+// flushAndCache flushes and caches the input tipset's state.  It also persists
+// the tipset's blocks in the ChainManager's data store.
+func (cm *ChainManager) flushAndCache(ctx context.Context, st statetree.Tree, ts TipSet) error {
+	for _, blk := range ts {
+		if _, err := cm.cstore.Put(ctx, blk); err != nil {
+			return errors.Wrap(err, "failed to store block")
+		}
+		cm.addBlock(blk, blk.Cid())
+	}
+	root, err := st.Flush(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to flush state")
+	}
+	cm.stateCache[ts.String()] = root
+	return nil
 }
 
 func (cm *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
@@ -570,88 +563,19 @@ func (cm *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
 }
 
 // AggregateStateTreeComputer is the signature for a function used to get the state of a tipset.
-type AggregateStateTreeComputer func(context.Context, TipSet) (state.Tree, error)
+type AggregateStateTreeComputer func(context.Context, TipSet) (statetree.Tree, error)
 
-// LoadParentStateTree returns the aggregate state tree of the input tipset's parent.
-// Only tipsets that are already known to be valid by the chain manager should
-// be provided as arguments.  Otherwise there is no guarantee that the returned
-// state is valid or that this function won't panic.
-// loadStateTreeResultsTS traverses the chain backwards to reach one of two base
-// cases.  The traversal ends upon reaching a tipset of size 1, as the state
-// can be read directly from the block.  Alternatively the traversal ends if
-// the tipset's state tree has been cached by the chain manager from a previous
-// traversal.
-func (cm *ChainManager) LoadParentStateTree(ctx context.Context, ts TipSet) (state.Tree, error) {
-	// Get base state and gather tipsets to apply.
-	var path []TipSet
-	var st state.Tree
-	err := cm.walkChain(ts.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		next, err := NewTipSet(tips...)
-		if err != nil {
-			return false, errors.Wrap(err, "error creating TipSet from already validated chain section")
-		}
-		// Skip the head tipset.
-		if next.Equals(ts) {
-			return true, nil
-		}
-
-		if len(tips) == 1 {
-			st, err = state.LoadStateTree(ctx, cm.cstore, tips[0].StateRoot, builtin.Actors)
-			return false, err
-		}
-		tipsID := next.String()
-		if stateRoot, ok := cm.stateCache[tipsID]; ok {
-			st, err = state.LoadStateTree(ctx, cm.cstore, stateRoot, builtin.Actors)
-			return false, err
-		}
-		path = append(path, next)
-		return true, nil
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error loading base state")
-	}
-
-	for i := len(path) - 1; i >= 0; i-- {
-		next := path[i]
-		_, err = cm.tipSetProcessor(ctx, next, st)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to process tipset")
-		}
-		stateRoot, err := st.Flush(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to flush tree after applying state transitions")
-		}
-		cm.stateCache[next.String()] = stateRoot
-	}
-	return st, nil
-}
-
-// LoadStateTreeTS returns the aggregate state of the input tipset.  This should
-// only be called on tipsets that are already validated by the chain manager
-func (cm *ChainManager) LoadStateTreeTS(ctx context.Context, ts TipSet) (state.Tree, error) {
-	// Return immediately if this tipset's state can be computed directly or is cached
-	if len(ts) == 1 {
-		return state.LoadStateTree(ctx, cm.cstore, ts.ToSlice()[0].StateRoot, builtin.Actors)
-	}
-	if stateRoot, ok := cm.stateCache[ts.String()]; ok {
-		return state.LoadStateTree(ctx, cm.cstore, stateRoot, builtin.Actors)
-	}
-
-	// Calculate by processing tipset on parent state
-	st, err := cm.LoadParentStateTree(ctx, ts)
+// stateForBlockIDs returns the state of the tipset consisting of the input
+// blockIDs.
+func (cm *ChainManager) stateForBlockIDs(ctx context.Context, ids types.SortedCidSet) (statetree.Tree, error) {
+	blks, err := cm.fetchBlksForIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	_, err = cm.tipSetProcessor(ctx, ts, st)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to process tipset")
+	if len(blks) == 0 { // no ids
+		return nil, errors.New("cannot get state of tipset with no members")
 	}
-	stateRoot, err := st.Flush(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to flush tree after applying state transitions")
-	}
-	cm.stateCache[ts.String()] = stateRoot
-	return st, nil
+	return cm.state(ctx, blks)
 }
 
 // InformNewBlock informs the chainmanager that we learned about a potentially
@@ -700,7 +624,7 @@ type ChainManagerForTest = ChainManager
 // outside of a testing context.
 func (cm *ChainManagerForTest) SetHeaviestTipSetForTest(ctx context.Context, ts TipSet) error {
 	// added to make `LogKV` call in `setHeaviestTipSet` happy (else it logs an error message)
-	log.Start(ctx, "SetHeaviestTipSetForTest")
+	ctx = log.Start(ctx, "SetHeaviestTipSetForTest")
 	for _, b := range ts {
 		_, err := cm.cstore.Put(ctx, b)
 		if err != nil {
@@ -800,7 +724,11 @@ func (cm *ChainManager) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, 
 	}
 
 	// Apply all the tipset's messages to determine the correct receipts.
-	st, err := cm.LoadParentStateTree(ctx, ts)
+	ids, err := ts.Parents()
+	if err != nil {
+		return nil, err
+	}
+	st, err := cm.stateForBlockIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -835,11 +763,20 @@ const ECPrM uint64 = 100
 
 // Weight returns the EC weight of this TipSet
 func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, error) {
+	log.LogKV(ctx, "Weight", ts.String())
 	var w uint64
-	st, err := cm.LoadParentStateTree(ctx, ts)
+	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(cm.genesisCid) {
+		return w, nil
+	}
+	ids, err := ts.Parents()
 	if err != nil {
 		return w, err
 	}
+	st, err := cm.stateForBlockIDs(ctx, ids)
+	if err != nil {
+		return w, err
+	}
+
 	_ = st // TODO: remove when we start reading power table
 	w, err = ts.ParentWeight()
 	if err != nil {
@@ -865,6 +802,8 @@ func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, error) {
 //       We should replace with an index later.
 func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
 	*types.MessageReceipt) error) (retErr error) {
+	ctx = log.Start(ctx, "WaitForMessage")
+	log.Info("Calling WaitForMessage")
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
 	ch := make(chan (interface{}))

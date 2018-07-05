@@ -6,6 +6,8 @@ import (
 	hamt "gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/state"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +30,10 @@ func TestAddChain(t *testing.T) {
 	assert.Equal(1, countBlocks(chm))
 
 	bts := chm.GetHeaviestTipSet()
-	AddChain(ctx, chm.ProcessNewBlock, chm.LoadStateTreeTS, bts.ToSlice(), 9)
+	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, error) {
+		return chm.State(ctx, ts.ToSlice())
+	}
+	AddChain(ctx, chm.ProcessNewBlock, stateGetter, bts.ToSlice(), 9)
 
 	assert.Equal(10, countBlocks(chm))
 }
