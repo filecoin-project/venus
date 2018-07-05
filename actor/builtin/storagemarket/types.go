@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -51,7 +50,7 @@ type Bid struct {
 // Deal is the successful fulfilment of an ask and a bid with eachother.
 type Deal struct {
 	Expiry  *big.Int `json:"expiry"`
-	DataRef *cid.Cid `json:"dataRef"`
+	DataRef string   `json:"dataRef"`
 
 	Ask uint64 `json:"ask"`
 	Bid uint64 `json:"bid"`

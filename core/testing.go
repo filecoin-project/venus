@@ -8,13 +8,17 @@ import (
 	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"testing"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -238,4 +242,27 @@ func MustDecodeCid(cidStr string) *cid.Cid {
 	}
 
 	return decode
+}
+
+// VMStorage creates a new storage object backed by an in memory datastore
+func VMStorage() *vm.StorageMap {
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	return vm.NewStorageMap(ds)
+}
+
+// CreateStorages creates an empty state tree and storage map.
+func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, *vm.StorageMap) {
+	cst := hamt.NewCborStore()
+	blk, err := InitGenesis(cst)
+	require.NoError(t, err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	require.NoError(t, err)
+
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := vm.NewStorageMap(ds)
+
+	return st, vms
 }

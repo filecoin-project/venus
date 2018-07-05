@@ -6,12 +6,10 @@ import (
 	"testing"
 
 	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
-	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -22,11 +20,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestMiner(assert *assert.Assertions, st state.Tree, minerOwnerAddr types.Address, key []byte, pid peer.ID) types.Address {
+func createTestMiner(assert *assert.Assertions, st state.Tree, vms *vm.StorageMap, minerOwnerAddr types.Address, key []byte, pid peer.ID) types.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, pid)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
-	vms := vm.StorageMap{}
 
 	result, err := core.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
@@ -41,20 +38,15 @@ func TestAddAsk(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cst := hamt.NewCborStore()
-	blk, err := core.InitGenesis(cst)
-	assert.NoError(err)
+	st, vms := core.CreateStorages(ctx, t)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-	assert.NoError(err)
-
-	minerAddr := createTestMiner(assert, st, address.TestAddress, []byte{}, core.RequireRandomPeerID())
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte{}, core.RequireRandomPeerID())
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(0, big.NewInt(0).Cmp(big.NewInt(0).SetBytes(result.Receipt.Return[0])))
 
@@ -77,7 +69,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), types.NewBytesAmount(200))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 2, nil, "addAsk", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
@@ -100,7 +92,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), Errors[ErrInsufficientPledge].Error())
 }
@@ -110,15 +102,10 @@ func TestGetKey(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cst := hamt.NewCborStore()
-	blk, err := core.InitGenesis(cst)
-	assert.NoError(err)
-
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-	assert.NoError(err)
+	st, vms := core.CreateStorages(ctx, t)
 
 	signature := []byte("my public key")
-	minerAddr := createTestMiner(assert, st, address.TestAddress, signature, core.RequireRandomPeerID())
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, signature, core.RequireRandomPeerID())
 
 	// retrieve key
 	result, exitCode, err := core.CallQueryMethod(ctx, st, minerAddr, "getKey", []byte{}, address.TestAddress, types.NewBlockHeight(0))
@@ -134,16 +121,10 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		// initialize state tree, genesis block, and new miner
-		cst := hamt.NewCborStore()
-		blk, err := core.InitGenesis(cst)
-		require.NoError(err)
-
-		st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-		require.NoError(err)
+		st, vms := core.CreateStorages(ctx, t)
 
 		origPid := core.RequireRandomPeerID()
-		minerAddr := createTestMiner(assert.New(t), st, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		// retrieve peer ID
 		retPidA := getPeerIdSuccess(ctx, t, st, address.TestAddress, minerAddr)
@@ -151,7 +132,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		// update peer ID
 		newPid := core.RequireRandomPeerID()
-		updatePeerIdSuccess(ctx, t, st, address.TestAddress, minerAddr, newPid)
+		updatePeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
 		retPidB := getPeerIdSuccess(ctx, t, st, address.TestAddress, minerAddr)
@@ -164,15 +145,9 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		// initialize state tree, genesis block, and new miner
-		cst := hamt.NewCborStore()
-		blk, err := core.InitGenesis(cst)
-		require.NoError(err)
+		st, vms := core.CreateStorages(ctx, t)
 
-		st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-		require.NoError(err)
-
-		minerAddr := createTestMiner(assert.New(t), st, address.TestAddress, []byte("other public key"), core.RequireRandomPeerID())
+		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("other public key"), core.RequireRandomPeerID())
 
 		// update peer ID and expect authorization failure (TestAddress2 doesn't owner miner)
 		updatePeerIdMsg := types.NewMessage(
@@ -183,14 +158,14 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 			"updatePeerID",
 			actor.MustConvertParams(core.RequireRandomPeerID()))
 
-		applyMsgResult, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, updatePeerIdMsg, types.NewBlockHeight(0))
+		applyMsgResult, err := core.ApplyMessage(ctx, st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
 		require.NoError(err)
 		require.Equal(Errors[ErrCallerUnauthorized], applyMsgResult.ExecutionError)
 		require.NotEqual(uint8(0), applyMsgResult.Receipt.ExitCode)
 	})
 }
 
-func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromAddr types.Address, minerAddr types.Address, newPid peer.ID) {
+func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms *vm.StorageMap, fromAddr types.Address, minerAddr types.Address, newPid peer.ID) {
 	require := require.New(t)
 
 	updatePeerIdMsg := types.NewMessage(
@@ -201,7 +176,7 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromA
 		"updatePeerID",
 		actor.MustConvertParams(newPid))
 
-	applyMsgResult, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, updatePeerIdMsg, types.NewBlockHeight(0))
+	applyMsgResult, err := core.ApplyMessage(ctx, st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.NoError(applyMsgResult.ExecutionError)
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)

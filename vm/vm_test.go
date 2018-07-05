@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,6 +47,10 @@ func TestSendErrorHandling(t *testing.T) {
 	actor2 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := NewStorageMap(ds)
+
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -61,7 +66,6 @@ func TestSendErrorHandling(t *testing.T) {
 		}
 
 		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true})
-		vms := StorageMap{}
 		vmCtx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
@@ -79,7 +83,6 @@ func TestSendErrorHandling(t *testing.T) {
 		deps := sendDeps{}
 
 		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{}})
-		vms := StorageMap{}
 		vmCtx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
@@ -102,7 +105,6 @@ func TestSendErrorHandling(t *testing.T) {
 		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{
 			actor2.Code.KeyString(): &actor.FakeActor{},
 		}})
-		vms := StorageMap{}
 		vmCtx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 

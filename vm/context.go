@@ -19,14 +19,14 @@ type Context struct {
 	to          *types.Actor
 	message     *types.Message
 	state       *state.CachedTree
-	storage     StorageMap
+	storage     *StorageMap
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store *StorageMap, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
@@ -51,15 +51,18 @@ func (ctx *Context) Message() *types.Message {
 }
 
 // ReadStorage reads the storage from the associated to actor.
-func (ctx *Context) ReadStorage() []byte {
+func (ctx *Context) ReadStorage() ([]byte, error) {
 	stage := ctx.Storage()
 
-	memory, _ := stage.Get(stage.Head())
+	memory, _, err := stage.Get(stage.Head())
+	if err != nil {
+		return nil, err
+	}
 
 	out := make([]byte, len(memory))
 	copy(out, memory)
 
-	return out
+	return out, nil
 }
 
 // WriteStorage writes to the storage of the associated to actor.

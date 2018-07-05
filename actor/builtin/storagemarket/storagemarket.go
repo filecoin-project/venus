@@ -310,7 +310,7 @@ func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig
 
 		d := &Deal{
 			// Expiry:  ???
-			DataRef: ref,
+			DataRef: ref.String(),
 			Ask:     askID.Uint64(),
 			Bid:     bidID.Uint64(),
 		}

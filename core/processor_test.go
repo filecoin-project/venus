@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -224,7 +223,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	r, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Empty(r.Receipt.Return)
@@ -248,7 +247,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 	badParams := []byte{1, 2, 3, 4, 5}
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	r, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Empty(r.Receipt.Return)
@@ -272,7 +271,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	})
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Equal(err.(*errors.ApplyErrorPermanent).Cause(), errNonceTooLow)
 }
@@ -293,7 +292,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 	})
 	msg := types.NewMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Equal(err.(*errors.ApplyErrorTemporary).Cause(), errNonceTooHigh)
 }
@@ -331,7 +330,7 @@ func TestNestedSendBalance(t *testing.T) {
 	assert.NoError(err)
 	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
 
-	_, err = ApplyMessage(ctx, st, vm.StorageMap{}, msg1, types.NewBlockHeight(0))
+	_, err = ApplyMessage(ctx, st, VMStorage(), msg1, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	gotStCid, err := st.Flush(ctx)
@@ -380,7 +379,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err := abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(err)
 	msg := types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend1", params)
-	_, err = ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err = ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Contains(err.Error(), "second callSendTokens")
 	assert.Contains(err.Error(), "not enough balance")
@@ -389,7 +388,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err = abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(err)
 	msg = types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend2", params)
-	_, err = ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err = ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Contains(err.Error(), "failed sendTokens")
 	assert.Contains(err.Error(), "not enough balance")
@@ -411,12 +410,12 @@ func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
 
 	// send 500 from addr1 to addr2
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), "", []byte{})
-	_, err := ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// send 250 along from addr2 to addr3
 	msg = types.NewMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), "", []byte{})
-	_, err = ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
+	_, err = ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// get all 3 actors
