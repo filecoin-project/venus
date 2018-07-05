@@ -59,7 +59,7 @@ func NewMockActor(list exec.Exports) *MockActor {
 
 func makeCtx(method string) exec.VMContext {
 	addrGetter := types.NewAddressForTestGetter()
-	vms := vm.Storage{}
+	vms := vm.StorageMap{}
 	return vm.NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil, vms, types.NewBlockHeight(0))
 }
 

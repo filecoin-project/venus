@@ -223,7 +223,7 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSe
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st state.Tree, store vm.Storage, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
+func ApplyMessage(ctx context.Context, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
 	r, err := attemptApplyMessage(ctx, cachedStateTree, store, msg, bh)
@@ -297,7 +297,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, metho
 
 	// guarantees changes won't make it to stored state tree
 	cachedSt := state.NewCachedStateTree(st)
-	store := vm.Storage{}
+	store := vm.StorageMap{}
 
 	msg := &types.Message{
 		To:     to,
@@ -319,7 +319,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, metho
 // should deal with trying got apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Storage, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
@@ -402,7 +402,7 @@ type ApplyMessagesResponse struct {
 func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
-	vms := vm.Storage{}
+	vms := vm.StorageMap{}
 	for _, msg := range messages {
 		r, err := ApplyMessage(ctx, st, vms, msg, bh)
 		// If the message should not have been in the block, bail somehow.
