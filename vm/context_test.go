@@ -25,6 +25,7 @@ func TestVMContextStorage(t *testing.T) {
 	cst := hamt.NewCborStore()
 	st := state.NewEmptyStateTree(cst)
 	cstate := state.NewCachedStateTree(st)
+	vms := Storage{}
 
 	toActor, err := account.NewActor(nil)
 	assert.NoError(err)
@@ -35,7 +36,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(err)
-	vmCtx := NewVMContext(nil, to, msg, cstate, types.NewBlockHeight(0))
+	vmCtx := NewVMContext(nil, to, msg, cstate, vms, types.NewBlockHeight(0))
 
 	assert.NoError(vmCtx.WriteStorage([]byte("hello")))
 	assert.NoError(cstate.Commit(ctx))
@@ -44,7 +45,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(err)
 
-	storage := NewVMContext(nil, toActorBack, msg, cstate, types.NewBlockHeight(0)).ReadStorage()
+	storage := NewVMContext(nil, toActorBack, msg, cstate, vms, types.NewBlockHeight(0)).ReadStorage()
 	assert.Equal(storage, []byte("hello"))
 }
 
@@ -55,6 +56,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 
 	tree := state.NewCachedStateTree(&state.MockStateTree{})
+	vms := Storage{}
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -66,7 +68,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -92,7 +94,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -123,7 +125,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, msg, tree, types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
@@ -153,7 +155,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -189,7 +191,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -205,12 +207,14 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	vms := Storage{}
+
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)
-	ctx := NewVMContext(accountActor, nil, nil, nil, nil)
+	ctx := NewVMContext(accountActor, nil, nil, nil, vms, nil)
 	assert.True(ctx.IsFromAccountActor())
 
 	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
-	ctx = NewVMContext(nonAccountActor, nil, nil, nil, nil)
+	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, nil)
 	assert.False(ctx.IsFromAccountActor())
 }

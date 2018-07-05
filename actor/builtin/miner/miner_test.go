@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,8 +26,9 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, minerOwnerAddr ty
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, pid)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
+	vms := vm.Storage{}
 
-	result, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	addr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
@@ -52,7 +54,7 @@ func TestAddAsk(t *testing.T) {
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(0, big.NewInt(0).Cmp(big.NewInt(0).SetBytes(result.Receipt.Return[0])))
 
@@ -75,7 +77,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), types.NewBytesAmount(200))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 2, nil, "addAsk", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
@@ -98,7 +100,7 @@ func TestAddAsk(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), Errors[ErrInsufficientPledge].Error())
 }
@@ -181,7 +183,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 			"updatePeerID",
 			actor.MustConvertParams(core.RequireRandomPeerID()))
 
-		applyMsgResult, err := core.ApplyMessage(ctx, st, updatePeerIdMsg, types.NewBlockHeight(0))
+		applyMsgResult, err := core.ApplyMessage(ctx, st, vm.Storage{}, updatePeerIdMsg, types.NewBlockHeight(0))
 		require.NoError(err)
 		require.Equal(Errors[ErrCallerUnauthorized], applyMsgResult.ExecutionError)
 		require.NotEqual(uint8(0), applyMsgResult.Receipt.ExitCode)
@@ -199,7 +201,7 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromA
 		"updatePeerID",
 		actor.MustConvertParams(newPid))
 
-	applyMsgResult, err := core.ApplyMessage(ctx, st, updatePeerIdMsg, types.NewBlockHeight(0))
+	applyMsgResult, err := core.ApplyMessage(ctx, st, vm.Storage{}, updatePeerIdMsg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.NoError(applyMsgResult.ExecutionError)
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)

@@ -225,10 +225,10 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSe
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
+func ApplyMessage(ctx context.Context, st state.Tree, store vm.Storage, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
-	r, err := attemptApplyMessage(ctx, cachedStateTree, msg, bh)
+	r, err := attemptApplyMessage(ctx, cachedStateTree, store, msg, bh)
 	if err == nil {
 		err = cachedStateTree.Commit(ctx)
 		if err != nil {
@@ -299,6 +299,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, metho
 
 	// guarantees changes won't make it to stored state tree
 	cachedSt := state.NewCachedStateTree(st)
+	store := vm.Storage{}
 
 	msg := &types.Message{
 		To:     to,
@@ -309,7 +310,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, metho
 		Params: params,
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, optBh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, store, optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err
@@ -320,7 +321,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, metho
 // should deal with trying got apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st *state.CachedTree, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Storage, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, errAccountNotFound
@@ -363,7 +364,7 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, msg *types.M
 		return nil, errNonceTooHigh
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, bh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, store, bh)
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
@@ -402,8 +403,9 @@ type ApplyMessagesResponse struct {
 func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
+	vms := vm.Storage{}
 	for _, msg := range messages {
-		r, err := ApplyMessage(ctx, st, msg, bh)
+		r, err := ApplyMessage(ctx, st, vms, msg, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):

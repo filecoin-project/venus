@@ -19,24 +19,31 @@ type Context struct {
 	to          *types.Actor
 	message     *types.Message
 	state       *state.CachedTree
+	storage     Storage
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store Storage, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
 		message:     msg,
 		state:       st,
+		storage:     store,
 		blockHeight: bh,
 		deps:        makeDeps(st),
 	}
 }
 
 var _ exec.VMContext = (*Context)(nil)
+
+// Storage returns an implementation of the storage module for this context.
+func (ctx *Context) Storage() exec.Storage {
+	return ctx.storage.NewStage(ctx.message.To)
+}
 
 // Message retrieves the message associated with this context.
 func (ctx *Context) Message() *types.Message {
@@ -96,7 +103,7 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.blockHeight)
+	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storage, ctx.blockHeight)
 	out, ret, err := deps.Send(context.Background(), innerCtx)
 	if err != nil {
 		return nil, ret, err
