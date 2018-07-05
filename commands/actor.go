@@ -11,7 +11,6 @@ import (
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -61,7 +60,7 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 	if len(ts) == 0 {
 		return ErrHeaviestTipSetNotFound
 	}
-	st, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	st, _, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
 	if err != nil {
 		return err
 	}
@@ -92,14 +91,11 @@ func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGet
 
 func makeActorView(act *types.Actor, addr string, actType exec.ExecutableActor) *actorView {
 	var actorType string
-	var memory interface{}
 	var exports readableExports
 	if actType == nil {
 		actorType = "UnknownActor"
-		memory = "unknown actor memory"
 	} else {
 		actorType = getActorType(actType)
-		memory = actor.PresentStorage(actType, act.Memory)
 		exports = presentExports(actType.Exports())
 	}
 	return &actorView{
@@ -109,7 +105,7 @@ func makeActorView(act *types.Actor, addr string, actType exec.ExecutableActor) 
 		Nonce:     uint64(act.Nonce),
 		Balance:   act.Balance,
 		Exports:   exports,
-		Memory:    memory,
+		Head:      act.Head,
 	}
 }
 
@@ -148,7 +144,7 @@ type actorView struct {
 	Nonce     uint64          `json:"nonce"`
 	Balance   *types.AttoFIL  `json:"balance"`
 	Exports   readableExports `json:"exports"`
-	Memory    interface{}     `json:"memory"`
+	Head      *cid.Cid        `json:"head"`
 }
 
 func getActorType(actType exec.ExecutableActor) string {

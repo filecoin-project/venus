@@ -4,14 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,6 +49,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 		fromAddr: fromAct,
 	})
 
+	vms := VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
 	require.NoError(err)
@@ -56,7 +59,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg},
 	}
-	results, err := ProcessBlock(ctx, blk, st)
+	results, err := ProcessBlock(ctx, blk, st, vms)
 	assert.NoError(err)
 	assert.Len(results, 1)
 
@@ -78,6 +81,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	toAddr := newAddress()
 	fromAddr1 := mockSigner.Addresses[0]
@@ -108,7 +112,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Messages:  []*types.SignedMessage{smsg2},
 	}
 
-	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
+	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st, vms)
 	assert.NoError(err)
 	assert.Len(res.Results, 2)
 
@@ -131,6 +135,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
@@ -157,7 +162,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		Messages:  []*types.SignedMessage{smsg2},
 		Ticket:    []byte{1, 1},
 	}
-	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
+	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st, vms)
 	assert.NoError(err)
 	assert.Len(res.Results, 1)
 
@@ -179,6 +184,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -189,7 +195,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
-	act1, act2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, fakeActorCodeCid)
+	act1, act2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		fromAddr: act1,
 		toAddr:   act2,
@@ -205,7 +211,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
-	results, err := ProcessBlock(ctx, blk, st)
+	results, err := ProcessBlock(ctx, blk, st, vms)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(err)
@@ -216,7 +222,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	assert.Contains(results[0].ExecutionError.Error(), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
-	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, fakeActorCodeCid)
+	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
 	expectedAct1.IncNonce()
 	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		fromAddr: expectedAct1,
@@ -234,10 +240,11 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -248,11 +255,11 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
+	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Empty(r.Receipt.Return)
-	assert.Contains(r.ExecutionError.Error(), "invalid params: expected 2 parameters, but got 1")
+	assert.Empty(rct.Receipt.Return)
+	assert.Contains(rct.ExecutionError.Error(), "invalid params: expected 2 parameters, but got 1")
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
@@ -261,10 +268,11 @@ func TestProcessBlockParamsError(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -272,11 +280,11 @@ func TestProcessBlockParamsError(t *testing.T) {
 	badParams := []byte{1, 2, 3, 4, 5}
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
 
-	r, err := ApplyMessage(ctx, st, VMStorage(), msg, types.NewBlockHeight(0))
+	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
-	assert.Empty(r.Receipt.Return)
-	assert.Contains(r.ExecutionError.Error(), "invalid params: malformed stream")
+	assert.Empty(rct.Receipt.Return)
+	assert.Contains(rct.ExecutionError.Error(), "invalid params: malformed stream")
 }
 
 func TestProcessBlockNonceTooLow(t *testing.T) {
@@ -285,11 +293,12 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act1.Nonce = 5
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -307,10 +316,11 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -331,6 +341,9 @@ func TestNestedSendBalance(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := vm.NewStorageMap(ds)
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -341,8 +354,8 @@ func TestNestedSendBalance(t *testing.T) {
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(101))
-	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
-	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
+	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
+	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
 	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr0: act0,
@@ -363,8 +376,8 @@ func TestNestedSendBalance(t *testing.T) {
 
 	expAct0 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(101))
 	expAct0.IncNonce() // because this actor has sent one message
-	expAct1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(2))
-	expAct2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
+	expAct1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(2))
+	expAct2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
 
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr0: expAct0,
@@ -381,6 +394,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -391,8 +405,8 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
-	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
-	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
+	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
+	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
 	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr0: act0,
@@ -463,6 +477,7 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
+	vms := VMStorage()
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -473,8 +488,8 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(101))
-	act1 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
-	act2 := RequireNewFakeActorWithTokens(require, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
+	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
+	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
 	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr0: act0,
@@ -490,7 +505,7 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	args1, err := abi.ToEncodedValues(addr2)
 	assert.NoError(err)
 
-	_, exitCode, err := CallQueryMethod(ctx, st, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
+	_, exitCode, err := CallQueryMethod(ctx, st, vms, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
 	require.Equal(uint8(0), exitCode)
 	require.NoError(err)
 

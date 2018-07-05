@@ -64,7 +64,7 @@ var Errors = map[uint8]error{
 }
 
 func init() {
-	cbor.RegisterCborType(Storage{})
+	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(struct{}{})
 	cbor.RegisterCborType(Filemap{})
 }
@@ -74,8 +74,8 @@ func init() {
 // power table used to drive filecoin consensus.
 type Actor struct{}
 
-// Storage is the storage markets storage
-type Storage struct {
+// State is the storage markets storage
+type State struct {
 	Miners types.AddrSet
 
 	Orderbook *Orderbook
@@ -85,16 +85,14 @@ type Storage struct {
 	TotalCommittedStorage *types.BytesAmount
 }
 
-// NewStorage returns an empty StorageMarketStorage struct
-func (sma *Actor) NewStorage() interface{} {
-	return &Storage{}
-}
-
-var _ exec.ExecutableActor = (*Actor)(nil)
-
 // NewActor returns a new storage market actor
 func NewActor() (*types.Actor, error) {
-	initStorage := &Storage{
+	return types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL()), nil
+}
+
+// InitializeState stores the actor's initial data structure.
+func InitializeState(storage exec.Storage, _ interface{}) error {
+	initStorage := &State{
 		Miners: make(types.AddrSet),
 		Orderbook: &Orderbook{
 			Asks: make(AskSet),
@@ -104,12 +102,22 @@ func NewActor() (*types.Actor, error) {
 			Files: make(map[string][]uint64),
 		},
 	}
-	storageBytes, err := actor.MarshalStorage(initStorage)
+
+	stateBytes, err := cbor.DumpObject(initStorage)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return types.NewActorWithMemory(types.StorageMarketActorCodeCid, nil, storageBytes), nil
+
+	id, err := storage.Put(stateBytes)
+	if err != nil {
+		return err
+	}
+
+	return storage.Commit(id, nil)
 }
+
+var _ exec.ExecutableActor = (*Actor)(nil)
+var _ exec.InitializeStateFunc = InitializeState
 
 // Exports returns the actors exports
 func (sma *Actor) Exports() exec.Exports {
@@ -135,49 +143,36 @@ var storageMarketExports = exec.Exports{
 	},
 	"commitDeals": &exec.FunctionSignature{
 		Params: []abi.Type{abi.UintArray},
-		Return: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 }
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
 func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (types.Address, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		if pledge.LessThan(MinimumPledge) {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, Errors[ErrPledgeTooLow]
 		}
 
-		// 'CreateNewActor' (should likely be a method on the vmcontext)
 		addr, err := ctx.AddressForNewActor()
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerActor, err := miner.NewActor(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
-		if err != nil {
-			if !errors.ShouldRevert(err) {
-				// TODO? From an Actor's perspective this (and other stuff) should probably
-				// never fail. It should call into the vmcontext to do this and the vm context
-				// should "throw" to a higher level handler if there's a system fault. It would
-				// simplify the actor code.
-				err = errors.FaultErrorWrap(err, "could not get a new miner actor")
-			}
+		minerState := miner.NewState(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
+		if err := ctx.CreateNewActor(addr, types.MinerActorCodeCid, miner.InitializeState, minerState); err != nil {
 			return nil, err
 		}
-
-		if err := ctx.TEMPCreateActor(addr, minerActor); err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not set miner actor in CreateMiner")
-		}
-		// -- end --
 
 		_, _, err = ctx.Send(addr, "", ctx.Message().Value, nil)
 		if err != nil {
 			return nil, err
 		}
 
-		storage.Miners[addr] = struct{}{}
+		state.Miners[addr] = struct{}{}
 		return addr, nil
 	})
 	if err != nil {
@@ -191,8 +186,8 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, pub
 // by this storage market actor
 func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var storage State
+	ret, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
 		// method must be called by a miner that was created by this storage market actor
 		miner := ctx.Message().From
 
@@ -229,17 +224,17 @@ func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 // message must contain the appropriate amount of funds to be locked up for the
 // bid.
 func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		lockedFunds := price.CalculatePrice(size)
 		if ctx.Message().Value.LessThan(lockedFunds) {
 			return nil, Errors[ErrInsufficientBidFunds]
 		}
 
-		bidID := storage.Orderbook.NextBidID
-		storage.Orderbook.NextBidID++
+		bidID := state.Orderbook.NextBidID
+		state.Orderbook.NextBidID++
 
-		storage.Orderbook.Bids[bidID] = &Bid{
+		state.Orderbook.Bids[bidID] = &Bid{
 			ID:    bidID,
 			Price: price,
 			Size:  size,
@@ -268,15 +263,15 @@ func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig
 		return nil, 1, errors.NewRevertErrorf("'ref' input was not a valid cid: %s", err)
 	}
 
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// TODO: askset is a map from uint64, our input is a big int.
-		ask, ok := storage.Orderbook.Asks[askID.Uint64()]
+		ask, ok := state.Orderbook.Asks[askID.Uint64()]
 		if !ok {
 			return nil, Errors[ErrUnknownAsk]
 		}
 
-		bid, ok := storage.Orderbook.Bids[bidID.Uint64()]
+		bid, ok := state.Orderbook.Bids[bidID.Uint64()]
 		if !ok {
 			return nil, Errors[ErrUnknownBid]
 		}
@@ -315,11 +310,11 @@ func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig
 			Bid:     bidID.Uint64(),
 		}
 
-		dealID := uint64(len(storage.Filemap.Deals))
+		dealID := uint64(len(state.Filemap.Deals))
 		ks := ref.KeyString()
-		deals := storage.Filemap.Files[ks]
-		storage.Filemap.Files[ks] = append(deals, dealID)
-		storage.Filemap.Deals = append(storage.Filemap.Deals, d)
+		deals := state.Filemap.Files[ks]
+		state.Filemap.Files[ks] = append(deals, dealID)
+		state.Filemap.Deals = append(state.Filemap.Deals, d)
 
 		return big.NewInt(int64(dealID)), nil
 	})
@@ -339,16 +334,16 @@ func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig
 // occupied by those deals, updates the total storage count, and returns the
 // total size of these deals.
 func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesAmount, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		totalSize := types.NewBytesAmount(0)
 		for _, d := range deals {
-			if d >= uint64(len(storage.Filemap.Deals)) {
+			if d >= uint64(len(state.Filemap.Deals)) {
 				return nil, Errors[ErrUnknownDeal]
 			}
 
-			deal := storage.Filemap.Deals[d]
-			ask := storage.Orderbook.Asks[deal.Ask]
+			deal := state.Filemap.Deals[d]
+			ask := state.Orderbook.Asks[deal.Ask]
 
 			// make sure that the miner actor who owns the asks calls this
 			if ask.Owner != ctx.Message().From {
@@ -363,7 +358,7 @@ func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesA
 
 			// TODO: Check that deal has not expired
 
-			bid := storage.Orderbook.Bids[deal.Bid]
+			bid := state.Orderbook.Bids[deal.Bid]
 
 			// NB: if we allow for deals to be made at sizes other than the bid
 			// size, this will need to be changed.
@@ -371,7 +366,7 @@ func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesA
 		}
 
 		// update the total data stored by the network
-		storage.TotalCommittedStorage = storage.TotalCommittedStorage.Add(totalSize)
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(totalSize)
 
 		return totalSize, nil
 	})

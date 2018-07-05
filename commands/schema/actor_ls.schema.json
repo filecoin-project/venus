@@ -132,9 +132,9 @@
         "code": { "$ref": "#/definitions/Cid" },
         "nonce": { "type": "number" },
         "exports": { "$ref": "#/definitions/Exports" },
-        "memory": { "type": ["object", "null"] }
+        "head": { "type": ["object", "null"] }
       },
-      "required": ["address", "code", "nonce", "balance", "exports", "actorType", "memory"]
+      "required": ["address", "code", "nonce", "balance", "exports", "actorType", "head"]
     },
     "TokenAmount": { "type": "string" }
   },

@@ -12,6 +12,7 @@ import (
 	"gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
 	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -64,7 +65,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
 			return cm.State(ctx, ts.ToSlice())
 		}
 		err = fake(ctx, length, binom, cm.GetHeaviestTipSet, cm.ProcessNewBlock, aggregateState)
@@ -108,7 +109,7 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 }
 
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
-	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
 		return cm.State(ctx, ts.ToSlice())
 	}, cm.Weight, core.ApplyMessages, cm.PwrTableView)
 }
@@ -121,7 +122,7 @@ func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.Cbor
 	}
 
 	bts := cm.GetHeaviestTipSet()
-	st, err := cm.State(ctx, bts.ToSlice())
+	st, _, err := cm.State(ctx, bts.ToSlice())
 	return st, cst, cm, bts, err
 }
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit/files"
@@ -120,7 +120,7 @@ var balanceCmd = &cmds.Command{
 			return
 		}
 
-		tree, err := fcn.ChainMgr.State(req.Context, ts.ToSlice())
+		tree, _, err := fcn.ChainMgr.State(req.Context, ts.ToSlice())
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

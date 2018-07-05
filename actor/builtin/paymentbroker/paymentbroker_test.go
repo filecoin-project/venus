@@ -28,15 +28,14 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, st, _ := requireGenesis(ctx, t, types.NewAddressForTestGetter()())
+	_, st, vms := requireGenesis(ctx, t, types.NewAddressForTestGetter()())
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
 	assert.Equal(types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 
-	var pbStorage Storage
-	assert.NoError(cbor.DecodeInto(paymentBroker.ReadStorage(), &pbStorage))
-
+	var pbStorage State
+	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
 	assert.Equal(0, len(pbStorage.Channels))
 }
 
@@ -63,8 +62,8 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 
 	assert.Equal(types.NewAttoFILFromFIL(1000), paymentBroker.Balance)
 
-	var pbStorage Storage
-	assert.NoError(cbor.DecodeInto(paymentBroker.ReadStorage(), &pbStorage))
+	var pbStorage State
+	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
 
 	require.Equal(1, len(pbStorage.Channels))
 	require.Equal(1, len(pbStorage.Channels[payer.String()]))
@@ -110,7 +109,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	target := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// channel creator's address is our signature for now.
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
@@ -127,7 +126,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 
 	assert.Equal(types.NewAttoFILFromFIL(100), payee.Balance)
 
-	channel := retrieveChannel(t, paymentBroker, payer, channelID)
+	channel := retrieveChannel(t, vms, paymentBroker, payer, channelID)
 
 	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
@@ -144,7 +143,7 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	target := addressGetter()
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// update message from payer instead of target results in error
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
@@ -181,7 +180,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	wrongTargetActor := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 	st.SetActor(ctx, wrongTargetAddress, wrongTargetActor)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// message originating from actor other than channel results in revert error
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
@@ -203,7 +202,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// redeeming more than channel contains is an error
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(1100), payer)
@@ -225,7 +224,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// redeem some
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(500), payer)
@@ -257,7 +256,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
@@ -281,7 +280,7 @@ func TestPaymentBrokerClose(t *testing.T) {
 	targetAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, targetAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, targetAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payerAddress, targetAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	payerActor := state.MustGetActor(st, payerAddress)
 
@@ -318,7 +317,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payerAddress, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	payer := state.MustGetActor(st, payerAddress)
 	payerBalancePriorToClose := payer.Balance
@@ -349,7 +348,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	targetAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, targetAddress)
 
-	channelID := establishChannel(ctx, st, payerAddress, targetAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payerAddress, targetAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	pdata := core.MustConvertParams(channelID)
 	msg := types.NewMessage(payerAddress, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
@@ -373,7 +372,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	target := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	channelID := establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// extend channel
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(20))
@@ -396,8 +395,8 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
 
-	var pbStorage Storage
-	assert.NoError(cbor.DecodeInto(paymentBroker.ReadStorage(), &pbStorage))
+	var pbStorage State
+	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
 
 	byPayer := pbStorage.Channels[payer.String()]
 	channel := byPayer[channelID.String()]
@@ -416,7 +415,7 @@ func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	_ = establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	_ = establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// extend channel
 	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
@@ -437,7 +436,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	payeeAddress := types.NewAddressForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payeeAddress)
 
-	channelID := establishChannel(ctx, st, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, payeeAddress, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	// extend channel setting block height to 5 (<10)
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(5))
@@ -461,18 +460,18 @@ func TestPaymentBrokerLs(t *testing.T) {
 		payer := address.TestAddress
 		target1 := types.NewAddressForTestGetter()()
 		target2 := types.NewAddressForTestGetter()()
-		_, st, _ := requireGenesis(ctx, t, target1)
+		_, st, vms := requireGenesis(ctx, t, target1)
 		targetActor2 := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, target2, targetActor2)
 
-		channelId1 := establishChannel(ctx, st, payer, target1, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
-		channelId2 := establishChannel(ctx, st, payer, target2, 1, types.NewAttoFILFromFIL(2000), types.NewBlockHeight(20))
+		channelId1 := establishChannel(ctx, st, vms, payer, target1, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+		channelId2 := establishChannel(ctx, st, vms, payer, target2, 1, types.NewAttoFILFromFIL(2000), types.NewBlockHeight(20))
 
 		// retrieve channels
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -503,13 +502,13 @@ func TestPaymentBrokerLs(t *testing.T) {
 
 		payer := address.TestAddress
 		target1 := types.NewAddressForTestGetter()()
-		_, st, _ := requireGenesis(ctx, t, target1)
+		_, st, vms := requireGenesis(ctx, t, target1)
 
 		// retrieve channels
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -531,15 +530,15 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		payer := address.TestAddress
 		target := types.NewAddressForTestGetter()()
-		_, st, _ := requireGenesis(ctx, t, target)
+		_, st, vms := requireGenesis(ctx, t, target)
 
-		channelID := establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+		channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(channelID, voucherAmount)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, address.PaymentBrokerAddress, "voucher", pdata, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", pdata, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -559,16 +558,16 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		payer := address.TestAddress
 		target := types.NewAddressForTestGetter()()
-		_, st, _ := requireGenesis(ctx, t, target)
+		_, st, vms := requireGenesis(ctx, t, target)
 
-		_ = establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+		_ = establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 		notChannelID := types.NewChannelID(999)
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		args := core.MustConvertParams(notChannelID, voucherAmount)
 
-		_, exitCode, err := core.CallQueryMethod(ctx, st, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
+		_, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
 		assert.NotEqual(uint8(0), exitCode)
 		assert.Contains(fmt.Sprintf("%v", err), "unknown")
 	})
@@ -579,25 +578,21 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		payer := address.TestAddress
 		target := types.NewAddressForTestGetter()()
-		_, st, _ := requireGenesis(ctx, t, target)
+		_, st, vms := requireGenesis(ctx, t, target)
 
-		channelID := establishChannel(ctx, st, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+		channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := core.MustConvertParams(channelID, voucherAmount)
 
-		_, exitCode, err := core.CallQueryMethod(ctx, st, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
+		_, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
 		assert.NotEqual(uint8(0), exitCode)
 		assert.Contains(fmt.Sprintf("%v", err), "exceeds amount")
 	})
 }
 
-func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := vm.NewStorageMap(ds)
-
+func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from types.Address, target types.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
@@ -609,10 +604,11 @@ func establishChannel(ctx context.Context, st state.Tree, from types.Address, ta
 	return channelID
 }
 
-func retrieveChannel(t *testing.T, paymentBroker *types.Actor, payer types.Address, channelID *types.ChannelID) *PaymentChannel {
+func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *types.Actor, payer types.Address, channelID *types.ChannelID) *PaymentChannel {
 	require := require.New(t)
-	var pbStorage Storage
-	require.NoError(cbor.DecodeInto(paymentBroker.ReadStorage(), &pbStorage))
+
+	var pbStorage State
+	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
 
 	require.Equal(1, len(pbStorage.Channels))
 	require.Equal(1, len(pbStorage.Channels[payer.String()]))
@@ -623,11 +619,15 @@ func retrieveChannel(t *testing.T, paymentBroker *types.Actor, payer types.Addre
 	return channel
 }
 
-func requireGenesis(ctx context.Context, t *testing.T, targetAddress types.Address) (*hamt.CborIpldStore, state.Tree, *vm.StorageMap) {
+func requireGenesis(ctx context.Context, t *testing.T, targetAddress types.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
 	require := require.New(t)
 
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := vm.NewStorageMap(ds)
+
 	cst := hamt.NewCborStore()
-	blk, err := core.InitGenesis(cst)
+	blk, err := core.InitGenesis(cst, ds)
 	require.NoError(err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
@@ -636,10 +636,6 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddress types.Addre
 	targetActor := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 
 	st.SetActor(ctx, targetAddress, targetActor)
-
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := vm.NewStorageMap(ds)
 
 	return cst, st, vms
 }

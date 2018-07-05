@@ -30,8 +30,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		data, err := cbor.WrapObject("some data an actor might store", types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		id, errorCode := as.Put(data.RawData())
-		require.Equal(exec.Ok, errorCode)
+		id, err := as.Put(data.RawData())
+		require.NoError(err)
 
 		assert.Equal(data.Cid(), id)
 	})
@@ -45,11 +45,11 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		data2, err := cbor.DumpObject("some more data")
 		require.NoError(err)
 
-		id1, errorCode := as.Put(data1)
-		require.Equal(exec.Ok, errorCode)
+		id1, err := as.Put(data1)
+		require.NoError(err)
 
-		id2, errorCode := as.Put(data2)
-		require.Equal(exec.Ok, errorCode)
+		id2, err := as.Put(data2)
+		require.NoError(err)
 
 		// get both objects from storage
 		chunk1, ok, err := as.Get(id1)
@@ -69,8 +69,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		data1, err := cbor.DumpObject("some data an actor might store")
 		require.NoError(err)
 
-		id, errorCode := as.Put(data1)
-		require.Equal(exec.Ok, errorCode)
+		id, err := as.Put(data1)
+		require.NoError(err)
 
 		// create a storage for another actor
 		as2 := vms.NewStorage(address.TestAddress2, testActor)
@@ -87,8 +87,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		data1, err := cbor.DumpObject("some data an actor might store")
 		require.NoError(err)
 
-		id, errorCode := as.Put(data1)
-		require.Equal(exec.Ok, errorCode)
+		id, err := as.Put(data1)
+		require.NoError(err)
 
 		// create a storage for same actor
 		as2 := vms.NewStorage(address.TestAddress, testActor)
@@ -115,14 +115,14 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 	data1, err := cbor.DumpObject("some data an actor might store")
 	require.NoError(err)
 
-	id1, ec := tempActorStage.Put(data1)
-	require.Equal(exec.Ok, ec)
+	id1, err := tempActorStage.Put(data1)
+	require.NoError(err)
 
 	data2, err := cbor.DumpObject("some more data")
 	require.NoError(err)
 
-	id2, ec := tempActorStage.Put(data2)
-	require.Equal(exec.Ok, ec)
+	id2, err := tempActorStage.Put(data2)
+	require.NoError(err)
 
 	t.Run("Get retrieves from storage", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
@@ -153,41 +153,30 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	startingMemory, err := cbor.WrapObject([]byte("Starting memory"), types.DefaultHashFunction, -1)
-	require.NoError(err)
-
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 
-	t.Run("Head of actor matches memory cid", func(t *testing.T) {
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
-
-		stage := NewStorageMap(ds).NewStorage(address.TestAddress, testActor)
-
-		assert.Equal(startingMemory.Cid(), stage.Head())
-	})
-
 	t.Run("Committing changes head", func(t *testing.T) {
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(ds).NewStorage(address.TestAddress, testActor)
 
 		newMemory, err := cbor.WrapObject([]byte("New memory"), types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		newCid, ec := stage.Put(newMemory.RawData())
-		require.Equal(exec.Ok, ec)
+		newCid, err := stage.Put(newMemory.RawData())
+		require.NoError(err)
 
 		assert.NotEqual(newCid, stage.Head())
 
-		ec = stage.Commit(newCid, stage.Head())
-		assert.Equal(exec.Ok, ec)
+		err = stage.Commit(newCid, stage.Head())
+		assert.NoError(err)
 
 		assert.Equal(newCid, stage.Head())
 	})
 
 	t.Run("Committing a non existent chunk is an error", func(t *testing.T) {
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(ds).NewStorage(address.TestAddress, testActor)
 
@@ -195,37 +184,34 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		require.NoError(err)
 
 		ec := stage.Commit(newMemory.Cid(), stage.Head())
-		assert.Equal(exec.ErrDanglingPointer, ec)
+		assert.Equal(exec.Errors[exec.ErrDanglingPointer], ec)
 	})
 
 	t.Run("Committing out of sequence is an error", func(t *testing.T) {
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(ds).NewStorage(address.TestAddress, testActor)
 
 		newMemory1, err := cbor.WrapObject([]byte("New memory 1"), types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		_, ec := stage.Put(newMemory1.RawData())
-		require.Equal(exec.Ok, ec)
+		_, err = stage.Put(newMemory1.RawData())
+		require.NoError(err)
 
 		newMemory2, err := cbor.WrapObject([]byte("New memory 2"), types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		_, ec = stage.Put(newMemory2.RawData())
-		require.Equal(exec.Ok, ec)
+		_, err = stage.Put(newMemory2.RawData())
+		require.NoError(err)
 
-		ec = stage.Commit(newMemory2.Cid(), newMemory1.Cid())
-		assert.Equal(exec.ErrStaleHead, ec)
+		err = stage.Commit(newMemory2.Cid(), newMemory1.Cid())
+		assert.Equal(exec.Errors[exec.ErrStaleHead], err)
 	})
 }
 
 func TestDatastoreBacking(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-
-	startingMemory, err := cbor.WrapObject([]byte("Starting memory"), types.DefaultHashFunction, -1)
-	require.NoError(err)
 
 	memory2, err := cbor.WrapObject([]byte("Memory chunk 2"), types.DefaultHashFunction, -1)
 	require.NoError(err)
@@ -240,7 +226,7 @@ func TestDatastoreBacking(t *testing.T) {
 		// add a value to underlying datastore
 		ds.Put(datastore.NewKey(memory2.Cid().KeyString()), memory2.RawData())
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		stage := NewStorageMap(ds).NewStorage(address.TestAddress, testActor)
 
 		chunk, ok, err := stage.Get(memory2.Cid())
@@ -253,19 +239,19 @@ func TestDatastoreBacking(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		ds := r.Datastore()
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(ds)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
 		// put a value into stage
-		cid, ec := stage.Put(memory2.RawData())
-		require.Equal(exec.Ok, ec)
+		cid, err := stage.Put(memory2.RawData())
+		require.NoError(err)
 
 		// commit the change
 		stage.Commit(cid, stage.Head())
 
 		// flush the change
-		err := storage.Flush()
+		err = storage.Flush()
 		require.NoError(err)
 
 		// retrieve cid from underlying store
@@ -278,22 +264,22 @@ func TestDatastoreBacking(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		ds := r.Datastore()
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(ds)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
 		// put both values into stage
-		cid1, ec := stage.Put(memory2.RawData())
-		require.Equal(exec.Ok, ec)
+		cid1, err := stage.Put(memory2.RawData())
+		require.NoError(err)
 
-		cid2, ec := stage.Put(memory3.RawData())
-		require.Equal(exec.Ok, ec)
+		cid2, err := stage.Put(memory3.RawData())
+		require.NoError(err)
 
 		// only commit the second change
 		stage.Commit(cid2, stage.Head())
 
 		// flush the change
-		err := storage.Flush()
+		err = storage.Flush()
 		require.NoError(err)
 
 		// retrieve cid from underlying store
@@ -309,20 +295,20 @@ func TestDatastoreBacking(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		ds := r.Datastore()
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(ds)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
 		// put memory 2 into stage
-		cid1, ec := stage.Put(memory2.RawData())
-		require.Equal(exec.Ok, ec)
+		cid1, err := stage.Put(memory2.RawData())
+		require.NoError(err)
 
 		// construct a node with memory 2 as a link
 		memory4, err := cbor.WrapObject(cid1, types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		cid2, ec := stage.Put(memory4.RawData())
-		require.Equal(exec.Ok, ec)
+		cid2, err := stage.Put(memory4.RawData())
+		require.NoError(err)
 
 		// only commit the second change
 		stage.Commit(cid2, stage.Head())
@@ -342,9 +328,6 @@ func TestValidationAndPruning(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	startingMemory, err := cbor.WrapObject([]byte("Starting memory"), types.DefaultHashFunction, -1)
-	require.NoError(err)
-
 	memory2, err := cbor.WrapObject([]byte("Memory chunk 2"), types.DefaultHashFunction, -1)
 	require.NoError(err)
 
@@ -352,7 +335,7 @@ func TestValidationAndPruning(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		ds := r.Datastore()
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(ds)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -361,31 +344,31 @@ func TestValidationAndPruning(t *testing.T) {
 		require.NoError(err)
 
 		// Add link
-		cid, ec := stage.Put(memory.RawData())
-		assert.Equal(exec.Ok, ec)
+		cid, err := stage.Put(memory.RawData())
+		assert.NoError(err)
 
 		// Attempt to commit before adding linked memory
-		ec = stage.Commit(cid, stage.Head())
-		assert.Equal(exec.ErrDanglingPointer, ec)
+		err = stage.Commit(cid, stage.Head())
+		assert.Equal(exec.Errors[exec.ErrDanglingPointer], err)
 	})
 
 	t.Run("Prune removes unlinked chunks from stage", func(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		ds := r.Datastore()
 
-		testActor := types.NewActorWithMemory(types.AccountActorCodeCid, types.NewZeroAttoFIL(), startingMemory.RawData())
+		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(ds)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
 		// put both values into stage
-		cid1, ec := stage.Put(memory2.RawData())
-		require.Equal(exec.Ok, ec)
+		cid1, err := stage.Put(memory2.RawData())
+		require.NoError(err)
 
 		memory3, err := cbor.WrapObject([]byte("Memory chunk 3"), types.DefaultHashFunction, -1)
 		require.NoError(err)
 
-		cid2, ec := stage.Put(memory3.RawData())
-		require.Equal(exec.Ok, ec)
+		cid2, err := stage.Put(memory3.RawData())
+		require.NoError(err)
 
 		// only commit the second change
 		stage.Commit(cid2, stage.Head())

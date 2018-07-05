@@ -5,12 +5,11 @@ import (
 	"time"
 
 	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer/test"
-
-	"testing"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -19,9 +18,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
+
+	"math/big"
+	"testing"
 )
 
 // MkChild creates a new block with parent, blk, and supplied nonce.
@@ -53,7 +56,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	if err != nil {
 		return nil, err
 	}
-	st, err := loadStateTreeTS(ctx, ts)
+	st, _, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +84,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 // p = 1/n.  Concretely this distribution corresponds to the configuration where
 // all miners have the same storage power.
 func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, ts TipSet, numMiners, epochs int) (TipSet, error) {
-	st, err := loadStateTreeTS(ctx, ts)
+	st, _, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -166,24 +169,31 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *types.Actor {
-	act, err := miner.NewActor(owner, key, pledge, pid, coll)
+func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *types.Actor {
+	act := types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+	storage := vms.NewStorage(addr, act)
+	initialState := miner.NewState(owner, key, pledge, pid, coll)
+	err := miner.InitializeState(storage, initialState)
+	require.NoError(storage.Flush())
 	require.NoError(err)
 	return act
 }
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, codeCid *cid.Cid) *types.Actor {
-	return RequireNewFakeActorWithTokens(require, codeCid, types.NewAttoFILFromFIL(100))
+func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid) *types.Actor {
+	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, codeCid *cid.Cid, amt *types.AttoFIL) *types.Actor {
-	storageBytes, err := actor.MarshalStorage(&actor.FakeActorStorage{})
+func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid, amt *types.AttoFIL) *types.Actor {
+	act := types.NewActor(codeCid, amt)
+	store := vms.NewStorage(addr, act)
+	err := actor.InitializeState(store, &actor.FakeActorStorage{})
 	require.NoError(err)
-	return types.NewActorWithMemory(codeCid, amt, storageBytes)
+	require.NoError(vms.Flush())
+	return act
 }
 
 // RequireRandomPeerID returns a new libp2p peer ID or panics.
@@ -333,23 +343,23 @@ func MustDecodeCid(cidStr string) *cid.Cid {
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore
-func VMStorage() *vm.StorageMap {
+func VMStorage() vm.StorageMap {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	return vm.NewStorageMap(ds)
 }
 
 // CreateStorages creates an empty state tree and storage map.
-func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, *vm.StorageMap) {
+func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
 	cst := hamt.NewCborStore()
-	blk, err := InitGenesis(cst)
+	repo := repo.NewInMemoryRepo()
+	ds := repo.Datastore()
+	blk, err := InitGenesis(cst, ds)
 	require.NoError(t, err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	require.NoError(t, err)
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
 	vms := vm.NewStorageMap(ds)
 
 	return st, vms
@@ -363,16 +373,114 @@ type TestView struct{}
 var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree) (uint64, error) {
+func (tv *TestView) Total(ctx context.Context, st state.Tree, ds datastore.Datastore) (uint64, error) {
 	return uint64(1), nil
 }
 
 // Miner always returns 0.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, mAddr types.Address) (uint64, error) {
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, ds datastore.Datastore, mAddr types.Address) (uint64, error) {
 	return uint64(0), nil
 }
 
 // HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, mAddr types.Address) bool {
+func (tv *TestView) HasPower(ctx context.Context, st state.Tree, ds datastore.Datastore, mAddr types.Address) bool {
 	return true
+}
+
+// CreateMinerWithPower uses storage market functionality to mine the messages needed to create a miner, ask, bid, and deal, and then commit that deal to give the miner power.
+// If the power is nil, this method will just create the miner.
+// The returned block and nonce should be used in subsequent calls to this method.
+func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress types.Address, power *types.BytesAmount) (types.Address, *types.Block, uint64, error) {
+	require := require.New(t)
+
+	pledge := power
+	if pledge == nil {
+		pledge = types.NewBytesAmount(10000)
+	}
+
+	// create miner
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, *pledge, RequireRandomPeerID(), types.NewZeroAttoFIL())
+	require.NoError(err)
+	b := requireMineOnce(ctx, t, cm, lastBlock, rewardAddress, mockSign(sn, msg))
+	nonce++
+
+	minerAddr, err := types.NewAddressFromBytes(b.MessageReceipts[0].Return[0])
+	require.NoError(err)
+
+	if power == nil {
+		return minerAddr, b, nonce, nil
+	}
+
+	// create bid
+	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, types.NewZeroAttoFIL(), power)
+	require.NoError(err)
+	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
+	nonce++
+
+	bidID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
+
+	// create ask
+	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, types.NewZeroAttoFIL(), power)
+	require.NoError(err)
+	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
+	nonce++
+
+	askID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
+
+	// create deal
+	ref, err := cid.NewPrefixV1(cid.DagCBOR, types.DefaultHashFunction).Sum([]byte("Blah"))
+	if err != nil {
+		return types.Address{}, nil, 0, err
+	}
+	msg, err = th.AddDealMessage(sn.Addresses[0], nonce, &askID, &bidID, sn.Addresses[0].Bytes(), ref.Bytes())
+	require.NoError(err)
+	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
+	nonce++
+
+	dealID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
+
+	// commit sector for deal (thus adding power to miner and recording in storage market.
+	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, big.NewInt(0), []byte("commitment"), []uint64{dealID.Uint64()})
+	require.NoError(err)
+	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
+	nonce++
+
+	return minerAddr, b, nonce, nil
+}
+
+func requireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress types.Address, msg *types.SignedMessage) *types.Block {
+	require := require.New(t)
+
+	st, err := state.LoadStateTree(ctx, cm.cstore, lastBlock.StateRoot, builtin.Actors)
+	vms := vm.NewStorageMap(cm.ds)
+	require.NoError(err)
+
+	b := MkChild([]*types.Block{lastBlock}, lastBlock.StateRoot, 0)
+	b.Miner = rewardAddress
+	if msg != nil {
+		b.Messages = append(b.Messages, msg)
+	}
+	results, err := cm.blockProcessor(ctx, b, st, vms)
+	require.NoError(err)
+	for _, r := range results {
+		b.MessageReceipts = append(b.MessageReceipts, r.Receipt)
+	}
+	newStateRoot, err := st.Flush(ctx)
+	require.NoError(err)
+
+	b.StateRoot = newStateRoot
+	_, err = cm.ProcessNewBlock(ctx, b)
+	require.NoError(err)
+
+	return b
+}
+
+func mockSign(sn types.MockSigner, msg *types.Message) *types.SignedMessage {
+	return MustSign(sn, msg)[0]
+}
+
+func bigIntFromBytes(i []byte) big.Int {
+	var out big.Int
+	out.SetBytes(i)
+	return out
 }

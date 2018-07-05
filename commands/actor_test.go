@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
 
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -86,9 +88,8 @@ func TestActorLs(t *testing.T) {
 		getActors := func(state.Tree) ([]string, []*types.Actor) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
-			address, _ := types.NewAddressFromString("address")
-			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(43))
-			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21), nil)
+			actor3 := miner.NewActor()
+			actor4 := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21))
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}
 		}
 
@@ -138,12 +139,15 @@ func TestActorLs(t *testing.T) {
 		assertSchemaValid(t, a, schemaLoader)
 
 		actor, _ = storagemarket.NewActor()
+		head, _ := cid.NewPrefixV1(cid.DagCBOR, types.DefaultHashFunction).Sum([]byte("test cid"))
+		actor.Head = head
 		a = makeActorView(actor, "address", &storagemarket.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)
 
-		addr, _ := types.NewAddressFromString("minerAddress")
-		actor, _ = miner.NewActor(addr, []byte{}, types.NewBytesAmount(50000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(200))
+		//addr, _ := types.NewAddressFromString("minerAddress")
+		actor = miner.NewActor()
+		// addr, []byte{}, types.NewBytesAmount(50000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(200))
 		a = makeActorView(actor, "address", &miner.Actor{})
 
 		assertSchemaValid(t, a, schemaLoader)

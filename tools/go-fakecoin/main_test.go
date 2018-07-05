@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -45,8 +46,8 @@ func TestAddFakeChain(t *testing.T) {
 		pbCount++
 		return 0, nil
 	}
-	loadState := func(context context.Context, ts core.TipSet) (state.Tree, error) {
-		return state.NewEmptyStateTree(hamt.NewCborStore()), nil
+	loadState := func(context context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		return state.NewEmptyStateTree(hamt.NewCborStore()), repo.NewInMemoryRepo().Datastore(), nil
 
 	}
 	fake(ctx, length, false, getHeaviestTipSet, processBlock, loadState)
@@ -87,8 +88,12 @@ func TestAddActors(t *testing.T) {
 	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
 	require.NoError(err)
 
-	var storageMkt storagemarket.Storage
-	err = actor.UnmarshalStorage(sma.ReadStorage(), &storageMkt)
+	var storageMkt storagemarket.State
+	chunk, err := ds.Get(datastore.NewKey(sma.Head.KeyString()))
+	require.NoError(err)
+	chunkBytes, ok := chunk.([]byte)
+	require.True(ok)
+	err = actor.UnmarshalStorage(chunkBytes, &storageMkt)
 	require.NoError(err)
 
 	assert.Equal(1, len(storageMkt.Miners))

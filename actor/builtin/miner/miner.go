@@ -15,7 +15,8 @@ import (
 )
 
 func init() {
-	cbor.RegisterCborType(Storage{})
+	cbor.RegisterCborType(State{})
+	cbor.RegisterCborType(Sector{})
 }
 
 // MaximumPublicKeySize is a limit on how big a public key can be
@@ -55,8 +56,8 @@ type Sector struct {
 	Deals []uint64
 }
 
-// Storage is the miner actors storage
-type Storage struct {
+// State is the miner actors storage
+type State struct {
 	Owner types.Address
 
 	// PeerID references the libp2p identity that the miner is operating.
@@ -79,37 +80,51 @@ type Storage struct {
 	Power         *types.BytesAmount
 }
 
-// NewStorage returns an empty MinerStorage struct
-func (ma *Actor) NewStorage() interface{} {
-	return &Storage{}
+// NewActor returns a new miner actor
+func NewActor() *types.Actor {
+	return types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+}
+
+// NewState creates a miner state struct
+func NewState(owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) *State {
+	return &State{
+		Owner:         owner,
+		PeerID:        pid,
+		PublicKey:     key,
+		PledgeBytes:   pledge,
+		Collateral:    collateral,
+		LockedStorage: types.NewBytesAmount(0),
+	}
+}
+
+// InitializeState stores this miner's initial data structure
+func InitializeState(storage exec.Storage, initialState interface{}) error {
+	minerState, ok := initialState.(*State)
+	if !ok {
+		return errors.NewFaultError("Initial state to miner actor is not a miner.State struct")
+	}
+
+	// TODO: we should validate this is actually a public key (possibly the owner's public key) once we have a better
+	// TODO: idea what crypto looks like.
+	if len(minerState.PublicKey) > MaximumPublicKeySize {
+		return Errors[ErrPublicKeyTooBig]
+	}
+
+	stateBytes, err := cbor.DumpObject(minerState)
+	if err != nil {
+		return err
+	}
+
+	id, err := storage.Put(stateBytes)
+	if err != nil {
+		return err
+	}
+
+	return storage.Commit(id, nil)
 }
 
 var _ exec.ExecutableActor = (*Actor)(nil)
-
-// NewActor returns a new miner actor
-func NewActor(owner types.Address, publicKey []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) (*types.Actor, error) {
-	// TODO: we should validate this is actually a public key (possibly the owner's public key) once we have a better
-	// TODO: idea what crypto looks like.
-	if len(publicKey) > MaximumPublicKeySize {
-		return nil, Errors[ErrPublicKeyTooBig]
-	}
-
-	st := &Storage{
-		Owner:         owner,
-		PeerID:        pid,
-		PublicKey:     publicKey,
-		PledgeBytes:   pledge,
-		Collateral:    coll,
-		LockedStorage: types.NewBytesAmount(0),
-	}
-
-	storageBytes, err := actor.MarshalStorage(st)
-	if err != nil {
-		return nil, err
-	}
-
-	return types.NewActorWithMemory(types.MinerActorCodeCid, nil, storageBytes), nil
-}
+var _ exec.InitializeStateFunc = InitializeState
 
 var minerExports = exec.Exports{
 	"addAsk": &exec.FunctionSignature{
@@ -150,20 +165,20 @@ func (ma *Actor) Exports() exec.Exports {
 // AddAsk adds an ask via this miner to the storage markets orderbook
 func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
-	var mstore Storage
-	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
-		if ctx.Message().From != mstore.Owner {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		if ctx.Message().From != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
 		// compute locked storage + new ask
-		total := mstore.LockedStorage.Add(size)
+		total := state.LockedStorage.Add(size)
 
-		if total.GreaterThan(mstore.PledgeBytes) {
+		if total.GreaterThan(state.PledgeBytes) {
 			return nil, Errors[ErrInsufficientPledge]
 		}
 
-		mstore.LockedStorage = total
+		state.LockedStorage = total
 
 		// TODO: kinda feels weird that I can't get a real type back here
 		out, ret, err := ctx.Send(address.StorageMarketAddress, "addAsk", nil, []interface{}{price, size})
@@ -196,9 +211,9 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.By
 
 // GetOwner returns the miners owner
 func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
-	var mstore Storage
-	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
-		return mstore.Owner, nil
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.Owner, nil
 	})
 	if err != nil {
 		return types.Address{}, errors.CodeError(err), err
@@ -216,9 +231,9 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
 // sector ID is allocated. The sector ID that deals are added to is returned
 func (ma *Actor) AddDealsToSector(ctx exec.VMContext, sectorID int64, deals []uint64) (*big.Int, uint8,
 	error) {
-	var mstore Storage
-	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
-		return mstore.upsertDealsToSector(sectorID, deals)
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.upsertDealsToSector(sectorID, deals)
 	})
 	if err != nil {
 		return nil, errors.CodeError(err), err
@@ -232,15 +247,14 @@ func (ma *Actor) AddDealsToSector(ctx exec.VMContext, sectorID int64, deals []ui
 	return big.NewInt(secIDout), 0, nil
 }
 
-func (mstore *Storage) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
-	if sectorID == -1 {
-		sectorID = int64(len(mstore.Sectors))
-		mstore.Sectors = append(mstore.Sectors, new(Sector))
+func (state *State) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
+	if sectorID == int64(len(state.Sectors)) {
+		state.Sectors = append(state.Sectors, new(Sector))
 	}
-	if sectorID >= int64(len(mstore.Sectors)) {
+	if sectorID > int64(len(state.Sectors)) {
 		return 0, Errors[ErrInvalidSector]
 	}
-	sector := mstore.Sectors[sectorID]
+	sector := state.Sectors[sectorID]
 	if sector.CommR != nil {
 		return 0, Errors[ErrSectorCommited]
 	}
@@ -253,18 +267,20 @@ func (mstore *Storage) upsertDealsToSector(sectorID int64, deals []uint64) (int6
 // if sectorID is -1, a new sector will be allocated.
 // if passing an existing sector ID, any deals given here will be added to the
 // deals already added to that sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, deals []uint64) (*big.Int, uint8, error) {
-	var mstore Storage
-	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID *big.Int, commR []byte, deals []uint64) (*big.Int, uint8, error) {
+	var state State
+
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		sectorIDInt := sectorID.Int64()
 		if len(deals) != 0 {
-			sid, err := mstore.upsertDealsToSector(sectorID, deals)
+			sid, err := state.upsertDealsToSector(sectorIDInt, deals)
 			if err != nil {
 				return nil, err
 			}
-			sectorID = sid
+			sectorIDInt = sid
 		}
 
-		sector := mstore.Sectors[sectorID]
+		sector := state.Sectors[sectorIDInt]
 		if sector.CommR != nil {
 			return nil, Errors[ErrSectorCommited]
 		}
@@ -279,27 +295,27 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID int64, commR []byte, 
 
 		sector.CommR = commR
 		power := types.NewBytesAmountFromBytes(resp[0])
-		mstore.Power = mstore.Power.Add(power)
+		state.Power = state.Power.Add(power)
 
-		return nil, nil
+		return sectorID, nil
 	})
 	if err != nil {
 		return nil, errors.CodeError(err), err
 	}
 
-	secIDout, ok := out.(int64)
+	secIDout, ok := out.(*big.Int)
 	if !ok {
-		return nil, 1, errors.NewRevertError("expected an int64")
+		return nil, 1, errors.NewRevertError("expected a big.Int")
 	}
 
-	return big.NewInt(secIDout), 0, nil
+	return secIDout, 0, nil
 }
 
 // GetKey returns the public key for this miner
 func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
-	var mstore Storage
-	out, err := actor.WithStorage(ctx, &mstore, func() (interface{}, error) {
-		return mstore.PublicKey, nil
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.PublicKey, nil
 	})
 	if err != nil {
 		return nil, errors.CodeError(err), err
@@ -315,24 +331,24 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
 func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
-	var mstore Storage
+	var state State
 
 	chunk, err := ctx.ReadStorage()
 	if err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 
-	if err := actor.UnmarshalStorage(chunk, &mstore); err != nil {
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 
-	return mstore.PeerID, 0, nil
+	return state.PeerID, 0, nil
 }
 
 // UpdatePeerID is used to update the peerID this miner is operating under.
 func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
-	var storage Storage
-	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var storage State
+	_, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
 		if ctx.Message().From != storage.Owner {
 			return nil, Errors[ErrCallerUnauthorized]

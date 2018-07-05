@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
@@ -13,6 +13,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type MockActor struct {
@@ -23,8 +25,8 @@ func (a *MockActor) Exports() exec.Exports {
 	return a.exports
 }
 
-func (a *MockActor) NewStorage() interface{} {
-	return nil
+func (a *MockActor) InitializeState(storage exec.Storage, initialState interface{}) (*cid.Cid, error) {
+	return nil, nil
 }
 
 func (a *MockActor) One() (uint8, error) {

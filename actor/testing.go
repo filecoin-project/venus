@@ -3,6 +3,8 @@ package actor
 import (
 	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
 
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -21,6 +23,7 @@ type FakeActorStorage struct{ Changed bool }
 type FakeActor struct{}
 
 var _ exec.ExecutableActor = (*FakeActor)(nil)
+var _ exec.InitializeStateFunc = InitializeState
 
 // FakeActorExports are the exports of the fake actor.
 var FakeActorExports = exec.Exports{
@@ -54,6 +57,26 @@ var FakeActorExports = exec.Exports{
 	},
 }
 
+// InitializeState stores this actors
+func InitializeState(storage exec.Storage, initialState interface{}) error {
+	st, ok := initialState.(*FakeActorStorage)
+	if !ok {
+		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
+	}
+
+	stateBytes, err := cbor.DumpObject(st)
+	if err != nil {
+		return err
+	}
+
+	id, err := storage.Put(stateBytes)
+	if err != nil {
+		return err
+	}
+
+	return storage.Commit(id, nil)
+}
+
 // Exports returns the list of fake actor exported functions.
 func (ma *FakeActor) Exports() exec.Exports {
 	return FakeActorExports
@@ -63,7 +86,7 @@ func (ma *FakeActor) Exports() exec.Exports {
 // revert error.
 func (ma *FakeActor) ReturnRevertError(ctx exec.VMContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
-	_, err := WithStorage(ctx, fastore, func() (interface{}, error) {
+	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
 		return nil, nil
 	})
@@ -76,7 +99,7 @@ func (ma *FakeActor) ReturnRevertError(ctx exec.VMContext) (uint8, error) {
 // GoodCall sets a bit inside fakeActor's storage.
 func (ma *FakeActor) GoodCall(ctx exec.VMContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
-	_, err := WithStorage(ctx, fastore, func() (interface{}, error) {
+	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
 		return nil, nil
 	})
@@ -92,9 +115,9 @@ func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target types.Address) (ui
 	return code, err
 }
 
-// NewStorage returns an empty FakeActorStorage struct
-func (ma *FakeActor) NewStorage() interface{} {
-	return &FakeActorStorage{}
+// InitializeState adds a changed flag to storage.
+func (ma *FakeActor) InitializeState(storage exec.Storage, startingState interface{}) (*cid.Cid, error) {
+	return nil, nil
 }
 
 // SendTokens sends 100 to the given address.

@@ -14,6 +14,8 @@ import (
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -86,7 +88,7 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 			return err
 		}
 
-		tif = func(cst *hamt.CborIpldStore) (*types.Block, error) {
+		tif = func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
 			var blk types.Block
 
 			if err := cst.Get(req.Context, genCid, &blk); err != nil {

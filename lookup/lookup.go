@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // PeerLookupService provides an interface through which callers look up a miner's libp2p identity by their Filecoin address.
@@ -34,12 +35,13 @@ func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr types
 // GetPeerIDByMinerAddress attempts to get a miner's libp2p identity by loading the actor from the state tree and sending
 // it a "getPeerID" message. The MinerActor is currently the only type of actor which has a peer ID.
 func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
-	st, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
+	st, ds, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to load state tree")
 	}
 
-	retValue, retCode, err := core.CallQueryMethod(ctx, st, minerAddr, "getPeerID", []byte{}, c.queryMethodFromAddress, nil)
+	vms := vm.NewStorageMap(ds)
+	retValue, retCode, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, c.queryMethodFromAddress, nil)
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to query local state tree")
 	}

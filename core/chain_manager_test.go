@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,10 @@ var (
 
 func init() {
 	cst := hamt.NewCborStore()
-	genesis, err := InitGenesis(cst)
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+
+	genesis, err := InitGenesis(cst, ds)
 	if err != nil {
 		panic(err)
 	}
@@ -473,21 +477,36 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, _, _, stm := newTestUtils()
-	stm.PwrTableView = &marketView{}
+	stm.PwrTableView = &TestView{}
 
 	// setup miner power in genesis block
-	newAddress := types.NewAddressForTestGetter()
-	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+	mockSigner := types.NewMockSigner(ki)
+	testAddress := mockSigner.Addresses[0]
+
 	// pwr1, pwr2 = 1/100. pwr3 = 98/100.
 	pwr1, pwr2, pwr3 := types.NewBytesAmount(10000), types.NewBytesAmount(10000), types.NewBytesAmount(980000)
 	testGen := th.MakeGenesisFunc(
-		th.MinerPower(addr1, pwr1),
-		th.MinerPower(addr2, pwr2),
-		th.MinerPower(addr3, pwr3),
+		th.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 	require.NoError(stm.Genesis(ctx, testGen))
-	require.Equal(1, len(stm.GetHeaviestTipSet()))
-	gen := stm.GetHeaviestTipSet().ToSlice()[0]
+
+	genesisBlock, err := stm.FetchBlock(ctx, stm.genesisCid)
+	require.NoError(err)
+	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, stm, genesisBlock, mockSigner, 0, mockSigner.Addresses[0], nil)
+	require.NoError(err)
+	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, stm, block, mockSigner, nonce, addr0, pwr1)
+	require.NoError(err)
+	addr2, block, nonce, err := CreateMinerWithPower(ctx, t, stm, block, mockSigner, nonce, addr0, pwr2)
+	require.NoError(err)
+	addr3, _, _, err := CreateMinerWithPower(ctx, t, stm, block, mockSigner, nonce, addr0, pwr3)
+	require.NoError(err)
+
+	stm.PwrTableView = &marketView{}
+
+	heaviest := stm.GetHeaviestTipSet()
+	require.Equal(1, len(heaviest))
+	gen := heaviest.ToSlice()[0]
 
 	/* Test chain diagram and weight calcs */
 	// (Note f1b1 = fork 1 block 1)
@@ -496,39 +515,39 @@ func TestTipSetWeightDeep(t *testing.T) {
 	//
 	// f2b1 -> f2b2
 	//
-	//  w({fXb1})         = 0 + 10 + 1   = 11
-	//  w({f1b1, f2b1})   = 0 + 20 + 2   = 22
-	//  w({f1b2a, f1b2b}) = 11 + 20 + 2  = 33
-	//  w({f2b2})         = 11 + 10 + 98 = 119
-	f1b1 := MkChild([]*types.Block{gen}, gen.StateRoot, 0)
+	//  w({blk})          = sw + apw + mw      = sw + ew
+	//  w({fXb1})         = sw + 0   + 11      = sw + 11
+	//  w({f1b1, f2b1})   = sw + 0   + 11 * 2  = sw + 22
+	//  w({f1b2a, f1b2b}) = sw + 11  + 11 * 2  = sw + 33
+	//  w({f2b2})         = sw + 11  + 108 	   = sw + 119
+	//  sw=starting weight, apw=added parent weight, mw=miner weight, ew=expected weight
+	//  mw = 10*(mp/tp)+10 = 10*(10000,980000)/1000000+10
+	startingWeight, err := stm.weight(ctx, heaviest)
+	assert.NoError(err)
+
+	f1b1 := requireMkBlockCorrected(ctx, t, stm, 0, gen)
 	f1b1.Miner = addr1
-	// We need to manually set weights in the blocks that we create.
-	f1b1.ParentWeightNum = types.Uint64(0)
-	f1b1.ParentWeightDenom = types.Uint64(1)
-	f2b1 := MkChild([]*types.Block{gen}, gen.StateRoot, 1)
+	f2b1 := requireMkBlockCorrected(ctx, t, stm, 1, gen)
 	f2b1.Miner = addr2
-	f2b1.ParentWeightNum = types.Uint64(0)
-	f2b1.ParentWeightDenom = types.Uint64(1)
 	tsBase := RequireNewTipSet(require, f1b1, f2b1)
 
 	requireProcessBlock(ctx, t, stm, f1b1)
 	requireProcessBlock(ctx, t, stm, f2b1)
-	heaviest := stm.GetHeaviestTipSet()
+	heaviest = stm.GetHeaviestTipSet()
 	assert.Equal(tsBase, heaviest)
 	w, err := stm.weight(ctx, heaviest)
 	assert.NoError(err)
-	require.Equal(big.NewRat(int64(22), int64(1)), w)
+
+	expectedWeight := big.NewRat(int64(22), int64(1))
+	expectedWeight.Add(expectedWeight, startingWeight)
+	require.Equal(expectedWeight, w)
 
 	// fork 1 is heavier than the old head.
-	f1b2a := MkChild([]*types.Block{f1b1}, gen.StateRoot, 0)
+	f1b2a := requireMkBlockCorrected(ctx, t, stm, 0, f1b1)
 	f1b2a.Miner = addr1
-	f1b2a.ParentWeightNum = types.Uint64(11)
-	f1b2a.ParentWeightDenom = types.Uint64(1)
 
-	f1b2b := MkChild([]*types.Block{f1b1}, gen.StateRoot, 1)
+	f1b2b := requireMkBlockCorrected(ctx, t, stm, 1, f1b1)
 	f1b2b.Miner = addr2
-	f1b2b.ParentWeightNum = types.Uint64(11)
-	f1b2b.ParentWeightDenom = types.Uint64(1)
 	f1 := RequireNewTipSet(require, f1b2a, f1b2b)
 
 	requireProcessBlock(ctx, t, stm, f1b2a)
@@ -537,14 +556,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(f1, heaviest)
 	w, err = stm.weight(ctx, heaviest)
 	assert.NoError(err)
-	require.Equal(big.NewRat(int64(33), int64(1)), w)
+	expectedWeight = big.NewRat(int64(33), int64(1))
+	expectedWeight.Add(expectedWeight, startingWeight)
+	require.Equal(expectedWeight, w)
 
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1
-	f2b2 := MkChild([]*types.Block{f2b1}, gen.StateRoot, 0)
+	f2b2 := requireMkBlockCorrected(ctx, t, stm, 0, f2b1)
 	f2b2.Miner = addr3
-	f2b2.ParentWeightNum = types.Uint64(11)
-	f2b2.ParentWeightDenom = types.Uint64(1)
 	f2 := RequireNewTipSet(require, f2b2)
 
 	requireProcessBlock(ctx, t, stm, f2b2)
@@ -552,6 +571,20 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(f2, heaviest)
 	w, err = stm.weight(ctx, heaviest)
 	assert.NoError(err)
-	assert.Equal(big.NewRat(int64(119), int64(1)), w)
+	expectedWeight = big.NewRat(int64(119), int64(1))
+	expectedWeight.Add(expectedWeight, startingWeight)
+	assert.Equal(expectedWeight, w)
+}
 
+func requireMkBlockCorrected(ctx context.Context, t *testing.T, cm *ChainManager, nonce uint64, parents ...*types.Block) *types.Block {
+	tipSet, err := NewTipSet(parents...)
+	require.NoError(t, err)
+
+	weight, err := cm.weight(ctx, tipSet)
+	require.NoError(t, err)
+
+	blk := MkChild(parents, parents[0].StateRoot, nonce)
+	blk.ParentWeightNum = types.Uint64(weight.Num().Uint64())
+	blk.ParentWeightDenom = types.Uint64(weight.Denom().Uint64())
+	return blk
 }
