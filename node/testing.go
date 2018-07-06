@@ -27,7 +27,7 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, options ...func(c
 	var out []*Node
 	for i := 0; i < n; i++ {
 		r := repo.NewInMemoryRepo()
-		err := Init(context.Background(), r)
+		err := Init(context.Background(), r, core.InitGenesis)
 		require.NoError(t, err)
 
 		// set a random port here so things don't break in the event we make
