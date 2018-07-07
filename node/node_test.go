@@ -67,7 +67,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require := require.New(t)
 
 		r := repo.NewInMemoryRepo()
-		require.NoError(Init(ctx, r))
+		require.NoError(Init(ctx, r, core.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -92,7 +92,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		// Create a node with the nodes above as bootstrap nodes.
 		r := repo.NewInMemoryRepo()
-		require.NoError(Init(ctx, r))
+		require.NoError(Init(ctx, r, core.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -435,7 +435,7 @@ func TestOptionWithError(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r))
+	assert.NoError(Init(ctx, r, core.InitGenesis))
 
 	opts, err := OptionsFromRepo(r)
 	assert.NoError(err)

@@ -23,7 +23,7 @@ var initCmd = &cmds.Command{
 		Tagline: "Initialize a filecoin repo",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("test", "init the node for testing: create an address with funds in the genesis block").WithDefault(true),
+		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
 	},
 	Run: initRun,
 	Encoders: cmds.EncoderMap{
@@ -32,7 +32,6 @@ var initCmd = &cmds.Command{
 }
 
 func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (err error) {
-	testOpt, _ := req.Options["test"].(bool)
 	repoDir := getRepoDir(req)
 
 	re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
@@ -56,18 +55,27 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 		} // else err may be set and returned as normal
 	}()
 
-	// "god" mode enabled
-	var tif core.GenesisInitFunc
-	if testOpt {
-		re.Emit(fmt.Sprint(`entering "god" mode`)) // nolint: errcheck
-		nodeAddr, err := newAddress(rep)
+	walletFile, _ := req.Options["walletfile"].(string)
+	if len(walletFile) > 1 {
+		var tif core.GenesisInitFunc
+		re.Emit(fmt.Sprintf("initializing filecoin node with wallet file: %s\n", walletFile)) // nolint: errcheck
+
+		nodeAddrs, err := loadAddress(walletFile, rep)
 		if err != nil {
-			// since this is for testing throw a tantrum on failure
-			panic(err)
+			return errors.Wrapf(err, "failed to load wallet file: %s", walletFile)
 		}
-		tif = th.MakeGenesisFunc(
-			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
-		)
+
+		// since `node.Init` will create an address, and since `node.Build` will
+		// return `ErrNoDefaultMessageFromAddress` iff len(wallet.Addresses) > 1 and
+		// wallet.defaultAddress == "" we set the default here
+		rep.Config().Wallet.DefaultAddress = nodeAddrs[0]
+
+		var actorOps []th.GenOption
+		for i := range nodeAddrs {
+			// TODO: would be nice to choose the amount to allocate to each address
+			actorOps = append(actorOps, th.ActorAccount(nodeAddrs[i], types.NewAttoFILFromFIL(10000000)))
+		}
+		tif = th.MakeGenesisFunc(actorOps...)
 		return node.Init(req.Context, rep, tif)
 	}
 
@@ -75,14 +83,17 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 	return node.Init(req.Context, rep, core.InitGenesis)
 }
 
-func newAddress(r repo.Repo) (types.Address, error) {
+func loadAddress(file string, r repo.Repo) ([]types.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
-		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+		return nil, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
-	// TODO make this produce a testnet address
-	return backend.NewAddress()
+	err = backend.LoadFromFile(file)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read file")
+	}
+	return backend.Addresses(), nil
 }
 
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {

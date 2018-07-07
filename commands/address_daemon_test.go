@@ -82,3 +82,18 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(lookupOutA, lookupOutB)
 }
+
+func TestWalletLoadFromFile(t *testing.T) {
+	assert := assert.New(t)
+
+	d := NewDaemon(t, WalletFile("../wallet/walletTest.toml")).Start()
+	defer d.ShutdownSuccess()
+
+	// assert we loaded the test address from the file
+	dw := d.RunSuccess("address", "ls").readStdoutTrimNewlines()
+	assert.Contains(dw, "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn")
+
+	// assert funds were allocated to address during genesis
+	wb := d.RunSuccess("wallet", "balance", "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn").readStdoutTrimNewlines()
+	assert.Contains(wb, "10000000")
+}

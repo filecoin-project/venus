@@ -3,11 +3,14 @@ package wallet
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dsq "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/query"
 
@@ -65,6 +68,94 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 		ds:    ds,
 		cache: cache,
 	}, nil
+}
+
+// StoredWallet holds the values representing a wallet when writing to a file
+type StoredWallet struct {
+	AddressKeyPairs []AddressAndKeys `toml:"wallet"`
+}
+
+// AddressAndKeys holds the address and KeyInfo used to generate it
+type AddressAndKeys struct {
+	Address string        `toml:"address"`
+	KeyInfo types.KeyInfo `toml:"keyinfo"`
+}
+
+// WriteToFile write the contents of a wallet to a file
+func (backend *DSBackend) WriteToFile(file string) error {
+	result, err := backend.ds.Query(dsq.Query{
+		// should give us the addresses and their keyinfo
+		KeysOnly: false,
+	})
+
+	if err != nil {
+		return errors.Wrap(err, "failed to query datastore")
+	}
+
+	list, err := result.Rest()
+	if err != nil {
+		return errors.Wrap(err, "failed to read query results")
+	}
+
+	wt := new(StoredWallet)
+	var aak AddressAndKeys
+	for _, el := range list {
+		// Addresses start with a forward slash
+		aak.Address = strings.Trim(el.Key, "/")
+		elb, ok := el.Value.([]byte)
+		if !ok {
+			panic("here")
+		}
+
+		if err = aak.KeyInfo.Unmarshal(elb); err != nil {
+			return err
+		}
+		wt.AddressKeyPairs = append(wt.AddressKeyPairs, aak)
+	}
+
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	if err := toml.NewEncoder(f).Encode(wt); err != nil {
+		return err
+	}
+
+	return f.Close()
+}
+
+// LoadFromFile reads in a file representing a wallet
+func (backend *DSBackend) LoadFromFile(file string) error {
+	walletFile, err := ioutil.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	wt := new(StoredWallet)
+	if err = toml.Unmarshal(walletFile, &wt); err != nil {
+		return err
+	}
+
+	for _, thing := range wt.AddressKeyPairs {
+		kib, err := thing.KeyInfo.Marshal()
+		if err != nil {
+			return err
+		}
+
+		addr, err := types.NewAddressFromString(thing.Address)
+		if err != nil {
+			return err
+		}
+
+		if err := backend.ds.Put(ds.NewKey(addr.String()), kib); err != nil {
+			return errors.Wrap(err, "failed to store new address")
+		}
+
+		backend.cache[addr] = struct{}{}
+	}
+
+	return nil
 }
 
 // Addresses returns a list of all addresses that are stored in this backend.
