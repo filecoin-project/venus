@@ -26,9 +26,7 @@ type Block struct {
 
 	// ParentWeight is the aggregate chain weight of the parent set.
 	// TODO is float64 what we want here?
-	// TODO per the spec this field should be computed and cached locally,
-	// NOT included in the Block.
-	ParentWeight float64 `json:"parentWeight"`
+	ParentWeight uint64 `json:"parentWeight"`
 
 	// Height is the chain height of this block.
 	Height uint64 `json:"height"`

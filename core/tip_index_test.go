@@ -1,21 +1,24 @@
 package core
 
 import (
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	"sort"
 	"testing"
 
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func block(assert *assert.Assertions, height int, parentCid *cid.Cid, msg string) *types.Block {
+func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWeight uint64, msg string) *types.Block {
 	addrGetter := types.NewAddressForTestGetter()
 	m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
 	ret := []byte{1, 2}
 
 	return &types.Block{
 		Parents:         types.NewSortedCidSet(parentCid),
+		ParentWeight:    parentWeight,
 		Height:          42 + uint64(height),
 		Nonce:           7,
 		Messages:        []*types.Message{m1},
@@ -26,13 +29,14 @@ func block(assert *assert.Assertions, height int, parentCid *cid.Cid, msg string
 
 func TestTipSet(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	cidGetter := types.NewCidForTestGetter()
 	cid1 := cidGetter()
 
-	b1 := block(assert, 1, cid1, "1")
-	b2 := block(assert, 1, cid1, "2")
-	b3 := block(assert, 1, cid1, "3")
+	b1 := block(require, 1, cid1, uint64(1137), "1")
+	b2 := block(require, 1, cid1, uint64(1137), "2")
+	b3 := block(require, 1, cid1, uint64(1137), "3")
 
 	ts := TipSet{}
 	ts[b1.Cid().String()] = b1
@@ -61,47 +65,165 @@ func TestTipSet(t *testing.T) {
 	assert.Equal(ts2, ts)
 }
 
-// Test methods: String, ToSortedCidSet, ToSlice, Score, MinTicket, Height, NewTipSet, Equals
-func TestTipSetMethods(t *testing.T) {
-	assert := assert.New(t)
+// Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
+func RequireTestBlocks(t *testing.T) (*types.Block, *types.Block, *types.Block) {
+	require := require.New(t)
 
 	cidGetter := types.NewCidForTestGetter()
 	cid1 := cidGetter()
+	pW := uint64(1337)
 
-	b1 := block(assert, 1, cid1, "1")
+	b1 := block(require, 1, cid1, pW, "1")
 	b1.Ticket = []byte{0}
-	b2 := block(assert, 1, cid1, "2")
+	b2 := block(require, 1, cid1, pW, "2")
 	b2.Ticket = []byte{1}
-	b3 := block(assert, 1, cid1, "3")
+	b3 := block(require, 1, cid1, pW, "3")
 	b3.Ticket = []byte{0}
+	return b1, b2, b3
+}
 
-	// NewTipSet
-	tips := []*types.Block{b1, b2, b3}
-	ts := NewTipSet(tips...)
+func RequireTestTipSet(t *testing.T) TipSet {
+	require := require.New(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+	return RequireNewTipSet(require, b1, b2, b3)
+}
+
+func TestTipSetAddBlock(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+
+	// Add Valid
+	ts1 := TipSet{}
+	RequireTipSetAdd(require, b1, ts1)
+	assert.Equal(1, len(ts1))
+	RequireTipSetAdd(require, b2, ts1)
+	RequireTipSetAdd(require, b3, ts1)
+
+	ts2 := RequireNewTipSet(require, b1, b2, b3)
+	assert.Equal(ts2, ts1)
+
+	// Invalid height
+	b2.Height = 5
+	ts := TipSet{}
+	RequireTipSetAdd(require, b1, ts)
+	err := ts.AddBlock(b2)
+	assert.EqualError(err, ErrBadTipSetAdd.Error())
+	b2.Height = b1.Height
+
+	// Invalid parent set
+	cidGetter := types.NewCidForTestGetter()
+	cid1 := cidGetter()
+	cid2 := cidGetter()
+	b2.Parents = types.NewSortedCidSet(cid1, cid2)
+	ts = TipSet{}
+	RequireTipSetAdd(require, b1, ts)
+	err = ts.AddBlock(b2)
+	assert.EqualError(err, ErrBadTipSetAdd.Error())
+	b2.Parents = b1.Parents
+
+	// Invalid weight
+	b2.ParentWeight = uint64(3)
+	ts = TipSet{}
+	RequireTipSetAdd(require, b1, ts)
+	err = ts.AddBlock(b2)
+	assert.EqualError(err, ErrBadTipSetAdd.Error())
+}
+
+func TestNewTipSet(t *testing.T) {
+	assert := assert.New(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+
+	// Valid blocks
+	ts, err := NewTipSet(b1, b2, b3)
+	assert.NoError(err)
 	assert.Equal(ts[b1.Cid().String()], b1)
 	assert.Equal(ts[b2.Cid().String()], b2)
 	assert.Equal(ts[b3.Cid().String()], b3)
 	assert.Equal(3, len(ts))
 
-	// MinTicket
-	mt := ts.MinTicket()
+	// Invalid heights
+	b1.Height = 3
+	ts, err = NewTipSet(b1, b2, b3)
+	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Nil(ts)
+	b1.Height = b2.Height
+
+	// Invalid parent sets
+	cidGetter := types.NewCidForTestGetter()
+	cid1 := cidGetter()
+	cid2 := cidGetter()
+	b1.Parents = types.NewSortedCidSet(cid1, cid2)
+	ts, err = NewTipSet(b1, b2, b3)
+	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Nil(ts)
+	b1.Parents = b2.Parents
+
+	// Invalid parent weights
+	b1.ParentWeight = uint64(3)
+	ts, err = NewTipSet(b1, b2, b3)
+	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Nil(ts)
+}
+
+func TestTipSetMinTicket(t *testing.T) {
+	assert := assert.New(t)
+	ts := RequireTestTipSet(t)
+	mt, err := ts.MinTicket()
+	assert.NoError(err)
 	assert.Equal(types.Signature([]byte{0}), mt)
+}
 
-	// Height
-	h := ts.Height()
+func TestTipSetHeight(t *testing.T) {
+	assert := assert.New(t)
+	ts := RequireTestTipSet(t)
+	h, err := ts.Height()
+	assert.NoError(err)
 	assert.Equal(uint64(43), h)
+}
 
-	// Score
-	sc := ts.Score()
-	assert.Equal(uint64(43*103), sc)
+func TestTipSetParents(t *testing.T) {
+	assert := assert.New(t)
+	b1, _, _ := RequireTestBlocks(t)
+	ts := RequireTestTipSet(t)
+	ps, err := ts.Parents()
+	assert.NoError(err)
+	assert.Equal(ps, b1.Parents)
+}
 
-	// ToSortedCidSet
+func TestTipSetParentWeight(t *testing.T) {
+	assert := assert.New(t)
+	ts := RequireTestTipSet(t)
+	w, err := ts.ParentWeight()
+	assert.NoError(err)
+	assert.Equal(w, uint64(1337))
+}
+
+func TestTipSetToSortedCidSet(t *testing.T) {
+	ts := RequireTestTipSet(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+	assert := assert.New(t)
+
+	cidsExp := types.NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
+	assert.Equal(cidsExp, ts.ToSortedCidSet())
+}
+
+func TestTipSetString(t *testing.T) {
+	ts := RequireTestTipSet(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+	assert := assert.New(t)
+
 	cidsExp := types.NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
 	strExp := cidsExp.String()
 	assert.Equal(strExp, ts.String())
-	assert.Equal(cidsExp, ts.ToSortedCidSet())
+}
 
-	// ToSlice
+func TestTipSetToSlice(t *testing.T) {
+	ts := RequireTestTipSet(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+	tips := []*types.Block{b1, b2, b3}
+	assert := assert.New(t)
+
 	blks := ts.ToSlice()
 	sort.Slice(tips, func(i, j int) bool {
 		return tips[i].Cid().String() < tips[j].Cid().String()
@@ -111,8 +233,18 @@ func TestTipSetMethods(t *testing.T) {
 	})
 	assert.Equal(tips, blks)
 
-	// Equals & AddBlock
-	ts2 := NewTipSet(b1, b2)
+	tsEmpty := TipSet{}
+	slEmpty := tsEmpty.ToSlice()
+	assert.Equal(0, len(slEmpty))
+}
+
+func TestTipSetEquals(t *testing.T) {
+	ts := RequireTestTipSet(t)
+	b1, b2, b3 := RequireTestBlocks(t)
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ts2 := RequireNewTipSet(require, b1, b2)
 	assert.True(!ts2.Equals(ts))
 	ts2.AddBlock(b3)
 	assert.True(ts.Equals(ts2))
@@ -120,6 +252,7 @@ func TestTipSetMethods(t *testing.T) {
 
 func TestTipIndex(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	idx := tipIndex{}
 
 	contains := func(b *types.Block, expectedHeightEntries, expectedParentSetEntries, expectedBlocks int) {
@@ -131,21 +264,21 @@ func TestTipIndex(t *testing.T) {
 
 	cidGetter := types.NewCidForTestGetter()
 	cid1 := cidGetter()
-	b1 := block(assert, 42, cid1, "foo")
+	b1 := block(require, 42, cid1, uint64(1137), "foo")
 	idx.addBlock(b1)
 	contains(b1, 1, 1, 1)
 
-	b2 := block(assert, 42, cid1, "bar")
+	b2 := block(require, 42, cid1, uint64(1137), "bar")
 	idx.addBlock(b2)
 	contains(b2, 1, 1, 2)
 
 	cid3 := cidGetter()
-	b3 := block(assert, 42, cid3, "hot")
+	b3 := block(require, 42, cid3, uint64(1137), "hot")
 	idx.addBlock(b3)
 	contains(b3, 1, 2, 1)
 
 	cid4 := cidGetter()
-	b4 := block(assert, 43, cid4, "monkey")
+	b4 := block(require, 43, cid4, uint64(1137), "monkey")
 	idx.addBlock(b4)
 	contains(b4, 2, 1, 1)
 }

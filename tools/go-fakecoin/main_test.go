@@ -25,6 +25,7 @@ import (
 
 func TestAddFakeChain(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	var length = 9
 	var gbbCount, pbCount int
@@ -32,7 +33,7 @@ func TestAddFakeChain(t *testing.T) {
 
 	getHeaviestTipSet := func() core.TipSet {
 		gbbCount++
-		return core.NewTipSet(new(types.Block))
+		return core.RequireNewTipSet(require, new(types.Block))
 	}
 	processBlock := func(context context.Context, block *types.Block) (core.BlockProcessResult, error) {
 		pbCount++

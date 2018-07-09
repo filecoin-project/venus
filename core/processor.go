@@ -91,7 +91,11 @@ type ProcessTipSetResponse struct {
 func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSetResponse, error) {
 	var res ProcessTipSetResponse
 	var emptyRes ProcessTipSetResponse
-	bh := types.NewBlockHeight(ts.Height())
+	h, err := ts.Height()
+	if err != nil {
+		return &emptyRes, errors.FaultErrorWrap(err, "processing empty tipset")
+	}
+	bh := types.NewBlockHeight(h)
 	msgFilter := make(map[string]struct{})
 
 	tips := ts.ToSlice()

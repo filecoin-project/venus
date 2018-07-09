@@ -14,9 +14,13 @@ import (
 
 var log = logging.Logger("mining")
 
-// GetStateTree is a function that gets a state tree by cid. It's
+// GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
 type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
+
+// GetWeight is a function that calculates the weight of a TipSet.  It's its
+// own function to facilitate testing.
+type GetWeight func(context.Context, core.TipSet) (uint64, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
@@ -24,10 +28,11 @@ type BlockGenerator interface {
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
-func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, applyMessages miningApplier) BlockGenerator {
+func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier) BlockGenerator {
 	return &blockGenerator{
 		messagePool:   messagePool,
 		getStateTree:  getStateTree,
+		getWeight:     getWeight,
 		applyMessages: applyMessages,
 	}
 }
@@ -38,6 +43,7 @@ type miningApplier func(ctx context.Context, messages []*types.Message, st state
 type blockGenerator struct {
 	messagePool   *core.MessagePool
 	getStateTree  GetStateTree
+	getWeight     GetWeight
 	applyMessages miningApplier
 }
 
@@ -48,12 +54,21 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 		return nil, err
 	}
 
+	weight, err := b.getWeight(ctx, baseTipSet)
+	if err != nil {
+		return nil, err
+	}
+
 	nonce, err := core.NextNonce(ctx, stateTree, b.messagePool, address.NetworkAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	blockHeight := baseTipSet.Height() + nullBlockCount + 1
+	baseHeight, err := baseTipSet.Height()
+	if err != nil {
+		return nil, err
+	}
+	blockHeight := baseHeight + nullBlockCount + 1
 	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewAttoFILFromFIL(1000), "", nil)
 	pending := b.messagePool.Pending()
 	messages := make([]*types.Message, len(pending)+1)
@@ -81,6 +96,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 		Messages:        res.SuccessfulMessages,
 		MessageReceipts: receipts,
 		Parents:         baseTipSet.ToSortedCidSet(),
+		ParentWeight:    weight,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
 	}

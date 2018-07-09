@@ -91,7 +91,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.Message{msg2},
 	}
-	res, err := ProcessTipSet(ctx, NewTipSet(blk1, blk2), st)
+	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
 	assert.NoError(err)
 	assert.Len(res.Results, 2)
 
@@ -134,7 +134,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		Messages:  []*types.Message{msg2},
 		Ticket:    []byte{1, 1},
 	}
-	res, err := ProcessTipSet(ctx, NewTipSet(blk1, blk2), st)
+	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
 	assert.NoError(err)
 	assert.Len(res.Results, 1)
 
