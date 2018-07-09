@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -361,6 +362,87 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sbC := requireSectorBuilder(require, nd, sectorSize)
 
 	sectorBuildersMustEqual(t, sbA, sbC)
+}
+
+func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
+	t.Run("it truncates the file if file size > metadata size", func(t *testing.T) {
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd := MakeOfflineNode(t)
+
+		sbA, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		require.NoError(err)
+
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
+
+		metaA, err := sbA.store.getSectorMetadata(sbA.CurSector.Label)
+		require.NoError(err)
+
+		infoA, err := os.Stat(metaA.Filename)
+		require.NoError(err)
+
+		// size of file on disk should match what we've persisted as metadata
+		require.Equal(int(metaA.Size-metaA.Free), int(infoA.Size()))
+
+		// perform an out-of-band write to the file (replaces its contents)
+		ioutil.WriteFile(metaA.Filename, make([]byte, 90), 0600)
+
+		// initialize a new sector builder (simulates the node restarting)
+		sbB, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		require.NoError(err)
+
+		metaB, err := sbB.store.getSectorMetadata(sbB.CurSector.Label)
+		require.NoError(err)
+
+		infoB, err := os.Stat(metaB.Filename)
+		require.NoError(err)
+
+		// ensure that the file was truncated to match metadata
+		require.Equal(int(metaB.Size-metaB.Free), int(infoB.Size()))
+		require.Equal(int(infoA.Size()), int(infoB.Size()))
+	})
+
+	t.Run("it truncates the metadata if file size < metadata size", func(t *testing.T) {
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd := MakeOfflineNode(t)
+
+		sbA, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		require.NoError(err)
+
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
+
+		metaA, err := sbA.store.getSectorMetadata(sbA.CurSector.Label)
+		require.NoError(err)
+
+		// truncate the file such that its size < sum(size-of-pieces)
+		require.NoError(os.Truncate(metaA.Filename, int64(40)))
+
+		// initialize final sector builder
+		sbB, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		require.NoError(err)
+
+		metaB, err := sbA.store.getSectorMetadata(sbB.CurSector.Label)
+		require.NoError(err)
+
+		infoB, err := os.Stat(metaB.Filename)
+		require.NoError(err)
+
+		// ensure metadata was truncated
+		require.Equal(2, len(metaB.Pieces))
+		require.Equal(30, int(metaB.Size-metaB.Free))
+
+		// ensure that the file was truncated to match metadata
+		require.Equal(int(metaB.Size-metaB.Free), int(infoB.Size()))
+	})
 }
 
 func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *Sector, pieces int) {

@@ -274,7 +274,7 @@ func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sec
 		np.InitWithCurrentBin(sb)
 		sb.Packer = np
 
-		return sb, nil
+		return sb, sb.checkpoint(sb.CurSector)
 	}
 
 	if err != nil && strings.Contains(err.Error(), "not found") {
@@ -327,8 +327,49 @@ func makeFilecoinParameters(sectorSize int, nodeSize int) *PublicParameters {
 	}
 }
 
-// OpenAppend opens and sets sector's file for appending, returning the *os.file.
-func (s *Sector) OpenAppend() error {
+// SyncFile opens and sets sector's file for appending and synchronizes the sector object and file. SyncFile may mutate
+// both the file and the sector object in order to achieve a consistent view of the sector.
+func (s *Sector) SyncFile() error {
+	fi, err := os.Stat(s.filename)
+	if err != nil {
+		return errors.Wrapf(err, "failed to stat sector file %s", s.filename)
+	}
+
+	// | file size | metadata pieces | action                                        |
+	// |-----------|-----------------|-----------------------------------------------|
+	// | 500 bytes | 100|100|100     | truncate file to 300 bytes                    |
+	// | 500 bytes | 100|100|400     | truncate file to 200 bytes, pieces to 100|100 |
+	// | 500 bytes | 100|400         | noop                                          |
+
+	cmpSize := func(s *Sector, info os.FileInfo) int {
+		storSize := int64(s.Size - s.Free)
+		fileSize := info.Size()
+
+		if storSize == fileSize {
+			return 0
+		}
+		if storSize < fileSize {
+			return -1
+		}
+		return +1
+	}
+
+	// remove pieces from the sector until (s.Size-s.Free) <= fi.Size()
+	for i := len(s.Pieces) - 1; i >= 0; i-- {
+		if cmpSize(s, fi) == 1 {
+			s.Free += s.Pieces[i].Size
+			s.Pieces = s.Pieces[:len(s.Pieces)-1]
+		} else {
+			break
+		}
+	}
+
+	if cmpSize(s, fi) == -1 {
+		if err := os.Truncate(s.filename, int64(s.Size-s.Free)); err != nil {
+			return err
+		}
+	}
+
 	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
@@ -437,7 +478,7 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 
 // WritePiece writes data from the given reader to the sectors underlying storage
 func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
-	if err := s.OpenAppend(); err != nil {
+	if err := s.SyncFile(); err != nil {
 		return err
 	}
 	// Capture any error from the deferred close as the value to return unless previous error was being returned.
