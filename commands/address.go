@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -75,7 +76,7 @@ var addrsLsCmd = &cmds.Command{
 
 var addrsLookupCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "address to find peerId for"),
+		cmdkit.StringArg("address", true, false, "miner address to find peerId for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
@@ -85,9 +86,9 @@ var addrsLookupCmd = &cmds.Command{
 			return err
 		}
 
-		v, err := fcn.Lookup.Lookup(req.Context, address)
+		v, err := fcn.Lookup.GetPeerIDByMinerAddress(req.Context, address)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to find miner with address %s", address.String())
 		}
 		re.Emit(v.Pretty()) // nolint: errcheck
 		return nil

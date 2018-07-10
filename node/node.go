@@ -44,6 +44,8 @@ var (
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 	// ErrNoRewardAddress is returned when the node is not configured to have reward address.
 	ErrNoRewardAddress = errors.New("no reward address configured")
+	// ErrNoDefaultMessageFromAddress is returned when the node's wallet is not configured to have a default address and the wallet contains more than one address.
+	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
 // Node represents a full Filecoin node.
@@ -102,8 +104,8 @@ type Node struct {
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	CborStore *hamt.CborIpldStore
 
-	// A lookup engine for mapping on-chain address to peerIds
-	Lookup *lookup.LookupEngine
+	// A lookup service for mapping on-chain miner address to libp2p identity.
+	Lookup lookup.PeerLookupService
 
 	// cancelSubscriptionsCtx is a handle to cancel the block and message subscriptions.
 	cancelSubscriptionsCtx context.CancelFunc
@@ -215,18 +217,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	le, err := lookup.NewLookupEngine(fsub, fcWallet, host.ID())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up lookup engine")
-	}
-
 	nd := &Node{
 		Blockservice:   bserv,
 		CborStore:      cst,
 		ChainMgr:       chainMgr,
 		Exchange:       bswap,
 		Host:           host,
-		Lookup:         le,
 		MiningWorker:   miningWorker,
 		MsgPool:        msgPool,
 		OfflineMode:    nc.OfflineMode,
@@ -245,6 +241,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network())
+
+	// On-chain lookup service
+	addr, err := nd.DefaultSenderAddress()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to obtain a default from-address")
+	}
+	nd.Lookup = lookup.NewChainLookupService(chainMgr, addr)
 
 	return nd, nil
 }
@@ -550,8 +553,11 @@ func (node *Node) NewAddress() (types.Address, error) {
 	return backend.NewAddress()
 }
 
-// QueryMessage sends a read-only message to an actor to retrieve some of its current (best tipset) state.
-func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
+// CallQueryMethod calls a method on an actor using the state of the heaviest
+// tipset. It doesn't make any changes to the state/blockchain. It is useful
+// for interrogating actor state. The caller address is optional; if not
+// provided, an address will be chosen from the node's wallet.
+func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
 	ctx := context.Background()
 	bts := node.ChainMgr.GetHeaviestTipSet()
 	st, err := node.ChainMgr.LoadStateTreeTS(ctx, bts)
@@ -562,7 +568,17 @@ func (node *Node) QueryMessage(msg *types.Message) ([][]byte, uint8, error) {
 	if err != nil {
 		return nil, 1, err
 	}
-	return core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(h))
+
+	fromAddr, err := node.DefaultSenderAddress()
+	if err != nil {
+		return nil, 1, err
+	}
+
+	if optFrom != nil {
+		fromAddr = *optFrom
+	}
+
+	return core.CallQueryMethod(ctx, st, to, method, args, fromAddr, types.NewBlockHeight(h))
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.
@@ -616,4 +632,26 @@ func (node *Node) saveMinerAddressToConfig(addr types.Address) error {
 	newConfig.Mining.MinerAddresses = append(newConfig.Mining.MinerAddresses, addr)
 
 	return r.ReplaceConfig(newConfig)
+}
+
+// DefaultSenderAddress produces a default address from which to send messages.
+func (node *Node) DefaultSenderAddress() (types.Address, error) {
+	ret, err := node.defaultWalletAddress()
+	if err != nil || ret != (types.Address{}) {
+		return ret, err
+	}
+
+	if len(node.Wallet.Addresses()) == 1 {
+		return node.Wallet.Addresses()[0], nil
+	}
+
+	return types.Address{}, ErrNoDefaultMessageFromAddress
+}
+
+func (node *Node) defaultWalletAddress() (types.Address, error) {
+	addr, err := node.Repo.Config().Get("wallet.defaultAddress")
+	if err != nil {
+		return types.Address{}, err
+	}
+	return addr.(types.Address), nil
 }

@@ -38,12 +38,7 @@ func (sc *StorageClient) minerPidForAsk(ctx context.Context, askID uint64) (peer
 		return "", err
 	}
 
-	mowner, err := sc.smi.GetMinerOwner(ctx, ask.Owner)
-	if err != nil {
-		return "", err
-	}
-
-	minerPid, err := sc.nd.Lookup.Lookup(ctx, mowner)
+	minerPid, err := sc.nd.Lookup.GetPeerIDByMinerAddress(ctx, ask.Owner)
 	if err != nil {
 		return "", errors.Wrap(err, "lookup of minerPid by miner owner failed")
 	}

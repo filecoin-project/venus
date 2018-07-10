@@ -119,9 +119,7 @@ func TestGetKey(t *testing.T) {
 	minerAddr := createTestMiner(assert, st, address.TestAddress, signature, core.RequireRandomPeerID())
 
 	// retrieve key
-	msg := types.NewMessage(address.TestAddress, minerAddr, 0, nil, "getKey", []byte{})
-
-	result, exitCode, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, exitCode, err := core.CallQueryMethod(ctx, st, minerAddr, "getKey", []byte{}, address.TestAddress, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), exitCode)
 	assert.Equal(result[0], signature)
@@ -208,9 +206,7 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromA
 }
 
 func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromAddr types.Address, minerAddr types.Address) peer.ID {
-	msg := types.NewMessage(fromAddr, minerAddr, core.MustGetNonce(st, fromAddr), nil, "getPeerID", []byte{})
-
-	res, code, err := core.ApplyQueryMessage(ctx, st, msg, types.NewBlockHeight(0))
+	res, code, err := core.CallQueryMethod(ctx, st, minerAddr, "getPeerID", []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
 

@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -507,8 +509,7 @@ func TestQueryMessage(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 		node := MakeNodesUnstarted(t, 1, true)[0]
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
+		nodeAddr := node.Wallet.Addresses()[0]
 
 		tif := th.MakeGenesisFunc(
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
@@ -516,12 +517,10 @@ func TestQueryMessage(t *testing.T) {
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
 		assert.NoError(node.Start())
 
-		params, err := abi.ToEncodedValues(nodeAddr)
-		require.NoError(err)
-		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, address.PaymentBrokerAddress, nil, "ls", params)
+		args, err := abi.ToEncodedValues(nodeAddr)
 		require.NoError(err)
 
-		returnValue, exitCode, err := node.QueryMessage(msg)
+		returnValue, exitCode, err := node.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, nil)
 		require.NoError(err)
 		require.Equal(uint8(0), exitCode)
 
@@ -550,11 +549,11 @@ func TestCreateMiner(t *testing.T) {
 
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
-		require.NoError(result.err)
-		assert.NotNil(result.minerAddress)
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(100000), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
+		require.NoError(result.Err)
+		assert.NotNil(result.MinerAddress)
 
-		assert.Equal(*result.minerAddress, node.Repo.Config().Mining.MinerAddresses[0])
+		assert.Equal(*result.MinerAddress, node.Repo.Config().Mining.MinerAddresses[0])
 	})
 
 	t.Run("fail with pledge too low", func(t *testing.T) {
@@ -573,9 +572,9 @@ func TestCreateMiner(t *testing.T) {
 
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(10), *types.NewAttoFILFromFIL(10))
-		assert.Error(result.err)
-		assert.Contains(result.err.Error(), "pledge must be at least")
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(10), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(10))
+		assert.Error(result.Err)
+		assert.Contains(result.Err.Error(), "pledge must be at least")
 	})
 
 	t.Run("fail with insufficient funds", func(t *testing.T) {
@@ -594,9 +593,9 @@ func TestCreateMiner(t *testing.T) {
 
 		assert.Equal(0, len(node.SectorBuilders))
 
-		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(20000), *types.NewAttoFILFromFIL(1000000))
-		assert.Error(result.err)
-		assert.Contains(result.err.Error(), "not enough balance")
+		result := <-RunCreateMiner(t, node, nodeAddr, *types.NewBytesAmount(20000), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(1000000))
+		assert.Error(result.Err)
+		assert.Contains(result.Err.Error(), "not enough balance")
 	})
 }
 
@@ -623,11 +622,11 @@ func TestCreateSectorBuilders(t *testing.T) {
 
 	assert.Equal(0, len(node.SectorBuilders))
 
-	result := <-RunCreateMiner(t, node, minerAddr1, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
-	require.NoError(result.err)
+	result := <-RunCreateMiner(t, node, minerAddr1, *types.NewBytesAmount(100000), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
+	require.NoError(result.Err)
 
-	result = <-RunCreateMiner(t, node, minerAddr2, *types.NewBytesAmount(100000), *types.NewAttoFILFromFIL(100))
-	require.NoError(result.err)
+	result = <-RunCreateMiner(t, node, minerAddr2, *types.NewBytesAmount(100000), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
+	require.NoError(result.Err)
 
 	assert.Equal(0, len(node.SectorBuilders))
 
@@ -648,4 +647,108 @@ func TestCreateSectorBuilders(t *testing.T) {
 	}
 
 	assert.Equal(cfaddrs, sbaddrs)
+}
+
+func TestLookupMinerAddress(t *testing.T) {
+	t.Parallel()
+
+	t.Run("lookup fails if provided address of non-miner actor", func(t *testing.T) {
+		t.Parallel()
+
+		require := require.New(t)
+		ctx := context.Background()
+
+		nd := MakeNodesStarted(t, 1, true)[0]
+
+		_, err := nd.Lookup.GetPeerIDByMinerAddress(ctx, nd.RewardAddress())
+		require.Error(err)
+	})
+
+	t.Run("lookup succeeds if provided address of a miner actor", func(t *testing.T) {
+		t.Parallel()
+
+		require := require.New(t)
+		ctx := context.Background()
+
+		nd := MakeNodesUnstarted(t, 1, true)[0]
+
+		newMinerPid := core.RequireRandomPeerID()
+
+		minerOwnerAddr := nd.Wallet.Addresses()[0]
+
+		// initialize genesis block
+		tif := th.MakeGenesisFunc(
+			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
+			th.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		require.NoError(nd.ChainMgr.Genesis(ctx, tif))
+		require.NoError(nd.Start())
+
+		// create a miner, owned by the account actor
+		result := <-RunCreateMiner(t, nd, minerOwnerAddr, *types.NewBytesAmount(100000), newMinerPid, *types.NewAttoFILFromFIL(100))
+		require.NoError(result.Err)
+
+		// retrieve the libp2p identity of the newly-created miner
+		retPid, err := nd.Lookup.GetPeerIDByMinerAddress(ctx, *result.MinerAddress)
+		require.NoError(err)
+		require.Equal(peer.IDB58Encode(newMinerPid), peer.IDB58Encode(retPid))
+	})
+}
+
+func TestDefaultMessageFromAddress(t *testing.T) {
+	t.Run("it returns the reward address if no wallet default was configured", func(t *testing.T) {
+		require := require.New(t)
+
+		n := MakeOfflineNode(t)
+
+		// remove existing wallet config
+		n.Repo.Config().Wallet = &config.WalletConfig{}
+
+		// tripwire
+		require.Equal(1, len(n.Wallet.Addresses()))
+
+		addr, err := n.DefaultSenderAddress()
+		require.NoError(err)
+		require.Equal(n.Wallet.Addresses()[0].String(), addr.String())
+		require.NotEqual(types.Address{}.String(), addr.String())
+	})
+
+	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
+		require := require.New(t)
+
+		n := MakeOfflineNode(t)
+
+		// generate a default address
+		addrA, err := n.NewAddress()
+		require.NoError(err)
+
+		// load up the wallet with a few more addresses
+		n.NewAddress()
+		n.NewAddress()
+
+		// configure a default
+		n.Repo.Config().Wallet.DefaultAddress = addrA
+
+		addrB, err := n.DefaultSenderAddress()
+		require.NoError(err)
+		require.Equal(addrA.String(), addrB.String())
+	})
+
+	t.Run("it returns an error if no default address was configured and more than one address in wallet", func(t *testing.T) {
+		require := require.New(t)
+
+		n := MakeOfflineNode(t)
+
+		// generate a few addresses
+		n.NewAddress()
+		n.NewAddress()
+		n.NewAddress()
+
+		// remove existing wallet config
+		n.Repo.Config().Wallet = &config.WalletConfig{}
+
+		_, err := n.DefaultSenderAddress()
+		require.Error(err)
+		require.Equal(ErrNoDefaultMessageFromAddress, err)
+	})
 }

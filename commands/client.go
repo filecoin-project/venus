@@ -142,7 +142,7 @@ var clientProposeDealCmd = &cmds.Command{
 		cmdkit.IntOption("bid", "ID of bid to propose a deal for"),
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("data", true, false, "bid to propose a deal with"),
+		cmdkit.StringArg("data", true, false, "cid of data to be referenced in deal"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		nd := GetNode(env)

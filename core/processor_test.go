@@ -462,11 +462,10 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	require.NoError(err)
 
 	// send 100 from addr1 -> addr2, by sending a message from addr0 to addr1
-	params1, err := abi.ToEncodedValues(addr2)
+	args1, err := abi.ToEncodedValues(addr2)
 	assert.NoError(err)
-	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
 
-	_, exitCode, err := ApplyQueryMessage(ctx, st, msg1, types.NewBlockHeight(0))
+	_, exitCode, err := CallQueryMethod(ctx, st, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
 	require.Equal(uint8(0), exitCode)
 	require.NoError(err)
 

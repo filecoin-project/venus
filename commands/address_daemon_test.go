@@ -1,11 +1,15 @@
 package commands
 
 import (
-	"fmt"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,36 +56,42 @@ func TestWalletBalance(t *testing.T) {
 func TestAddrsLookup(t *testing.T) {
 	assert := assert.New(t)
 
-	//Define 2 nodes, each with an address
-	d1 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
-	defer d1.ShutdownSuccess()
-	d1.CreateWalletAddr()
+	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()
+	defer d.ShutdownSuccess()
 
-	d2 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
-	defer d2.ShutdownSuccess()
-	d2.CreateWalletAddr()
+	var wg sync.WaitGroup
+	var minerAddr types.Address
 
-	//Connect daemons
-	d1.ConnectSuccess(d2)
+	newMinerPid := core.RequireRandomPeerID()
 
-	d1Raw := d1.RunSuccess("address ls")
-	d1Addrs := strings.Split(strings.Trim(d1Raw.ReadStdout(), "\n"), "\n")
-	d1WalletAddr := d1Addrs[len(d1Addrs)-1]
-	t.Logf("D1 Wallet Address: %s", d1WalletAddr)
-	assert.NotEmpty(d1WalletAddr)
+	// mine to ensure that an account actor is created
+	d.RunSuccess("mining", "once")
 
-	d2Raw := d2.RunSuccess("address ls")
-	d2Addrs := strings.Split(strings.Trim(d2Raw.ReadStdout(), "\n"), "\n")
-	d2WalletAddr := d2Addrs[len(d2Addrs)-1]
-	t.Logf("D2 Wallet Address: %s", d2WalletAddr)
-	assert.NotEmpty(d2WalletAddr)
+	// get the account actor's address
+	minerOwnerAddr := runSuccessFirstLine(d, "wallet", "addrs", "ls")
 
-	isD2IdRaw := d1.RunSuccess(fmt.Sprintf("address lookup %s", d2WalletAddr))
-	isD1IdRaw := d2.RunSuccess(fmt.Sprintf("address lookup %s", d1WalletAddr))
+	wg.Add(1)
+	go func() {
+		miner := d.RunSuccess("miner", "create",
+			"--from", minerOwnerAddr,
+			"--peerid", newMinerPid.Pretty(),
+			"1000000", "20",
+		)
+		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(err)
+		assert.NotEqual(addr, types.Address{})
+		minerAddr = addr
+		wg.Done()
+	}()
 
-	isD1Id := strings.Trim(isD1IdRaw.ReadStdout(), "\n")
-	isD2Id := strings.Trim(isD2IdRaw.ReadStdout(), "\n")
+	// ensure mining runs after the command in our goroutine
+	d.RunSuccess("mpool --wait-for-count=1")
 
-	assert.Equal(d1.GetID(), isD1Id)
-	assert.Equal(d2.GetID(), isD2Id)
+	d.RunSuccess("mining once")
+
+	wg.Wait()
+
+	lookupOut := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+
+	assert.Equal(newMinerPid.Pretty(), lookupOut)
 }

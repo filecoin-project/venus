@@ -129,15 +129,12 @@ var lsCmd = &cmds.Command{
 			payer = fromAddr
 		}
 
-		params, err := abi.ToEncodedValues(payer)
+		args, err := abi.ToEncodedValues(payer)
 		if err != nil {
 			return err
 		}
 
-		// TODO: Sign this message if needed
-		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "ls", params)
-
-		retValue, retCode, err := n.QueryMessage(msg)
+		retValue, retCode, err := n.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, &fromAddr)
 		if err != nil {
 			return err
 		}
@@ -203,21 +200,18 @@ var voucherCmd = &cmds.Command{
 			return ErrInvalidAmount
 		}
 
-		params, err := abi.ToEncodedValues(channel, amount)
+		args, err := abi.ToEncodedValues(channel, amount)
 		if err != nil {
 			return err
 		}
 
-		// TODO: Sign this message if needed
-		msg := types.NewMessage(fromAddr, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "voucher", params)
-
-		retValue, retCode, err := n.QueryMessage(msg)
+		retValue, retCode, err := n.CallQueryMethod(address.PaymentBrokerAddress, "voucher", args, &fromAddr)
 		if err != nil {
 			return err
 		}
 
 		if retCode != 0 {
-			return errors.New("Non-zero retrurn code executing voucher")
+			return errors.New("Non-zero return code executing voucher")
 		}
 
 		var voucher paymentbroker.PaymentVoucher

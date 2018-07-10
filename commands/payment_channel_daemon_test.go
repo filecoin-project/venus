@@ -80,7 +80,6 @@ func TestPaymentChannelLs(t *testing.T) {
 		amt := types.NewAttoFILFromFIL(10000)
 
 		daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
-
 			args := []string{"paych", "ls"}
 			args = append(args, "--from", address.TestAddress2.String())
 			args = append(args, "--payer", payer.String())

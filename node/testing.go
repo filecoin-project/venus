@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -77,12 +79,12 @@ func MakeOfflineNode(t *testing.T) *Node {
 
 // MustCreateMinerResult contains the result of a CreateMiner command
 type MustCreateMinerResult struct {
-	minerAddress *types.Address
-	err          error
+	MinerAddress *types.Address
+	Err          error
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, collateral types.AttoFIL) chan MustCreateMinerResult {
+func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 
@@ -100,8 +102,8 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	require.NoError(err)
 
 	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, pledge, core.RequireRandomPeerID(), collateral)
-		resultChan <- MustCreateMinerResult{minerAddress: minerAddr, err: err}
+		minerAddr, err := node.CreateMiner(ctx, from, pledge, pid, collateral)
+		resultChan <- MustCreateMinerResult{MinerAddress: minerAddr, Err: err}
 		wg.Done()
 	}()
 

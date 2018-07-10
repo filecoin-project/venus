@@ -63,6 +63,10 @@ func (w *Wallet) Find(addr types.Address) (Backend, error) {
 
 // Addresses retrieves all stored addresses.
 // Safe for concurrent access.
+// Note that the Golang runtime randomizes map iteration order, so the order in
+// which addresses appear in the returned list may differ across Addresses()
+// calls for the same wallet.
+// TODO: Should we make this ordering deterministic?
 func (w *Wallet) Addresses() []types.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()

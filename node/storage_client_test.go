@@ -6,10 +6,25 @@ import (
 	"time"
 
 	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
+	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/lookup"
+	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 )
+
+type mockLookupService struct {
+	peerIdsByMinerAddr map[types.Address]peer.ID
+}
+
+var _ lookup.PeerLookupService = &mockLookupService{}
+
+// GetPeerIdByMinerAddress provides an interface to a map from miner address to libp2p identity.
+func (mls *mockLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
+	return mls.peerIdsByMinerAddr[minerAddr], nil
+}
 
 func TestDealProtocolClient(t *testing.T) {
 	t.Parallel()
@@ -19,15 +34,25 @@ func TestDealProtocolClient(t *testing.T) {
 	connect(t, nds[0], nds[1])
 	time.Sleep(time.Millisecond * 10) // wait for connect notifications to complete
 
-	sm := NewStorageMarket(nds[0])
-	client := NewStorageClient(nds[1])
-	clientAddr, err := nds[1].NewAddress()
-	assert.NoError(err)
-
 	minerAddr, err := nds[0].NewAddress()
 	assert.NoError(err)
 	minerOwner, err := nds[0].NewAddress()
 	assert.NoError(err)
+
+	mls := &mockLookupService{
+		peerIdsByMinerAddr: map[types.Address]peer.ID{
+			minerAddr: nds[0].Host.ID(),
+		},
+	}
+
+	nds[0].Lookup = mls
+	nds[1].Lookup = mls
+
+	clientAddr, err := nds[1].NewAddress()
+	assert.NoError(err)
+
+	sm := NewStorageMarket(nds[0])
+	client := NewStorageClient(nds[1])
 
 	msa := newMockMsp()
 	client.smi = msa

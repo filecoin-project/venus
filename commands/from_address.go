@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func fromAddress(opts cmdkit.OptMap, node *node.Node) (ret types.Address, err error) {
+func fromAddress(opts cmdkit.OptMap, nd *node.Node) (ret types.Address, err error) {
 	o := opts["from"]
 	if o != nil {
 		ret, err = types.NewAddressFromString(o.(string))
@@ -16,24 +16,12 @@ func fromAddress(opts cmdkit.OptMap, node *node.Node) (ret types.Address, err er
 			err = errors.Wrap(err, "invalid from address")
 		}
 	} else {
-		ret, err = defaultWalletAddress(node)
-		if err != nil || ret != (types.Address{}) {
+		ret, err = nd.DefaultSenderAddress()
+		if (err != nil && err != node.ErrNoDefaultMessageFromAddress) || ret != (types.Address{}) {
 			return
 		}
 
-		if len(node.Wallet.Addresses()) == 1 {
-			ret = node.Wallet.Addresses()[0]
-		} else {
-			err = ErrCouldNotDefaultFromAddress
-		}
+		err = ErrCouldNotDefaultFromAddress
 	}
 	return
-}
-
-func defaultWalletAddress(n *node.Node) (types.Address, error) {
-	addr, err := n.Repo.Config().Get("wallet.defaultAddress")
-	if err != nil {
-		return types.Address{}, err
-	}
-	return addr.(types.Address), nil
 }

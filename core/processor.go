@@ -281,21 +281,18 @@ var (
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
 
-// ApplyQueryMessage sends a message into the VM to query actor state. Only read-only methods should be called on
-// the actor as the state tree will be rolled back after the execution.
-func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, bh *types.BlockHeight) ([][]byte, uint8, error) {
-	fromActor, err := st.GetActor(ctx, msg.From)
+// CallQueryMethod calls a method on an actor in the given state tree. It does
+// not make any changes to the state/blockchain and is useful for interrogating
+// actor state. Block height bh is optional; some methods will ignore it.
+func CallQueryMethod(ctx context.Context, st state.Tree, to types.Address, method string, params []byte, from types.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
+	fromActor, err := st.GetActor(ctx, from)
 	if state.IsActorNotFoundError(err) {
 		return nil, 1, errAccountNotFound
 	} else if err != nil {
-		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get From actor %s", msg.From)
+		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get From actor %s", from)
 	}
 
-	if msg.From == msg.To {
-		return nil, 1, errSelfSend
-	}
-
-	toActor, err := st.GetActor(ctx, msg.To)
+	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
 	}
@@ -303,7 +300,16 @@ func ApplyQueryMessage(ctx context.Context, st state.Tree, msg *types.Message, b
 	// guarantees changes won't make it to stored state tree
 	cachedSt := state.NewCachedStateTree(st)
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, bh)
+	msg := &types.Message{
+		To:     to,
+		From:   from,
+		Nonce:  0,
+		Value:  nil,
+		Method: method,
+		Params: params,
+	}
+
+	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err

@@ -185,7 +185,7 @@ func (o *Output) AssertSuccess() *Output {
 	assert.NoError(o.test, o.Error)
 	oErr := o.ReadStderr()
 
-	assert.Equal(o.test, o.Code, 0, oErr)
+	assert.Equal(o.test, 0, o.Code, oErr)
 	assert.NotContains(o.test, oErr, "CRITICAL")
 	assert.NotContains(o.test, oErr, "ERROR")
 	assert.NotContains(o.test, oErr, "WARNING")
