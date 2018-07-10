@@ -1,14 +1,11 @@
 package commands
 
 import (
-	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -53,45 +50,35 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal("0", balance.readStdoutTrimNewlines())
 }
 
-func TestAddrsLookup(t *testing.T) {
+func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
 
 	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()
 	defer d.ShutdownSuccess()
 
-	var wg sync.WaitGroup
-	var minerAddr types.Address
+	minerPidForUpdate := core.RequireRandomPeerID()
 
-	newMinerPid := core.RequireRandomPeerID()
+	minerAddr := d.CreateMinerAddr()
 
-	// mine to ensure that an account actor is created
-	d.RunSuccess("mining", "once")
+	// capture original, pre-update miner pid
+	lookupOutA := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
 
-	// get the account actor's address
-	minerOwnerAddr := runSuccessFirstLine(d, "wallet", "addrs", "ls")
+	// update the miner's peer ID
+	updateMsg := runSuccessFirstLine(d,
+		"miner", "update-peerid",
+		minerAddr.String(),
+		minerPidForUpdate.Pretty(),
+	)
 
-	wg.Add(1)
-	go func() {
-		miner := d.RunSuccess("miner", "create",
-			"--from", minerOwnerAddr,
-			"--peerid", newMinerPid.Pretty(),
-			"1000000", "20",
-		)
-		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, types.Address{})
-		minerAddr = addr
-		wg.Done()
-	}()
-
-	// ensure mining runs after the command in our goroutine
+	// ensure mining happens after update message gets included in mempool
 	d.RunSuccess("mpool --wait-for-count=1")
-
 	d.RunSuccess("mining once")
 
-	wg.Wait()
+	// wait for message to be included in a block
+	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
 
-	lookupOut := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
-
-	assert.Equal(newMinerPid.Pretty(), lookupOut)
+	// use the address lookup command to ensure update happened
+	lookupOutB := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
+	assert.NotEqual(lookupOutA, lookupOutB)
 }

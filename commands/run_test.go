@@ -17,13 +17,15 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 const (
@@ -336,6 +338,16 @@ func (td *TestDaemon) CreateMinerAddr() types.Address {
 
 	wg.Wait()
 	return minerAddr
+}
+
+// WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
+// block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
+func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid *cid.Cid) {
+	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
+	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
+	rcpt := &types.MessageReceipt{}
+	require.NoError(td.test, json.Unmarshal([]byte(trim), rcpt))
+	require.Equal(td.test, 0, int(rcpt.ExitCode))
 }
 
 // CreateWalletAddr adds a new address to the daemons wallet and

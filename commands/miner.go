@@ -19,8 +19,9 @@ var minerCmd = &cmds.Command{
 		Tagline: "Manage miner operations",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"create":  minerCreateCmd,
-		"add-ask": minerAddAskCmd,
+		"create":        minerCreateCmd,
+		"add-ask":       minerAddAskCmd,
+		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
 
@@ -72,6 +73,67 @@ message to be mined as this is required to return the address of the new miner.`
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *types.Address) error {
 			return PrintString(w, a)
+		}),
+	},
+}
+
+var minerUpdatePeerIDCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Change the libp2p identity that a miner is operating",
+		ShortDescription: `Issues a new message to the network to update the miner's libp2p identity.`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("address", true, false, "miner address to update peer ID for"),
+		cmdkit.StringArg("peerid", true, false, "b58-encoded libp2p peer ID that the miner will operate"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("from", "address to send from"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		n := GetNode(env)
+
+		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		fromAddr, err := fromAddress(req.Options, n)
+		if err != nil {
+			return err
+		}
+
+		newPid, err := peer.IDB58Decode(req.Arguments[1])
+		if err != nil {
+			return err
+		}
+
+		args, err := abi.ToEncodedValues(newPid)
+		if err != nil {
+			return err
+		}
+
+		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "updatePeerID", args)
+		if err != nil {
+			return err
+		}
+
+		if err := n.AddNewMessage(req.Context, msg); err != nil {
+			return err
+		}
+
+		c, err := msg.Cid()
+		if err != nil {
+			return err
+		}
+
+		re.Emit(c) // nolint: errcheck
+
+		return nil
+	},
+	Type: cid.Cid{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+			return PrintString(w, c)
 		}),
 	},
 }
