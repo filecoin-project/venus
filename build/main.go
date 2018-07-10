@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -52,14 +53,46 @@ func deps() {
 		"gometalinter --install",
 		"go get -u github.com/stretchr/testify",
 		"go get -u github.com/xeipuuv/gojsonschema",
-
-		"go get -u k8s.io/api/...",                       // iptb dep
-		"go get -u k8s.io/client-go/...",                 // iptb dep
-		"go get -u k8s.io/apimachinery/pkg/apis/meta/v1", // iptb dep
 	}
 
 	for _, name := range list {
 		log.Println(run(name))
+	}
+}
+
+// smartdeps avoids fetching from the network
+func smartdeps() {
+	log.Println("Installing dependencies...")
+
+	// commands we need to run
+	cmds := []string{
+		"git submodule update --init",
+		"gx install",
+		"gx-go rewrite",
+		"gometalinter --install",
+	}
+	// packages we need to install
+	pkgs := []string{
+		"github.com/alecthomas/gometalinter",
+		"github.com/stretchr/testify",
+		"github.com/whyrusleeping/gx",
+		"github.com/whyrusleeping/gx-go",
+		"github.com/xeipuuv/gojsonschema",
+	}
+
+	gopath := os.Getenv("GOPATH")
+	// if the package exists locally install it, else fetch it
+	for _, pkg := range pkgs {
+		pkgpath := filepath.Join(gopath, "src", pkg)
+		if _, err := os.Stat(pkgpath); os.IsNotExist(err) {
+			log.Println(run(fmt.Sprintf("go get %s", pkg)))
+		} else {
+			log.Println(run(fmt.Sprintf("go install %s", pkg)))
+		}
+	}
+
+	for _, op := range cmds {
+		log.Println(run(op))
 	}
 }
 
@@ -160,6 +193,8 @@ func main() {
 	switch cmd {
 	case "deps":
 		deps()
+	case "smartdeps":
+		smartdeps()
 	case "lint":
 		lint(args[1:]...)
 	case "build-fakecoin":
