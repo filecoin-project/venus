@@ -60,7 +60,7 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 		var tif core.GenesisInitFunc
 		re.Emit(fmt.Sprintf("initializing filecoin node with wallet file: %s\n", walletFile)) // nolint: errcheck
 
-		nodeAddrs, err := loadAddress(walletFile, rep)
+		nodeAddrs, err := loadAddresses(walletFile, rep)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load wallet file: %s", walletFile)
 		}
@@ -83,7 +83,7 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 	return node.Init(req.Context, rep, core.InitGenesis)
 }
 
-func loadAddress(file string, r repo.Repo) ([]types.Address, error) {
+func loadAddresses(file string, r repo.Repo) ([]types.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up wallet backend")
@@ -93,6 +93,11 @@ func loadAddress(file string, r repo.Repo) ([]types.Address, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read file")
 	}
+
+	if len(backend.Addresses()) == 0 {
+		return nil, errors.New("wallet file did not contain any addresses")
+	}
+
 	return backend.Addresses(), nil
 }
 

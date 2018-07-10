@@ -87,7 +87,6 @@ func (backend *DSBackend) WriteToFile(file string) error {
 		// should give us the addresses and their keyinfo
 		KeysOnly: false,
 	})
-
 	if err != nil {
 		return errors.Wrap(err, "failed to query datastore")
 	}
@@ -100,52 +99,53 @@ func (backend *DSBackend) WriteToFile(file string) error {
 	wt := new(StoredWallet)
 	var aak AddressAndKeys
 	for _, el := range list {
-		// Addresses start with a forward slash
 		aak.Address = strings.Trim(el.Key, "/")
-		elb, ok := el.Value.([]byte)
-		if !ok {
-			panic("here")
-		}
+		elb := el.Value.([]byte)
 
 		if err = aak.KeyInfo.Unmarshal(elb); err != nil {
-			return err
+			return errors.Wrap(err, "failed to unmarshal KeyInfo")
 		}
 		wt.AddressKeyPairs = append(wt.AddressKeyPairs, aak)
 	}
 
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to open wallet file for writing")
 	}
+	defer f.Close() // nolint: errcheck
 
 	if err := toml.NewEncoder(f).Encode(wt); err != nil {
-		return err
+		return errors.Wrap(err, "faild to encode wallet")
 	}
 
-	return f.Close()
+	return nil
 }
 
 // LoadFromFile reads in a file representing a wallet
 func (backend *DSBackend) LoadFromFile(file string) error {
 	walletFile, err := ioutil.ReadFile(file)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to read wallet file")
 	}
 
 	wt := new(StoredWallet)
 	if err = toml.Unmarshal(walletFile, &wt); err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal wallet file")
 	}
 
-	for _, thing := range wt.AddressKeyPairs {
-		kib, err := thing.KeyInfo.Marshal()
+	if len(wt.AddressKeyPairs) == 0 {
+		return errors.New("wallet file does not contain any addresses")
+	}
+
+	for _, akp := range wt.AddressKeyPairs {
+		kib, err := akp.KeyInfo.Marshal()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to marshal KeyInfo")
 		}
 
-		addr, err := types.NewAddressFromString(thing.Address)
+		addr, err := types.NewAddressFromString(akp.Address)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to make address from string: %s", akp.Address)
 		}
 
 		if err := backend.ds.Put(ds.NewKey(addr.String()), kib); err != nil {
