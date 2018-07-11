@@ -3,6 +3,19 @@ package exec
 import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
+
+	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+)
+
+// ErrorCode is an enumerated set of errors that VMContext methods can return.
+type ErrorCode uint8
+
+const (
+	// Ok indicates that no error occurred
+	Ok = ErrorCode(0)
+
+	// ErrDecode indicates that a chunk an actor tried to write could not be decoded
+	ErrDecode = ErrorCode(33)
 )
 
 // Exports describe the public methods of an actor.
@@ -38,8 +51,7 @@ type FunctionSignature struct {
 // VMContext defines the ABI interface exposed to actors.
 type VMContext interface {
 	Message() *types.Message
-	ReadStorage() []byte
-	WriteStorage(memory []byte) error
+	Storage() Storage
 	Send(to types.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (types.Address, error)
 	BlockHeight() *types.BlockHeight
@@ -47,4 +59,15 @@ type VMContext interface {
 
 	// TODO: replace with proper init actor
 	TEMPCreateActor(addr types.Address, act *types.Actor) error
+
+	// TODO: Remove these when Storage above is completely implemented
+	ReadStorage() []byte
+	WriteStorage(memory []byte) error
+}
+
+// Storage defines the storage module exposed to actors.
+type Storage interface {
+	// TODO: Forgot that Put() can fail in the spec, need to update.
+	Put([]byte) (*cid.Cid, ErrorCode)
+	Get(*cid.Cid) ([]byte, bool)
 }

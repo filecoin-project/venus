@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	pid := core.RequireRandomPeerID()
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), []byte{}, pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Nil(result.ExecutionError)
 
@@ -75,7 +76,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(50), []byte{}, core.RequireRandomPeerID())
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
 }
@@ -98,13 +99,13 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(err)
 
 	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), []byte{}, core.RequireRandomPeerID())
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
@@ -136,7 +137,7 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
 	pdata := actor.MustConvertParams(types.NewBytesAmount(15000), publicKey, core.RequireRandomPeerID())
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
 }
@@ -156,7 +157,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(600), "addBid", pdata)
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
@@ -165,7 +166,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// create another bid
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(15), types.NewBytesAmount(80))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 1, types.NewAttoFILFromFIL(1200), "addBid", pdata)
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
@@ -174,7 +175,7 @@ func TestStorageMarketAddBid(t *testing.T) {
 	// try to create a bid, but send wrong value
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(90), types.NewBytesAmount(100))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewAttoFILFromFIL(600), "addBid", pdata)
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), "must send price * size funds to create bid")
 }
@@ -203,7 +204,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	// create a bid
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(20), types.NewBytesAmount(30))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(600), "addBid", pdata)
-	result, err := core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
@@ -216,7 +217,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(25), types.NewBytesAmount(35))
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, minerAddr, nonce, nil, "addAsk", pdata)
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
@@ -226,7 +227,7 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(0), big.NewInt(0), sig, ref.Bytes()) // askID, bidID, signature, datacid
 	nonce = core.MustGetNonce(st, address.TestAddress)
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, nil, "addDeal", pdata)
-	result, err = core.ApplyMessage(ctx, st, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
@@ -267,7 +268,7 @@ func createTestMiner(require *require.Assertions, st state.Tree, key []byte) typ
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 
-	result, err := core.ApplyMessage(context.Background(), st, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(context.Background(), st, vm.Storage{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	addr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
