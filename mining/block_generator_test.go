@@ -118,14 +118,14 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	stateRoot := newCid()
 	baseBlock1 := types.Block{
 		Parents:      parents,
-		Height:       uint64(100),
-		ParentWeight: uint64(1000),
+		Height:       types.Uint64(100),
+		ParentWeight: types.Uint64(1000),
 		StateRoot:    stateRoot,
 	}
 	baseBlock2 := types.Block{
 		Parents:      parents,
-		Height:       uint64(100),
-		ParentWeight: uint64(1000),
+		Height:       types.Uint64(100),
+		ParentWeight: types.Uint64(1000),
 		StateRoot:    stateRoot,
 		Nonce:        1,
 	}
@@ -133,8 +133,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
-	assert.Equal(uint64(101), blk.Height)
-	assert.Equal(uint64(1020.0), blk.ParentWeight)
+	assert.Equal(types.Uint64(101), blk.Height)
+	assert.Equal(types.Uint64(1020), blk.ParentWeight)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -173,7 +173,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.Len(pool.Pending(), 4)
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
-		Height:    uint64(100),
+		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
 	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
@@ -209,8 +209,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
-	h := uint64(100)
-	pw := uint64(1000)
+	h := types.Uint64(100)
+	pw := types.Uint64(1000)
 	baseBlock := types.Block{
 		Height:       h,
 		ParentWeight: pw,
@@ -255,7 +255,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
-		Height:    uint64(100),
+		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
 	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
@@ -299,7 +299,7 @@ func TestGenerateError(t *testing.T) {
 	assert.Len(pool.Pending(), 1)
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
-		Height:    uint64(100),
+		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)

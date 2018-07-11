@@ -21,7 +21,7 @@ func SomeCid() *cid.Cid {
 // The Cid is unique wrt the closure returned, not globally. You can use this function
 // in tests.
 func NewCidForTestGetter() func() *cid.Cid {
-	i := uint64(31337)
+	i := Uint64(31337)
 	return func() *cid.Cid {
 		b := &Block{Height: i}
 		i++
@@ -65,7 +65,7 @@ func NewMessageForTestGetter() func() *Message {
 // has not been persisted into the store.
 func NewBlockForTest(parent *Block, nonce uint64) *Block {
 	block := &Block{
-		Nonce:           nonce,
+		Nonce:           Uint64(nonce),
 		Messages:        []*Message{},
 		MessageReceipts: []*MessageReceipt{},
 	}

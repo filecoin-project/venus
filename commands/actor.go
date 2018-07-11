@@ -109,7 +109,7 @@ func makeActorView(act *types.Actor, addr string, actType exec.ExecutableActor) 
 		ActorType: actorType,
 		Address:   addr,
 		Code:      act.Code,
-		Nonce:     act.Nonce,
+		Nonce:     uint64(act.Nonce),
 		Balance:   act.Balance,
 		Exports:   exports,
 		Memory:    memory,

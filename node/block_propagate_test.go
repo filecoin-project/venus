@@ -50,17 +50,17 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: 1, ParentWeight: uint64(10), StateRoot: baseBlk.StateRoot}
+	nextBlk := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: types.Uint64(1), ParentWeight: types.Uint64(10), StateRoot: baseBlk.StateRoot}
 
 	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 75)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk))
 
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 75)
 
 	otherBest := nodes[1].ChainMgr.GetBestBlock()
-	assert.Equal(otherBest.Cid(), nextBlk.Cid())
+	assert.Equal(otherBest.Cid(), nextBlk.Cid(), "Blocks not equal: %#+v, %#+v", otherBest, nextBlk)
 }
 
 func TestChainSync(t *testing.T) {
@@ -73,9 +73,9 @@ func TestChainSync(t *testing.T) {
 	defer stopNodes(nodes)
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk1 := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: 1, ParentWeight: uint64(10), StateRoot: baseBlk.StateRoot}
-	nextBlk2 := &types.Block{Parents: types.NewSortedCidSet(nextBlk1.Cid()), Height: 2, ParentWeight: uint64(20), StateRoot: baseBlk.StateRoot}
-	nextBlk3 := &types.Block{Parents: types.NewSortedCidSet(nextBlk2.Cid()), Height: 3, ParentWeight: uint64(30), StateRoot: baseBlk.StateRoot}
+	nextBlk1 := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: types.Uint64(1), ParentWeight: types.Uint64(10), StateRoot: baseBlk.StateRoot}
+	nextBlk2 := &types.Block{Parents: types.NewSortedCidSet(nextBlk1.Cid()), Height: types.Uint64(2), ParentWeight: types.Uint64(20), StateRoot: baseBlk.StateRoot}
+	nextBlk3 := &types.Block{Parents: types.NewSortedCidSet(nextBlk2.Cid()), Height: types.Uint64(3), ParentWeight: types.Uint64(30), StateRoot: baseBlk.StateRoot}
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

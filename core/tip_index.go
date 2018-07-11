@@ -12,10 +12,10 @@ import (
 type tipIndex map[uint64]tipSetsByParents
 
 func (ti tipIndex) addBlock(b *types.Block) error {
-	tsbp, ok := ti[b.Height]
+	tsbp, ok := ti[uint64(b.Height)]
 	if !ok {
 		tsbp = tipSetsByParents{}
-		ti[b.Height] = tsbp
+		ti[uint64(b.Height)] = tsbp
 	}
 	return tsbp.addBlock(b)
 }
@@ -100,7 +100,7 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 	if err != nil {
 		return err
 	}
-	if b.Height != h || !b.Parents.Equals(p) || b.ParentWeight != pW {
+	if uint64(b.Height) != h || !b.Parents.Equals(p) || uint64(b.ParentWeight) != pW {
 		return ErrBadTipSetAdd
 	}
 	id := b.Cid()
@@ -171,7 +171,7 @@ func (ts TipSet) Height() (uint64, error) {
 	if len(ts) == 0 {
 		return uint64(0), ErrEmptyTipSet
 	}
-	return ts.ToSlice()[0].Height, nil
+	return uint64(ts.ToSlice()[0].Height), nil
 }
 
 // Parents returns the parents of a tipset.
@@ -187,7 +187,7 @@ func (ts TipSet) ParentWeight() (uint64, error) {
 	if len(ts) == 0 {
 		return uint64(0), ErrEmptyTipSet
 	}
-	return ts.ToSlice()[0].ParentWeight, nil
+	return uint64(ts.ToSlice()[0].ParentWeight), nil
 }
 
 // BaseBlockFromTipSets is a likely TEMPORARY helper to extract a base block

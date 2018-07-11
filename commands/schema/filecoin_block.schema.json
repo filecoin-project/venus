@@ -9,7 +9,7 @@
       "additionalProperties": false,
       "properties": {
         "height": {
-          "type": "integer"
+          "type": "string"
         },
         "messageReceipts": {
           "items": {
@@ -33,7 +33,7 @@
           "type": "string"
         },
         "nonce": {
-          "type": "integer"
+          "type": "string"
         },
         "parents": {
           "items": {
@@ -45,7 +45,7 @@
           ]
         },
         "parentWeight": {
-          "type": "number"
+          "type": "string"
         },
         "stateRoot": {
           "$ref": "#/definitions/Cid"
@@ -92,7 +92,7 @@
           "type": "string"
         },
         "nonce": {
-          "type": "integer"
+          "type": "string"
         },
         "params": {
           "oneOf": [

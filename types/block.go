@@ -26,13 +26,13 @@ type Block struct {
 
 	// ParentWeight is the aggregate chain weight of the parent set.
 	// TODO is float64 what we want here?
-	ParentWeight uint64 `json:"parentWeight"`
+	ParentWeight Uint64 `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height uint64 `json:"height"`
+	Height Uint64 `json:"height"`
 
 	// Nonce is a temporary field used to differentiate blocks for testing
-	Nonce uint64 `json:"nonce"`
+	Nonce Uint64 `json:"nonce"`
 
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
@@ -84,7 +84,7 @@ func DecodeBlock(b []byte) (*Block, error) {
 // used in the fork choice rule
 // Choosing height as the score gives us the same consensus rules as bitcoin
 func (b *Block) Score() uint64 {
-	return b.Height
+	return uint64(b.Height)
 }
 
 // Equals returns true if the Block is equal to other.

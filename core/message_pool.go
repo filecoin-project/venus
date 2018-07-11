@@ -234,8 +234,8 @@ func LargestNonce(pool *MessagePool, address types.Address) (largest uint64, fou
 	for _, m := range pool.Pending() {
 		if m.From == address {
 			found = true
-			if m.Nonce > largest {
-				largest = m.Nonce
+			if uint64(m.Nonce) > largest {
+				largest = uint64(m.Nonce)
 			}
 		}
 	}

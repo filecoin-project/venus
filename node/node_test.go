@@ -497,7 +497,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 
 		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
 		assert.NoError(err)
-		assert.Equal(uint64(42), msg.Nonce)
+		assert.Equal(uint64(42), uint64(msg.Nonce))
 	})
 }
 

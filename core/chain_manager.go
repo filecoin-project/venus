@@ -387,14 +387,14 @@ func (cm *ChainManager) validateTipSetStructure(ctx context.Context, blks []*typ
 	var h uint64
 	var p types.SortedCidSet
 	if len(blks) > 0 {
-		h = blks[0].Height
+		h = uint64(blks[0].Height)
 		p = blks[0].Parents
 	}
 	for _, blk := range blks {
 		if err := cm.validateBlockStructure(ctx, blk); err != nil {
 			return err
 		}
-		if blk.Height != h {
+		if uint64(blk.Height) != h {
 			return ErrBadTipSet
 		}
 		if !p.Equals(blk.Parents) {
@@ -667,7 +667,7 @@ func (cm *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
 		panic("best tip set must have at least one block")
 	}
 	// TODO: this method should be reworked to include non-longest heaviest
-	if ts.ToSlice()[0].Height >= h {
+	if uint64(ts.ToSlice()[0].Height) >= h {
 		return
 	}
 
@@ -959,7 +959,7 @@ func (cm *ChainManager) walkChain(tips []*types.Block, cb walkChainCallback) err
 func (cm *ChainManager) GetTipSetByBlock(blk *types.Block) (TipSet, error) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	ts, ok := cm.tips[blk.Height][keyForParentSet(blk.Parents)]
+	ts, ok := cm.tips[uint64(blk.Height)][keyForParentSet(blk.Parents)]
 	if !ok {
 		return TipSet{}, errors.New("block's tipset not indexed by chain_mgr")
 	}

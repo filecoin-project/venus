@@ -394,9 +394,9 @@ func TestOrderMessagesByNonce(t *testing.T) {
 		for _, m := range ordered {
 			last, seen := lastSeen[m.From]
 			if seen {
-				assert.True(last <= m.Nonce)
+				assert.True(last <= uint64(m.Nonce))
 			}
-			lastSeen[m.From] = m.Nonce
+			lastSeen[m.From] = uint64(m.Nonce)
 		}
 	})
 }

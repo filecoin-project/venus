@@ -47,7 +47,7 @@ type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree) (*Proce
 // See comments on ApplyMessage for specific intent.
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
-	bh := types.NewBlockHeight(blk.Height)
+	bh := types.NewBlockHeight(uint64(blk.Height))
 	res, faultErr := ApplyMessages(ctx, blk.Messages, st, bh)
 	if faultErr != nil {
 		return emptyResults, faultErr

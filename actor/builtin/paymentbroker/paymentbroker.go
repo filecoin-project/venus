@@ -160,7 +160,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 			storage.Channels[ctx.Message().From.String()] = byPayer
 		}
 
-		channelID := types.NewChannelID(ctx.Message().Nonce)
+		channelID := types.NewChannelID(uint64(ctx.Message().Nonce))
 
 		if _, found := byPayer[channelID.String()]; found {
 			return nil, Errors[ErrDuplicateChannel]

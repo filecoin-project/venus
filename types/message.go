@@ -26,7 +26,7 @@ type Message struct {
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
-	Nonce uint64 `json:"nonce"`
+	Nonce Uint64 `json:"nonce"`
 
 	Value *AttoFIL `json:"value"`
 
@@ -60,7 +60,7 @@ func NewMessage(from, to Address, nonce uint64, value *AttoFIL, method string, p
 	return &Message{
 		From:   from,
 		To:     to,
-		Nonce:  nonce,
+		Nonce:  Uint64(nonce),
 		Value:  value,
 		Method: method,
 		Params: params,

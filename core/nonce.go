@@ -22,7 +22,7 @@ func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address type
 		return 0, xerrors.New("actor not an account or empty actor")
 	}
 
-	nonce := actor.Nonce
+	nonce := uint64(actor.Nonce)
 
 	// TODO: consider what if anything to do if there's a gap with
 	// what's in the pool.

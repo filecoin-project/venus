@@ -92,11 +92,11 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 
 	next := &types.Block{
 		Miner:           rewardAddress,
-		Height:          blockHeight,
+		Height:          types.Uint64(blockHeight),
 		Messages:        res.SuccessfulMessages,
 		MessageReceipts: receipts,
 		Parents:         baseTipSet.ToSortedCidSet(),
-		ParentWeight:    weight,
+		ParentWeight:    types.Uint64(weight),
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
 	}

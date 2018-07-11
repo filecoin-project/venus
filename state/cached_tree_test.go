@@ -40,7 +40,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	cAct1, err := tree.GetActor(ctx, addr1)
 	require.NoError(err)
 
-	assert.Equal(uint64(1), cAct1.Nonce)
+	assert.Equal(uint64(1), uint64(cAct1.Nonce))
 	assert.Equal(act1Storage, cAct1.ReadStorage())
 
 	// altering act1 doesn't alter it in underlying cache
@@ -51,7 +51,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct1, err := underlying.GetActor(ctx, addr1)
 	require.NoError(err)
 
-	assert.Equal(uint64(1), uAct1.Nonce)
+	assert.Equal(uint64(1), uint64(uAct1.Nonce))
 	assert.Equal(act1Storage, uAct1.ReadStorage())
 
 	// retrieving from the cache again returns the same instance
@@ -66,14 +66,14 @@ func TestCachedStateGetCommit(t *testing.T) {
 	uAct1Again, err := underlying.GetActor(ctx, addr1)
 	require.NoError(err)
 
-	assert.Equal(uint64(2), uAct1Again.Nonce)
+	assert.Equal(uint64(2), uint64(uAct1Again.Nonce))
 	assert.Equal([]byte("goodbye"), uAct1Again.ReadStorage())
 
 	// commit doesn't affect untouched actors
 	uAct2, err := underlying.GetActor(ctx, addr2)
 	require.NoError(err)
 
-	assert.Equal(uint64(0), uAct2.Nonce)
+	assert.Equal(uint64(0), uint64(uAct2.Nonce))
 	assert.Equal([]byte("world"), uAct2.ReadStorage())
 }
 

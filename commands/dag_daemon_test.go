@@ -26,15 +26,16 @@ func TestDagDaemon(t *testing.T) {
 
 		op1 := d.RunSuccess("chain", "ls", "--enc", "json")
 		result1 := op1.readStdoutTrimNewlines()
-
 		genesisBlockJSONStr := bytes.Split([]byte(result1), []byte{'\n'})[0]
 
 		var expected types.Block
-		json.Unmarshal(genesisBlockJSONStr, &expected)
+		err := json.Unmarshal(genesisBlockJSONStr, &expected)
+		assert.NoError(err)
 
 		// get an IPLD node from the DAG by its CID
 
 		op2 := d.RunSuccess("dag", "get", expected.Cid().String(), "--enc", "json")
+
 		result2 := op2.readStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJson(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
@@ -44,6 +45,8 @@ func TestDagDaemon(t *testing.T) {
 
 		var actual types.Block
 		cbor.DecodeInto(ipldnode.RawData(), &actual)
+		// assert.NoError(err)
+		// TODO Enable ^^ and debug why Block.Miner isn't being de/encoded properly.
 
 		// CIDs should be equal
 

@@ -103,7 +103,7 @@ func (h *Hello) getOurHelloMessage() *HelloMsg {
 	return &HelloMsg{
 		GenesisHash:     h.genesis,
 		BestBlockCid:    best.Cid(),
-		BestBlockHeight: best.Height,
+		BestBlockHeight: uint64(best.Height),
 	}
 }
 

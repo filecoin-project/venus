@@ -110,7 +110,7 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
 func (ctx *Context) AddressForNewActor() (types.Address, error) {
-	return computeActorAddress(ctx.message.From, ctx.from.Nonce)
+	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
 }
 
 func computeActorAddress(creator types.Address, nonce uint64) (types.Address, error) {

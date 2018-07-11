@@ -35,7 +35,7 @@ var (
 type Actor struct {
 	Code    *cid.Cid
 	Memory  []byte
-	Nonce   uint64
+	Nonce   Uint64
 	Balance *AttoFIL
 }
 

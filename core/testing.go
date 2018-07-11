@@ -23,17 +23,17 @@ func MkChild(blks []*types.Block, parentState state.Tree, stateRoot *cid.Cid, no
 	var weight uint64
 	var height uint64
 	var parents types.SortedCidSet
-	weight = uint64(len(blks))*10 + blks[0].ParentWeight
-	height = blks[0].Height + 1
+	weight = uint64(len(blks))*10 + uint64(blks[0].ParentWeight)
+	height = uint64(blks[0].Height) + 1
 	parents = types.SortedCidSet{}
 	for _, blk := range blks {
 		(&parents).Add(blk.Cid())
 	}
 	return &types.Block{
 		Parents:         parents,
-		Height:          height,
-		ParentWeight:    weight,
-		Nonce:           nonce,
+		Height:          types.Uint64(height),
+		ParentWeight:    types.Uint64(weight),
+		Nonce:           types.Uint64(nonce),
 		StateRoot:       stateRoot,
 		Messages:        []*types.Message{},
 		MessageReceipts: []*types.MessageReceipt{},
@@ -199,7 +199,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
-				Height:  height + 1,
+				Height:  types.Uint64(height + 1),
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
@@ -209,7 +209,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][
 			child := &types.Block{
 				Messages: msgs,
 				Parents:  parents.ToSortedCidSet(),
-				Height:   height + 1,
+				Height:   types.Uint64(height + 1),
 			}
 			MustPut(store, child)
 			ts[child.Cid().String()] = child
