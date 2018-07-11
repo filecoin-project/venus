@@ -190,7 +190,6 @@ func TestWalletLoadSave(t *testing.T) {
 
 	t.Log("second backend is equivalent to first backend")
 	assert.Equal(fs.Addresses(), fs2.Addresses())
-
 }
 
 func TestWalletLoadSaveErrors(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -24,6 +25,7 @@ var initCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
+		cmdkit.StringOption("genesisfil", "filecoin allocated to each address when '--walletfile' option is passed").WithDefault("10000000"),
 	},
 	Run: initRun,
 	Encoders: cmds.EncoderMap{
@@ -70,10 +72,14 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 		// wallet.defaultAddress == "" we set the default here
 		rep.Config().Wallet.DefaultAddress = nodeAddrs[0]
 
+		genesisFil, _ := req.Options["genesisfil"].(string)
+		genFil, err := strconv.ParseUint(genesisFil, 10, 64)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse genesisfil amount")
+		}
 		var actorOps []th.GenOption
 		for i := range nodeAddrs {
-			// TODO: would be nice to choose the amount to allocate to each address
-			actorOps = append(actorOps, th.ActorAccount(nodeAddrs[i], types.NewAttoFILFromFIL(10000000)))
+			actorOps = append(actorOps, th.ActorAccount(nodeAddrs[i], types.NewAttoFILFromFIL(genFil)))
 		}
 		tif = th.MakeGenesisFunc(actorOps...)
 		return node.Init(req.Context, rep, tif)
