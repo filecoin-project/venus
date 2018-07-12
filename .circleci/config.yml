@@ -10,10 +10,15 @@ jobs:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
 
+        # The first checkout ensures we have the files needed to restore the cache
       - checkout
 
       - restore_cache:
           key: v2-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+
+        # The second checkout ensures we have the most recent code since the
+        # restore_cache step above can override the go-filecoin code with cached code
+      - checkout
 
       - run:
           name: Install Dependencies
