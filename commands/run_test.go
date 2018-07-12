@@ -93,7 +93,7 @@ type TestDaemon struct {
 	swarmAddr  string
 	repoDir    string
 	walletFile string
-	genesisFil uint64
+	walletAddr string
 
 	init bool
 
@@ -543,9 +543,9 @@ func WalletFile(f string) func(*TestDaemon) {
 	}
 }
 
-func GenesisFil(fil uint64) func(*TestDaemon) {
+func WalletAddr(a string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
-		td.genesisFil = fil
+		td.walletAddr = a
 	}
 }
 
@@ -578,7 +578,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		repoDir:    dir,
 		init:       true, // we want to init unless told otherwise
 		walletFile: "",
-		genesisFil: 10000000,
 		cmdTimeout: DefaultDaemonCmdTimeout,
 	}
 
@@ -592,10 +591,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
-	genesisFilFlag := fmt.Sprintf("--genesisfil=%d", td.genesisFil)
+	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
 
 	if td.init {
-		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, genesisFilFlag)
+		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)

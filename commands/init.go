@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 
 	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -25,7 +24,7 @@ var initCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
-		cmdkit.StringOption("genesisfil", "filecoin allocated to each address when '--walletfile' option is passed").WithDefault("10000000"),
+		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 	},
 	Run: initRun,
 	Encoders: cmds.EncoderMap{
@@ -35,7 +34,6 @@ var initCmd = &cmds.Command{
 
 func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (err error) {
 	repoDir := getRepoDir(req)
-
 	re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
 	if err := repo.InitFSRepo(repoDir, config.NewDefaultConfig()); err != nil {
@@ -58,30 +56,36 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 	}()
 
 	walletFile, _ := req.Options["walletfile"].(string)
+	walletAddr, _ := req.Options["walletaddr"].(string)
+	// Used for testing
 	if len(walletFile) > 1 {
-		var tif core.GenesisInitFunc
 		re.Emit(fmt.Sprintf("initializing filecoin node with wallet file: %s\n", walletFile)) // nolint: errcheck
 
-		nodeAddrs, err := loadAddresses(walletFile, rep)
+		// Load all the Address their Keys into memory
+		addressKeys, err := th.LoadWalletAddressAndKeysFromFile(walletFile)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load wallet file: %s", walletFile)
 		}
 
-		// since `node.Init` will create an address, and since `node.Build` will
-		// return `ErrNoDefaultMessageFromAddress` iff len(wallet.Addresses) > 1 and
-		// wallet.defaultAddress == "" we set the default here
-		rep.Config().Wallet.DefaultAddress = nodeAddrs[0]
-
-		genesisFil, _ := req.Options["genesisfil"].(string)
-		genFil, err := strconv.ParseUint(genesisFil, 10, 64)
-		if err != nil {
-			return errors.Wrap(err, "failed to parse genesisfil amount")
-		}
+		// Generate a genesis function to allocate the address funds
 		var actorOps []th.GenOption
-		for i := range nodeAddrs {
-			actorOps = append(actorOps, th.ActorAccount(nodeAddrs[i], types.NewAttoFILFromFIL(genFil)))
+		for k, v := range addressKeys {
+			actorOps = append(actorOps, th.ActorAccount(k.Address, k.Balance))
+
+			// load an address into nodes wallet backend
+			if k.Address.String() == walletAddr {
+				re.Emit(fmt.Sprintf("initializing filecoin node with address: %s, balance: %s\n", k.Address.String(), k.Balance.String())) // nolint: errcheck
+				if err := loadAddress(k, v, rep); err != nil {
+					return err
+				}
+				// since `node.Init` will create an address, and since `node.Build` will
+				// return `ErrNoDefaultMessageFromAddress` iff len(wallet.Addresses) > 1 and
+				// wallet.defaultAddress == "" we set the default here
+				rep.Config().Wallet.DefaultAddress = k.Address
+			}
 		}
-		tif = th.MakeGenesisFunc(actorOps...)
+		tif := th.MakeGenesisFunc(actorOps...)
+
 		return node.Init(req.Context, rep, tif)
 	}
 
@@ -89,22 +93,15 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 	return node.Init(req.Context, rep, core.InitGenesis)
 }
 
-func loadAddresses(file string, r repo.Repo) ([]types.Address, error) {
+func loadAddress(ai th.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up wallet backend")
+		return err
 	}
-
-	err = backend.LoadFromFile(file)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to read file")
+	if err := backend.LoadAddress(ai, ki); err != nil {
+		return err
 	}
-
-	if len(backend.Addresses()) == 0 {
-		return nil, errors.New("wallet file did not contain any addresses")
-	}
-
-	return backend.Addresses(), nil
+	return nil
 }
 
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {

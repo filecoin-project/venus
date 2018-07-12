@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
@@ -10,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWalletSimple(t *testing.T) {
@@ -156,60 +154,4 @@ func TestSignErrorCases(t *testing.T) {
 	_, err = w1.Sign(addr2, dataA[:])
 	assert.Error(err)
 	assert.Contains(err.Error(), "failed to sign data")
-}
-
-func TestWalletLoadSave(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	t.Log("create first backend")
-	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds)
-	require.NoError(err)
-
-	t.Log("create a wallet with first backend")
-	w := New(fs)
-
-	t.Log("check first backend")
-	require.Len(w.Backends(DSBackendType), 1)
-
-	t.Log("create a new address in the backend")
-	_, err = fs.NewAddress()
-	require.NoError(err)
-
-	t.Log("save the wallet to a file")
-	assert.NoError(fs.WriteToFile("/tmp/testWalletFile.toml"))
-
-	t.Log("create a second backend")
-	ds2 := datastore.NewMapDatastore()
-	fs2, err := NewDSBackend(ds2)
-	require.NoError(err)
-
-	t.Log("load wallet from file into second backend")
-	assert.NoError(fs2.LoadFromFile("/tmp/testWalletFile.toml"))
-
-	t.Log("second backend is equivalent to first backend")
-	assert.Equal(fs.Addresses(), fs2.Addresses())
-}
-
-func TestWalletLoadSaveErrors(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	t.Log("create backend")
-	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds)
-	require.NoError(err)
-
-	t.Log("create a wallet with backend")
-	w := New(fs)
-
-	t.Log("check first backend")
-	require.Len(w.Backends(DSBackendType), 1)
-
-	ef, err := ioutil.TempFile("", "walletFileEmpty")
-	require.NoError(err)
-
-	t.Log("load wallet from empy file into backend fails")
-	assert.EqualError(fs.LoadFromFile(ef.Name()), "wallet file does not contain any addresses")
 }

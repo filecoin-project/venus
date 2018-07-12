@@ -1,5 +1,0 @@
-[[wallet]]
-  address = "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn"
-  [wallet.keyinfo]
-    PrivateKey = [106, 120, 52, 139, 214, 64, 169, 190, 87, 59, 112, 241, 253, 77, 206, 241, 253, 244, 26, 49, 254, 19, 186, 39, 127, 79, 196, 143, 19, 79, 85, 19]
-    Curve = "secp256k1"

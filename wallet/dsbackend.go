@@ -3,20 +3,18 @@ package wallet
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"reflect"
 	"strings"
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 	ds "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
 	dsq "gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore/query"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -70,90 +68,20 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 	}, nil
 }
 
-// StoredWallet holds the values representing a wallet when writing to a file
-type StoredWallet struct {
-	AddressKeyPairs []AddressAndKeys `toml:"wallet"`
-}
-
-// AddressAndKeys holds the address and KeyInfo used to generate it
-type AddressAndKeys struct {
-	Address string        `toml:"address"`
-	KeyInfo types.KeyInfo `toml:"keyinfo"`
-}
-
-// WriteToFile write the contents of a wallet to a file
-func (backend *DSBackend) WriteToFile(file string) error {
-	result, err := backend.ds.Query(dsq.Query{
-		// should give us the addresses and their keyinfo
-		KeysOnly: false,
-	})
+// LoadAddress loads the address in `ai` and KeyInfo `ki` into the backend
+func (backend *DSBackend) LoadAddress(ai th.TypesAddressInfo, ki types.KeyInfo) error {
+	kib, err := ki.Marshal()
 	if err != nil {
-		return errors.Wrap(err, "failed to query datastore")
+		return errors.Wrap(err, "failed to marshal KeyInfo")
 	}
 
-	list, err := result.Rest()
-	if err != nil {
-		return errors.Wrap(err, "failed to read query results")
+	// store the address and key used to generate it
+	if err := backend.ds.Put(ds.NewKey(ai.Address.String()), kib); err != nil {
+		return errors.Wrap(err, "failed to store new address")
 	}
 
-	wt := new(StoredWallet)
-	var aak AddressAndKeys
-	for _, el := range list {
-		aak.Address = strings.Trim(el.Key, "/")
-		elb := el.Value.([]byte)
-
-		if err = aak.KeyInfo.Unmarshal(elb); err != nil {
-			return errors.Wrap(err, "failed to unmarshal KeyInfo")
-		}
-		wt.AddressKeyPairs = append(wt.AddressKeyPairs, aak)
-	}
-
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		return errors.Wrap(err, "failed to open wallet file for writing")
-	}
-	defer f.Close() // nolint: errcheck
-
-	if err := toml.NewEncoder(f).Encode(wt); err != nil {
-		return errors.Wrap(err, "faild to encode wallet")
-	}
-
-	return nil
-}
-
-// LoadFromFile reads in a file representing a wallet
-func (backend *DSBackend) LoadFromFile(file string) error {
-	walletFile, err := ioutil.ReadFile(file)
-	if err != nil {
-		return errors.Wrap(err, "failed to read wallet file")
-	}
-
-	wt := new(StoredWallet)
-	if err = toml.Unmarshal(walletFile, &wt); err != nil {
-		return errors.Wrap(err, "failed to unmarshal wallet file")
-	}
-
-	if len(wt.AddressKeyPairs) == 0 {
-		return errors.New("wallet file does not contain any addresses")
-	}
-
-	for _, akp := range wt.AddressKeyPairs {
-		kib, err := akp.KeyInfo.Marshal()
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal KeyInfo")
-		}
-
-		addr, err := types.NewAddressFromString(akp.Address)
-		if err != nil {
-			return errors.Wrapf(err, "failed to make address from string: %s", akp.Address)
-		}
-
-		if err := backend.ds.Put(ds.NewKey(addr.String()), kib); err != nil {
-			return errors.Wrap(err, "failed to store new address")
-		}
-
-		backend.cache[addr] = struct{}{}
-	}
+	// mark the cache as containing the address, used by `HasAddress()`
+	backend.cache[ai.Address] = struct{}{}
 
 	return nil
 }

@@ -86,25 +86,15 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 func TestWalletLoadFromFile(t *testing.T) {
 	assert := assert.New(t)
 
-	d := NewDaemon(t, WalletFile("../wallet/walletTest.toml")).Start()
+	d := NewDaemon(t, WalletFile("../testhelpers/testfiles/walletGenFile.toml"), WalletAddr("fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")).Start()
 	defer d.ShutdownSuccess()
 
 	// assert we loaded the test address from the file
 	dw := d.RunSuccess("address", "ls").readStdoutTrimNewlines()
-	assert.Contains(dw, "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn")
+	assert.Contains(dw, "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn").readStdoutTrimNewlines()
+	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").readStdoutTrimNewlines()
 	assert.Contains(wb, "10000000")
 
-	d2 := NewDaemon(t, WalletFile("../wallet/walletTest.toml"), GenesisFil(100)).Start()
-	defer d2.ShutdownSuccess()
-
-	// assert we loaded the test address from the file
-	dw2 := d2.RunSuccess("address", "ls").readStdoutTrimNewlines()
-	assert.Contains(dw2, "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn")
-
-	// assert default amount of funds were allocated to address during genesis
-	wb2 := d2.RunSuccess("wallet", "balance", "fcqt9s8ur7v59v583zx3haawznga046dw3hrnahmn").readStdoutTrimNewlines()
-	assert.Contains(wb2, "100")
 }
