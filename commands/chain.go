@@ -30,7 +30,7 @@ var chainHeadCmd = &cmds.Command{
 		if len(blks) == 0 {
 			return errors.New("best block not found")
 		}
-		// TODO report all blocks of tipset, not a random one
+		// TODO fix #543: Improve UX for multiblock tipset
 		blk := blks[0]
 
 		re.Emit(cmds.Single{Value: blk.Cid()}) // nolint: errcheck
@@ -50,8 +50,8 @@ var chainLsCmd = &cmds.Command{
 			case error:
 				return v
 			case core.TipSet:
-				// TODO handle multi-block tipsets well
-				// right now we just take one random block from each tipset
+				// TODO fix #543: Improve UX for multiblock tipset.
+				// Right now we just take one random block from each tipset
 				if len(v) == 0 {
 					panic("tipsets from this channel should have at least one member")
 				}

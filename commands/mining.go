@@ -28,7 +28,7 @@ var miningCmd = &cmds.Command{
 var miningOnceCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
-
+		// TODO fix #543: Improve UX for multiblock tipset
 		cur := fcn.ChainMgr.GetBestBlock()
 
 		addrs := fcn.Wallet.Addresses()

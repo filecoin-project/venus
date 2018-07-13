@@ -13,6 +13,7 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -254,20 +255,22 @@ func TestUpdateMessagePool(t *testing.T) {
 	node.Stop()
 }
 
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.Message,
-	expectError bool) {
+func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.Message, expectError bool, cb func(*types.Block, *types.Message, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
+	if cb == nil {
+		cb = func(b *types.Block, msg *types.Message,
+			rcp *types.MessageReceipt) error {
+			assert.True(types.MsgCidsEqual(expectMsg, msg))
+			if wg != nil {
+				wg.Done()
+			}
+
+			return nil
+		}
+	}
 	assert.NoError(err)
 
-	err = cm.WaitForMessage(context.Background(), expectCid, func(b *types.Block, msg *types.Message,
-		rcp *types.MessageReceipt) error {
-		assert.True(types.MsgCidsEqual(expectMsg, msg))
-		if wg != nil {
-			wg.Done()
-		}
-
-		return nil
-	})
+	err = cm.WaitForMessage(context.Background(), expectCid, cb)
 	assert.Equal(expectError, err != nil)
 }
 
@@ -277,6 +280,7 @@ type msgsSet [][]*types.Message
 func TestWaitForMessage(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true)[0]
@@ -312,8 +316,8 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node
 
 	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
 
-	testWaitHelp(nil, assert, stm, m1, false)
-	testWaitHelp(nil, assert, stm, m2, false)
+	testWaitHelp(nil, assert, stm, m1, false, nil)
+	testWaitHelp(nil, assert, stm, m2, false, nil)
 }
 
 func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
@@ -326,8 +330,8 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m3, m4}})
 
 	wg.Add(2)
-	go testWaitHelp(&wg, assert, stm, m3, false)
-	go testWaitHelp(&wg, assert, stm, m4, false)
+	go testWaitHelp(&wg, assert, stm, m3, false, nil)
+	go testWaitHelp(&wg, assert, stm, m4, false, nil)
 	time.Sleep(10 * time.Millisecond)
 
 	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
@@ -346,7 +350,60 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, s
 	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], msgsSet{msgs{m3, m4}})
 	stm.SetHeaviestTipSetForTest(ctx, chain2[len(chain2)-1])
 
-	testWaitHelp(nil, assert, stm, m2, true)
+	testWaitHelp(nil, assert, stm, m2, true, nil)
+}
+
+func TestWaitConflicting(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+
+	newAddress := types.NewAddressForTestGetter()
+	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+
+	node := MakeNodesUnstarted(t, 1, true)[0]
+	testGen := th.MakeGenesisFunc(
+		th.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
+		th.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
+		th.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
+	)
+	assert.NoError(node.ChainMgr.Genesis(ctx, testGen))
+
+	assert.NoError(node.Start())
+	stm := (*core.ChainManagerForTest)(node.ChainMgr)
+
+	// Create conflicting messages
+	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
+	m2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(6000), "", nil)
+
+	base := stm.GetHeaviestTipSet().ToSlice()
+	require.Equal(1, len(base))
+
+	parentState, _ := state.LoadStateTree(context.Background(), node.CborStore, base[0].StateRoot, builtin.Actors)
+	b1 := core.MkChild(base, parentState, base[0].StateRoot, 0)
+	b1.Messages = []*types.Message{m1}
+	b1.Ticket = []byte{0} // block 1 comes first in message application
+	core.MustPut(node.CborStore, b1)
+	b2 := core.MkChild(base, parentState, base[0].StateRoot, 1)
+	b2.Messages = []*types.Message{m2}
+	b2.Ticket = []byte{1}
+	core.MustPut(node.CborStore, b2)
+
+	stm.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1, b2))
+	msgApplySucc := func(b *types.Block, msg *types.Message,
+		rcp *types.MessageReceipt) error {
+		assert.NotNil(rcp)
+		return nil
+	}
+	msgApplyFail := func(b *types.Block, msg *types.Message,
+		rcp *types.MessageReceipt) error {
+		assert.Nil(rcp)
+		return nil
+	}
+
+	testWaitHelp(nil, assert, stm, m1, false, msgApplySucc)
+	testWaitHelp(nil, assert, stm, m2, false, msgApplyFail)
 }
 
 func TestGetSignature(t *testing.T) {

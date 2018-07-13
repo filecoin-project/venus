@@ -51,6 +51,7 @@ func TestActorLs(t *testing.T) {
 			return nil
 		})
 		nd := node.MakeNodesUnstarted(t, 1, true)[0]
+		// TODO fix #543: Improve UX for multiblock tipset
 		nd.ChainMgr.GetBestBlock = func() *types.Block {
 			return &types.Block{StateRoot: nil}
 		}

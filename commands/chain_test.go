@@ -65,7 +65,7 @@ func TestChainLsRun(t *testing.T) {
 
 		err := n.ChainMgr.Genesis(ctx, core.InitGenesis)
 		require.NoError(err)
-
+		// TODO fix #543: Improve UX for multiblock tipset
 		genBlock := n.ChainMgr.GetBestBlock()
 		chlBlock := types.NewBlockForTest(genBlock, 1)
 

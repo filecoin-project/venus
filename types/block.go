@@ -1,6 +1,9 @@
 package types
 
 import (
+	"bytes"
+	"sort"
+
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 	node "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
@@ -90,4 +93,11 @@ func (b *Block) Score() uint64 {
 // Equals returns true if the Block is equal to other.
 func (b *Block) Equals(other *Block) bool {
 	return b.Cid().Equals(other.Cid())
+}
+
+// SortBlocks sorts a slice of blocks in the canonical order (by min tickets)
+func SortBlocks(blks []*Block) {
+	sort.Slice(blks, func(i, j int) bool {
+		return bytes.Compare(blks[i].Ticket, blks[j].Ticket) == -1
+	})
 }
