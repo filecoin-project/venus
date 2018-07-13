@@ -12,20 +12,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 )
 
 func TestClientAddBidSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	wtf := tf.WalletFilePath()
+
+	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
 
 	bid := d.RunSuccess("client", "add-bid", "2000", "10",
-		"--from", address.TestAddress.String(),
+		"--from", testAddress3,
 	)
 	bidMessageCid, err := cid.Parse(strings.Trim(bid.ReadStdout(), "\n"))
 	require.NoError(t, err)
@@ -53,7 +55,10 @@ func TestClientAddBidSuccess(t *testing.T) {
 
 func TestClientAddBidFail(t *testing.T) {
 	t.Parallel()
-	d := NewDaemon(t).Start()
+
+	wtf := tf.WalletFilePath()
+
+	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 	d.CreateWalletAddr()
 
@@ -65,12 +70,12 @@ func TestClientAddBidFail(t *testing.T) {
 	d.RunFail(
 		"invalid size",
 		"client", "add-bid", "2f", "10",
-		"--from", address.TestAddress.String(),
+		"--from", testAddress3,
 	)
 	d.RunFail(
 		"invalid price",
 		"client", "add-bid", "10", "3f",
-		"--from", address.TestAddress.String(),
+		"--from", testAddress3,
 	)
 }
 
@@ -81,6 +86,7 @@ func TestProposeDeal(t *testing.T) {
 	dcli := NewDaemon(t).Start()
 	defer func() { t.Log(dcli.ReadStderr()) }()
 	defer dcli.ShutdownSuccess()
+
 	dmin := NewDaemon(t).Start()
 	defer func() { t.Log(dmin.ReadStderr()) }()
 	defer dmin.ShutdownSuccess()
