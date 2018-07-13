@@ -484,7 +484,6 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 
 		tif := th.MakeGenesisFunc(
-			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 
@@ -593,7 +592,6 @@ func TestCreateMiner(t *testing.T) {
 		assert.NoError(err)
 
 		tif := th.MakeGenesisFunc(
-			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
@@ -616,7 +614,6 @@ func TestCreateMiner(t *testing.T) {
 		assert.NoError(err)
 
 		tif := th.MakeGenesisFunc(
-			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
@@ -637,7 +634,6 @@ func TestCreateMiner(t *testing.T) {
 		assert.NoError(err)
 
 		tif := th.MakeGenesisFunc(
-			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
@@ -665,7 +661,6 @@ func TestCreateSectorBuilders(t *testing.T) {
 	assert.NoError(err)
 
 	tif := th.MakeGenesisFunc(
-		th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 		th.ActorAccount(minerAddr1, types.NewAttoFILFromFIL(10000)),
 		th.ActorAccount(minerAddr2, types.NewAttoFILFromFIL(10000)),
 	)
@@ -730,7 +725,6 @@ func TestLookupMinerAddress(t *testing.T) {
 
 		// initialize genesis block
 		tif := th.MakeGenesisFunc(
-			th.ActorAccount(address.NetworkAddress, types.NewAttoFILFromFIL(10000000)),
 			th.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		require.NoError(nd.ChainMgr.Genesis(ctx, tif))

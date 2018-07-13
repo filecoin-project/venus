@@ -78,6 +78,17 @@ func MakeGenesisFunc(opts ...GenOption) core.GenesisInitFunc {
 				return nil, err
 			}
 		}
+
+		// Create NetworkAddress
+		a, err := account.NewActor(types.NewAttoFILFromFIL(10000000))
+		if err != nil {
+			return nil, err
+		}
+		if err := st.SetActor(ctx, address.NetworkAddress, a); err != nil {
+			return nil, err
+		}
+
+		// Create StorageMarketAddress
 		stAct, err := storagemarket.NewActor()
 		if err != nil {
 			return nil, err
@@ -86,6 +97,7 @@ func MakeGenesisFunc(opts ...GenOption) core.GenesisInitFunc {
 			return nil, err
 		}
 
+		// Create PaymentBrokerAddress
 		pbAct, err := paymentbroker.NewPaymentBrokerActor()
 		pbAct.Balance = types.NewAttoFILFromFIL(0)
 		if err != nil {

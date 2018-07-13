@@ -48,7 +48,7 @@ func GetFilecoinBinary() (string, error) {
 }
 
 const (
-	// SECP256K1 is a curve used to computer private keys
+	// SECP256K1 is a curve used to compute private keys
 	SECP256K1 = "secp256k1"
 )
 
