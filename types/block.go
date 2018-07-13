@@ -27,9 +27,11 @@ type Block struct {
 	// holders for an epoch.
 	Parents SortedCidSet `json:"parents"`
 
-	// ParentWeight is the aggregate chain weight of the parent set.
-	// TODO is float64 what we want here?
-	ParentWeight Uint64 `json:"parentWeight"`
+	// ParentWeightNum is the numerator of the aggregate chain weight of the parent set.
+	ParentWeightNum Uint64 `json:"parentWeightNumerator"`
+
+	// ParentWeightDenom is the denominator of the aggregate chain weight of the parent set
+	ParentWeightDenom Uint64 `json:"parentWeightDenominator"`
 
 	// Height is the chain height of this block.
 	Height Uint64 `json:"height"`

@@ -104,7 +104,7 @@ func TestFromAddress(t *testing.T) {
 func createNodeAndBackend(t *testing.T) (*node.Node, *wallet.DSBackend) {
 	require := require.New(t)
 
-	nd := node.MakeNodesUnstarted(t, 1, true)[0]
+	nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 	ds := datastore.NewMapDatastore()
 	fs, err := wallet.NewDSBackend(ds)

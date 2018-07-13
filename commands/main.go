@@ -22,6 +22,18 @@ const (
 	APIPrefix = "/api"
 	// OfflineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
+	// MockMineMode replaces the normal chain weight and power table
+	// computations with simple computations that don't require the tip of
+	// a chain to hold a pointer to a valid state root. This mode exists
+	// because many daemon tests rely on mining and block processing to
+	// extend the chain and process messages without setting up a storage
+	// market.
+	//
+	// TODO: This is a TEMPORARY WORKAROUND. Ideally similar functionality
+	// will be accomplished by running a node with Proof-Of-Bob consensus
+	// during tests.  Alternatively we could come up with a canonical set
+	// of testing genesii and allow the CLI to take in custom gensis blocks.
+	MockMineMode = "mockMine"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
 )
@@ -42,7 +54,7 @@ var rootCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
-		cmdkit.StringOption(OptionRepoDir, "set the directory of the reop, defaults to ~/.filecoin"),
+		cmdkit.StringOption(OptionRepoDir, "set the directory of the repo, defaults to ~/.filecoin"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),

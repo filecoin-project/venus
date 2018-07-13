@@ -103,7 +103,7 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 func TestDealProtocol(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	nodes := MakeNodesUnstarted(t, 2, false)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
 
@@ -162,7 +162,7 @@ func TestDealProtocol(t *testing.T) {
 func TestDealProtocolMissing(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	nodes := MakeNodesUnstarted(t, 2, false)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
 
@@ -223,7 +223,7 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	assert := assert.New(t)
 
 	ctx := context.Background()
-	nd := MakeNodesUnstarted(t, 1, true)[0]
+	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 	nodeAddr, err := nd.NewAddress()
 	assert.NoError(err)
 

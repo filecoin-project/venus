@@ -105,36 +105,36 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
-		pW, err := ts.ParentWeight()
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+		num, den, err := ts.ParentWeight()
 		if err != nil {
-			return uint64(0), err
+			return uint64(0), uint64(0), err
 		}
-		return pW + uint64(len(ts))*core.ECV, nil
+		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
 	baseBlock1 := types.Block{
-		Parents:      parents,
-		Height:       types.Uint64(100),
-		ParentWeight: types.Uint64(1000),
-		StateRoot:    stateRoot,
+		Parents:         parents,
+		Height:          types.Uint64(100),
+		ParentWeightNum: types.Uint64(1000),
+		StateRoot:       stateRoot,
 	}
 	baseBlock2 := types.Block{
-		Parents:      parents,
-		Height:       types.Uint64(100),
-		ParentWeight: types.Uint64(1000),
-		StateRoot:    stateRoot,
-		Nonce:        1,
+		Parents:         parents,
+		Height:          types.Uint64(100),
+		ParentWeightNum: types.Uint64(1000),
+		StateRoot:       stateRoot,
+		Nonce:           1,
 	}
 	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0])
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
 	assert.Equal(types.Uint64(101), blk.Height)
-	assert.Equal(types.Uint64(1020), blk.ParentWeight)
+	assert.Equal(types.Uint64(1020), blk.ParentWeightNum)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -149,12 +149,12 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
-		pW, err := ts.ParentWeight()
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+		num, den, err := ts.ParentWeight()
 		if err != nil {
-			return uint64(0), err
+			return uint64(0), uint64(0), err
 		}
-		return pW + uint64(len(ts))*core.ECV, nil
+		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
@@ -200,21 +200,23 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
-		pW, err := ts.ParentWeight()
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+		num, den, err := ts.ParentWeight()
 		if err != nil {
-			return uint64(0), err
+			return uint64(0), uint64(0), err
 		}
-		return pW + uint64(len(ts))*core.ECV, nil
+		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
 	h := types.Uint64(100)
-	pw := types.Uint64(1000)
+	wNum := types.Uint64(1000)
+	wDenom := types.Uint64(1)
 	baseBlock := types.Block{
-		Height:       h,
-		ParentWeight: pw,
-		StateRoot:    newCid(),
+		Height:            h,
+		ParentWeightNum:   wNum,
+		ParentWeightDenom: wDenom,
+		StateRoot:         newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
 	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
@@ -227,7 +229,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
-	assert.Equal(pw+10.0, blk.ParentWeight)
+	assert.Equal(wNum+10.0, blk.ParentWeightNum)
+	assert.Equal(wDenom, blk.ParentWeightDenom)
 	assert.Equal(addrs[0], blk.Miner)
 }
 
@@ -243,12 +246,12 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
-		pW, err := ts.ParentWeight()
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+		num, den, err := ts.ParentWeight()
 		if err != nil {
-			return uint64(0), err
+			return uint64(0), uint64(0), err
 		}
-		return pW + uint64(len(ts))*core.ECV, nil
+		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
 
@@ -283,13 +286,14 @@ func TestGenerateError(t *testing.T) {
 
 		return stt, nil
 	}
-	getWeight := func(c context.Context, ts core.TipSet) (uint64, error) {
-		pW, err := ts.ParentWeight()
+	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+		num, den, err := ts.ParentWeight()
 		if err != nil {
-			return uint64(0), err
+			return uint64(0), uint64(0), err
 		}
-		return pW + uint64(len(ts))*core.ECV, nil
+		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
+
 	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages)
 
 	// This is actually okay and should result in a receipt

@@ -24,7 +24,7 @@ func TestConfigGet(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		out, err := testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap"}, nil, &Env{
@@ -44,7 +44,7 @@ func TestConfigGet(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		_, err := testhelpers.RunCommand(configCmd,
 			[]string{"nonexistantkey"}, nil, &Env{
 				ctx:  ctx,
@@ -78,7 +78,7 @@ func TestConfigSet(t *testing.T) {
 		ctx := context.Background()
 		defaultCfg := config.NewDefaultConfig()
 
-		n := node.MakeNodesUnstarted(t, 1, true, func(c *node.Config) error {
+		n := node.MakeNodesUnstarted(t, 1, true, true, func(c *node.Config) error {
 			c.Repo.Config().API.Address = defaultCfg.API.Address
 			return nil
 		})[0]
@@ -115,7 +115,7 @@ func TestConfigSet(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		// bad key
 		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `

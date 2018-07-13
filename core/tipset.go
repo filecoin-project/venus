@@ -60,11 +60,13 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 	if err != nil {
 		return err
 	}
-	pW, err := ts.ParentWeight()
+	wNum, wDenom, err := ts.ParentWeight()
 	if err != nil {
 		return err
 	}
-	if uint64(b.Height) != h || !b.Parents.Equals(p) || uint64(b.ParentWeight) != pW {
+	if uint64(b.Height) != h || !b.Parents.Equals(p) ||
+		uint64(b.ParentWeightNum) != wNum ||
+		uint64(b.ParentWeightDenom) != wDenom {
 		return ErrBadTipSetAdd
 	}
 	id := b.Cid()
@@ -146,10 +148,10 @@ func (ts TipSet) Parents() (types.SortedCidSet, error) {
 	return ts.ToSlice()[0].Parents, nil
 }
 
-// ParentWeight returns the ParentWeight of the TipSet.
-func (ts TipSet) ParentWeight() (uint64, error) {
+// ParentWeight returns the tipset's ParentWeightNum and ParentWeightDen.
+func (ts TipSet) ParentWeight() (uint64, uint64, error) {
 	if len(ts) == 0 {
-		return uint64(0), ErrEmptyTipSet
+		return uint64(0), uint64(0), ErrEmptyTipSet
 	}
-	return uint64(ts.ToSlice()[0].ParentWeight), nil
+	return uint64(ts.ToSlice()[0].ParentWeightNum), uint64(ts.ToSlice()[0].ParentWeightDenom), nil
 }

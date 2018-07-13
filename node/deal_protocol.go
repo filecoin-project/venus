@@ -420,16 +420,10 @@ func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Con
 		return nil, err
 	}
 
-	act, err := st.GetActor(ctx, address.StorageMarketAddress)
-	if err != nil {
-		return nil, err
-	}
-
 	var storage storagemarket.Storage
-	if err := actor.UnmarshalStorage(act.ReadStorage(), &storage); err != nil {
+	if err := st.GetActorStorage(ctx, address.StorageMarketAddress, &storage); err != nil {
 		return nil, err
 	}
-
 	return &storage, nil
 }
 

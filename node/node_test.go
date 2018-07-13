@@ -13,13 +13,11 @@ import (
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -32,7 +30,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false)[0]
+	nd := MakeNodesUnstarted(t, 1, false, true)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop()
@@ -43,7 +41,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false)
+	nds := MakeNodesUnstarted(t, 2, false, true)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -83,7 +81,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require := require.New(t)
 
 		// These are two bootstrap nodes we'll connect to.
-		nds := MakeNodesStarted(t, 2, false)
+		nds := MakeNodesStarted(t, 2, false, true)
 		nd1, nd2 := nds[0], nds[1]
 
 		// Gotta be a better way to do this?
@@ -114,7 +112,7 @@ func TestNodeInit(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, true)[0]
+	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	assert.NoError(nd.Start())
 
@@ -126,7 +124,7 @@ func TestStartMiningNoRewardAddress(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, true)[0]
+	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	// remove default addr
 	nd.rewardAddress = types.Address{}
@@ -144,7 +142,7 @@ func TestNodeMining(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	ctx := context.Background()
 
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	mockWorker := &mining.MockWorker{}
 	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -168,8 +166,7 @@ func TestNodeMining(t *testing.T) {
 	assert.Equal(node.Wallet.Addresses()[0].String(), gotInput.RewardAddress.String())
 
 	// Ensure that the successive inputs (new best tipsets) are wired up properly.
-	parentSt := state.NewEmptyStateTree(node.CborStore)
-	b2 := core.MkChild([]*types.Block{b1}, parentSt, newCid(), 0)
+	b2 := core.MkChild([]*types.Block{b1}, newCid(), 0)
 	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b2))
 	gotInput = <-inCh
 	require.Equal(1, len(gotInput.TipSet))
@@ -185,7 +182,7 @@ func TestNodeMining(t *testing.T) {
 	// Ensure we're tearing down cleanly.
 	// Part of stopping cleanly is waiting for the worker to be done.
 	// Kinda lame to test this way, but better than not testing.
-	node = MakeNodesUnstarted(t, 1, true)[0]
+	node = MakeNodesUnstarted(t, 1, true, true)[0]
 
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
@@ -202,7 +199,7 @@ func TestNodeMining(t *testing.T) {
 	assert.True(workerDone)
 
 	// Ensure that the output is wired up correctly.
-	node = MakeNodesUnstarted(t, 1, true)[0]
+	node = MakeNodesUnstarted(t, 1, true, true)[0]
 
 	mockWorker = &mining.MockWorker{}
 	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
@@ -230,7 +227,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
 
@@ -283,7 +280,7 @@ func TestWaitForMessage(t *testing.T) {
 
 	ctx := context.Background()
 
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	err := node.Start()
 	assert.NoError(err)
@@ -299,7 +296,7 @@ func TestWaitForMessageError(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
 	assert.NoError(node.Start())
 
@@ -362,7 +359,7 @@ func TestWaitConflicting(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
 
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, true)[0]
 	testGen := th.MakeGenesisFunc(
 		th.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		th.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
@@ -380,12 +377,11 @@ func TestWaitConflicting(t *testing.T) {
 	base := stm.GetHeaviestTipSet().ToSlice()
 	require.Equal(1, len(base))
 
-	parentState, _ := state.LoadStateTree(context.Background(), node.CborStore, base[0].StateRoot, builtin.Actors)
-	b1 := core.MkChild(base, parentState, base[0].StateRoot, 0)
+	b1 := core.MkChild(base, base[0].StateRoot, 0)
 	b1.Messages = []*types.Message{m1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(node.CborStore, b1)
-	b2 := core.MkChild(base, parentState, base[0].StateRoot, 1)
+	b2 := core.MkChild(base, base[0].StateRoot, 1)
 	b2.Messages = []*types.Message{m2}
 	b2.Ticket = []byte{1}
 	core.MustPut(node.CborStore, b2)
@@ -412,7 +408,7 @@ func TestGetSignature(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
 
-		nd := MakeNodesUnstarted(t, 1, true)[0]
+		nd := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := nd.NewAddress()
 		assert.NoError(err)
 
@@ -478,7 +474,7 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account does not exist", func(t *testing.T) {
 		assert := assert.New(t)
-		node := MakeNodesUnstarted(t, 1, true)[0]
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
 
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
@@ -502,7 +498,7 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
 		assert := assert.New(t)
 
-		node := MakeNodesUnstarted(t, 1, true)[0]
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
@@ -531,7 +527,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 	t.Run("includes correct nonce", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
-		node := MakeNodesUnstarted(t, 1, true)[0]
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
@@ -559,7 +555,7 @@ func TestQueryMessage(t *testing.T) {
 	t.Run("can contact payment broker", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
-		node := MakeNodesUnstarted(t, 1, true)[0]
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr := node.Wallet.Addresses()[0]
 
 		tif := th.MakeGenesisFunc(
@@ -705,7 +701,7 @@ func TestLookupMinerAddress(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		nd := MakeNodesStarted(t, 1, true)[0]
+		nd := MakeNodesStarted(t, 1, true, true)[0]
 
 		_, err := nd.Lookup.GetPeerIDByMinerAddress(ctx, nd.RewardAddress())
 		require.Error(err)
@@ -717,7 +713,7 @@ func TestLookupMinerAddress(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		nd := MakeNodesUnstarted(t, 1, true)[0]
+		nd := MakeNodesUnstarted(t, 1, true, true)[0]
 
 		newMinerPid := core.RequireRandomPeerID()
 

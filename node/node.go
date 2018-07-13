@@ -121,6 +121,7 @@ type Config struct {
 	Libp2pOpts    []libp2p.Option
 	Repo          repo.Repo
 	OfflineMode   bool
+	MockMineMode  bool // TODO: this is a TEMPORARY workaround
 	RewardAddress types.Address
 }
 
@@ -194,6 +195,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	cst := &hamt.CborIpldStore{Blocks: bserv}
 
 	chainMgr := core.NewChainManager(nc.Repo.Datastore(), cst)
+	if nc.MockMineMode {
+		chainMgr.PwrTableView = &core.TestView{}
+	}
 
 	msgPool := core.NewMessagePool()
 
@@ -201,9 +205,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return chainMgr.State(ctx, ts.ToSlice())
-	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
-		return chainMgr.Weight(ctx, ts)
-	}, core.ApplyMessages)
+	}, chainMgr.Weight, core.ApplyMessages)
 	miningWorker := mining.NewWorker(blockGenerator)
 
 	// Set up libp2p pubsub

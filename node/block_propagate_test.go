@@ -44,13 +44,19 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	defer cancel()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 	connect(t, nodes[0], nodes[1])
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: types.Uint64(1), ParentWeight: types.Uint64(10), StateRoot: baseBlk.StateRoot}
+	nextBlk := &types.Block{
+		Parents:           types.NewSortedCidSet(baseBlk.Cid()),
+		Height:            types.Uint64(1),
+		ParentWeightNum:   types.Uint64(10),
+		ParentWeightDenom: types.Uint64(1),
+		StateRoot:         baseBlk.StateRoot,
+	}
 
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 75)
@@ -68,14 +74,32 @@ func TestChainSync(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 
 	baseBlk := nodes[0].ChainMgr.GetBestBlock()
-	nextBlk1 := &types.Block{Parents: types.NewSortedCidSet(baseBlk.Cid()), Height: types.Uint64(1), ParentWeight: types.Uint64(10), StateRoot: baseBlk.StateRoot}
-	nextBlk2 := &types.Block{Parents: types.NewSortedCidSet(nextBlk1.Cid()), Height: types.Uint64(2), ParentWeight: types.Uint64(20), StateRoot: baseBlk.StateRoot}
-	nextBlk3 := &types.Block{Parents: types.NewSortedCidSet(nextBlk2.Cid()), Height: types.Uint64(3), ParentWeight: types.Uint64(30), StateRoot: baseBlk.StateRoot}
+	nextBlk1 := &types.Block{
+		Parents:           types.NewSortedCidSet(baseBlk.Cid()),
+		Height:            types.Uint64(1),
+		ParentWeightNum:   types.Uint64(10),
+		ParentWeightDenom: types.Uint64(1),
+		StateRoot:         baseBlk.StateRoot,
+	}
+	nextBlk2 := &types.Block{
+		Parents:           types.NewSortedCidSet(nextBlk1.Cid()),
+		Height:            types.Uint64(2),
+		ParentWeightNum:   types.Uint64(20),
+		ParentWeightDenom: types.Uint64(1),
+		StateRoot:         baseBlk.StateRoot,
+	}
+	nextBlk3 := &types.Block{
+		Parents:           types.NewSortedCidSet(nextBlk2.Cid()),
+		Height:            types.Uint64(3),
+		ParentWeightNum:   types.Uint64(30),
+		ParentWeightDenom: types.Uint64(1),
+		StateRoot:         baseBlk.StateRoot,
+	}
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

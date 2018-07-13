@@ -35,7 +35,7 @@ func TestActorLs(t *testing.T) {
 		emitter := NewMockEmitter(func(v interface{}) error {
 			return nil
 		})
-		nd := node.MakeNodesUnstarted(t, 1, true)[0]
+		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		tcm := (*core.ChainManagerForTest)(nd.ChainMgr)
 		nd.ChainMgr = tcm
 
@@ -50,7 +50,7 @@ func TestActorLs(t *testing.T) {
 		emitter := NewMockEmitter(func(v interface{}) error {
 			return nil
 		})
-		nd := node.MakeNodesUnstarted(t, 1, true)[0]
+		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		// TODO fix #543: Improve UX for multiblock tipset
 		nd.ChainMgr.GetBestBlock = func() *types.Block {
 			return &types.Block{StateRoot: nil}
@@ -75,7 +75,7 @@ func TestActorLs(t *testing.T) {
 			actorViews = append(actorViews, v.(*actorView))
 			return nil
 		})
-		nd := node.MakeNodesUnstarted(t, 1, true)[0]
+		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		b1 := &types.Block{StateRoot: types.NewCidForTestGetter()()}
 		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 		chainMgrForTest = nd.ChainMgr

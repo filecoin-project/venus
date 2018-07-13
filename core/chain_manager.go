@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -33,6 +34,8 @@ var (
 	ErrDifferentGenesis = fmt.Errorf("chain had different genesis")
 	// ErrBadTipSet is returned when processing a tipset containing blocks of different heights or different parent sets
 	ErrBadTipSet = errors.New("tipset contains blocks of different heights or different parent sets")
+	// ErrUninit is returned when the chain manager is called to process a block but does not have a genesis block
+	ErrUninit = errors.New("the chain manager cannot process blocks without a genesis block")
 )
 
 var heaviestTipSetKey = datastore.NewKey("/chain/heaviestTipSet")
@@ -58,6 +61,10 @@ const (
 	// InvalidBase implies the chain does not connect back to any previously
 	// known good block.
 	InvalidBase
+
+	// Uninit implies that the chain manager does not have a genesis block
+	// and therefore cannot process new blocks.
+	Uninit
 )
 
 func (bpr BlockProcessResult) String() string {
@@ -111,6 +118,10 @@ type ChainManager struct {
 
 	ds datastore.Datastore
 
+	// PwrTableView provides miner and total power for the EC chain weight
+	// computation.
+	PwrTableView powerTableView
+
 	// HeaviestTipSetPubSub is a pubsub channel that publishes all best tipsets.
 	// We operate under the assumption that tipsets published to this channel
 	// will always be queued and delivered to subscribers in the order discovered.
@@ -133,6 +144,7 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 		tips:            tipIndex{},
 		stateCache:      make(map[string]*cid.Cid),
 
+		PwrTableView:         &marketView{},
 		HeaviestTipSetPubSub: pubsub.New(128),
 	}
 	cm.FetchBlock = cm.fetchBlock
@@ -286,17 +298,6 @@ func (cm *ChainManager) getHeaviestTipSet() TipSet {
 	return cm.heaviestTipSet.ts
 }
 
-// weightCmp is a function for comparing tipset weights.
-func weightCmp(w1 uint64, w2 uint64) int {
-	if w1 < w2 {
-		return -1
-	}
-	if w2 < w1 {
-		return 1
-	}
-	return 0
-}
-
 // maybeAcceptBlock attempts to accept blk if its score is greater than the current best block,
 // otherwise returning ChainValid.
 func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) (BlockProcessResult, error) {
@@ -310,11 +311,11 @@ func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) 
 		return Unknown, err
 	}
 	// Calculate weights of TipSets for comparison.
-	heaviestWeight, err := cm.Weight(ctx, cm.heaviestTipSet.ts)
+	heaviestWeight, err := cm.weight(ctx, cm.heaviestTipSet.ts)
 	if err != nil {
 		return Unknown, err
 	}
-	newWeight, err := cm.Weight(ctx, ts)
+	newWeight, err := cm.weight(ctx, ts)
 	if err != nil {
 		return Unknown, err
 	}
@@ -326,8 +327,8 @@ func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) 
 	if err != nil {
 		return Unknown, err
 	}
-	if weightCmp(newWeight, heaviestWeight) == -1 ||
-		(weightCmp(newWeight, heaviestWeight) == 0 &&
+	if newWeight.Cmp(heaviestWeight) == -1 ||
+		(newWeight.Cmp(heaviestWeight) == 0 &&
 			// break ties by choosing tipset with smaller ticket
 			bytes.Compare(newTicket, heaviestTicket) >= 0) {
 		return ChainValid, nil
@@ -337,7 +338,7 @@ func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) 
 	if err := cm.setHeaviestTipSet(ctx, ts); err != nil {
 		return Unknown, err
 	}
-	log.Infof("new heaviest tipset, [s=%f, hs=%s]", newWeight, ts.String())
+	log.Infof("new heaviest tipset, [s=%s, hs=%s]", newWeight.RatString(), ts.String())
 	log.LogKV(ctx, "maybeAcceptBlock", ts.String())
 	return ChainAccepted, nil
 }
@@ -355,6 +356,9 @@ func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (
 		log.FinishWithErr(ctx, err)
 	}()
 	log.Infof("processing block [s=%d, cid=%s]", blk.Score(), blk.Cid())
+	if cm.genesisCid == nil {
+		return Uninit, ErrUninit
+	}
 
 	switch _, err := cm.state(ctx, []*types.Block{blk}); err {
 	default:
@@ -761,38 +765,66 @@ const ECV uint64 = 10
 // of this constant needs motivation at the protocol level
 const ECPrM uint64 = 100
 
-// Weight returns the EC weight of this TipSet
-func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, error) {
+// weight returns the EC weight of this TipSet
+// TODO: this implementation needs to handle precision correctly, see issue #655.
+func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error) {
 	log.LogKV(ctx, "Weight", ts.String())
-	var w uint64
 	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(cm.genesisCid) {
-		return w, nil
+		return big.NewRat(int64(0), int64(1)), nil
 	}
-	ids, err := ts.Parents()
+	// Gather parent and state.
+	parentIDs, err := ts.Parents()
 	if err != nil {
-		return w, err
+		return nil, err
 	}
-	st, err := cm.stateForBlockIDs(ctx, ids)
+	st, err := cm.stateForBlockIDs(ctx, parentIDs)
 	if err != nil {
-		return w, err
+		return nil, err
 	}
 
-	_ = st // TODO: remove when we start reading power table
-	w, err = ts.ParentWeight()
+	wNum, wDenom, err := ts.ParentWeight()
 	if err != nil {
-		return w, err
+		return nil, err
 	}
+	if wDenom == uint64(0) {
+		return nil, errors.New("storage market with 0 bytes stored not handled")
+	}
+	w := big.NewRat(int64(wNum), int64(wDenom))
 
-	for i := 0; i < len(ts); i++ {
-		// TODO: 0.0 needs to be replaced with the block miner's power
-		// as derived from the power table in the aggregate parent
-		// state of this tipset (EC pt 7):
-		//
-		// pT := st.GetActor(ctx, address.StorageMarketAddress).PowerTable()
-		// pwr, err := pT.PowerOf(blk.Miner)
-		w += ECV + (ECPrM * 0.0)
+	// Each block in the tipset adds ECV + ECPrm * miner_power
+	totalBytes, err := cm.PwrTableView.Total(ctx, st)
+	if err != nil {
+		return nil, err
+	}
+	ratECV := big.NewRat(int64(ECV), int64(1))
+	for _, blk := range ts {
+		minerBytes, err := cm.PwrTableView.Miner(ctx, st, blk.Miner)
+		if err != nil {
+			return nil, err
+		}
+		wNumBlk := int64(ECPrM * minerBytes)
+		wBlk := big.NewRat(wNumBlk, int64(totalBytes))
+		wBlk.Add(wBlk, ratECV)
+		w.Add(w, wBlk)
 	}
 	return w, nil
+}
+
+// Weight returns the numerator and denominator of the weight of the input tipset.
+func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, uint64, error) {
+	w, err := cm.weight(ctx, ts)
+	if err != nil {
+		return uint64(0), uint64(0), err
+	}
+	wNum := w.Num()
+	if !wNum.IsUint64() {
+		return uint64(0), uint64(0), errors.New("weight numerator cannot be repr by uint64")
+	}
+	wDenom := w.Denom()
+	if !wDenom.IsUint64() {
+		return uint64(0), uint64(0), errors.New("weight denominator cannot be repr by uint64")
+	}
+	return wNum.Uint64(), wDenom.Uint64(), nil
 }
 
 // WaitForMessage searches for a message with Cid, msgCid, then passes it, along with the containing Block and any

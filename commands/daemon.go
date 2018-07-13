@@ -28,6 +28,7 @@ var daemonCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(SwarmListen),
 		cmdkit.BoolOption(OfflineMode),
+		cmdkit.BoolOption(MockMineMode),
 	},
 	Run: daemonRun,
 	Encoders: cmds.EncoderMap{
@@ -57,6 +58,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
 		opts = append(opts, func(c *node.Config) error {
 			c.OfflineMode = offlineMode
+			return nil
+		})
+	}
+
+	if mockMineMode, ok := req.Options[MockMineMode].(bool); ok {
+		opts = append(opts, func(c *node.Config) error {
+			c.MockMineMode = mockMineMode
 			return nil
 		})
 	}

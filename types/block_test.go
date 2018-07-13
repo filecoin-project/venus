@@ -87,20 +87,21 @@ func TestTriangleEncoding(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
 		b := &Block{
-			Miner:           newAddress(),
-			Ticket:          Bytes([]byte{0x01, 0x02, 0x03}),
-			Parents:         NewSortedCidSet(SomeCid()),
-			ParentWeight:    Uint64(1),
-			Height:          Uint64(2),
-			Nonce:           3,
-			Messages:        []*Message{{To: newAddress()}},
-			StateRoot:       SomeCid(),
-			MessageReceipts: []*MessageReceipt{{ExitCode: 1}},
+			Miner:             newAddress(),
+			Ticket:            Bytes([]byte{0x01, 0x02, 0x03}),
+			Parents:           NewSortedCidSet(SomeCid()),
+			ParentWeightNum:   Uint64(1),
+			ParentWeightDenom: Uint64(1),
+			Height:            Uint64(2),
+			Nonce:             3,
+			Messages:          []*Message{{To: newAddress()}},
+			StateRoot:         SomeCid(),
+			MessageReceipts:   []*MessageReceipt{{ExitCode: 1}},
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 9, s.NumField())
+		require.Equal(t, 10, s.NumField())
 		testRoundTrip(t, b)
 	})
 }

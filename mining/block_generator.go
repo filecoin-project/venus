@@ -18,9 +18,9 @@ var log = logging.Logger("mining")
 // its own function to facilitate testing.
 type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
 
-// GetWeight is a function that calculates the weight of a TipSet.  It's its
-// own function to facilitate testing.
-type GetWeight func(context.Context, core.TipSet) (uint64, error)
+// GetWeight is a function that calculates the weight of a TipSet.  Weight is
+// expressed as two uint64s comprising a rational number.
+type GetWeight func(context.Context, core.TipSet) (uint64, uint64, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
@@ -54,7 +54,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 		return nil, err
 	}
 
-	weight, err := b.getWeight(ctx, baseTipSet)
+	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +91,15 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	}
 
 	next := &types.Block{
-		Miner:           rewardAddress,
-		Height:          types.Uint64(blockHeight),
-		Messages:        res.SuccessfulMessages,
-		MessageReceipts: receipts,
-		Parents:         baseTipSet.ToSortedCidSet(),
-		ParentWeight:    types.Uint64(weight),
-		StateRoot:       newStateTreeCid,
-		Ticket:          ticket,
+		Miner:             rewardAddress,
+		Height:            types.Uint64(blockHeight),
+		Messages:          res.SuccessfulMessages,
+		MessageReceipts:   receipts,
+		Parents:           baseTipSet.ToSortedCidSet(),
+		ParentWeightNum:   types.Uint64(wNum),
+		ParentWeightDenom: types.Uint64(wDenom),
+		StateRoot:         newStateTreeCid,
+		Ticket:            ticket,
 	}
 
 	var rewardSuccessful bool

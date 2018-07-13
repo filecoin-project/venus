@@ -52,7 +52,6 @@ func TestWalletBalance(t *testing.T) {
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
-
 	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()
 	defer d.ShutdownSuccess()
 
