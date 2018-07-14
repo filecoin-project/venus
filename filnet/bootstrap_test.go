@@ -32,13 +32,17 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	b.Bootstrap = func([]peer.ID) {
 		callCount++
 		if callCount == 3 {
+
+			// If b.Period is configured to be a too small, b.ticker will tick
+			// again before the context's done-channel sees a value. This
+			// results in a callCount of 4 instead of 3.
 			cancel()
 		}
 	}
 
-	b.Period = 10 * time.Millisecond
+	b.Period = 200 * time.Millisecond
 	b.Start(ctx)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	assert.Equal(3, callCount)
 }
