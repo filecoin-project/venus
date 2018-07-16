@@ -34,7 +34,7 @@ func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr types
 // GetPeerIDByMinerAddress attempts to get a miner's libp2p identity by loading the actor from the state tree and sending
 // it a "getPeerID" message. The MinerActor is currently the only type of actor which has a peer ID.
 func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
-	st, err := c.chainManager.LoadStateTreeTS(ctx, c.chainManager.GetHeaviestTipSet())
+	st, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to load state tree")
 	}

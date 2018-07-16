@@ -63,7 +63,10 @@ func main() {
 			log.Fatal(err)
 		}
 
-		err = fake(ctx, length, cm.GetHeaviestTipSet, cm.ProcessNewBlock, cm.LoadStateTreeTS)
+		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+			return cm.State(ctx, ts.ToSlice())
+		}
+		err = fake(ctx, length, cm.GetHeaviestTipSet, cm.ProcessNewBlock, aggregateState)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -103,7 +106,7 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
 	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
-		return cm.LoadStateTreeTS(ctx, ts)
+		return cm.State(ctx, ts.ToSlice())
 	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
 		return cm.Weight(ctx, ts)
 	}, core.ApplyMessages)
@@ -117,7 +120,7 @@ func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.Cbor
 	}
 
 	bts := cm.GetHeaviestTipSet()
-	st, err := cm.LoadStateTreeTS(ctx, bts)
+	st, err := cm.State(ctx, bts.ToSlice())
 	return st, cst, cm, bts, err
 }
 
