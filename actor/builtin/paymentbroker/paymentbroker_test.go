@@ -51,7 +51,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 
 	pdata := core.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	channelID := big.NewInt(0)
@@ -92,7 +92,7 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 
 	pdata := core.MustConvertParams(payee, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
-	_, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	_, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 
 	// expect error
 	require.Error(err)
@@ -113,7 +113,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	// channel creator's address is our signature for now.
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
@@ -148,7 +148,7 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -157,7 +157,7 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	pdata = core.MustConvertParams(payer, types.NewChannelID(39932), types.NewAttoFILFromFIL(100), payer)
 	msg = types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -185,7 +185,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(100), payer)
 	msg := types.NewMessage(wrongTargetAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -207,7 +207,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(1100), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -229,7 +229,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	pdata := core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(500), payer)
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.Equal(uint8(0), result.Receipt.ExitCode)
@@ -238,7 +238,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	pdata = core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(400), payer)
 	msg = types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "update", pdata)
 
-	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err = core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -261,7 +261,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	msg := types.NewMessage(payeeAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
 
 	// set block height to Eol
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(10))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(10))
 	require.NoError(err)
 
 	// expect an error
@@ -288,7 +288,7 @@ func TestPaymentBrokerClose(t *testing.T) {
 	// channel creator's address is our signature for now.
 	pdata := core.MustConvertParams(payerAddress, channelID, types.NewAttoFILFromFIL(100), payerAddress)
 	msg := types.NewMessage(targetAddress, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
-	_, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	_, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
@@ -324,7 +324,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	pdata := core.MustConvertParams(channelID)
 	msg := types.NewMessage(payerAddress, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is after Eol
-	_, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(11))
+	_, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(11))
 	require.NoError(err)
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
@@ -352,7 +352,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	pdata := core.MustConvertParams(channelID)
 	msg := types.NewMessage(payerAddress, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is before Eol
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// fails
@@ -377,14 +377,14 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(20))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(9))
 	require.NoError(err)
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// try to request too high an amount after the eol for the original channel
 	pdata = core.MustConvertParams(payer, channelID, types.NewAttoFILFromFIL(1100), payer)
 	msg = types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
-	result, err = core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(12))
+	result, err = core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(12))
 
 	// expect success
 	require.NoError(err)
@@ -420,7 +420,7 @@ func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
 	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(9))
 	require.NoError(err)
 	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
 }
@@ -441,7 +441,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	pdata := core.MustConvertParams(channelID, types.NewBlockHeight(5))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(9))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(9))
 	require.NoError(err)
 
 	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -594,7 +594,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 func establishChannel(ctx context.Context, st state.Tree, from types.Address, target types.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
-	result, err := core.ApplyMessage(ctx, st, vm.Storage{}, msg, types.NewBlockHeight(0))
+	result, err := core.ApplyMessage(ctx, st, vm.StorageMap{}, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
 	}

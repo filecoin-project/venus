@@ -16,6 +16,12 @@ const (
 
 	// ErrDecode indicates that a chunk an actor tried to write could not be decoded
 	ErrDecode = ErrorCode(33)
+
+	// ErrDanglingPointer indicates that an actor attempted to commit a pointer to a non-existent chunk
+	ErrDanglingPointer = ErrorCode(34)
+
+	// ErrStaleHead indicates that an actor attempted to commit over a stale chunk
+	ErrStaleHead = ErrorCode(35)
 )
 
 // Exports describe the public methods of an actor.
@@ -70,4 +76,6 @@ type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
 	Put([]byte) (*cid.Cid, ErrorCode)
 	Get(*cid.Cid) ([]byte, bool)
+	Commit(*cid.Cid, *cid.Cid) ErrorCode
+	Head() *cid.Cid
 }

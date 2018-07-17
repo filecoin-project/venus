@@ -19,14 +19,14 @@ type Context struct {
 	to          *types.Actor
 	message     *types.Message
 	state       *state.CachedTree
-	storage     Storage
+	storage     StorageMap
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store Storage, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
@@ -42,7 +42,7 @@ var _ exec.VMContext = (*Context)(nil)
 
 // Storage returns an implementation of the storage module for this context.
 func (ctx *Context) Storage() exec.Storage {
-	return ctx.storage.NewStage(ctx.message.To)
+	return ctx.storage.NewStorage(ctx.message.To, ctx.to)
 }
 
 // Message retrieves the message associated with this context.
@@ -52,12 +52,30 @@ func (ctx *Context) Message() *types.Message {
 
 // ReadStorage reads the storage from the associated to actor.
 func (ctx *Context) ReadStorage() []byte {
-	return ctx.to.ReadStorage()
+	stage := ctx.Storage()
+
+	memory, _ := stage.Get(stage.Head())
+
+	out := make([]byte, len(memory))
+	copy(out, memory)
+
+	return out
 }
 
 // WriteStorage writes to the storage of the associated to actor.
 func (ctx *Context) WriteStorage(memory []byte) error {
-	ctx.to.WriteStorage(memory)
+	stage := ctx.Storage()
+
+	cid, ec := stage.Put(memory)
+	if ec != exec.Ok {
+		return errors.NewRevertErrorf("Could not stage memory chunk (Error Code: %d)", ec)
+	}
+
+	ec = stage.Commit(cid, stage.Head())
+	if ec != exec.Ok {
+		return errors.NewRevertErrorf("Could not commit actor memory (Error Code: %d)", ec)
+	}
+
 	return nil
 }
 

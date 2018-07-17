@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 
@@ -25,7 +26,7 @@ func TestVMContextStorage(t *testing.T) {
 	cst := hamt.NewCborStore()
 	st := state.NewEmptyStateTree(cst)
 	cstate := state.NewCachedStateTree(st)
-	vms := Storage{}
+	vms := StorageMap{}
 
 	toActor, err := account.NewActor(nil)
 	assert.NoError(err)
@@ -38,7 +39,10 @@ func TestVMContextStorage(t *testing.T) {
 	assert.NoError(err)
 	vmCtx := NewVMContext(nil, to, msg, cstate, vms, types.NewBlockHeight(0))
 
-	assert.NoError(vmCtx.WriteStorage([]byte("hello")))
+	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
+	assert.NoError(err)
+
+	assert.NoError(vmCtx.WriteStorage(node.RawData()))
 	assert.NoError(cstate.Commit(ctx))
 
 	// make sure we can read it back
@@ -46,7 +50,7 @@ func TestVMContextStorage(t *testing.T) {
 	assert.NoError(err)
 
 	storage := NewVMContext(nil, toActorBack, msg, cstate, vms, types.NewBlockHeight(0)).ReadStorage()
-	assert.Equal(storage, []byte("hello"))
+	assert.Equal(storage, node.RawData())
 }
 
 func TestVMContextSendFailures(t *testing.T) {
@@ -56,7 +60,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 
 	tree := state.NewCachedStateTree(&state.MockStateTree{})
-	vms := Storage{}
+	vms := StorageMap{}
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -207,7 +211,7 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	vms := Storage{}
+	vms := StorageMap{}
 
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)

@@ -88,7 +88,7 @@ type Storage struct {
 	Channels allPaymentChannels
 }
 
-// NewStorage returns an empty Storage struct
+// NewStorage returns an empty StorageMap struct
 func (pb *Actor) NewStorage() interface{} {
 	return &Storage{}
 }
