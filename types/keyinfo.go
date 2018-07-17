@@ -11,9 +11,9 @@ func init() {
 // KeyInfo is a key and its type used for signing
 type KeyInfo struct {
 	// Private key as bytes
-	PrivateKey []byte
+	PrivateKey []byte `json:"privateKey"`
 	// Curve used to generate private key
-	Curve string
+	Curve string `json:"curve"`
 }
 
 // Unmarshal decodes raw cbor bytes into KeyInfo.

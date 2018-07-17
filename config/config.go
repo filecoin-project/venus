@@ -123,12 +123,9 @@ func (cfg *Config) WriteFile(file string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close() // nolint: errcheck
 
-	if err := toml.NewEncoder(f).Encode(*cfg); err != nil {
-		return err
-	}
-
-	return f.Close()
+	return toml.NewEncoder(f).Encode(*cfg)
 }
 
 // ReadFile reads a config file from disk.

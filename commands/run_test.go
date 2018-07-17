@@ -89,9 +89,11 @@ func runSuccessLines(td *TestDaemon, args ...string) []string {
 }
 
 type TestDaemon struct {
-	cmdAddr   string
-	swarmAddr string
-	repoDir   string
+	cmdAddr    string
+	swarmAddr  string
+	repoDir    string
+	walletFile string
+	walletAddr string
 
 	init bool
 
@@ -535,6 +537,18 @@ func CmdTimeout(t time.Duration) func(*TestDaemon) {
 	}
 }
 
+func WalletFile(f string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.walletFile = f
+	}
+}
+
+func WalletAddr(a string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.walletAddr = a
+	}
+}
+
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
 	filecoinBin, err := th.GetFilecoinBinary()
@@ -563,6 +577,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		test:       t,
 		repoDir:    dir,
 		init:       true, // we want to init unless told otherwise
+		walletFile: "",
 		cmdTimeout: DefaultDaemonCmdTimeout,
 	}
 
@@ -575,9 +590,11 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
+	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
+	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
 
 	if td.init {
-		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag)
+		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)

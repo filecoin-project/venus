@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 
@@ -34,7 +35,7 @@ func TestIdOutput(t *testing.T) {
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
 
-	err := node.Init(ctx, r)
+	err := node.Init(ctx, r, core.InitGenesis)
 	assert.NoError(err)
 
 	// define repo option

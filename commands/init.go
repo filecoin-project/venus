@@ -10,13 +10,21 @@ import (
 	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var initCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Initialize a filecoin repo",
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
+		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 	},
 	Run: initRun,
 	Encoders: cmds.EncoderMap{
@@ -26,7 +34,6 @@ var initCmd = &cmds.Command{
 
 func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (err error) {
 	repoDir := getRepoDir(req)
-
 	re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
 	if err := repo.InitFSRepo(repoDir, config.NewDefaultConfig()); err != nil {
@@ -48,8 +55,53 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 		} // else err may be set and returned as normal
 	}()
 
+	walletFile, _ := req.Options["walletfile"].(string)
+	walletAddr, _ := req.Options["walletaddr"].(string)
+	// Used for testing
+	if len(walletFile) > 1 {
+		re.Emit(fmt.Sprintf("initializing filecoin node with wallet file: %s\n", walletFile)) // nolint: errcheck
+
+		// Load all the Address their Keys into memory
+		addressKeys, err := th.LoadWalletAddressAndKeysFromFile(walletFile)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load wallet file: %s", walletFile)
+		}
+
+		// Generate a genesis function to allocate the address funds
+		var actorOps []th.GenOption
+		for k, v := range addressKeys {
+			actorOps = append(actorOps, th.ActorAccount(k.Address, k.Balance))
+
+			// load an address into nodes wallet backend
+			if k.Address.String() == walletAddr {
+				re.Emit(fmt.Sprintf("initializing filecoin node with address: %s, balance: %s\n", k.Address.String(), k.Balance.String())) // nolint: errcheck
+				if err := loadAddress(k, v, rep); err != nil {
+					return err
+				}
+				// since `node.Init` will create an address, and since `node.Build` will
+				// return `ErrNoDefaultMessageFromAddress` iff len(wallet.Addresses) > 1 and
+				// wallet.defaultAddress == "" we set the default here
+				rep.Config().Wallet.DefaultAddress = k.Address
+			}
+		}
+		tif := th.MakeGenesisFunc(actorOps...)
+
+		return node.Init(req.Context, rep, tif)
+	}
+
 	// TODO don't create the repo if this fails
-	return node.Init(req.Context, rep)
+	return node.Init(req.Context, rep, core.InitGenesis)
+}
+
+func loadAddress(ai th.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
+	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+	if err != nil {
+		return err
+	}
+	if err := backend.LoadAddress(ai, ki); err != nil {
+		return err
+	}
+	return nil
 }
 
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {

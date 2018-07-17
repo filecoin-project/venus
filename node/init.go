@@ -22,14 +22,14 @@ var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") //
 // Init initializes a filecoin node in the given repo
 // TODO: accept options?
 //  - configurable genesis block
-func Init(ctx context.Context, r repo.Repo) error {
+func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 	// TODO(ipfs): make the blockstore and blockservice have the same interfaces
 	// so that this becomes less painful
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
 	cm := core.NewChainManager(r.Datastore(), cst)
-	if err := cm.Genesis(ctx, core.InitGenesis); err != nil {
+	if err := cm.Genesis(ctx, gen); err != nil {
 		return errors.Wrap(err, "failed to initialize genesis")
 	}
 

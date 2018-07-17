@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -65,6 +66,24 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 		ds:    ds,
 		cache: cache,
 	}, nil
+}
+
+// LoadAddress loads the address in `ai` and KeyInfo `ki` into the backend
+func (backend *DSBackend) LoadAddress(ai th.TypesAddressInfo, ki types.KeyInfo) error {
+	kib, err := ki.Marshal()
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal KeyInfo")
+	}
+
+	// store the address and key used to generate it
+	if err := backend.ds.Put(ds.NewKey(ai.Address.String()), kib); err != nil {
+		return errors.Wrap(err, "failed to store new address")
+	}
+
+	// mark the cache as containing the address, used by `HasAddress()`
+	backend.cache[ai.Address] = struct{}{}
+
+	return nil
 }
 
 // Addresses returns a list of all addresses that are stored in this backend.
