@@ -96,5 +96,4 @@ func TestWalletLoadFromFile(t *testing.T) {
 	// assert default amount of funds were allocated to address during genesis
 	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").readStdoutTrimNewlines()
 	assert.Contains(wb, "10000000")
-
 }

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -12,15 +13,14 @@ func TestBidList(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := NewDaemon(t, WalletFile(tf.WalletFilePath()), WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
 
 	for i := 0; i < 10; i++ {
 		d.RunSuccess("client", "add-bid", "1", fmt.Sprintf("%d", i),
-			"--from", address.TestAddress.String(),
-		)
+			"--from", testAddress3)
 	}
 
 	for i := 0; i < 10; i++ {
