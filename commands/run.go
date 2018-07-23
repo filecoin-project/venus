@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
@@ -138,16 +140,49 @@ func CliRun(ctx context.Context, root *cmds.Command,
 		return 1, fmt.Errorf("could not find matching encoder for enctype %#v", encType)
 	}
 
-	errCh := make(chan error, 1)
+	// Run the command and send any errors that it returns to the error
+	// channel execErrCh. Commands should have their panic propagated to the
+	// main goroutine. The main goroutine must not exit before the child
+	// goroutine's panic is propagated or the panic will be lost.
+
+	// buffered channel which may see an error returned from Execute()
+	execErrCh := make(chan error, 1)
+
+	// buffered channel which may receive a panic from Execute()
+	execPanicCh := make(chan interface{}, 1)
+
+	// used to block main goroutine until child goroutine exits
+	execWg := sync.WaitGroup{}
+	execWg.Add(1)
+
+	// child goroutine in which we Execute() the command
 	go func() {
-		err := exctr.Execute(req, re, env)
-		if err != nil {
-			errCh <- err
+		defer func() {
+			if e := recover(); e != nil {
+				fmt.Fprintf(stderr, "%s: %s", e, debug.Stack()) // nolint: errcheck
+				execPanicCh <- e
+			}
+			execWg.Done()
+		}()
+
+		// Execute() blocks until we get a value from exitCh. Note that exitCh
+		// will see the default exit code, 0, if a non-daemon command panics
+		// before calling ResponseEmitter#Emit.
+		if err := exctr.Execute(req, re, env); err != nil {
+			execErrCh <- err
 		}
 	}()
 
+	// unblocks the child goroutine
+	code := <-exitCh
+
+	// wait for deferred panic-handler
+	execWg.Wait()
+
 	select {
-	case err := <-errCh:
+	case e := <-execPanicCh:
+		panic(e)
+	case err := <-execErrCh:
 		printErr(err)
 
 		if kiterr, ok := err.(*cmdkit.Error); ok {
@@ -158,12 +193,7 @@ func CliRun(ctx context.Context, root *cmds.Command,
 		}
 
 		return 1, err
-
-	case code := <-exitCh:
-		if code != 0 {
-			return code, nil
-		}
+	default:
+		return code, nil
 	}
-
-	return 0, nil
 }
