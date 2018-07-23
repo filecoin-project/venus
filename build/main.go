@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -21,22 +22,56 @@ func init() {
 
 // run executes a given command on the shell, like
 // `run("git status")`
-func run(name string) string {
+func run(name string) {
 	args := strings.Split(name, " ")
-	return runParts(args...)
+	runParts(args...)
 }
 
-func runParts(args ...string) string {
+func runParts(args ...string) {
 	name := strings.Join(args, " ")
 	cmd := exec.Command(args[0], args[1:]...) // #nosec
 	log.Println(name)
-	out, err := cmd.CombinedOutput()
+
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Printf("%s", out)
+		panic(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		if _, err = io.Copy(os.Stderr, stderr); err != nil {
+			panic(err)
+		}
+	}()
+	go func() {
+		if _, err = io.Copy(os.Stdout, stdout); err != nil {
+			panic(err)
+		}
+	}()
+
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		log.Fatalf("Command '%s' failed: %s\n", name, err)
+	}
+}
+
+func runCapture(name string) string {
+	args := strings.Split(name, " ")
+	cmd := exec.Command(args[0], args[1:]...) // #nosec
+	log.Println(name)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
 		log.Fatalf("Command '%s' failed: %s\n", name, err)
 	}
 
-	return strings.Trim(string(out), lineBreak)
+	return strings.Trim(string(output), lineBreak)
 }
 
 // deps installs all dependencies
@@ -56,7 +91,7 @@ func deps() {
 	}
 
 	for _, name := range list {
-		log.Println(run(name))
+		run(name)
 	}
 }
 
@@ -85,14 +120,14 @@ func smartdeps() {
 	for _, pkg := range pkgs {
 		pkgpath := filepath.Join(gopath, "src", pkg)
 		if _, err := os.Stat(pkgpath); os.IsNotExist(err) {
-			log.Println(run(fmt.Sprintf("go get %s", pkg)))
+			run(fmt.Sprintf("go get %s", pkg))
 		} else {
-			log.Println(run(fmt.Sprintf("go install %s", pkg)))
+			run(fmt.Sprintf("go install %s", pkg))
 		}
 	}
 
 	for _, op := range cmds {
-		log.Println(run(op))
+		run(op)
 	}
 }
 
@@ -122,7 +157,7 @@ func lint(packages ...string) {
 		"--min-occurrences=6", // for goconst
 	}
 
-	log.Println(runParts(append(append(configs, fastLinters...), packages...)...))
+	runParts(append(append(configs, fastLinters...), packages...)...)
 
 	slowLinters := []string{
 		"--deadline=10m",
@@ -134,7 +169,7 @@ func lint(packages ...string) {
 		"--enable=deadcode",
 	}
 
-	log.Println(runParts(append(append(configs, slowLinters...), packages...)...))
+	runParts(append(append(configs, slowLinters...), packages...)...)
 }
 
 func build() {
@@ -144,41 +179,37 @@ func build() {
 
 func buildFakecoin() {
 	log.Println("Building go-fakecoin...")
-	log.Println(
-		runParts(
-			"go", "build",
-			"-o", "tools/go-fakecoin/go-fakecoin",
-			"-v",
-			"./tools/go-fakecoin",
-		),
+	runParts(
+		"go", "build",
+		"-o", "tools/go-fakecoin/go-fakecoin",
+		"-v",
+		"./tools/go-fakecoin",
 	)
 }
 
 func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
-	commit := run("git log -n 1 --format=%H")
+	commit := runCapture("git log -n 1 --format=%H")
 
-	log.Println(
-		runParts(
-			"go", "build",
-			"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
-			"-v", "-o", "go-filecoin", ".",
-		),
+	runParts(
+		"go", "build",
+		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
+		"-v", "-o", "go-filecoin", ".",
 	)
 }
 
 func install() {
 	log.Println("Installing...")
 
-	log.Println(runParts("go", "install"))
+	runParts("go", "install")
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
 func test(args ...string) {
 	log.Println("Testing...")
 
-	log.Println(run(fmt.Sprintf("go test -parallel 8 ./... %s", strings.Join(args, " "))))
+	run(fmt.Sprintf("go test -parallel 8 ./... %s", strings.Join(args, " ")))
 }
 
 func main() {
