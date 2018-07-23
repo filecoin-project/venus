@@ -187,7 +187,12 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 // Note that if 'f' returns an error, modifications to the storage are not
 // saved.
 func WithStorage(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
-	if err := UnmarshalStorage(ctx.ReadStorage(), st); err != nil {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := UnmarshalStorage(chunk, st); err != nil {
 		return nil, err
 	}
 

@@ -67,7 +67,7 @@ type VMContext interface {
 	TEMPCreateActor(addr types.Address, act *types.Actor) error
 
 	// TODO: Remove these when Storage above is completely implemented
-	ReadStorage() []byte
+	ReadStorage() ([]byte, error)
 	WriteStorage(memory []byte) error
 }
 
@@ -75,7 +75,7 @@ type VMContext interface {
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
 	Put([]byte) (*cid.Cid, ErrorCode)
-	Get(*cid.Cid) ([]byte, bool)
+	Get(*cid.Cid) ([]byte, bool, error)
 	Commit(*cid.Cid, *cid.Cid) ErrorCode
 	Head() *cid.Cid
 }

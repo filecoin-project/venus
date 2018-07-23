@@ -131,7 +131,7 @@ func TestDealProtocol(t *testing.T) {
 		Deal: &storagemarket.Deal{
 			Ask:     0,
 			Bid:     0,
-			DataRef: data.Cid(),
+			DataRef: data.Cid().String(),
 		},
 		ClientSig: clientAddr.String(),
 	}
@@ -188,7 +188,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	data := dag.NewRawNode([]byte("cats"))
 
 	propose := &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid()},
+		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid().String()},
 		ClientSig: clientAddr.String(),
 	}
 
@@ -198,7 +198,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal("unknown bid: no such bid", resp.Message)
 
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid()},
+		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid().String()},
 		ClientSig: clientAddr.String(),
 	}
 
@@ -208,7 +208,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal("unknown ask: no such ask", resp.Message)
 
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid()},
+		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid().String()},
 		ClientSig: clientAddr.String(),
 	}
 

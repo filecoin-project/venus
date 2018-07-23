@@ -67,7 +67,7 @@ func TestDealProtocolClient(t *testing.T) {
 		Deal: &storagemarket.Deal{
 			Ask:     0,
 			Bid:     0,
-			DataRef: data.Cid(),
+			DataRef: data.Cid().String(),
 		},
 		ClientSig: clientAddr.String(),
 	}

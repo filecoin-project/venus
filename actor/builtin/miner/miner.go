@@ -317,7 +317,12 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 	var mstore Storage
 
-	if err := actor.UnmarshalStorage(ctx.ReadStorage(), &mstore); err != nil {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return peer.ID(""), errors.CodeError(err), err
+	}
+
+	if err := actor.UnmarshalStorage(chunk, &mstore); err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 

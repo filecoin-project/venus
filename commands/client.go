@@ -157,7 +157,8 @@ var clientProposeDealCmd = &cmds.Command{
 			return fmt.Errorf("must specify a bid")
 		}
 
-		data, err := cid.Decode(req.Arguments[0])
+		// ensure arg is a valid cid
+		_, err := cid.Decode(req.Arguments[0])
 		if err != nil {
 			return err
 		}
@@ -169,7 +170,7 @@ var clientProposeDealCmd = &cmds.Command{
 			Deal: &storagemarket.Deal{
 				Ask:     uint64(askID),
 				Bid:     uint64(bidID),
-				DataRef: data,
+				DataRef: req.Arguments[0],
 			},
 		}
 

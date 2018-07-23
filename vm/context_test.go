@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -26,7 +27,10 @@ func TestVMContextStorage(t *testing.T) {
 	cst := hamt.NewCborStore()
 	st := state.NewEmptyStateTree(cst)
 	cstate := state.NewCachedStateTree(st)
-	vms := StorageMap{}
+
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := NewStorageMap(ds)
 
 	toActor, err := account.NewActor(nil)
 	assert.NoError(err)
@@ -49,7 +53,8 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(err)
 
-	storage := NewVMContext(nil, toActorBack, msg, cstate, vms, types.NewBlockHeight(0)).ReadStorage()
+	storage, err := NewVMContext(nil, toActorBack, msg, cstate, vms, types.NewBlockHeight(0)).ReadStorage()
+	assert.NoError(err)
 	assert.Equal(storage, node.RawData())
 }
 
@@ -60,7 +65,10 @@ func TestVMContextSendFailures(t *testing.T) {
 	newAddress := types.NewAddressForTestGetter()
 
 	tree := state.NewCachedStateTree(&state.MockStateTree{})
-	vms := StorageMap{}
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := NewStorageMap(ds)
+
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -211,7 +219,9 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	vms := StorageMap{}
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	vms := NewStorageMap(ds)
 
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)

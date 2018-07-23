@@ -356,16 +356,21 @@ func (sm *StorageMarket) processDeal(id [32]byte) {
 
 func (sm *StorageMarket) finishDeal(ctx context.Context, minerOwner types.Address, propose *DealProposal) (*cid.Cid, error) {
 	// TODO: better file fetching
-	if err := sm.fetchData(context.TODO(), propose.Deal.DataRef); err != nil {
+	dataRef, err := cid.Decode(propose.Deal.DataRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "corrupt cid in deal")
+	}
+
+	if err := sm.fetchData(context.TODO(), dataRef); err != nil {
 		return nil, errors.Wrap(err, "fetching data failed")
 	}
 
-	msgcid, err := sm.smi.AddDeal(ctx, minerOwner, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig, propose.Deal.DataRef)
+	msgcid, err := sm.smi.AddDeal(ctx, minerOwner, propose.Deal.Ask, propose.Deal.Bid, propose.ClientSig, dataRef)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sm.stageForSealing(ctx, propose.Deal.DataRef); err != nil {
+	if err := sm.stageForSealing(ctx, dataRef); err != nil {
 		// TODO: maybe wait until the deal gets finalized on the blockchain? (wait N blocks)
 		return nil, err
 	}
