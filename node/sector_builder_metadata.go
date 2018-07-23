@@ -134,10 +134,6 @@ func (st *sectorStore) getSector(label string) (*Sector, error) {
 		filename: metadata.Filename,
 	}
 
-	if err := s.SyncFile(); err != nil {
-		return nil, errors.Wrap(err, "failed to open sector file")
-	}
-
 	return s, nil
 }
 

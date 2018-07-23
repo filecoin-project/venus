@@ -36,6 +36,25 @@ func init() {
 // ErrPieceTooLarge is an error indicating that a piece cannot be larger than the sector into which it is written.
 var ErrPieceTooLarge = errors.New("piece too large for sector")
 
+// ErrCouldNotRevertUnsealedSector is an error indicating that a revert of an unsealed sector failed due to
+// rollbackErr. This revert was originally triggered by the rollbackCause error
+type ErrCouldNotRevertUnsealedSector struct {
+	rollbackErr   error
+	rollbackCause error
+}
+
+// NewErrCouldNotRevertUnsealedSector produces an ErrCouldNotRevertUnsealedSector.
+func NewErrCouldNotRevertUnsealedSector(rollbackErr error, rollbackCause error) error {
+	return &ErrCouldNotRevertUnsealedSector{
+		rollbackErr:   rollbackErr,
+		rollbackCause: rollbackCause,
+	}
+}
+
+func (e *ErrCouldNotRevertUnsealedSector) Error() string {
+	return fmt.Sprintf("rollback error: %s, rollback cause: %s", e.rollbackErr.Error(), e.rollbackCause.Error())
+}
+
 const sectorSize = 1024
 const nodeSize = 16
 
@@ -99,7 +118,6 @@ type Sector struct {
 
 	Label    string
 	filename string
-	file     *os.File
 	sealed   *SealedSector
 }
 
@@ -191,11 +209,8 @@ func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
 		return s, errors.Wrap(err, "failed to create sector directory")
 	}
 	s.filename = p
-	s.file, err = os.Create(p)
-	if err != nil {
-		return s, errors.Wrap(err, "failed to create sector file")
-	}
-	return s, s.file.Close()
+
+	return s, nil
 }
 
 // NewSealedSector allocates and returns a new SealedSector from merkleRoot and a sector. This method moves the sector's
@@ -256,39 +271,69 @@ func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sec
 
 	metadata, err := store.getSectorBuilderMetadata(minerAddr)
 	if err == nil {
-		sector, err := store.getSector(metadata.CurSectorLabel)
-		if err != nil {
+		if err := configureSectorBuilderFromMetadata(store, sb, metadata); err != nil {
 			return nil, err
 		}
-		sb.CurSector = sector
-
-		for _, root := range metadata.SealedSectorMerkleRoots {
-			sealed, err := store.getSealedSector(root)
-			if err != nil {
-				return nil, err
-			}
-			sb.SealedSectors = append(sb.SealedSectors, sealed)
-		}
-
-		np := &binpack.NaivePacker{}
-		np.InitWithCurrentBin(sb)
-		sb.Packer = np
 
 		return sb, sb.checkpoint(sb.CurSector)
-	}
-
-	if err != nil && strings.Contains(err.Error(), "not found") {
-		packer, firstBin, err := binpack.NewNaivePacker(sb)
-		if err != nil {
+	} else if strings.Contains(err.Error(), "not found") {
+		if err := configureFreshSectorBuilder(sb); err != nil {
 			return nil, err
 		}
-		sb.CurSector = firstBin.(*Sector)
-		sb.Packer = packer
 
 		return sb, sb.checkpoint(sb.CurSector)
+	} else {
+		return nil, err
+	}
+}
+
+func configureSectorBuilderFromMetadata(store *sectorStore, sb *SectorBuilder, metadata *SectorBuilderMetadata) (finalErr error) {
+	sector, err := store.getSector(metadata.CurSectorLabel)
+	if err != nil {
+		return err
 	}
 
-	return nil, err
+	f, err := os.OpenFile(sector.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil && finalErr == nil {
+			finalErr = errors.Wrapf(err, "failed to close unsealed sector-file %s", sector.filename)
+		}
+	}()
+
+	if err := sector.SyncFile(f); err != nil {
+		return errors.Wrapf(err, "failed to sync sector object with unsealed sector-file %s", sector.filename)
+	}
+
+	sb.CurSector = sector
+
+	for _, root := range metadata.SealedSectorMerkleRoots {
+		sealed, err := store.getSealedSector(root)
+		if err != nil {
+			return err
+		}
+		sb.SealedSectors = append(sb.SealedSectors, sealed)
+	}
+
+	np := &binpack.NaivePacker{}
+	np.InitWithCurrentBin(sb)
+	sb.Packer = np
+
+	return nil
+}
+
+func configureFreshSectorBuilder(sb *SectorBuilder) error {
+	packer, firstBin, err := binpack.NewNaivePacker(sb)
+	if err != nil {
+		return err
+	}
+	sb.CurSector = firstBin.(*Sector)
+	sb.Packer = packer
+
+	return nil
 }
 
 func (sb *SectorBuilder) onCommitmentAddedToMempool(*SealedSector, *cid.Cid, error) {
@@ -302,6 +347,16 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
 	if err == binpack.ErrItemTooLarge {
 		return ErrPieceTooLarge
 	}
+
+	// If, during piece-writing, a greater-than-zero-amount of piece-bytes were
+	// written to the unsealed sector file and we were unable to revert to the
+	// pre-write state, ErrCouldNotRevertUnsealedSector will be returned. If we
+	// were unable to revert, it is likely that the sector object and backing
+	// unsealed sector-file are now in different states.
+	if _, ok := err.(*ErrCouldNotRevertUnsealedSector); ok {
+		panic(err)
+	}
+
 	if err == nil {
 		if bin == nil {
 			// What does this signify? Could use to signal something.
@@ -327,10 +382,10 @@ func makeFilecoinParameters(sectorSize int, nodeSize int) *PublicParameters {
 	}
 }
 
-// SyncFile opens and sets sector's file for appending and synchronizes the sector object and file. SyncFile may mutate
-// both the file and the sector object in order to achieve a consistent view of the sector.
-func (s *Sector) SyncFile() error {
-	fi, err := os.Stat(s.filename)
+// SyncFile synchronizes the sector object and backing unsealed sector-file. SyncFile may mutate both the file and the
+// sector object in order to achieve a consistent view of the sector.
+func (s *Sector) SyncFile(f *os.File) error {
+	fi, err := f.Stat()
 	if err != nil {
 		return errors.Wrapf(err, "failed to stat sector file %s", s.filename)
 	}
@@ -365,16 +420,9 @@ func (s *Sector) SyncFile() error {
 	}
 
 	if cmpSize(s, fi) == -1 {
-		if err := os.Truncate(s.filename, int64(s.Size-s.Free)); err != nil {
-			return err
-		}
+		return f.Truncate(int64(s.Size - s.Free))
 	}
 
-	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-	s.file = f
 	return nil
 }
 
@@ -478,36 +526,30 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 
 // WritePiece writes data from the given reader to the sectors underlying storage
 func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
-	if err := s.SyncFile(); err != nil {
+	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
 		return err
 	}
-	// Capture any error from the deferred close as the value to return unless previous error was being returned.
+
 	defer func() {
-		err := s.file.Close()
-		if err != nil && finalErr == nil {
-			finalErr = errors.Wrap(err, "failed to close sector's file after writing piece")
+		if err := f.Close(); err != nil && finalErr == nil {
+			finalErr = errors.Wrapf(err, "failed to close unsealed sector-file %s", s.filename)
 		}
 	}()
 
-	n, err := io.Copy(s.file, r)
+	n, err := io.Copy(f, r)
 	if err != nil {
-		// TODO: make sure we roll back the state of the file to what it was before we started this write
-		// Note, this should be a fault. We likely should already have all the
-		// data locally before calling this method. If that ends up being the
-		// case, this error signifies disk errors of some kind
-		return err
+		return errors.Wrapf(err, "failed to copy bytes to unsealed sector-file %s", s.filename)
 	}
 
-	// TODO: We should be writing this out to a file in the 'staging' area. Once the
-	// sector is ready to be sealed, we should mmap it and pass it to the
-	// sealing code. The sealing code prefers fairly random access to the data,
-	// so using mmap will be the fastest option. We could also provide an
-	// interface to just do seeks and reads on the underlying file, but it
-	// won't be as optimized
-
 	if uint64(n) != pi.Size {
-		// TODO: make sure we roll back the state of the file to what it was before we started this write
-		return fmt.Errorf("reported piece size does not match what we read")
+		err := fmt.Errorf("did not write all piece-bytes to file (pi.Size=%d, wrote=%d)", pi.Size, n)
+
+		if err1 := s.SyncFile(f); err1 != nil {
+			return NewErrCouldNotRevertUnsealedSector(err1, err)
+		}
+
+		return err
 	}
 
 	s.Free -= pi.Size

@@ -113,9 +113,6 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotEqual(stagingPath, stpath2)
 	assert.NotEqual(sealedPath, sepath2)
 
-	assert.NotNil(sector.file)
-	assert.IsType(&os.File{}, sector.file)
-
 	metadataMustMatch(require, sb, sb.CurSector, 0)
 	text := "What's our vector, sector?" // len(text) = 26
 	requireAddPiece(text)
