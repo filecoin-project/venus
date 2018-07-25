@@ -101,15 +101,15 @@ func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore)
 	bs := blockstore.NewBlockstore(d)
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	cm := core.NewChainManager(d, cst)
+	// allow fakecoin to mine without having a correct storage market / state tree
+	cm.PwrTableView = &core.TestView{}
 	return cm, cst
 }
 
 func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
 	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
-	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
-		return cm.Weight(ctx, ts)
-	}, core.ApplyMessages)
+	}, cm.Weight, core.ApplyMessages)
 }
 
 func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, core.TipSet, error) {

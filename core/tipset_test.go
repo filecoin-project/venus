@@ -17,13 +17,14 @@ func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWe
 	ret := []byte{1, 2}
 
 	return &types.Block{
-		Parents:         types.NewSortedCidSet(parentCid),
-		ParentWeight:    types.Uint64(parentWeight),
-		Height:          types.Uint64(42 + uint64(height)),
-		Nonce:           7,
-		Messages:        []*types.Message{m1},
-		StateRoot:       types.SomeCid(),
-		MessageReceipts: []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
+		Parents:           types.NewSortedCidSet(parentCid),
+		ParentWeightNum:   types.Uint64(parentWeight),
+		ParentWeightDenom: types.Uint64(uint64(1)),
+		Height:            types.Uint64(42 + uint64(height)),
+		Nonce:             7,
+		Messages:          []*types.Message{m1},
+		StateRoot:         types.SomeCid(),
+		MessageReceipts:   []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
 	}
 }
 
@@ -123,7 +124,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	b2.Parents = b1.Parents
 
 	// Invalid weight
-	b2.ParentWeight = types.Uint64(3)
+	b2.ParentWeightNum = types.Uint64(3)
 	ts = TipSet{}
 	RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
@@ -160,7 +161,7 @@ func TestNewTipSet(t *testing.T) {
 	b1.Parents = b2.Parents
 
 	// Invalid parent weights
-	b1.ParentWeight = types.Uint64(3)
+	b1.ParentWeightNum = types.Uint64(3)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.EqualError(err, ErrBadTipSetCreate.Error())
 	assert.Nil(ts)
@@ -194,9 +195,10 @@ func TestTipSetParents(t *testing.T) {
 func TestTipSetParentWeight(t *testing.T) {
 	assert := assert.New(t)
 	ts := RequireTestTipSet(t)
-	w, err := ts.ParentWeight()
+	wNum, wDenom, err := ts.ParentWeight()
 	assert.NoError(err)
-	assert.Equal(w, uint64(1337))
+	assert.Equal(wNum, uint64(1337))
+	assert.Equal(wDenom, uint64(1))
 }
 
 func TestTipSetToSortedCidSet(t *testing.T) {

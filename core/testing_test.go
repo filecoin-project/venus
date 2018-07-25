@@ -23,6 +23,7 @@ func TestAddChain(t *testing.T) {
 	cs := hamt.NewCborStore()
 	ds := datastore.NewMapDatastore()
 	chm := NewChainManager(ds, cs)
+	chm.PwrTableView = &TestView{}
 
 	ctx := context.Background()
 	assert.NoError(chm.Genesis(ctx, InitGenesis))

@@ -44,9 +44,12 @@
             "null"
           ]
         },
-        "parentWeight": {
+        "parentWeightNumerator": {
           "type": "string"
         },
+	"parentWeightDenominator": {
+	  "type": "string"
+	},
         "stateRoot": {
           "$ref": "#/definitions/Cid"
         },

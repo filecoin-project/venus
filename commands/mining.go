@@ -38,9 +38,7 @@ var miningOnceCmd = &cmds.Command{
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return fcn.ChainMgr.State(ctx, ts.ToSlice())
-		}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
-			return fcn.ChainMgr.Weight(ctx, ts)
-		}, core.ApplyMessages)
+		}, fcn.ChainMgr.Weight, core.ApplyMessages)
 		// TODO(EC): Need to read best tipsets from storage and pass in. See also Node::StartMining().
 		ts, err := core.NewTipSet(cur)
 		if err != nil {

@@ -22,7 +22,7 @@ import (
 // MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the initialized
 // nodes
-func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, options ...func(c *Config) error) []*Node {
+func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) []*Node {
 	t.Helper()
 	var out []*Node
 	for i := 0; i < n; i++ {
@@ -53,6 +53,11 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, options ...func(c
 			return nil
 		})
 
+		opts = append(opts, func(c *Config) error {
+			c.MockMineMode = mockMineMode
+			return nil
+		})
+
 		nd, err := New(context.Background(), opts...)
 		require.NoError(t, err)
 		out = append(out, nd)
@@ -63,18 +68,18 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, options ...func(c
 
 // MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the nodes
-func MakeNodesStarted(t *testing.T, n int, offlineMode bool) []*Node {
+func MakeNodesStarted(t *testing.T, n int, offlineMode, mockMineMode bool) []*Node {
 	t.Helper()
-	nds := MakeNodesUnstarted(t, n, offlineMode)
+	nds := MakeNodesUnstarted(t, n, offlineMode, mockMineMode)
 	for _, n := range nds {
 		require.NoError(t, n.Start())
 	}
 	return nds
 }
 
-// MakeOfflineNode returns a single unstarted offline node.
+// MakeOfflineNode returns a single unstarted offline node with mocked mining.
 func MakeOfflineNode(t *testing.T) *Node {
-	return MakeNodesUnstarted(t, 1, true)[0]
+	return MakeNodesUnstarted(t, 1, true, true)[0]
 }
 
 // MustCreateMinerResult contains the result of a CreateMiner command
@@ -113,9 +118,7 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 
 	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return node.ChainMgr.State(ctx, ts.ToSlice())
-	}, func(ctx context.Context, ts core.TipSet) (uint64, error) {
-		return node.ChainMgr.Weight(ctx, ts)
-	}, core.ApplyMessages)
+	}, node.ChainMgr.Weight, core.ApplyMessages)
 	cur := node.ChainMgr.GetHeaviestTipSet()
 	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), cur, address.TestAddress)
 	require.NoError(out.Err)

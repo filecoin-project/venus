@@ -6,9 +6,10 @@ import (
 
 	cbor "gx/ipfs/QmRiRJhn427YVuufBEHofLreKWNw7P7BWNq86Sb9kzqdbd/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	hamt "gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
+	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
+	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -22,6 +23,15 @@ type tree struct {
 	builtinActors map[string]exec.ExecutableActor
 }
 
+func (t *tree) GetActorStorage(ctx context.Context, a types.Address, storage interface{}) error {
+	act, err := t.GetActor(ctx, a)
+	if err != nil {
+		return err
+	}
+
+	return actor.UnmarshalStorage(act.ReadStorage(), storage)
+}
+
 // RevID identifies a snapshot of the StateTree.
 type RevID int
 
@@ -33,6 +43,7 @@ type Tree interface {
 	GetActor(ctx context.Context, a types.Address) (*types.Actor, error)
 	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*types.Actor, error)) (*types.Actor, error)
 	SetActor(ctx context.Context, a types.Address, act *types.Actor) error
+	GetActorStorage(ctx context.Context, a types.Address, stg interface{}) error
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
 }

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
@@ -10,8 +11,7 @@ import (
 	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
 	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,31 +32,29 @@ func init() {
 	}
 	testGenesis = genesis
 
-	parentState, _ := state.LoadStateTree(context.Background(), cst, genesis.StateRoot, builtin.Actors)
+	block1 = MkChild([]*types.Block{testGenesis}, genesis.StateRoot, 0)
+	block2 = MkChild([]*types.Block{block1}, block1.StateRoot, 0)
 
-	block1 = MkChild([]*types.Block{testGenesis}, parentState, genesis.StateRoot, 0)
-	block2 = MkChild([]*types.Block{block1}, parentState, block1.StateRoot, 0)
+	fork1 = MkChild([]*types.Block{testGenesis}, genesis.StateRoot, 1)
+	fork2 = MkChild([]*types.Block{fork1}, fork1.StateRoot, 1)
+	fork3 = MkChild([]*types.Block{fork2}, fork2.StateRoot, 1)
 
-	fork1 = MkChild([]*types.Block{testGenesis}, parentState, genesis.StateRoot, 1)
-	fork2 = MkChild([]*types.Block{fork1}, parentState, fork1.StateRoot, 1)
-	fork3 = MkChild([]*types.Block{fork2}, parentState, fork2.StateRoot, 1)
+	tipsetA1 = MkChild([]*types.Block{testGenesis}, genesis.StateRoot, 2)
+	tipsetA2 = MkChild([]*types.Block{testGenesis}, genesis.StateRoot, 3)
+	tipsetA3 = MkChild([]*types.Block{testGenesis}, genesis.StateRoot, 4)
 
-	tipsetA1 = MkChild([]*types.Block{testGenesis}, parentState, genesis.StateRoot, 2)
-	tipsetA2 = MkChild([]*types.Block{testGenesis}, parentState, genesis.StateRoot, 3)
-	tipsetA3 = MkChild([]*types.Block{testGenesis}, parentState, genesis.StateRoot, 4)
+	tipsetB1 = MkChild([]*types.Block{tipsetA1, tipsetA2, tipsetA3}, genesis.StateRoot, 0)
+	tipsetB2 = MkChild([]*types.Block{tipsetA1, tipsetA2, tipsetA3}, genesis.StateRoot, 1)
 
-	tipsetB1 = MkChild([]*types.Block{tipsetA1, tipsetA2, tipsetA3}, parentState, genesis.StateRoot, 0)
-	tipsetB2 = MkChild([]*types.Block{tipsetA1, tipsetA2, tipsetA3}, parentState, genesis.StateRoot, 1)
-
-	tipsetFork = MkChild([]*types.Block{tipsetA1, tipsetA3}, parentState, genesis.StateRoot, 0)
+	tipsetFork = MkChild([]*types.Block{tipsetA1, tipsetA3}, genesis.StateRoot, 0)
 
 	bad1 = &types.Block{
 		StateRoot: testGenesis.StateRoot,
 		Nonce:     404,
 	}
-	bad2 = MkChild([]*types.Block{bad1}, parentState, genesis.StateRoot, 0)
+	bad2 = MkChild([]*types.Block{bad1}, genesis.StateRoot, 0)
 
-	bad3 = MkChild([]*types.Block{tipsetA1, block2}, parentState, genesis.StateRoot, 0)
+	bad3 = MkChild([]*types.Block{tipsetA1, block2}, genesis.StateRoot, 0)
 }
 
 func addBlocks(t *testing.T, cs *hamt.CborIpldStore, blks ...*types.Block) {
@@ -73,6 +71,7 @@ func newTestUtils() (context.Context, *hamt.CborIpldStore, datastore.Datastore, 
 	cs := hamt.NewCborStore()
 	ds := datastore.NewMapDatastore()
 	stm := NewChainManager(ds, cs)
+	stm.PwrTableView = &TestView{}
 	return ctx, cs, ds, stm
 }
 
@@ -136,14 +135,12 @@ func TestMultiBlockTipsetAdd(t *testing.T) {
 func TestHeaviestTipSetPubSub(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx, cs, _, stm := newTestUtils()
+	ctx, _, _, stm := newTestUtils()
 	ch := stm.HeaviestTipSetPubSub.Sub(HeaviestTipSetTopic)
 
 	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	parentState, err := state.LoadStateTree(context.Background(), cs, block2.StateRoot, builtin.Actors)
-	assert.NoError(err)
-	block3 := MkChild([]*types.Block{block2}, parentState, block2.StateRoot, 0)
-	block4 := MkChild([]*types.Block{block2}, parentState, block2.StateRoot, 1)
+	block3 := MkChild([]*types.Block{block2}, block2.StateRoot, 0)
+	block4 := MkChild([]*types.Block{block2}, block2.StateRoot, 1)
 	blocks := []*types.Block{block1, block2, block3, block4}
 	expTipSets := []TipSet{
 		RequireNewTipSet(require, block1),
@@ -424,7 +421,10 @@ func TestTipSets(t *testing.T) {
 	assert.Len(stm.GetTipSetsByHeight(2), 3) // tipsetB, {block2}, {tipsetFork}
 }
 
-func TestTipSetWeight(t *testing.T) {
+// TestTipSetWeightShallow does not set up storage commitments in the state of
+// the chain but checks that block processing works when the chain managers
+// sees all miners as having 0 power and the total storage being 1 byte.
+func TestTipSetWeightShallow(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -437,7 +437,121 @@ func TestTipSetWeight(t *testing.T) {
 	requireProcessBlock(ctx, t, stm, tipsetB2)
 
 	ts := RequireNewTipSet(require, tipsetB1, tipsetB2)
-	w, err := stm.Weight(ctx, ts)
+	w, _, err := stm.Weight(ctx, ts)
 	assert.NoError(err)
-	assert.Equal(ECV*6, w)
+	assert.Equal(uint64(ECV*6), w)
+}
+
+// TestTipSetWeightDeepFailure tests the behavior of the Chain Manager with
+// the production power table view over failure blocks
+func TestTipSetWeightDeepFailure(t *testing.T) {
+	//	require := require.New(t)
+	assert := assert.New(t)
+	ctx, _, _, stm := newTestUtils()
+	stm.PwrTableView = &marketView{}
+
+	// process a block without setting up the genesis block
+	res, err := stm.ProcessNewBlock(ctx, testGenesis)
+	assert.Equal(Uninit, res)
+	assert.EqualError(err, ErrUninit.Error())
+
+	// genesis block does not have a power table set up
+	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	_, err = stm.ProcessNewBlock(ctx, block1)
+	assert.Error(err)
+
+	// child block with an invalid state cid
+	newCid := types.NewCidForTestGetter()
+	badChild := MkChild([]*types.Block{testGenesis}, newCid(), 0)
+	_, err = stm.ProcessNewBlock(ctx, badChild)
+	assert.Error(err)
+}
+
+// TestTipSetWeightDeep sets up a genesis block with storage commitments and
+// tests that power fractions are accurately calculated.
+func TestTipSetWeightDeep(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	ctx, _, _, stm := newTestUtils()
+	stm.PwrTableView = &marketView{}
+
+	// setup miner power in genesis block
+	newAddress := types.NewAddressForTestGetter()
+	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	// pwr1, pwr2 = 1/100. pwr3 = 98/100.
+	pwr1, pwr2, pwr3 := types.NewBytesAmount(10000), types.NewBytesAmount(10000), types.NewBytesAmount(980000)
+	testGen := th.MakeGenesisFunc(
+		th.MinerPower(addr1, pwr1),
+		th.MinerPower(addr2, pwr2),
+		th.MinerPower(addr3, pwr3),
+	)
+	require.NoError(stm.Genesis(ctx, testGen))
+	require.Equal(1, len(stm.GetHeaviestTipSet()))
+	gen := stm.GetHeaviestTipSet().ToSlice()[0]
+
+	/* Test chain diagram and weight calcs */
+	// (Note f1b1 = fork 1 block 1)
+	//
+	// f1b1 -> {f1b2a, f1b2b}
+	//
+	// f2b1 -> f2b2
+	//
+	//  w({fXb1})         = 0 + 10 + 1   = 11
+	//  w({f1b1, f2b1})   = 0 + 20 + 2   = 22
+	//  w({f1b2a, f1b2b}) = 11 + 20 + 2  = 33
+	//  w({f2b2})         = 11 + 10 + 98 = 119
+	f1b1 := MkChild([]*types.Block{gen}, gen.StateRoot, 0)
+	f1b1.Miner = addr1
+	// We need to manually set weights in the blocks that we create.
+	f1b1.ParentWeightNum = types.Uint64(0)
+	f1b1.ParentWeightDenom = types.Uint64(1)
+	f2b1 := MkChild([]*types.Block{gen}, gen.StateRoot, 1)
+	f2b1.Miner = addr2
+	f2b1.ParentWeightNum = types.Uint64(0)
+	f2b1.ParentWeightDenom = types.Uint64(1)
+	tsBase := RequireNewTipSet(require, f1b1, f2b1)
+
+	requireProcessBlock(ctx, t, stm, f1b1)
+	requireProcessBlock(ctx, t, stm, f2b1)
+	heaviest := stm.GetHeaviestTipSet()
+	assert.Equal(tsBase, heaviest)
+	w, err := stm.weight(ctx, heaviest)
+	assert.NoError(err)
+	require.Equal(big.NewRat(int64(22), int64(1)), w)
+
+	// fork 1 is heavier than the old head.
+	f1b2a := MkChild([]*types.Block{f1b1}, gen.StateRoot, 0)
+	f1b2a.Miner = addr1
+	f1b2a.ParentWeightNum = types.Uint64(11)
+	f1b2a.ParentWeightDenom = types.Uint64(1)
+
+	f1b2b := MkChild([]*types.Block{f1b1}, gen.StateRoot, 1)
+	f1b2b.Miner = addr2
+	f1b2b.ParentWeightNum = types.Uint64(11)
+	f1b2b.ParentWeightDenom = types.Uint64(1)
+	f1 := RequireNewTipSet(require, f1b2a, f1b2b)
+
+	requireProcessBlock(ctx, t, stm, f1b2a)
+	requireProcessBlock(ctx, t, stm, f1b2b)
+	heaviest = stm.GetHeaviestTipSet()
+	assert.Equal(f1, heaviest)
+	w, err = stm.weight(ctx, heaviest)
+	assert.NoError(err)
+	require.Equal(big.NewRat(int64(33), int64(1)), w)
+
+	// fork 2 has heavier weight because of addr3's power even though there
+	// are fewer blocks in the tipset than fork 1
+	f2b2 := MkChild([]*types.Block{f2b1}, gen.StateRoot, 0)
+	f2b2.Miner = addr3
+	f2b2.ParentWeightNum = types.Uint64(11)
+	f2b2.ParentWeightDenom = types.Uint64(1)
+	f2 := RequireNewTipSet(require, f2b2)
+
+	requireProcessBlock(ctx, t, stm, f2b2)
+	heaviest = stm.GetHeaviestTipSet()
+	assert.Equal(f2, heaviest)
+	w, err = stm.weight(ctx, heaviest)
+	assert.NoError(err)
+	assert.Equal(big.NewRat(int64(119), int64(1)), w)
+
 }

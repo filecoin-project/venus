@@ -21,7 +21,7 @@ func TestChainHead(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
 
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		_, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
 			ctx:  context.Background(),
@@ -39,7 +39,7 @@ func TestChainHead(t *testing.T) {
 
 		ctx := context.Background()
 		blk := types.NewBlockForTest(nil, 1)
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, blk))
 
@@ -61,7 +61,7 @@ func TestChainLsRun(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		err := n.ChainMgr.Genesis(ctx, core.InitGenesis)
 		require.NoError(err)
@@ -98,7 +98,7 @@ func TestChainLsRun(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true)[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		parBlock := types.NewBlockForTest(nil, 0)
 		chlBlock := types.NewBlockForTest(parBlock, 1)

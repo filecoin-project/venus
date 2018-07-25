@@ -46,6 +46,11 @@ type MockStateTree struct {
 	BuiltinActors map[string]exec.ExecutableActor
 }
 
+// GetActorStorage implements Tree interface
+func (m *MockStateTree) GetActorStorage(ctx context.Context, a types.Address, stg interface{}) error {
+	panic("do not call me")
+}
+
 var _ Tree = &MockStateTree{}
 
 // Flush implements StateTree.Flush.

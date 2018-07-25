@@ -94,6 +94,7 @@ type TestDaemon struct {
 	repoDir    string
 	walletFile string
 	walletAddr string
+	mockMine   bool
 
 	init bool
 
@@ -578,6 +579,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		repoDir:    dir,
 		init:       true, // we want to init unless told otherwise
 		walletFile: "",
+		mockMine:   true, // mine without setting up a valid storage market in the chain state by default.
 		cmdTimeout: DefaultDaemonCmdTimeout,
 	}
 
@@ -592,6 +594,11 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
 	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
+	mockMineFlag := ""
+
+	if td.mockMine {
+		mockMineFlag = "--mockMine"
+	}
 
 	if td.init {
 		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag)
@@ -602,7 +609,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	// define filecoin daemon process
-	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag)
+	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, mockMineFlag, swarmListenFlag)
 
 	// setup process pipes
 	td.Stdout, err = td.process.StdoutPipe()

@@ -23,24 +23,25 @@ import (
 )
 
 // MkChild creates a new block with parent, blk, and supplied nonce.
-func MkChild(blks []*types.Block, parentState state.Tree, stateRoot *cid.Cid, nonce uint64) *types.Block {
+func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block {
 	var weight uint64
 	var height uint64
 	var parents types.SortedCidSet
-	weight = uint64(len(blks))*10 + uint64(blks[0].ParentWeight)
+	weight = uint64(len(blks))*10 + uint64(blks[0].ParentWeightNum)
 	height = uint64(blks[0].Height) + 1
 	parents = types.SortedCidSet{}
 	for _, blk := range blks {
 		(&parents).Add(blk.Cid())
 	}
 	return &types.Block{
-		Parents:         parents,
-		Height:          types.Uint64(height),
-		ParentWeight:    types.Uint64(weight),
-		Nonce:           types.Uint64(nonce),
-		StateRoot:       stateRoot,
-		Messages:        []*types.Message{},
-		MessageReceipts: []*types.MessageReceipt{},
+		Parents:           parents,
+		Height:            types.Uint64(height),
+		ParentWeightNum:   types.Uint64(weight),
+		ParentWeightDenom: types.Uint64(1),
+		Nonce:             types.Uint64(nonce),
+		StateRoot:         stateRoot,
+		Messages:          []*types.Message{},
+		MessageReceipts:   []*types.MessageReceipt{},
 	}
 }
 
@@ -58,7 +59,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	l := uint64(length)
 	var blk *types.Block
 	for i := uint64(0); i < l; i++ {
-		blk = MkChild(blks, st, stateRoot, i)
+		blk = MkChild(blks, stateRoot, i)
 		_, err := processNewBlock(ctx, blk)
 		if err != nil {
 			return nil, err
@@ -265,4 +266,21 @@ func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, *vm.StorageM
 	vms := vm.NewStorageMap(ds)
 
 	return st, vms
+}
+
+// TestView is an implementation of stateView used for testing the chain
+// manager.  It provides a consistent view that the storage market
+// stores 1 byte and all miners store 0 bytes regardless of inputs.
+type TestView struct{}
+
+var _ powerTableView = &TestView{}
+
+// Total always returns 1.
+func (tv *TestView) Total(ctx context.Context, st state.Tree) (uint64, error) {
+	return uint64(1), nil
+}
+
+// Miner always returns 0.
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, mAddr types.Address) (uint64, error) {
+	return uint64(0), nil
 }
