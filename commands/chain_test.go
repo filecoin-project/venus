@@ -28,8 +28,7 @@ func TestChainHead(t *testing.T) {
 			node: n,
 		})
 
-		require.Error(err)
-		require.Contains(err.Error(), "best block not found")
+		require.EqualError(ErrHeaviestTipSetNotFound, err.Error())
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
@@ -80,17 +79,17 @@ func TestChainLsRun(t *testing.T) {
 
 		lines := strings.Split(strings.Trim(out.Raw, "\n"), "\n")
 
-		var bs []*types.Block
+		var bs [][]types.Block
 		for _, line := range lines {
-			var b types.Block
+			var b []types.Block
 			err := json.Unmarshal([]byte(line), &b)
 			require.NoError(err)
-			bs = append(bs, &b)
+			bs = append(bs, b)
 		}
 
 		assert.Equal(2, len(bs))
-		types.AssertHaveSameCid(assert, chlBlock, bs[0])
-		types.AssertHaveSameCid(assert, genBlock, bs[1])
+		types.AssertHaveSameCid(assert, chlBlock, &bs[0][0])
+		types.AssertHaveSameCid(assert, genBlock, &bs[1][0])
 	})
 
 	t.Run("emit best block and then time out getting parent", func(t *testing.T) {

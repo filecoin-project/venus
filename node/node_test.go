@@ -116,7 +116,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(nd.Start())
 
-	assert.NotNil(nd.ChainMgr.GetBestBlock())
+	assert.NotNil(nd.ChainMgr.GetHeaviestTipSet())
 	nd.Stop()
 }
 
@@ -538,7 +538,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
 		assert.NoError(node.Start())
 
-		bb := types.NewBlockForTest(node.ChainMgr.GetBestBlock(), 1)
+		bb := types.NewBlockForTest(core.RequireBestBlock(node.ChainMgr, t), 1)
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, bb))
 

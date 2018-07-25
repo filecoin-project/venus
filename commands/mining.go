@@ -29,8 +29,7 @@ var miningCmd = &cmds.Command{
 var miningOnceCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
-		// TODO fix #543: Improve UX for multiblock tipset
-		cur := fcn.ChainMgr.GetBestBlock()
+		ts := fcn.ChainMgr.GetHeaviestTipSet()
 
 		if fcn.RewardAddress().Empty() {
 			return errors.New("filecoin node requires a reward address to be set before mining")
@@ -40,10 +39,6 @@ var miningOnceCmd = &cmds.Command{
 			return fcn.ChainMgr.State(ctx, ts.ToSlice())
 		}, fcn.ChainMgr.Weight, core.ApplyMessages)
 		// TODO(EC): Need to read best tipsets from storage and pass in. See also Node::StartMining().
-		ts, err := core.NewTipSet(cur)
-		if err != nil {
-			return err
-		}
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), ts, fcn.RewardAddress())
 		if res.Err != nil {
 			return res.Err

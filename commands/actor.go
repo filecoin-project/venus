@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"reflect"
 	"strings"
@@ -34,7 +33,7 @@ var actorCmd = &cmds.Command{
 
 var actorLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return runActorLs(req.Context, re.Emit, GetNode(env), state.GetAllActorsFromStore)
+		return runActorLs(req.Context, re.Emit, GetNode(env), state.GetAllActors)
 	},
 	Type: &actorView{},
 	Encoders: cmds.EncoderMap{
@@ -53,23 +52,17 @@ var actorLsCmd = &cmds.Command{
 	},
 }
 
-func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGetter state.GetAllActorsFromStoreFunc) error {
-	blks := fcn.ChainMgr.GetHeaviestTipSet().ToSlice()
-
-	if len(blks) == 0 {
-		return errors.New("best block not found") // panic?
+func runActorLs(ctx context.Context, emit valueEmitter, fcn *node.Node, actorGetter state.GetAllActorsFunc) error {
+	ts := fcn.ChainMgr.GetHeaviestTipSet()
+	if len(ts) == 0 {
+		return ErrHeaviestTipSetNotFound
 	}
-	// TODO: report all blocks of a tipset, not just a random one
-	blk := blks[0]
-
-	if blk.StateRoot == nil {
-		return ErrLatestBlockStateRootNil
-	}
-
-	addrs, actors, err := actorGetter(ctx, fcn.CborStore, blk.StateRoot)
+	st, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
 	if err != nil {
 		return err
 	}
+
+	addrs, actors := actorGetter(st)
 
 	var res *actorView
 	for i, a := range actors {

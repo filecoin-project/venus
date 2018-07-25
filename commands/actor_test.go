@@ -6,9 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"gx/ipfs/QmcYBp5EDnJKfVN63F71rDTksvEf1cfijwCTWtw6bPG58T/go-hamt-ipld"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
@@ -18,14 +15,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestActorLs(t *testing.T) {
 	t.Parallel()
-	getActorsNoOp := func(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string,
-		[]*types.Actor, error) {
-		return nil, nil, nil
+	getActorsNoOp := func(st state.Tree) ([]string, []*types.Actor) {
+		return nil, nil
 	}
 
 	t.Run("returns an error if no best block", func(t *testing.T) {
@@ -43,7 +40,7 @@ func TestActorLs(t *testing.T) {
 		require.Error(err)
 	})
 
-	t.Run("returns an error if best block has nil state root", func(t *testing.T) {
+	t.Run("returns an error if heaviest tipset is nil", func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
 		ctx := context.Background()
@@ -52,8 +49,8 @@ func TestActorLs(t *testing.T) {
 		})
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		// TODO fix #543: Improve UX for multiblock tipset
-		nd.ChainMgr.GetBestBlock = func() *types.Block {
-			return &types.Block{StateRoot: nil}
+		nd.ChainMgr.GetHeaviestTipSet = func() core.TipSet {
+			return nil
 		}
 
 		err := runActorLs(ctx, emitter.emit, nd, nil)
@@ -76,23 +73,26 @@ func TestActorLs(t *testing.T) {
 			return nil
 		})
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
-		b1 := &types.Block{StateRoot: types.NewCidForTestGetter()()}
+		st := state.NewEmptyStateTree(nd.CborStore)
+		root, err := st.Flush(ctx)
+		require.NoError(err)
+		b1 := &types.Block{StateRoot: root}
 		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 		chainMgrForTest = nd.ChainMgr
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
 		assert.NoError(nd.Start())
 		tokenAmount := types.NewAttoFILFromFIL(100)
 
-		getActors := func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*types.Actor, error) {
+		getActors := func(state.Tree) ([]string, []*types.Actor) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			address, _ := types.NewAddressFromString("address")
 			actor3, _ := miner.NewActor(address, []byte{}, types.NewBytesAmount(23), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(43))
 			actor4 := types.NewActorWithMemory(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21), nil)
-			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}, nil
+			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}
 		}
 
-		err := runActorLs(ctx, emitter.emit, nd, getActors)
+		err = runActorLs(ctx, emitter.emit, nd, getActors)
 		require.NoError(err)
 
 		assert.Equal(4, len(actorViews))

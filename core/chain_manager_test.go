@@ -70,9 +70,9 @@ func newTestUtils() (context.Context, *hamt.CborIpldStore, datastore.Datastore, 
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
 	ds := datastore.NewMapDatastore()
-	stm := NewChainManager(ds, cs)
-	stm.PwrTableView = &TestView{}
-	return ctx, cs, ds, stm
+	cm := NewChainManager(ds, cs)
+	cm.PwrTableView = &TestView{}
+	return ctx, cs, ds, cm
 }
 
 func requireProcessBlock(ctx context.Context, t *testing.T, cm *ChainManager, b *types.Block) {
@@ -82,63 +82,63 @@ func requireProcessBlock(ctx context.Context, t *testing.T, cm *ChainManager, b 
 }
 
 func TestBasicAddBlock(t *testing.T) {
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 	assert := assert.New(t)
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	res, err := stm.ProcessNewBlock(ctx, block1)
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	res, err := cm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 
-	assert.Equal(stm.GetBestBlock().Cid(), block1.Cid())
-	assert.True(stm.knownGoodBlocks.Has(block1.Cid()))
-	res, err = stm.ProcessNewBlock(ctx, block2)
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block1.Cid())
+	assert.True(cm.knownGoodBlocks.Has(block1.Cid()))
+	res, err = cm.ProcessNewBlock(ctx, block2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
-	assert.True(stm.knownGoodBlocks.Has(block2.Cid()))
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block2.Cid())
+	assert.True(cm.knownGoodBlocks.Has(block2.Cid()))
 }
 
 func TestMultiBlockTipsetAdd(t *testing.T) {
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 	assert := assert.New(t)
 	require := require.New(t)
 
 	// Add tipsetA
 	tipsetA := RequireNewTipSet(require, tipsetA1, tipsetA2, tipsetA3)
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	res, err := stm.ProcessNewBlock(ctx, tipsetA1)
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	res, err := cm.ProcessNewBlock(ctx, tipsetA1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	res, err = stm.ProcessNewBlock(ctx, tipsetA2)
+	res, err = cm.ProcessNewBlock(ctx, tipsetA2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	res, err = stm.ProcessNewBlock(ctx, tipsetA3)
+	res, err = cm.ProcessNewBlock(ctx, tipsetA3)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 
-	assert.Equal(stm.GetHeaviestTipSet(), tipsetA)
+	assert.Equal(cm.GetHeaviestTipSet(), tipsetA)
 
 	// Add tipsetB
 	tipsetB := RequireNewTipSet(require, tipsetB1, tipsetB2)
-	res, err = stm.ProcessNewBlock(ctx, tipsetB1)
+	res, err = cm.ProcessNewBlock(ctx, tipsetB1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), tipsetB1.Cid())
-	res, err = stm.ProcessNewBlock(ctx, tipsetB2)
+	assert.Equal(RequireBestBlock(cm, t).Cid(), tipsetB1.Cid())
+	res, err = cm.ProcessNewBlock(ctx, tipsetB2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
 
-	assert.Equal(stm.GetHeaviestTipSet(), tipsetB)
+	assert.Equal(cm.GetHeaviestTipSet(), tipsetB)
 }
 
 func TestHeaviestTipSetPubSub(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx, _, _, stm := newTestUtils()
-	ch := stm.HeaviestTipSetPubSub.Sub(HeaviestTipSetTopic)
+	ctx, _, _, cm := newTestUtils()
+	ch := cm.HeaviestTipSetPubSub.Sub(HeaviestTipSetTopic)
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 	block3 := MkChild([]*types.Block{block2}, block2.StateRoot, 0)
 	block4 := MkChild([]*types.Block{block2}, block2.StateRoot, 1)
 	blocks := []*types.Block{block1, block2, block3, block4}
@@ -149,7 +149,7 @@ func TestHeaviestTipSetPubSub(t *testing.T) {
 		RequireNewTipSet(require, block3, block4),
 	}
 	for _, b := range blocks {
-		stm.ProcessNewBlock(ctx, b)
+		cm.ProcessNewBlock(ctx, b)
 	}
 	gotTSs := map[string]bool{}
 	for i := 0; i < 5; i++ {
@@ -165,32 +165,32 @@ func TestHeaviestTipSetPubSub(t *testing.T) {
 
 func TestForkChoice(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cs, _, stm := newTestUtils()
+	ctx, cs, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
-	res, err := stm.ProcessNewBlock(ctx, block1)
+	res, err := cm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block1.Cid())
-	assert.True(stm.knownGoodBlocks.Has(block1.Cid()))
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block1.Cid())
+	assert.True(cm.knownGoodBlocks.Has(block1.Cid()))
 
 	// progress to block2 block on our chain
-	res, err = stm.ProcessNewBlock(ctx, block2)
+	res, err = cm.ProcessNewBlock(ctx, block2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
-	assert.True(stm.knownGoodBlocks.Has(block2.Cid()))
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block2.Cid())
+	assert.True(cm.knownGoodBlocks.Has(block2.Cid()))
 
 	// Now, introduce a valid fork
 	addBlocks(t, cs, fork1, fork2)
 
-	res, err = stm.ProcessNewBlock(ctx, fork3)
+	res, err = cm.ProcessNewBlock(ctx, fork3)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), fork3.Cid())
+	assert.Equal(RequireBestBlock(cm, t).Cid(), fork3.Cid())
 
-	cids, err := stm.readHeaviestTipSetCids()
+	cids, err := cm.readHeaviestTipSetCids()
 	assert.NoError(err)
 	assert.Equal(cids.Len(), 1)
 	bbc := cids.Iter().Value()
@@ -198,113 +198,113 @@ func TestForkChoice(t *testing.T) {
 }
 
 func TestMultiBlockTipsetForkChoice(t *testing.T) {
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 	assert := assert.New(t)
 	require := require.New(t)
 
 	// Progress to tipsetB
 	tipsetB := RequireNewTipSet(require, tipsetB1, tipsetB2)
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	requireProcessBlock(ctx, t, stm, tipsetA1)
-	requireProcessBlock(ctx, t, stm, tipsetA2)
-	requireProcessBlock(ctx, t, stm, tipsetA3)
-	requireProcessBlock(ctx, t, stm, tipsetB1)
-	assert.Equal(stm.GetBestBlock().Cid(), tipsetB1.Cid())
-	requireProcessBlock(ctx, t, stm, tipsetB2)
-	assert.Equal(stm.GetHeaviestTipSet(), tipsetB)
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	requireProcessBlock(ctx, t, cm, tipsetA1)
+	requireProcessBlock(ctx, t, cm, tipsetA2)
+	requireProcessBlock(ctx, t, cm, tipsetA3)
+	requireProcessBlock(ctx, t, cm, tipsetB1)
+	assert.Equal(RequireBestBlock(cm, t).Cid(), tipsetB1.Cid())
+	requireProcessBlock(ctx, t, cm, tipsetB2)
+	assert.Equal(cm.GetHeaviestTipSet(), tipsetB)
 
 	// Introduce a losing fork
-	res, err := stm.ProcessNewBlock(ctx, tipsetFork)
+	res, err := cm.ProcessNewBlock(ctx, tipsetFork)
 	assert.NoError(err)
 	assert.Equal(ChainValid, res)
-	assert.Equal(stm.GetHeaviestTipSet(), tipsetB)
-	cids, err := stm.readHeaviestTipSetCids()
+	assert.Equal(cm.GetHeaviestTipSet(), tipsetB)
+	cids, err := cm.readHeaviestTipSetCids()
 	assert.NoError(err)
 	assert.True(cids.Equals(tipsetB.ToSortedCidSet()))
 }
 
 func TestRejectShorterChain(t *testing.T) {
 	assert := assert.New(t)
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
-	res, err := stm.ProcessNewBlock(ctx, block1)
+	res, err := cm.ProcessNewBlock(ctx, block1)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block1.Cid())
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block1.Cid())
 
-	res, err = stm.ProcessNewBlock(ctx, block2)
+	res, err = cm.ProcessNewBlock(ctx, block2)
 	assert.NoError(err)
 	assert.Equal(ChainAccepted, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block2.Cid())
 
 	// block with lower height than our current shouldnt fail, but it shouldnt be accepted as the best block
-	res, err = stm.ProcessNewBlock(ctx, fork1)
+	res, err = cm.ProcessNewBlock(ctx, fork1)
 	assert.NoError(err)
 	assert.Equal(ChainValid, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block2.Cid())
 
 	// block with same height as our current should fail
-	res, err = stm.ProcessNewBlock(ctx, fork2)
+	res, err = cm.ProcessNewBlock(ctx, fork2)
 	assert.NoError(err)
 	assert.Equal(ChainValid, res)
-	assert.Equal(stm.GetBestBlock().Cid(), block2.Cid())
+	assert.Equal(RequireBestBlock(cm, t).Cid(), block2.Cid())
 }
 
 func TestGenesis(t *testing.T) {
 	assert := assert.New(t)
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	assert.Equal(testGenesis, stm.heaviestTipSet.ts.ToSlice()[0])
-	assert.True(stm.knownGoodBlocks.Has(testGenesis.Cid()))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	assert.Equal(testGenesis, cm.heaviestTipSet.ts.ToSlice()[0])
+	assert.True(cm.knownGoodBlocks.Has(testGenesis.Cid()))
 
 	var i interface{}
-	assert.NoError(stm.cstore.Get(ctx, testGenesis.StateRoot, &i))
+	assert.NoError(cm.cstore.Get(ctx, testGenesis.StateRoot, &i))
 }
 
 func TestRejectBadChain(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cs, _, stm := newTestUtils()
+	ctx, cs, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
 	addBlocks(t, cs, bad1)
-	res, err := stm.ProcessNewBlock(ctx, bad2)
+	res, err := cm.ProcessNewBlock(ctx, bad2)
 	assert.EqualError(err, ErrInvalidBase.Error())
 	assert.Equal(InvalidBase, res)
-	assert.Equal(stm.GetBestBlock(), testGenesis)
+	assert.Equal(RequireBestBlock(cm, t), testGenesis)
 }
 
 func TestRejectDiffHeightParents(t *testing.T) {
 	assert := assert.New(t)
-	ctx, cs, _, stm := newTestUtils()
+	ctx, cs, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
 	addBlocks(t, cs, bad3, tipsetA1, block1, block2)
-	res, err := stm.ProcessNewBlock(ctx, bad3)
+	res, err := cm.ProcessNewBlock(ctx, bad3)
 	assert.Error(err)
 	assert.Equal(Unknown, res)
-	assert.Equal(stm.GetBestBlock(), testGenesis)
+	assert.Equal(RequireBestBlock(cm, t), testGenesis)
 }
 
 func TestBlockHistory(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
-	requireProcessBlock(ctx, t, stm, block1)
-	requireProcessBlock(ctx, t, stm, block2)
+	requireProcessBlock(ctx, t, cm, block1)
+	requireProcessBlock(ctx, t, cm, block2)
 
-	tsCh := stm.BlockHistory(ctx)
+	tsCh := cm.BlockHistory(ctx)
 
 	assert.Equal(RequireNewTipSet(require, block2), ((<-tsCh).(TipSet)))
 	assert.Equal(RequireNewTipSet(require, block1), ((<-tsCh).(TipSet)))
-	assert.Equal(stm.GetGenesisCid(), ((<-tsCh).(TipSet)).ToSlice()[0].Cid())
+	assert.Equal(cm.GetGenesisCid(), ((<-tsCh).(TipSet)).ToSlice()[0].Cid())
 	ts, more := <-tsCh
 	assert.Equal(nil, ts)     // Genesis block has no parent.
 	assert.Equal(false, more) // Channel is closed
@@ -313,16 +313,16 @@ func TestBlockHistory(t *testing.T) {
 func TestBlockHistoryFetchError(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
-	requireProcessBlock(ctx, t, stm, block1)
-	requireProcessBlock(ctx, t, stm, block2)
+	requireProcessBlock(ctx, t, cm, block1)
+	requireProcessBlock(ctx, t, cm, block2)
 
-	tsCh := stm.BlockHistory(ctx)
+	tsCh := cm.BlockHistory(ctx)
 
-	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
+	cm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
 		return nil, fmt.Errorf("error fetching block (in test)")
 	}
 	// One tipset is already ready.
@@ -338,15 +338,15 @@ func TestBlockHistoryFetchError(t *testing.T) {
 func TestBlockHistoryCancel(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	_, _, _, stm := newTestUtils()
+	_, _, _, cm := newTestUtils()
 	ctx, cancel := context.WithCancel(context.Background())
 
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
 
-	requireProcessBlock(ctx, t, stm, block1)
-	requireProcessBlock(ctx, t, stm, block2)
+	requireProcessBlock(ctx, t, cm, block1)
+	requireProcessBlock(ctx, t, cm, block2)
 
-	tsCh := stm.BlockHistory(ctx)
+	tsCh := cm.BlockHistory(ctx)
 	assert.Equal(RequireNewTipSet(require, block2), ((<-tsCh).(TipSet)))
 	cancel()
 	time.Sleep(10 * time.Millisecond)
@@ -364,7 +364,7 @@ func assertPut(assert *assert.Assertions, cst *hamt.CborIpldStore, i interface{}
 
 func TestChainLoad(t *testing.T) {
 	assert := assert.New(t)
-	_, cs, ds, stm := newTestUtils()
+	_, cs, ds, cm := newTestUtils()
 
 	assert.NoError(putCidSet(context.Background(), ds, heaviestTipSetKey, types.NewSortedCidSet(block2.Cid())))
 
@@ -372,16 +372,16 @@ func TestChainLoad(t *testing.T) {
 	assertPut(assert, cs, block1)
 	assertPut(assert, cs, block2)
 
-	assert.NoError(stm.Load())
+	assert.NoError(cm.Load())
 
-	assert.Equal(block2, stm.GetBestBlock())
-	assert.Equal(testGenesis.Cid(), stm.GetGenesisCid())
+	assert.Equal(block2, RequireBestBlock(cm, t))
+	assert.Equal(testGenesis.Cid(), cm.GetGenesisCid())
 }
 
 func TestChainLoadMultiBlockTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	_, cs, ds, stm := newTestUtils()
+	_, cs, ds, cm := newTestUtils()
 
 	tipsetB := RequireNewTipSet(require, tipsetB1, tipsetB2)
 	assert.NoError(putCidSet(context.Background(), ds, heaviestTipSetKey, tipsetB.ToSortedCidSet()))
@@ -389,36 +389,36 @@ func TestChainLoadMultiBlockTipSet(t *testing.T) {
 	assertPut(assert, cs, testGenesis)
 	addBlocks(t, cs, tipsetA1, tipsetA2, tipsetA3)
 	addBlocks(t, cs, tipsetB1, tipsetB2)
-	assert.NoError(stm.Load())
+	assert.NoError(cm.Load())
 
-	assert.Equal(tipsetB, stm.GetHeaviestTipSet())
-	assert.Equal(testGenesis.Cid(), stm.GetGenesisCid())
+	assert.Equal(tipsetB, cm.GetHeaviestTipSet())
+	assert.Equal(testGenesis.Cid(), cm.GetGenesisCid())
 }
 
 func TestTipSets(t *testing.T) {
 	assert := assert.New(t)
-	ctx, _, _, stm := newTestUtils()
+	ctx, _, _, cm := newTestUtils()
 
-	assert.Len(stm.GetTipSetsByHeight(0), 0)
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	assert.Len(stm.GetTipSetsByHeight(0), 1)
-	requireProcessBlock(ctx, t, stm, block1)
-	assert.Len(stm.GetTipSetsByHeight(1), 1)
+	assert.Len(cm.GetTipSetsByHeight(0), 0)
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	assert.Len(cm.GetTipSetsByHeight(0), 1)
+	requireProcessBlock(ctx, t, cm, block1)
+	assert.Len(cm.GetTipSetsByHeight(1), 1)
 
 	// add in more forks
-	requireProcessBlock(ctx, t, stm, block2)
+	requireProcessBlock(ctx, t, cm, block2)
 
-	requireProcessBlock(ctx, t, stm, tipsetA1)
-	requireProcessBlock(ctx, t, stm, tipsetA2)
-	requireProcessBlock(ctx, t, stm, tipsetA3)
+	requireProcessBlock(ctx, t, cm, tipsetA1)
+	requireProcessBlock(ctx, t, cm, tipsetA2)
+	requireProcessBlock(ctx, t, cm, tipsetA3)
 
-	requireProcessBlock(ctx, t, stm, tipsetB1)
-	requireProcessBlock(ctx, t, stm, tipsetB2)
+	requireProcessBlock(ctx, t, cm, tipsetB1)
+	requireProcessBlock(ctx, t, cm, tipsetB2)
 
-	requireProcessBlock(ctx, t, stm, tipsetFork)
+	requireProcessBlock(ctx, t, cm, tipsetFork)
 
-	assert.Len(stm.GetTipSetsByHeight(1), 1)
-	assert.Len(stm.GetTipSetsByHeight(2), 3) // tipsetB, {block2}, {tipsetFork}
+	assert.Len(cm.GetTipSetsByHeight(1), 1)
+	assert.Len(cm.GetTipSetsByHeight(2), 3) // tipsetB, {block2}, {tipsetFork}
 }
 
 // TestTipSetWeightShallow does not set up storage commitments in the state of
@@ -428,16 +428,16 @@ func TestTipSetWeightShallow(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	ctx, _, _, stm := newTestUtils()
-	assert.NoError(stm.Genesis(ctx, InitGenesis))
-	requireProcessBlock(ctx, t, stm, tipsetA1)
-	requireProcessBlock(ctx, t, stm, tipsetA2)
-	requireProcessBlock(ctx, t, stm, tipsetA3)
-	requireProcessBlock(ctx, t, stm, tipsetB1)
-	requireProcessBlock(ctx, t, stm, tipsetB2)
+	ctx, _, _, cm := newTestUtils()
+	assert.NoError(cm.Genesis(ctx, InitGenesis))
+	requireProcessBlock(ctx, t, cm, tipsetA1)
+	requireProcessBlock(ctx, t, cm, tipsetA2)
+	requireProcessBlock(ctx, t, cm, tipsetA3)
+	requireProcessBlock(ctx, t, cm, tipsetB1)
+	requireProcessBlock(ctx, t, cm, tipsetB2)
 
 	ts := RequireNewTipSet(require, tipsetB1, tipsetB2)
-	w, _, err := stm.Weight(ctx, ts)
+	w, _, err := cm.Weight(ctx, ts)
 	assert.NoError(err)
 	assert.Equal(uint64(ECV*6), w)
 }

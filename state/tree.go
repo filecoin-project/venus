@@ -214,6 +214,9 @@ func GetAllActors(t Tree) ([]string, []*types.Actor) {
 // GetAllActorsFromStoreFunc is a function with the signature of GetAllActorsFromStore
 type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*types.Actor, error)
 
+// GetAllActorsFunc is a function with the signature of GetAllActors
+type GetAllActorsFunc = func(t Tree) ([]string, []*types.Actor)
+
 // GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
 // Third returned value is any error that occurred when loading.
 func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string, []*types.Actor, error) {
