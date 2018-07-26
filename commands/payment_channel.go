@@ -81,25 +81,30 @@ message to be mined to get the channelID.`,
 			return
 		}
 
-		// TODO: Sign this message
 		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, amount, "createChannel", params)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msgCid, err := msg.Cid()
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		smsgCid, err := smsg.Cid()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -312,19 +317,24 @@ var redeemCmd = &cmds.Command{
 			return
 		}
 
-		err = n.AddNewMessage(req.Context, msg)
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		msgCid, err := msg.Cid()
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		smsgCid, err := smsg.Cid()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -372,18 +382,24 @@ var reclaimCmd = &cmds.Command{
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msgCid, err := msg.Cid()
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		smsgCid, err := smsg.Cid()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -439,19 +455,24 @@ var closeCmd = &cmds.Command{
 			return
 		}
 
-		err = n.AddNewMessage(req.Context, msg)
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		msgCid, err := msg.Cid()
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		smsgCid, err := smsg.Cid()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -513,18 +534,24 @@ var extendCmd = &cmds.Command{
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msgCid, err := msg.Cid()
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		smsgCid, err := smsg.Cid()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

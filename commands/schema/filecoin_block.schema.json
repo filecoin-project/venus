@@ -22,7 +22,7 @@
         },
         "messages": {
           "items": {
-            "$ref": "#/definitions/Message"
+            "$ref": "#/definitions/SignedMessage"
           },
           "type": [
             "array",
@@ -121,6 +121,34 @@
         "value",
         "method",
         "params"
+      ],
+      "type": "object"
+    },
+    "SignedMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "items": {
+            "$ref": "#/definitions/Message"
+          },
+          "type": [
+            "object"
+          ]
+        },
+        "signature": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "message",
+        "signature"
       ],
       "type": "object"
     },
