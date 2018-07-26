@@ -182,7 +182,8 @@ func lint(packages ...string) {
 
 func build() {
 	buildFilecoin()
-	buildFakecoin()
+	// TODO add back
+	//buildFakecoin()
 }
 
 func buildFakecoin() {
