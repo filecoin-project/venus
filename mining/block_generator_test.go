@@ -16,6 +16,13 @@ import (
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 )
 
+var mockSigner types.MockSigner
+
+func init() {
+	ki := types.MustGenerateKeyInfo(3)
+	mockSigner = types.NewMockSigner(ki)
+}
+
 func TestGenerate(t *testing.T) {
 	// TODO fritz use core.FakeActor for state/contract tests for generate:
 	//  - test nonces out of order
@@ -32,13 +39,12 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
 
 func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) {
 	require := require.New(t)
-	newAddress := types.NewAddressForTestGetter()
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
-	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
 	act1, act2, fakeNetAct := core.RequireNewFakeActor(require, fakeActorCodeCid), core.RequireNewFakeActor(require,
 		fakeActorCodeCid), core.RequireNewFakeActor(require, fakeActorCodeCid)
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
@@ -53,12 +59,11 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) 
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	newAddress := types.NewAddressForTestGetter()
 
 	cst, _, fakeActorCodeCid := sharedSetupInitial()
 
 	// Stick two fake actors in the state tree so they can talk.
-	addr1, addr2 := newAddress(), newAddress()
+	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := core.RequireNewFakeActor(require, fakeActorCodeCid)
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
@@ -71,25 +76,36 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// exercise the categorization.
 	// addr2 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addr2, addr1, 0, nil, "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
+
 	// This is actually okay and should result in a receipt
 	msg2 := types.NewMessage(addr1, addr2, 0, nil, "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
+
 	// The following two are sending to self -- errSelfSend, a permanent error.
 	msg3 := types.NewMessage(addr1, addr1, 1, nil, "", nil)
-	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
+	require.NoError(err)
 
-	messages := []*types.Message{msg1, msg2, msg3, msg4}
+	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
+	require.NoError(err)
+
+	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
 	res, err := core.ApplyMessages(ctx, messages, st, types.NewBlockHeight(0))
 
 	assert.Len(res.PermanentFailures, 2)
-	assert.Contains(res.PermanentFailures, msg3)
-	assert.Contains(res.PermanentFailures, msg4)
+	assert.Contains(res.PermanentFailures, smsg3)
+	assert.Contains(res.PermanentFailures, smsg4)
 
 	assert.Len(res.TemporaryFailures, 1)
-	assert.Contains(res.TemporaryFailures, msg1)
+	assert.Contains(res.TemporaryFailures, smsg1)
 
 	assert.Len(res.Results, 1)
-	assert.Contains(res.SuccessfulMessages, msg2)
+	assert.Contains(res.SuccessfulMessages, smsg2)
 
 	assert.NoError(err)
 }
@@ -160,15 +176,27 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
+
 	// This is actually okay and should result in a receipt
 	msg2 := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
+
 	// The following two are sending to self -- errSelfSend, a permanent error.
 	msg3 := types.NewMessage(addrs[0], addrs[0], 1, nil, "", nil)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
+	require.NoError(err)
+
 	msg4 := types.NewMessage(addrs[1], addrs[1], 0, nil, "", nil)
-	pool.Add(msg1)
-	pool.Add(msg2)
-	pool.Add(msg3)
-	pool.Add(msg4)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
+	require.NoError(err)
+
+	pool.Add(smsg1)
+	pool.Add(smsg2)
+	pool.Add(smsg3)
+	pool.Add(smsg4)
 
 	assert.Len(pool.Pending(), 4)
 	baseBlock := types.Block{
@@ -180,7 +208,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
-	assert.Contains(pool.Pending(), msg1)
+	assert.Contains(pool.Pending(), smsg1)
 
 	assert.Len(blk.Messages, 2) // This is the good message + the mining reward.
 
@@ -298,7 +326,9 @@ func TestGenerateError(t *testing.T) {
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
-	pool.Add(msg)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	require.NoError(err)
+	pool.Add(smsg)
 
 	assert.Len(pool.Pending(), 1)
 	baseBlock := types.Block{

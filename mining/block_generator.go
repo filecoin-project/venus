@@ -37,7 +37,7 @@ func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree,
 	}
 }
 
-type miningApplier func(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (core.ApplyMessagesResponse, error)
+type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, bh *types.BlockHeight) (core.ApplyMessagesResponse, error)
 
 // blockGenerator generates new blocks for inclusion in the chain.
 type blockGenerator struct {
@@ -68,11 +68,17 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	if err != nil {
 		return nil, err
 	}
+
 	blockHeight := baseHeight + nullBlockCount + 1
 	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewAttoFILFromFIL(1000), "", nil)
+	srewardMsg := &types.SignedMessage{
+		Message:   *rewardMsg,
+		Signature: nil,
+	}
+
 	pending := b.messagePool.Pending()
-	messages := make([]*types.Message, len(pending)+1)
-	messages[0] = rewardMsg // Reward message must come first since this is a part of the consensus rules.
+	messages := make([]*types.SignedMessage, len(pending)+1)
+	messages[0] = srewardMsg // Reward message must come first since this is a part of the consensus rules.
 	copy(messages[1:], core.OrderMessagesByNonce(b.messagePool.Pending()))
 
 	res, err := b.applyMessages(ctx, messages, stateTree, types.NewBlockHeight(blockHeight))
@@ -104,7 +110,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 
 	var rewardSuccessful bool
 	for _, msg := range res.SuccessfulMessages {
-		if msg == rewardMsg {
+		if msg == srewardMsg {
 			rewardSuccessful = true
 		}
 	}
