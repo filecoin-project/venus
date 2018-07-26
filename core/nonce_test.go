@@ -16,6 +16,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var ki []types.KeyInfo
+var mockSigner types.MockSigner
+var newSignedMessage func() *types.SignedMessage
+
+func init() {
+	// Generate a single private/public key pair
+	ki = types.MustGenerateKeyInfo(1)
+	// Create a mockSigner (bad name) that can sign using the previously generated key
+	mockSigner = types.NewMockSigner(ki)
+	// Generate SignedMessages
+	newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
+}
+
 func TestNextNonce(t *testing.T) {
 	ctx := context.Background()
 
@@ -69,7 +82,7 @@ func TestNextNonce(t *testing.T) {
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
-		addr := types.NewAddressForTestGetter()()
+		addr := mockSigner.Addresses[0]
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 2
@@ -80,14 +93,16 @@ func TestNextNonce(t *testing.T) {
 		assert.Equal(uint64(2), nonce)
 
 		msg := types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		mp.Add(msg)
+		smsg := MustSign(mockSigner, msg)
+		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(3), nonce)
 
 		msg = types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		mp.Add(msg)
+		smsg = MustSign(mockSigner, msg)
+		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)
 		assert.NoError(err)

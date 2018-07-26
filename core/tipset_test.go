@@ -11,9 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var mockSigner types.MockSigner
+
+func init() {
+	ki := types.MustGenerateKeyInfo(2)
+	mockSigner = types.NewMockSigner(ki)
+}
+
 func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWeight uint64, msg string) *types.Block {
 	addrGetter := types.NewAddressForTestGetter()
-	m1 := types.NewMessage(addrGetter(), addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
+
+	m1 := types.NewMessage(mockSigner.Addresses[0], addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
+	sm1, err := types.NewSignedMessage(*m1, &mockSigner)
+	require.NoError(err)
 	ret := []byte{1, 2}
 
 	return &types.Block{
@@ -22,7 +32,7 @@ func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWe
 		ParentWeightDenom: types.Uint64(uint64(1)),
 		Height:            types.Uint64(42 + uint64(height)),
 		Nonce:             7,
-		Messages:          []*types.Message{m1},
+		Messages:          []*types.SignedMessage{sm1},
 		StateRoot:         types.SomeCid(),
 		MessageReceipts:   []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
 	}

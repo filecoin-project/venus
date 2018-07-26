@@ -35,20 +35,29 @@ func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 func TestProcessBlockSuccess(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
+	ki := types.MustGenerateKeyInfo(1)
+	mockSigner := types.NewMockSigner(ki)
+
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	addr1, addr2 := newAddress(), newAddress()
-	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	toAddr := newAddress()
+	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
+	fromAct := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: act1,
+		fromAddr: fromAct,
 	})
-	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", nil)
+
+	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	require.NoError(err)
+
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg},
+		Messages:  []*types.SignedMessage{smsg},
 	}
 	results, err := ProcessBlock(ctx, blk, st)
 	assert.NoError(err)
@@ -59,8 +68,8 @@ func TestProcessBlockSuccess(t *testing.T) {
 	expAct1, expAct2 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-550)), RequireNewEmptyActor(require, types.NewAttoFILFromFIL(550))
 	expAct1.IncNonce()
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: expAct1,
-		addr2: expAct2,
+		fromAddr: expAct1,
+		toAddr:   expAct2,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -68,29 +77,43 @@ func TestProcessBlockSuccess(t *testing.T) {
 func TestProcessTipSetSuccess(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
+	ki := types.MustGenerateKeyInfo(2)
+	mockSigner := types.NewMockSigner(ki)
+
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
-	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	act2 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	toAddr := newAddress()
+	fromAddr1 := mockSigner.Addresses[0]
+	fromAddr2 := mockSigner.Addresses[1]
+
+	fromAddr1Act := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	fromAddr2Act := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: act1,
-		addr2: act2,
+		fromAddr1: fromAddr1Act,
+		fromAddr2: fromAddr2Act,
 	})
-	msg1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(550), "", nil)
-	msg2 := types.NewMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(50), "", nil)
+
+	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg1},
+		Messages:  []*types.SignedMessage{smsg1},
 	}
+
+	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg2},
+		Messages:  []*types.SignedMessage{smsg2},
 	}
+
 	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
 	assert.NoError(err)
 	assert.Len(res.Results, 2)
@@ -101,9 +124,9 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	expAct1.IncNonce()
 	expAct2.IncNonce()
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: expAct1,
-		addr2: expAct2,
-		addr3: expAct3,
+		fromAddr1: expAct1,
+		fromAddr2: expAct2,
+		toAddr:    expAct3,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -111,27 +134,36 @@ func TestProcessTipSetSuccess(t *testing.T) {
 func TestProcessTipsConflicts(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	newAddress := types.NewAddressForTestGetter()
+
+	ki := types.MustGenerateKeyInfo(2)
+	mockSigner := types.NewMockSigner(ki)
+
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	addr1, addr2 := newAddress(), newAddress()
+	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: act1,
+		fromAddr: act1,
 	})
-	msg1 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(501), "", nil)
-	msg2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(502), "", nil)
+
+	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg1},
+		Messages:  []*types.SignedMessage{smsg1},
 		Ticket:    []byte{0, 0}, // Block with smaller ticket
 	}
+
+	msg2 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg2},
+		Messages:  []*types.SignedMessage{smsg2},
 		Ticket:    []byte{1, 1},
 	}
 	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st)
@@ -144,8 +176,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 	expAct1, expAct2 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000-501)), RequireNewEmptyActor(require, types.NewAttoFILFromFIL(501))
 	expAct1.IncNonce()
 	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: expAct1,
-		addr2: expAct2,
+		fromAddr: expAct1,
+		toAddr:   expAct2,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -153,7 +185,10 @@ func TestProcessTipsConflicts(t *testing.T) {
 func TestProcessBlockVMErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	newAddress := types.NewAddressForTestGetter()
+
+	ki := types.MustGenerateKeyInfo(2)
+	mockSigner := types.NewMockSigner(ki)
+
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
@@ -165,17 +200,19 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	}()
 
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
-	addr1, addr2 := newAddress(), newAddress()
+	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1, act2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, fakeActorCodeCid)
 	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: act1,
-		addr2: act2,
+		fromAddr: act1,
+		toAddr:   act2,
 	})
-	msg := types.NewMessage(addr1, addr2, 0, nil, "returnRevertError", nil)
+	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	require.NoError(err)
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.Message{msg},
+		Messages:  []*types.SignedMessage{smsg},
 	}
 
 	// The "foo" message will cause a vm error and
@@ -194,8 +231,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, fakeActorCodeCid)
 	expectedAct1.IncNonce()
 	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
-		addr1: expectedAct1,
-		addr2: expectedAct2,
+		fromAddr: expectedAct1,
+		toAddr:   expectedAct2,
 	})
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
