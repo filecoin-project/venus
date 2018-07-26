@@ -1,12 +1,103 @@
 package types
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 
 	"github.com/stretchr/testify/assert"
 
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/crypto"
+	cu "github.com/filecoin-project/go-filecoin/crypto/util"
+	wuitl "github.com/filecoin-project/go-filecoin/wallet/util"
 )
+
+// MockRecoverer implements the Recoverer interface
+type MockRecoverer struct{}
+
+// Ecrecover returns an uncompressed public key that could produce the given
+// signature from data.
+// Note: The returned public key should not be used to verify `data` is valid
+// since a public key may have N private key pairs
+func (mr *MockRecoverer) Ecrecover(data []byte, sig Signature) ([]byte, error) {
+	return wuitl.Ecrecover(data, sig)
+}
+
+// MockSigner implements the Signer interface
+type MockSigner struct {
+	AddrKeyInfo map[Address]KeyInfo
+	Addresses   []Address
+}
+
+// NewMockSigner returns a new mock signer, capable of signing data with
+// keys (addresses derived from) in keyinfo
+func NewMockSigner(kis []KeyInfo) MockSigner {
+	var ms MockSigner
+	ms.AddrKeyInfo = make(map[Address]KeyInfo)
+	for _, k := range kis {
+		// get the secret key
+		sk, err := crypto.BytesToECDSA(k.PrivateKey)
+		if err != nil {
+			panic(err)
+		}
+		// extract public key
+		pub, ok := sk.Public().(*ecdsa.PublicKey)
+		if !ok {
+			panic("unknown public key type")
+		}
+		addrHash, err := AddressHash(cu.SerializeUncompressed(pub))
+		if err != nil {
+			panic(err)
+		}
+		newAddr := NewMainnetAddress(addrHash)
+		ms.Addresses = append(ms.Addresses, newAddr)
+		ms.AddrKeyInfo[newAddr] = k
+
+	}
+	return ms
+}
+
+// SignBytes cryptographically signs `data` using the Address `addr`.
+func (ms *MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
+	ki, ok := ms.AddrKeyInfo[addr]
+	if !ok {
+		panic("unknown address")
+	}
+
+	sk, err := crypto.BytesToECDSA(ki.PrivateKey)
+	if err != nil {
+		return Signature{}, err
+	}
+
+	return wuitl.Sign(sk, data)
+}
+
+// NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.
+// The message is unique wrt the closure returned, not globally. You can use this function
+// in tests instead of manually creating messages -- it both reduces duplication and gives us
+// exactly one place to create valid messages for tests if messages require validation in the
+// future.
+// TODO support chosing from address
+func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
+	i := 0
+	return func() *SignedMessage {
+		s := fmt.Sprintf("smsg%d", i)
+		i++
+		msg := NewMessage(
+			ms.Addresses[0], // from needs to be an address from the signer
+			NewMainnetAddress([]byte(s+"-to")),
+			0,
+			NewAttoFILFromFIL(0),
+			s,
+			[]byte("params"))
+		smsg, err := NewSignedMessage(*msg, &ms)
+		if err != nil {
+			panic(err)
+		}
+		return smsg
+	}
+}
 
 // Type-related test helpers.
 
@@ -66,7 +157,7 @@ func NewMessageForTestGetter() func() *Message {
 func NewBlockForTest(parent *Block, nonce uint64) *Block {
 	block := &Block{
 		Nonce:           Uint64(nonce),
-		Messages:        []*Message{},
+		Messages:        []*SignedMessage{},
 		MessageReceipts: []*MessageReceipt{},
 	}
 
@@ -91,9 +182,35 @@ func NewMsgs(n int) []*Message {
 	return msgs
 }
 
+// NewSignedMsgs returns n signed messages. The messages returned are unique to this invocation
+// but are not unique globally (ie, a second call to NewSignedMsgs will return the same
+// set of messages).
+func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
+	newSmsg := NewSignedMessageForTestGetter(ms)
+	smsgs := make([]*SignedMessage, n)
+	for i := 0; i < n; i++ {
+		smsgs[i] = newSmsg()
+	}
+	return smsgs
+}
+
 // MsgCidsEqual returns true if the message cids are equal. It panics if
 // it can't get their cid.
 func MsgCidsEqual(m1, m2 *Message) bool {
+	m1Cid, err := m1.Cid()
+	if err != nil {
+		panic(err)
+	}
+	m2Cid, err := m2.Cid()
+	if err != nil {
+		panic(err)
+	}
+	return m1Cid.Equals(m2Cid)
+}
+
+// SmsgCidsEqual returns true if the SignedMessage cids are equal. It panics if
+// it can't get their cid.
+func SmsgCidsEqual(m1, m2 *SignedMessage) bool {
 	m1Cid, err := m1.Cid()
 	if err != nil {
 		panic(err)
