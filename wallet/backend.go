@@ -15,17 +15,17 @@ type Backend interface {
 	HasAddress(addr types.Address) bool
 
 	// Sign cryptographically signs `data` using the private key `priv`.
-	Sign(addr types.Address, data []byte) ([]byte, error)
+	SignBytes(data []byte, addr types.Address) (types.Signature, error)
 
 	// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
 	// the public key `pk`.
-	Verify(pk, data, sig []byte) (bool, error)
+	Verify(data []byte, pk []byte, sig types.Signature) (bool, error)
 
 	// Ecrecover returns an uncompressed public key that could produce the given
 	// signature from data.
 	// Note: The returned public key should not be used to verify `data` is valid
 	// since a public key may have N private key pairs
-	Ecrecover(data, sig []byte) ([]byte, error)
+	Ecrecover(data []byte, sig types.Signature) ([]byte, error)
 
 	// GetKeyPair will return the private & public keys associated with address `addr`
 	// iff backend contains the addr.

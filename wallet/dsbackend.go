@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 const (
@@ -151,27 +152,27 @@ func (backend *DSBackend) NewAddress() (types.Address, error) {
 	return newAddr, nil
 }
 
-// Sign cryptographically signs `data` using the private key `priv`.
-func (backend *DSBackend) Sign(addr types.Address, data []byte) ([]byte, error) {
+// SignBytes cryptographically signs `data` using the private key `priv`.
+func (backend *DSBackend) SignBytes(data []byte, addr types.Address) (types.Signature, error) {
 	privateKey, _, err := backend.GetKeyPair(addr)
 	if err != nil {
 		return nil, err
 	}
-	return sign(privateKey, data)
+	return wutil.Sign(privateKey, data)
 }
 
 // Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
 // the public key `pk`.
-func (backend *DSBackend) Verify(pk, data, sig []byte) (bool, error) {
-	return verify(pk, data, sig)
+func (backend *DSBackend) Verify(data []byte, pk []byte, sig types.Signature) (bool, error) {
+	return wutil.Verify(pk, data, sig)
 }
 
 // Ecrecover returns an uncompressed public key that could produce the given
 // signature from data.
 // Note: The returned public key should not be used to verify `data` is valid
 // since a public key may have N private key pairs
-func (backend *DSBackend) Ecrecover(data, sig []byte) ([]byte, error) {
-	return ecrecover(data, sig)
+func (backend *DSBackend) Ecrecover(data []byte, sig types.Signature) ([]byte, error) {
+	return wutil.Ecrecover(data, sig)
 }
 
 // GetKeyPair will return the private & public keys associated with address `addr`

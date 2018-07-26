@@ -76,7 +76,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	// data to sign
 	dataA := []byte("THIS IS A SIGNED SLICE OF DATA")
 	t.Log("sign content")
-	sig, err := w.Sign(addr, dataA[:])
+	sig, err := w.SignBytes(dataA, addr)
 	assert.NoError(err)
 
 	// get the key pair for validation
@@ -86,14 +86,14 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	pkb := crypto.ECDSAPubToBytes(pk)
 
 	t.Log("verify signed content")
-	valid, err := w.Verify(pkb, dataA[:], sig)
+	valid, err := w.Verify(dataA, pkb, sig)
 	assert.NoError(err)
 	assert.True(valid)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	secondValid, err := w.Verify(pkb, dataB, sig)
+	secondValid, err := w.Verify(dataB, pkb, sig)
 	assert.NoError(err)
 	assert.False(secondValid)
 
@@ -151,7 +151,7 @@ func TestSignErrorCases(t *testing.T) {
 	// data to sign
 	dataA := []byte("Set tab width to '1' and make everyone happy")
 	t.Log("sign content")
-	_, err = w1.Sign(addr2, dataA[:])
+	_, err = w1.SignBytes(dataA, addr2)
 	assert.Error(err)
 	assert.Contains(err.Error(), "failed to sign data")
 }
