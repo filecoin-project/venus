@@ -78,7 +78,7 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg *floodsub.Messag
 		log.FinishWithErr(ctx, err)
 	}()
 
-	unmarshaled := &types.Message{}
+	unmarshaled := &types.SignedMessage{}
 	if err := unmarshaled.Unmarshal(pubSubMsg.GetData()); err != nil {
 		return err
 	}
@@ -88,8 +88,9 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg *floodsub.Messag
 	return err
 }
 
-// AddNewMessage adds a new message to the pool and publishes it to the network.
-func (node *Node) AddNewMessage(ctx context.Context, msg *types.Message) (err error) {
+// AddNewMessage adds a new message to the pool, signs it with `node`s wallet,
+// and publishes it to the network.
+func (node *Node) AddNewMessage(ctx context.Context, msg *types.SignedMessage) (err error) {
 	ctx = log.Start(ctx, "Node.AddNewMessage")
 	log.SetTag(ctx, "message", msg)
 	defer func() {

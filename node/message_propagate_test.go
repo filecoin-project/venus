@@ -33,8 +33,10 @@ func TestMessagePropagation(t *testing.T) {
 	nd0Addr, err := nodes[0].NewAddress()
 	require.NoError(err)
 
-	msg := types.NewMessage(address.NetworkAddress, nd0Addr, 0, types.NewAttoFILFromFIL(123), "", nil)
-	nodes[0].AddNewMessage(ctx, msg)
+	msg := types.NewMessage(nd0Addr, address.NetworkAddress, 0, types.NewAttoFILFromFIL(123), "", nil)
+	smsg, err := types.NewSignedMessage(*msg, nodes[0].Wallet)
+	require.NoError(err)
+	require.NoError(nodes[0].AddNewMessage(ctx, smsg))
 
 	// Wait for message to propagate across network
 	time.Sleep(time.Millisecond * 50)

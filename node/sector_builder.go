@@ -509,19 +509,25 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
-	minerOwner := types.Address{} // TODO: get the miner owner to send this from
+	//minerOwner := types.Address{} // TODO: get the miner owner to send this from
+	minerOwner := sb.nd.rewardAddress
 	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", args)
 
-	if err := sb.nd.AddNewMessage(ctx, msg); err != nil {
+	smsg, err := types.NewSignedMessage(*msg, sb.nd.Wallet)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := sb.nd.AddNewMessage(ctx, smsg); err != nil {
 		return nil, errors.Wrap(err, "pushing out commitSector message failed")
 	}
 
-	msgCid, err := msg.Cid()
+	smsgCid, err := smsg.Cid()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get commitSector message CID")
 	}
 
-	return msgCid, nil
+	return smsgCid, nil
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage

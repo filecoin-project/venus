@@ -525,10 +525,15 @@ func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Addre
 		return nil, err
 	}
 
-	err = stsa.nd.AddNewMessage(ctx, msg)
+	smsg, err := types.NewSignedMessage(*msg, stsa.nd.Wallet)
+	if err != nil {
+		return nil, err
+	}
+
+	err = stsa.nd.AddNewMessage(ctx, smsg)
 	if err != nil {
 		return nil, errors.Wrap(err, "sending 'addDeal' message failed")
 	}
 
-	return msg.Cid()
+	return smsg.Cid()
 }

@@ -544,6 +544,19 @@ func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Add
 	return types.NewMessage(from, to, nonce, value, method, params), nil
 }
 
+// NewSignedMessageWithNextNonce returns a new types.SignedMessage whose
+// nonce is set to our best guess at the next appropriate value (see NextNonce),
+// and whose signature is created by Node `node`.
+// (see NextNonce).
+func NewSignedMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.AttoFIL, method string, params []byte) (*types.SignedMessage, error) {
+	nonce, err := NextNonce(ctx, node, from)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't get next nonce")
+	}
+	msg := types.NewMessage(from, to, nonce, value, method, params)
+	return types.NewSignedMessage(*msg, node.Wallet)
+}
+
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (types.Address, error) {
 	backends := node.Wallet.Backends(wallet.DSBackendType)
@@ -598,17 +611,22 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pl
 		return nil, err
 	}
 
-	if err := node.AddNewMessage(ctx, msg); err != nil {
+	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
+	if err != nil {
 		return nil, err
 	}
 
-	msgCid, err := msg.Cid()
+	if err := node.AddNewMessage(ctx, smsg); err != nil {
+		return nil, err
+	}
+
+	smsgCid, err := smsg.Cid()
 	if err != nil {
 		return nil, err
 	}
 
 	var minerAddress types.Address
-	err = node.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.Message,
+	err = node.ChainMgr.WaitForMessage(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
