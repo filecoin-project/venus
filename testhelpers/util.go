@@ -10,6 +10,7 @@ import (
 
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
+	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
@@ -32,10 +33,29 @@ func GetFreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+func getGoPath() (string, error) {
+	gp := os.Getenv("GOPATH")
+	if gp != "" {
+		return gp, nil
+	}
+
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(home, "go"), nil
+}
+
 //GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.
 func GetFilecoinBinary() (string, error) {
-	bin := filepath.FromSlash(fmt.Sprintf("%s/src/github.com/filecoin-project/go-filecoin/go-filecoin", os.Getenv("GOPATH")))
-	_, err := os.Stat(bin)
+	gopath, err := getGoPath()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get GOPATH")
+	}
+
+	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
+	_, err = os.Stat(bin)
 	if err == nil {
 		return bin, nil
 	}
