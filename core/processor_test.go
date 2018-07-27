@@ -36,9 +36,6 @@ func TestProcessBlockSuccess(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ki := types.MustGenerateKeyInfo(1)
-	mockSigner := types.NewMockSigner(ki)
-
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
@@ -77,9 +74,6 @@ func TestProcessBlockSuccess(t *testing.T) {
 func TestProcessTipSetSuccess(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-
-	ki := types.MustGenerateKeyInfo(2)
-	mockSigner := types.NewMockSigner(ki)
 
 	newAddress := types.NewAddressForTestGetter()
 	ctx := context.Background()
@@ -135,9 +129,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ki := types.MustGenerateKeyInfo(2)
-	mockSigner := types.NewMockSigner(ki)
-
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
@@ -185,9 +176,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 func TestProcessBlockVMErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-
-	ki := types.MustGenerateKeyInfo(2)
-	mockSigner := types.NewMockSigner(ki)
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()

@@ -16,12 +16,9 @@ import (
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 )
 
-var mockSigner types.MockSigner
-
-func init() {
-	ki := types.MustGenerateKeyInfo(3)
-	mockSigner = types.NewMockSigner(ki)
-}
+var seed = types.GenerateKeyInfoSeed()
+var ki = types.MustGenerateKeyInfo(10, seed)
+var mockSigner = types.NewMockSigner(ki)
 
 func TestGenerate(t *testing.T) {
 	// TODO fritz use core.FakeActor for state/contract tests for generate:

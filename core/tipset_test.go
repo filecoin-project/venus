@@ -11,13 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var mockSigner types.MockSigner
-
-func init() {
-	ki := types.MustGenerateKeyInfo(2)
-	mockSigner = types.NewMockSigner(ki)
-}
-
 func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWeight uint64, msg string) *types.Block {
 	addrGetter := types.NewAddressForTestGetter()
 

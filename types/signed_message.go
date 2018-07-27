@@ -18,6 +18,8 @@ func init() {
 }
 
 // SignedMessage contains a message and its signature
+// TODO do not export these fields as it increases the chances of producing a
+// `SignedMessage` with an empty signature.
 type SignedMessage struct {
 	Message   `json:"message"`
 	Signature Signature `json:"signature"`

@@ -1,4 +1,4 @@
-package core_test
+package core
 
 import (
 	"context"
@@ -9,25 +9,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	. "github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
-
-var ki []types.KeyInfo
-var mockSigner types.MockSigner
-var newSignedMessage func() *types.SignedMessage
-
-func init() {
-	// Generate a single private/public key pair
-	ki = types.MustGenerateKeyInfo(1)
-	// Create a mockSigner (bad name) that can sign using the previously generated key
-	mockSigner = types.NewMockSigner(ki)
-	// Generate SignedMessages
-	newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
-}
 
 func TestNextNonce(t *testing.T) {
 	ctx := context.Background()

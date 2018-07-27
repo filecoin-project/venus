@@ -3,20 +3,23 @@ package core
 import (
 	"context"
 	"fmt"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"sync"
 	"testing"
+
+	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+var seed = types.GenerateKeyInfoSeed()
+var ki = types.MustGenerateKeyInfo(10, seed)
+var mockSigner = types.NewMockSigner(ki)
+var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
+
 func TestMessagePoolAddRemove(t *testing.T) {
 	assert := assert.New(t)
-	ki := types.MustGenerateKeyInfo(1)
-	mockSigner := types.NewMockSigner(ki)
-	newSignedMessage := types.NewSignedMessageForTestGetter(mockSigner)
 
 	pool := NewMessagePool()
 	msg1 := newSignedMessage()
@@ -43,9 +46,6 @@ func TestMessagePoolAddRemove(t *testing.T) {
 
 func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
-	ki := types.MustGenerateKeyInfo(1)
-	mockSigner := types.NewMockSigner(ki)
-	newSignedMessage := types.NewSignedMessageForTestGetter(mockSigner)
 
 	pool := NewMessagePool()
 	msg1 := newSignedMessage()

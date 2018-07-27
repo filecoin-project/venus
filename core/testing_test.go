@@ -2,9 +2,10 @@ package core
 
 import (
 	"context"
+	"testing"
+
 	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	datastore "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/state"
 

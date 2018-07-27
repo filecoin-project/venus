@@ -122,7 +122,7 @@ func TestChainLsRun(t *testing.T) {
 		child := types.NewBlockForTest(parent, 1)
 
 		// Generate a single private/public key pair
-		ki := types.MustGenerateKeyInfo(1)
+		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 		// Create a mockSigner (bad name) that can sign using the previously generated key
 		mockSigner := types.NewMockSigner(ki)
 		// Generate SignedMessages

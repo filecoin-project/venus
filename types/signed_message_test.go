@@ -6,12 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var ki = MustGenerateKeyInfo(10, GenerateKeyInfoSeed())
+var mockSigner = NewMockSigner(ki)
+var newSignedMessage = NewSignedMessageForTestGetter(mockSigner)
+
 func TestSignedMessageRecover(t *testing.T) {
 	assert := assert.New(t)
-
-	kis := MustGenerateKeyInfo(1)
-	mockSigner := NewMockSigner(kis)
-	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 
 	smsg := newSignedMessage()
 
@@ -25,10 +25,6 @@ func TestSignedMessageRecover(t *testing.T) {
 
 func TestSignedMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
-
-	kis := MustGenerateKeyInfo(1)
-	mockSigner := NewMockSigner(kis)
-	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 
 	smsg := newSignedMessage()
 
@@ -49,10 +45,6 @@ func TestSignedMessageMarshal(t *testing.T) {
 
 func TestSignedMessageCid(t *testing.T) {
 	assert := assert.New(t)
-
-	kis := MustGenerateKeyInfo(1)
-	mockSigner := NewMockSigner(kis)
-	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 
 	smsg1 := newSignedMessage()
 	smsg2 := newSignedMessage()

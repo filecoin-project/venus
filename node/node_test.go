@@ -26,12 +26,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var mockSigner types.MockSigner
-
-func init() {
-	ki := types.MustGenerateKeyInfo(3)
-	mockSigner = types.NewMockSigner(ki)
-}
+var seed = types.GenerateKeyInfoSeed()
+var ki = types.MustGenerateKeyInfo(10, seed)
+var mockSigner = types.NewMockSigner(ki)
+var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
@@ -313,9 +311,7 @@ func TestWaitForMessageError(t *testing.T) {
 }
 
 func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	newMsg := types.NewSignedMessageForTestGetter(mockSigner)
-
-	m1, m2 := newMsg(), newMsg()
+	m1, m2 := newSignedMessage(), newSignedMessage()
 	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
 
 	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
@@ -327,10 +323,9 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node
 func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 	stm *core.ChainManagerForTest) {
 	var wg sync.WaitGroup
-	newMsg := types.NewSignedMessageForTestGetter(mockSigner)
 
-	_, _ = newMsg(), newMsg() // flush out so we get distinct messages from testWaitExisting
-	m3, m4 := newMsg(), newMsg()
+	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
+	m3, m4 := newSignedMessage(), newSignedMessage()
 	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
@@ -343,13 +338,11 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 }
 
 func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	newMsg := types.NewSignedMessageForTestGetter(mockSigner)
-
 	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
 		return nil, fmt.Errorf("error fetching block (in test)")
 	}
 
-	m1, m2, m3, m4 := newMsg(), newMsg(), newMsg(), newMsg()
+	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
 	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], smsgsSet{smsgs{m3, m4}})
 	stm.SetHeaviestTipSetForTest(ctx, chain2[len(chain2)-1])

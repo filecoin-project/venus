@@ -544,19 +544,6 @@ func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Add
 	return types.NewMessage(from, to, nonce, value, method, params), nil
 }
 
-// NewSignedMessageWithNextNonce returns a new types.SignedMessage whose
-// nonce is set to our best guess at the next appropriate value (see NextNonce),
-// and whose signature is created by Node `node`.
-// (see NextNonce).
-func NewSignedMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.AttoFIL, method string, params []byte) (*types.SignedMessage, error) {
-	nonce, err := NextNonce(ctx, node, from)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get next nonce")
-	}
-	msg := types.NewMessage(from, to, nonce, value, method, params)
-	return types.NewSignedMessage(*msg, node.Wallet)
-}
-
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (types.Address, error) {
 	backends := node.Wallet.Backends(wallet.DSBackendType)

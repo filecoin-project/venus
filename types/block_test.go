@@ -30,13 +30,6 @@ func TestTriangleEncoding(t *testing.T) {
 
 	newAddress := NewAddressForTestGetter()
 
-	// Generate a single private/public key pair
-	ki := MustGenerateKeyInfo(1)
-	// Create a mockSigner (bad name) that can sign using the previously generated key
-	mockSigner := NewMockSigner(ki)
-	// Generate SignedMessages
-	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
-
 	// REVIVE AFTER https://github.com/filecoin-project/go-filecoin/issues/599 is fixed.
 	//
 	// testRoundTripThatIThinkWeWant := func(t *testing.T, exp *Block) {
@@ -144,13 +137,6 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		assert := assert.New(t)
 
-		// Generate a single private/public key pair
-		ki := MustGenerateKeyInfo(1)
-		// Create a mockSigner (bad name) that can sign using the previously generated key
-		mockSigner := NewMockSigner(ki)
-		// Generate SignedMessages
-		newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
-
 		addrGetter := NewAddressForTestGetter()
 
 		c1, err := cidFromString("a")
@@ -217,12 +203,6 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = NewSortedCidSet(parent.Cid())
 	child.StateRoot = parent.Cid()
 
-	// Generate a single private/public key pair
-	ki := MustGenerateKeyInfo(1)
-	// Create a mockSigner (bad name) that can sign using the previously generated key
-	mockSigner := NewMockSigner(ki)
-	// Generate SignedMessages
-	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 	message := newSignedMessage()
 
 	receipt := &MessageReceipt{ExitCode: 0}
