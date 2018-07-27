@@ -25,6 +25,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
@@ -111,7 +112,12 @@ func HexToECDSA(hexkey string) (*ecdsa.PrivateKey, error) {
 
 // GenerateKey generates an ecdsa private key
 func GenerateKey() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(S256(), rand.Reader)
+	return GenerateKeyFromSeed(rand.Reader)
+}
+
+// GenerateKeyFromSeed generates an ecdsa private key from `seed`
+func GenerateKeyFromSeed(seed io.Reader) (*ecdsa.PrivateKey, error) {
+	return ecdsa.GenerateKey(S256(), seed)
 }
 
 // zeroBytes will overwrite every byte in `bytes` with a 0
