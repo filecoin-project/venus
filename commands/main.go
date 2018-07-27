@@ -33,7 +33,7 @@ const (
 	// will be accomplished by running a node with Proof-Of-Bob consensus
 	// during tests.  Alternatively we could come up with a canonical set
 	// of testing genesii and allow the CLI to take in custom gensis blocks.
-	MockMineMode = "mockMine"
+	MockMineMode = "mock-mine"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
 )

@@ -597,7 +597,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	mockMineFlag := ""
 
 	if td.mockMine {
-		mockMineFlag = "--mockMine"
+		mockMineFlag = "--mock-mine"
 	}
 
 	if td.init {
