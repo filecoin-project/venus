@@ -69,17 +69,25 @@ var miningStartCmd = &cmds.Command{
 		if err := GetNode(env).StartMining(); err != nil {
 			return err
 		}
-		re.Emit("Started mining\n") // nolint: errcheck
-
+		re.Emit("Started mining") // nolint: errcheck
 		return nil
 	},
+	Type:     "",
+	Encoders: stringEncoderMap,
 }
 
 var miningStopCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		GetNode(env).StopMining()
-		re.Emit("Stopped mining\n") // nolint: errcheck
-
+		re.Emit("Stopped mining") // nolint: errcheck
 		return nil
 	},
+	Encoders: stringEncoderMap,
+}
+
+var stringEncoderMap = cmds.EncoderMap{
+	cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, t string) error {
+		fmt.Fprintln(w, t) // nolint: errcheck
+		return nil
+	}),
 }
