@@ -11,8 +11,6 @@ import (
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	host "gx/ipfs/Qmb8T6YBBsjYsVGfrihQLfCJveczZnneSBqBKkYEBWDjge/go-libp2p-host"
 	peer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
-
-	types "github.com/filecoin-project/go-filecoin/types"
 )
 
 // HelloProtocol is the libp2p protocol identifier for the hello protocol.
@@ -20,14 +18,14 @@ const HelloProtocol = "/fil/hello/1.0.0"
 
 // HelloMsg is the data structure of a single message in the hello protocol.
 type HelloMsg struct {
-	BestBlockCid    *cid.Cid
-	BestBlockHeight uint64
-	GenesisHash     *cid.Cid
+	HeaviestTipSetCids   []*cid.Cid
+	HeaviestTipSetHeight uint64
+	GenesisHash          *cid.Cid
 }
 
-type syncCallback func(from peer.ID, c *cid.Cid, height uint64)
+type syncCallback func(from peer.ID, cids []*cid.Cid, height uint64)
 
-type getBlockFunc func() *types.Block
+type getTipSetFunc func() TipSet
 
 // Hello implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -41,19 +39,19 @@ type Hello struct {
 	// chainSyncCB is called when new peers tell us about their chain
 	chainSyncCB syncCallback
 
-	// getBestBlock is used to retrieve the current best block for filling out
-	// our hello messages.  TODO this should be updated to use the best tipset
-	getBestBlock getBlockFunc
+	// getHeaviestTipSet is used to retrieve the current heaviest tipset
+	// for filling out our hello messages.
+	getHeaviestTipSet getTipSetFunc
 }
 
 // NewHello creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getBestBlockFunc getBlockFunc) *Hello {
+func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Hello {
 	hello := &Hello{
-		host:         h,
-		genesis:      gen,
-		chainSyncCB:  syncCallback,
-		getBestBlock: getBestBlockFunc,
+		host:              h,
+		genesis:           gen,
+		chainSyncCB:       syncCallback,
+		getHeaviestTipSet: getHeaviestTipSet,
 	}
 	h.SetStreamHandler(HelloProtocol, hello.handleNewStream)
 
@@ -93,17 +91,21 @@ func (h *Hello) processHelloMessage(from peer.ID, msg *HelloMsg) error {
 		return ErrBadGenesis
 	}
 
-	h.chainSyncCB(from, msg.BestBlockCid, msg.BestBlockHeight)
+	h.chainSyncCB(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight)
 	return nil
 }
 
 func (h *Hello) getOurHelloMessage() *HelloMsg {
-	best := h.getBestBlock()
+	heaviest := h.getHeaviestTipSet()
+	height, err := heaviest.Height()
+	if err != nil {
+		panic("somehow heaviest tipset is empty")
+	}
 
 	return &HelloMsg{
-		GenesisHash:     h.genesis,
-		BestBlockCid:    best.Cid(),
-		BestBlockHeight: uint64(best.Height),
+		GenesisHash:          h.genesis,
+		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
+		HeaviestTipSetHeight: height,
 	}
 }
 

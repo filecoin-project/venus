@@ -129,7 +129,6 @@ type ChainManager struct {
 	HeaviestTipSetPubSub *pubsub.PubSub
 
 	FetchBlock        func(context.Context, *cid.Cid) (*types.Block, error)
-	GetBestBlock      func() *types.Block
 	GetHeaviestTipSet func() TipSet
 }
 
@@ -148,7 +147,6 @@ func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManag
 		HeaviestTipSetPubSub: pubsub.New(128),
 	}
 	cm.FetchBlock = cm.fetchBlock
-	cm.GetBestBlock = cm.getBestBlock
 	cm.GetHeaviestTipSet = cm.getHeaviestTipSet
 
 	return cm
@@ -274,22 +272,8 @@ func (cm *ChainManager) GetGenesisCid() *cid.Cid {
 	return cm.genesisCid
 }
 
-// BestBlockGetter is the signature for a function used to get the current best block.
-// TODO: this is only being used by callers that haven't been properly updated to use
-// HeaviestTipSetGetters.  These callers should be updated and this type removed
-type BestBlockGetter func() *types.Block
-
 // HeaviestTipSetGetter is the signature for a functin used to get the current best tipset.
 type HeaviestTipSetGetter func() TipSet
-
-// getBestBlock returns a random member of the tipset at the head of our
-// currently selected 'best' chain.  TODO: this is only being used by callers that
-// haven't been updated to use getHeaviestTipSet.  Update and remove this
-func (cm *ChainManager) getBestBlock() *types.Block {
-	cm.heaviestTipSet.Lock()
-	defer cm.heaviestTipSet.Unlock()
-	return cm.heaviestTipSet.ts.ToSlice()[0]
-}
 
 // GetHeaviestTipSet returns the tipset at the head of our current 'best' chain.
 func (cm *ChainManager) getHeaviestTipSet() TipSet {
@@ -582,36 +566,29 @@ func (cm *ChainManager) stateForBlockIDs(ctx context.Context, ids types.SortedCi
 	return cm.state(ctx, blks)
 }
 
-// InformNewBlock informs the chainmanager that we learned about a potentially
-// new block from the given peer. Currently, it just fetches that block and
-// passes it to the block processor (which fetches the rest of the chain on
+// InformNewTipSet informs the chainmanager that we learned about a potentially
+// new tipset from the given peer. It fetches that tipset's blocks and
+// passes them to the block processor (which fetches the rest of the chain on
 // demand). In the (near) future we will want a better protocol for
 // synchronizing the blockchain and downloading it efficiently.
 // TODO: sync logic should be decoupled and off in a separate worker. This
 // method should not block
-func (cm *ChainManager) InformNewBlock(from peer.ID, c *cid.Cid, h uint64) {
-	ts := cm.GetHeaviestTipSet()
-	if len(ts) == 0 {
-		panic("best tip set must have at least one block")
-	}
-	// TODO: this method should be reworked to include non-longest heaviest
-	if uint64(ts.ToSlice()[0].Height) >= h {
-		return
-	}
-
+func (cm *ChainManager) InformNewTipSet(from peer.ID, cids []*cid.Cid, h uint64) {
 	// Naive sync.
 	// TODO: more dedicated sync protocols, like "getBlockHashes(range)"
 	ctx := context.TODO()
-	blk, err := cm.FetchBlock(ctx, c)
-	if err != nil {
-		log.Error("failed to fetch block: ", err)
-		return
-	}
 
-	_, err = cm.ProcessNewBlock(ctx, blk)
-	if err != nil {
-		log.Error("processing new block: ", err)
-		return
+	for _, c := range cids {
+		blk, err := cm.FetchBlock(ctx, c)
+		if err != nil {
+			log.Error("failed to fetch block: ", err)
+			return
+		}
+		_, err = cm.ProcessNewBlock(ctx, blk)
+		if err != nil {
+			log.Error("processing new block: ", err)
+			return
+		}
 	}
 }
 
