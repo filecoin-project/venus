@@ -21,8 +21,14 @@ jobs:
       - checkout
 
       - run:
+          name: Install Rust toolchain (for rust-proofs)
+          command: |
+            sudo apt-get update && sudo apt-get install -y libssl-dev &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+
+      - run:
           name: Install Dependencies
-          command: go run ./build/*.go smartdeps
+          command: PATH="${PATH}:${HOME}/.cargo/bin" go run ./build/*.go smartdeps
 
       - save_cache:
           key: v2-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}

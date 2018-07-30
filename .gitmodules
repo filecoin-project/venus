@@ -6,3 +6,7 @@
 	path = crypto/secp256k1/libsecp256k1
 	url = https://github.com/bitcoin-core/secp256k1.git
 	branch = master
+[submodule "proofs/rust-proofs"]
+	path = proofs/rust-proofs
+	url = git@github.com:filecoin-project/rust-proofs.git
+	branch = master

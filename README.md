@@ -22,9 +22,10 @@ by providing storage to clients.
 
 ## Development
 
-### Install Go
+### Install Go and Rust
 
-The build process for go-filecoin requires at least go version 1.10, which you can download [here][1].
+The build process for go-filecoin requires at least Go version 1.10, which you can download [here][1]. You'll also need
+Rust to build the `rust-proofs` submodule, which you can download [here][5].
 
 (If you run into trouble, see the [Go install instructions][4]).
 
@@ -123,3 +124,4 @@ If editing the readme, please conform to the [standard-readme][3] specification.
 [2]: https://github.com/whyrusleeping/gx
 [3]: https://github.com/RichardLitt/standard-readme
 [4]: https://golang.org/doc/install
+[5]: https://www.rust-lang.org/en-US/install.html
