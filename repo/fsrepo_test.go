@@ -280,13 +280,13 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, ":1234")
 
-			info, err := os.Stat(filepath.Join(r.path, apiFile))
+			info, err := os.Stat(filepath.Join(r.path, APIFile))
 			assert.NoError(err)
-			assert.Equal(apiFile, info.Name())
+			assert.Equal(APIFile, info.Name())
 
 			r.Close()
 
-			_, err = os.Stat(filepath.Join(r.path, apiFile))
+			_, err = os.Stat(filepath.Join(r.path, APIFile))
 			assert.Error(err)
 		})
 	})
@@ -298,7 +298,7 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, ":1234")
 
-			err := os.Remove(filepath.Join(r.path, apiFile))
+			err := os.Remove(filepath.Join(r.path, APIFile))
 			assert.NoError(err)
 
 			assert.NoError(r.Close())
@@ -311,7 +311,7 @@ func TestRepoAPIFile(t *testing.T) {
 
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.path, apiFile), []byte(":9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.path, APIFile), []byte(":9999"), 0000)
 			assert.NoError(err)
 
 			// try to os.Create to same path - will see a failure
