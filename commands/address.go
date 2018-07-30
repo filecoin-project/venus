@@ -8,7 +8,6 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -107,13 +106,11 @@ var balanceCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fcn := GetNode(env)
-		// TODO fix #543: Improve UX for multiblock tipset
-		blk := fcn.ChainMgr.GetBestBlock()
-		if blk.StateRoot == nil {
-			return ErrLatestBlockStateRootNil
+		ts := fcn.ChainMgr.GetHeaviestTipSet()
+		if len(ts) == 0 {
+			return ErrHeaviestTipSetNotFound
 		}
-
-		tree, err := state.LoadStateTree(req.Context, fcn.CborStore, blk.StateRoot, builtin.Actors)
+		tree, err := fcn.ChainMgr.State(req.Context, ts.ToSlice())
 		if err != nil {
 			return err
 		}

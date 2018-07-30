@@ -28,9 +28,11 @@ func TestDagDaemon(t *testing.T) {
 		result1 := op1.readStdoutTrimNewlines()
 		genesisBlockJSONStr := bytes.Split([]byte(result1), []byte{'\n'})[0]
 
-		var expected types.Block
-		err := json.Unmarshal(genesisBlockJSONStr, &expected)
+		var expectedRaw []types.Block
+		err := json.Unmarshal(genesisBlockJSONStr, &expectedRaw)
 		assert.NoError(err)
+		require.Equal(1, len(expectedRaw))
+		expected := expectedRaw[0]
 
 		// get an IPLD node from the DAG by its CID
 

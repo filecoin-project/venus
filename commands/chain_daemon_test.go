@@ -30,20 +30,23 @@ func TestChainDaemon(t *testing.T) {
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
 		result2 := op2.readStdoutTrimNewlines()
 
-		var bs []types.Block
+		var bs [][]types.Block
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
-			var b types.Block
+			var b []types.Block
 			err := json.Unmarshal(line, &b)
 			require.NoError(err)
 			bs = append(bs, b)
+			require.Equal(1, len(b))
+			line = bytes.TrimPrefix(line, []byte{'['})
+			line = bytes.TrimSuffix(line, []byte{']'})
 
 			// ensure conformance with JSON schema
 			requireSchemaConformance(t, line, "filecoin_block")
 		}
 
 		assert.Equal(2, len(bs))
-		assert.True(bs[1].Parents.Empty())
-		assert.True(c.Equals(bs[0].Cid()))
+		assert.True(bs[1][0].Parents.Empty())
+		assert.True(c.Equals(bs[0][0].Cid()))
 	})
 
 	t.Run("chain head with chain of size 1 returns genesis block", func(t *testing.T) {
@@ -57,10 +60,10 @@ func TestChainDaemon(t *testing.T) {
 		op := d.RunSuccess("chain", "ls", "--enc", "json")
 		result := op.readStdoutTrimNewlines()
 
-		var b types.Block
+		var b []types.Block
 		err := json.Unmarshal([]byte(result), &b)
 		require.NoError(err)
 
-		assert.True(b.Parents.Empty())
+		assert.True(b[0].Parents.Empty())
 	})
 }

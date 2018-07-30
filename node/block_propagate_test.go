@@ -7,6 +7,7 @@ import (
 
 	peerstore "gx/ipfs/QmXauCuJzmzapetmC6W4TuDJLL1yFFrVzSHoWv8YdbmnxH/go-libp2p-peerstore"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +50,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	defer stopNodes(nodes)
 	connect(t, nodes[0], nodes[1])
 
-	baseBlk := nodes[0].ChainMgr.GetBestBlock()
+	baseBlk := core.RequireBestBlock(nodes[0].ChainMgr, t)
 	nextBlk := &types.Block{
 		Parents:           types.NewSortedCidSet(baseBlk.Cid()),
 		Height:            types.Uint64(1),
@@ -65,7 +66,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 75)
 
-	otherBest := nodes[1].ChainMgr.GetBestBlock()
+	otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
 	assert.Equal(otherBest.Cid(), nextBlk.Cid(), "Blocks not equal: %#+v, %#+v", otherBest, nextBlk)
 }
 
@@ -78,7 +79,7 @@ func TestChainSync(t *testing.T) {
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 
-	baseBlk := nodes[0].ChainMgr.GetBestBlock()
+	baseBlk := core.RequireBestBlock(nodes[0].ChainMgr, t)
 	nextBlk1 := &types.Block{
 		Parents:           types.NewSortedCidSet(baseBlk.Cid()),
 		Height:            types.Uint64(1),
@@ -108,6 +109,6 @@ func TestChainSync(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 
 	time.Sleep(time.Millisecond * 50)
-	otherBest := nodes[1].ChainMgr.GetBestBlock()
+	otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
 	assert.Equal(otherBest.Cid(), nextBlk3.Cid())
 }

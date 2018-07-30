@@ -147,6 +147,15 @@ func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts TipSet) 
 	require.NoError(err)
 }
 
+// RequireBestBlock ensures that there is a single block in the heaviest tipset
+// and returns it.
+func RequireBestBlock(cm *ChainManager, t *testing.T) *types.Block {
+	require := require.New(t)
+	heaviest := cm.GetHeaviestTipSet()
+	require.Equal(1, len(heaviest))
+	return heaviest.ToSlice()[0]
+}
+
 // MustGetNonce returns the next nonce for an actor at the given address or panics.
 func MustGetNonce(st state.Tree, a types.Address) uint64 {
 	mp := NewMessagePool()

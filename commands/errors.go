@@ -30,8 +30,9 @@ var (
 	// ErrInvalidBlockHeight indicates that the provided block height was invalid.
 	ErrInvalidBlockHeight = fmt.Errorf("invalid block height")
 
-	// ErrLatestBlockStateRootNil indicates that the state root in latest block was nil.
-	ErrLatestBlockStateRootNil = fmt.Errorf("state root in latest block was nil")
+	// ErrHeaviestTipSetNotFound indicates that the node does not have a
+	// heaviest tipset, which should not happen in the normal course of events.
+	ErrHeaviestTipSetNotFound = errors.New("chain manager does not have a heaviest tipset")
 
 	// ErrMissingDaemon is the error returned when trying to execute a command that requires the daemon to be started.
 	ErrMissingDaemon = errors.New("daemon must be started before using this command")

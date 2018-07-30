@@ -391,14 +391,22 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
-	expHead := td.GetChainHead()
+	expHeadBlks := td.GetChainHead()
+	var expHead types.SortedCidSet
+	for _, blk := range expHeadBlks {
+		expHead.Add(blk.Cid())
+	}
 
 	for _, p := range peers {
 		wg.Add(1)
 		go func(p *TestDaemon) {
 			for {
-				actHead := p.GetChainHead()
-				if expHead.Cid().Equals(actHead.Cid()) {
+				actHeadBlks := p.GetChainHead()
+				var actHead types.SortedCidSet
+				for _, blk := range actHeadBlks {
+					actHead.Add(blk.Cid())
+				}
+				if expHead.Equals(actHead) {
 					wg.Done()
 					return
 				}
@@ -420,20 +428,20 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	}
 }
 
-// GetChainHead returns the head block from `td`
-func (td *TestDaemon) GetChainHead() types.Block {
+// GetChainHead returns the blocks in the head tipset from `td`
+func (td *TestDaemon) GetChainHead() []types.Block {
 	out := td.RunSuccess("chain", "ls", "--enc=json")
 	bc := td.MustUnmarshalChain(out.ReadStdout())
 	return bc[0]
 }
 
 // MustUnmarshalChain unmarshals the chain from `input` into a slice of blocks
-func (td *TestDaemon) MustUnmarshalChain(input string) []types.Block {
+func (td *TestDaemon) MustUnmarshalChain(input string) [][]types.Block {
 	chain := strings.Trim(input, "\n")
-	var bs []types.Block
+	var bs [][]types.Block
 
 	for _, line := range bytes.Split([]byte(chain), []byte{'\n'}) {
-		var b types.Block
+		var b []types.Block
 		if err := json.Unmarshal(line, &b); err != nil {
 			td.test.Fatal(err)
 		}

@@ -23,21 +23,21 @@ var chainCmd = &cmds.Command{
 
 var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "get the best block CID",
+		Tagline: "get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		blks := GetNode(env).ChainMgr.GetHeaviestTipSet().ToSlice()
-		if len(blks) == 0 {
-			return errors.New("best block not found")
+		ts := GetNode(env).ChainMgr.GetHeaviestTipSet()
+		if len(ts) == 0 {
+			return ErrHeaviestTipSetNotFound
 		}
-		// TODO fix #543: Improve UX for multiblock tipset
-		blk := blks[0]
-
-		re.Emit(cmds.Single{Value: blk.Cid()}) // nolint: errcheck
-
+		var out []*cid.Cid
+		for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
+			out = append(out, it.Value())
+		}
+		re.Emit(out) //nolint: errcheck
 		return nil
 	},
-	Type: cid.Cid{},
+	Type: []*cid.Cid{},
 }
 
 var chainLsCmd = &cmds.Command{
@@ -50,12 +50,10 @@ var chainLsCmd = &cmds.Command{
 			case error:
 				return v
 			case core.TipSet:
-				// TODO fix #543: Improve UX for multiblock tipset.
-				// Right now we just take one random block from each tipset
 				if len(v) == 0 {
 					panic("tipsets from this channel should have at least one member")
 				}
-				re.Emit(v.ToSlice()[0]) // nolint: errcheck
+				re.Emit(v.ToSlice()) // nolint: errcheck
 			default:
 				return errors.New("unexpected type")
 			}
@@ -63,5 +61,5 @@ var chainLsCmd = &cmds.Command{
 
 		return nil
 	},
-	Type: types.Block{},
+	Type: []types.Block{},
 }
