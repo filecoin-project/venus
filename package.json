@@ -125,7 +125,13 @@
       "author": "whyrusleeping",
       "hash": "QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd",
       "name": "go-ipld-cbor",
-      "version": "1.4.6"
+	"version": "1.4.6"
+    },
+    {
+      "author": "leesper",
+      "hash" : "QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P",
+      "name": "go_rng",
+      "version": "0.0.0"
     }
   ],
   "gxVersion": "0.12.1",

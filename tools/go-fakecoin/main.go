@@ -23,6 +23,7 @@ import (
 )
 
 var length int
+var binom bool
 var repodir string
 
 func init() {
@@ -30,6 +31,8 @@ func init() {
 
 	// Default repodir is different than Filecoin to avoid accidental clobbering of real data.
 	flag.StringVar(&repodir, "repodir", "~/.fakecoin", "repo directory to use")
+
+	flag.BoolVar(&binom, "binom", false, "generate multiblock tipsets where the number of blocks per epoch is drawn from a a realistic distribution")
 }
 
 func main() {
@@ -45,7 +48,6 @@ func main() {
 		}
 	}
 	flag.Parse()
-
 	switch cmd {
 	default:
 		flag.Usage()
@@ -65,7 +67,7 @@ func main() {
 		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return cm.State(ctx, ts.ToSlice())
 		}
-		err = fake(ctx, length, cm.GetHeaviestTipSet, cm.ProcessNewBlock, aggregateState)
+		err = fake(ctx, length, binom, cm.GetHeaviestTipSet, cm.ProcessNewBlock, aggregateState)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -123,8 +125,20 @@ func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.Cbor
 	return st, cst, cm, bts, err
 }
 
-func fake(ctx context.Context, length int, getHeaviestTipSet core.HeaviestTipSetGetter, processNewBlock core.NewBlockProcessor, stateFromTS core.AggregateStateTreeComputer) error {
+func fake(ctx context.Context, length int, binom bool, getHeaviestTipSet core.HeaviestTipSetGetter, processNewBlock core.NewBlockProcessor, stateFromTS core.AggregateStateTreeComputer) error {
 	ts := getHeaviestTipSet()
+	// If a binomial distribution is specified we generate a binomially
+	// distributed number of blocks per epoch
+	if binom {
+		_, err := core.AddChainBinomBlocksPerEpoch(ctx, processNewBlock, stateFromTS, ts, 100, length)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Added chain of %d empty epochs.\n", length)
+		return err
+	}
+	// The default block distribution just adds a linear chain of 1 block
+	// per epoch.
 	_, err := core.AddChain(ctx, processNewBlock, stateFromTS, ts.ToSlice(), length)
 	if err != nil {
 		return err

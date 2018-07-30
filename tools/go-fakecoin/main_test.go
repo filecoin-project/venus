@@ -49,7 +49,7 @@ func TestAddFakeChain(t *testing.T) {
 		return state.NewEmptyStateTree(hamt.NewCborStore()), nil
 
 	}
-	fake(ctx, length, getHeaviestTipSet, processBlock, loadState)
+	fake(ctx, length, false, getHeaviestTipSet, processBlock, loadState)
 	assert.Equal(1, gbbCount)
 	assert.Equal(length, pbCount)
 }
