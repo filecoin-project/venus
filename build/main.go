@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 var lineBreak = "\n"
@@ -41,12 +42,16 @@ func runParts(args ...string) {
 		panic(err)
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
+		defer wg.Done()
 		if _, err = io.Copy(os.Stderr, stderr); err != nil {
 			panic(err)
 		}
 	}()
 	go func() {
+		defer wg.Done()
 		if _, err = io.Copy(os.Stdout, stdout); err != nil {
 			panic(err)
 		}
@@ -56,6 +61,7 @@ func runParts(args ...string) {
 		panic(err)
 	}
 
+	wg.Wait()
 	if err := cmd.Wait(); err != nil {
 		log.Fatalf("Command '%s' failed: %s\n", name, err)
 	}
