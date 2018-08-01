@@ -140,6 +140,15 @@ Only implement once you're sure you have a solid plan.
 ## Conventions and Style
 
 There are always exceptions but generally:
+ * Comments:
+   * **Use precise language.**
+     * NO: "Actor is the builtin actor responsible for individual accounts". What does "responsible for" mean? What is an *individual* account?
+     * YES: "Actor represents a user's account, holding its balance and nonce. A message from a user is sent from their account actor."
+   * If there is a concept in the code, define it. Precisely.
+   * Use complete sentences. With punctuation.
+   * Comments shouldn't just say what the thing does, they should briefly say *why* it might be called or *how* it is used.
+     * NO: "flushAndCache flushes and caches the input tipset's state"
+     * YES: "flushAndCache flushes and caches the input tipset's state. It is called after successfully running messages to persist state changes."
  * Accessors: `Foo(), SetFoo()`
  * Predicates: `isFoo()`
  * Variable names
