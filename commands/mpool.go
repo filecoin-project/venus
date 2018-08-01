@@ -8,7 +8,7 @@ import (
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/core/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 

@@ -5,7 +5,7 @@ import (
 
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/core/node"
 )
 
 // Env is the environment passed to commands. Implements cmds.Environment.

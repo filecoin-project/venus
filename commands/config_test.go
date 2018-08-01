@@ -9,7 +9,7 @@ import (
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/core/node"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
