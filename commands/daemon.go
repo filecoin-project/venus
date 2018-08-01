@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core/node"
+	"github.com/filecoin-project/go-filecoin/node/impl"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -100,9 +101,11 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		return err
 	}
 
+	api := impl.NewCoreAPI(node)
+
 	servenv := &Env{
-		ctx:  context.Background(),
-		node: node,
+		ctx: context.Background(),
+		api: api,
 	}
 
 	cfg := cmdhttp.NewServerConfig()

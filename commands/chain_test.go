@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/core/node"
+	"github.com/filecoin-project/go-filecoin/node/impl"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -24,11 +25,12 @@ func TestChainHead(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		res, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
-			ctx:  context.Background(),
-			node: n,
+			ctx: context.Background(),
+			api: impl.NewCoreAPI(n),
 		})
+
 		require.NoError(err)
-		require.Contains(res.Raw, ErrHeaviestTipSetNotFound.Error())
+		require.Contains(res.Raw, impl.ErrHeaviestTipSetNotFound.Error())
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
@@ -43,8 +45,8 @@ func TestChainHead(t *testing.T) {
 		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, blk))
 
 		out, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
-			ctx:  ctx,
-			node: n,
+			ctx: ctx,
+			api: impl.NewCoreAPI(n),
 		})
 		require.NoError(err)
 
@@ -71,8 +73,8 @@ func TestChainLsRun(t *testing.T) {
 		require.NoError(err)
 
 		out, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
-			ctx:  ctx,
-			node: n,
+			ctx: ctx,
+			api: impl.NewCoreAPI(n),
 		})
 		require.NoError(err)
 
@@ -106,8 +108,8 @@ func TestChainLsRun(t *testing.T) {
 
 		// parBlock is not known to the chain, which causes the timeout
 		res, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
-			ctx:  ctx,
-			node: n,
+			ctx: ctx,
+			api: impl.NewCoreAPI(n),
 		})
 		require.NoError(err)
 		require.Contains(res.Raw, "error fetching block")

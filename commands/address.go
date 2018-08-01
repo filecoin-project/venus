@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit/files"
 
+	"github.com/filecoin-project/go-filecoin/node/impl"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -116,7 +117,7 @@ var balanceCmd = &cmds.Command{
 		fcn := GetNode(env)
 		ts := fcn.ChainMgr.GetHeaviestTipSet()
 		if len(ts) == 0 {
-			re.SetError(ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
+			re.SetError(impl.ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
 			return
 		}
 

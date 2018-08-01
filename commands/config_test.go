@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core/node"
+	"github.com/filecoin-project/go-filecoin/node/impl"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
@@ -28,8 +29,8 @@ func TestConfigGet(t *testing.T) {
 
 		out, err := testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap"}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		require.NoError(err)
 		b := strings.Builder{}
@@ -47,24 +48,24 @@ func TestConfigGet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"nonexistantkey"}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "key: nonexistantkey invalid for config")
 
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap.nope"}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "key: bootstrap.nope invalid for config")
 
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{".inval.id-key."}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "key: .inval.id-key. invalid for config")
@@ -89,8 +90,8 @@ func TestConfigSet(t *testing.T) {
 
 		out, err := testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlob}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		require.NoError(err)
 
@@ -124,8 +125,8 @@ func TestConfigSet(t *testing.T) {
 		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
 		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"botstrap", tomlBlob}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "key: botstrap invalid for config")
@@ -134,8 +135,8 @@ func TestConfigSet(t *testing.T) {
 		tomlBlobBadType := `["bootup1", "bootup2"]`
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobBadType}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "input could not be marshaled")
@@ -144,8 +145,8 @@ func TestConfigSet(t *testing.T) {
 		tomlBlobInvalid := `{addresses =[""bootup1", "bootup2"]`
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobInvalid}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "input could not be marshaled")
@@ -154,8 +155,8 @@ func TestConfigSet(t *testing.T) {
 		tomlBlobBadAddr := `"fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"`
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"mining.rewardAddress", tomlBlobBadAddr}, nil, &Env{
-				ctx:  ctx,
-				node: n,
+				ctx: ctx,
+				api: impl.NewCoreAPI(n),
 			})
 		assert.NoError(err)
 		assert.Contains(res.Raw, "input could not be marshaled")
