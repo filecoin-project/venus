@@ -6,15 +6,26 @@ jobs:
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     steps:
+      - run:
+          name: Configure environment variables
+          command: |
+            echo 'export PATH="${HOME}/.cargo/bin:${PATH}"' >> $BASH_ENV
+
       - add_ssh_keys:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
 
-        # The first checkout ensures we have the files needed to restore the cache
+      # The first checkout ensures we have the files needed to restore the cache
       - checkout
 
+      # Pull in all submodules (inc. rust-proofs)
+      - run: git submodule update --init
+
+      # Save the Git SHA of the rust-proofs submodule so that we can use it when creating a cache key
+      - run: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
+
       - restore_cache:
-          key: v2-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+          key: v3-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -23,20 +34,22 @@ jobs:
       - run:
           name: Install Rust toolchain (for rust-proofs)
           command: |
-            sudo apt-get update && sudo apt-get install -y libssl-dev &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+            (which cargo && which rustc) || (sudo apt-get update && sudo apt-get install -y libssl-dev &&
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y)
 
       - run:
           name: Install Dependencies
-          command: PATH="${PATH}:${HOME}/.cargo/bin" go run ./build/*.go smartdeps
+          command: go run ./build/*.go smartdeps
 
       - save_cache:
-          key: v2-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}
+          key: v3-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
             - "/go/src/github.com"
             - "/go/src/golang.org"
+            - "/home/circleci/.rustup"
+            - "/home/circleci/.cargo"
 
       - run:
           name: Build
