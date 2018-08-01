@@ -194,6 +194,20 @@ func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
 	return smsgs
 }
 
+// SignMsgs returns a slice of signed messages where the original messages
+// are `msgs`, if signing one of the `msgs` fails an error is returned
+func SignMsgs(ms MockSigner, msgs []*Message) ([]*SignedMessage, error) {
+	var smsgs []*SignedMessage
+	for _, m := range msgs {
+		s, err := NewSignedMessage(*m, &ms)
+		if err != nil {
+			return nil, err
+		}
+		smsgs = append(smsgs, s)
+	}
+	return smsgs, nil
+}
+
 // MsgCidsEqual returns true if the message cids are equal. It panics if
 // it can't get their cid.
 func MsgCidsEqual(m1, m2 *Message) bool {
