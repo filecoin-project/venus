@@ -22,11 +22,11 @@ import (
 type MessagePool struct {
 	lk sync.RWMutex
 
-	pending map[string]*types.Message // all pending messages
+	pending map[string]*types.SignedMessage // all pending messages
 }
 
 // Add adds a message to the pool.
-func (pool *MessagePool) Add(msg *types.Message) (*cid.Cid, error) {
+func (pool *MessagePool) Add(msg *types.SignedMessage) (*cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -40,8 +40,8 @@ func (pool *MessagePool) Add(msg *types.Message) (*cid.Cid, error) {
 }
 
 // Pending returns all pending messages.
-func (pool *MessagePool) Pending() []*types.Message {
-	out := make([]*types.Message, 0, len(pool.pending))
+func (pool *MessagePool) Pending() []*types.SignedMessage {
+	out := make([]*types.SignedMessage, 0, len(pool.pending))
 	for _, msg := range pool.pending {
 		out = append(out, msg)
 	}
@@ -57,7 +57,7 @@ func (pool *MessagePool) Remove(c *cid.Cid) {
 // NewMessagePool constructs a new MessagePool.
 func NewMessagePool() *MessagePool {
 	return &MessagePool{
-		pending: make(map[string]*types.Message),
+		pending: make(map[string]*types.SignedMessage),
 	}
 }
 
@@ -85,8 +85,8 @@ func getParentTipSet(store *hamt.CborIpldStore, ts TipSet) (TipSet, error) {
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, height uint64) ([]*types.Message, TipSet, error) {
-	var msgs []*types.Message
+func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, height uint64) ([]*types.SignedMessage, TipSet, error) {
+	var msgs []*types.SignedMessage
 	h, err := curTipSet.Height()
 	if err != nil {
 		return nil, nil, err
@@ -105,7 +105,7 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, 
 		default:
 			nextTipSet, err := getParentTipSet(store, curTipSet)
 			if err != nil {
-				return []*types.Message{}, TipSet{}, err
+				return []*types.SignedMessage{}, TipSet{}, err
 			}
 			curTipSet = nextTipSet
 			h, err = curTipSet.Height()
@@ -214,9 +214,9 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 // TODO can be smarter here by skipping messages with gaps; see
 //      ethereum's abstraction for example
 // TODO order by time of receipt
-func OrderMessagesByNonce(messages []*types.Message) []*types.Message {
+func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessage {
 	// TODO this could all be more efficient.
-	byAddress := make(map[types.Address][]*types.Message)
+	byAddress := make(map[types.Address][]*types.SignedMessage)
 	for _, m := range messages {
 		byAddress[m.From] = append(byAddress[m.From], m)
 	}

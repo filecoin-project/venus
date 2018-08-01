@@ -26,6 +26,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var seed = types.GenerateKeyInfoSeed()
+var ki = types.MustGenerateKeyInfo(10, seed)
+var mockSigner = types.NewMockSigner(ki)
+var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
+
 func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -234,10 +239,10 @@ func TestUpdateMessagePool(t *testing.T) {
 	// Msg pool: [m0, m1],   Chain: b[m2, m3]
 	// to
 	// Msg pool: [m0, m3],   Chain: b[] -> b[m1, m2]
-	m := types.NewMsgs(4)
+	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
-	oldChain := core.NewChainWithMessages(node.CborStore, nil, msgsSet{msgs{m[2], m[3]}})
-	newChain := core.NewChainWithMessages(node.CborStore, nil, msgsSet{msgs{}}, msgsSet{msgs{m[1], m[2]}})
+	oldChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{m[2], m[3]}})
+	newChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
 	chainMgrForTest.SetHeaviestTipSetForTest(ctx, oldChain[len(oldChain)-1])
 	assert.NoError(node.Start())
 	updateMsgPoolDoneCh := make(chan struct{})
@@ -247,17 +252,17 @@ func TestUpdateMessagePool(t *testing.T) {
 	<-updateMsgPoolDoneCh
 	assert.Equal(2, len(node.MsgPool.Pending()))
 	pending := node.MsgPool.Pending()
-	assert.True(types.MsgCidsEqual(m[0], pending[0]) || types.MsgCidsEqual(m[0], pending[1]))
-	assert.True(types.MsgCidsEqual(m[3], pending[0]) || types.MsgCidsEqual(m[3], pending[1]))
+	assert.True(types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
+	assert.True(types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))
 	node.Stop()
 }
 
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.Message, expectError bool, cb func(*types.Block, *types.Message, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
-		cb = func(b *types.Block, msg *types.Message,
+		cb = func(b *types.Block, msg *types.SignedMessage,
 			rcp *types.MessageReceipt) error {
-			assert.True(types.MsgCidsEqual(expectMsg, msg))
+			assert.True(types.SmsgCidsEqual(expectMsg, msg))
 			if wg != nil {
 				wg.Done()
 			}
@@ -271,8 +276,8 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainM
 	assert.Equal(expectError, err != nil)
 }
 
-type msgs []*types.Message
-type msgsSet [][]*types.Message
+type smsgs []*types.SignedMessage
+type smsgsSet [][]*types.SignedMessage
 
 func TestWaitForMessage(t *testing.T) {
 	t.Parallel()
@@ -306,10 +311,8 @@ func TestWaitForMessageError(t *testing.T) {
 }
 
 func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	newMsg := types.NewMessageForTestGetter()
-
-	m1, m2 := newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m1, m2}})
+	m1, m2 := newSignedMessage(), newSignedMessage()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
 
 	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
 
@@ -320,11 +323,10 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node
 func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 	stm *core.ChainManagerForTest) {
 	var wg sync.WaitGroup
-	newMsg := types.NewMessageForTestGetter()
 
-	_, _ = newMsg(), newMsg() // flush out so we get distinct messages from testWaitExisting
-	m3, m4 := newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m3, m4}})
+	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
+	m3, m4 := newSignedMessage(), newSignedMessage()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, assert, stm, m3, false, nil)
@@ -336,15 +338,13 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
 }
 
 func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	newMsg := types.NewMessageForTestGetter()
-
 	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
 		return nil, fmt.Errorf("error fetching block (in test)")
 	}
 
-	m1, m2, m3, m4 := newMsg(), newMsg(), newMsg(), newMsg()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), msgsSet{msgs{m1, m2}})
-	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], msgsSet{msgs{m3, m4}})
+	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
+	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
+	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], smsgsSet{smsgs{m3, m4}})
 	stm.SetHeaviestTipSetForTest(ctx, chain2[len(chain2)-1])
 
 	testWaitHelp(nil, assert, stm, m2, true, nil)
@@ -356,8 +356,7 @@ func TestWaitConflicting(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	newAddress := types.NewAddressForTestGetter()
-	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
 	testGen := th.MakeGenesisFunc(
@@ -372,34 +371,39 @@ func TestWaitConflicting(t *testing.T) {
 
 	// Create conflicting messages
 	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
+	sm1, err := types.NewSignedMessage(*m1, &mockSigner)
+	require.NoError(err)
+
 	m2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(6000), "", nil)
+	sm2, err := types.NewSignedMessage(*m2, &mockSigner)
+	require.NoError(err)
 
 	base := stm.GetHeaviestTipSet().ToSlice()
 	require.Equal(1, len(base))
 
 	b1 := core.MkChild(base, base[0].StateRoot, 0)
-	b1.Messages = []*types.Message{m1}
+	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(node.CborStore, b1)
 	b2 := core.MkChild(base, base[0].StateRoot, 1)
-	b2.Messages = []*types.Message{m2}
+	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}
 	core.MustPut(node.CborStore, b2)
 
 	stm.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1, b2))
-	msgApplySucc := func(b *types.Block, msg *types.Message,
+	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
 		assert.NotNil(rcp)
 		return nil
 	}
-	msgApplyFail := func(b *types.Block, msg *types.Message,
+	msgApplyFail := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
 		assert.Nil(rcp)
 		return nil
 	}
 
-	testWaitHelp(nil, assert, stm, m1, false, msgApplySucc)
-	testWaitHelp(nil, assert, stm, m2, false, msgApplyFail)
+	testWaitHelp(nil, assert, stm, sm1, false, msgApplySucc)
+	testWaitHelp(nil, assert, stm, sm2, false, msgApplyFail)
 }
 
 func TestGetSignature(t *testing.T) {
@@ -512,7 +516,9 @@ func TestNextNonce(t *testing.T) {
 		// TODO: does sending a message to ourselves fit the spirit of the test?
 		msg := types.NewMessage(nodeAddr, nodeAddr, 0, nil, "foo", []byte{})
 		msg.Nonce = 42
-		core.MustAdd(node.MsgPool, msg)
+		smsg, err := types.NewSignedMessage(*msg, node.Wallet)
+		assert.NoError(err)
+		core.MustAdd(node.MsgPool, smsg)
 
 		nonce, err := NextNonce(ctx, node, nodeAddr)
 		assert.NoError(err)

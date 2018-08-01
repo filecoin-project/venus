@@ -127,12 +127,18 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
+		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		c, err := msg.Cid()
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		c, err := smsg.Cid()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -200,12 +206,18 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
+		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		c, err := msg.Cid()
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		c, err := smsg.Cid()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

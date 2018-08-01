@@ -94,7 +94,7 @@ func TestTriangleEncoding(t *testing.T) {
 			ParentWeightDenom: Uint64(1),
 			Height:            Uint64(2),
 			Nonce:             3,
-			Messages:          []*Message{{To: newAddress()}},
+			Messages:          []*SignedMessage{newSignedMessage()},
 			StateRoot:         SomeCid(),
 			MessageReceipts:   []*MessageReceipt{{ExitCode: 1}},
 		}
@@ -138,8 +138,6 @@ func TestDecodeBlock(t *testing.T) {
 		assert := assert.New(t)
 
 		addrGetter := NewAddressForTestGetter()
-		m1 := NewMessage(addrGetter(), addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte("cat"))
-		m2 := NewMessage(addrGetter(), addrGetter(), 0, NewAttoFILFromFIL(2), "yes", []byte("dog"))
 
 		c1, err := cidFromString("a")
 		assert.NoError(err)
@@ -150,7 +148,7 @@ func TestDecodeBlock(t *testing.T) {
 			Miner:     addrGetter(),
 			Parents:   NewSortedCidSet(c1),
 			Height:    2,
-			Messages:  []*Message{m1, m2},
+			Messages:  []*SignedMessage{newSignedMessage(), newSignedMessage()},
 			StateRoot: c2,
 			MessageReceipts: []*MessageReceipt{
 				{ExitCode: 1, Return: []Bytes{[]byte{1, 2}}},
@@ -205,12 +203,10 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = NewSortedCidSet(parent.Cid())
 	child.StateRoot = parent.Cid()
 
-	mkMsg := NewMessageForTestGetter()
-
-	message := mkMsg()
+	message := newSignedMessage()
 
 	receipt := &MessageReceipt{ExitCode: 0}
-	child.Messages = []*Message{message}
+	child.Messages = []*SignedMessage{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
 
 	marshalled, e1 := json.Marshal(child)

@@ -146,8 +146,13 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 		return err
 	}
 
+	// TODO address support for signed messages
 	newMinerMessage := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(400), "createMiner", params)
-	_, err = msgPool.Add(newMinerMessage)
+	newSingedMinerMessage, err := types.NewSignedMessage(*newMinerMessage, nil)
+	if err != nil {
+		return err
+	}
+	_, err = msgPool.Add(newSingedMinerMessage)
 	if err != nil {
 		return err
 	}
@@ -164,7 +169,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	}
 
 	var createMinerReceipt *types.MessageReceipt
-	err = cm.WaitForMessage(ctx, cid, func(b *types.Block, msg *types.Message, rcp *types.MessageReceipt) error {
+	err = cm.WaitForMessage(ctx, cid, func(b *types.Block, msg *types.SignedMessage, rcp *types.MessageReceipt) error {
 		createMinerReceipt = rcp
 		return nil
 	})
@@ -182,8 +187,13 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
+	// TODO address support for signed messages
 	askMsg := types.NewMessage(address.TestAddress, minerAddress, 1, types.NewAttoFILFromFIL(100), "addAsk", params)
-	_, err = msgPool.Add(askMsg)
+	askSignedMessage, err := types.NewSignedMessage(*askMsg, nil)
+	if err != nil {
+		return err
+	}
+	_, err = msgPool.Add(askSignedMessage)
 	if err != nil {
 		return err
 	}
@@ -193,8 +203,13 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
+	// TODO address support for signed messages
 	bidMsg := types.NewMessage(address.TestAddress2, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(90), "addBid", params)
-	_, err = msgPool.Add(bidMsg)
+	bidSignedMessage, err := types.NewSignedMessage(*bidMsg, nil)
+	if err != nil {
+		return err
+	}
+	_, err = msgPool.Add(bidSignedMessage)
 	if err != nil {
 		return err
 	}
@@ -211,8 +226,13 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	if err != nil {
 		return err
 	}
+	// TODO address support for signed messages
 	newDealMessage := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewAttoFILFromFIL(400), "addDeal", params)
-	_, err = msgPool.Add(newDealMessage)
+	newDealSignedMessage, err := types.NewSignedMessage(*newDealMessage, nil)
+	if err != nil {
+		return err
+	}
+	_, err = msgPool.Add(newDealSignedMessage)
 	if err != nil {
 		return err
 	}

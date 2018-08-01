@@ -832,7 +832,7 @@ func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, uint64, 
 // possible that an error is returned and the success callback is called. In that case, the error can be safely ignored.
 // TODO: This implementation will become prohibitively expensive since it involves traversing the entire blockchain.
 //       We should replace with an index later.
-func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.Message,
+func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage,
 	*types.MessageReceipt) error) (retErr error) {
 	ctx = log.Start(ctx, "WaitForMessage")
 	log.Info("Calling WaitForMessage")

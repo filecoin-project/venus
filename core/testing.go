@@ -40,7 +40,7 @@ func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block
 		ParentWeightDenom: types.Uint64(1),
 		Nonce:             types.Uint64(nonce),
 		StateRoot:         stateRoot,
-		Messages:          []*types.Message{},
+		Messages:          []*types.SignedMessage{},
 		MessageReceipts:   []*types.MessageReceipt{},
 	}
 }
@@ -168,12 +168,26 @@ func MustGetNonce(st state.Tree, a types.Address) uint64 {
 
 // MustAdd adds the given messages to the messagepool or panics if it
 // cannot.
-func MustAdd(p *MessagePool, msgs ...*types.Message) {
+func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
 	for _, m := range msgs {
 		if _, err := p.Add(m); err != nil {
 			panic(err)
 		}
 	}
+}
+
+// MustSign signs a given address with the provided mocksigner or panics if it
+// cannot.
+func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
+	var smsgs []*types.SignedMessage
+	for _, m := range msgs {
+		sm, err := types.NewSignedMessage(*m, &s)
+		if err != nil {
+			panic(err)
+		}
+		smsgs = append(smsgs, sm)
+	}
+	return smsgs
 }
 
 // MustConvertParams abi encodes the given parameters into a byte array (or panics)
@@ -194,7 +208,7 @@ func MustConvertParams(params ...interface{}) []byte {
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][]*types.Message) []TipSet {
+func NewChainWithMessages(store *hamt.CborIpldStore, root TipSet, msgSets ...[][]*types.SignedMessage) []TipSet {
 	tipSets := []TipSet{}
 	parents := root
 

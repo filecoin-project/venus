@@ -79,19 +79,25 @@ var clientAddBidCmd = &cmds.Command{
 			return
 		}
 
-		err = n.AddNewMessage(req.Context, msg)
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		msgCid, err := msg.Cid()
+		err = n.AddNewMessage(req.Context, smsg)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(msgCid) // nolint: errcheck
+		smsgCid, err := smsg.Cid()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(smsgCid) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

@@ -104,7 +104,7 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree) (*ProcessTipSe
 	// transition of the first validated block (currently done in chain_manager fns).
 	for _, blk := range tips {
 		// filter out duplicates within TipSet
-		var msgs []*types.Message
+		var msgs []*types.SignedMessage
 		for _, msg := range blk.Messages {
 			mCid, err := msg.Cid()
 			if err != nil {
@@ -390,9 +390,9 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store *vm.St
 // prevent callers from mistakenly mixing up outputs of the same type.
 type ApplyMessagesResponse struct {
 	Results            []*ApplicationResult
-	PermanentFailures  []*types.Message
-	TemporaryFailures  []*types.Message
-	SuccessfulMessages []*types.Message
+	PermanentFailures  []*types.SignedMessage
+	TemporaryFailures  []*types.SignedMessage
+	SuccessfulMessages []*types.SignedMessage
 
 	// Application Errors
 	PermanentErrors []error
@@ -404,7 +404,7 @@ type ApplyMessagesResponse struct {
 // groupings of messages with permanent failures, temporary failures, and
 // successes, and the permanent and temporary errors raised during application.
 // ApplyMessages will return an error iff a fault message occurs.
-func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
+func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st state.Tree, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 
@@ -412,24 +412,26 @@ func ApplyMessages(ctx context.Context, messages []*types.Message, st state.Tree
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	vms := vm.NewStorageMap(ds)
-	for _, msg := range messages {
+	for _, smsg := range messages {
+		// We only want the message, not its signature, validation should have already happened
+		msg := &smsg.Message
 		r, err := ApplyMessage(ctx, st, vms, msg, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
 			return emptyRet, err
 		case errors.IsApplyErrorPermanent(err):
-			ret.PermanentFailures = append(ret.PermanentFailures, msg)
+			ret.PermanentFailures = append(ret.PermanentFailures, smsg)
 			ret.PermanentErrors = append(ret.PermanentErrors, err)
 			continue
 		case errors.IsApplyErrorTemporary(err):
-			ret.TemporaryFailures = append(ret.TemporaryFailures, msg)
+			ret.TemporaryFailures = append(ret.TemporaryFailures, smsg)
 			ret.TemporaryErrors = append(ret.TemporaryErrors, err)
 			continue
 		case err != nil:
 			panic("someone is a bad programmer: error is neither fault, perm or temp")
 		default:
-			ret.SuccessfulMessages = append(ret.SuccessfulMessages, msg)
+			ret.SuccessfulMessages = append(ret.SuccessfulMessages, smsg)
 			ret.Results = append(ret.Results, r)
 		}
 	}

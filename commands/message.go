@@ -65,12 +65,18 @@ var msgSendCmd = &cmds.Command{
 			return
 		}
 
-		if err := n.AddNewMessage(req.Context, msg); err != nil {
+		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
+		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		c, err := msg.Cid()
+		if err := n.AddNewMessage(req.Context, smsg); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		c, err := smsg.Cid()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -87,7 +93,7 @@ var msgSendCmd = &cmds.Command{
 }
 
 type waitResult struct {
-	Message   *types.Message
+	Message   *types.SignedMessage
 	Receipt   *types.MessageReceipt
 	Signature *exec.FunctionSignature
 }
@@ -116,7 +122,7 @@ var msgWaitCmd = &cmds.Command{
 		}
 
 		var found bool
-		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.Message,
+		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage,
 			receipt *types.MessageReceipt) error {
 			signature, err := n.GetSignature(req.Context, msg.To, msg.Method)
 			if err != nil && err != node.ErrNoMethod {

@@ -121,13 +121,20 @@ func TestChainLsRun(t *testing.T) {
 		parent := types.NewBlockForTest(nil, 0)
 		child := types.NewBlockForTest(parent, 1)
 
-		message := types.NewMessageForTestGetter()()
+		// Generate a single private/public key pair
+		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+		// Create a mockSigner (bad name) that can sign using the previously generated key
+		mockSigner := types.NewMockSigner(ki)
+		// Generate SignedMessages
+		newSignedMessage := types.NewSignedMessageForTestGetter(mockSigner)
+		message := newSignedMessage()
+
 		retVal := []byte{1, 2, 3}
 		receipt := &types.MessageReceipt{
 			ExitCode: 123,
 			Return:   []types.Bytes{retVal},
 		}
-		child.Messages = []*types.Message{message}
+		child.Messages = []*types.SignedMessage{message}
 		child.MessageReceipts = []*types.MessageReceipt{receipt}
 
 		marshaled, e1 := json.Marshal(child)

@@ -598,17 +598,22 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pl
 		return nil, err
 	}
 
-	if err := node.AddNewMessage(ctx, msg); err != nil {
+	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
+	if err != nil {
 		return nil, err
 	}
 
-	msgCid, err := msg.Cid()
+	if err := node.AddNewMessage(ctx, smsg); err != nil {
+		return nil, err
+	}
+
+	smsgCid, err := smsg.Cid()
 	if err != nil {
 		return nil, err
 	}
 
 	var minerAddress types.Address
-	err = node.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.Message,
+	err = node.ChainMgr.WaitForMessage(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)

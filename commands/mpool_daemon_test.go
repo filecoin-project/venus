@@ -10,7 +10,6 @@ import (
 
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 )
 
@@ -21,11 +20,11 @@ func TestMpool(t *testing.T) {
 
 	t.Run("return all messages", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress3)).Start()
+		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
 		defer d.ShutdownSuccess()
 
 		d.RunSuccess("message", "send",
-			"--from", address.NetworkAddress.String(),
+			"--from", testAddress1,
 			"--value=10", testAddress3,
 		)
 
@@ -38,7 +37,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("wait for enough messages", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress3)).Start()
+		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
 		defer d.ShutdownSuccess()
 
 		wg := sync.WaitGroup{}
@@ -54,22 +53,22 @@ func TestMpool(t *testing.T) {
 		}()
 
 		d.RunSuccess("message", "send",
-			"--from", address.NetworkAddress.String(),
-			"--value=10", testAddress3,
+			"--from", testAddress1,
+			"--value=10", testAddress2,
 		)
 
 		assert.False(complete)
 
 		d.RunSuccess("message", "send",
-			"--from", address.NetworkAddress.String(),
-			"--value=10", testAddress3,
+			"--from", testAddress1,
+			"--value=10", testAddress2,
 		)
 
 		assert.False(complete)
 
 		d.RunSuccess("message", "send",
-			"--from", address.NetworkAddress.String(),
-			"--value=10", testAddress3,
+			"--from", testAddress1,
+			"--value=10", testAddress2,
 		)
 
 		wg.Wait()

@@ -41,7 +41,7 @@ type Block struct {
 
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
-	Messages []*Message `json:"messages"`
+	Messages []*SignedMessage `json:"messages"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
