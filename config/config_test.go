@@ -271,7 +271,7 @@ path = "mushroom-mushroom"`
 		assert.Error(err)
 
 		// newlines in inline tables are invalid
-		tomlB := `{type = "badgerbadgerbadgerds",                      
+		tomlB := `{type = "badgerbadgerbadgerds",
 path = "mushroom-mushroom"}`
 		_, err = cfg.Set("datastore", tomlB)
 		assert.Error(err)
