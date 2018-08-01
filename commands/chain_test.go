@@ -23,12 +23,12 @@ func TestChainHead(t *testing.T) {
 
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
-		_, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
+		res, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
 			ctx:  context.Background(),
 			node: n,
 		})
-
-		require.EqualError(ErrHeaviestTipSetNotFound, err.Error())
+		require.NoError(err)
+		require.Contains(res.Raw, ErrHeaviestTipSetNotFound.Error())
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
@@ -106,11 +106,12 @@ func TestChainLsRun(t *testing.T) {
 		require.NoError(err)
 
 		// parBlock is not known to the chain, which causes the timeout
-		_, err = testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
+		res, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
 			ctx:  ctx,
 			node: n,
 		})
-		require.Error(err)
+		require.NoError(err)
+		require.Contains(res.Raw, "error fetching block")
 	})
 
 	t.Run("JSON marshaling", func(t *testing.T) {

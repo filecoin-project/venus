@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -38,14 +38,15 @@ type addressResult struct {
 }
 
 var addrsNewCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		addr, err := fcn.NewAddress()
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
+
 		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
-		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -57,12 +58,11 @@ var addrsNewCmd = &cmds.Command{
 }
 
 var addrsLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		for _, a := range fcn.Wallet.Addresses() {
 			re.Emit(&addressResult{a.String()}) // nolint: errcheck
 		}
-		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -77,20 +77,22 @@ var addrsLookupCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "miner address to find peerId for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 
 		address, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		v, err := fcn.Lookup.GetPeerIDByMinerAddress(req.Context, address)
 		if err != nil {
-			return errors.Wrapf(err, "failed to find miner with address %s", address.String())
+			err = errors.Wrapf(err, "failed to find miner with address %s", address.String())
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 		re.Emit(v.Pretty()) // nolint: errcheck
-		return nil
 	},
 	Type: string(""),
 	Encoders: cmds.EncoderMap{
@@ -104,20 +106,24 @@ var balanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		ts := fcn.ChainMgr.GetHeaviestTipSet()
 		if len(ts) == 0 {
-			return ErrHeaviestTipSetNotFound
+			re.SetError(ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
+			return
 		}
+
 		tree, err := fcn.ChainMgr.State(req.Context, ts.ToSlice())
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		addr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		act, err := tree.GetActor(req.Context, addr)
@@ -125,13 +131,13 @@ var balanceCmd = &cmds.Command{
 			if state.IsActorNotFoundError(err) {
 				// if the account doesn't exit, the balance should be zero
 				re.Emit(types.NewAttoFILFromFIL(0)) // nolint: errcheck
-				return nil
+				return
 			}
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(act.Balance) // nolint: errcheck
-		return nil
 	},
 	Type: &types.AttoFIL{},
 	Encoders: cmds.EncoderMap{

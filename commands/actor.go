@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"strings"
 
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -32,8 +32,12 @@ var actorCmd = &cmds.Command{
 }
 
 var actorLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return runActorLs(req.Context, re.Emit, GetNode(env), state.GetAllActors)
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		err := runActorLs(req.Context, re.Emit, GetNode(env), state.GetAllActors)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 	},
 	Type: &actorView{},
 	Encoders: cmds.EncoderMap{

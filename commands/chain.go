@@ -2,10 +2,9 @@
 package commands
 
 import (
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -25,17 +24,17 @@ var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "get heaviest tipset CIDs",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		ts := GetNode(env).ChainMgr.GetHeaviestTipSet()
 		if len(ts) == 0 {
-			return ErrHeaviestTipSetNotFound
+			re.SetError(ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
+			return
 		}
 		var out []*cid.Cid
 		for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
 			out = append(out, it.Value())
 		}
 		re.Emit(out) //nolint: errcheck
-		return nil
 	},
 	Type: []*cid.Cid{},
 }
@@ -44,22 +43,22 @@ var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "dump full block chain",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		for raw := range GetNode(env).ChainMgr.BlockHistory(req.Context) {
 			switch v := raw.(type) {
 			case error:
-				return v
+				re.SetError(v, cmdkit.ErrNormal)
+				return
 			case core.TipSet:
 				if len(v) == 0 {
 					panic("tipsets from this channel should have at least one member")
 				}
 				re.Emit(v.ToSlice()) // nolint: errcheck
 			default:
-				return errors.New("unexpected type")
+				re.SetError("unexpected type", cmdkit.ErrNormal)
+				return
 			}
 		}
-
-		return nil
 	},
 	Type: []types.Block{},
 }

@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -27,12 +26,13 @@ var miningCmd = &cmds.Command{
 }
 
 var miningOnceCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		fcn := GetNode(env)
 		ts := fcn.ChainMgr.GetHeaviestTipSet()
 
 		if fcn.RewardAddress().Empty() {
-			return errors.New("filecoin node requires a reward address to be set before mining")
+			re.SetError("filecoin node requires a reward address to be set before mining", cmdkit.ErrNormal)
+			return
 		}
 
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
@@ -41,14 +41,15 @@ var miningOnceCmd = &cmds.Command{
 		// TODO(EC): Need to read best tipsets from storage and pass in. See also Node::StartMining().
 		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), ts, fcn.RewardAddress())
 		if res.Err != nil {
-			return res.Err
+			re.SetError(res.Err, cmdkit.ErrNormal)
+			return
 		}
+
 		if err := fcn.AddNewBlock(req.Context, res.NewBlock); err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 		re.Emit(res.NewBlock.Cid()) // nolint: errcheck
-
-		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -60,22 +61,21 @@ var miningOnceCmd = &cmds.Command{
 }
 
 var miningStartCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		if err := GetNode(env).StartMining(); err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 		re.Emit("Started mining") // nolint: errcheck
-		return nil
 	},
 	Type:     "",
 	Encoders: stringEncoderMap,
 }
 
 var miningStopCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		GetNode(env).StopMining()
 		re.Emit("Stopped mining") // nolint: errcheck
-		return nil
 	},
 	Encoders: stringEncoderMap,
 }

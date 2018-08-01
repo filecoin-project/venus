@@ -3,11 +3,11 @@ package commands
 import (
 	"io"
 
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -39,35 +39,40 @@ message to be mined as this is required to return the address of the new miner.`
 		cmdkit.StringOption("from", "address to send from"),
 		cmdkit.StringOption("peerid", "b58-encoded libp2p peer ID that the miner will operate"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 
 		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		pid, err := peerID(req.Options, n)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
 		if !ok {
-			return ErrInvalidPledge
+			re.SetError(ErrInvalidPledge, cmdkit.ErrNormal)
+			return
 		}
 
 		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
-			return ErrInvalidCollateral
+			re.SetError(ErrInvalidCollateral, cmdkit.ErrNormal)
+			return
 		}
 
 		addr, err := n.CreateMiner(req.Context, fromAddr, *pledge, pid, *collateral)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
-		return re.Emit(addr)
+		re.Emit(addr) // nolint: errcheck
 	},
 	Type: types.Address{},
 	Encoders: cmds.EncoderMap{
@@ -89,46 +94,51 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 
 		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		newPid, err := peer.IDB58Decode(req.Arguments[1])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		args, err := abi.ToEncodedValues(newPid)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "updatePeerID", args)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		c, err := msg.Cid()
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(c) // nolint: errcheck
-
-		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -150,51 +160,58 @@ var minerAddAskCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the ask from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 
 		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
-			return errors.Wrap(err, "invalid miner address")
+			err = errors.Wrap(err, "invalid miner address")
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[1], 10)
 		if !ok {
-			return ErrInvalidSize
+			re.SetError(ErrInvalidSize, cmdkit.ErrNormal)
+			return
 		}
 
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[2], 10)
 		if !ok {
-			return ErrInvalidPrice
+			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
+			return
 		}
 
 		params, err := abi.ToEncodedValues(price, size)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "addAsk", params)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		if err := n.AddNewMessage(req.Context, msg); err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		c, err := msg.Cid()
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(c) // nolint: errcheck
-
-		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

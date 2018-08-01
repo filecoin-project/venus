@@ -6,10 +6,10 @@ import (
 	"io"
 	"time"
 
-	"gx/ipfs/QmNh1kGFFdsPu79KNSaL4NUKUPb4Eiz4KHdMtFY6664RDp/go-libp2p/p2p/protocol/ping"
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	peer "gx/ipfs/QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS/go-libp2p-peer"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmZ86eLPtXkQ1Dfa992Q8NpXArUoWWh3y728JDcWvzRrvC/go-libp2p/p2p/protocol/ping"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	peer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 )
 
 type pingResult struct {
@@ -33,27 +33,35 @@ trip latency information.
 	Options: []cmdkit.Option{
 		cmdkit.IntOption("count", "n", "Number of ping messages to send.").WithDefault(10),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 
 		n := GetNode(env)
 
 		peerID, err := peer.IDB58Decode(req.Arguments[0])
 
 		if err != nil {
-			return fmt.Errorf("failed to parse peer address '%s': %s", req.Arguments[0], err)
+			err = fmt.Errorf("failed to parse peer address '%s': %s", req.Arguments[0], err)
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		if peerID == n.Host.ID() {
-			return ErrCannotPingSelf
+			re.SetError(ErrCannotPingSelf, cmdkit.ErrNormal)
+			return
 		}
 
 		numPings, _ := req.Options["count"].(int)
 		if numPings <= 0 {
-			return fmt.Errorf("error: ping count must be greater than 0, was %d", numPings)
+			err := fmt.Errorf("error: ping count must be greater than 0, was %d", numPings)
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		err = pingPeer(req.Context, n.Ping, peerID, numPings, time.Second, re)
-		return err
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *pingResult) error {

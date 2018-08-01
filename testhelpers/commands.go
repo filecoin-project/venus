@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 )
 
 type writercloser struct {
@@ -77,9 +77,7 @@ func RunCommand(root *cmds.Command, args []string, opts map[string]interface{}, 
 	wc := writercloser{Writer: &buf, Closer: &nopCloser{}}
 	re := cmds.NewWriterResponseEmitter(wc, req, encoderFunc)
 
-	if err := root.Run(req, re, env); err != nil {
-		return nil, err
-	}
+	root.Run(req, re, env)
 
 	return &TextOutput{
 		Lines: strings.Split(buf.String(), "\n"),

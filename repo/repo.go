@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"gx/ipfs/QmXRKBQA4wXP7xWbFiZsR1GP4HV6wMDQ1aWFxZZ4uBcPX9/go-datastore"
-	"gx/ipfs/QmXjHfhUzN9W57ajPh6N1wQvPYGuRDQAmjqhxFSSqeEjuc/go-ipfs-keystore"
+	"gx/ipfs/QmbRDw6b2xXnZywek9E8qk1z4NAVrGxqZvbvwfSioiSy1S/go-ipfs-keystore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )

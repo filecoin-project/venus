@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
-	"gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 )
 
 var configCmd = &cmds.Command{
@@ -57,8 +57,7 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"API.Address\")."),
 		cmdkit.StringArg("value", false, false, "The value to set the config entry to."),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		key := req.Arguments[0]
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 
 		var output interface{}
 		defer func() {
@@ -66,29 +65,44 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 				re.Emit(output) // nolint: errcheck
 			}
 		}()
-		var err error
-		var cf interface{}
+
 		r := GetNode(env).Repo
 		cfg := r.Config()
+
+		key := req.Arguments[0]
 		if len(req.Arguments) == 2 {
 			value := req.Arguments[1]
-			cf, err = cfg.Set(key, value)
+			cf, err := cfg.Set(key, value)
 			if err != nil {
-				return err
+				re.SetError(err, cmdkit.ErrNormal)
+				return
 			}
-			err = r.ReplaceConfig(cfg)
+
+			if err := r.ReplaceConfig(cfg); err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+
+			output, err := makeOutput(cf)
 			if err != nil {
-				return err
+				re.SetError(err, cmdkit.ErrNormal)
+				return
 			}
-			output, err = makeOutput(cf)
+			re.Emit(output) // nolint: errcheck
 		} else {
-			cf, err = cfg.Get(key)
+			cf, err := cfg.Get(key)
 			if err != nil {
-				return err
+				re.SetError(err, cmdkit.ErrNormal)
+				return
 			}
-			output, err = makeOutput(cf)
+
+			output, err := makeOutput(cf)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+			re.Emit(output) // nolint: errcheck
 		}
-		return err
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, v interface{}) error {

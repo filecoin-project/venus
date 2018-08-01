@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	chunk "gx/ipfs/QmWo8jYc19ppG7YoTsrr2kEtLRbARTJho5oNXFTR6B7Peq/go-ipfs-chunker"
-	cid "gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
-
-	imp "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/importer"
-	dag "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/merkledag"
-	uio "gx/ipfs/QmNUCLv5fmUBuAcwbkt58NQvMcJgd5FPCYV2yNCXq4Wnd6/go-ipfs/unixfs/io"
+	chunk "gx/ipfs/QmVDjhUMtkRskBFAVNwyXuLSKbeAya7JKPnzAxMKDaK4x4/go-ipfs-chunker"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	imp "gx/ipfs/QmeoBC7eiuWuMvRwYNYg5rBHZk1rizyfnsMBrkojhrPNkX/go-unixfs/importer"
+	uio "gx/ipfs/QmeoBC7eiuWuMvRwYNYg5rBHZk1rizyfnsMBrkojhrPNkX/go-unixfs/io"
+	dag "gx/ipfs/QmfGzdovkTAhGni3Wfg2fTEtNxhpwWSyAJWW2cC1pWM9TS/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -45,49 +44,54 @@ var clientAddBidCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the bid from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 
 		fromAddr, err := fromAddress(req.Options, n)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
 		if !ok {
-			return ErrInvalidSize
+			re.SetError(ErrInvalidSize, cmdkit.ErrNormal)
+			return
 		}
 
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
 		if !ok {
-			return ErrInvalidPrice
+			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
+			return
 		}
 
 		funds := price.CalculatePrice(size)
 
 		params, err := abi.ToEncodedValues(price, size)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.StorageMarketAddress, funds, "addBid", params)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		err = n.AddNewMessage(req.Context, msg)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		msgCid, err := msg.Cid()
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(msgCid) // nolint: errcheck
-
-		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -104,7 +108,7 @@ var clientCatCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("cid", true, false, "cid of data to read"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		nd := GetNode(env)
 
 		// TODO: this goes back to 'how is data stored and referenced'
@@ -112,23 +116,25 @@ var clientCatCmd = &cmds.Command{
 
 		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		ds := dag.NewDAGService(nd.Blockservice)
 
 		data, err := ds.Get(req.Context, c)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		dr, err := uio.NewDagReader(req.Context, data, ds)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(dr) // nolint: errcheck
-		return nil
 	},
 }
 
@@ -144,23 +150,26 @@ var clientProposeDealCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("data", true, false, "cid of data to be referenced in deal"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		nd := GetNode(env)
 
 		askID, ok := req.Options["ask"].(int)
 		if !ok {
-			return fmt.Errorf("must specify an ask")
+			re.SetError("must specify an ask", cmdkit.ErrNormal)
+			return
 		}
 
 		bidID, ok := req.Options["bid"].(int)
 		if !ok {
-			return fmt.Errorf("must specify a bid")
+			re.SetError("must specify a bid", cmdkit.ErrNormal)
+			return
 		}
 
 		// ensure arg is a valid cid
 		_, err := cid.Decode(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		defaddr := nd.RewardAddress()
@@ -176,11 +185,11 @@ var clientProposeDealCmd = &cmds.Command{
 
 		resp, err := nd.StorageClient.ProposeDeal(req.Context, propose)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(resp) // nolint: errcheck
-		return nil
 	},
 	Type: node.DealResponse{},
 	Encoders: cmds.EncoderMap{
@@ -199,17 +208,18 @@ var clientQueryDealCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("id", true, false, "hex ID of deal to query"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		nd := GetNode(env)
 
 		idslice, err := hex.DecodeString(req.Arguments[0])
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		if len(idslice) != 32 {
 			re.SetError("id must be 32 bytes long", cmdkit.ErrNormal)
-			return nil
+			return
 		}
 
 		var id [32]byte
@@ -217,11 +227,11 @@ var clientQueryDealCmd = &cmds.Command{
 
 		resp, err := nd.StorageClient.QueryDeal(req.Context, id)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(resp) // nolint: errcheck
-		return nil
 	},
 	Type: node.DealResponse{},
 	Encoders: cmds.EncoderMap{
@@ -244,25 +254,26 @@ var clientImportDataCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.FileArg("file", true, false, "path to file to import").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		nd := GetNode(env)
 
 		ds := dag.NewDAGService(nd.Blockservice)
 
 		fi, err := req.Files.NextFile()
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		spl := chunk.DefaultSplitter(fi)
 
 		out, err := imp.BuildDagFromReader(ds, spl)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		re.Emit(out.Cid()) // nolint: errcheck
-		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

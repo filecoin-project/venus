@@ -45,26 +45,29 @@ func TestConfigGet(t *testing.T) {
 		assert := assert.New(t)
 		ctx := context.Background()
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
-		_, err := testhelpers.RunCommand(configCmd,
+		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"nonexistantkey"}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "key: nonexistantkey invalid for config")
 
-		_, err = testhelpers.RunCommand(configCmd,
+		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap.nope"}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "key: bootstrap.nope invalid for config")
 
-		_, err = testhelpers.RunCommand(configCmd,
+		res, err = testhelpers.RunCommand(configCmd,
 			[]string{".inval.id-key."}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "key: .inval.id-key. invalid for config")
 	})
 }
 
@@ -119,39 +122,43 @@ func TestConfigSet(t *testing.T) {
 
 		// bad key
 		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
-		_, err := testhelpers.RunCommand(configCmd,
+		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"botstrap", tomlBlob}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "key: botstrap invalid for config")
 
 		// bad value type (bootstrap is a struct not a list)
 		tomlBlobBadType := `["bootup1", "bootup2"]`
-		_, err = testhelpers.RunCommand(configCmd,
+		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobBadType}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "input could not be marshaled")
 
 		// bad TOML
 		tomlBlobInvalid := `{addresses =[""bootup1", "bootup2"]`
-		_, err = testhelpers.RunCommand(configCmd,
+		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobInvalid}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "input could not be marshaled")
 
 		// bad address
 		tomlBlobBadAddr := `"fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"`
-		_, err = testhelpers.RunCommand(configCmd,
+		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"mining.rewardAddress", tomlBlobBadAddr}, nil, &Env{
 				ctx:  ctx,
 				node: n,
 			})
-		assert.Error(err)
+		assert.NoError(err)
+		assert.Contains(res.Raw, "input could not be marshaled")
 	})
 }
 
@@ -195,5 +202,4 @@ func TestConfigMakeKey(t *testing.T) {
 		outKey = makeKey(key, reflect.TypeOf(testStringSlice))
 		assert.Equal(last, outKey)
 	})
-
 }

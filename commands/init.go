@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -26,7 +26,12 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
 		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 	},
-	Run: initRun,
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		if err := initRun(req, re, env); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(initTextEncoder),
 	},

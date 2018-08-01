@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
 
 	"github.com/stretchr/testify/assert"
 
@@ -16,13 +16,13 @@ import (
 
 func TestDagGet(t *testing.T) {
 	t.Parallel()
-	t.Run("bad arg", func(t *testing.T) {
+	t.Run("invalid ref", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		_, err := testhelpers.RunCommand(dagGetCmd, []string{"awful"}, nil, &Env{})
-		assert.Error(err)
-		assert.Contains(err.Error(), "invalid 'ipfs ref' path")
+		res, err := testhelpers.RunCommand(dagGetCmd, []string{"awful"}, nil, &Env{})
+		assert.NoError(err)
+		assert.NoError(res.HasLine("invalid 'ipfs ref' path"))
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {

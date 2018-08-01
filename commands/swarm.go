@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	swarm "gx/ipfs/QmSwZMWwFZSUpe5muU2xgTUwppH24KfMwdPXiwbEp2c6G5/go-libp2p-swarm"
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	ma "gx/ipfs/QmWWQ2Txc2c6tqjsBpzg5Ar652cHPGNsQQp2SejkNmkUMb/go-multiaddr"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	swarm "gx/ipfs/QmVqCSwuzgDfhLMTmFfUePTGX78PBjzuHcbSWWNPrnrmKy/go-libp2p-swarm"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/filnet"
 )
@@ -88,12 +88,13 @@ var swarmPeersCmd = &cmds.Command{
 		cmdkit.BoolOption("streams", "Also list information about open streams for each peer"),
 		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 
 		n := GetNode(env)
 
 		if n.Host == nil {
-			return ErrNodeOffline
+			re.SetError(ErrNodeOffline, cmdkit.ErrNormal)
+			return
 		}
 
 		verbose, _ := req.Options["verbose"].(bool)
@@ -112,10 +113,12 @@ var swarmPeersCmd = &cmds.Command{
 				Peer: pid.Pretty(),
 			}
 
+			/* FIXME(steb)
 			swcon, ok := c.(*swarm.Conn)
 			if ok {
 				ci.Muxer = fmt.Sprintf("%T", swcon.StreamConn().Conn())
 			}
+			*/
 
 			if verbose || latency {
 				lat := n.Host.Peerstore().LatencyEWMA(pid)
@@ -126,10 +129,7 @@ var swarmPeersCmd = &cmds.Command{
 				}
 			}
 			if verbose || streams {
-				strs, err := c.GetStreams()
-				if err != nil {
-					return err
-				}
+				strs := c.GetStreams()
 
 				for _, s := range strs {
 					ci.Streams = append(ci.Streams, streamInfo{Protocol: string(s.Protocol())})
@@ -141,8 +141,6 @@ var swarmPeersCmd = &cmds.Command{
 
 		sort.Sort(&out)
 		re.Emit(&out) // nolint: errcheck
-
-		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *connInfos) error {
@@ -193,23 +191,23 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		ctx := req.Context
 
 		n := GetNode(env)
 
 		addrs := req.Arguments
 
-		snet, ok := n.Host.Network().(*swarm.Network)
+		swrm, ok := n.Host.Network().(*swarm.Swarm)
 		if !ok {
-			return fmt.Errorf("peerhost network was not swarm")
+			re.SetError("peerhost network was not swarm", cmdkit.ErrNormal)
+			return
 		}
-
-		swrm := snet.Swarm()
 
 		pis, err := filnet.PeerAddrsToPeerInfos(addrs)
 		if err != nil {
-			return err
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
 		output := make([]connectResult, len(pis))
@@ -220,13 +218,13 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 
 			err := n.Host.Connect(ctx, pi)
 			if err != nil {
-				return fmt.Errorf("%s failure: %s", output[i].Peer, err)
+				err = fmt.Errorf("%s failure: %s", output[i].Peer, err)
+				re.SetError(err, cmdkit.ErrNormal)
+				return
 			}
 		}
 
 		re.Emit(output) // nolint: errcheck
-
-		return nil
 	},
 	Type: []connectResult{},
 	Encoders: cmds.EncoderMap{

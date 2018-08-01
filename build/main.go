@@ -86,14 +86,14 @@ func deps() {
 
 	list := []string{
 		"git submodule update --init",
-		"go get -u github.com/whyrusleeping/gx",
-		"go get -u github.com/whyrusleeping/gx-go",
+		"go get github.com/whyrusleeping/gx",
+		"go get github.com/whyrusleeping/gx-go",
 		"gx install",
 		"gx-go rewrite",
-		"go get -u github.com/alecthomas/gometalinter",
+		"go get github.com/alecthomas/gometalinter",
 		"gometalinter --install",
-		"go get -u github.com/stretchr/testify",
-		"go get -u github.com/xeipuuv/gojsonschema",
+		"go get github.com/stretchr/testify",
+		"go get github.com/xeipuuv/gojsonschema",
 		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 

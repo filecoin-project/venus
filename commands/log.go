@@ -3,9 +3,9 @@ package commands
 import (
 	"io"
 
-	writer "gx/ipfs/QmQCqiR5F3NeJRr7LuWq8i8FgtT65ypZw5v9V6Es6nwFBD/go-log/writer"
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	writer "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log/writer"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 )
 
 var logCmd = &cmds.Command{
@@ -30,7 +30,7 @@ Outputs event log messages (not other log messages) as they are generated.
 `,
 	},
 
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		ctx := req.Context
 		r, w := io.Pipe()
 		go func() {
@@ -38,6 +38,6 @@ Outputs event log messages (not other log messages) as they are generated.
 			<-ctx.Done()
 		}()
 		writer.WriterGroup.AddWriter(w)
-		return re.Emit(r)
+		re.Emit(r) // nolint: errcheck
 	},
 }

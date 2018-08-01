@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmUf5GFfV2Be3UtSAPKDVkoRd1TwEBTmx9TSSCFGGjNgdQ/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmceUdzxkimdYsgtX733uNgzf1DLHyBKN6ehGSp85ayppM/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 )
 
 type bootstrapResult struct {
@@ -22,12 +22,11 @@ var bootstrapCmd = &cmds.Command{
 }
 
 var bootstrapLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		n := GetNode(env)
 		peers := n.Repo.Config().Bootstrap.Addresses
 
 		re.Emit(&bootstrapResult{peers}) // nolint: errcheck
-		return nil
 	},
 	Type: &bootstrapResult{},
 	Encoders: cmds.EncoderMap{
