@@ -1,3 +1,9 @@
 package iface
 
-type BootstrapAPI interface{}
+import (
+	"context"
+)
+
+type BootstrapAPI interface {
+	Ls(ctx context.Context) ([]string, error)
+}

@@ -14,7 +14,7 @@ type CoreAPI struct {
 // Assert that CoreAPI fullfills the iface.CoreAPI interface.
 var _ iface.CoreAPI = (*CoreAPI)(nil)
 
-// NewCoreAPI constructs a new instance of the CoreAPI.
+// NewCorenAPI constructs a new instance of the CoreAPI.
 func NewCoreAPI(node *node.Node) iface.CoreAPI {
 	api := &CoreAPI{node: node}
 	return api
@@ -33,7 +33,7 @@ func (api *CoreAPI) Block() iface.BlockAPI {
 }
 
 func (api *CoreAPI) Bootstrap() iface.BootstrapAPI {
-	return (*BootstrapAPI)(api)
+	return &BootstrapAPI{api: api}
 }
 
 func (api *CoreAPI) Chain() iface.ChainAPI {
