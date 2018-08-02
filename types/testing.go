@@ -236,6 +236,22 @@ func SmsgCidsEqual(m1, m2 *SignedMessage) bool {
 	return m1Cid.Equals(m2Cid)
 }
 
+// NewMsgsWithAddrs returns a slice of `n` messages who's `From` field's are pulled
+// from `a`. This method should be used when the addresses returned are to be signed
+// at a later point.
+func NewMsgsWithAddrs(n int, a []Address) []*Message {
+	if n > len(a) {
+		panic("cannot create more messages than there are addresess for")
+	}
+	newMsg := NewMessageForTestGetter()
+	msgs := make([]*Message, n)
+	for i := 0; i < n; i++ {
+		msgs[i] = newMsg()
+		msgs[i].From = a[i]
+	}
+	return msgs
+}
+
 // HasCid allows two values with CIDs to be compared.
 type HasCid interface {
 	Cid() *cid.Cid

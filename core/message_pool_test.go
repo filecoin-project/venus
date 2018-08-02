@@ -400,13 +400,7 @@ func TestOrderMessagesByNonce(t *testing.T) {
 		require := require.New(t)
 		p := NewMessagePool()
 
-		var m []*types.Message
-		for i := 0; i < 9; i++ {
-			// The `Message.From` field must be known to the `mocksigned`, otherwise the `SignMsgs` call fails
-			// since it is unable to produce a signature with an address it doesn't hold the key for.
-			newMsg := types.NewMessage(mockSigner.Addresses[i], mockSigner.Addresses[i], uint64(i), nil, "", nil)
-			m = append(m, newMsg)
-		}
+		m := types.NewMsgsWithAddrs(9, mockSigner.Addresses)
 
 		// Three in increasing nonce order.
 		m[3].From = m[0].From
@@ -465,12 +459,7 @@ func TestLargestNonce(t *testing.T) {
 	t.Run("Match, largest is zero", func(t *testing.T) {
 		p := NewMessagePool()
 
-		var m []*types.Message
-		for i := 0; i < 1; i++ {
-			// the `From` field must be known to the mocksigned, else the `SignMsgs` call fails
-			newMsg := types.NewMessage(mockSigner.Addresses[i], mockSigner.Addresses[i], uint64(i), nil, "", nil)
-			m = append(m, newMsg)
-		}
+		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
 
 		sm, err := types.SignMsgs(mockSigner, m)
@@ -486,12 +475,7 @@ func TestLargestNonce(t *testing.T) {
 	t.Run("Match", func(t *testing.T) {
 		p := NewMessagePool()
 
-		var m []*types.Message
-		for i := 0; i < 3; i++ {
-			// the `From` field must be known to the mocksigned, else the `SignMsgs` call fails
-			newMsg := types.NewMessage(mockSigner.Addresses[i], mockSigner.Addresses[i], uint64(i), nil, "", nil)
-			m = append(m, newMsg)
-		}
+		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1
 		m[2].Nonce = 2
 		m[2].From = m[1].From
