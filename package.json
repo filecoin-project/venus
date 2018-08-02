@@ -4,7 +4,8 @@
     "url": "https://github.com/filecoin-project/go-filecoin/issues"
   },
   "gx": {
-    "dvcsimport": "github.com/filecoin-project/go-filecoin"
+    "dvcsimport": "github.com/filecoin-project/go-filecoin",
+    "goversion": "1.10"
   },
   "gxDependencies": [
     {
