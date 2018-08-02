@@ -8,6 +8,7 @@ import "github.com/filecoin-project/go-filecoin/core/node"
 type CoreAPI interface {
 	Actor() ActorAPI
 	Address() AddressAPI
+	Block() BlockAPI
 	Bootstrap() BootstrapAPI
 	Chain() ChainAPI
 	Config() ConfigAPI

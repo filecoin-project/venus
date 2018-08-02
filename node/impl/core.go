@@ -28,6 +28,10 @@ func (api *CoreAPI) Address() iface.AddressAPI {
 	return (*AddressAPI)(api)
 }
 
+func (api *CoreAPI) Block() iface.BlockAPI {
+	return (*BlockAPI)(api)
+}
+
 func (api *CoreAPI) Bootstrap() iface.BootstrapAPI {
 	return (*BootstrapAPI)(api)
 }
