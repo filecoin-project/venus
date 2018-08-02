@@ -128,6 +128,17 @@ func (s SortedCidSet) String() string {
 	return out + " }"
 }
 
+// ToSlice returns a slice listing the cids in the set.
+func (s SortedCidSet) ToSlice() []*cid.Cid {
+	out := make([]*cid.Cid, s.Len())
+	var i int
+	for it := s.Iter(); !it.Complete(); it.Next() {
+		out[i] = it.Value()
+		i++
+	}
+	return out
+}
+
 // MarshalJSON serializes the set to JSON.
 func (s SortedCidSet) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.s)

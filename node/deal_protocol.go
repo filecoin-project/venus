@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -410,8 +409,8 @@ type stateTreeMarketPeeker struct {
 }
 
 func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
-	bestBlk := stsa.nd.ChainMgr.GetBestBlock()
-	return state.LoadStateTree(ctx, stsa.nd.CborStore, bestBlk.StateRoot, builtin.Actors)
+	ts := stsa.nd.ChainMgr.GetHeaviestTipSet()
+	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
 }
 
 func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*storagemarket.Storage, error) {

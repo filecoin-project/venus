@@ -261,7 +261,7 @@ func (node *Node) Start() error {
 	}
 
 	// Start up 'hello' handshake service
-	node.HelloSvc = core.NewHello(node.Host, node.ChainMgr.GetGenesisCid(), node.ChainMgr.InformNewBlock, node.ChainMgr.GetBestBlock)
+	node.HelloSvc = core.NewHello(node.Host, node.ChainMgr.GetGenesisCid(), node.ChainMgr.InformNewTipSet, node.ChainMgr.GetHeaviestTipSet)
 
 	node.StorageClient = NewStorageClient(node)
 	node.StorageMarket = NewStorageMarket(node)
