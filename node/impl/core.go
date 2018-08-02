@@ -9,6 +9,11 @@ import (
 // CoreAPI is an actual implementation of the filecoin core api interface.
 type CoreAPI struct {
 	node *node.Node
+
+	actor     *ActorAPI
+	address   *AddressAPI
+	block     *BlockAPI
+	bootstrap *BootstrapAPI
 }
 
 // Assert that CoreAPI fullfills the iface.CoreAPI interface.
@@ -16,24 +21,31 @@ var _ iface.CoreAPI = (*CoreAPI)(nil)
 
 // NewCorenAPI constructs a new instance of the CoreAPI.
 func NewCoreAPI(node *node.Node) iface.CoreAPI {
-	api := &CoreAPI{node: node}
+	api := &CoreAPI{
+		node: node,
+	}
+	api.actor = NewActorAPI(api)
+	api.address = NewAddressAPI(api)
+	api.block = NewBlockAPI(api)
+	api.bootstrap = NewBootstrapAPI(api)
+
 	return api
 }
 
 func (api *CoreAPI) Actor() iface.ActorAPI {
-	return (*ActorAPI)(api)
+	return api.actor
 }
 
 func (api *CoreAPI) Address() iface.AddressAPI {
-	return (*AddressAPI)(api)
+	return api.address
 }
 
 func (api *CoreAPI) Block() iface.BlockAPI {
-	return (*BlockAPI)(api)
+	return api.block
 }
 
 func (api *CoreAPI) Bootstrap() iface.BootstrapAPI {
-	return &BootstrapAPI{api: api}
+	return api.bootstrap
 }
 
 func (api *CoreAPI) Chain() iface.ChainAPI {

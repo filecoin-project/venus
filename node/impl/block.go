@@ -8,8 +8,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type BlockAPI = CoreAPI
+type BlockAPI struct {
+	api *CoreAPI
+}
+
+func NewBlockAPI(api *CoreAPI) *BlockAPI {
+	return &BlockAPI{api: api}
+}
 
 func (api *BlockAPI) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
-	return api.node.ChainMgr.FetchBlock(ctx, id)
+	return api.api.node.ChainMgr.FetchBlock(ctx, id)
 }
