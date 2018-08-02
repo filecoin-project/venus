@@ -9,6 +9,7 @@ import (
 	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -395,10 +396,11 @@ func TestOrderMessagesByNonce(t *testing.T) {
 	})
 
 	t.Run("Msgs in three orders", func(t *testing.T) {
-		t.Skip()
 		assert := assert.New(t)
+		require := require.New(t)
 		p := NewMessagePool()
-		m := types.NewMsgs(9)
+
+		m := types.NewMsgsWithAddrs(9, mockSigner.Addresses)
 
 		// Three in increasing nonce order.
 		m[3].From = m[0].From
@@ -421,8 +423,10 @@ func TestOrderMessagesByNonce(t *testing.T) {
 		m[5].Nonce = 7
 		m[8].Nonce = 0
 
-		// TODO modification to messages after signing doesn't work
-		//MustAdd(p, m...)
+		sm, err := types.SignMsgs(mockSigner, m)
+		require.NoError(err)
+
+		MustAdd(p, sm...)
 
 		ordered := OrderMessagesByNonce(p.Pending())
 		assert.Equal(len(p.Pending()), len(ordered))
@@ -440,6 +444,7 @@ func TestOrderMessagesByNonce(t *testing.T) {
 
 func TestLargestNonce(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	t.Run("No matches", func(t *testing.T) {
 		p := NewMessagePool()
@@ -452,13 +457,15 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
-		t.Skip()
 		p := NewMessagePool()
-		m := types.NewMsgs(1)
+
+		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
 
-		// TODO modification to messages after signing doesn't work
-		//MustAdd(p, m[0])
+		sm, err := types.SignMsgs(mockSigner, m)
+		require.NoError(err)
+
+		MustAdd(p, sm...)
 
 		largest, found := LargestNonce(p, m[0].From)
 		assert.True(found)
@@ -466,15 +473,18 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match", func(t *testing.T) {
-		t.Skip()
 		p := NewMessagePool()
 
-		m := types.NewMsgs(3)
+		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1
 		m[2].Nonce = 2
 		m[2].From = m[1].From
-		// TODO modification to messages after signing doesn't work
-		//MustAdd(p, m[0], m[1], m[2])
+
+		sm, err := types.SignMsgs(mockSigner, m)
+		require.NoError(err)
+
+		MustAdd(p, sm...)
+
 		largest, found := LargestNonce(p, m[2].From)
 		assert.True(found)
 		assert.Equal(uint64(2), largest)
