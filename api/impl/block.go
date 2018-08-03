@@ -17,5 +17,5 @@ func newNodeBlock(api *nodeAPI) *nodeBlock {
 }
 
 func (api *nodeBlock) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
-	return api.api.node.ChainMgr.FetchBlock(ctx, id)
+	return api.api.node.ChainReader.GetBlock(ctx, id)
 }

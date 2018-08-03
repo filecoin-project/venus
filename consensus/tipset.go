@@ -1,4 +1,4 @@
-package core
+package consensus
 
 import (
 	"bytes"
@@ -52,6 +52,7 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 		ts[id.String()] = b
 		return nil
 	}
+
 	h, err := ts.Height()
 	if err != nil {
 		return err
@@ -80,6 +81,7 @@ func (ts TipSet) Clone() TipSet {
 	for k, v := range ts {
 		r[k] = v
 	}
+
 	return r
 }
 
@@ -96,7 +98,7 @@ func (ts TipSet) Equals(ts2 TipSet) bool {
 	return ts.ToSortedCidSet().Equals(ts2.ToSortedCidSet())
 }
 
-// ToSortedCidSet returns a types.SortedCidSet containing the Cids in the
+// ToSortedCidSet returns a SortedCidSet containing the Cids in the
 // TipSet.
 func (ts TipSet) ToSortedCidSet() types.SortedCidSet {
 	s := types.SortedCidSet{}
@@ -106,7 +108,7 @@ func (ts TipSet) ToSortedCidSet() types.SortedCidSet {
 	return s
 }
 
-// ToSlice returns the slice of *types.Block containing the tipset's blocks.
+// ToSlice returns the slice of *Block containing the tipset's blocks.
 func (ts TipSet) ToSlice() []*types.Block {
 	sl := make([]*types.Block, len(ts))
 	var i int
@@ -142,7 +144,7 @@ func (ts TipSet) Height() (uint64, error) {
 
 // Parents returns the parents of a tipset.
 func (ts TipSet) Parents() (types.SortedCidSet, error) {
-	if len(ts) < 0 {
+	if len(ts) == 0 {
 		return types.SortedCidSet{}, ErrEmptyTipSet
 	}
 	return ts.ToSlice()[0].Parents, nil

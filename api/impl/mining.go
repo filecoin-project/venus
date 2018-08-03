@@ -3,7 +3,8 @@ package impl
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -19,7 +20,7 @@ func newNodeMining(api *nodeAPI) *nodeMining {
 
 func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	nd := api.api.node
-	ts := nd.ChainMgr.GetHeaviestTipSet()
+	ts := nd.ChainReader.Head()
 
 	miningAddr, err := nd.MiningAddress()
 	if err != nil {
@@ -27,9 +28,33 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	}
 	blockTime, mineDelay := nd.MiningTimes()
 
-	worker := mining.NewDefaultWorker(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
-		return nd.ChainMgr.State(ctx, ts.ToSlice())
-	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView, nd.Blockstore, nd.CborStore, miningAddr, blockTime)
+	getStateByKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
+		tsas, err := nd.ChainReader.GetTipSetAndState(ctx, tsKey)
+		if err != nil {
+			return nil, err
+		}
+		return state.LoadStateTree(ctx, nd.CborStore, tsas.TipSetStateRoot, builtin.Actors)
+	}
+	getState := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
+		return getStateByKey(ctx, ts.String())
+	}
+	getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, uint64, error) {
+		parent, err := ts.Parents()
+		if err != nil {
+			return uint64(0), uint64(0), err
+		}
+		// TODO handle genesis cid more gracefully
+		if parent.Len() == 0 {
+			return nd.Consensus.Weight(ctx, ts, nil)
+		}
+		pSt, err := getStateByKey(ctx, parent.String())
+		if err != nil {
+			return uint64(0), uint64(0), err
+		}
+		return nd.Consensus.Weight(ctx, ts, pSt)
+	}
+
+	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.ApplyMessages, nd.PowerTable, nd.Blockstore, nd.CborStore, miningAddr, blockTime)
 
 	res := mining.MineOnce(ctx, mining.NewScheduler(worker, mineDelay), ts)
 	if res.Err != nil {

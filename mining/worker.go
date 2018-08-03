@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -42,11 +43,11 @@ const DefaultBlockTime = time.Millisecond * 200
 // to accrue rewards to, and a context that the caller can use
 // to cancel this mining run.
 type Input struct {
-	TipSet core.TipSet
+	TipSet consensus.TipSet
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ts core.TipSet) Input {
+func NewInput(ts consensus.TipSet) Input {
 	return Input{TipSet: ts}
 }
 
@@ -71,13 +72,13 @@ type Worker interface {
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
+type GetStateTree func(context.Context, consensus.TipSet) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, core.TipSet) (uint64, uint64, error)
+type GetWeight func(context.Context, consensus.TipSet) (uint64, uint64, error)
 
-type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (core.ApplyMessagesResponse, error)
+type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (consensus.ApplyMessagesResponse, error)
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
@@ -91,21 +92,21 @@ type DefaultWorker struct {
 	// core filecoin things
 	messagePool   *core.MessagePool
 	applyMessages miningApplier
-	powerTable    core.PowerTableView
+	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
 	cstore        *hamt.CborIpldStore
 	blockTime     time.Duration
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
 	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, bt, func() {})
 	w.createPoST = w.fakeCreatePoST
 	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree:  getStateTree,
 		getWeight:     getWeight,
@@ -183,7 +184,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Outp
 // TODO -- in general this won't work with only the base tipset, we'll potentially
 // need some chain manager utils, similar to the State function, to sample
 // further back in the chain.
-func createChallenge(parents core.TipSet, nullBlkCount uint64) ([]byte, error) {
+func createChallenge(parents consensus.TipSet, nullBlkCount uint64) ([]byte, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
 		return nil, err

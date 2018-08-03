@@ -9,12 +9,17 @@ import (
 	host "gx/ipfs/QmPMtD39NN63AEUNghk1LFQcTLcCmYL8MtRzdv8BRUsC4Z/go-libp2p-host"
 	net "gx/ipfs/QmQSbtGXCyNrj34LWL8EgXyNNYDZ8r3SwQcpW5pPxVhLnM/go-libp2p-net"
 	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/consensus"
 )
 
 // HelloProtocol is the libp2p protocol identifier for the hello protocol.
 const HelloProtocol = "/fil/hello/1.0.0"
+
+var log = logging.Logger("hello")
 
 // HelloMsg is the data structure of a single message in the hello protocol.
 type HelloMsg struct {
@@ -25,7 +30,7 @@ type HelloMsg struct {
 
 type syncCallback func(from peer.ID, cids []*cid.Cid, height uint64)
 
-type getTipSetFunc func() TipSet
+type getTipSetFunc func() consensus.TipSet
 
 // Hello implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of

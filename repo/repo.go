@@ -29,8 +29,11 @@ type Repo interface {
 	Datastore() Datastore
 	Keystore() keystore.Keystore
 
-	// WalletDatastore is a specifc storage solution, only used to store sensitive wallet information.
+	// WalletDatastore is a specific storage solution, only used to store sensitive wallet information.
 	WalletDatastore() Datastore
+
+	// ChainDatastore is a specific storage solution, only used to store already validated chain data.
+	ChainDatastore() Datastore
 
 	// SetAPIAddr sets the address of the running API.
 	SetAPIAddr(string) error

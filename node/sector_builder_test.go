@@ -17,8 +17,9 @@ import (
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -120,17 +121,18 @@ func nodeWithSectorBuilder(t *testing.T) (*tempSectorDirs, *Node, *SectorBuilder
 	defaultAddr, err := nd.DefaultSenderAddress()
 	require.NoError(err)
 
-	tif := core.MakeGenesisFunc(
-		core.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
-		core.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
+	tif := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
+		consensus.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
 	)
-	require.NoError(nd.ChainMgr.Genesis(ctx, tif))
+
+	requireResetNodeGen(require, nd, tif)
+
 	require.NoError(nd.Start(ctx))
 
 	pledge := uint64(100)
 	coll := *types.NewAttoFILFromFIL(100)
-
-	result := <-RunCreateMiner(t, nd, owner, pledge, core.RequireRandomPeerID(), coll)
+	result := <-RunCreateMiner(t, nd, owner, pledge, th.RequireRandomPeerID(), coll)
 	require.NoError(result.Err)
 	require.NotNil(result.MinerAddress)
 

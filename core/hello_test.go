@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/consensus"
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,10 +26,10 @@ func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []*cid.Cid, h uint64) 
 }
 
 type mockHeaviestGetter struct {
-	heaviest TipSet
+	heaviest consensus.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() TipSet {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
 	return mhg.heaviest
 }
 
@@ -46,8 +47,8 @@ func TestHelloHandshake(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy1 := RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -82,8 +83,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := &types.Block{Nonce: 451}
 	genesisB := &types.Block{Nonce: 101}
 
-	heavy1 := RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -118,12 +119,12 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 452}
 
-	heavy1 := RequireNewTipSet(require,
+	heavy1 := consensus.RequireNewTipSet(require,
 		&types.Block{Nonce: 1000, Height: 2},
 		&types.Block{Nonce: 1002, Height: 2},
 		&types.Block{Nonce: 1004, Height: 2},
 	)
-	heavy2 := RequireNewTipSet(require,
+	heavy2 := consensus.RequireNewTipSet(require,
 		&types.Block{Nonce: 1001, Height: 3},
 		&types.Block{Nonce: 1003, Height: 3},
 		&types.Block{Nonce: 1005, Height: 3},

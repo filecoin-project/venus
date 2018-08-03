@@ -1,4 +1,4 @@
-package core
+package consensus
 
 import (
 	"context"
@@ -102,7 +102,8 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.Storage
 	types.SortBlocks(tips)
 
 	// TODO: this can be made slightly more efficient by reusing the validation
-	// transition of the first validated block (currently done in chain_manager fns).
+	// transition of the first validated block (change would reach here and
+	// consensus functions).
 	for _, blk := range tips {
 		// filter out duplicates within TipSet
 		var msgs []*types.SignedMessage
@@ -145,7 +146,6 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.Storage
 			}
 			(&res.Failures).Add(mCid)
 		}
-
 	}
 
 	return &res, nil

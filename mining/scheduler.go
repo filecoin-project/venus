@@ -37,7 +37,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 )
 
 // Scheduler is the mining interface consumers use. When you Start() the
@@ -245,7 +245,7 @@ func NewScheduler(w Worker, md time.Duration) Scheduler {
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the mining scheduler.
-func MineOnce(ctx context.Context, s Scheduler, ts core.TipSet) Output {
+func MineOnce(ctx context.Context, s Scheduler, ts consensus.TipSet) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 

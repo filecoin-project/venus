@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -12,13 +13,17 @@ import (
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	pstore "gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -58,7 +63,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	}
 }
 
-// GenesisInitFunc is a core.GenesisInitFunc using the chain seed
+// GenesisInitFunc is a th.GenesisInitFunc using the chain seed
 func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 	keys, err := cs.bstore.AllKeysChan(context.TODO())
 	if err != nil {
@@ -166,14 +171,13 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 	}
 }
 
-// MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
-// applies options from the InMemoryRepo and returns a slice of the initialized
-// nodes
-func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) []*Node {
-	t.Helper()
+// MakeNodesUnstartedWithGif creates a new (unstarted) nodes with an
+// InMemoryRepo initialized with the given genesis init function, applies
+// options from the InMemory Repo and returns a slice of the initialized nodes.
+func MakeNodesUnstartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, options ...func(c *Config) error) []*Node {
 	var out []*Node
 	for i := 0; i < n; i++ {
-		nd := genNode(t, offlineMode, mockMineMode, core.InitGenesis, nil, options)
+		nd := genNode(t, offlineMode, mockMineMode, gif, nil, options)
 		out = append(out, nd)
 	}
 
@@ -192,7 +196,7 @@ func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, op
 	return node
 }
 
-func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif core.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
+func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
@@ -226,23 +230,43 @@ func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif core.Genesis
 	nd, err := New(context.Background(), opts...)
 
 	if mockMineMode {
-		// fake the power of our miner
-		nd.ChainMgr.PwrTableView = &core.TestView{}
+		nd.PowerTable = &consensus.TestView{}
+		newCon := consensus.NewExpected(nd.CborStore, nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
+		newChainStore, ok := nd.ChainReader.(chain.Store)
+		require.True(t, ok)
+
+		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore, newCon, newChainStore)
+		nd.Syncer = newSyncer
+		nd.Consensus = newCon
 	}
 
 	require.NoError(t, err)
 	return nd
 }
 
-// MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
-// applies options from the InMemoryRepo and returns a slice of the nodes
-func MakeNodesStarted(t *testing.T, n int, offlineMode, mockMineMode bool) []*Node {
+// MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
+// applies options from the InMemoryRepo and returns a slice of the initialized
+// nodes
+func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) []*Node {
+	return MakeNodesUnstartedWithGif(t, n, offlineMode, mockMineMode, consensus.InitGenesis, options...)
+}
+
+// MakeNodesStartedWithGif creates n new (started) nodes with an
+// InMemoryRepo initialized with the given genesis init function, applies
+// options from the InMemory Repo and returns a slice of the nodes.
+func MakeNodesStartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc) []*Node {
 	t.Helper()
-	nds := MakeNodesUnstarted(t, n, offlineMode, mockMineMode)
+	nds := MakeNodesUnstartedWithGif(t, n, offlineMode, mockMineMode, gif)
 	for _, n := range nds {
 		require.NoError(t, n.Start(context.Background()))
 	}
 	return nds
+}
+
+// MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
+// applies options from the InMemoryRepo and returns a slice of the nodes
+func MakeNodesStarted(t *testing.T, n int, offlineMode, mockMineMode bool) []*Node {
+	return MakeNodesStartedWithGif(t, n, offlineMode, mockMineMode, consensus.InitGenesis)
 }
 
 // MakeOfflineNode returns a single unstarted offline node with mocked mining.
@@ -261,7 +285,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 
-	if node.ChainMgr.GetGenesisCid() == nil {
+	if node.ChainReader.GenesisCid() == nil {
 		panic("must initialize with genesis block first")
 	}
 
@@ -283,18 +307,99 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 	// wait for create miner call to put a message in the pool
 	_, err = subscription.Next(ctx)
 	require.NoError(err)
-	getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
-		return node.ChainMgr.State(ctx, ts.ToSlice())
+	getStateFromKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
+		tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
+		if err != nil {
+			return nil, err
+		}
+		return state.LoadStateTree(ctx, node.CborStore, tsas.TipSetStateRoot, builtin.Actors)
 	}
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, address.TestAddress, mining.BlockTimeTest)
-	cur := node.ChainMgr.GetHeaviestTipSet()
+	getStateTree := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
+		return getStateFromKey(ctx, ts.String())
+	}
+	getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, uint64, error) {
+		parent, err := ts.Parents()
+		if err != nil {
+			return uint64(0), uint64(0), err
+		}
+		// TODO handle genesis cid more gracefully
+		if parent.Len() == 0 {
+			return node.Consensus.Weight(ctx, ts, nil)
+		}
+		pSt, err := getStateFromKey(ctx, parent.String())
+		if err != nil {
+			return uint64(0), uint64(0), err
+		}
+		return node.Consensus.Weight(ctx, ts, pSt)
+	}
+
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, address.TestAddress, mining.BlockTimeTest)
+	cur := node.ChainReader.Head()
 	out := mining.MineOnce(ctx, mining.NewScheduler(w, mining.MineDelayTest), cur)
 	require.NoError(out.Err)
-	require.NoError(node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, out.NewBlock)))
-
-	require.NoError(err)
-
+	outTS := consensus.RequireNewTipSet(require, out.NewBlock)
+	chainStore, ok := node.ChainReader.(chain.Store)
+	require.True(ok)
+	tsas := &chain.TipSetAndState{
+		TipSet:          outTS,
+		TipSetStateRoot: out.NewBlock.StateRoot,
+	}
+	require.NoError(chainStore.PutTipSetAndState(ctx, tsas))
+	require.NoError(chainStore.SetHead(ctx, outTS))
 	return resultChan
+}
+
+func requireResetNodeGen(require *require.Assertions, node *Node, gif consensus.GenesisInitFunc) { // nolint: deadcode
+	require.NoError(resetNodeGen(node, gif))
+}
+
+// resetNodeGen resets the genesis block of the input given node using the gif
+// function provided.
+func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
+	ctx := context.Background()
+	newGenBlk, err := gif(node.CborStore, node.Blockstore)
+	if err != nil {
+		return err
+	}
+	newGenTS, err := consensus.NewTipSet(newGenBlk)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate genesis block")
+	}
+	// Persist the genesis tipset to the repo.
+	genTsas := &chain.TipSetAndState{
+		TipSet:          newGenTS,
+		TipSetStateRoot: newGenBlk.StateRoot,
+	}
+
+	newChainStore := chain.NewDefaultStore(node.Repo.ChainDatastore(), node.CborStore, newGenBlk.Cid())
+
+	if err = newChainStore.PutTipSetAndState(ctx, genTsas); err != nil {
+		return errors.Wrap(err, "failed to put genesis block in chain store")
+	}
+	if err = newChainStore.SetHead(ctx, newGenTS); err != nil {
+		return errors.Wrap(err, "failed to persist genesis block in chain store")
+	}
+	// Persist the genesis cid to the repo.
+	val, err := json.Marshal(newGenBlk.Cid())
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis cid")
+	}
+	if err = node.Repo.Datastore().Put(genesisKey, val); err != nil {
+		return errors.Wrap(err, "failed to persist genesis cid")
+	}
+	newChainReader, ok := newChainStore.(chain.ReadStore)
+	if !ok {
+		return errors.New("failed to cast chain.Store to chain.ReadStore")
+	}
+	newCon := consensus.NewExpected(node.CborStore, node.Blockstore, node.PowerTable, newGenBlk.Cid())
+	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore, newCon, newChainStore)
+	newMsgWaiter := NewMessageWaiter(newChainReader, node.Blockstore, node.CborStore)
+	node.ChainReader = newChainReader
+	node.Consensus = newCon
+	node.Syncer = newSyncer
+	node.MessageWaiter = newMsgWaiter
+	node.Lookup = lookup.NewChainLookupService(newChainReader, node.DefaultSenderAddress, node.Blockstore)
+	return nil
 }
 
 // PeerKeys are a list of keys for peers that can be used in testing.

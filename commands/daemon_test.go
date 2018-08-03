@@ -37,7 +37,7 @@ func TestBasicDaemonHeartbeat(t *testing.T) {
 	assert.Equal(addr, hb.WalletAddresses[0])
 
 	// matching heaviest tipssets
-	hts := n.ChainMgr.GetHeaviestTipSet().ToSortedCidSet()
+	hts := n.ChainReader.Head().ToSortedCidSet()
 	assert.Equal(hts, hb.HeaviestTipset)
 
 	// we are only connected to our selves

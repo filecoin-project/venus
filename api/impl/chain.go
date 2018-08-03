@@ -15,7 +15,7 @@ func newNodeChain(api *nodeAPI) *nodeChain {
 }
 
 func (api *nodeChain) Head() ([]*cid.Cid, error) {
-	ts := api.api.node.ChainMgr.GetHeaviestTipSet()
+	ts := api.api.node.ChainReader.Head()
 	if len(ts) == 0 {
 		return nil, ErrHeaviestTipSetNotFound
 	}
@@ -29,5 +29,5 @@ func (api *nodeChain) Head() ([]*cid.Cid, error) {
 }
 
 func (api *nodeChain) Ls(ctx context.Context) <-chan interface{} {
-	return api.api.node.ChainMgr.BlockHistory(ctx)
+	return api.api.node.ChainReader.BlockHistory(ctx)
 }
