@@ -125,7 +125,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -169,7 +169,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -232,7 +232,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -278,7 +278,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -319,7 +319,7 @@ func TestGenerateError(t *testing.T) {
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 
-	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)

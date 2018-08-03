@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// powerTableView defines the set of functions used by the ChainManager to view
+// PowerTableView defines the set of functions used by the ChainManager to view
 // the power table encoded in the tipset's state tree
-type powerTableView interface {
+type PowerTableView interface {
 	// Total returns the total bytes stored by all miners in the given
 	// state.
 	Total(ctx context.Context, st state.Tree) (uint64, error)
@@ -22,11 +22,15 @@ type powerTableView interface {
 	// Miner returns the total bytes stored by the miner of the
 	// input address in the given state.
 	Miner(ctx context.Context, st state.Tree, mAddr types.Address) (uint64, error)
+
+	// HasPower returns true if the input address is associated with a
+	// miner that has storage power in the network.
+	HasPower(ctx context.Context, st state.Tree, mAddr types.Address) bool
 }
 
 type marketView struct{}
 
-var _ powerTableView = &marketView{}
+var _ PowerTableView = &marketView{}
 
 // Total returns the total storage as a uint64.  If the total storage
 // value exceeds the max value of a uint64 this method errors.
@@ -52,4 +56,14 @@ func (v *marketView) Miner(ctx context.Context, st state.Tree, mAddr types.Addre
 		return uint64(0), err
 	}
 	return leb128.ToUInt64(mStorage.Power.Bytes()), nil
+}
+
+// HasPower returns true if the provided address belongs to a miner with power
+// in the storage market
+func (v *marketView) HasPower(ctx context.Context, st state.Tree, mAddr types.Address) bool {
+	numBytes, err := v.Miner(ctx, st, mAddr)
+	if err != nil || numBytes == uint64(0) {
+		return false
+	}
+	return true
 }

@@ -205,7 +205,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return chainMgr.State(ctx, ts.ToSlice())
-	}, chainMgr.Weight, core.ApplyMessages)
+	}, chainMgr.Weight, core.ApplyMessages, chainMgr.PwrTableView)
 	miningWorker := mining.NewWorker(blockGenerator)
 
 	// Set up libp2p pubsub

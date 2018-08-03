@@ -168,7 +168,9 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 
-	// TODO: derive these from actual storage power
+	// TODO: derive these from actual storage power.
+	// This means broadening the scope of the State function
+	// and powerTableView from the generator to the worker.
 	const myPower = 1
 	const totalPower = 5
 

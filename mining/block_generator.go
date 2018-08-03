@@ -28,12 +28,13 @@ type BlockGenerator interface {
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
-func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier) BlockGenerator {
+func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView) BlockGenerator {
 	return &blockGenerator{
 		messagePool:   messagePool,
 		getStateTree:  getStateTree,
 		getWeight:     getWeight,
 		applyMessages: applyMessages,
+		powerTable:    powerTable,
 	}
 }
 
@@ -45,6 +46,7 @@ type blockGenerator struct {
 	getStateTree  GetStateTree
 	getWeight     GetWeight
 	applyMessages miningApplier
+	powerTable    core.PowerTableView
 }
 
 // Generate returns a new block created from the messages in the pool.
@@ -52,6 +54,10 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	stateTree, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, err
+	}
+
+	if !b.powerTable.HasPower(ctx, stateTree, rewardAddress) {
+		return nil, xerrors.New("bad miner address, node must create miner before mining")
 	}
 
 	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)
