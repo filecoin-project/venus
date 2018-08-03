@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"time"
 
+	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
 	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
@@ -45,9 +47,12 @@ func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block
 	}
 }
 
-// AddChain creates and processes new, empty chain of length, beginning from blk.
+// AddChain creates and processes new, empty chain of length, beginning from blks.
 func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, blks []*types.Block, length int) (*types.Block, error) {
-	ts, _ := NewTipSet(blks[0])
+	ts, err := NewTipSet(blks...)
+	if err != nil {
+		return nil, err
+	}
 	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
@@ -67,6 +72,65 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 		blks = []*types.Block{blk}
 	}
 	return blks[0], nil
+}
+
+// AddChainBinomBlocksPerEpoch creates and processes a new chain without messages, the
+// given state generation function and block processors, and the input length.
+// The chain is based at the tipset "ts".  The number of blocks mined
+// in each epoch is drawn from the binomial distribution where n = num_miners and
+// p = 1/n.  Concretely this distribution corresponds to the configuration where
+// all miners have the same storage power.
+func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, ts TipSet, numMiners, epochs int) (TipSet, error) {
+	st, err := loadStateTreeTS(ctx, ts)
+	if err != nil {
+		return nil, err
+	}
+	stateRoot, err := st.Flush(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize epoch traversal.
+	l := uint64(epochs)
+	var lastNull uint64
+	var head TipSet
+	blks := ts.ToSlice()
+	brng := rng.NewBinomialGenerator(time.Now().UnixNano())
+	n := int64(numMiners)
+	p := float64(1) / float64(n)
+
+	// Construct a tipset for each epoch.
+	for i := uint64(0); i < l; i++ {
+		head = TipSet{}
+		// Draw number of blocks per TS from binom distribution.
+		nBlks := brng.Binomial(n, p)
+		if nBlks == int64(0) {
+			lastNull += uint64(1)
+		}
+
+		// Construct each block and force the chain manager to process them.
+		for j := int64(0); j < nBlks; j++ {
+			blk := MkChild(blks, stateRoot, uint64(j))
+			if lastNull > 0 { // TODO better include null block handling direcetly in MkChild interface
+				blk.Height = blk.Height + types.Uint64(lastNull)
+			}
+			_, err := processNewBlock(ctx, blk)
+			if err != nil {
+				return nil, err
+			}
+			err = head.AddBlock(blk)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Update chain head and null block count.
+		if nBlks > int64(0) {
+			lastNull = 0
+			blks = head.ToSlice()
+		}
+	}
+	return head, nil
 }
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
