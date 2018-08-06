@@ -4,11 +4,13 @@ import (
 	"context"
 	"net"
 	"os"
+	"path/filepath"
 
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds/http"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -38,22 +40,12 @@ const (
 	SwarmListen = "swarmlisten"
 )
 
-func defaultAPIAddr() string {
-	// Until we have a config file, we need an easy way to influence the API
-	// address for testing
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		return envapi
-	}
-
-	return ":3453"
-}
-
 var rootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "A decentralized storage network",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(OptionAPI, "set the api port to use").WithDefault(defaultAPIAddr()),
+		cmdkit.StringOption(OptionAPI, "set the api port to use"),
 		cmdkit.StringOption(OptionRepoDir, "set the directory of the repo, defaults to ~/.filecoin"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
@@ -136,9 +128,14 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 }
 
 func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
-	api, err := getAPIAddress(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get API address")
+	isDaemonRequired := requiresDaemon(req)
+	var api string
+	if isDaemonRequired {
+		var err error
+		api, err = getAPIAddress(req)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get API address")
+		}
 	}
 
 	isDaemonRunning, err := daemonRunning(api)
@@ -150,7 +147,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		return nil, ErrAlreadyRunning
 	}
 
-	if !isDaemonRunning && requiresDaemon(req) {
+	if !isDaemonRunning && isDaemonRequired {
 		return nil, ErrMissingDaemon
 	}
 
@@ -166,12 +163,15 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 		return apiAddress, nil
 	}
 
-	fsRepo, err := repo.OpenFSRepo(getRepoDir(req))
-	if err != nil {
-		return "", errors.Wrap(err, "failed to open FSRepo")
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		return envapi, nil
 	}
 
-	return fsRepo.APIAddr()
+	apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
+	if err != nil {
+		return "", nil
+	}
+	return repo.APIAddrFromFile(apiFilePath)
 }
 
 func requiresDaemon(req *cmds.Request) bool {

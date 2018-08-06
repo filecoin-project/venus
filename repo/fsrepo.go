@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	apiFile                = "api"
+	// APIFile is the filename containing the filecoin node's api address.
+	APIFile                = "api"
 	configFilename         = "config.toml"
 	tempConfigFilename     = ".config.toml.temp"
 	lockFile               = "repo.lock"
@@ -241,7 +242,7 @@ func (r *FSRepo) removeFile(path string) error {
 }
 
 func (r *FSRepo) removeAPIFile() error {
-	return r.removeFile(filepath.Join(r.path, apiFile))
+	return r.removeFile(filepath.Join(r.path, APIFile))
 }
 
 func isInitialized(p string) (bool, error) {
@@ -387,7 +388,7 @@ func (r *FSRepo) SealedDir() string {
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
 func (r *FSRepo) SetAPIAddr(port string) error {
-	f, err := os.Create(filepath.Join(r.path, apiFile))
+	f, err := os.Create(filepath.Join(r.path, APIFile))
 	if err != nil {
 		return errors.Wrap(err, "could not create API file")
 	}
@@ -414,10 +415,12 @@ func (r *FSRepo) SetAPIAddr(port string) error {
 	return nil
 }
 
-// APIAddr reads the address from the API file.
-func (r *FSRepo) APIAddr() (string, error) {
-	apiFilePath := filepath.Join(filepath.Clean(r.path), apiFile)
-
+// APIAddrFromFile reads the address from the API file at the given path.
+// A relevant comment from a similar function at go-ipfs/repo/fsrepo/fsrepo.go:
+// This is a concurrent operation, meaning that any process may read this file.
+// Modifying this file, therefore, should use "mv" to replace the whole file
+// and avoid interleaved read/writes
+func APIAddrFromFile(apiFilePath string) (string, error) {
 	contents, err := ioutil.ReadFile(apiFilePath)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
@@ -432,4 +435,9 @@ func (r *FSRepo) APIAddr() (string, error) {
 	}
 
 	return fmt.Sprintf(":%s", port), nil
+}
+
+// APIAddr reads the FSRepo's api file and returns the api address
+func (r *FSRepo) APIAddr() (string, error) {
+	return APIAddrFromFile(filepath.Join(filepath.Clean(r.path), APIFile))
 }
