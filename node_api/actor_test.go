@@ -124,7 +124,7 @@ func TestActorLs(t *testing.T) {
 		t.Parallel()
 
 		wd, _ := os.Getwd()
-		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/../../commands/schema/actor_ls.schema.json")
+		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/../commands/schema/actor_ls.schema.json")
 
 		actor, _ := account.NewActor(types.NewAttoFILFromFIL(100))
 		a := makeActorView(actor, "address", &account.Actor{})

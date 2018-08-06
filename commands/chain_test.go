@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/node_api"
@@ -31,7 +30,7 @@ func TestChainHead(t *testing.T) {
 		})
 
 		require.NoError(err)
-		require.Contains(res.Raw, impl.ErrHeaviestTipSetNotFound.Error())
+		require.Contains(res.Raw, node_api.ErrHeaviestTipSetNotFound.Error())
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
