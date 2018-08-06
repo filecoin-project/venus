@@ -1,15 +1,12 @@
-package commands
+package node_api
 
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/node_api"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -23,34 +20,31 @@ func TestChainHead(t *testing.T) {
 		require := require.New(t)
 
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		api := NewAPI(n)
 
-		res, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
-			ctx: context.Background(),
-			api: node_api.NewAPI(n),
-		})
+		_, err := api.Chain().Head()
 
-		require.NoError(err)
-		require.Contains(res.Raw, node_api.ErrHeaviestTipSetNotFound.Error())
+		require.Error(err)
+		require.EqualError(err, ErrHeaviestTipSetNotFound.Error())
 	})
 
 	t.Run("emits the blockchain head", func(t *testing.T) {
 		t.Parallel()
+		ctx := context.Background()
 		require := require.New(t)
 		assert := assert.New(t)
 
-		ctx := context.Background()
 		blk := types.NewBlockForTest(nil, 1)
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
 		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, blk))
 
-		out, err := testhelpers.RunCommandJSONEnc(chainHeadCmd, []string{}, nil, &Env{
-			ctx: ctx,
-			api: node_api.NewAPI(n),
-		})
-		require.NoError(err)
+		api := NewAPI(n)
+		out, err := api.Chain().Head()
 
-		assert.Contains(out.Raw, blk.Cid().String())
+		require.NoError(err)
+		assert.Len(out, 1)
+		types.AssertCidsEqual(assert, out[0], blk.Cid())
 	})
 }
 
@@ -72,25 +66,21 @@ func TestChainLsRun(t *testing.T) {
 		err = n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
 		require.NoError(err)
 
-		out, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
-			ctx: ctx,
-			api: node_api.NewAPI(n),
-		})
-		require.NoError(err)
+		api := NewAPI(n)
 
-		lines := strings.Split(strings.Trim(out.Raw, "\n"), "\n")
-
-		var bs [][]types.Block
-		for _, line := range lines {
-			var b []types.Block
-			err := json.Unmarshal([]byte(line), &b)
-			require.NoError(err)
-			bs = append(bs, b)
+		var bs [][]*types.Block
+		for raw := range api.Chain().Ls(ctx) {
+			switch v := raw.(type) {
+			case core.TipSet:
+				bs = append(bs, v.ToSlice())
+			default:
+				assert.FailNow("invalid element in ls", v)
+			}
 		}
 
 		assert.Equal(2, len(bs))
-		types.AssertHaveSameCid(assert, chlBlock, &bs[0][0])
-		types.AssertHaveSameCid(assert, genBlock, &bs[1][0])
+		types.AssertHaveSameCid(assert, chlBlock, bs[0][0])
+		types.AssertHaveSameCid(assert, genBlock, bs[1][0])
 	})
 
 	t.Run("emit best block and then time out getting parent", func(t *testing.T) {
@@ -106,13 +96,22 @@ func TestChainLsRun(t *testing.T) {
 		err := n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
 		require.NoError(err)
 
+		api := NewAPI(n)
 		// parBlock is not known to the chain, which causes the timeout
-		res, err := testhelpers.RunCommandJSONEnc(chainLsCmd, []string{}, nil, &Env{
-			ctx: ctx,
-			api: node_api.NewAPI(n),
-		})
-		require.NoError(err)
-		require.Contains(res.Raw, "error fetching block")
+		var innerErr error
+		for raw := range api.Chain().Ls(ctx) {
+			switch v := raw.(type) {
+			case error:
+				innerErr = v
+			case core.TipSet:
+				// ignore
+			default:
+				require.FailNow("invalid element in ls", v)
+			}
+		}
+
+		require.NotNil(innerErr)
+		require.EqualError(innerErr, "error fetching block: context deadline exceeded")
 	})
 
 	t.Run("JSON marshaling", func(t *testing.T) {
