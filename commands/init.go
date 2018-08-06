@@ -1,12 +1,17 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 
+	car "github.com/ipfs/go-car"
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	blockstore "gx/ipfs/QmadMhXJLHMFjpRmh85XjpmVDkEtQpNYEZNRpWRvYVLrvb/go-ipfs-blockstore"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -25,6 +30,8 @@ var initCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
 		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
+		cmdkit.StringOption("genesisfile", "path of file containing archive of genesis block DAG data"),
+		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		if err := initRun(req, re, env); err != nil {
@@ -62,8 +69,34 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 
 	walletFile, _ := req.Options["walletfile"].(string)
 	walletAddr, _ := req.Options["walletaddr"].(string)
-	// Used for testing
-	if len(walletFile) > 1 {
+	genesisFile, _ := req.Options["genesisfile"].(string)
+	customGenesis, _ := req.Options["testgenesis"].(bool)
+
+	tif := core.InitGenesis
+
+	if customGenesis && genesisFile != "" {
+		return fmt.Errorf("cannot use testgenesis option and genesisfile together")
+	}
+
+	switch {
+	case genesisFile != "":
+		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
+		genCid, err := loadGenesis(req.Context, rep, genesisFile)
+		if err != nil {
+			return err
+		}
+
+		tif = func(cst *hamt.CborIpldStore) (*types.Block, error) {
+			var blk types.Block
+
+			if err := cst.Get(req.Context, genCid, &blk); err != nil {
+				return nil, err
+			}
+
+			return &blk, nil
+		}
+
+	case customGenesis: // Used for testing
 		re.Emit(fmt.Sprintf("initializing filecoin node with wallet file: %s\n", walletFile)) // nolint: errcheck
 
 		// Load all the Address their Keys into memory
@@ -89,13 +122,11 @@ func initRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (
 				rep.Config().Wallet.DefaultAddress = k.Address
 			}
 		}
-		tif := th.MakeGenesisFunc(actorOps...)
-
-		return node.Init(req.Context, rep, tif)
+		tif = th.MakeGenesisFunc(actorOps...)
 	}
 
 	// TODO don't create the repo if this fails
-	return node.Init(req.Context, rep, core.InitGenesis)
+	return node.Init(req.Context, rep, tif)
 }
 
 func loadAddress(ai th.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
@@ -127,4 +158,16 @@ func getRepoDir(req *cmds.Request) string {
 	}
 
 	return "~/.filecoin"
+}
+
+func loadGenesis(ctx context.Context, rep repo.Repo, fname string) (*cid.Cid, error) {
+	fi, err := os.Open(fname)
+	if err != nil {
+		return nil, err
+	}
+	defer fi.Close()
+
+	bs := blockstore.NewBlockstore(rep.Datastore())
+
+	return car.LoadCar(ctx, bs, fi)
 }
