@@ -7,7 +7,7 @@ import (
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/node/impl"
+	"github.com/filecoin-project/go-filecoin/node_api"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -28,7 +28,7 @@ var chainHeadCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		ts := GetNode(env).ChainMgr.GetHeaviestTipSet()
 		if len(ts) == 0 {
-			re.SetError(impl.ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
+			re.SetError(node_api.ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
 			return
 		}
 		var out []*cid.Cid

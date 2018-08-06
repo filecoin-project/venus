@@ -5,14 +5,16 @@ import (
 
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/core/node"
-	"github.com/filecoin-project/go-filecoin/node/iface"
+	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/node"
 )
 
 // Env is the environment passed to commands. Implements cmds.Environment.
 type Env struct {
 	ctx context.Context
-	api iface.CoreAPI
+	api api.API
+	// TODO: remove once all commands are migrated
+	node *node.Node
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -23,12 +25,12 @@ func (ce *Env) Context() context.Context {
 }
 
 // API returns the associated FilecoinAPI object.
-func (ce *Env) API() iface.CoreAPI {
+func (ce *Env) API() api.API {
 	return ce.api
 }
 
 // GetAPI returns the Filecoin API object of the environment.
-func GetAPI(env cmds.Environment) iface.CoreAPI {
+func GetAPI(env cmds.Environment) api.API {
 	ce := env.(*Env)
 	return ce.API()
 }
@@ -37,10 +39,7 @@ func GetAPI(env cmds.Environment) iface.CoreAPI {
 // DEPRECATED
 // TODO: remove once all commands are using `API()`
 func (ce *Env) Node() *node.Node {
-	if ce.api == nil {
-		return nil
-	}
-	return ce.api.Node()
+	return ce.node
 }
 
 // GetNode returns the Filecoin node of the environment.

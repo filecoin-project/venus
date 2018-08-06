@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/api"
+
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-
-	"github.com/filecoin-project/go-filecoin/node/iface"
 )
 
 var actorCmd = &cmds.Command{
@@ -31,9 +31,9 @@ var actorLsCmd = &cmds.Command{
 			re.Emit(actor) // nolint: errcheck
 		}
 	},
-	Type: &iface.ActorView{},
+	Type: &api.ActorView{},
 	Encoders: cmds.EncoderMap{
-		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *iface.ActorView) error {
+		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *api.ActorView) error {
 			marshaled, err := json.Marshal(a)
 			if err != nil {
 				return err

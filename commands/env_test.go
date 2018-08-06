@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/core/node"
-	"github.com/filecoin-project/go-filecoin/node/impl"
+	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/node_api"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -28,7 +28,7 @@ func TestEnv(t *testing.T) {
 	nd, err := node.New(ctx, opts...)
 	assert.NoError(err)
 
-	api := impl.NewCoreAPI(nd)
+	api := node_api.NewAPI(nd)
 
 	env := Env{ctx: ctx, api: api}
 
