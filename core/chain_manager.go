@@ -120,7 +120,7 @@ type ChainManager struct {
 
 	// PwrTableView provides miner and total power for the EC chain weight
 	// computation.
-	PwrTableView powerTableView
+	PwrTableView PowerTableView
 
 	// HeaviestTipSetPubSub is a pubsub channel that publishes all best tipsets.
 	// We operate under the assumption that tipsets published to this channel
@@ -439,6 +439,10 @@ func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetr
 	if err != nil {
 		return nil, err
 	}
+	err = cm.validateMining(ctx, st, ts)
+	if err != nil {
+		return nil, err
+	}
 	st, err = cm.runMessages(ctx, st, ts)
 	if err != nil {
 		return nil, err
@@ -470,6 +474,17 @@ func (cm *ChainManager) fetchBlksForIDs(ctx context.Context, ids types.SortedCid
 		pBlks = append(pBlks, p)
 	}
 	return pBlks, nil
+}
+
+// validateMining throws an error if any tipset's block was mined by an invalid
+// miner address.
+func (cm *ChainManager) validateMining(ctx context.Context, st statetree.Tree, ts TipSet) error {
+	for _, blk := range ts {
+		if !cm.PwrTableView.HasPower(ctx, st, blk.Miner) {
+			return errors.New("invalid miner address without network power")
+		}
+	}
+	return nil
 }
 
 // runMessages applies the messages of all blocks within the input

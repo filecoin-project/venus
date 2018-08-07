@@ -30,13 +30,14 @@ func init() {
 type Input struct {
 	Ctx    context.Context
 	TipSet core.TipSet
-	// TODO This should apparently be a miner actor address.
+	// TODO: should this contain both Mining and Reward Addresses?
+	MiningAddress types.Address
 	RewardAddress types.Address
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, ts core.TipSet, a types.Address) Input {
-	return Input{Ctx: ctx, TipSet: ts, RewardAddress: a}
+func NewInput(ctx context.Context, ts core.TipSet, a types.Address, m types.Address) Input {
+	return Input{Ctx: ctx, TipSet: ts, RewardAddress: a, MiningAddress: m}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -93,12 +94,12 @@ func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, createPoST 
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the worker.
-func MineOnce(ctx context.Context, w Worker, ts core.TipSet, rewardAddress types.Address) Output {
+func MineOnce(ctx context.Context, w Worker, ts core.TipSet, rewardAddress, miningAddress types.Address) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 
 	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, ts, rewardAddress) }()
+	go func() { inCh <- NewInput(subCtx, ts, rewardAddress, miningAddress) }()
 	return <-outCh
 }
 
@@ -168,7 +169,9 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 
-	// TODO: derive these from actual storage power
+	// TODO: derive these from actual storage power.
+	// This means broadening the scope of the State function
+	// and powerTableView from the generator to the worker.
 	const myPower = 1
 	const totalPower = 5
 
@@ -183,7 +186,7 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 
 		// TODO: Test the interplay of isWinningTicket() and createPoST()
 		if isWinningTicket(ticket, myPower, totalPower) {
-			next, err := blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, input.RewardAddress)
+			next, err := blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, input.RewardAddress, input.MiningAddress)
 			if err == nil {
 				log.SetTag(ctx, "block", next)
 			}

@@ -41,16 +41,18 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
-	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
+	addr1, addr2, addr3, addr4 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3]
 	act1, act2, fakeNetAct := core.RequireNewFakeActor(require, fakeActorCodeCid), core.RequireNewFakeActor(require,
 		fakeActorCodeCid), core.RequireNewFakeActor(require, fakeActorCodeCid)
+	minerAct := core.RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
 		addr1: act1,
 		addr2: act2,
+		addr4: minerAct,
 	})
-	return st, pool, []types.Address{addr1, addr2, addr3}
+	return st, pool, []types.Address{addr1, addr2, addr3, addr4}
 }
 
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
@@ -125,7 +127,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -142,7 +144,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:       stateRoot,
 		Nonce:           1,
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
@@ -169,7 +171,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -201,7 +203,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -232,7 +234,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -244,19 +246,21 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		StateRoot:         newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+1, blk.Height)
-	assert.Equal(addrs[0], blk.Miner)
+	assert.Equal(addrs[0], blk.Reward)
+	assert.Equal(addrs[3], blk.Miner)
 
-	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[0])
+	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
 	assert.Equal(wNum+10.0, blk.ParentWeightNum)
 	assert.Equal(wDenom, blk.ParentWeightDenom)
-	assert.Equal(addrs[0], blk.Miner)
+	assert.Equal(addrs[0], blk.Reward)
+	assert.Equal(addrs[3], blk.Miner)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
@@ -278,7 +282,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -286,7 +290,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -319,7 +323,7 @@ func TestGenerateError(t *testing.T) {
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 
-	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages)
+	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages, &core.TestView{})
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
@@ -334,7 +338,7 @@ func TestGenerateError(t *testing.T) {
 		StateRoot: newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
 	assert.Error(err, "boom")
 	assert.Nil(blk)
 

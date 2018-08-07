@@ -44,6 +44,8 @@ var (
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 	// ErrNoRewardAddress is returned when the node is not configured to have reward address.
 	ErrNoRewardAddress = errors.New("no reward address configured")
+	// ErrNoMinerAddress is returned when the node is not configured to have any miner addresses.
+	ErrNoMinerAddress = errors.New("no miner addresses configured")
 	// ErrNoDefaultMessageFromAddress is returned when the node's wallet is not configured to have a default address and the wallet contains more than one address.
 	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
@@ -112,6 +114,10 @@ type Node struct {
 
 	// OfflineMode, when true, disables libp2p
 	OfflineMode bool
+
+	// mockMineMode, when true mocks mining and validation logic for tests.
+	// TODO: this is a TEMPORARY workaround
+	mockMineMode bool
 
 	rewardAddress types.Address
 }
@@ -205,7 +211,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// to simulate the work of generating proofs.
 	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return chainMgr.State(ctx, ts.ToSlice())
-	}, chainMgr.Weight, core.ApplyMessages)
+	}, chainMgr.Weight, core.ApplyMessages, chainMgr.PwrTableView)
 	miningWorker := mining.NewWorker(blockGenerator)
 
 	// Set up libp2p pubsub
@@ -233,6 +239,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Repo:           nc.Repo,
 		SectorBuilders: make(map[types.Address]*SectorBuilder),
 		Wallet:         fcWallet,
+		mockMineMode:   nc.MockMineMode,
 		rewardAddress:  nc.RewardAddress,
 	}
 
@@ -371,13 +378,19 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet)
 				log.Error("No mining reward address, mining should not have started!")
 				continue
 			}
+			miningAddress, err := node.MiningAddress()
+			if err != nil {
+				log.Error("No miner actor address, mining should not have started!")
+				continue
+			}
+
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress):
+				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress, miningAddress):
 				}
 			}()
 		}
@@ -439,11 +452,33 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	}
 }
 
+// MiningAddress returns the address of the mining actor mining on behalf of
+// the node.
+func (node *Node) MiningAddress() (types.Address, error) {
+	// TODO: this is a temporary workaround to permit nodes to mine without setup.
+	if node.mockMineMode {
+		return types.Address{}, nil
+	}
+	r := node.Repo
+	newConfig := r.Config()
+	if len(newConfig.Mining.MinerAddresses) == 0 {
+		return types.Address{}, ErrNoMinerAddress
+	}
+	// TODO: mining start should include a flag to specify a specific
+	// mining addr.  For now default to the first created.
+	return newConfig.Mining.MinerAddresses[0], nil
+}
+
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
 func (node *Node) StartMining() error {
 	if node.rewardAddress == (types.Address{}) {
 		return ErrNoRewardAddress
+	}
+
+	miningAddress, err := node.MiningAddress()
+	if err != nil {
+		return err
 	}
 
 	// initialize one SectorBuilder per configured miner address
@@ -463,7 +498,7 @@ func (node *Node) StartMining() error {
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), hts, node.rewardAddress):
+		case node.miningInCh <- mining.NewInput(context.Background(), hts, node.rewardAddress, miningAddress):
 		}
 	}()
 	return nil

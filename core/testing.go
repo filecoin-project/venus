@@ -360,7 +360,7 @@ func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, *vm.StorageM
 // stores 1 byte and all miners store 0 bytes regardless of inputs.
 type TestView struct{}
 
-var _ powerTableView = &TestView{}
+var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
 func (tv *TestView) Total(ctx context.Context, st state.Tree) (uint64, error) {
@@ -370,4 +370,9 @@ func (tv *TestView) Total(ctx context.Context, st state.Tree) (uint64, error) {
 // Miner always returns 0.
 func (tv *TestView) Miner(ctx context.Context, st state.Tree, mAddr types.Address) (uint64, error) {
 	return uint64(0), nil
+}
+
+// HasPower always returns true.
+func (tv *TestView) HasPower(ctx context.Context, st state.Tree, mAddr types.Address) bool {
+	return true
 }
