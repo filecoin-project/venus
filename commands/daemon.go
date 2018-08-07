@@ -106,6 +106,8 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	servenv := &Env{
 		ctx: context.Background(),
 		api: api,
+		// TODO: remove once nothing depends on this anymore
+		node: node,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
