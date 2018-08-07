@@ -81,8 +81,12 @@ func TestSimpleSignAndVerify(t *testing.T) {
 
 	// get the key pair for validation
 	t.Log("get the key pair from the backend")
-	_, pk, err := backend.GetKeyPair(addr)
+	ki, err := backend.GetKeyInfo(addr)
 	assert.NoError(err)
+
+	_, pk, err := keysFromInfo(ki)
+	assert.NoError(err)
+
 	pkb := crypto.ECDSAPubToBytes(pk)
 
 	t.Log("verify signed content")

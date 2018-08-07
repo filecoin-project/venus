@@ -213,7 +213,7 @@ var walletExportCmd = &cmds.Command{
 				return
 			}
 
-			re.Emit(ki)
+			re.Emit(ki) // nolint: errcheck
 		}
 	},
 	Type: types.KeyInfo{},

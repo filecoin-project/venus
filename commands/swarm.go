@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	swarm "gx/ipfs/QmVqCSwuzgDfhLMTmFfUePTGX78PBjzuHcbSWWNPrnrmKy/go-libp2p-swarm"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	swarm "gx/ipfs/QmemVjhp1UuWPQqrWSvPcaqH3QJRMjMqNm4T2RULMkDDQe/go-libp2p-swarm"
 
 	"github.com/filecoin-project/go-filecoin/filnet"
 )

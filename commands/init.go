@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 
-	car "github.com/ipfs/go-car"
+	car "gx/ipfs/QmUe7hFx8ACivDWe1pF6X2ZTihGfeXppMc1aPjNBJ8cCHv/go-car"
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	blockstore "gx/ipfs/QmadMhXJLHMFjpRmh85XjpmVDkEtQpNYEZNRpWRvYVLrvb/go-ipfs-blockstore"
+	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -176,7 +176,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, fname string) (*cid.Cid, er
 	if err != nil {
 		return nil, err
 	}
-	defer fi.Close()
+	defer fi.Close() // nolint: errcheck
 
 	bs := blockstore.NewBlockstore(rep.Datastore())
 

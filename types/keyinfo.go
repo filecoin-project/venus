@@ -64,6 +64,7 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	return true
 }
 
+// Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (Address, error) {
 	prv, err := crypto.BytesToECDSA(ki.Key())
 	if err != nil {
