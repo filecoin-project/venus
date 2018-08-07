@@ -134,7 +134,18 @@ func loadAddress(ai th.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
 	if err != nil {
 		return err
 	}
-	if err := backend.LoadAddress(ai, ki); err != nil {
+
+	// sanity...
+	a, err := ki.Address()
+	if err != nil {
+		return err
+	}
+
+	if a != ai.Address {
+		return fmt.Errorf("mismatch of addresses: %q != %q", a, ai.Address)
+	}
+
+	if err := backend.ImportKey(&ki); err != nil {
 		return err
 	}
 	return nil
