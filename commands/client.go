@@ -5,17 +5,11 @@ import (
 	"fmt"
 	"io"
 
-	chunk "gx/ipfs/QmVDjhUMtkRskBFAVNwyXuLSKbeAya7JKPnzAxMKDaK4x4/go-ipfs-chunker"
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	imp "gx/ipfs/QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE/go-unixfs/importer"
-	uio "gx/ipfs/QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE/go-unixfs/io"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 
-	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -45,12 +39,15 @@ var clientAddBidCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send the bid from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		o := req.Options["from"]
+		var fromAddr types.Address
+		if o != nil {
+			var err error
+			fromAddr, err = types.NewAddressFromString(o.(string))
+			if err != nil {
+				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
+				return
+			}
 		}
 
 		size, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
@@ -65,33 +62,7 @@ var clientAddBidCmd = &cmds.Command{
 			return
 		}
 
-		funds := price.CalculatePrice(size)
-
-		params, err := abi.ToEncodedValues(price, size)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.StorageMarketAddress, funds, "addBid", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		err = n.AddNewMessage(req.Context, smsg)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
+		smsgCid, err := GetAPI(env).Client().AddBid(req.Context, fromAddr, size, price)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -115,26 +86,13 @@ var clientCatCmd = &cmds.Command{
 		cmdkit.StringArg("cid", true, false, "cid of data to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		nd := GetNode(env)
-
-		// TODO: this goes back to 'how is data stored and referenced'
-		// For now, lets just do things the ipfs way.
-
 		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		ds := dag.NewDAGService(nd.Blockservice)
-
-		data, err := ds.Get(req.Context, c)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		dr, err := uio.NewDagReader(req.Context, data, ds)
+		dr, err := GetAPI(env).Client().Cat(req.Context, c)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -150,46 +108,33 @@ var clientProposeDealCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		// TODO: use UintOption once its fixed, ref go-ipfs-cmdkit#15
-		cmdkit.IntOption("ask", "ID of ask to propose a deal for"),
-		cmdkit.IntOption("bid", "ID of bid to propose a deal for"),
+		cmdkit.UintOption("ask", "ID of ask to propose a deal for"),
+		cmdkit.UintOption("bid", "ID of bid to propose a deal for"),
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("data", true, false, "cid of data to be referenced in deal"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		nd := GetNode(env)
-
-		askID, ok := req.Options["ask"].(int)
+		askID, ok := req.Options["ask"].(uint)
 		if !ok {
 			re.SetError("must specify an ask", cmdkit.ErrNormal)
 			return
 		}
 
-		bidID, ok := req.Options["bid"].(int)
+		bidID, ok := req.Options["bid"].(uint)
 		if !ok {
 			re.SetError("must specify a bid", cmdkit.ErrNormal)
 			return
 		}
 
 		// ensure arg is a valid cid
-		_, err := cid.Decode(req.Arguments[0])
+		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		defaddr := nd.RewardAddress()
-
-		propose := &node.DealProposal{
-			ClientSig: string(defaddr[:]), // TODO: actual crypto
-			Deal: &storagemarket.Deal{
-				Ask:     uint64(askID),
-				Bid:     uint64(bidID),
-				DataRef: req.Arguments[0],
-			},
-		}
-
-		resp, err := nd.StorageClient.ProposeDeal(req.Context, propose)
+		resp, err := GetAPI(env).Client().ProposeDeal(req.Context, askID, bidID, c)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -215,23 +160,13 @@ var clientQueryDealCmd = &cmds.Command{
 		cmdkit.StringArg("id", true, false, "hex ID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		nd := GetNode(env)
-
-		idslice, err := hex.DecodeString(req.Arguments[0])
+		id, err := hex.DecodeString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		if len(idslice) != 32 {
-			re.SetError("id must be 32 bytes long", cmdkit.ErrNormal)
-			return
-		}
-
-		var id [32]byte
-		copy(id[:], idslice)
-
-		resp, err := nd.StorageClient.QueryDeal(req.Context, id)
+		resp, err := GetAPI(env).Client().QueryDeal(req.Context, id)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -261,19 +196,13 @@ var clientImportDataCmd = &cmds.Command{
 		cmdkit.FileArg("file", true, false, "path to file to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		nd := GetNode(env)
-
-		ds := dag.NewDAGService(nd.Blockservice)
-
 		fi, err := req.Files.NextFile()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		spl := chunk.DefaultSplitter(fi)
-
-		out, err := imp.BuildDagFromReader(ds, spl)
+		out, err := GetAPI(env).Client().ImportData(req.Context, fi)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
