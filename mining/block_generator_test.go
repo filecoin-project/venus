@@ -41,16 +41,18 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
-	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
+	addr1, addr2, addr3, addr4 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3]
 	act1, act2, fakeNetAct := core.RequireNewFakeActor(require, fakeActorCodeCid), core.RequireNewFakeActor(require,
 		fakeActorCodeCid), core.RequireNewFakeActor(require, fakeActorCodeCid)
+	minerAct := core.RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
 		addr1: act1,
 		addr2: act2,
+		addr4: minerAct,
 	})
-	return st, pool, []types.Address{addr1, addr2, addr3}
+	return st, pool, []types.Address{addr1, addr2, addr3, addr4}
 }
 
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
@@ -142,7 +144,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:       stateRoot,
 		Nonce:           1,
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
@@ -201,7 +203,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -244,19 +246,21 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		StateRoot:         newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+1, blk.Height)
-	assert.Equal(addrs[0], blk.Miner)
+	assert.Equal(addrs[0], blk.Reward)
+	assert.Equal(addrs[3], blk.Miner)
 
-	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[0])
+	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
 	assert.Equal(wNum+10.0, blk.ParentWeightNum)
 	assert.Equal(wDenom, blk.ParentWeightDenom)
-	assert.Equal(addrs[0], blk.Miner)
+	assert.Equal(addrs[0], blk.Reward)
+	assert.Equal(addrs[3], blk.Miner)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
@@ -286,7 +290,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -334,7 +338,7 @@ func TestGenerateError(t *testing.T) {
 		StateRoot: newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
 	assert.Error(err, "boom")
 	assert.Nil(blk)
 

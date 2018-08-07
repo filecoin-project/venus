@@ -22,7 +22,9 @@ func TestMineOnce(t *testing.T) {
 	mockBg := &MockBlockGenerator{}
 	baseBlock := &types.Block{StateRoot: types.SomeCid()}
 	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	rewardAddr := types.NewAddressForTestGetter()()
+	newAddr := types.NewAddressForTestGetter()
+	rewardAddr := newAddr()
+	miningAddr := newAddr()
 
 	var mineCtx context.Context
 	// Echoes the sent block to output.
@@ -33,7 +35,7 @@ func TestMineOnce(t *testing.T) {
 		outCh <- Output{NewBlock: b}
 	}
 	worker := NewWorkerWithDeps(mockBg, echoMine, func() {}, nullBlockImmediately)
-	result := MineOnce(context.Background(), worker, tipSet, rewardAddr)
+	result := MineOnce(context.Background(), worker, tipSet, rewardAddr, miningAddr)
 	assert.NoError(result.Err)
 	assert.True(baseBlock.StateRoot.Equals(result.NewBlock.StateRoot))
 	assert.Error(mineCtx.Err())
@@ -46,7 +48,9 @@ func TestWorker_Start(t *testing.T) {
 	baseBlock := &types.Block{StateRoot: newCid()}
 	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
 	mockBg := &MockBlockGenerator{}
-	rewardAddr := types.NewAddressForTestGetter()()
+	newAddr := types.NewAddressForTestGetter()
+	rewardAddr := newAddr()
+	miningAddr := newAddr()
 
 	// Test that values are passed faithfully.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -65,7 +69,7 @@ func TestWorker_Start(t *testing.T) {
 	}
 	worker := NewWorkerWithDeps(mockBg, fakeMine, doSomeWork, nullBlockImmediately)
 	inCh, outCh, _ := worker.Start(ctx)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr)
+	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
 	<-outCh
 	assert.True(mineCalled)
 	assert.True(doSomeWorkCalled)
@@ -84,7 +88,7 @@ func TestWorker_Start(t *testing.T) {
 	}
 	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
 	inCh, outCh, _ = worker.Start(ctx)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr)
+	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
 	<-outCh
 	assert.True(mineCalled)
 	cancel()
@@ -99,9 +103,9 @@ func TestWorker_Start(t *testing.T) {
 	inCh, outCh, _ = worker.Start(ctx)
 	// Note: inputs have to pass whatever check on newly arriving tipsets
 	// are in place in Start().
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr)
+	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
+	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
+	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
 	<-outCh
 	<-outCh
 	<-outCh
@@ -118,7 +122,7 @@ func TestWorker_Start(t *testing.T) {
 	}
 	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
 	inCh, outCh, _ = worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, tipSet, rewardAddr)
+	inCh <- NewInput(inputCtx, tipSet, rewardAddr, miningAddr)
 	<-outCh
 	inputCtxCancel()
 	assert.Error(gotMineCtx.Err()) // Same context as miningRunCtx.
@@ -136,7 +140,7 @@ func TestWorker_Start(t *testing.T) {
 	}
 	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
 	inCh, outCh, doneWg := worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, tipSet, rewardAddr)
+	inCh <- NewInput(inputCtx, tipSet, rewardAddr, miningAddr)
 	<-outCh
 	miningCtxCancel()
 	doneWg.Wait()
@@ -149,16 +153,18 @@ func Test_mine(t *testing.T) {
 	assert := assert.New(t)
 	baseBlock := &types.Block{Height: 2}
 	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	addr := types.NewAddressForTestGetter()()
+	newAddr := types.NewAddressForTestGetter()
+	addr := newAddr()
+	miningAddr := newAddr()
 	next := &types.Block{Height: 3}
 	ctx := context.Background()
 
 	// Success.
 	mockBg := &MockBlockGenerator{}
 	outCh := make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr).Return(next, nil)
+	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr, miningAddr).Return(next, nil)
 	doSomeWorkCalled := false
-	input := NewInput(ctx, tipSet, addr)
+	input := NewInput(ctx, tipSet, addr, miningAddr)
 	go Mine(ctx, input, nullBlockImmediately, mockBg, func() { doSomeWorkCalled = true }, outCh)
 	r := <-outCh
 	assert.NoError(r.Err)
@@ -169,9 +175,9 @@ func Test_mine(t *testing.T) {
 	// Block generation fails.
 	mockBg = &MockBlockGenerator{}
 	outCh = make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr).Return(nil, errors.New("boom"))
+	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr, miningAddr).Return(nil, errors.New("boom"))
 	doSomeWorkCalled = false
-	input = NewInput(ctx, tipSet, addr)
+	input = NewInput(ctx, tipSet, addr, miningAddr)
 	go Mine(ctx, input, nullBlockImmediately, mockBg, func() { doSomeWorkCalled = true }, outCh)
 	r = <-outCh
 	assert.Error(r.Err)
@@ -181,9 +187,9 @@ func Test_mine(t *testing.T) {
 	// Null block count is increased until we find a winning ticket.
 	mockBg = &MockBlockGenerator{}
 	outCh = make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(2), addr).Return(next, nil)
+	mockBg.On("Generate", mock.Anything, tipSet, uint64(2), addr, miningAddr).Return(next, nil)
 	workCount := 0
-	input = NewInput(ctx, tipSet, addr)
+	input = NewInput(ctx, tipSet, addr, miningAddr)
 	(func() {
 		defer swap.Swap(&isWinningTicket, everyThirdWinningTicket())()
 		go Mine(ctx, input, nullBlockImmediately, mockBg, func() { workCount++ }, outCh)

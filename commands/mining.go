@@ -38,8 +38,12 @@ var miningOnceCmd = &cmds.Command{
 		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return fcn.ChainMgr.State(ctx, ts.ToSlice())
 		}, fcn.ChainMgr.Weight, core.ApplyMessages, fcn.ChainMgr.PwrTableView)
-		// TODO(EC): Need to read best tipsets from storage and pass in. See also Node::StartMining().
-		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), ts, fcn.RewardAddress())
+		miningAddr, err := fcn.MiningAddress()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), ts, fcn.RewardAddress(), miningAddr)
 		if res.Err != nil {
 			re.SetError(res.Err, cmdkit.ErrNormal)
 			return

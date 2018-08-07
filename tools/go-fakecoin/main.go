@@ -258,13 +258,14 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStore, cm *core.ChainManager, blks []*types.Block) (*types.Block, error) {
 	bg := getBlockGenerator(mp, cm, cst)
 	ra := types.MakeTestAddress("rewardaddress")
+	ma := types.MakeTestAddress("miningaddress")
 
 	const nullBlockCount = 0
 	ts, err := core.NewTipSet(blks...)
 	if err != nil {
 		return nil, err
 	}
-	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ra)
+	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ra, ma)
 	if err != nil {
 		return nil, err
 	}

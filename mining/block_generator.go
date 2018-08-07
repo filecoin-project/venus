@@ -24,7 +24,7 @@ type GetWeight func(context.Context, core.TipSet) (uint64, uint64, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(context.Context, core.TipSet, types.Signature, uint64, types.Address) (*types.Block, error)
+	Generate(context.Context, core.TipSet, types.Signature, uint64, types.Address, types.Address) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
@@ -50,14 +50,14 @@ type blockGenerator struct {
 }
 
 // Generate returns a new block created from the messages in the pool.
-func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address) (*types.Block, error) {
+func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address, miningAddress types.Address) (*types.Block, error) {
 	stateTree, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, err
 	}
 
-	if !b.powerTable.HasPower(ctx, stateTree, rewardAddress) {
-		return nil, xerrors.New("bad miner address, node must create miner before mining")
+	if !b.powerTable.HasPower(ctx, stateTree, miningAddress) {
+		return nil, xerrors.New("bad miner address, miner must store files before mining.")
 	}
 
 	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)
@@ -103,7 +103,8 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	}
 
 	next := &types.Block{
-		Miner:             rewardAddress,
+		Miner:             miningAddress,
+		Reward:            rewardAddress,
 		Height:            types.Uint64(blockHeight),
 		Messages:          res.SuccessfulMessages,
 		MessageReceipts:   receipts,

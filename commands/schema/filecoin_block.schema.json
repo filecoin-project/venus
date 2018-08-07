@@ -50,6 +50,9 @@
 	"parentWeightDenominator": {
 	  "type": "string"
 	},
+	"reward": {
+          "type": "string"
+        },
         "stateRoot": {
           "$ref": "#/definitions/Cid"
         },
