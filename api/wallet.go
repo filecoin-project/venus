@@ -1,3 +1,3 @@
 package api
 
-type WalletAPI interface{}
+type Wallet interface{}

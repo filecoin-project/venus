@@ -1,3 +1,3 @@
 package api
 
-type DagAPI interface{}
+type Dag interface{}

@@ -8,6 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type BlockAPI interface {
+type Block interface {
 	Get(ctx context.Context, id *cid.Cid) (*types.Block, error)
 }

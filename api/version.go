@@ -1,3 +1,3 @@
 package api
 
-type VersionAPI interface{}
+type Version interface{}

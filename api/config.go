@@ -1,3 +1,3 @@
 package api
 
-type ConfigAPI interface{}
+type Config interface{}

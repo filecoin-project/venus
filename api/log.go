@@ -1,3 +1,3 @@
 package api
 
-type LogAPI interface{}
+type Log interface{}

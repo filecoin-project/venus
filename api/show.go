@@ -1,3 +1,3 @@
 package api
 
-type ShowAPI interface{}
+type Show interface{}

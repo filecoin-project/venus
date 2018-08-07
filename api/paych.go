@@ -1,3 +1,3 @@
 package api
 
-type PaychAPI interface{}
+type Paych interface{}

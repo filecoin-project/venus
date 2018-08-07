@@ -24,6 +24,6 @@ type ReadableFunctionSignature struct {
 }
 type ReadableExports map[string]*ReadableFunctionSignature
 
-type ActorAPI interface {
+type Actor interface {
 	Ls(ctx context.Context) ([]*ActorView, error)
 }

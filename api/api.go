@@ -3,27 +3,27 @@ package api
 
 // API is the unified interface to Filecoin on a Go level.
 type API interface {
-	Actor() ActorAPI
-	Address() AddressAPI
-	Block() BlockAPI
-	Bootstrap() BootstrapAPI
-	Chain() ChainAPI
-	Config() ConfigAPI
-	Client() ClientAPI
-	Daemon() DaemonAPI
-	Dag() DagAPI
-	Id() IdAPI
-	Init() InitAPI
-	Log() LogAPI
-	Message() MessageAPI
-	Miner() MinerAPI
-	Mining() MiningAPI
-	Mpool() MpoolAPI
-	Orderbook() OrderbookAPI
-	Paych() PaychAPI
-	Ping() PingAPI
-	Show() ShowAPI
-	Swarm() SwarmAPI
-	Version() VersionAPI
-	Wallet() WalletAPI
+	Actor() Actor
+	Address() Address
+	Block() Block
+	Bootstrap() Bootstrap
+	Chain() Chain
+	Config() Config
+	Client() Client
+	Daemon() Daemon
+	Dag() Dag
+	Id() Id
+	Init() Init
+	Log() Log
+	Message() Message
+	Miner() Miner
+	Mining() Mining
+	Mpool() Mpool
+	Orderbook() Orderbook
+	Paych() Paych
+	Ping() Ping
+	Show() Show
+	Swarm() Swarm
+	Version() Version
+	Wallet() Wallet
 }

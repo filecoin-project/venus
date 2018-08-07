@@ -1,3 +1,3 @@
 package api
 
-type SwarmAPI interface{}
+type Swarm interface{}

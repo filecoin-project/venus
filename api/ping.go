@@ -1,3 +1,3 @@
 package api
 
-type PingAPI interface{}
+type Ping interface{}

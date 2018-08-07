@@ -1,3 +1,3 @@
 package api
 
-type ClientAPI interface{}
+type Client interface{}

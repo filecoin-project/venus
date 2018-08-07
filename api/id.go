@@ -1,3 +1,3 @@
 package api
 
-type IdAPI interface{}
+type Id interface{}

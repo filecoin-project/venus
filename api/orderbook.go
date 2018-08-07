@@ -1,3 +1,3 @@
 package api
 
-type OrderbookAPI interface{}
+type Orderbook interface{}

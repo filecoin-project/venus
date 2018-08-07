@@ -1,3 +1,3 @@
 package api
 
-type MessageAPI interface{}
+type Message interface{}

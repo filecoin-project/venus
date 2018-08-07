@@ -1,3 +1,3 @@
 package api
 
-type MpoolAPI interface{}
+type Mpool interface{}

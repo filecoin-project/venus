@@ -8,12 +8,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type AddressAPI interface {
-	Addrs() AddrsAPI
+type Address interface {
+	Addrs() Addrs
 	Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error)
 }
 
-type AddrsAPI interface {
+type Addrs interface {
 	New(ctx context.Context) (types.Address, error)
 	Ls(ctx context.Context) ([]types.Address, error)
 	Lookup(ctx context.Context, addr types.Address) (peer.ID, error)

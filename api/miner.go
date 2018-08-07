@@ -1,3 +1,3 @@
 package api
 
-type MinerAPI interface{}
+type Miner interface{}

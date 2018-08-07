@@ -1,3 +1,3 @@
 package api
 
-type DaemonAPI interface{}
+type Daemon interface{}

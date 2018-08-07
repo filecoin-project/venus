@@ -24,7 +24,7 @@ func NewAddressAPI(api *API) *AddressAPI {
 	}
 }
 
-func (api *AddressAPI) Addrs() api.AddrsAPI {
+func (api *AddressAPI) Addrs() api.Addrs {
 	return api.addrs
 }
 

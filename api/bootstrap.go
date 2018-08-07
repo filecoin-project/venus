@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-type BootstrapAPI interface {
+type Bootstrap interface {
 	Ls(ctx context.Context) ([]string, error)
 }

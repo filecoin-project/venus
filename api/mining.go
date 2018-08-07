@@ -1,3 +1,3 @@
 package api
 
-type MiningAPI interface{}
+type Mining interface{}
