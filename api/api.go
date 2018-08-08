@@ -13,7 +13,6 @@ type API interface {
 	Daemon() Daemon
 	Dag() Dag
 	Id() Id
-	Init() Init
 	Log() Log
 	Message() Message
 	Miner() Miner

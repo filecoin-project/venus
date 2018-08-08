@@ -1,13 +1,16 @@
 package api_impl
 
 import (
+	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
+
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
 // API is an actual implementation of the filecoin core api interface.
 type API struct {
-	node *node.Node
+	node   *node.Node
+	logger logging.EventLogger
 
 	actor     *NodeActor
 	address   *NodeAddress
@@ -19,7 +22,6 @@ type API struct {
 	daemon    *NodeDaemon
 	dag       *NodeDag
 	id        *NodeId
-	init      *NodeInit
 	log       *NodeLog
 	message   *NodeMessage
 	miner     *NodeMiner
@@ -40,7 +42,8 @@ var _ api.API = (*API)(nil)
 // New constructs a new instance of the API.
 func New(node *node.Node) api.API {
 	api := &API{
-		node: node,
+		node:   node,
+		logger: logging.Logger("api"),
 	}
 
 	api.actor = NewNodeActor(api)
@@ -53,7 +56,6 @@ func New(node *node.Node) api.API {
 	api.daemon = NewNodeDaemon(api)
 	api.dag = NewNodeDag(api)
 	api.id = NewNodeId(api)
-	api.init = NewNodeInit(api)
 	api.log = NewNodeLog(api)
 	api.message = NewNodeMessage(api)
 	api.miner = NewNodeMiner(api)
@@ -108,10 +110,6 @@ func (api *API) Dag() api.Dag {
 
 func (api *API) Id() api.Id {
 	return api.id
-}
-
-func (api *API) Init() api.Init {
-	return api.init
 }
 
 func (api *API) Log() api.Log {
