@@ -9,26 +9,8 @@ import (
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/api"
 )
-
-// idOutput is the output of the /id api endpoint
-type idOutput struct {
-	Addresses       []string
-	ID              string
-	AgentVersion    string
-	ProtocolVersion string
-	PublicKey       string
-}
-
-func idOutputFromNode(fcn *node.Node) *idOutput {
-	var out idOutput
-	for _, a := range fcn.Host.Addrs() {
-		out.Addresses = append(out.Addresses, fmt.Sprintf("%s/ipfs/%s", a, fcn.Host.ID().Pretty()))
-	}
-	out.ID = fcn.Host.ID().Pretty()
-	return &out
-}
 
 var idCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -39,15 +21,16 @@ var idCmd = &cmds.Command{
 		cmdkit.StringOption("format", "f", "specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fcn := GetNode(env)
-
-		out := idOutputFromNode(fcn)
-
-		re.Emit(out) // nolint: errcheck
+		details, err := GetAPI(env).Id().Details()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		re.Emit(details) // nolint: errcheck
 	},
-	Type: idOutput{},
+	Type: api.IdDetails{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *idOutput) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *api.IdDetails) error {
 			format, found := req.Options["format"].(string)
 			if found {
 				output := idFormatSubstitute(format, val)
@@ -67,7 +50,7 @@ var idCmd = &cmds.Command{
 	},
 }
 
-func idFormatSubstitute(format string, val *idOutput) string {
+func idFormatSubstitute(format string, val *api.IdDetails) string {
 	output := format
 	output = strings.Replace(output, "<id>", val.ID, -1)
 	output = strings.Replace(output, "<aver>", val.AgentVersion, -1)

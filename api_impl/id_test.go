@@ -1,4 +1,4 @@
-package commands
+package api_impl
 
 import (
 	"context"
@@ -57,9 +57,11 @@ func TestIdOutput(t *testing.T) {
 	// Create a new nodes with our opts
 	nd, err := node.New(ctx, opts...)
 	assert.NoError(err)
+	api := New(nd)
 
 	// call method being tested
-	actualOut := idOutputFromNode(nd)
+	actualOut, err := api.Id().Details()
+	assert.NoError(err)
 
 	// create the expected peerId from our secrect key
 	expectedPeerID, err := peer.IDFromPrivateKey(expectedPrivKey)
