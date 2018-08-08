@@ -602,6 +602,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
 	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
+	testGenesisFlag := fmt.Sprintf("--testgenesis=%t", td.walletFile != "")
 	mockMineFlag := ""
 
 	if td.mockMine {
@@ -609,7 +610,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	if td.init {
-		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag)
+		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag, testGenesisFlag)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)

@@ -9,9 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/crypto"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestDSBackendSimple(t *testing.T) {
@@ -57,18 +55,14 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	assert.True(fs.HasAddress(addr))
 
 	t.Log("address references to a secret key")
-	_, pk, err := fs.GetKeyPair(addr)
+	ki, err := fs.GetKeyInfo(addr)
 	assert.NoError(err)
 
-	pkb := crypto.ECDSAPubToBytes(pk)
+	dAddr, err := ki.Address()
+	assert.NoError(err)
 
 	t.Log("generated address and stored address should match")
-	assert.NoError(err)
-	dAdderHash, err := types.AddressHash(pkb)
-	assert.NoError(err)
-	dAdder := types.NewMainnetAddress(dAdderHash)
-	assert.Equal(addr, dAdder)
-
+	assert.Equal(addr, dAddr)
 }
 
 func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
@@ -96,11 +90,11 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	assert.False(fs2.HasAddress(addr))
 
 	t.Log("address references to a secret key in fs1")
-	_, _, err = fs1.GetKeyPair(addr)
+	_, err = fs1.GetKeyInfo(addr)
 	assert.NoError(err)
 
 	t.Log("address does not references to a secret key in fs2")
-	_, _, err = fs2.GetKeyPair(addr)
+	_, err = fs2.GetKeyInfo(addr)
 	assert.Error(err)
 	assert.Contains("backend does not contain address", err.Error())
 
@@ -123,29 +117,14 @@ func TestDSBackendLoadAddressInfo(t *testing.T) {
 	wf, err := th.GenerateWalletFile(2)
 	require.NoError(err)
 
-	newAddr, err := types.NewAddressFromString(wf.AddressKeyPairs[0].AddressInfo.Address)
-	require.NoError(err)
-
-	tai := th.TypesAddressInfo{
-		Address: newAddr,
-		Balance: types.NewAttoFILFromFIL(wf.AddressKeyPairs[0].AddressInfo.Balance),
-	}
 	t.Log("load address into datastore")
-	assert.NoError(fs.LoadAddress(tai, wf.AddressKeyPairs[0].KeyInfo))
+	assert.NoError(fs.ImportKey(&wf.AddressKeyPairs[0].KeyInfo))
 
 	t.Log("datastore has 1 address")
 	assert.Len(fs.Addresses(), 1)
 
-	t.Log("load address into datastore")
-	newAddr, err = types.NewAddressFromString(wf.AddressKeyPairs[1].AddressInfo.Address)
-	require.NoError(err)
-
-	tai = th.TypesAddressInfo{
-		Address: newAddr,
-		Balance: types.NewAttoFILFromFIL(wf.AddressKeyPairs[1].AddressInfo.Balance),
-	}
 	t.Log("load address info into datastore")
-	assert.NoError(fs.LoadAddress(tai, wf.AddressKeyPairs[1].KeyInfo))
+	assert.NoError(fs.ImportKey(&wf.AddressKeyPairs[1].KeyInfo))
 
 	t.Log("datastore has 2 address")
 	assert.Len(fs.Addresses(), 2)

@@ -1,7 +1,13 @@
 package types
 
 import (
+	"crypto/ecdsa"
+	"fmt"
+
 	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-filecoin/crypto"
+	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 )
 
 func init() {
@@ -56,4 +62,26 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 		}
 	}
 	return true
+}
+
+// Address returns the address for this keyinfo
+func (ki *KeyInfo) Address() (Address, error) {
+	prv, err := crypto.BytesToECDSA(ki.Key())
+	if err != nil {
+		return Address{}, nil
+	}
+
+	pub, ok := prv.Public().(*ecdsa.PublicKey)
+	if !ok {
+		// means a something is wrong with key generation
+		return Address{}, fmt.Errorf("unknown public key type")
+	}
+
+	addrHash, err := AddressHash(cu.SerializeUncompressed(pub))
+	if err != nil {
+		return Address{}, err
+	}
+
+	// TODO: Use the address type we are running on from the config.
+	return NewMainnetAddress(addrHash), nil
 }

@@ -15,9 +15,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmZ86eLPtXkQ1Dfa992Q8NpXArUoWWh3y728JDcWvzRrvC",
+      "hash": "QmY51bqSM5XgxQZqsBrQcRkKTnCb8EKpJpR9K6Qax7Njco",
       "name": "go-libp2p",
-      "version": "6.0.5"
+      "version": "6.0.6"
     },
     {
       "author": "whyrusleeping",
@@ -33,9 +33,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmSPD4WJu73TE4eJgzbZQTpmfyT5hsh3SEsZnpBAXpaBDA",
+      "hash": "QmXScvRbYh9X9okLuX9YMnz1HR4WgRTU2hocjBs15nmCNG",
       "name": "go-libp2p-floodsub",
-      "version": "0.9.20"
+      "version": "0.9.21"
     },
     {
       "author": "why",
@@ -99,39 +99,45 @@
     },
     {
       "author": "why",
-      "hash": "QmdCNKC12cxAyR6XGujZGWFiLcNLzXtVWbkEgAtk8sB2Vn",
+      "hash": "QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag",
       "name": "go-bitswap",
-      "version": "1.0.1"
+      "version": "1.0.3"
     },
     {
       "author": "why",
-      "hash": "QmfGzdovkTAhGni3Wfg2fTEtNxhpwWSyAJWW2cC1pWM9TS",
+      "hash": "QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR",
       "name": "go-merkledag",
-      "version": "1.0.1"
+      "version": "1.0.3"
     },
     {
       "author": "why",
-      "hash": "QmeoBC7eiuWuMvRwYNYg5rBHZk1rizyfnsMBrkojhrPNkX",
+      "hash": "QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE",
       "name": "go-unixfs",
-      "version": "1.0.1"
+      "version": "1.0.3"
     },
     {
       "author": "why",
-      "hash": "QmSx7Fv8e2QenkYqRP865pTaMEMpwjmnyZqJXTfAwRuiBU",
+      "hash": "Qmet61sdJdo6ZHDc59ZbffN5ED79K5kqfqkRjBx7ncaDg4",
       "name": "go-path",
-      "version": "1.0.2"
+      "version": "1.0.4"
     },
     {
       "author": "whyrusleeping",
       "hash": "QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd",
       "name": "go-ipld-cbor",
-	"version": "1.4.6"
+      "version": "1.4.6"
     },
     {
       "author": "leesper",
-      "hash" : "QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P",
+      "hash": "QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P",
       "name": "go_rng",
       "version": "0.0.0"
+    },
+    {
+      "author": "why",
+      "hash": "QmUe7hFx8ACivDWe1pF6X2ZTihGfeXppMc1aPjNBJ8cCHv",
+      "name": "go-car",
+      "version": "1.0.0"
     }
   ],
   "gxVersion": "0.12.1",

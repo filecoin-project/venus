@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"crypto/ecdsa"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -27,7 +26,16 @@ type Backend interface {
 	// since a public key may have N private key pairs
 	Ecrecover(data []byte, sig types.Signature) ([]byte, error)
 
-	// GetKeyPair will return the private & public keys associated with address `addr`
+	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
-	GetKeyPair(addr types.Address) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error)
+	GetKeyInfo(addr types.Address) (*types.KeyInfo, error)
+}
+
+// Importer is a specialization of a wallet backend that can import
+// new keys into its permanent storage. Disk backed wallets can do this,
+// hardware wallets generally cannot.
+type Importer interface {
+	// ImportKey imports the key described by the given keyinfo
+	// into the backend
+	ImportKey(ki *types.KeyInfo) error
 }

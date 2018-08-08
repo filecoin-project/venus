@@ -12,9 +12,7 @@ import (
 	dsq "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore/query"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
-	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	"github.com/filecoin-project/go-filecoin/repo"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
@@ -69,22 +67,9 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 	}, nil
 }
 
-// LoadAddress loads the address in `ai` and KeyInfo `ki` into the backend
-func (backend *DSBackend) LoadAddress(ai th.TypesAddressInfo, ki types.KeyInfo) error {
-	kib, err := ki.Marshal()
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal KeyInfo")
-	}
-
-	// store the address and key used to generate it
-	if err := backend.ds.Put(ds.NewKey(ai.Address.String()), kib); err != nil {
-		return errors.Wrap(err, "failed to store new address")
-	}
-
-	// mark the cache as containing the address, used by `HasAddress()`
-	backend.cache[ai.Address] = struct{}{}
-
-	return nil
+// ImportKey loads the address in `ai` and KeyInfo `ki` into the backend
+func (backend *DSBackend) ImportKey(ki *types.KeyInfo) error {
+	return backend.putKeyInfo(ki)
 }
 
 // Addresses returns a list of all addresses that are stored in this backend.
@@ -117,47 +102,53 @@ func (backend *DSBackend) NewAddress() (types.Address, error) {
 		return types.Address{}, err
 	}
 
-	pub, ok := prv.Public().(*ecdsa.PublicKey)
-	if !ok {
-		// means a something is wrong with key generation
-		panic("unknown public key type")
-	}
-
-	addrHash, err := types.AddressHash(cu.SerializeUncompressed(pub))
-	if err != nil {
-		return types.Address{}, err
-	}
-	// TODO: Use the address type we are running on from the config.
-	newAddr := types.NewMainnetAddress(addrHash)
-
-	backend.lk.Lock()
-	defer backend.lk.Unlock()
-
+	// TODO: maybe the above call should just return a keyinfo?
 	ki := &types.KeyInfo{
 		PrivateKey: crypto.ECDSAToBytes(prv),
 		Curve:      SECP256K1,
 	}
 
-	kib, err := ki.Marshal()
-	if err != nil {
+	if err := backend.putKeyInfo(ki); err != nil {
 		return types.Address{}, err
 	}
 
-	if err := backend.ds.Put(ds.NewKey(newAddr.String()), kib); err != nil {
-		return types.Address{}, errors.Wrap(err, "failed to store new address")
+	return ki.Address()
+}
+
+func (backend *DSBackend) putKeyInfo(ki *types.KeyInfo) error {
+	a, err := ki.Address()
+	if err != nil {
+		return err
 	}
 
-	backend.cache[newAddr] = struct{}{}
+	backend.lk.Lock()
+	defer backend.lk.Unlock()
 
-	return newAddr, nil
+	kib, err := ki.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if err := backend.ds.Put(ds.NewKey(a.String()), kib); err != nil {
+		return errors.Wrap(err, "failed to store new address")
+	}
+
+	backend.cache[a] = struct{}{}
+	return nil
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
 func (backend *DSBackend) SignBytes(data []byte, addr types.Address) (types.Signature, error) {
-	privateKey, _, err := backend.GetKeyPair(addr)
+	ki, err := backend.GetKeyInfo(addr)
 	if err != nil {
 		return nil, err
 	}
+
+	privateKey, _, err := keysFromInfo(ki)
+	if err != nil {
+		return nil, err
+	}
+
 	return wutil.Sign(privateKey, data)
 }
 
@@ -175,24 +166,28 @@ func (backend *DSBackend) Ecrecover(data []byte, sig types.Signature) ([]byte, e
 	return wutil.Ecrecover(data, sig)
 }
 
-// GetKeyPair will return the private & public keys associated with address `addr`
+// GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyPair(addr types.Address) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
+func (backend *DSBackend) GetKeyInfo(addr types.Address) (*types.KeyInfo, error) {
 	if !backend.HasAddress(addr) {
-		return nil, nil, errors.New("backend does not contain address")
+		return nil, errors.New("backend does not contain address")
 	}
 
 	// kib is a cbor of types.KeyInfo
 	kib, err := backend.ds.Get(ds.NewKey(addr.String()))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to fetch private key from backend")
+		return nil, errors.Wrap(err, "failed to fetch private key from backend")
 	}
 
 	ki := &types.KeyInfo{}
 	if err := ki.Unmarshal(kib.([]byte)); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
+		return nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
 	}
 
+	return ki, nil
+}
+
+func keysFromInfo(ki *types.KeyInfo) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	// Developer error if we add a new type and don't update this method
 	if ki.Type() != SECP256K1 {
 		panic(fmt.Sprintf("unknown key type %s", ki.Type()))
