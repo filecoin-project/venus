@@ -97,13 +97,14 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 }
 
 func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, req *cmds.Request) error {
-	if err := node.Start(); err != nil {
+	api := api_impl.New(node)
+
+	if err := api.Daemon().Start(ctx); err != nil {
 		return err
 	}
 
-	api := api_impl.New(node)
-
 	servenv := &Env{
+		// TODO: should this be the passed in context?
 		ctx: context.Background(),
 		api: api,
 		// TODO: remove once nothing depends on this anymore
@@ -134,6 +135,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	}()
 
 	// write our api address to file
+	// TODO: use api.Repo() once implemented
 	err := node.Repo.SetAPIAddr(config.API.Address)
 	if err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
@@ -149,7 +151,6 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	if err := apiserv.Shutdown(ctx); err != nil {
 		fmt.Println("failed to shut down api server:", err)
 	}
-	node.Stop()
 
-	return nil
+	return api.Daemon().Stop(ctx)
 }
