@@ -1,4 +1,4 @@
-package node_api
+package api_impl
 
 import "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 

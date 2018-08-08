@@ -1,4 +1,4 @@
-package node_api
+package api_impl
 
 import (
 	"github.com/filecoin-project/go-filecoin/api"

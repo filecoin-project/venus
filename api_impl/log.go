@@ -1,4 +1,4 @@
-package node_api
+package api_impl
 
 type NodeLog struct {
 	api *API

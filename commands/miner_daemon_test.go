@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/api_impl"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/node_api"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -47,7 +47,7 @@ func TestMinerCreate(t *testing.T) {
 
 			args = append(args, "1000000", "20")
 			if !expectSuccess {
-				d.RunFail(node_api.ErrCouldNotDefaultFromAddress.Error(), args...)
+				d.RunFail(api_impl.ErrCouldNotDefaultFromAddress.Error(), args...)
 				return
 			}
 
@@ -99,7 +99,7 @@ func TestMinerCreate(t *testing.T) {
 			}
 
 			args = append(args, "1000000", "20")
-			d.RunFail(node_api.ErrCouldNotDefaultFromAddress.Error(), args...)
+			d.RunFail(api_impl.ErrCouldNotDefaultFromAddress.Error(), args...)
 		}
 
 		// If there's more than one address, then --from must be specified

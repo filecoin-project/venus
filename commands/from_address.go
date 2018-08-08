@@ -4,8 +4,8 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/api_impl"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/node_api"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -22,7 +22,7 @@ func fromAddress(opts cmdkit.OptMap, nd *node.Node) (ret types.Address, err erro
 			return
 		}
 
-		err = node_api.ErrCouldNotDefaultFromAddress
+		err = api_impl.ErrCouldNotDefaultFromAddress
 	}
 	return
 }

@@ -1,4 +1,4 @@
-package node_api
+package api_impl
 
 type NodeConfig struct {
 	api *API

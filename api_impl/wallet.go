@@ -1,4 +1,4 @@
-package node_api
+package api_impl
 
 type NodeWallet struct {
 	api *API

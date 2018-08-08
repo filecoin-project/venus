@@ -8,9 +8,9 @@ import (
 
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
+	"github.com/filecoin-project/go-filecoin/api_impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/node_api"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +30,7 @@ func TestConfigGet(t *testing.T) {
 		out, err := testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap"}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		require.NoError(err)
@@ -50,7 +50,7 @@ func TestConfigGet(t *testing.T) {
 		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"nonexistantkey"}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -59,7 +59,7 @@ func TestConfigGet(t *testing.T) {
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap.nope"}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -68,7 +68,7 @@ func TestConfigGet(t *testing.T) {
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{".inval.id-key."}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -95,7 +95,7 @@ func TestConfigSet(t *testing.T) {
 		out, err := testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlob}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		require.NoError(err)
@@ -131,7 +131,7 @@ func TestConfigSet(t *testing.T) {
 		res, err := testhelpers.RunCommand(configCmd,
 			[]string{"botstrap", tomlBlob}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -142,7 +142,7 @@ func TestConfigSet(t *testing.T) {
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobBadType}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -153,7 +153,7 @@ func TestConfigSet(t *testing.T) {
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"bootstrap", tomlBlobInvalid}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
@@ -164,7 +164,7 @@ func TestConfigSet(t *testing.T) {
 		res, err = testhelpers.RunCommand(configCmd,
 			[]string{"mining.rewardAddress", tomlBlobBadAddr}, nil, &Env{
 				ctx:  ctx,
-				api:  node_api.New(n),
+				api:  api_impl.New(n),
 				node: n,
 			})
 		assert.NoError(err)
