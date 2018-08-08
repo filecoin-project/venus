@@ -1,3 +1,10 @@
 package api
 
-type Log interface{}
+import (
+	"context"
+	"io"
+)
+
+type Log interface {
+	Tail(ctx context.Context) io.Reader
+}
