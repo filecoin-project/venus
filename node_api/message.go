@@ -1,9 +1,9 @@
 package node_api
 
-type MessageAPI struct {
+type NodeMessage struct {
 	api *API
 }
 
-func NewMessageAPI(api *API) *MessageAPI {
-	return &MessageAPI{api: api}
+func NewNodeMessage(api *API) *NodeMessage {
+	return &NodeMessage{api: api}
 }

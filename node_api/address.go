@@ -11,24 +11,24 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type AddressAPI struct {
+type NodeAddress struct {
 	api *API
 
-	addrs *AddrsAPI
+	addrs *NodeAddrs
 }
 
-func NewAddressAPI(api *API) *AddressAPI {
-	return &AddressAPI{
+func NewNodeAddress(api *API) *NodeAddress {
+	return &NodeAddress{
 		api:   api,
-		addrs: NewAddrsAPI(api),
+		addrs: NewNodeAddrs(api),
 	}
 }
 
-func (api *AddressAPI) Addrs() api.Addrs {
+func (api *NodeAddress) Addrs() api.Addrs {
 	return api.addrs
 }
 
-func (api *AddressAPI) Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error) {
+func (api *NodeAddress) Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error) {
 	fcn := api.api.node
 	ts := fcn.ChainMgr.GetHeaviestTipSet()
 	if len(ts) == 0 {
@@ -53,23 +53,23 @@ func (api *AddressAPI) Balance(ctx context.Context, addr types.Address) (*types.
 	return act.Balance, nil
 }
 
-type AddrsAPI struct {
+type NodeAddrs struct {
 	api *API
 }
 
-func NewAddrsAPI(api *API) *AddrsAPI {
-	return &AddrsAPI{api: api}
+func NewNodeAddrs(api *API) *NodeAddrs {
+	return &NodeAddrs{api: api}
 }
 
-func (api *AddrsAPI) New(ctx context.Context) (types.Address, error) {
+func (api *NodeAddrs) New(ctx context.Context) (types.Address, error) {
 	return api.api.node.NewAddress()
 }
 
-func (api *AddrsAPI) Ls(ctx context.Context) ([]types.Address, error) {
+func (api *NodeAddrs) Ls(ctx context.Context) ([]types.Address, error) {
 	return api.api.node.Wallet.Addresses(), nil
 }
 
-func (api *AddrsAPI) Lookup(ctx context.Context, addr types.Address) (peer.ID, error) {
+func (api *NodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, error) {
 	id, err := api.api.node.Lookup.GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to find miner with address %s", addr.String())

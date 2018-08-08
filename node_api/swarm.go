@@ -1,9 +1,9 @@
 package node_api
 
-type SwarmAPI struct {
+type NodeSwarm struct {
 	api *API
 }
 
-func NewSwarmAPI(api *API) *SwarmAPI {
-	return &SwarmAPI{api: api}
+func NewNodeSwarm(api *API) *NodeSwarm {
+	return &NodeSwarm{api: api}
 }

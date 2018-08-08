@@ -1,9 +1,9 @@
 package node_api
 
-type PaychAPI struct {
+type NodePaych struct {
 	api *API
 }
 
-func NewPaychAPI(api *API) *PaychAPI {
-	return &PaychAPI{api: api}
+func NewNodePaych(api *API) *NodePaych {
+	return &NodePaych{api: api}
 }

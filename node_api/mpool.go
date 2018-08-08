@@ -1,9 +1,9 @@
 package node_api
 
-type MpoolAPI struct {
+type NodeMpool struct {
 	api *API
 }
 
-func NewMpoolAPI(api *API) *MpoolAPI {
-	return &MpoolAPI{api: api}
+func NewNodeMpool(api *API) *NodeMpool {
+	return &NodeMpool{api: api}
 }

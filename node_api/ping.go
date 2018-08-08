@@ -1,9 +1,9 @@
 package node_api
 
-type PingAPI struct {
+type NodePing struct {
 	api *API
 }
 
-func NewPingAPI(api *API) *PingAPI {
-	return &PingAPI{api: api}
+func NewNodePing(api *API) *NodePing {
+	return &NodePing{api: api}
 }

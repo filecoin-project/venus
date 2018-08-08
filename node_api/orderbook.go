@@ -1,9 +1,9 @@
 package node_api
 
-type OrderbookAPI struct {
+type NodeOrderbook struct {
 	api *API
 }
 
-func NewOrderbookAPI(api *API) *OrderbookAPI {
-	return &OrderbookAPI{api: api}
+func NewNodeOrderbook(api *API) *NodeOrderbook {
+	return &NodeOrderbook{api: api}
 }

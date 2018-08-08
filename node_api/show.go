@@ -1,9 +1,9 @@
 package node_api
 
-type ShowAPI struct {
+type NodeShow struct {
 	api *API
 }
 
-func NewShowAPI(api *API) *ShowAPI {
-	return &ShowAPI{api: api}
+func NewNodeShow(api *API) *NodeShow {
+	return &NodeShow{api: api}
 }

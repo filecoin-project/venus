@@ -1,9 +1,9 @@
 package node_api
 
-type ConfigAPI struct {
+type NodeConfig struct {
 	api *API
 }
 
-func NewConfigAPI(api *API) *ConfigAPI {
-	return &ConfigAPI{api: api}
+func NewNodeConfig(api *API) *NodeConfig {
+	return &NodeConfig{api: api}
 }

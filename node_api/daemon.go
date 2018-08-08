@@ -1,9 +1,9 @@
 package node_api
 
-type DaemonAPI struct {
+type NodeDaemon struct {
 	api *API
 }
 
-func NewDaemonAPI(api *API) *DaemonAPI {
-	return &DaemonAPI{api: api}
+func NewNodeDaemon(api *API) *NodeDaemon {
+	return &NodeDaemon{api: api}
 }

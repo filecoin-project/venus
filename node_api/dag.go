@@ -1,9 +1,9 @@
 package node_api
 
-type DagAPI struct {
+type NodeDag struct {
 	api *API
 }
 
-func NewDagAPI(api *API) *DagAPI {
-	return &DagAPI{api: api}
+func NewNodeDag(api *API) *NodeDag {
+	return &NodeDag{api: api}
 }

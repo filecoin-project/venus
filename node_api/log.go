@@ -1,9 +1,9 @@
 package node_api
 
-type LogAPI struct {
+type NodeLog struct {
 	api *API
 }
 
-func NewLogAPI(api *API) *LogAPI {
-	return &LogAPI{api: api}
+func NewNodeLog(api *API) *NodeLog {
+	return &NodeLog{api: api}
 }

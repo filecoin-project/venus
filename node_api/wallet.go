@@ -1,9 +1,9 @@
 package node_api
 
-type WalletAPI struct {
+type NodeWallet struct {
 	api *API
 }
 
-func NewWalletAPI(api *API) *WalletAPI {
-	return &WalletAPI{api: api}
+func NewNodeWallet(api *API) *NodeWallet {
+	return &NodeWallet{api: api}
 }

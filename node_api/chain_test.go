@@ -20,7 +20,7 @@ func TestChainHead(t *testing.T) {
 		require := require.New(t)
 
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
-		api := NewAPI(n)
+		api := New(n)
 
 		_, err := api.Chain().Head()
 
@@ -39,7 +39,7 @@ func TestChainHead(t *testing.T) {
 
 		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, blk))
 
-		api := NewAPI(n)
+		api := New(n)
 		out, err := api.Chain().Head()
 
 		require.NoError(err)
@@ -66,7 +66,7 @@ func TestChainLsRun(t *testing.T) {
 		err = n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
 		require.NoError(err)
 
-		api := NewAPI(n)
+		api := New(n)
 
 		var bs [][]*types.Block
 		for raw := range api.Chain().Ls(ctx) {
@@ -96,7 +96,7 @@ func TestChainLsRun(t *testing.T) {
 		err := n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
 		require.NoError(err)
 
-		api := NewAPI(n)
+		api := New(n)
 		// parBlock is not known to the chain, which causes the timeout
 		var innerErr error
 		for raw := range api.Chain().Ls(ctx) {

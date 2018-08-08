@@ -4,15 +4,15 @@ import (
 	"context"
 )
 
-type BootstrapAPI struct {
+type NodeBootstrap struct {
 	api *API
 }
 
-func NewBootstrapAPI(api *API) *BootstrapAPI {
-	return &BootstrapAPI{api: api}
+func NewNodeBootstrap(api *API) *NodeBootstrap {
+	return &NodeBootstrap{api: api}
 }
 
-func (api *BootstrapAPI) Ls(ctx context.Context) ([]string, error) {
+func (api *NodeBootstrap) Ls(ctx context.Context) ([]string, error) {
 	addrs := api.api.node.Repo.Config().Bootstrap.Addresses
 	return addrs, nil
 }

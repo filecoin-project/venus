@@ -101,7 +101,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		return err
 	}
 
-	api := node_api.NewAPI(node)
+	api := node_api.New(node)
 
 	servenv := &Env{
 		ctx: context.Background(),

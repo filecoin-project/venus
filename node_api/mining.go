@@ -1,9 +1,9 @@
 package node_api
 
-type MiningAPI struct {
+type NodeMining struct {
 	api *API
 }
 
-func NewMiningAPI(api *API) *MiningAPI {
-	return &MiningAPI{api: api}
+func NewNodeMining(api *API) *NodeMining {
+	return &NodeMining{api: api}
 }

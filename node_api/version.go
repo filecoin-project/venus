@@ -1,9 +1,9 @@
 package node_api
 
-type VersionAPI struct {
+type NodeVersion struct {
 	api *API
 }
 
-func NewVersionAPI(api *API) *VersionAPI {
-	return &VersionAPI{api: api}
+func NewNodeVersion(api *API) *NodeVersion {
+	return &NodeVersion{api: api}
 }

@@ -9,62 +9,63 @@ import (
 type API struct {
 	node *node.Node
 
-	actor     *ActorAPI
-	address   *AddressAPI
-	block     *BlockAPI
-	bootstrap *BootstrapAPI
-	chain     *ChainAPI
-	config    *ConfigAPI
-	client    *ClientAPI
-	daemon    *DaemonAPI
-	dag       *DagAPI
-	id        *IdAPI
-	init      *InitAPI
-	log       *LogAPI
-	message   *MessageAPI
-	miner     *MinerAPI
-	mining    *MiningAPI
-	mpool     *MpoolAPI
-	orderbook *OrderbookAPI
-	paych     *PaychAPI
-	ping      *PingAPI
-	show      *ShowAPI
-	swarm     *SwarmAPI
-	version   *VersionAPI
-	wallet    *WalletAPI
+	actor     *NodeActor
+	address   *NodeAddress
+	block     *NodeBlock
+	bootstrap *NodeBootstrap
+	chain     *NodeChain
+	config    *NodeConfig
+	client    *NodeClient
+	daemon    *NodeDaemon
+	dag       *NodeDag
+	id        *NodeId
+	init      *NodeInit
+	log       *NodeLog
+	message   *NodeMessage
+	miner     *NodeMiner
+	mining    *NodeMining
+	mpool     *NodeMpool
+	orderbook *NodeOrderbook
+	paych     *NodePaych
+	ping      *NodePing
+	show      *NodeShow
+	swarm     *NodeSwarm
+	version   *NodeVersion
+	wallet    *NodeWallet
 }
 
 // Assert that API fullfills the api.API interface.
 var _ api.API = (*API)(nil)
 
-// NewAPI constructs a new instance of the API.
-func NewAPI(node *node.Node) api.API {
+// New constructs a new instance of the API.
+func New(node *node.Node) api.API {
 	api := &API{
 		node: node,
 	}
-	api.actor = NewActorAPI(api)
-	api.address = NewAddressAPI(api)
-	api.block = NewBlockAPI(api)
-	api.bootstrap = NewBootstrapAPI(api)
-	api.chain = NewChainAPI(api)
-	api.config = NewConfigAPI(api)
-	api.client = NewClientAPI(api)
-	api.daemon = NewDaemonAPI(api)
-	api.dag = NewDagAPI(api)
-	api.id = NewIdAPI(api)
-	api.init = NewInitAPI(api)
-	api.log = NewLogAPI(api)
-	api.message = NewMessageAPI(api)
-	api.miner = NewMinerAPI(api)
-	api.mining = NewMiningAPI(api)
-	api.mpool = NewMpoolAPI(api)
-	api.orderbook = NewOrderbookAPI(api)
-	api.paych = NewPaychAPI(api)
-	api.ping = NewPingAPI(api)
-	api.show = NewShowAPI(api)
-	api.swarm = NewSwarmAPI(api)
-	api.version = NewVersionAPI(api)
-	api.wallet = NewWalletAPI(api)
+
+	api.actor = NewNodeActor(api)
+	api.address = NewNodeAddress(api)
+	api.block = NewNodeBlock(api)
+	api.bootstrap = NewNodeBootstrap(api)
+	api.chain = NewNodeChain(api)
+	api.config = NewNodeConfig(api)
+	api.client = NewNodeClient(api)
+	api.daemon = NewNodeDaemon(api)
+	api.dag = NewNodeDag(api)
+	api.id = NewNodeId(api)
+	api.init = NewNodeInit(api)
+	api.log = NewNodeLog(api)
+	api.message = NewNodeMessage(api)
+	api.miner = NewNodeMiner(api)
+	api.mining = NewNodeMining(api)
+	api.mpool = NewNodeMpool(api)
+	api.orderbook = NewNodeOrderbook(api)
+	api.paych = NewNodePaych(api)
+	api.ping = NewNodePing(api)
+	api.show = NewNodeShow(api)
+	api.swarm = NewNodeSwarm(api)
+	api.version = NewNodeVersion(api)
+	api.wallet = NewNodeWallet(api)
 
 	return api
 }

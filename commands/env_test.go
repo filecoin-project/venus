@@ -28,7 +28,7 @@ func TestEnv(t *testing.T) {
 	nd, err := node.New(ctx, opts...)
 	assert.NoError(err)
 
-	api := node_api.NewAPI(nd)
+	api := node_api.New(nd)
 
 	env := Env{ctx: ctx, api: api, node: nd}
 

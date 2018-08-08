@@ -1,9 +1,9 @@
 package node_api
 
-type InitAPI struct {
+type NodeInit struct {
 	api *API
 }
 
-func NewInitAPI(api *API) *InitAPI {
-	return &InitAPI{api: api}
+func NewNodeInit(api *API) *NodeInit {
+	return &NodeInit{api: api}
 }

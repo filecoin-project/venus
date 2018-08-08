@@ -1,9 +1,9 @@
 package node_api
 
-type IdAPI struct {
+type NodeId struct {
 	api *API
 }
 
-func NewIdAPI(api *API) *IdAPI {
-	return &IdAPI{api: api}
+func NewNodeId(api *API) *NodeId {
+	return &NodeId{api: api}
 }
