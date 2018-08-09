@@ -1,7 +1,6 @@
 package api_impl
 
 import (
-	"fmt"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
@@ -14,7 +13,9 @@ var (
 	// more than one to choose from.
 	ErrCouldNotDefaultFromAddress = errors.New("no from address specified and no default address available")
 	// ErrCannotPingSelf indicates that you tried to ping yourself but cannot.
-	ErrCannotPingSelf = fmt.Errorf("cannot ping self")
-	// ErrNodeOffline indicates that
-	ErrNodeOffline = fmt.Errorf("node must be online")
+	ErrCannotPingSelf = errors.New("cannot ping self")
+	// ErrNodeOffline indicates that the node must not be offline for the operation performed.
+	ErrNodeOffline = errors.New("node must be online")
+	// ErrMissingRewardAddress indicates that there is no reward address to which can be mined.
+	ErrMissingRewardAddress = errors.New("filecoin node requires a reward address to be set before mining")
 )
