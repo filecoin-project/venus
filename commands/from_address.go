@@ -26,3 +26,14 @@ func fromAddress(opts cmdkit.OptMap, nd *node.Node) (ret types.Address, err erro
 	}
 	return
 }
+
+func optionalFromAddr(opts cmdkit.OptMap) (ret types.Address, err error) {
+	o := opts["from"]
+	if o != nil {
+		ret, err = types.NewAddressFromString(o.(string))
+		if err != nil {
+			err = errors.Wrap(err, "invalid from address")
+		}
+	}
+	return
+}

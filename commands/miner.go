@@ -9,8 +9,6 @@ import (
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
-	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -40,18 +38,22 @@ message to be mined as this is required to return the address of the new miner.`
 		cmdkit.StringOption("peerid", "b58-encoded libp2p peer ID that the miner will operate"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
+		var err error
 
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalFromAddr(req.Options)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		pid, err := peerID(req.Options, n)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		var pid peer.ID
+		peerid := req.Options["peerid"]
+		if peerid != nil {
+			pid, err = peer.IDB58Decode(peerid.(string))
+			if err != nil {
+				re.SetError(errors.Wrap(err, "invalid peer id"), cmdkit.ErrNormal)
+				return
+			}
 		}
 
 		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
@@ -66,13 +68,13 @@ message to be mined as this is required to return the address of the new miner.`
 			return
 		}
 
-		addr, err := n.CreateMiner(req.Context, fromAddr, *pledge, pid, *collateral)
+		addr, err := GetAPI(env).Miner().Create(req.Context, fromAddr, pledge, pid, collateral)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		re.Emit(addr) // nolint: errcheck
+		re.Emit(&addr) // nolint: errcheck
 	},
 	Type: types.Address{},
 	Encoders: cmds.EncoderMap{
@@ -95,15 +97,13 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
 		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalFromAddr(req.Options)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -115,30 +115,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return
 		}
 
-		args, err := abi.ToEncodedValues(newPid)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "updatePeerID", args)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		c, err := smsg.Cid()
+		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, newPid)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -167,9 +144,7 @@ var minerAddAskCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send the ask from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalFromAddr(req.Options)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -194,30 +169,7 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		params, err := abi.ToEncodedValues(price, size)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, minerAddr, nil, "addAsk", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		c, err := smsg.Cid()
+		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, size, price)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -231,17 +183,4 @@ var minerAddAskCmd = &cmds.Command{
 			return PrintString(w, c)
 		}),
 	},
-}
-
-func peerID(opts cmdkit.OptMap, node *node.Node) (ret peer.ID, err error) {
-	o := opts["peerid"]
-	if o != nil {
-		ret, err = peer.IDB58Decode(o.(string))
-		if err != nil {
-			err = errors.Wrap(err, "invalid peer id")
-		}
-	} else {
-		ret = node.Host.ID()
-	}
-	return
 }
