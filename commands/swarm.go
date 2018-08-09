@@ -3,19 +3,14 @@ package commands
 import (
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-	swarm "gx/ipfs/QmemVjhp1UuWPQqrWSvPcaqH3QJRMjMqNm4T2RULMkDDQe/go-libp2p-swarm"
 
-	"github.com/filecoin-project/go-filecoin/filnet"
+	"github.com/filecoin-project/go-filecoin/api"
 )
-
-// COPIED FROM go-ipfs core/commands/swarm.go
-// TODO a lot of this functionality should migrate to the filnet package.
 
 // swarmCmd contains swarm commands.
 var swarmCmd = &cmds.Command{
@@ -28,52 +23,9 @@ libp2p peers on the internet.
 `,
 	},
 	Subcommands: map[string]*cmds.Command{
-		//"addrs":      swarmAddrsCmd,
 		"connect": swarmConnectCmd,
-		//"disconnect": swarmDisconnectCmd,
-		//"filters":    swarmFiltersCmd,
-		"peers": swarmPeersCmd,
+		"peers":   swarmPeersCmd,
 	},
-}
-
-type streamInfo struct {
-	Protocol string
-}
-
-type connInfo struct {
-	Addr    string
-	Peer    string
-	Latency string
-	Muxer   string
-	Streams []streamInfo
-}
-
-func (ci *connInfo) Less(i, j int) bool {
-	return ci.Streams[i].Protocol < ci.Streams[j].Protocol
-}
-
-func (ci *connInfo) Len() int {
-	return len(ci.Streams)
-}
-
-func (ci *connInfo) Swap(i, j int) {
-	ci.Streams[i], ci.Streams[j] = ci.Streams[j], ci.Streams[i]
-}
-
-type connInfos struct {
-	Peers []connInfo
-}
-
-func (ci connInfos) Less(i, j int) bool {
-	return ci.Peers[i].Addr < ci.Peers[j].Addr
-}
-
-func (ci connInfos) Len() int {
-	return len(ci.Peers)
-}
-
-func (ci connInfos) Swap(i, j int) {
-	ci.Peers[i], ci.Peers[j] = ci.Peers[j], ci.Peers[i]
 }
 
 var swarmPeersCmd = &cmds.Command{
@@ -89,61 +41,20 @@ var swarmPeersCmd = &cmds.Command{
 		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-
-		n := GetNode(env)
-
-		if n.Host == nil {
-			re.SetError(ErrNodeOffline, cmdkit.ErrNormal)
-			return
-		}
-
 		verbose, _ := req.Options["verbose"].(bool)
 		latency, _ := req.Options["latency"].(bool)
 		streams, _ := req.Options["streams"].(bool)
 
-		conns := n.Host.Network().Conns()
-
-		var out connInfos
-		for _, c := range conns {
-			pid := c.RemotePeer()
-			addr := c.RemoteMultiaddr()
-
-			ci := connInfo{
-				Addr: addr.String(),
-				Peer: pid.Pretty(),
-			}
-
-			/* FIXME(steb)
-			swcon, ok := c.(*swarm.Conn)
-			if ok {
-				ci.Muxer = fmt.Sprintf("%T", swcon.StreamConn().Conn())
-			}
-			*/
-
-			if verbose || latency {
-				lat := n.Host.Peerstore().LatencyEWMA(pid)
-				if lat == 0 {
-					ci.Latency = "n/a"
-				} else {
-					ci.Latency = lat.String()
-				}
-			}
-			if verbose || streams {
-				strs := c.GetStreams()
-
-				for _, s := range strs {
-					ci.Streams = append(ci.Streams, streamInfo{Protocol: string(s.Protocol())})
-				}
-			}
-			sort.Sort(&ci)
-			out.Peers = append(out.Peers, ci)
+		out, err := GetAPI(env).Swarm().Peers(req.Context, verbose, latency, streams)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
 		}
 
-		sort.Sort(&out)
 		re.Emit(&out) // nolint: errcheck
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *connInfos) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *api.SwarmConnInfos) error {
 			pipfs := ma.ProtocolWithCode(ma.P_IPFS).Name
 			for _, info := range ci.Peers {
 				ids := fmt.Sprintf("/%s/%s", pipfs, info.Peer)
@@ -169,12 +80,7 @@ var swarmPeersCmd = &cmds.Command{
 			return nil
 		}),
 	},
-	Type: connInfos{},
-}
-
-type connectResult struct {
-	Peer    string
-	Success bool
+	Type: api.SwarmConnInfos{},
 }
 
 var swarmConnectCmd = &cmds.Command{
@@ -192,43 +98,17 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		ctx := req.Context
-
-		n := GetNode(env)
-
-		addrs := req.Arguments
-
-		swrm, ok := n.Host.Network().(*swarm.Swarm)
-		if !ok {
-			re.SetError("peerhost network was not swarm", cmdkit.ErrNormal)
-			return
-		}
-
-		pis, err := filnet.PeerAddrsToPeerInfos(addrs)
+		out, err := GetAPI(env).Swarm().Connect(req.Context, req.Arguments)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		output := make([]connectResult, len(pis))
-		for i, pi := range pis {
-			swrm.Backoff().Clear(pi.ID)
-
-			output[i].Peer = pi.ID.Pretty()
-
-			err := n.Host.Connect(ctx, pi)
-			if err != nil {
-				err = fmt.Errorf("%s failure: %s", output[i].Peer, err)
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-		}
-
-		re.Emit(output) // nolint: errcheck
+		re.Emit(out) // nolint: errcheck
 	},
-	Type: []connectResult{},
+	Type: []api.SwarmConnectResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]connectResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]api.SwarmConnectResult) error {
 			for _, a := range *res {
 				fmt.Fprintf(w, "connect %s success\n", a.Peer) // nolint: errcheck
 			}

@@ -30,9 +30,6 @@ var (
 	// ErrMissingDaemon is the error returned when trying to execute a command that requires the daemon to be started.
 	ErrMissingDaemon = errors.New("daemon must be started before using this command")
 
-	// ErrNodeOffline indicates that
-	ErrNodeOffline = fmt.Errorf("node must be online")
-
 	// ErrNoWalletAddresses indicates that there are no addresses in wallet to mine to.
 	ErrNoWalletAddresses = fmt.Errorf("no addresses in wallet to mine to")
 )

@@ -15,4 +15,6 @@ var (
 	ErrCouldNotDefaultFromAddress = errors.New("no from address specified and no default address available")
 	// ErrCannotPingSelf indicates that you tried to ping yourself but cannot.
 	ErrCannotPingSelf = fmt.Errorf("cannot ping self")
+	// ErrNodeOffline indicates that
+	ErrNodeOffline = fmt.Errorf("node must be online")
 )
