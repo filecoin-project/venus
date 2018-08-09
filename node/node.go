@@ -64,8 +64,8 @@ type Node struct {
 	Wallet *wallet.Wallet
 
 	// Mining stuff.
-	MiningWorker mining.Worker
-	mining       struct {
+	MiningScheduler mining.Scheduler
+	mining          struct {
 		sync.Mutex
 		isMining bool
 	}
@@ -432,15 +432,14 @@ func (node *Node) StartMining() error {
 		return err
 	}
 
-	if node.MiningWorker == nil {
-		blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	if node.MiningScheduler == nil {
+		getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return node.ChainMgr.State(ctx, ts.ToSlice())
-		}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore)
-
-		node.MiningWorker = mining.NewWorker(blockGenerator, miningAddress)
-
+		}
+		worker := mining.NewMiningWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, miningAddress)
+		node.MiningScheduler = mining.NewScheduler(worker)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
-		inCh, outCh, doneWg := node.MiningWorker.Start(node.miningCtx)
+		inCh, outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
 		node.miningInCh = inCh
 		node.miningDoneWg = doneWg
 		node.AddNewlyMinedBlock = node.addNewlyMinedBlock
