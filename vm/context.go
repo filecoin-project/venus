@@ -166,8 +166,9 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 	return types.NewMainnetAddress(hash), nil
 }
 
-// CreateNewActor is a temporary method to create actors.
-func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, init exec.InitializeStateFunc, initialState interface{}) error {
+// CreateNewActor creates and initializes an actor at the given address.
+// If the address is occupied by a non-empty actor, this method will fail.
+func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*types.Actor, error) {
 		return &types.Actor{}, nil
@@ -185,7 +186,12 @@ func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, init exec.
 	newActor.Code = code
 
 	childStorage := ctx.storageMap.NewStorage(addr, newActor)
-	err = init(childStorage, initialState)
+	execActor, err := ctx.state.GetBuiltinActorCode(code)
+	if err != nil {
+		return errors.NewRevertErrorf("attempt to create executable actor from non-existent code %s", code.String())
+	}
+
+	err = execActor.InitializeState(childStorage, initializerData)
 	if err != nil {
 		if !errors.ShouldRevert(err) && !errors.IsFault(err) {
 			return errors.RevertErrorWrap(err, "Could not initialize actor state")

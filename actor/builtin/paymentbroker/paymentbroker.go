@@ -12,27 +12,27 @@ import (
 )
 
 const (
-	// ErrNonAccountActor indicates an non-account actor attempted to create a payment channel
+	// ErrNonAccountActor indicates an non-account actor attempted to create a payment channel.
 	ErrNonAccountActor = 33
-	// ErrDuplicateChannel indicates an attempt to create a payment channel with an existing id
+	// ErrDuplicateChannel indicates an attempt to create a payment channel with an existing id.
 	ErrDuplicateChannel = 34
-	// ErrEolTooLow indicates an attempt to lower the Eol of a payment channel
+	// ErrEolTooLow indicates an attempt to lower the Eol of a payment channel.
 	ErrEolTooLow = 35
-	// ErrReclaimBeforeEol indicates an attempt to reclaim funds before the eol of the channel
+	// ErrReclaimBeforeEol indicates an attempt to reclaim funds before the eol of the channel.
 	ErrReclaimBeforeEol = 36
-	// ErrInsufficientChannelFunds indicates an attempt to take more funds than the channel contains
+	// ErrInsufficientChannelFunds indicates an attempt to take more funds than the channel contains.
 	ErrInsufficientChannelFunds = 37
-	// ErrUnknownChannel indicates an invalid channel id
+	// ErrUnknownChannel indicates an invalid channel id.
 	ErrUnknownChannel = 38
-	// ErrWrongTarget indicates attempt to redeem from wrong target account
+	// ErrWrongTarget indicates attempt to redeem from wrong target account.
 	ErrWrongTarget = 39
-	// ErrExpired indicates the block height has exceeded the eol
+	// ErrExpired indicates the block height has exceeded the eol.
 	ErrExpired = 40
-	// ErrAlreadyWithdrawn indicates amount of the voucher has already been withdrawn
+	// ErrAlreadyWithdrawn indicates amount of the voucher has already been withdrawn.
 	ErrAlreadyWithdrawn = 41
 )
 
-// Errors map error codes to revert errors this actor may return
+// Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrNonAccountActor:          errors.NewCodedRevertError(ErrNonAccountActor, "Only account actors may create payment channels"),
 	ErrDuplicateChannel:         errors.NewCodedRevertError(ErrDuplicateChannel, "Duplicate create channel attempt"),
@@ -51,13 +51,13 @@ func init() {
 	cbor.RegisterCborType(PaymentVoucher{})
 }
 
-// Signature signs an update request
+// Signature signs an update request.
 type Signature = []byte
 
-// allPaymentChannels are keyed by payer address
+// allPaymentChannels are keyed by payer address.
 type allPaymentChannels map[string]accountPaymentChannels
 
-// accountPaymentChannels are keyed by ChannelID
+// accountPaymentChannels are keyed by ChannelID.
 type accountPaymentChannels map[string]*PaymentChannel
 
 // PaymentChannel records the intent to pay funds to a target account.
@@ -89,7 +89,7 @@ type State struct {
 }
 
 // InitializeState stores the actor's initial data structure.
-func InitializeState(storage exec.Storage, initialState interface{}) error {
+func (pb *Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
 	pbState := State{
 		Channels: allPaymentChannels{},
 	}
@@ -107,13 +107,12 @@ func InitializeState(storage exec.Storage, initialState interface{}) error {
 	return storage.Commit(id, nil)
 }
 
-// Exports returns the actor's exports
+// Exports returns the actor's exports.
 func (pb *Actor) Exports() exec.Exports {
 	return paymentBrokerExports
 }
 
 var _ exec.ExecutableActor = (*Actor)(nil)
-var _ exec.InitializeStateFunc = InitializeState
 
 var paymentBrokerExports = exec.Exports{
 	"close": &exec.FunctionSignature{

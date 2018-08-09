@@ -92,7 +92,7 @@ func (m *MockStateTree) SetActor(ctx context.Context, address types.Address, act
 
 // GetOrCreateActor implements StateTree.GetOrCreateActor.
 func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*types.Actor, error)) (*types.Actor, error) {
-	panic("do not call me")
+	return creator()
 }
 
 // Debug implements StateTree.Debug

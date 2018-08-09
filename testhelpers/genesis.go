@@ -94,8 +94,7 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, ds datasto
 		// Create StorageMarketActor
 		stAct := types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL())
 		storage := storageMap.NewStorage(address.StorageMarketAddress, stAct)
-
-		err = storagemarket.InitializeState(storage, nil)
+		err = (&storagemarket.Actor{}).InitializeState(storage, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -107,8 +106,7 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, ds datasto
 		// Create PaymentBrokerActor
 		pbAct := types.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
 		storage = storageMap.NewStorage(address.PaymentBrokerAddress, pbAct)
-
-		err = paymentbroker.InitializeState(storage, nil)
+		err = (&paymentbroker.Actor{}).InitializeState(storage, nil)
 		pbAct.Balance = types.NewAttoFILFromFIL(0)
 		if err != nil {
 			return nil, err

@@ -11,7 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -64,7 +66,12 @@ func TestVMContextSendFailures(t *testing.T) {
 	newMsg := types.NewMessageForTestGetter()
 	newAddress := types.NewAddressForTestGetter()
 
-	tree := state.NewCachedStateTree(&state.MockStateTree{})
+	mockStateTree := state.MockStateTree{
+		BuiltinActors: map[string]exec.ExecutableActor{},
+	}
+	fakeActorCid := types.NewCidForTestGetter()()
+	mockStateTree.BuiltinActors[fakeActorCid.KeyString()] = &actor.FakeActor{}
+	tree := state.NewCachedStateTree(&mockStateTree)
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	vms := NewStorageMap(ds)
@@ -213,6 +220,33 @@ func TestVMContextSendFailures(t *testing.T) {
 		assert.Equal(expectedVMSendErr, err)
 		assert.Equal([]string{"ToValues", "EncodeValues", "GetOrCreateActor", "Send"}, calls)
 	})
+
+	t.Run("creates new actor from cid", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		ctx := context.Background()
+		vmctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, types.NewBlockHeight(0))
+		addr, err := vmctx.AddressForNewActor()
+
+		require.NoError(err)
+
+		params := &actor.FakeActorStorage{}
+		err = vmctx.CreateNewActor(addr, fakeActorCid, params)
+		require.NoError(err)
+
+		act, err := tree.GetActor(ctx, addr)
+		require.NoError(err)
+
+		assert.Equal(fakeActorCid, act.Code)
+		actorStorage := vms.NewStorage(addr, act)
+		chunk, ok, err := actorStorage.Get(act.Head)
+		require.NoError(err)
+		require.True(ok)
+
+		assert.True(len(chunk) > 0)
+	})
+
 }
 
 func TestVMContextIsAccountActor(t *testing.T) {

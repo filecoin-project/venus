@@ -17,37 +17,37 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MinimumPledge is the minimum amount of space a user can pledge
+// MinimumPledge is the minimum amount of space a user can pledge.
 var MinimumPledge = types.NewBytesAmount(10000)
 
 const (
-	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge
+	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
 	ErrPledgeTooLow = 33
-	// ErrUnknownMiner indicates a pledge under the MinimumPledge
+	// ErrUnknownMiner indicates a pledge under the MinimumPledge.
 	ErrUnknownMiner = 34
-	// ErrUnknownAsk indicates the ask for a deal could not be found
+	// ErrUnknownAsk indicates the ask for a deal could not be found.
 	ErrUnknownAsk = 35
-	// ErrUnknownBid indicates the bid for a deal could not be found
+	// ErrUnknownBid indicates the bid for a deal could not be found.
 	ErrUnknownBid = 36
-	// ErrAskOwnerNotFound indicates the owner of an ask could not be found
+	// ErrAskOwnerNotFound indicates the owner of an ask could not be found.
 	ErrAskOwnerNotFound = 37
-	// ErrNotBidOwner indicates the sender is not the owner of the bid
+	// ErrNotBidOwner indicates the sender is not the owner of the bid.
 	ErrNotBidOwner = 38
-	// ErrInsufficientSpace indicates the bid to too big for the ask
+	// ErrInsufficientSpace indicates the bid to too big for the ask.
 	ErrInsufficientSpace = 39
-	// ErrInvalidSignature indicates the signature is invalid
+	// ErrInvalidSignature indicates the signature is invalid.
 	ErrInvalidSignature = 40
-	// ErrUnknownDeal indicates the deal id is not found
+	// ErrUnknownDeal indicates the deal id is not found.
 	ErrUnknownDeal = 41
-	// ErrNotDealOwner indicates someone other than the deal owner tried to commit
+	// ErrNotDealOwner indicates someone other than the deal owner tried to commit.
 	ErrNotDealOwner = 42
-	// ErrDealCommitted indicates the deal is already committed
+	// ErrDealCommitted indicates the deal is already committed.
 	ErrDealCommitted = 43
-	// ErrInsufficientBidFunds indicates the value of the bid message is less than the price of the space
+	// ErrInsufficientBidFunds indicates the value of the bid message is less than the price of the space.
 	ErrInsufficientBidFunds = 44
 )
 
-// Errors map error codes to revert errors this actor may return
+// Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s bytes", MinimumPledge),
 	ErrUnknownMiner:         errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
@@ -74,7 +74,7 @@ func init() {
 // power table used to drive filecoin consensus.
 type Actor struct{}
 
-// State is the storage markets storage
+// State is the storage markets storage.
 type State struct {
 	Miners types.AddrSet
 
@@ -85,13 +85,13 @@ type State struct {
 	TotalCommittedStorage *types.BytesAmount
 }
 
-// NewActor returns a new storage market actor
+// NewActor returns a new storage market actor.
 func NewActor() (*types.Actor, error) {
 	return types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL()), nil
 }
 
 // InitializeState stores the actor's initial data structure.
-func InitializeState(storage exec.Storage, _ interface{}) error {
+func (sma *Actor) InitializeState(storage exec.Storage, _ interface{}) error {
 	initStorage := &State{
 		Miners: make(types.AddrSet),
 		Orderbook: &Orderbook{
@@ -117,9 +117,8 @@ func InitializeState(storage exec.Storage, _ interface{}) error {
 }
 
 var _ exec.ExecutableActor = (*Actor)(nil)
-var _ exec.InitializeStateFunc = InitializeState
 
-// Exports returns the actors exports
+// Exports returns the actors exports.
 func (sma *Actor) Exports() exec.Exports {
 	return storageMarketExports
 }
@@ -162,8 +161,8 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, pub
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerState := miner.NewState(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
-		if err := ctx.CreateNewActor(addr, types.MinerActorCodeCid, miner.InitializeState, minerState); err != nil {
+		minerInitializationParams := miner.NewState(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
+		if err := ctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
 			return nil, err
 		}
 
@@ -183,12 +182,12 @@ func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, pub
 }
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
-// by this storage market actor
+// by this storage market actor.
 func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
 	error) {
 	var storage State
 	ret, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
-		// method must be called by a miner that was created by this storage market actor
+		// method must be called by a miner that was created by this storage market actor.
 		miner := ctx.Message().From
 
 		_, ok := storage.Miners[miner]
@@ -255,8 +254,8 @@ func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 	return bidID, 0, nil
 }
 
-// AddDeal creates a deal from the given ask and bid
-// It must always called by the owner of the miner in the ask
+// AddDeal creates a deal from the given ask and bid.
+// It must always called by the owner of the miner in the ask.
 func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*big.Int, uint8, error) {
 	ref, err := cid.Cast(refb)
 	if err != nil {
@@ -345,7 +344,7 @@ func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesA
 			deal := state.Filemap.Deals[d]
 			ask := state.Orderbook.Asks[deal.Ask]
 
-			// make sure that the miner actor who owns the asks calls this
+			// make sure that the miner actor who owns the asks calls this.
 			if ask.Owner != ctx.Message().From {
 				return nil, Errors[ErrNotDealOwner]
 			}
@@ -365,7 +364,7 @@ func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesA
 			totalSize = totalSize.Add(bid.Size)
 		}
 
-		// update the total data stored by the network
+		// update the total data stored by the network.
 		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(totalSize)
 
 		return totalSize, nil

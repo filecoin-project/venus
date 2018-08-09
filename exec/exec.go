@@ -45,13 +45,11 @@ func (e Exports) Has(method string) bool {
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Exports() Exports
+	InitializeState(storage Storage, initializerData interface{}) error
 }
 
 // ExportedFunc is the signature an exported method of an actor is expected to have.
 type ExportedFunc func(ctx VMContext) ([]byte, uint8, error)
-
-// InitializeStateFunc is the signature of a function that initializes an actor's state.
-type InitializeStateFunc func(storage Storage, initialState interface{}) error
 
 // FunctionSignature describes the signature of a single function.
 // TODO: convert signatures into non go types, but rather low level agreed up types
@@ -71,7 +69,7 @@ type VMContext interface {
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 
-	CreateNewActor(addr types.Address, code *cid.Cid, init InitializeStateFunc, initalState interface{}) error
+	CreateNewActor(addr types.Address, code *cid.Cid, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)

@@ -5,8 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -25,8 +23,8 @@ func (a *MockActor) Exports() exec.Exports {
 	return a.exports
 }
 
-func (a *MockActor) InitializeState(storage exec.Storage, initialState interface{}) (*cid.Cid, error) {
-	return nil, nil
+func (a *MockActor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+	return nil
 }
 
 func (a *MockActor) One() (uint8, error) {
