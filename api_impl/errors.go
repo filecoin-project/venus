@@ -1,6 +1,9 @@
 package api_impl
 
-import "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+import (
+	"fmt"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+)
 
 var (
 	// ErrHeaviestTipSetNotFound indicates that the node does not have a
@@ -10,4 +13,6 @@ var (
 	// "from" address and we couldn't default it because there were zero or
 	// more than one to choose from.
 	ErrCouldNotDefaultFromAddress = errors.New("no from address specified and no default address available")
+	// ErrCannotPingSelf indicates that you tried to ping yourself but cannot.
+	ErrCannotPingSelf = fmt.Errorf("cannot ping self")
 )
