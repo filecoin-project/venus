@@ -21,10 +21,8 @@ func TestStatePutGet(t *testing.T) {
 	tree := NewEmptyStateTree(cst)
 
 	act1 := types.NewActor(types.AccountActorCodeCid, nil)
-	act1.WriteStorage([]byte("hello"))
 	act1.IncNonce()
 	act2 := types.NewActor(types.AccountActorCodeCid, nil)
-	act2.WriteStorage([]byte("world"))
 	act2.IncNonce()
 	act2.IncNonce()
 

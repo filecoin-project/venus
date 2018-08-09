@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -11,10 +12,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.CborIpldStore) (*types.Block, error)
+type GenesisInitFunc func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error)
 
 var (
 	defaultAccounts map[types.Address]*types.AttoFIL
@@ -29,9 +31,10 @@ func init() {
 }
 
 // InitGenesis is the default function to create the genesis block.
-func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
+func InitGenesis(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
 	ctx := context.Background()
 	st := state.NewEmptyStateTree(cst)
+	storageMap := vm.NewStorageMap(ds)
 
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
@@ -44,7 +47,8 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 		}
 	}
 
-	stAct, err := storagemarket.NewActor()
+	stAct := types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL())
+	err := storagemarket.InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +56,8 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 		return nil, err
 	}
 
-	pbAct, err := paymentbroker.NewPaymentBrokerActor()
+	pbAct := types.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
+	err = paymentbroker.InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
 	pbAct.Balance = types.NewAttoFILFromFIL(0)
 	if err != nil {
 		return nil, err
@@ -62,6 +67,11 @@ func InitGenesis(cst *hamt.CborIpldStore) (*types.Block, error) {
 	}
 
 	c, err := st.Flush(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = storageMap.Flush()
 	if err != nil {
 		return nil, err
 	}

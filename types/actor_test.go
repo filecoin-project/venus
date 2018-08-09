@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"testing"
 
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestActorMarshal(t *testing.T) {
 	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(1), []byte{1, 2, 3})
+	actor := NewActor(AccountActorCodeCid, NewAttoFILFromFIL(1))
+	actor.Head = requireCid(t, "Actor Storage")
 	actor.IncNonce()
 
 	marshalled, err := actor.Marshal()
@@ -20,7 +24,7 @@ func TestActorMarshal(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(actor.Code, actorBack.Code)
-	assert.Equal(actor.ReadStorage(), actorBack.ReadStorage())
+	assert.Equal(actor.Head, actorBack.Head)
 	assert.Equal(actor.Nonce, actorBack.Nonce)
 
 	c1, err := actor.Cid()
@@ -34,7 +38,8 @@ func TestActorCid(t *testing.T) {
 	assert := assert.New(t)
 
 	actor1 := NewActor(AccountActorCodeCid, nil)
-	actor2 := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
+	actor2 := NewActor(AccountActorCodeCid, NewAttoFILFromFIL(5))
+	actor2.Head = requireCid(t, "Actor 2 State")
 	actor1.IncNonce()
 
 	c1, err := actor1.Cid()
@@ -45,38 +50,31 @@ func TestActorCid(t *testing.T) {
 	assert.NotEqual(c1.String(), c2.String())
 }
 
-func TestActorMemory(t *testing.T) {
-	assert := assert.New(t)
-	actor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
-
-	assert.Equal(actor.ReadStorage(), []byte{1, 2, 3})
-	// write at the beginning
-	actor.WriteStorage([]byte{5, 2})
-	assert.Equal(actor.ReadStorage(), []byte{5, 2})
-
-	// write overflow
-	actor.WriteStorage([]byte{1, 2, 3, 4})
-	assert.Equal(actor.ReadStorage(), []byte{1, 2, 3, 4})
-}
-
 func TestActorFormat(t *testing.T) {
 	assert := assert.New(t)
-	accountActor := NewActorWithMemory(AccountActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
+	accountActor := NewActor(AccountActorCodeCid, NewAttoFILFromFIL(5))
 
 	formatted := fmt.Sprintf("%v", accountActor)
 	assert.Contains(formatted, "AccountActor")
 	assert.Contains(formatted, "balance: 5")
 	assert.Contains(formatted, "nonce: 0")
 
-	minerActor := NewActorWithMemory(MinerActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
+	minerActor := NewActor(MinerActorCodeCid, NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", minerActor)
 	assert.Contains(formatted, "MinerActor")
 
-	storageMarketActor := NewActorWithMemory(StorageMarketActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
+	storageMarketActor := NewActor(StorageMarketActorCodeCid, NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", storageMarketActor)
 	assert.Contains(formatted, "StorageMarketActor")
 
-	paymentBrokerActor := NewActorWithMemory(PaymentBrokerActorCodeCid, NewAttoFILFromFIL(5), []byte{1, 2, 3})
+	paymentBrokerActor := NewActor(PaymentBrokerActorCodeCid, NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", paymentBrokerActor)
 	assert.Contains(formatted, "PaymentBrokerActor")
+}
+
+func requireCid(t *testing.T, data string) *cid.Cid {
+	prefix := cid.NewPrefixV1(cid.Raw, DefaultHashFunction)
+	cid, err := prefix.Sum([]byte(data))
+	require.NoError(t, err)
+	return cid
 }

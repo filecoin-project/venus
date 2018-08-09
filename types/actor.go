@@ -35,7 +35,6 @@ var (
 type Actor struct {
 	Code    *cid.Cid
 	Head    *cid.Cid
-	Memory  []byte
 	Nonce   Uint64
 	Balance *AttoFIL
 }
@@ -43,26 +42,6 @@ type Actor struct {
 // IncNonce increments the nonce of this actor by 1.
 func (a *Actor) IncNonce() {
 	a.Nonce = a.Nonce + 1
-}
-
-// ReadStorage returns a copy of the actor's storage.
-func (a *Actor) ReadStorage() []byte {
-	out := make([]byte, len(a.Memory))
-	copy(out, a.Memory)
-	return out
-}
-
-// WriteStorage sets the storage of this actor.
-// All existing storage is overwritten.
-func (a *Actor) WriteStorage(memory []byte) {
-	if len(a.Memory) < len(memory) {
-		// Grow memory as needed for now
-		a.Memory = make([]byte, len(memory))
-	} else if len(a.Memory) > len(memory) {
-		// Shrink memory down
-		a.Memory = a.Memory[0:len(memory)]
-	}
-	copy(a.Memory, memory)
 }
 
 // Cid returns the canonical CID for the actor.
@@ -80,17 +59,7 @@ func (a *Actor) Cid() (*cid.Cid, error) {
 func NewActor(code *cid.Cid, balance *AttoFIL) *Actor {
 	return &Actor{
 		Code:    code,
-		Memory:  []byte{},
-		Nonce:   0,
-		Balance: balance,
-	}
-}
-
-// NewActorWithMemory constructs a new actor with a predefined memory.
-func NewActorWithMemory(code *cid.Cid, balance *AttoFIL, memory []byte) *Actor {
-	return &Actor{
-		Code:    code,
-		Memory:  memory,
+		Head:    nil,
 		Nonce:   0,
 		Balance: balance,
 	}

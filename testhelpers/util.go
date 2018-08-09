@@ -8,10 +8,15 @@ import (
 	"os"
 	"path/filepath"
 
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
+	libp2ppeer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
+	"math/big"
+
+	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -179,4 +184,56 @@ func WriteWalletFile(file string, wf WalletFile) error {
 		return errors.Wrap(err, "faild to encode wallet")
 	}
 	return nil
+}
+
+// CreateMinerMessage creates a message to create a miner.
+func CreateMinerMessage(from types.Address, nonce uint64, pledge types.BytesAmount, pid libp2ppeer.ID, collateral *types.AttoFIL) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(&pledge, []byte{}, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewMessage(from, address.StorageMarketAddress, nonce, collateral, "createMiner", params), nil
+}
+
+// AddBidMessage creates a message to add a bid.
+func AddBidMessage(from types.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
+	funds := price.CalculatePrice(size)
+
+	params, err := abi.ToEncodedValues(price, size)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewMessage(from, address.StorageMarketAddress, nonce, funds, "addBid", params), nil
+}
+
+// AddAskMessage creates a message to add ask.
+func AddAskMessage(miner types.Address, from types.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(price, size)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewMessage(from, miner, nonce, types.NewZeroAttoFIL(), "addAsk", params), nil
+}
+
+// AddDealMessage a message to create a deal.
+func AddDealMessage(from types.Address, nonce uint64, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(askID, bidID, bidOwnerSig, refb)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewMessage(from, address.StorageMarketAddress, nonce, types.NewZeroAttoFIL(), "addDeal", params), nil
+}
+
+// CommitSectorMessage creates a message to commit a sector.
+func CommitSectorMessage(miner, from types.Address, nonce uint64, sectorID *big.Int, commR []byte, deals []uint64) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(sectorID, commR, deals)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewMessage(from, miner, nonce, types.NewZeroAttoFIL(), "commitSector", params), nil
 }

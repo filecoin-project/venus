@@ -14,6 +14,10 @@ import (
 
 	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+
+	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 var seed = types.GenerateKeyInfoSeed()
@@ -26,25 +30,28 @@ func TestGenerate(t *testing.T) {
 	//  - test nonce gap
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, datastore.Datastore, *cid.Cid) {
 	cst := hamt.NewCborStore()
 	pool := core.NewMessagePool()
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
-	return cst, pool, fakeActorCodeCid
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	return cst, pool, ds, fakeActorCodeCid
 }
 
-func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) {
+func sharedSetup(t *testing.T) (state.Tree, datastore.Datastore, *core.MessagePool, []types.Address) {
 	require := require.New(t)
-	cst, pool, fakeActorCodeCid := sharedSetupInitial()
+	cst, pool, ds, fakeActorCodeCid := sharedSetupInitial()
+	vms := vm.NewStorageMap(ds)
 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2, addr3, addr4 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3]
-	act1, act2, fakeNetAct := core.RequireNewFakeActor(require, fakeActorCodeCid), core.RequireNewFakeActor(require,
-		fakeActorCodeCid), core.RequireNewFakeActor(require, fakeActorCodeCid)
-	minerAct := core.RequireNewMinerActor(require, addr1, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	act1, act2, fakeNetAct := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid), core.RequireNewFakeActor(require,
+		vms, addr2, fakeActorCodeCid), core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
+	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr1, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
@@ -52,18 +59,19 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address) 
 		addr2: act2,
 		addr4: minerAct,
 	})
-	return st, pool, []types.Address{addr1, addr2, addr3, addr4}
+	return st, ds, pool, []types.Address{addr1, addr2, addr3, addr4}
 }
 
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	cst, _, fakeActorCodeCid := sharedSetupInitial()
+	cst, _, ds, fakeActorCodeCid := sharedSetupInitial()
+	vms := vm.NewStorageMap(ds)
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
-	act1 := core.RequireNewFakeActor(require, fakeActorCodeCid)
+	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
 	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
 		addr1: act1,
 	})
@@ -94,7 +102,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
-	res, err := core.ApplyMessages(ctx, messages, st, types.NewBlockHeight(0))
+	res, err := core.ApplyMessages(ctx, messages, st, vms, types.NewBlockHeight(0))
 
 	assert.Len(res.PermanentFailures, 2)
 	assert.Contains(res.PermanentFailures, smsg3)
@@ -115,10 +123,10 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs := sharedSetup(t)
+	st, ds, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
-		return st, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		return st, ds, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -159,10 +167,10 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs := sharedSetup(t)
+	st, ds, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
-		return st, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		return st, ds, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -222,10 +230,10 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs := sharedSetup(t)
+	st, ds, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
-		return st, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		return st, ds, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -270,10 +278,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs := sharedSetup(t)
+	st, ds, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
-		return st, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		return st, ds, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -305,15 +313,15 @@ func TestGenerateError(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs := sharedSetup(t)
+	st, ds, pool, addrs := sharedSetup(t)
 
-	explodingGetStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	explodingGetStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
 		stt := WrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
 			return nil, errors.New("boom no flush")
 		}
 
-		return stt, nil
+		return stt, ds, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()

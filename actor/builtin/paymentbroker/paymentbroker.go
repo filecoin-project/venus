@@ -47,7 +47,7 @@ var Errors = map[uint8]error{
 
 func init() {
 	cbor.RegisterCborType(PaymentChannel{})
-	cbor.RegisterCborType(Storage{})
+	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(PaymentVoucher{})
 }
 
@@ -83,14 +83,28 @@ type PaymentVoucher struct {
 // channel's creator.
 type Actor struct{}
 
-// Storage is the payment broker's storage
-type Storage struct {
+// State is the payment broker's state
+type State struct {
 	Channels allPaymentChannels
 }
 
-// NewStorage returns an empty StorageMap struct
-func (pb *Actor) NewStorage() interface{} {
-	return &Storage{}
+// InitializeState stores the actor's initial data structure.
+func InitializeState(storage exec.Storage, initialState interface{}) error {
+	pbState := State{
+		Channels: allPaymentChannels{},
+	}
+
+	stateBytes, err := cbor.DumpObject(pbState)
+	if err != nil {
+		return err
+	}
+
+	id, err := storage.Put(stateBytes)
+	if err != nil {
+		return err
+	}
+
+	return storage.Commit(id, nil)
 }
 
 // Exports returns the actor's exports
@@ -99,18 +113,7 @@ func (pb *Actor) Exports() exec.Exports {
 }
 
 var _ exec.ExecutableActor = (*Actor)(nil)
-
-// NewPaymentBrokerActor returns a new payment broker actor.
-func NewPaymentBrokerActor() (*types.Actor, error) {
-	initStorage := &Storage{
-		Channels: make(allPaymentChannels),
-	}
-	storageBytes, err := actor.MarshalStorage(initStorage)
-	if err != nil {
-		return nil, err
-	}
-	return types.NewActorWithMemory(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(0), storageBytes), nil
-}
+var _ exec.InitializeStateFunc = InitializeState
 
 var paymentBrokerExports = exec.Exports{
 	"close": &exec.FunctionSignature{
@@ -147,17 +150,17 @@ var paymentBrokerExports = exec.Exports{
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
 func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// require that from account be an account actor to ensure nonce is a valid id
 		if !ctx.IsFromAccountActor() {
 			return nil, Errors[ErrNonAccountActor]
 		}
 
-		byPayer, found := storage.Channels[ctx.Message().From.String()]
+		byPayer, found := state.Channels[ctx.Message().From.String()]
 		if !found {
 			byPayer = make(map[string]*PaymentChannel)
-			storage.Channels[ctx.Message().From.String()] = byPayer
+			state.Channels[ctx.Message().From.String()] = byPayer
 		}
 
 		channelID := types.NewChannelID(uint64(ctx.Message().Nonce))
@@ -197,12 +200,12 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
 func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
-	var storage Storage
-	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
 		// TODO: check the signature against the other voucher components.
 
-		channel, err := findChannel(&storage, payer, chid)
+		channel, err := findChannel(&state, payer, chid)
 		if err != nil {
 			return nil, err
 		}
@@ -220,12 +223,12 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
 func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
-	var storage Storage
-	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
 		// TODO: check the signature against the other voucher components.
 
-		channel, err := findChannel(&storage, payer, chid)
+		channel, err := findChannel(&state, payer, chid)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +239,7 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 		}
 
 		// return funds to payer
-		err = reclaim(ctx, &storage, payer, chid, channel)
+		err = reclaim(ctx, &state, payer, chid, channel)
 		return nil, err
 	})
 	if err != nil {
@@ -249,9 +252,9 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channels lifespan.
 func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
-	var storage Storage
-	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
-		channel, err := findChannel(&storage, ctx.Message().From, chid)
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		channel, err := findChannel(&state, ctx.Message().From, chid)
 		if err != nil {
 			return nil, err
 		}
@@ -280,9 +283,9 @@ func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.Block
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
 func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) {
-	var storage Storage
-	_, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
-		channel, err := findChannel(&storage, ctx.Message().From, chid)
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		channel, err := findChannel(&state, ctx.Message().From, chid)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +296,7 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 		}
 
 		// return funds to payer
-		err = reclaim(ctx, &storage, ctx.Message().From, chid, channel)
+		err = reclaim(ctx, &state, ctx.Message().From, chid, channel)
 		return nil, err
 	})
 	if err != nil {
@@ -306,9 +309,9 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 // Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
 // It errors if the channel doesn't exist or contains less than request amount.
 func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
-		channel, err := findChannel(&storage, ctx.Message().From, chid)
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		channel, err := findChannel(&state, ctx.Message().From, chid)
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +329,7 @@ func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.A
 			Amount:  *amount,
 		}
 
-		return cbor.DumpObject(voucher)
+		return actor.MarshalStorage(voucher)
 	})
 	if err != nil {
 		return nil, errors.CodeError(err), err
@@ -338,9 +341,9 @@ func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.A
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
 func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error) {
-	var storage Storage
-	ret, err := actor.WithStorage(ctx, &storage, func() (interface{}, error) {
-		byPayer, found := storage.Channels[payer.String()]
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		byPayer, found := state.Channels[payer.String()]
 		if !found {
 			byPayer = make(map[string]*PaymentChannel)
 		}
@@ -354,8 +357,8 @@ func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error)
 	return ret.([]byte), 0, nil
 }
 
-func findChannel(storage *Storage, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {
-	actorsChannels, found := storage.Channels[payer.String()]
+func findChannel(state *State, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {
+	actorsChannels, found := state.Channels[payer.String()]
 	if !found {
 		return nil, Errors[ErrUnknownChannel]
 	}
@@ -398,21 +401,21 @@ func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChanne
 	return nil
 }
 
-func reclaim(ctx *vm.Context, storage *Storage, payer types.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx *vm.Context, state *State, payer types.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
 	}
 
 	// clean up
-	actorsChannels, found := storage.Channels[payer.String()]
+	actorsChannels, found := state.Channels[payer.String()]
 	if !found {
 		return errors.NewRevertError("unexpected error closing channel")
 	}
 
 	delete(actorsChannels, chid.String())
 	if len(actorsChannels) == 0 {
-		delete(storage.Channels, payer.String())
+		delete(state.Channels, payer.String())
 	}
 
 	// send funds

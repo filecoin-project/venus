@@ -7,9 +7,8 @@ import (
 	"math/big"
 	"testing"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
-
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -47,8 +46,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	assert.Equal(types.NewAttoFILFromFIL(0), storageMkt.Balance)
 	assert.Equal(types.NewAttoFILFromFIL(100), minerActor.Balance)
 
-	var mstor miner.Storage
-	require.NoError(cbor.DecodeInto(minerActor.ReadStorage(), &mstor))
+	var mstor miner.State
+	builtin.RequireReadState(t, vms, outAddr, minerActor, &mstor)
 
 	assert.Equal(mstor.Collateral, types.NewAttoFILFromFIL(100))
 	assert.Equal(mstor.PledgeBytes, types.NewBytesAmount(10000))
@@ -201,8 +200,8 @@ func TestStorageMarketMakeDeal(t *testing.T) {
 
 	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
-	var sms Storage
-	assert.NoError(actor.UnmarshalStorage(sma.ReadStorage(), &sms))
+	var sms State
+	builtin.RequireReadState(t, vms, address.StorageMarketAddress, sma, &sms)
 	assert.Len(sms.Filemap.Deals, 1)
 	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
 }
@@ -231,7 +230,7 @@ func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, err
 }
 
 // TODO: deduplicate with code in miner/miner_test.go
-func createTestMiner(require *require.Assertions, st state.Tree, vms *vm.StorageMap, key []byte) types.Address {
+func createTestMiner(require *require.Assertions, st state.Tree, vms vm.StorageMap, key []byte) types.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, core.RequireRandomPeerID())
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)

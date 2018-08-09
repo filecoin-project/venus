@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -19,20 +21,20 @@ type Context struct {
 	to          *types.Actor
 	message     *types.Message
 	state       *state.CachedTree
-	storage     *StorageMap
+	storageMap  StorageMap
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store *StorageMap, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
 		message:     msg,
 		state:       st,
-		storage:     store,
+		storageMap:  store,
 		blockHeight: bh,
 		deps:        makeDeps(st),
 	}
@@ -42,7 +44,7 @@ var _ exec.VMContext = (*Context)(nil)
 
 // Storage returns an implementation of the storage module for this context.
 func (ctx *Context) Storage() exec.Storage {
-	return ctx.storage.NewStorage(ctx.message.To, ctx.to)
+	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
 }
 
 // Message retrieves the message associated with this context.
@@ -54,9 +56,13 @@ func (ctx *Context) Message() *types.Message {
 func (ctx *Context) ReadStorage() ([]byte, error) {
 	stage := ctx.Storage()
 
-	memory, _, err := stage.Get(stage.Head())
+	memory, ok, err := stage.Get(stage.Head())
 	if err != nil {
 		return nil, err
+	}
+
+	if !ok {
+		return nil, errors.NewRevertErrorf("Actor state not found at cid %s", stage.Head())
 	}
 
 	out := make([]byte, len(memory))
@@ -69,14 +75,14 @@ func (ctx *Context) ReadStorage() ([]byte, error) {
 func (ctx *Context) WriteStorage(memory []byte) error {
 	stage := ctx.Storage()
 
-	cid, ec := stage.Put(memory)
-	if ec != exec.Ok {
-		return errors.NewRevertErrorf("Could not stage memory chunk (Error Code: %d)", ec)
+	cid, err := stage.Put(memory)
+	if err != nil {
+		return errors.RevertErrorWrap(err, "Could not stage memory chunk")
 	}
 
-	ec = stage.Commit(cid, stage.Head())
-	if ec != exec.Ok {
-		return errors.NewRevertErrorf("Could not commit actor memory (Error Code: %d)", ec)
+	err = stage.Commit(cid, stage.Head())
+	if err != nil {
+		return errors.RevertErrorWrap(err, "Could not commit actor memory")
 	}
 
 	return nil
@@ -124,7 +130,7 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storage, ctx.blockHeight)
+	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storageMap, ctx.blockHeight)
 	out, ret, err := deps.Send(context.Background(), innerCtx)
 	if err != nil {
 		return nil, ret, err
@@ -160,8 +166,8 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 	return types.NewMainnetAddress(hash), nil
 }
 
-// TEMPCreateActor is a temporary method to create actors.
-func (ctx *Context) TEMPCreateActor(addr types.Address, act *types.Actor) error {
+// CreateNewActor is a temporary method to create actors.
+func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, init exec.InitializeStateFunc, initialState interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*types.Actor, error) {
 		return &types.Actor{}, nil
@@ -175,11 +181,18 @@ func (ctx *Context) TEMPCreateActor(addr types.Address, act *types.Actor) error 
 		return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
 	}
 
-	// upgrade actor and transfer balance.
-	newActor.Code = act.Code
-	newActor.Nonce = act.Nonce
-	newActor.Balance = act.Balance.Add(newActor.Balance)
-	newActor.WriteStorage(act.ReadStorage())
+	// make this the right 'type' of actor
+	newActor.Code = code
+
+	childStorage := ctx.storageMap.NewStorage(addr, newActor)
+	err = init(childStorage, initialState)
+	if err != nil {
+		if !errors.ShouldRevert(err) && !errors.IsFault(err) {
+			return errors.RevertErrorWrap(err, "Could not initialize actor state")
+		}
+		return err
+	}
+
 	return nil
 }
 

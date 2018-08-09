@@ -12,70 +12,64 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// StorageMap holds all staged memory for all actors.
-type StorageMap struct {
+// Content-addressed storage API.
+// The storage API has a few goals:
+// 1. Provide access to content-addressed persistent storage
+// 2. Stage this storage to permit rollback on message failure.
+// 3. Isolate staged changes across actors to reduce concurrency/message ordering issues.
+// 4. Associate storage with actors by managing actor.Head.
+
+// storageMap implements StorageMap as a map of Storage structs keyed by actor address.
+type storageMap struct {
 	datastore  datastore.Datastore
 	storageMap map[types.Address]Storage
 }
 
+// StorageMap manages Storages.
+type StorageMap interface {
+	NewStorage(addr types.Address, actor *types.Actor) Storage
+	Flush() error
+}
+
+var _ StorageMap = &storageMap{}
+
 // NewStorageMap returns a storage object for the given datastore.
-func NewStorageMap(ds datastore.Datastore) *StorageMap {
-	return &StorageMap{
+func NewStorageMap(ds datastore.Datastore) StorageMap {
+	return &storageMap{
 		datastore:  ds,
 		storageMap: map[types.Address]Storage{},
 	}
 }
 
 // NewStorage gets or creates a Storage for the given address
-func (s StorageMap) NewStorage(addr types.Address, actor *types.Actor) Storage {
-	stage, ok := s.storageMap[addr]
+// Storage updates the given actor's storage by updating its Head property.
+// The instance of actor passed into this method needs to be the instance ultimately
+// persisted.
+func (s *storageMap) NewStorage(addr types.Address, actor *types.Actor) Storage {
+	storage, ok := s.storageMap[addr]
 	if ok {
-		// Return a hybrid stage with the pre-existing chunk, but the given instance of the actor.
+		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.
 		// This ensures changes made to the actor appear in the state tree cache.
-		return Storage{
+		storage = Storage{
 			actor:     actor,
-			chunks:    stage.chunks,
+			chunks:    storage.chunks,
 			datastore: s.datastore,
 		}
+	} else {
+		storage = NewStorage(s.datastore, actor)
 	}
 
-	stage = Storage{
-		chunks:    map[string]ipld.Node{},
-		actor:     actor,
-		datastore: s.datastore,
-	}
-	s.storageMap[addr] = stage
+	s.storageMap[addr] = storage
 
-	// Temporary pending permanent storage
-	head, _ := stage.Put(actor.Memory) // ignore errors for now
-	actor.Head = head
-
-	// Temporary pending permanent storage
-	head, _ = stage.Put(actor.Memory) // ignore errors for now
-	actor.Head = head
-
-	// Temporary pending permanent storage
-	head, _ = stage.Put(actor.Memory) // ignore errors for now
-	actor.Head = head
-
-	return stage
+	return storage
 }
 
 // Flush saves all valid staged changes to the datastore
-func (s StorageMap) Flush() error {
+func (s *storageMap) Flush() error {
 	for _, storage := range s.storageMap {
-		liveChunks, err := storage.liveIds()
+		err := storage.Flush()
 		if err != nil {
 			return err
-		}
-
-		for idKey := range liveChunks {
-			chunk := storage.chunks[idKey]
-			key := datastore.NewKey(idKey)
-			err = s.datastore.Put(key, chunk.RawData())
-			if err != nil {
-				return errors.RevertErrorWrapf(err, "Errors storing data chunk")
-			}
 		}
 	}
 
@@ -89,19 +83,30 @@ type Storage struct {
 	datastore datastore.Datastore
 }
 
+var _ exec.Storage = (*Storage)(nil)
+
+// NewStorage creates a datastore backed storage object for the given actor
+func NewStorage(ds datastore.Datastore, act *types.Actor) Storage {
+	return Storage{
+		chunks:    map[string]ipld.Node{},
+		actor:     act,
+		datastore: ds,
+	}
+}
+
 // Put adds a node to temporary storage by id
-func (s Storage) Put(chunk []byte) (*cid.Cid, exec.ErrorCode) {
+func (s Storage) Put(chunk []byte) (*cid.Cid, error) {
 	n, err := cbor.Decode(chunk, types.DefaultHashFunction, -1)
 	if err != nil {
-		return nil, exec.ErrDecode
+		return nil, exec.Errors[exec.ErrDecode]
 	}
 
 	cid := n.Cid()
 	s.chunks[cid.KeyString()] = n
-	return cid, exec.Ok
+	return cid, nil
 }
 
-// Get retrieves a node from either temporary storage or its backing store.
+// Get retrieves a chunk from either temporary storage or its backing store.
 // The returned bool indicates whether or not the object was found. The error
 // indicates and error fetching from storage.
 func (s Storage) Get(cid *cid.Cid) ([]byte, bool, error) {
@@ -127,30 +132,25 @@ func (s Storage) Get(cid *cid.Cid) ([]byte, bool, error) {
 	return chunkBytes, true, nil
 }
 
-// Commit stores the head of the given actor.
-// The new cid must have been put in the stage.
-// The given oldCid must match the current cid.
-func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) exec.ErrorCode {
-	if !oldCid.Equals(s.actor.Head) {
-		return exec.ErrStaleHead
-	}
-
-	chunk, ok := s.chunks[newCid.KeyString()]
-	if !ok {
-		return exec.ErrDanglingPointer
+// Commit updates the head of the current actor to the given cid.
+// The new cid must be the content id of a chunk put in storage.
+// The given oldCid must match the cid of the current actor.
+func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) error {
+	// commit to initialize actor only permitted if Head and expected id are nil
+	if oldCid != nil && s.actor.Head != nil && !oldCid.Equals(s.actor.Head) {
+		return exec.Errors[exec.ErrStaleHead]
+	} else if oldCid != s.actor.Head { // covers case where only one cid is nil
+		return exec.Errors[exec.ErrStaleHead]
 	}
 
 	// validate completeness by traversing graph to find ids
 	if _, err := s.liveDescendantIds(newCid); err != nil {
-		return exec.ErrDanglingPointer
+		return exec.Errors[exec.ErrDanglingPointer]
 	}
 
 	s.actor.Head = newCid
 
-	// TODO: remove the actor memory property when we have persistent storage
-	s.actor.Memory = chunk.RawData()
-
-	return exec.Ok
+	return nil
 }
 
 // Head return the current head of the actor's memory
@@ -160,7 +160,7 @@ func (s Storage) Head() *cid.Cid {
 
 // Prune removes all chunks that are unlinked
 func (s *Storage) Prune() error {
-	liveIds, err := s.liveIds()
+	liveIds, err := s.liveDescendantIds(s.actor.Head)
 	if err != nil {
 		return err
 	}
@@ -179,10 +179,27 @@ func (s *Storage) Prune() error {
 	return nil
 }
 
-func (s Storage) liveIds() (map[string]*cid.Cid, error) {
-	return s.liveDescendantIds(s.actor.Head)
+// Flush write storage to underlying datastore
+func (s *Storage) Flush() error {
+	liveIds, err := s.liveDescendantIds(s.actor.Head)
+	if err != nil {
+		return err
+	}
+
+	for idKey := range liveIds {
+		chunk := s.chunks[idKey]
+		key := datastore.NewKey(idKey)
+		err = s.datastore.Put(key, chunk.RawData())
+		if err != nil {
+			return errors.RevertErrorWrapf(err, "Errors storing data chunk")
+		}
+	}
+	return nil
 }
 
+// liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.
+// That is the given id , any links in the chunk referenced by the given id, or any links
+// referenced from those links.
 func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 	chunk, ok := s.chunks[id.KeyString()]
 	if !ok {
@@ -196,7 +213,7 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 			return map[string]*cid.Cid{}, nil
 		}
 
-		return nil, errors.NewFaultErrorf("linked node, %s, missing from stage during flush", id)
+		return nil, errors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
 	ids := map[string]*cid.Cid{id.KeyString(): id}

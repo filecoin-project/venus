@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -23,11 +24,12 @@ func TestCachedStateGetCommit(t *testing.T) {
 
 	// create some actors
 	act1 := types.NewActor(types.AccountActorCodeCid, nil)
-	act1Storage := []byte("hello")
-	act1.WriteStorage(act1Storage)
+	act1Cid := requireCid(t, "hello")
+	act1.Head = act1Cid
 	act1.IncNonce()
 	act2 := types.NewActor(types.AccountActorCodeCid, nil)
-	act2.WriteStorage([]byte("world"))
+	act2Cid := requireCid(t, "world")
+	act2.Head = act2Cid
 
 	addrGetter := types.NewAddressForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
@@ -41,18 +43,18 @@ func TestCachedStateGetCommit(t *testing.T) {
 	require.NoError(err)
 
 	assert.Equal(uint64(1), uint64(cAct1.Nonce))
-	assert.Equal(act1Storage, cAct1.ReadStorage())
+	assert.Equal(act1Cid, cAct1.Head)
 
 	// altering act1 doesn't alter it in underlying cache
 	cAct1.IncNonce()
-	newStorage := []byte("goodbye")
-	cAct1.WriteStorage(newStorage)
+	cAct1Cid := requireCid(t, "goodbye")
+	cAct1.Head = cAct1Cid
 
 	uAct1, err := underlying.GetActor(ctx, addr1)
 	require.NoError(err)
 
 	assert.Equal(uint64(1), uint64(uAct1.Nonce))
-	assert.Equal(act1Storage, uAct1.ReadStorage())
+	assert.Equal(act1.Head, uAct1.Head)
 
 	// retrieving from the cache again returns the same instance
 	cAct1Again, err := tree.GetActor(ctx, addr1)
@@ -67,14 +69,14 @@ func TestCachedStateGetCommit(t *testing.T) {
 	require.NoError(err)
 
 	assert.Equal(uint64(2), uint64(uAct1Again.Nonce))
-	assert.Equal([]byte("goodbye"), uAct1Again.ReadStorage())
+	assert.Equal(cAct1Cid, uAct1Again.Head)
 
 	// commit doesn't affect untouched actors
 	uAct2, err := underlying.GetActor(ctx, addr2)
 	require.NoError(err)
 
 	assert.Equal(uint64(0), uint64(uAct2.Nonce))
-	assert.Equal([]byte("world"), uAct2.ReadStorage())
+	assert.Equal(act2Cid, uAct2.Head)
 }
 
 func TestCachedStateGetOrCreate(t *testing.T) {
@@ -105,4 +107,11 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	// GetOrCreate does not add actor to underlying tree
 	_, err = underlying.GetActor(ctx, addr)
 	require.Equal("actor not found", err.Error())
+}
+
+func requireCid(t *testing.T, data string) *cid.Cid {
+	prefix := cid.NewPrefixV1(cid.Raw, types.DefaultHashFunction)
+	id, err := prefix.Sum([]byte(data))
+	require.NoError(t, err)
+	return id
 }

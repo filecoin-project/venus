@@ -20,6 +20,8 @@ import (
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 	libp2ppeer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -31,6 +33,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -209,7 +212,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
 	// to simulate the work of generating proofs.
-	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
 		return chainMgr.State(ctx, ts.ToSlice())
 	}, chainMgr.Weight, core.ApplyMessages, chainMgr.PwrTableView)
 	miningWorker := mining.NewWorker(blockGenerator)
@@ -525,7 +528,7 @@ func (node *Node) StopMining() {
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
 func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
-	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
+	st, _, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
 	}
@@ -557,7 +560,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // the actor's memory and also scans the message pool for any pending
 // messages.
 func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
-	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
+	st, _, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return 0, err
 	}
@@ -597,7 +600,7 @@ func (node *Node) NewAddress() (types.Address, error) {
 func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
 	ctx := context.Background()
 	bts := node.ChainMgr.GetHeaviestTipSet()
-	st, err := node.ChainMgr.State(ctx, bts.ToSlice())
+	st, ds, err := node.ChainMgr.State(ctx, bts.ToSlice())
 	if err != nil {
 		return nil, 1, err
 	}
@@ -615,7 +618,8 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 		fromAddr = *optFrom
 	}
 
-	return core.CallQueryMethod(ctx, st, to, method, args, fromAddr, types.NewBlockHeight(h))
+	vms := vm.NewStorageMap(ds)
+	return core.CallQueryMethod(ctx, st, vms, to, method, args, fromAddr, types.NewBlockHeight(h))
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.

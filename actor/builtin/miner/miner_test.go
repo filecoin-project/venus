@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -20,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestMiner(assert *assert.Assertions, st state.Tree, vms *vm.StorageMap, minerOwnerAddr types.Address, key []byte, pid peer.ID) types.Address {
+func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr types.Address, key []byte, pid peer.ID) types.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, pid)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
@@ -53,16 +54,16 @@ func TestAddAsk(t *testing.T) {
 	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
 
-	var strgMktStorage storagemarket.Storage
-	assert.NoError(actor.UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage))
+	var strgMktStorage storagemarket.State
+	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage)
 	assert.Len(strgMktStorage.Orderbook.Asks, 1)
 	assert.Equal(minerAddr, strgMktStorage.Orderbook.Asks[0].Owner)
 
 	miner, err := st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
 
-	var minerStorage Storage
-	assert.NoError(actor.UnmarshalStorage(miner.ReadStorage(), &minerStorage))
+	var minerStorage State
+	builtin.RequireReadState(t, vms, minerAddr, miner, &minerStorage)
 	assert.Equal(types.NewBytesAmount(150), minerStorage.LockedStorage)
 
 	// make another ask!
@@ -76,16 +77,16 @@ func TestAddAsk(t *testing.T) {
 	storageMkt, err = st.GetActor(ctx, address.StorageMarketAddress)
 	assert.NoError(err)
 
-	var strgMktStorage2 storagemarket.Storage
-	assert.NoError(actor.UnmarshalStorage(storageMkt.ReadStorage(), &strgMktStorage2))
+	var strgMktStorage2 storagemarket.State
+	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage2)
 	assert.Len(strgMktStorage2.Orderbook.Asks, 2)
 	assert.Equal(minerAddr, strgMktStorage2.Orderbook.Asks[1].Owner)
 
 	miner, err = st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
 
-	var minerStorage2 Storage
-	assert.NoError(actor.UnmarshalStorage(miner.ReadStorage(), &minerStorage2))
+	var minerStorage2 State
+	builtin.RequireReadState(t, vms, minerAddr, miner, &minerStorage2)
 	assert.Equal(types.NewBytesAmount(350), minerStorage2.LockedStorage)
 
 	// now try to create an ask larger than our pledge
@@ -108,10 +109,24 @@ func TestGetKey(t *testing.T) {
 	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, signature, core.RequireRandomPeerID())
 
 	// retrieve key
-	result, exitCode, err := core.CallQueryMethod(ctx, st, minerAddr, "getKey", []byte{}, address.TestAddress, types.NewBlockHeight(0))
+	result, exitCode, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getKey", []byte{}, address.TestAddress, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(uint8(0), exitCode)
 	assert.Equal(result[0], signature)
+}
+
+func TestCBOREncodeState(t *testing.T) {
+	assert := assert.New(t)
+	state := NewState(address.TestAddress, []byte{}, types.NewBytesAmount(1), core.RequireRandomPeerID(), types.NewZeroAttoFIL())
+
+	sector := new(Sector)
+	sector.CommR = []byte{}
+	sector.Deals = []uint64{}
+	state.Sectors = append(state.Sectors, sector)
+
+	_, err := actor.MarshalStorage(state)
+	assert.NoError(err)
+
 }
 
 func TestPeerIdGetterAndSetter(t *testing.T) {
@@ -127,7 +142,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		// retrieve peer ID
-		retPidA := getPeerIdSuccess(ctx, t, st, address.TestAddress, minerAddr)
+		retPidA := getPeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr)
 		require.Equal(peer.IDB58Encode(origPid), peer.IDB58Encode(retPidA))
 
 		// update peer ID
@@ -135,7 +150,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		updatePeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
-		retPidB := getPeerIdSuccess(ctx, t, st, address.TestAddress, minerAddr)
+		retPidB := getPeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr)
 		require.Equal(peer.IDB58Encode(newPid), peer.IDB58Encode(retPidB))
 	})
 
@@ -165,7 +180,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 	})
 }
 
-func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms *vm.StorageMap, fromAddr types.Address, minerAddr types.Address, newPid peer.ID) {
+func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr types.Address, minerAddr types.Address, newPid peer.ID) {
 	require := require.New(t)
 
 	updatePeerIdMsg := types.NewMessage(
@@ -182,8 +197,8 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms *
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)
 }
 
-func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, fromAddr types.Address, minerAddr types.Address) peer.ID {
-	res, code, err := core.CallQueryMethod(ctx, st, minerAddr, "getPeerID", []byte{}, fromAddr, nil)
+func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr types.Address, minerAddr types.Address) peer.ID {
+	res, code, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
 

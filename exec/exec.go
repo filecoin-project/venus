@@ -5,24 +5,30 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// ErrorCode is an enumerated set of errors that VMContext methods can return.
-type ErrorCode uint8
+// Error represents a storage related error
+type Error string
+
+func (e Error) Error() string { return string(e) }
 
 const (
-	// Ok indicates that no error occurred
-	Ok = ErrorCode(0)
-
 	// ErrDecode indicates that a chunk an actor tried to write could not be decoded
-	ErrDecode = ErrorCode(33)
-
+	ErrDecode = 33
 	// ErrDanglingPointer indicates that an actor attempted to commit a pointer to a non-existent chunk
-	ErrDanglingPointer = ErrorCode(34)
-
+	ErrDanglingPointer = 34
 	// ErrStaleHead indicates that an actor attempted to commit over a stale chunk
-	ErrStaleHead = ErrorCode(35)
+	ErrStaleHead = 35
 )
+
+// Errors map error codes to revert errors this actor may return
+var Errors = map[uint8]error{
+	ErrDecode:          errors.NewCodedRevertError(ErrDecode, "State could not be decoded"),
+	ErrDanglingPointer: errors.NewCodedRevertError(ErrDanglingPointer, "State contains pointer to non-existent chunk"),
+	ErrStaleHead:       errors.NewCodedRevertError(ErrStaleHead, "Expected head is stale"),
+}
 
 // Exports describe the public methods of an actor.
 type Exports map[string]*FunctionSignature
@@ -39,11 +45,13 @@ func (e Exports) Has(method string) bool {
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
 	Exports() Exports
-	NewStorage() interface{}
 }
 
 // ExportedFunc is the signature an exported method of an actor is expected to have.
 type ExportedFunc func(ctx VMContext) ([]byte, uint8, error)
+
+// InitializeStateFunc is the signature of a function that initializes an actor's state.
+type InitializeStateFunc func(storage Storage, initialState interface{}) error
 
 // FunctionSignature describes the signature of a single function.
 // TODO: convert signatures into non go types, but rather low level agreed up types
@@ -63,8 +71,7 @@ type VMContext interface {
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 
-	// TODO: replace with proper init actor
-	TEMPCreateActor(addr types.Address, act *types.Actor) error
+	CreateNewActor(addr types.Address, code *cid.Cid, init InitializeStateFunc, initalState interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
@@ -74,8 +81,8 @@ type VMContext interface {
 // Storage defines the storage module exposed to actors.
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
-	Put([]byte) (*cid.Cid, ErrorCode)
+	Put([]byte) (*cid.Cid, error)
 	Get(*cid.Cid) ([]byte, bool, error)
-	Commit(*cid.Cid, *cid.Cid) ErrorCode
+	Commit(*cid.Cid, *cid.Cid) error
 	Head() *cid.Cid
 }

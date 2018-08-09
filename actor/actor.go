@@ -174,19 +174,19 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 	return cbor.DecodeInto(raw, to)
 }
 
-// WithStorage is a helper method that makes dealing with storage serialization
+// WithState is a helper method that makes dealing with storage serialization
 // easier for implementors.
 // It is designed to be used like:
 //
 // var st MyStorage
-// ret, err := WithStorage(ctx, &st, func() (interface{}, error) {
+// ret, err := WithState(ctx, &st, func() (interface{}, error) {
 //   fmt.Println("hey look, my storage is loaded: ", st)
 //   return st.Thing, nil
 // })
 //
 // Note that if 'f' returns an error, modifications to the storage are not
 // saved.
-func WithStorage(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
+func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
 	chunk, err := ctx.ReadStorage()
 	if err != nil {
 		return nil, err
@@ -211,15 +211,4 @@ func WithStorage(ctx exec.VMContext, st interface{}, f func() (interface{}, erro
 	}
 
 	return ret, nil
-}
-
-// PresentStorage returns a representation of an actor's storage in a domain-specific form suitable for conversion to
-// JSON.
-func PresentStorage(act exec.ExecutableActor, mem []byte) interface{} {
-	s := act.NewStorage()
-	err := UnmarshalStorage(mem, s)
-	if err != nil {
-		return nil
-	}
-	return s
 }
