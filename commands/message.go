@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -40,8 +39,6 @@ var msgSendCmd = &cmds.Command{
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
 		target, err := types.NewAddressFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
@@ -53,30 +50,18 @@ var msgSendCmd = &cmds.Command{
 			val = 0
 		}
 
-		fromAddr, err := fromAddress(req.Options, n)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		o := req.Options["from"]
+		var fromAddr types.Address
+		if o != nil {
+			var err error
+			fromAddr, err = types.NewAddressFromString(o.(string))
+			if err != nil {
+				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
+				return
+			}
 		}
 
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), "", nil)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		c, err := smsg.Cid()
+		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)))
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -111,9 +96,6 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fmt.Println("waiting for", req.Arguments[0])
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
 			err = errors.Wrap(err, "invalid message cid")
@@ -121,24 +103,22 @@ var msgWaitCmd = &cmds.Command{
 			return
 		}
 
-		var found bool
-		err = n.ChainMgr.WaitForMessage(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage,
-			receipt *types.MessageReceipt) error {
-			signature, err := n.GetSignature(req.Context, msg.To, msg.Method)
-			if err != nil && err != node.ErrNoMethod {
-				return errors.Wrap(err, "unable to determine return type")
-			}
+		fmt.Printf("waiting for: %s\n", req.Arguments[0])
+		api := GetAPI(env)
 
+		var found bool
+		err = api.Message().Wait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error {
 			res := waitResult{
 				Message:   msg,
 				Receipt:   receipt,
 				Signature: signature,
 			}
-			re.Emit(res) // nolint: errcheck
+			re.Emit(&res) // nolint: errcheck
 			found = true
 
 			return nil
 		})
+
 		if err != nil && !found {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
