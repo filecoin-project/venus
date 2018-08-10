@@ -345,6 +345,8 @@ func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (
 		return Uninit, ErrUninit
 	}
 
+	// TODO: this is really confusing. This function needs a better name than 'state'
+	// and it should be much more clear about *why* its doing these things
 	switch _, _, err := cm.state(ctx, []*types.Block{blk}); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
