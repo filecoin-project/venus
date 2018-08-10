@@ -13,7 +13,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/api_impl"
+	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -97,7 +97,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 }
 
 func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, req *cmds.Request) error {
-	api := api_impl.New(node)
+	api := impl.New(node)
 
 	if err := api.Daemon().Start(ctx); err != nil {
 		return err
