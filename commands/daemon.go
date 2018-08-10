@@ -107,8 +107,6 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		// TODO: should this be the passed in context?
 		ctx: context.Background(),
 		api: api,
-		// TODO: remove once nothing depends on this anymore
-		node: node,
 	}
 
 	cfg := cmdhttp.NewServerConfig()

@@ -30,7 +30,7 @@ func TestEnv(t *testing.T) {
 
 	api := api_impl.New(nd)
 
-	env := Env{ctx: ctx, api: api, node: nd}
+	env := Env{ctx: ctx, api: api}
 
 	assert.Equal(env.API(), api)
 	assert.Equal(env.Context(), ctx)

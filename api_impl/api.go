@@ -33,7 +33,6 @@ type API struct {
 	show      *NodeShow
 	swarm     *NodeSwarm
 	version   *NodeVersion
-	wallet    *NodeWallet
 }
 
 // Assert that API fullfills the api.API interface.
@@ -67,7 +66,6 @@ func New(node *node.Node) api.API {
 	api.show = NewNodeShow(api)
 	api.swarm = NewNodeSwarm(api)
 	api.version = NewNodeVersion(api)
-	api.wallet = NewNodeWallet(api)
 
 	return api
 }
@@ -154,8 +152,4 @@ func (api *API) Swarm() api.Swarm {
 
 func (api *API) Version() api.Version {
 	return api.version
-}
-
-func (api *API) Wallet() api.Wallet {
-	return api.wallet
 }

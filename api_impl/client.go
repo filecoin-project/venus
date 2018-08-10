@@ -30,12 +30,8 @@ func NewNodeClient(api *API) *NodeClient {
 func (api *NodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	nd := api.api.node
 
-	if fromAddr == (types.Address{}) {
-		ret, err := nd.DefaultSenderAddress()
-		if (err != nil && err == node.ErrNoDefaultMessageFromAddress) || ret == (types.Address{}) {
-			return nil, ErrCouldNotDefaultFromAddress
-		}
-		fromAddr = ret
+	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
+		return nil, err
 	}
 
 	funds := price.CalculatePrice(size)

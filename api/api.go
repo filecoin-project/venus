@@ -24,5 +24,4 @@ type API interface {
 	Show() Show
 	Swarm() Swarm
 	Version() Version
-	Wallet() Wallet
 }
