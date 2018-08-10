@@ -4,18 +4,11 @@ import (
 	"fmt"
 	"io"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-	"gx/ipfs/QmexBtiTTEwwn42Yi6ouKt6VqzpA6wjJgiW1oh9VfaRrup/go-multibase"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -49,9 +42,7 @@ message to be mined to get the channelID.`,
 		cmdkit.StringOption("from", "address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -75,36 +66,13 @@ message to be mined to get the channelID.`,
 			return
 		}
 
-		params, err := abi.ToEncodedValues(target, eol)
+		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, target, eol, amount)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, amount, "createChannel", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(smsgCid) // nolint: errcheck
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -124,46 +92,20 @@ var lsCmd = &cmds.Command{
 		cmdkit.StringOption("payer", "address for which to retrieve channels (defaults to from if omitted)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		var payer types.Address
 		payerOption := req.Options["payer"]
-		if payerOption != nil {
-			payer, err = types.NewAddressFromString(payerOption.(string))
-			if err != nil {
-				err = errors.Wrap(err, "invalid payer address")
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-		} else {
-			payer = fromAddr
-		}
-
-		args, err := abi.ToEncodedValues(payer)
+		payerAddr, err := optionalAddr(payerOption)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		retValue, retCode, err := n.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, &fromAddr)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if retCode != 0 {
-			re.SetError("Non-zero retrurn code executing ls", cmdkit.ErrNormal)
-			return
-		}
-
-		var channels map[string]*paymentbroker.PaymentChannel
-		err = cbor.DecodeInto(retValue[0], &channels)
+		channels, err := GetAPI(env).Paych().Ls(req.Context, fromAddr, payerAddr)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -203,9 +145,7 @@ var voucherCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address for which to retrieve channels"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -223,46 +163,13 @@ var voucherCmd = &cmds.Command{
 			return
 		}
 
-		args, err := abi.ToEncodedValues(channel, amount)
+		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		retValue, retCode, err := n.CallQueryMethod(address.PaymentBrokerAddress, "voucher", args, &fromAddr)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if retCode != 0 {
-			re.SetError("Non-zero return code executing voucher", cmdkit.ErrNormal)
-			return
-		}
-
-		var voucher paymentbroker.PaymentVoucher
-		err = cbor.DecodeInto(retValue[0], &voucher)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		// TODO: really sign this thing
-		voucher.Signature = fromAddr.Bytes()
-
-		cborVoucher, err := cbor.DumpObject(voucher)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		encoded, err := multibase.Encode(multibase.Base58BTC, cborVoucher)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(encoded) // nolint: errcheck
+		re.Emit(voucher) // nolint: errcheck
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, voucher string) error {
@@ -283,58 +190,19 @@ var redeemCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address of the channel target"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		var voucher paymentbroker.PaymentVoucher
-		err = cbor.DecodeInto(cborVoucher, &voucher)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		params, err := abi.ToEncodedValues(voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "update", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(smsgCid) // nolint: errcheck
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -355,9 +223,7 @@ var reclaimCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address of the channel creator"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -369,37 +235,13 @@ var reclaimCmd = &cmds.Command{
 			return
 		}
 
-		params, err := abi.ToEncodedValues(channel)
+		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, channel)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "reclaim", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(smsgCid) // nolint: errcheck
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -421,58 +263,19 @@ var closeCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address of the channel target"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		var voucher paymentbroker.PaymentVoucher
-		err = cbor.DecodeInto(cborVoucher, &voucher)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		params, err := abi.ToEncodedValues(voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "close", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(smsgCid) // nolint: errcheck
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -495,9 +298,7 @@ var extendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address of the channel creator"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-
-		fromAddr, err := fromAddress(req.Options, n)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -521,37 +322,13 @@ var extendCmd = &cmds.Command{
 			return
 		}
 
-		params, err := abi.ToEncodedValues(channel, eol)
+		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, channel, eol, amount)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		// TODO: Sign this message
-		msg, err := node.NewMessageWithNextNonce(req.Context, n, fromAddr, address.PaymentBrokerAddress, amount, "extend", params)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsg, err := types.NewSignedMessage(*msg, n.Wallet)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := n.AddNewMessage(req.Context, smsg); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		smsgCid, err := smsg.Cid()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(smsgCid) // nolint: errcheck
+		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{

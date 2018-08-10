@@ -40,7 +40,7 @@ message to be mined as this is required to return the address of the new miner.`
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		var err error
 
-		fromAddr, err := optionalFromAddr(req.Options)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -103,7 +103,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return
 		}
 
-		fromAddr, err := optionalFromAddr(req.Options)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -144,7 +144,7 @@ var minerAddAskCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send the ask from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fromAddr, err := optionalFromAddr(req.Options)
+		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
