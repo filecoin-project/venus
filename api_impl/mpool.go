@@ -8,10 +8,10 @@ import (
 )
 
 type NodeMpool struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeMpool(api *API) *NodeMpool {
+func NewNodeMpool(api *NodeAPI) *NodeMpool {
 	return &NodeMpool{api: api}
 }
 

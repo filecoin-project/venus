@@ -9,10 +9,10 @@ import (
 )
 
 type NodeBlock struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeBlock(api *API) *NodeBlock {
+func NewNodeBlock(api *NodeAPI) *NodeBlock {
 	return &NodeBlock{api: api}
 }
 

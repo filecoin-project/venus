@@ -6,10 +6,10 @@ import (
 )
 
 type NodeVersion struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeVersion(api *API) *NodeVersion {
+func NewNodeVersion(api *NodeAPI) *NodeVersion {
 	return &NodeVersion{api: api}
 }
 

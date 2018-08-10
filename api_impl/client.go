@@ -20,10 +20,10 @@ import (
 )
 
 type NodeClient struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeClient(api *API) *NodeClient {
+func NewNodeClient(api *NodeAPI) *NodeClient {
 	return &NodeClient{api: api}
 }
 

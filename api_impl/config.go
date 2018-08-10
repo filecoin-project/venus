@@ -3,11 +3,11 @@ package api_impl
 // NodeConfig is an implementation of api.Config interface for node.
 // It provides api methods to interact with the configuration of a node.
 type NodeConfig struct {
-	api *API
+	api *NodeAPI
 }
 
 // NewNodeConfig creates an instance of the NodeConfig struct.
-func NewNodeConfig(api *API) *NodeConfig {
+func NewNodeConfig(api *NodeAPI) *NodeConfig {
 	return &NodeConfig{api: api}
 }
 

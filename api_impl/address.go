@@ -17,12 +17,12 @@ import (
 )
 
 type NodeAddress struct {
-	api *API
+	api *NodeAPI
 
 	addrs *NodeAddrs
 }
 
-func NewNodeAddress(api *API) *NodeAddress {
+func NewNodeAddress(api *NodeAPI) *NodeAddress {
 	return &NodeAddress{
 		api:   api,
 		addrs: NewNodeAddrs(api),
@@ -59,10 +59,10 @@ func (api *NodeAddress) Balance(ctx context.Context, addr types.Address) (*types
 }
 
 type NodeAddrs struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeAddrs(api *API) *NodeAddrs {
+func NewNodeAddrs(api *NodeAPI) *NodeAddrs {
 	return &NodeAddrs{api: api}
 }
 

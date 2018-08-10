@@ -3,10 +3,10 @@ package api_impl
 import "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 
 type NodeOrderbook struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeOrderbook(api *API) *NodeOrderbook {
+func NewNodeOrderbook(api *NodeAPI) *NodeOrderbook {
 	return &NodeOrderbook{api: api}
 }
 

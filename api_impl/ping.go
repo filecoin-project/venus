@@ -11,10 +11,10 @@ import (
 )
 
 type NodePing struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodePing(api *API) *NodePing {
+func NewNodePing(api *NodeAPI) *NodePing {
 	return &NodePing{api: api}
 }
 

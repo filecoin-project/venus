@@ -9,10 +9,10 @@ import (
 )
 
 type NodeDag struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeDag(api *API) *NodeDag {
+func NewNodeDag(api *NodeAPI) *NodeDag {
 	return &NodeDag{api: api}
 }
 

@@ -7,8 +7,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
-// API is an actual implementation of the filecoin core api interface.
-type API struct {
+// NodeAPI is an actual implementation of the filecoin core api interface.
+type NodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
@@ -35,12 +35,12 @@ type API struct {
 	version   *NodeVersion
 }
 
-// Assert that API fullfills the api.API interface.
-var _ api.API = (*API)(nil)
+// Assert that NodeAPI fullfills the api.API interface.
+var _ api.API = (*NodeAPI)(nil)
 
 // New constructs a new instance of the API.
 func New(node *node.Node) api.API {
-	api := &API{
+	api := &NodeAPI{
 		node:   node,
 		logger: logging.Logger("api"),
 	}
@@ -70,86 +70,86 @@ func New(node *node.Node) api.API {
 	return api
 }
 
-func (api *API) Actor() api.Actor {
+func (api *NodeAPI) Actor() api.Actor {
 	return api.actor
 }
 
-func (api *API) Address() api.Address {
+func (api *NodeAPI) Address() api.Address {
 	return api.address
 }
 
-func (api *API) Block() api.Block {
+func (api *NodeAPI) Block() api.Block {
 	return api.block
 }
 
-func (api *API) Bootstrap() api.Bootstrap {
+func (api *NodeAPI) Bootstrap() api.Bootstrap {
 	return api.bootstrap
 }
 
-func (api *API) Chain() api.Chain {
+func (api *NodeAPI) Chain() api.Chain {
 	return api.chain
 }
 
-func (api *API) Config() api.Config {
+func (api *NodeAPI) Config() api.Config {
 	return api.config
 }
 
-func (api *API) Client() api.Client {
+func (api *NodeAPI) Client() api.Client {
 	return api.client
 }
 
-func (api *API) Daemon() api.Daemon {
+func (api *NodeAPI) Daemon() api.Daemon {
 	return api.daemon
 }
 
-func (api *API) Dag() api.Dag {
+func (api *NodeAPI) Dag() api.Dag {
 	return api.dag
 }
 
-func (api *API) Id() api.Id {
+func (api *NodeAPI) Id() api.Id {
 	return api.id
 }
 
-func (api *API) Log() api.Log {
+func (api *NodeAPI) Log() api.Log {
 	return api.log
 }
 
-func (api *API) Message() api.Message {
+func (api *NodeAPI) Message() api.Message {
 	return api.message
 }
 
-func (api *API) Miner() api.Miner {
+func (api *NodeAPI) Miner() api.Miner {
 	return api.miner
 }
 
-func (api *API) Mining() api.Mining {
+func (api *NodeAPI) Mining() api.Mining {
 	return api.mining
 }
 
-func (api *API) Mpool() api.Mpool {
+func (api *NodeAPI) Mpool() api.Mpool {
 	return api.mpool
 }
 
-func (api *API) Orderbook() api.Orderbook {
+func (api *NodeAPI) Orderbook() api.Orderbook {
 	return api.orderbook
 }
 
-func (api *API) Paych() api.Paych {
+func (api *NodeAPI) Paych() api.Paych {
 	return api.paych
 }
 
-func (api *API) Ping() api.Ping {
+func (api *NodeAPI) Ping() api.Ping {
 	return api.ping
 }
 
-func (api *API) Show() api.Show {
+func (api *NodeAPI) Show() api.Show {
 	return api.show
 }
 
-func (api *API) Swarm() api.Swarm {
+func (api *NodeAPI) Swarm() api.Swarm {
 	return api.swarm
 }
 
-func (api *API) Version() api.Version {
+func (api *NodeAPI) Version() api.Version {
 	return api.version
 }

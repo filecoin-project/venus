@@ -7,10 +7,10 @@ import (
 )
 
 type NodeChain struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeChain(api *API) *NodeChain {
+func NewNodeChain(api *NodeAPI) *NodeChain {
 	return &NodeChain{api: api}
 }
 

@@ -17,10 +17,10 @@ import (
 )
 
 type NodeActor struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeActor(api *API) *NodeActor {
+func NewNodeActor(api *NodeAPI) *NodeActor {
 	return &NodeActor{api: api}
 }
 

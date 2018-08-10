@@ -16,10 +16,10 @@ import (
 )
 
 type NodePaych struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodePaych(api *API) *NodePaych {
+func NewNodePaych(api *NodeAPI) *NodePaych {
 	return &NodePaych{api: api}
 }
 

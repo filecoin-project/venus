@@ -5,10 +5,10 @@ import (
 )
 
 type NodeBootstrap struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeBootstrap(api *API) *NodeBootstrap {
+func NewNodeBootstrap(api *NodeAPI) *NodeBootstrap {
 	return &NodeBootstrap{api: api}
 }
 

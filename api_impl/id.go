@@ -7,10 +7,10 @@ import (
 )
 
 type NodeId struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeId(api *API) *NodeId {
+func NewNodeId(api *NodeAPI) *NodeId {
 	return &NodeId{api: api}
 }
 

@@ -12,10 +12,10 @@ import (
 )
 
 type NodeMessage struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeMessage(api *API) *NodeMessage {
+func NewNodeMessage(api *NodeAPI) *NodeMessage {
 	return &NodeMessage{api: api}
 }
 

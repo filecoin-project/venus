@@ -12,10 +12,10 @@ import (
 )
 
 type NodeMiner struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeMiner(api *API) *NodeMiner {
+func NewNodeMiner(api *NodeAPI) *NodeMiner {
 	return &NodeMiner{api: api}
 }
 

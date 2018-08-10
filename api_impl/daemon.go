@@ -24,11 +24,11 @@ import (
 
 // NodeDaemon is an implementation of the api.Daemon interface for node.
 type NodeDaemon struct {
-	api *API
+	api *NodeAPI
 }
 
 // NewNodeDaemon creates an instance of the NodeDaemon struct.
-func NewNodeDaemon(api *API) *NodeDaemon {
+func NewNodeDaemon(api *NodeAPI) *NodeDaemon {
 	return &NodeDaemon{api: api}
 }
 

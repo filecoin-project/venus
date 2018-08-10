@@ -8,10 +8,10 @@ import (
 )
 
 type NodeLog struct {
-	api *API
+	api *NodeAPI
 }
 
-func NewNodeLog(api *API) *NodeLog {
+func NewNodeLog(api *NodeAPI) *NodeLog {
 	return &NodeLog{api: api}
 }
 

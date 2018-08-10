@@ -13,13 +13,13 @@ import (
 )
 
 type NodeSwarm struct {
-	api *API
+	api *NodeAPI
 }
 
 // COPIED FROM go-ipfs core/commands/swarm.go
 // TODO a lot of this functionality should migrate to the filnet package.
 
-func NewNodeSwarm(api *API) *NodeSwarm {
+func NewNodeSwarm(api *NodeAPI) *NodeSwarm {
 	return &NodeSwarm{api: api}
 }
 
