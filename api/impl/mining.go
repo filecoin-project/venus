@@ -11,15 +11,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeMining struct {
-	api *NodeAPI
+type nodeMining struct {
+	api *nodeAPI
 }
 
-func NewNodeMining(api *NodeAPI) *NodeMining {
-	return &NodeMining{api: api}
+func newNodeMining(api *nodeAPI) *nodeMining {
+	return &nodeMining{api: api}
 }
 
-func (api *NodeMining) Once(ctx context.Context) (*types.Block, error) {
+func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	nd := api.api.node
 	ts := nd.ChainMgr.GetHeaviestTipSet()
 
@@ -47,11 +47,11 @@ func (api *NodeMining) Once(ctx context.Context) (*types.Block, error) {
 	return res.NewBlock, nil
 }
 
-func (api *NodeMining) Start() error {
+func (api *nodeMining) Start() error {
 	return api.api.node.StartMining()
 }
 
-func (api *NodeMining) Stop() error {
+func (api *nodeMining) Stop() error {
 	api.api.node.StopMining()
 	return nil
 }

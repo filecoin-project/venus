@@ -7,15 +7,15 @@ import (
 	writer "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log/writer"
 )
 
-type NodeLog struct {
-	api *NodeAPI
+type nodeLog struct {
+	api *nodeAPI
 }
 
-func NewNodeLog(api *NodeAPI) *NodeLog {
-	return &NodeLog{api: api}
+func newNodeLog(api *nodeAPI) *nodeLog {
+	return &nodeLog{api: api}
 }
 
-func (api *NodeLog) Tail(ctx context.Context) io.Reader {
+func (api *nodeLog) Tail(ctx context.Context) io.Reader {
 	r, w := io.Pipe()
 	go func() {
 		defer w.Close() // nolint: errcheck

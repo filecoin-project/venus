@@ -15,15 +15,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodePaych struct {
-	api *NodeAPI
+type nodePaych struct {
+	api *nodeAPI
 }
 
-func NewNodePaych(api *NodeAPI) *NodePaych {
-	return &NodePaych{api: api}
+func newNodePaych(api *nodeAPI) *nodePaych {
+	return &nodePaych{api: api}
 }
 
-func (api *NodePaych) Create(ctx context.Context, fromAddr, target types.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Create(ctx context.Context, fromAddr, target types.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -52,7 +52,7 @@ func (api *NodePaych) Create(ctx context.Context, fromAddr, target types.Address
 	return smsg.Cid()
 }
 
-func (api *NodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address) (map[string]*paymentbroker.PaymentChannel, error) {
+func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -86,7 +86,7 @@ func (api *NodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address)
 	return channels, nil
 }
 
-func (api *NodePaych) Voucher(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, amount *types.AttoFIL) (string, error) {
+func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, amount *types.AttoFIL) (string, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -123,7 +123,7 @@ func (api *NodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 	return multibase.Encode(multibase.Base58BTC, cborVoucher)
 }
 
-func (api *NodePaych) Redeem(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Redeem(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -164,7 +164,7 @@ func (api *NodePaych) Redeem(ctx context.Context, fromAddr types.Address, vouche
 	return smsg.Cid()
 }
 
-func (api *NodePaych) Reclaim(ctx context.Context, fromAddr types.Address, channel *types.ChannelID) (*cid.Cid, error) {
+func (api *nodePaych) Reclaim(ctx context.Context, fromAddr types.Address, channel *types.ChannelID) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -194,7 +194,7 @@ func (api *NodePaych) Reclaim(ctx context.Context, fromAddr types.Address, chann
 	return smsg.Cid()
 }
 
-func (api *NodePaych) Close(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Close(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -234,7 +234,7 @@ func (api *NodePaych) Close(ctx context.Context, fromAddr types.Address, voucher
 	return smsg.Cid()
 }
 
-func (api *NodePaych) Extend(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Extend(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {

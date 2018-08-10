@@ -8,14 +8,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeBlock struct {
-	api *NodeAPI
+type nodeBlock struct {
+	api *nodeAPI
 }
 
-func NewNodeBlock(api *NodeAPI) *NodeBlock {
-	return &NodeBlock{api: api}
+func newNodeBlock(api *nodeAPI) *nodeBlock {
+	return &nodeBlock{api: api}
 }
 
-func (api *NodeBlock) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
+func (api *nodeBlock) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
 	return api.api.node.ChainMgr.FetchBlock(ctx, id)
 }

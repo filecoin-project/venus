@@ -16,24 +16,24 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-type NodeAddress struct {
-	api *NodeAPI
+type nodeAddress struct {
+	api *nodeAPI
 
-	addrs *NodeAddrs
+	addrs *nodeAddrs
 }
 
-func NewNodeAddress(api *NodeAPI) *NodeAddress {
-	return &NodeAddress{
+func newNodeAddress(api *nodeAPI) *nodeAddress {
+	return &nodeAddress{
 		api:   api,
-		addrs: NewNodeAddrs(api),
+		addrs: newNodeAddrs(api),
 	}
 }
 
-func (api *NodeAddress) Addrs() api.Addrs {
+func (api *nodeAddress) Addrs() api.Addrs {
 	return api.addrs
 }
 
-func (api *NodeAddress) Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error) {
+func (api *nodeAddress) Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error) {
 	fcn := api.api.node
 	ts := fcn.ChainMgr.GetHeaviestTipSet()
 	if len(ts) == 0 {
@@ -58,23 +58,23 @@ func (api *NodeAddress) Balance(ctx context.Context, addr types.Address) (*types
 	return act.Balance, nil
 }
 
-type NodeAddrs struct {
-	api *NodeAPI
+type nodeAddrs struct {
+	api *nodeAPI
 }
 
-func NewNodeAddrs(api *NodeAPI) *NodeAddrs {
-	return &NodeAddrs{api: api}
+func newNodeAddrs(api *nodeAPI) *nodeAddrs {
+	return &nodeAddrs{api: api}
 }
 
-func (api *NodeAddrs) New(ctx context.Context) (types.Address, error) {
+func (api *nodeAddrs) New(ctx context.Context) (types.Address, error) {
 	return api.api.node.NewAddress()
 }
 
-func (api *NodeAddrs) Ls(ctx context.Context) ([]types.Address, error) {
+func (api *nodeAddrs) Ls(ctx context.Context) ([]types.Address, error) {
 	return api.api.node.Wallet.Addresses(), nil
 }
 
-func (api *NodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, error) {
+func (api *nodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, error) {
 	id, err := api.api.node.Lookup.GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to find miner with address %s", addr.String())
@@ -83,7 +83,7 @@ func (api *NodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, 
 	return id, nil
 }
 
-func (api *NodeAddress) Import(ctx context.Context, f files.File) error {
+func (api *nodeAddress) Import(ctx context.Context, f files.File) error {
 	nd := api.api.node
 
 	kinfos, err := parseKeyInfos(f)
@@ -109,7 +109,7 @@ func (api *NodeAddress) Import(ctx context.Context, f files.File) error {
 	return nil
 }
 
-func (api *NodeAddress) Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error) {
+func (api *nodeAddress) Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error) {
 	nd := api.api.node
 
 	out := make([]*types.KeyInfo, len(addrs))

@@ -19,15 +19,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeClient struct {
-	api *NodeAPI
+type nodeClient struct {
+	api *nodeAPI
 }
 
-func NewNodeClient(api *NodeAPI) *NodeClient {
-	return &NodeClient{api: api}
+func newNodeClient(api *nodeAPI) *nodeClient {
+	return &nodeClient{api: api}
 }
 
-func (api *NodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -57,7 +57,7 @@ func (api *NodeClient) AddBid(ctx context.Context, fromAddr types.Address, size 
 	return smsg.Cid()
 }
 
-func (api *NodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error) {
+func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error) {
 	// TODO: this goes back to 'how is data stored and referenced'
 	// For now, lets just do things the ipfs way.
 
@@ -72,7 +72,7 @@ func (api *NodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 	return uio.NewDagReader(ctx, data, ds)
 }
 
-func (api *NodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
+func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
 	nd := api.api.node
 	defaddr := nd.RewardAddress()
 
@@ -88,7 +88,7 @@ func (api *NodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *ci
 	return nd.StorageClient.ProposeDeal(ctx, propose)
 }
 
-func (api *NodeClient) QueryDeal(ctx context.Context, idSlice []byte) (*node.DealResponse, error) {
+func (api *nodeClient) QueryDeal(ctx context.Context, idSlice []byte) (*node.DealResponse, error) {
 	if len(idSlice) != 32 {
 		return nil, errors.New("id must be 32 bytes long")
 	}
@@ -99,7 +99,7 @@ func (api *NodeClient) QueryDeal(ctx context.Context, idSlice []byte) (*node.Dea
 	return api.api.node.StorageClient.QueryDeal(ctx, id)
 }
 
-func (api *NodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
+func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	ds := dag.NewDAGService(api.api.node.Blockservice)
 	spl := chunk.DefaultSplitter(data)
 

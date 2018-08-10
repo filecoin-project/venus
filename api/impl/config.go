@@ -1,18 +1,15 @@
 package impl
 
-// NodeConfig is an implementation of api.Config interface for node.
-// It provides api methods to interact with the configuration of a node.
-type NodeConfig struct {
-	api *NodeAPI
+type nodeConfig struct {
+	api *nodeAPI
 }
 
-// NewNodeConfig creates an instance of the NodeConfig struct.
-func NewNodeConfig(api *NodeAPI) *NodeConfig {
-	return &NodeConfig{api: api}
+func newNodeConfig(api *nodeAPI) *nodeConfig {
+	return &nodeConfig{api: api}
 }
 
 // Get, returns the configuration value for the passed in key.
-func (api *NodeConfig) Get(key string) (interface{}, error) {
+func (api *nodeConfig) Get(key string) (interface{}, error) {
 	repo := api.api.node.Repo
 	cfg := repo.Config()
 
@@ -26,7 +23,7 @@ func (api *NodeConfig) Get(key string) (interface{}, error) {
 
 // Set, sets the configuration value for the passed in key, to the given value.
 // Returns the newly set value on success.
-func (api *NodeConfig) Set(key, value string) (interface{}, error) {
+func (api *nodeConfig) Set(key, value string) (interface{}, error) {
 	repo := api.api.node.Repo
 	cfg := repo.Config()
 

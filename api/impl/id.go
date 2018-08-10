@@ -6,16 +6,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/api"
 )
 
-type NodeID struct {
-	api *NodeAPI
+type nodeID struct {
+	api *nodeAPI
 }
 
-func NewNodeID(api *NodeAPI) *NodeID {
-	return &NodeID{api: api}
+func newNodeID(api *nodeAPI) *nodeID {
+	return &nodeID{api: api}
 }
 
 // Details, returns detailed information about the underlying node.
-func (a *NodeID) Details() (*api.IDDetails, error) {
+func (a *nodeID) Details() (*api.IDDetails, error) {
 	host := a.api.node.Host
 	hostID := host.ID().Pretty()
 	addrs := host.Addrs()

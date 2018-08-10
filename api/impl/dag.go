@@ -8,16 +8,16 @@ import (
 	resolver "gx/ipfs/Qmet61sdJdo6ZHDc59ZbffN5ED79K5kqfqkRjBx7ncaDg4/go-path/resolver"
 )
 
-type NodeDag struct {
-	api *NodeAPI
+type nodeDag struct {
+	api *nodeAPI
 }
 
-func NewNodeDag(api *NodeAPI) *NodeDag {
-	return &NodeDag{api: api}
+func newNodeDag(api *nodeAPI) *nodeDag {
+	return &nodeDag{api: api}
 }
 
 // Get returns the associated DAG node for the passed in CID.
-func (api *NodeDag) Get(ctx context.Context, ref string) (interface{}, error) {
+func (api *nodeDag) Get(ctx context.Context, ref string) (interface{}, error) {
 	parsedRef, err := path.ParsePath(ref)
 	if err != nil {
 		return nil, err

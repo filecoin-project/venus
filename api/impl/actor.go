@@ -16,15 +16,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeActor struct {
-	api *NodeAPI
+type nodeActor struct {
+	api *nodeAPI
 }
 
-func NewNodeActor(api *NodeAPI) *NodeActor {
-	return &NodeActor{api: api}
+func newNodeActor(api *nodeAPI) *nodeActor {
+	return &nodeActor{api: api}
 }
 
-func (api *NodeActor) Ls(ctx context.Context) ([]*api.ActorView, error) {
+func (api *nodeActor) Ls(ctx context.Context) ([]*api.ActorView, error) {
 	return ls(ctx, api.api.node, state.GetAllActors)
 }
 

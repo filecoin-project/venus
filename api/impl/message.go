@@ -11,15 +11,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeMessage struct {
-	api *NodeAPI
+type nodeMessage struct {
+	api *nodeAPI
 }
 
-func NewNodeMessage(api *NodeAPI) *NodeMessage {
-	return &NodeMessage{api: api}
+func newNodeMessage(api *nodeAPI) *nodeMessage {
+	return &nodeMessage{api: api}
 }
 
-func (api *NodeMessage) Send(ctx context.Context, from, to types.Address, val *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeMessage) Send(ctx context.Context, from, to types.Address, val *types.AttoFIL) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if from == (types.Address{}) {
@@ -47,7 +47,7 @@ func (api *NodeMessage) Send(ctx context.Context, from, to types.Address, val *t
 	return smsg.Cid()
 }
 
-func (api *NodeMessage) Wait(ctx context.Context, msgCid *cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
+func (api *nodeMessage) Wait(ctx context.Context, msgCid *cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
 	nd := api.api.node
 
 	return nd.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {

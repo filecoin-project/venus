@@ -22,30 +22,28 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-// NodeDaemon is an implementation of the api.Daemon interface for node.
-type NodeDaemon struct {
-	api *NodeAPI
+type nodeDaemon struct {
+	api *nodeAPI
 }
 
-// NewNodeDaemon creates an instance of the NodeDaemon struct.
-func NewNodeDaemon(api *NodeAPI) *NodeDaemon {
-	return &NodeDaemon{api: api}
+func newNodeDaemon(api *nodeAPI) *nodeDaemon {
+	return &nodeDaemon{api: api}
 }
 
 // Start, starts a new daemon process.
-func (nd *NodeDaemon) Start(ctx context.Context) error {
+func (nd *nodeDaemon) Start(ctx context.Context) error {
 	return nd.api.node.Start()
 }
 
 // Stop, shuts down the daemon and cleans up any resources.
-func (nd *NodeDaemon) Stop(ctx context.Context) error {
+func (nd *nodeDaemon) Stop(ctx context.Context) error {
 	nd.api.node.Stop()
 
 	return nil
 }
 
 // Init, initializes everything needed to run a daemon, including the disk storage.
-func (nd *NodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error {
+func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error {
 	// load configuration options
 	cfg := &api.DaemonInitConfig{}
 	for _, o := range opts {

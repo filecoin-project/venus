@@ -7,15 +7,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type NodeMpool struct {
-	api *NodeAPI
+type nodeMpool struct {
+	api *nodeAPI
 }
 
-func NewNodeMpool(api *NodeAPI) *NodeMpool {
-	return &NodeMpool{api: api}
+func newNodeMpool(api *nodeAPI) *nodeMpool {
+	return &nodeMpool{api: api}
 }
 
-func (api *NodeMpool) View(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {
+func (api *nodeMpool) View(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {
 	nd := api.api.node
 
 	pending := nd.MsgPool.Pending()

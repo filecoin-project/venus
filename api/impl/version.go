@@ -5,16 +5,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/flags"
 )
 
-type NodeVersion struct {
-	api *NodeAPI
+type nodeVersion struct {
+	api *nodeAPI
 }
 
-func NewNodeVersion(api *NodeAPI) *NodeVersion {
-	return &NodeVersion{api: api}
+func newNodeVersion(api *nodeAPI) *nodeVersion {
+	return &nodeVersion{api: api}
 }
 
 // Full, returns all version information that is available.
-func (a *NodeVersion) Full() (*api.VersionInfo, error) {
+func (a *nodeVersion) Full() (*api.VersionInfo, error) {
 	return &api.VersionInfo{
 		Commit: flags.Commit,
 	}, nil

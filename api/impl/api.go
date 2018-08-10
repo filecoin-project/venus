@@ -7,143 +7,142 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
-// NodeAPI is an actual implementation of the filecoin core api interface.
-type NodeAPI struct {
+type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	actor     *NodeActor
-	address   *NodeAddress
-	block     *NodeBlock
-	bootstrap *NodeBootstrap
-	chain     *NodeChain
-	config    *NodeConfig
-	client    *NodeClient
-	daemon    *NodeDaemon
-	dag       *NodeDag
-	id        *NodeID
-	log       *NodeLog
-	message   *NodeMessage
-	miner     *NodeMiner
-	mining    *NodeMining
-	mpool     *NodeMpool
-	orderbook *NodeOrderbook
-	paych     *NodePaych
-	ping      *NodePing
-	swarm     *NodeSwarm
-	version   *NodeVersion
+	actor     *nodeActor
+	address   *nodeAddress
+	block     *nodeBlock
+	bootstrap *nodeBootstrap
+	chain     *nodeChain
+	config    *nodeConfig
+	client    *nodeClient
+	daemon    *nodeDaemon
+	dag       *nodeDag
+	id        *nodeID
+	log       *nodeLog
+	message   *nodeMessage
+	miner     *nodeMiner
+	mining    *nodeMining
+	mpool     *nodeMpool
+	orderbook *nodeOrderbook
+	paych     *nodePaych
+	ping      *nodePing
+	swarm     *nodeSwarm
+	version   *nodeVersion
 }
 
-// Assert that NodeAPI fullfills the api.API interface.
-var _ api.API = (*NodeAPI)(nil)
+// Assert that nodeAPI fullfills the api.API interface.
+var _ api.API = (*nodeAPI)(nil)
 
 // New constructs a new instance of the API.
 func New(node *node.Node) api.API {
-	api := &NodeAPI{
+	api := &nodeAPI{
 		node:   node,
 		logger: logging.Logger("api"),
 	}
 
-	api.actor = NewNodeActor(api)
-	api.address = NewNodeAddress(api)
-	api.block = NewNodeBlock(api)
-	api.bootstrap = NewNodeBootstrap(api)
-	api.chain = NewNodeChain(api)
-	api.config = NewNodeConfig(api)
-	api.client = NewNodeClient(api)
-	api.daemon = NewNodeDaemon(api)
-	api.dag = NewNodeDag(api)
-	api.id = NewNodeID(api)
-	api.log = NewNodeLog(api)
-	api.message = NewNodeMessage(api)
-	api.miner = NewNodeMiner(api)
-	api.mining = NewNodeMining(api)
-	api.mpool = NewNodeMpool(api)
-	api.orderbook = NewNodeOrderbook(api)
-	api.paych = NewNodePaych(api)
-	api.ping = NewNodePing(api)
-	api.swarm = NewNodeSwarm(api)
-	api.version = NewNodeVersion(api)
+	api.actor = newNodeActor(api)
+	api.address = newNodeAddress(api)
+	api.block = newNodeBlock(api)
+	api.bootstrap = newNodeBootstrap(api)
+	api.chain = newNodeChain(api)
+	api.config = newNodeConfig(api)
+	api.client = newNodeClient(api)
+	api.daemon = newNodeDaemon(api)
+	api.dag = newNodeDag(api)
+	api.id = newNodeID(api)
+	api.log = newNodeLog(api)
+	api.message = newNodeMessage(api)
+	api.miner = newNodeMiner(api)
+	api.mining = newNodeMining(api)
+	api.mpool = newNodeMpool(api)
+	api.orderbook = newNodeOrderbook(api)
+	api.paych = newNodePaych(api)
+	api.ping = newNodePing(api)
+	api.swarm = newNodeSwarm(api)
+	api.version = newNodeVersion(api)
 
 	return api
 }
 
-func (api *NodeAPI) Actor() api.Actor {
+func (api *nodeAPI) Actor() api.Actor {
 	return api.actor
 }
 
-func (api *NodeAPI) Address() api.Address {
+func (api *nodeAPI) Address() api.Address {
 	return api.address
 }
 
-func (api *NodeAPI) Block() api.Block {
+func (api *nodeAPI) Block() api.Block {
 	return api.block
 }
 
-func (api *NodeAPI) Bootstrap() api.Bootstrap {
+func (api *nodeAPI) Bootstrap() api.Bootstrap {
 	return api.bootstrap
 }
 
-func (api *NodeAPI) Chain() api.Chain {
+func (api *nodeAPI) Chain() api.Chain {
 	return api.chain
 }
 
-func (api *NodeAPI) Config() api.Config {
+func (api *nodeAPI) Config() api.Config {
 	return api.config
 }
 
-func (api *NodeAPI) Client() api.Client {
+func (api *nodeAPI) Client() api.Client {
 	return api.client
 }
 
-func (api *NodeAPI) Daemon() api.Daemon {
+func (api *nodeAPI) Daemon() api.Daemon {
 	return api.daemon
 }
 
-func (api *NodeAPI) Dag() api.Dag {
+func (api *nodeAPI) Dag() api.Dag {
 	return api.dag
 }
 
-func (api *NodeAPI) ID() api.ID {
+func (api *nodeAPI) ID() api.ID {
 	return api.id
 }
 
-func (api *NodeAPI) Log() api.Log {
+func (api *nodeAPI) Log() api.Log {
 	return api.log
 }
 
-func (api *NodeAPI) Message() api.Message {
+func (api *nodeAPI) Message() api.Message {
 	return api.message
 }
 
-func (api *NodeAPI) Miner() api.Miner {
+func (api *nodeAPI) Miner() api.Miner {
 	return api.miner
 }
 
-func (api *NodeAPI) Mining() api.Mining {
+func (api *nodeAPI) Mining() api.Mining {
 	return api.mining
 }
 
-func (api *NodeAPI) Mpool() api.Mpool {
+func (api *nodeAPI) Mpool() api.Mpool {
 	return api.mpool
 }
 
-func (api *NodeAPI) Orderbook() api.Orderbook {
+func (api *nodeAPI) Orderbook() api.Orderbook {
 	return api.orderbook
 }
 
-func (api *NodeAPI) Paych() api.Paych {
+func (api *nodeAPI) Paych() api.Paych {
 	return api.paych
 }
 
-func (api *NodeAPI) Ping() api.Ping {
+func (api *nodeAPI) Ping() api.Ping {
 	return api.ping
 }
 
-func (api *NodeAPI) Swarm() api.Swarm {
+func (api *nodeAPI) Swarm() api.Swarm {
 	return api.swarm
 }
 
-func (api *NodeAPI) Version() api.Version {
+func (api *nodeAPI) Version() api.Version {
 	return api.version
 }

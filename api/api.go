@@ -1,7 +1,7 @@
-// Package api holds the interface definitions for the Filecoin core api.
+// Package api holds the interface definitions for the Filecoin api.
 package api
 
-// API is the unified interface to Filecoin on a Go level.
+// API is the user interface to a Filecoin node.
 type API interface {
 	Actor() Actor
 	Address() Address

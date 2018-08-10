@@ -12,18 +12,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/filnet"
 )
 
-type NodeSwarm struct {
-	api *NodeAPI
+type nodeSwarm struct {
+	api *nodeAPI
 }
 
 // COPIED FROM go-ipfs core/commands/swarm.go
 // TODO a lot of this functionality should migrate to the filnet package.
 
-func NewNodeSwarm(api *NodeAPI) *NodeSwarm {
-	return &NodeSwarm{api: api}
+func newNodeSwarm(api *nodeAPI) *nodeSwarm {
+	return &nodeSwarm{api: api}
 }
 
-func (ns *NodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) (*api.SwarmConnInfos, error) {
+func (ns *nodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) (*api.SwarmConnInfos, error) {
 	nd := ns.api.node
 
 	if nd.Host == nil {
@@ -72,7 +72,7 @@ func (ns *NodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) 
 	return &out, nil
 }
 
-func (ns *NodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmConnectResult, error) {
+func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmConnectResult, error) {
 	nd := ns.api.node
 
 	swrm, ok := nd.Host.Network().(*swarm.Swarm)

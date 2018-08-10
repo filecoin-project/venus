@@ -10,17 +10,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/api"
 )
 
-type NodePing struct {
-	api *NodeAPI
+type nodePing struct {
+	api *nodeAPI
 }
 
-func NewNodePing(api *NodeAPI) *NodePing {
-	return &NodePing{api: api}
+func newNodePing(api *nodeAPI) *nodePing {
+	return &nodePing{api: api}
 }
 
-const PingTimeout = time.Second * 10
+// pingTimeout is the maximum timeout that is waited for when pinging another peer.
+const pingTimeout = time.Second * 10
 
-func (np *NodePing) Ping(ctx context.Context, pid peer.ID, count uint, delay time.Duration) (<-chan *api.PingResult, error) {
+func (np *nodePing) Ping(ctx context.Context, pid peer.ID, count uint, delay time.Duration) (<-chan *api.PingResult, error) {
 	nd := np.api.node
 
 	if pid == nd.Host.ID() {
@@ -31,6 +32,7 @@ func (np *NodePing) Ping(ctx context.Context, pid peer.ID, count uint, delay tim
 
 	times, err := nd.Ping.Ping(ctx, pid)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -45,7 +47,7 @@ func (np *NodePing) Ping(ctx context.Context, pid peer.ID, count uint, delay tim
 			select {
 			case dur := <-times:
 				ch <- &api.PingResult{Time: dur, Success: true}
-			case <-time.After(PingTimeout):
+			case <-time.After(pingTimeout):
 				ch <- &api.PingResult{Text: "error: timeout"}
 			case <-ctx.Done():
 				return
