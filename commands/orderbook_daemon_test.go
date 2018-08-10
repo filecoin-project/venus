@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBidList(t *testing.T) {
+func TestOrderbookBids(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -34,7 +34,7 @@ func TestBidList(t *testing.T) {
 
 }
 
-func TestAskList(t *testing.T) {
+func TestOrderbookAsks(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -60,7 +60,7 @@ func TestAskList(t *testing.T) {
 
 }
 
-func TestDealList(t *testing.T) {
+func TestOrderbookDeals(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 

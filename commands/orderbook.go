@@ -23,14 +23,13 @@ var orderbookCmd = &cmds.Command{
 
 var askCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-		askSet, err := n.StorageMarket.GetMarketPeeker().GetAskSet()
+		asks, err := GetAPI(env).Orderbook().Asks()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		for _, ask := range askSet {
+		for _, ask := range asks {
 			re.Emit(ask) // nolint errcheck
 		}
 	},
@@ -49,14 +48,13 @@ var askCmd = &cmds.Command{
 
 var bidCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-		bidSet, err := n.StorageMarket.GetMarketPeeker().GetBidSet()
+		bids, err := GetAPI(env).Orderbook().Bids()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		for _, bid := range bidSet {
+		for _, bid := range bids {
 			re.Emit(bid) // nolint errcheck
 		}
 	},
@@ -75,14 +73,13 @@ var bidCmd = &cmds.Command{
 
 var dealCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-		dealList, err := n.StorageMarket.GetMarketPeeker().GetDealList()
+		deals, err := GetAPI(env).Orderbook().Deals()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		for _, deal := range dealList {
+		for _, deal := range deals {
 			re.Emit(deal) // nolint errcheck
 		}
 	},
