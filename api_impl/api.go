@@ -21,7 +21,7 @@ type NodeAPI struct {
 	client    *NodeClient
 	daemon    *NodeDaemon
 	dag       *NodeDag
-	id        *NodeId
+	id        *NodeID
 	log       *NodeLog
 	message   *NodeMessage
 	miner     *NodeMiner
@@ -30,7 +30,6 @@ type NodeAPI struct {
 	orderbook *NodeOrderbook
 	paych     *NodePaych
 	ping      *NodePing
-	show      *NodeShow
 	swarm     *NodeSwarm
 	version   *NodeVersion
 }
@@ -54,7 +53,7 @@ func New(node *node.Node) api.API {
 	api.client = NewNodeClient(api)
 	api.daemon = NewNodeDaemon(api)
 	api.dag = NewNodeDag(api)
-	api.id = NewNodeId(api)
+	api.id = NewNodeID(api)
 	api.log = NewNodeLog(api)
 	api.message = NewNodeMessage(api)
 	api.miner = NewNodeMiner(api)
@@ -63,7 +62,6 @@ func New(node *node.Node) api.API {
 	api.orderbook = NewNodeOrderbook(api)
 	api.paych = NewNodePaych(api)
 	api.ping = NewNodePing(api)
-	api.show = NewNodeShow(api)
 	api.swarm = NewNodeSwarm(api)
 	api.version = NewNodeVersion(api)
 
@@ -106,7 +104,7 @@ func (api *NodeAPI) Dag() api.Dag {
 	return api.dag
 }
 
-func (api *NodeAPI) Id() api.Id {
+func (api *NodeAPI) ID() api.ID {
 	return api.id
 }
 
@@ -140,10 +138,6 @@ func (api *NodeAPI) Paych() api.Paych {
 
 func (api *NodeAPI) Ping() api.Ping {
 	return api.ping
-}
-
-func (api *NodeAPI) Show() api.Show {
-	return api.show
 }
 
 func (api *NodeAPI) Swarm() api.Swarm {

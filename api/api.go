@@ -12,7 +12,7 @@ type API interface {
 	Client() Client
 	Daemon() Daemon
 	Dag() Dag
-	Id() Id
+	ID() ID
 	Log() Log
 	Message() Message
 	Miner() Miner
@@ -21,7 +21,6 @@ type API interface {
 	Orderbook() Orderbook
 	Paych() Paych
 	Ping() Ping
-	Show() Show
 	Swarm() Swarm
 	Version() Version
 }

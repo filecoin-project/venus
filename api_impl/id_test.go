@@ -60,14 +60,14 @@ func TestIdOutput(t *testing.T) {
 	api := New(nd)
 
 	// call method being tested
-	actualOut, err := api.Id().Details()
+	actualOut, err := api.ID().Details()
 	assert.NoError(err)
 
-	// create the expected peerId from our secrect key
+	// create the expected peerID from our secrect key
 	expectedPeerID, err := peer.IDFromPrivateKey(expectedPrivKey)
 	assert.NoError(err)
 
-	// We should have the expected peerId
+	// We should have the expected peerID
 	assert.EqualValues(expectedPeerID.Pretty(), actualOut.ID)
 
 	// Should have expected swarmAddress

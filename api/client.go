@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Client is the interface that defines methods to manage client operations.
 type Client interface {
 	AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error)
 	Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error)

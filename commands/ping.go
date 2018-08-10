@@ -44,12 +44,11 @@ trip latency information.
 		}
 
 		for p := range ch {
-			re.Emit(p)
+			re.Emit(p) // nolint: errcheck
 		}
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *api.PingResult) error {
-			fmt.Println("emit")
 			if len(p.Text) > 0 {
 				fmt.Fprintln(w, p.Text) // nolint: errcheck
 			} else if p.Success {

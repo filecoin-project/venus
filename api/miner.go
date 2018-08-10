@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Miner is the interface that defines methods to manage miner operations.
 type Miner interface {
 	Create(ctx context.Context, fromAddr types.Address, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (types.Address, error)
 	UpdatePeerID(ctx context.Context, fromAddr, minerAddr types.Address, newPid peer.ID) (*cid.Cid, error)

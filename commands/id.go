@@ -21,16 +21,16 @@ var idCmd = &cmds.Command{
 		cmdkit.StringOption("format", "f", "specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		details, err := GetAPI(env).Id().Details()
+		details, err := GetAPI(env).ID().Details()
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 		re.Emit(details) // nolint: errcheck
 	},
-	Type: api.IdDetails{},
+	Type: api.IDDetails{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *api.IdDetails) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *api.IDDetails) error {
 			format, found := req.Options["format"].(string)
 			if found {
 				output := idFormatSubstitute(format, val)
@@ -50,7 +50,7 @@ var idCmd = &cmds.Command{
 	},
 }
 
-func idFormatSubstitute(format string, val *api.IdDetails) string {
+func idFormatSubstitute(format string, val *api.IDDetails) string {
 	output := format
 	output = strings.Replace(output, "<id>", val.ID, -1)
 	output = strings.Replace(output, "<aver>", val.AgentVersion, -1)

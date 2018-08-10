@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Paych is the interface that defines methods to execute payment channel operations.
 type Paych interface {
 	Create(ctx context.Context, fromAddr, target types.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error)
 	Ls(ctx context.Context, fromAddr, payerAddr types.Address) (map[string]*paymentbroker.PaymentChannel, error)

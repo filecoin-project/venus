@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Address is the interface that defines methods to manage Filecoin addresses and wallets.
 type Address interface {
 	Addrs() Addrs
 	Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error)
@@ -16,6 +17,7 @@ type Address interface {
 	Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error)
 }
 
+// Addrs is the interface that defines method to interact with addresses.
 type Addrs interface {
 	New(ctx context.Context) (types.Address, error)
 	Ls(ctx context.Context) ([]types.Address, error)

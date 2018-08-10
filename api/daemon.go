@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Daemon is the interface that defines methods to change the state of the daemon.
 type Daemon interface {
 	// Start, starts a new daemon process.
 	Start(ctx context.Context) error
@@ -13,7 +14,7 @@ type Daemon interface {
 	Init(ctx context.Context, opts ...DaemonInitOpt) error
 }
 
-// DaemonInitConfig, his a helper struct to configure the init process of a daemon.
+// DaemonInitConfig is a helper struct to configure the init process of a daemon.
 type DaemonInitConfig struct {
 	// WalletFile, path to a file that contains addresses and private keys.
 	WalletFile string
@@ -27,9 +28,10 @@ type DaemonInitConfig struct {
 	RepoDir string
 }
 
+// DaemonInitOpt is the signature a daemon init option has to fulfill.
 type DaemonInitOpt func(*DaemonInitConfig) error
 
-// UseCustomGenesis, enables or disables the custom genesis functionality on daemon init.
+// UseCustomGenesis enables or disables the custom genesis functionality on daemon init.
 func UseCustomGenesis(use bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.UseCustomGenesis = use
@@ -37,6 +39,7 @@ func UseCustomGenesis(use bool) DaemonInitOpt {
 	}
 }
 
+// WalletFile sets the path to a wallet file on daemon init.
 func WalletFile(p string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.WalletFile = p
@@ -44,6 +47,7 @@ func WalletFile(p string) DaemonInitOpt {
 	}
 }
 
+// WalletAddr defines a the address to store, used in combination with WalletFile.
 func WalletAddr(addr string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.WalletAddr = addr
@@ -51,13 +55,15 @@ func WalletAddr(addr string) DaemonInitOpt {
 	}
 }
 
+// GenesisFile defines a custom genesis file to use on daemon init.
 func GenesisFile(p string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.GenesisFile = p
 		return nil
 	}
-
 }
+
+// RepoDir defines the location on disk of the repo.
 func RepoDir(p string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.RepoDir = p

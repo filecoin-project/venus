@@ -6,6 +6,7 @@ type VersionInfo struct {
 	Commit string
 }
 
+// Version is the interface that defines methods to view version information about this node.
 type Version interface {
 	// Full, returns all version information that is available.
 	Full() (*VersionInfo, error)

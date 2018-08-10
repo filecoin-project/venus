@@ -1,8 +1,8 @@
 package api
 
-// IdDetails is a collection of information about a node.
+// IDDetails is a collection of information about a node.
 // TODO: do we want to use strings here, or concrete types?
-type IdDetails struct {
+type IDDetails struct {
 	Addresses       []string
 	ID              string
 	AgentVersion    string
@@ -10,7 +10,9 @@ type IdDetails struct {
 	PublicKey       string
 }
 
-type Id interface {
+// ID is the interface that defines methods to fetch identifying information
+// about the underlying node.
+type ID interface {
 	// Details, returns detailed information about the underlying node.
-	Details() (*IdDetails, error)
+	Details() (*IDDetails, error)
 }
