@@ -60,6 +60,16 @@ func randAddress() types.Address {
 	return types.NewAddress(types.Mainnet, h)
 }
 
+func writeKey(ki *types.KeyInfo, name string) error {
+	fi, err := os.Create(name + ".key")
+	if err != nil {
+		return err
+	}
+	defer fi.Close()
+
+	return json.NewEncoder(fi).Encode(ki)
+}
+
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
@@ -80,6 +90,10 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 		}
 
 		keys[k] = ki
+
+		if err := writeKey(ki, k); err != nil {
+			return nil, err
+		}
 	}
 
 	st := state.NewEmptyStateTree(cst)
