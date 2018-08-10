@@ -1,16 +1,13 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit/files"
 
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var walletCmd = &cmds.Command{
@@ -137,31 +134,10 @@ var walletImportCmd = &cmds.Command{
 		cmdkit.FileArg("walletFile", true, false, "file containing wallet data to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fcn := GetNode(env)
-
-		kinfos, err := parseKeyInfos(req.Files)
+		err := GetAPI(env).Address().Import(req.Context, req.Files)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
-		}
-
-		dsb := fcn.Wallet.Backends(wallet.DSBackendType)
-		if len(dsb) != 1 {
-			re.SetError("expected exactly one datastore wallet backend", cmdkit.ErrNormal)
-			return
-		}
-
-		imp, ok := dsb[0].(wallet.Importer)
-		if !ok {
-			re.SetError("datastore backend wallets should implement importer", cmdkit.ErrNormal)
-			return
-		}
-
-		for _, ki := range kinfos {
-			if err := imp.ImportKey(ki); err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
 		}
 	},
 }
@@ -171,50 +147,24 @@ var walletExportCmd = &cmds.Command{
 		cmdkit.StringArg("addresses", true, true, "addresses of keys to export").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fcn := GetNode(env)
-
-		for _, arg := range req.Arguments {
+		addrs := make([]types.Address, len(req.Arguments))
+		for i, arg := range req.Arguments {
 			addr, err := types.NewAddressFromString(arg)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
+			addrs[i] = addr
+		}
 
-			bck, err := fcn.Wallet.Find(addr)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
-			ki, err := bck.GetKeyInfo(addr)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
+		kis, err := GetAPI(env).Address().Export(req.Context, addrs)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		for _, ki := range kis {
 			re.Emit(ki) // nolint: errcheck
 		}
 	},
 	Type: types.KeyInfo{},
-}
-
-func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
-	var kinfos []*types.KeyInfo
-	for {
-		fi, err := f.NextFile()
-		switch err {
-		case io.EOF:
-			return kinfos, nil
-		default:
-			return nil, err
-		case nil:
-		}
-
-		var ki types.KeyInfo
-		if err := json.NewDecoder(fi).Decode(&ki); err != nil {
-			return nil, err
-		}
-
-		kinfos = append(kinfos, &ki)
-	}
 }
