@@ -29,7 +29,7 @@ var showBlockCmd = &cmds.Command{
 			return
 		}
 
-		block, err := GetNode(env).ChainMgr.FetchBlock(req.Context, cid)
+		block, err := GetAPI(env).Block().Get(req.Context, cid)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

@@ -13,6 +13,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -96,13 +97,16 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 }
 
 func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, req *cmds.Request) error {
-	if err := node.Start(); err != nil {
+	api := impl.New(node)
+
+	if err := api.Daemon().Start(ctx); err != nil {
 		return err
 	}
 
 	servenv := &Env{
-		ctx:  context.Background(),
-		node: node,
+		// TODO: should this be the passed in context?
+		ctx: context.Background(),
+		api: api,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
@@ -129,6 +133,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	}()
 
 	// write our api address to file
+	// TODO: use api.Repo() once implemented
 	err := node.Repo.SetAPIAddr(config.API.Address)
 	if err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
@@ -144,7 +149,6 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	if err := apiserv.Shutdown(ctx); err != nil {
 		fmt.Println("failed to shut down api server:", err)
 	}
-	node.Stop()
 
-	return nil
+	return api.Daemon().Stop(ctx)
 }

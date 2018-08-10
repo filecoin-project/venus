@@ -1,4 +1,4 @@
-package commands
+package impl
 
 import (
 	"context"
@@ -57,15 +57,17 @@ func TestIdOutput(t *testing.T) {
 	// Create a new nodes with our opts
 	nd, err := node.New(ctx, opts...)
 	assert.NoError(err)
+	api := New(nd)
 
 	// call method being tested
-	actualOut := idOutputFromNode(nd)
+	actualOut, err := api.ID().Details()
+	assert.NoError(err)
 
-	// create the expected peerId from our secrect key
+	// create the expected peerID from our secrect key
 	expectedPeerID, err := peer.IDFromPrivateKey(expectedPrivKey)
 	assert.NoError(err)
 
-	// We should have the expected peerId
+	// We should have the expected peerID
 	assert.EqualValues(expectedPeerID.Pretty(), actualOut.ID)
 
 	// Should have expected swarmAddress

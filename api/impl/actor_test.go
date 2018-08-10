@@ -1,4 +1,4 @@
-package commands
+package impl
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -31,14 +32,13 @@ func TestActorLs(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
 		ctx := context.Background()
-		emitter := NewMockEmitter(func(v interface{}) error {
-			return nil
-		})
+
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
+
 		tcm := (*core.ChainManagerForTest)(nd.ChainMgr)
 		nd.ChainMgr = tcm
 
-		err := runActorLs(ctx, emitter.emit, nd, getActorsNoOp)
+		_, err := ls(ctx, nd, getActorsNoOp)
 		require.Error(err)
 	})
 
@@ -46,16 +46,14 @@ func TestActorLs(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
 		ctx := context.Background()
-		emitter := NewMockEmitter(func(v interface{}) error {
-			return nil
-		})
+
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		// TODO fix #543: Improve UX for multiblock tipset
 		nd.ChainMgr.GetHeaviestTipSet = func() core.TipSet {
 			return nil
 		}
 
-		err := runActorLs(ctx, emitter.emit, nd, nil)
+		_, err := ls(ctx, nd, getActorsNoOp)
 		require.Error(err)
 	})
 
@@ -68,12 +66,7 @@ func TestActorLs(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 		ctx := context.Background()
-		var actorViews []*actorView
 
-		emitter := NewMockEmitter(func(v interface{}) error {
-			actorViews = append(actorViews, v.(*actorView))
-			return nil
-		})
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		st := state.NewEmptyStateTree(nd.CborStore)
 		root, err := st.Flush(ctx)
@@ -93,7 +86,7 @@ func TestActorLs(t *testing.T) {
 			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}
 		}
 
-		err = runActorLs(ctx, emitter.emit, nd, getActors)
+		actorViews, err := ls(ctx, nd, getActors)
 		require.NoError(err)
 
 		assert.Equal(4, len(actorViews))
@@ -104,7 +97,7 @@ func TestActorLs(t *testing.T) {
 		assert.Equal("UnknownActor", actorViews[3].ActorType)
 	})
 
-	validateActorView := func(a *actorView, sl gojsonschema.JSONLoader) (*gojsonschema.Result, error) {
+	validateActorView := func(a *api.ActorView, sl gojsonschema.JSONLoader) (*gojsonschema.Result, error) {
 		jsonBytes, err := json.Marshal(a)
 		if err != nil {
 			return nil, err
@@ -114,7 +107,7 @@ func TestActorLs(t *testing.T) {
 		return gojsonschema.Validate(sl, jsonLoader)
 	}
 
-	assertSchemaValid := func(t *testing.T, a *actorView, sl gojsonschema.JSONLoader) {
+	assertSchemaValid := func(t *testing.T, a *api.ActorView, sl gojsonschema.JSONLoader) {
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -131,7 +124,7 @@ func TestActorLs(t *testing.T) {
 		t.Parallel()
 
 		wd, _ := os.Getwd()
-		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/schema/actor_ls.schema.json")
+		schemaLoader := gojsonschema.NewReferenceLoader("file://" + wd + "/../../commands/schema/actor_ls.schema.json")
 
 		actor, _ := account.NewActor(types.NewAttoFILFromFIL(100))
 		a := makeActorView(actor, "address", &account.Actor{})

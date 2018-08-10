@@ -23,8 +23,11 @@ var bootstrapCmd = &cmds.Command{
 
 var bootstrapLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		n := GetNode(env)
-		peers := n.Repo.Config().Bootstrap.Addresses
+		peers, err := GetAPI(env).Bootstrap().Ls(req.Context)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 
 		re.Emit(&bootstrapResult{peers}) // nolint: errcheck
 	},

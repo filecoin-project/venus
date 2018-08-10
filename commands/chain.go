@@ -25,15 +25,12 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		ts := GetNode(env).ChainMgr.GetHeaviestTipSet()
-		if len(ts) == 0 {
-			re.SetError(ErrHeaviestTipSetNotFound, cmdkit.ErrNormal)
+		out, err := GetAPI(env).Chain().Head()
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-		var out []*cid.Cid
-		for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
-			out = append(out, it.Value())
-		}
+
 		re.Emit(out) //nolint: errcheck
 	},
 	Type: []*cid.Cid{},
@@ -44,7 +41,7 @@ var chainLsCmd = &cmds.Command{
 		Tagline: "dump full block chain",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		for raw := range GetNode(env).ChainMgr.BlockHistory(req.Context) {
+		for raw := range GetAPI(env).Chain().Ls(req.Context) {
 			switch v := raw.(type) {
 			case error:
 				re.SetError(v, cmdkit.ErrNormal)

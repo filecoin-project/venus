@@ -1,33 +1,34 @@
-package commands
+package impl
 
 import (
-	"fmt"
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInitSuccess(t *testing.T) {
+func TestDaemonInitSuccess(t *testing.T) {
 	t.Run("folder exists", func(t *testing.T) {
 		assert := assert.New(t)
-
+		ctx := context.Background()
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
-		// TODO pass cmdapi flag to RunInit to allow for parallel test running
-		out, err := RunInit("--repodir", dir)
+		// TODO: pass cmdapi flag to RunInit to allow for parallel test running
+		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
 		assert.NoError(err)
-		assert.Contains(string(out), fmt.Sprintf("initializing filecoin node at %s", dir))
 
 		assert.True(ConfigExists(dir))
 	})
 
 	t.Run("folder does not exist", func(t *testing.T) {
 		assert := assert.New(t)
+		ctx := context.Background()
 
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
@@ -35,18 +36,17 @@ func TestInitSuccess(t *testing.T) {
 
 		dir = filepath.Join(dir, "nested")
 
-		out, err := RunInit("--repodir", dir)
+		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
 		assert.NoError(err)
-		assert.Contains(string(out), fmt.Sprintf("initializing filecoin node at %s", dir))
 
 		assert.True(ConfigExists(dir))
 	})
 }
 
-func TestInitFail(t *testing.T) {
+func TestDaemonInitFail(t *testing.T) {
 	t.Run("folder is not writable", func(t *testing.T) {
 		assert := assert.New(t)
-
+		ctx := context.Background()
 		parentDir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
 		defer os.RemoveAll(parentDir)
@@ -56,25 +56,33 @@ func TestInitFail(t *testing.T) {
 		err = os.Mkdir(dir, 0444)
 		assert.NoError(err)
 
-		out, err := RunInit("--repodir", dir)
-		assert.Error(err)
-		assert.Contains(string(out), "permission denied")
+		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
+		assert.Contains(err.Error(), "permission denied")
 
 		assert.False(ConfigExists(dir))
 	})
 
 	t.Run("config file already exists", func(t *testing.T) {
 		assert := assert.New(t)
+		ctx := context.Background()
 
 		dir, err := ioutil.TempDir("", "init")
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
 		ioutil.WriteFile(filepath.Join(dir, "config.toml"), []byte("hello"), 0644)
-		out, err := RunInit("--repodir", dir)
-		assert.Error(err)
-		assert.Contains(string(out), "repo already initialized")
+
+		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
+		assert.Contains(err.Error(), "repo already initialized")
 
 		assert.True(ConfigExists(dir))
 	})
+}
+
+func ConfigExists(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "config.toml"))
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }

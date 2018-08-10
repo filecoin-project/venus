@@ -15,13 +15,13 @@ var configCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get and set filecoin config values",
 		ShortDescription: `
-go-filecoin config controls configuration variables.  It works similar to 
-'git config'.  The configuration values are stored in a config file inside 
-your filecoin repo.  Specify the key as a period separated string of object 
+go-filecoin config controls configuration variables.  It works similar to
+'git config'.  The configuration values are stored in a config file inside
+your filecoin repo.  Specify the key as a period separated string of object
 keys. Specify the value to set as a toml value`,
 		LongDescription: `
-go-filecoin config controls configuration variables.  It works similar to 
-'git config'.  The configuration values are stored in a config file inside 
+go-filecoin config controls configuration variables.  It works similar to
+'git config'.  The configuration values are stored in a config file inside
 your filecoin repo.  Outputs are written in toml format. Specify the key as
 a period separated string of object keys. Specify the value to set as a toml
 value.  All subkeys including entire tables can be get and set.  Examples:
@@ -58,49 +58,38 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 		cmdkit.StringArg("value", false, false, "The value to set the config entry to."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-
-		var output interface{}
-		defer func() {
-			if output != nil {
-				re.Emit(output) // nolint: errcheck
-			}
-		}()
-
-		r := GetNode(env).Repo
-		cfg := r.Config()
+		api := GetAPI(env).Config()
 
 		key := req.Arguments[0]
 		if len(req.Arguments) == 2 {
 			value := req.Arguments[1]
-			cf, err := cfg.Set(key, value)
+			res, err := api.Set(key, value)
+
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
 
-			if err := r.ReplaceConfig(cfg); err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
-			output, err := makeOutput(cf)
+			output, err := makeOutput(res)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
+
 			re.Emit(output) // nolint: errcheck
 		} else {
-			cf, err := cfg.Get(key)
+			res, err := api.Get(key)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
 
-			output, err := makeOutput(cf)
+			output, err := makeOutput(res)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return
 			}
+
 			re.Emit(output) // nolint: errcheck
 		}
 	},

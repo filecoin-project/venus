@@ -1,19 +1,12 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"io"
 
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/state"
+	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 )
 
 var miningCmd = &cmds.Command{
@@ -29,33 +22,12 @@ var miningCmd = &cmds.Command{
 
 var miningOnceCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fcn := GetNode(env)
-		ts := fcn.ChainMgr.GetHeaviestTipSet()
-
-		if fcn.RewardAddress().Empty() {
-			re.SetError("filecoin node requires a reward address to be set before mining", cmdkit.ErrNormal)
-			return
-		}
-
-		blockGenerator := mining.NewBlockGenerator(fcn.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-			return fcn.ChainMgr.State(ctx, ts.ToSlice())
-		}, fcn.ChainMgr.Weight, core.ApplyMessages, fcn.ChainMgr.PwrTableView)
-		miningAddr, err := fcn.MiningAddress()
+		blk, err := GetAPI(env).Mining().Once(req.Context)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-		res := mining.MineOnce(req.Context, mining.NewWorker(blockGenerator), ts, fcn.RewardAddress(), miningAddr)
-		if res.Err != nil {
-			re.SetError(res.Err, cmdkit.ErrNormal)
-			return
-		}
-
-		if err := fcn.AddNewBlock(req.Context, res.NewBlock); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-		re.Emit(res.NewBlock.Cid()) // nolint: errcheck
+		re.Emit(blk.Cid()) // nolint: errcheck
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -68,7 +40,7 @@ var miningOnceCmd = &cmds.Command{
 
 var miningStartCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := GetNode(env).StartMining(); err != nil {
+		if err := GetAPI(env).Mining().Start(); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -80,7 +52,10 @@ var miningStartCmd = &cmds.Command{
 
 var miningStopCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		GetNode(env).StopMining()
+		if err := GetAPI(env).Mining().Stop(); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 		re.Emit("Stopped mining") // nolint: errcheck
 	},
 	Encoders: stringEncoderMap,

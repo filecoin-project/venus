@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,12 +22,12 @@ func TestActorDaemon(t *testing.T) {
 		op1 := d.RunSuccess("actor", "ls", "--enc", "json")
 		result1 := op1.readStdoutTrimNewlines()
 
-		var avs []actorView
+		var avs []api.ActorView
 		for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {
 			requireSchemaConformance(t, line, "actor_ls")
 
 			// unmarshall JSON to actor view an add to slice
-			var av actorView
+			var av api.ActorView
 			err := json.Unmarshal(line, &av)
 			require.NoError(err)
 			avs = append(avs, av)

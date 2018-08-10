@@ -650,11 +650,3 @@ func RunCommand(cmd string, opts ...string) ([]byte, error) {
 	process := exec.Command(filecoinBin, append([]string{"init"}, opts...)...)
 	return process.CombinedOutput()
 }
-
-func ConfigExists(dir string) bool {
-	_, err := os.Stat(filepath.Join(dir, "config.toml"))
-	if os.IsNotExist(err) {
-		return false
-	}
-	return err == nil
-}

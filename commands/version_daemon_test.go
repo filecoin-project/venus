@@ -26,5 +26,4 @@ func TestVersion(t *testing.T) {
 
 	out := d.RunSuccess("version")
 	assert.Exactly(out.ReadStdout(), fmt.Sprintf("commit: %s", commit))
-
 }
