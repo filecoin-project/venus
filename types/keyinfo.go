@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 
@@ -53,15 +54,8 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	if ki.Curve != other.Curve {
 		return false
 	}
-	if len(ki.PrivateKey) != len(other.PrivateKey) {
-		return false
-	}
-	for i := range ki.PrivateKey {
-		if ki.PrivateKey[i] != other.PrivateKey[i] {
-			return false
-		}
-	}
-	return true
+
+	return bytes.Equal(ki.PrivateKey, other.PrivateKey)
 }
 
 // Address returns the address for this keyinfo
