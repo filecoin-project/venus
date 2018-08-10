@@ -13,7 +13,7 @@ import (
 type Address interface {
 	Addrs() Addrs
 	Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error)
-	Import(ctx context.Context, f files.File) error
+	Import(ctx context.Context, f files.File) ([]types.Address, error)
 	Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error)
 }
 

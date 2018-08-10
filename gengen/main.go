@@ -123,6 +123,13 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 		}
 	}
 
+	netact := &types.Actor{
+		Balance: types.NewAttoFILFromFIL(10000000000),
+	}
+	if err := st.SetActor(ctx, address.NetworkAddress, netact); err != nil {
+		return nil, err
+	}
+
 	smaStorage := &storagemarket.Storage{
 		Miners: make(types.AddrSet),
 		Orderbook: &storagemarket.Orderbook{

@@ -134,12 +134,17 @@ var walletImportCmd = &cmds.Command{
 		cmdkit.FileArg("walletFile", true, false, "file containing wallet data to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		err := GetAPI(env).Address().Import(req.Context, req.Files)
+		addrs, err := GetAPI(env).Address().Import(req.Context, req.Files)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
+
+		for _, a := range addrs {
+			re.Emit(a)
+		}
 	},
+	Type: types.Address{},
 }
 
 var walletExportCmd = &cmds.Command{

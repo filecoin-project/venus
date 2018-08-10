@@ -3,7 +3,7 @@ package mining
 import (
 	"context"
 
-	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
@@ -56,26 +56,26 @@ type blockGenerator struct {
 func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address, miningAddress types.Address) (*types.Block, error) {
 	stateTree, ds, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get state tree")
 	}
 
 	if !b.powerTable.HasPower(ctx, stateTree, ds, miningAddress) {
-		return nil, xerrors.New("bad miner address, miner must store files before mining.")
+		return nil, errors.New("bad miner address, miner must store files before mining.")
 	}
 
 	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get weight")
 	}
 
 	nonce, err := core.NextNonce(ctx, stateTree, b.messagePool, address.NetworkAddress)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "next nonce")
 	}
 
 	baseHeight, err := baseTipSet.Height()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get base tip set height")
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
@@ -93,12 +93,12 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	vms := vm.NewStorageMap(ds)
 	res, err := b.applyMessages(ctx, messages, stateTree, vms, types.NewBlockHeight(blockHeight))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "generate apply messages")
 	}
 
 	newStateTreeCid, err := stateTree.Flush(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "generate flush state tree")
 	}
 
 	var receipts []*types.MessageReceipt
@@ -126,7 +126,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 		}
 	}
 	if !rewardSuccessful {
-		return nil, xerrors.New("mining reward message failed")
+		return nil, errors.New("mining reward message failed")
 	}
 	// Mining reward message succeeded -- side effects okay below this point.
 
