@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -48,7 +48,7 @@ func InitGenesis(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block,
 	}
 
 	stAct := types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL())
-	err := storagemarket.InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), nil)
+	err := (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,8 @@ func InitGenesis(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block,
 	}
 
 	pbAct := types.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
-	err = paymentbroker.InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
+	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
+
 	pbAct.Balance = types.NewAttoFILFromFIL(0)
 	if err != nil {
 		return nil, err

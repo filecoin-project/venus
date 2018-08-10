@@ -13,7 +13,7 @@ import (
 // TODO make singleton vs not more clear
 type Actor struct{}
 
-// ensure AccountActor is an ExecutableActor at compile time
+// Ensure AccountActor is an ExecutableActor at compile time.
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 // NewActor creates a new account actor.
@@ -21,7 +21,7 @@ func NewActor(balance *types.AttoFIL) (*types.Actor, error) {
 	return types.NewActor(types.AccountActorCodeCid, balance), nil
 }
 
-// UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place
+// UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
 func UpgradeActor(act *types.Actor) error {
 	act.Code = types.AccountActorCodeCid
 	return nil
@@ -33,4 +33,9 @@ var accountExports = exec.Exports{}
 // Exports makes the available methods for this contract available.
 func (a *Actor) Exports() exec.Exports {
 	return accountExports
+}
+
+// InitializeState for account actors does nothing.
+func (a *Actor) InitializeState(_ exec.Storage, _ interface{}) error {
+	return nil
 }

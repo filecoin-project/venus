@@ -3,8 +3,6 @@ package actor
 import (
 	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -23,7 +21,6 @@ type FakeActorStorage struct{ Changed bool }
 type FakeActor struct{}
 
 var _ exec.ExecutableActor = (*FakeActor)(nil)
-var _ exec.InitializeStateFunc = InitializeState
 
 // FakeActorExports are the exports of the fake actor.
 var FakeActorExports = exec.Exports{
@@ -58,8 +55,8 @@ var FakeActorExports = exec.Exports{
 }
 
 // InitializeState stores this actors
-func InitializeState(storage exec.Storage, initialState interface{}) error {
-	st, ok := initialState.(*FakeActorStorage)
+func (ma *FakeActor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
 		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
 	}
@@ -113,11 +110,6 @@ func (ma *FakeActor) GoodCall(ctx exec.VMContext) (uint8, error) {
 func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target types.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, "", types.NewAttoFILFromFIL(100), nil)
 	return code, err
-}
-
-// InitializeState adds a changed flag to storage.
-func (ma *FakeActor) InitializeState(storage exec.Storage, startingState interface{}) (*cid.Cid, error) {
-	return nil, nil
 }
 
 // SendTokens sends 100 to the given address.

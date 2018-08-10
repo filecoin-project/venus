@@ -172,8 +172,8 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *types.Actor {
 	act := types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
-	initialState := miner.NewState(owner, key, pledge, pid, coll)
-	err := miner.InitializeState(storage, initialState)
+	initializerData := miner.NewState(owner, key, pledge, pid, coll)
+	err := (&miner.Actor{}).InitializeState(storage, initializerData)
 	require.NoError(storage.Flush())
 	require.NoError(err)
 	return act
@@ -190,7 +190,7 @@ func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr ty
 func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid, amt *types.AttoFIL) *types.Actor {
 	act := types.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
-	err := actor.InitializeState(store, &actor.FakeActorStorage{})
+	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
 	require.NoError(err)
 	require.NoError(vms.Flush())
 	return act
