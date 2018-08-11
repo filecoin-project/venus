@@ -122,7 +122,7 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 		return node.ChainMgr.State(ctx, ts.ToSlice())
 	}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView)
 	cur := node.ChainMgr.GetHeaviestTipSet()
-	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), cur, address.TestAddress, types.Address{})
+	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator, address.TestAddress), cur)
 	require.NoError(out.Err)
 	require.NoError(node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, out.NewBlock)))
 

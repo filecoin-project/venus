@@ -121,8 +121,6 @@ type Node struct {
 	// mockMineMode, when true mocks mining and validation logic for tests.
 	// TODO: this is a TEMPORARY workaround
 	mockMineMode bool
-
-	rewardAddress types.Address
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -210,13 +208,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	msgPool := core.NewMessagePool()
 
-	// Set up but don't start a mining.Worker. It sleeps mineSleepTime
-	// to simulate the work of generating proofs.
-	blockGenerator := mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return chainMgr.State(ctx, ts.ToSlice())
-	}, chainMgr.Weight, core.ApplyMessages, chainMgr.PwrTableView)
-	miningWorker := mining.NewWorker(blockGenerator)
-
 	// Set up libp2p pubsub
 	fsub, err := floodsub.NewFloodSub(ctx, host)
 	if err != nil {
@@ -234,7 +225,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainMgr:       chainMgr,
 		Exchange:       bswap,
 		Host:           host,
-		MiningWorker:   miningWorker,
 		MsgPool:        msgPool,
 		OfflineMode:    nc.OfflineMode,
 		Ping:           pinger,
@@ -243,7 +233,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		SectorBuilders: make(map[types.Address]*SectorBuilder),
 		Wallet:         fcWallet,
 		mockMineMode:   nc.MockMineMode,
-		rewardAddress:  nc.RewardAddress,
 	}
 
 	// Bootstrapping network peers.
@@ -296,16 +285,6 @@ func (node *Node) Start() error {
 	go node.handleSubscription(ctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
 	go node.handleSubscription(ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
-	// Set up mining.Worker. The node won't feed blocks to the worker
-	// until node.StartMining() is called.
-	node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
-	inCh, outCh, doneWg := node.MiningWorker.Start(node.miningCtx)
-	node.miningInCh = inCh
-	node.miningDoneWg = doneWg
-	node.AddNewlyMinedBlock = node.addNewlyMinedBlock
-	node.miningDoneWg.Add(1)
-	go node.handleNewMiningOutput(outCh)
-
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainMgr.HeaviestTipSetPubSub.Sub(core.HeaviestTipSetTopic)
 	go node.handleNewHeaviestTipSet(ctx, node.ChainMgr.GetHeaviestTipSet())
@@ -327,11 +306,6 @@ func (node *Node) isMining() bool {
 	node.mining.Lock()
 	defer node.mining.Unlock()
 	return node.mining.isMining
-}
-
-// RewardAddress returns the configured reward address for this node.
-func (node *Node) RewardAddress() types.Address {
-	return node.rewardAddress
 }
 
 func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
@@ -377,15 +351,6 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet)
 		}
 		head = newHead
 		if node.isMining() {
-			if node.rewardAddress == (types.Address{}) {
-				log.Error("No mining reward address, mining should not have started!")
-				continue
-			}
-			miningAddress, err := node.MiningAddress()
-			if err != nil {
-				log.Error("No miner actor address, mining should not have started!")
-				continue
-			}
 
 			node.miningDoneWg.Add(1)
 			go func() {
@@ -393,7 +358,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet)
 				select {
 				case <-node.miningCtx.Done():
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head, node.rewardAddress, miningAddress):
+				case node.miningInCh <- mining.NewInput(context.Background(), head):
 				}
 			}()
 		}
@@ -475,20 +440,30 @@ func (node *Node) MiningAddress() (types.Address, error) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
 func (node *Node) StartMining() error {
-	if node.rewardAddress == (types.Address{}) {
-		return ErrNoRewardAddress
-	}
 
 	miningAddress, err := node.MiningAddress()
 	if err != nil {
 		return err
 	}
 
-	// initialize one SectorBuilder per configured miner address
-	for _, addr := range node.Repo.Config().Mining.MinerAddresses {
-		if err := node.initSectorBuilder(addr); err != nil {
-			return errors.Wrap(err, "failed to initialize sector builder")
-		}
+	if node.MiningWorker == nil {
+		blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+			return node.ChainMgr.State(ctx, ts.ToSlice())
+		}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView)
+
+		node.MiningWorker = mining.NewWorker(blockGenerator, miningAddress)
+
+		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
+		inCh, outCh, doneWg := node.MiningWorker.Start(node.miningCtx)
+		node.miningInCh = inCh
+		node.miningDoneWg = doneWg
+		node.AddNewlyMinedBlock = node.addNewlyMinedBlock
+		node.miningDoneWg.Add(1)
+		go node.handleNewMiningOutput(outCh)
+	}
+
+	if err := node.initSectorBuilder(miningAddress); err != nil {
+		return errors.Wrap(err, "failed to initialize sector builder")
 	}
 
 	node.setIsMining(true)
@@ -501,7 +476,7 @@ func (node *Node) StartMining() error {
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), hts, node.rewardAddress, miningAddress):
+		case node.miningInCh <- mining.NewInput(context.Background(), hts):
 		}
 	}()
 	return nil

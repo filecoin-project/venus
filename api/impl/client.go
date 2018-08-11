@@ -56,7 +56,10 @@ func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 
 func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
 	nd := api.api.node
-	defaddr := nd.RewardAddress()
+	defaddr, err := nd.DefaultSenderAddress()
+	if err != nil {
+		return nil, err
+	}
 
 	propose := &node.DealProposal{
 		ClientSig: string(defaddr[:]), // TODO: actual crypto

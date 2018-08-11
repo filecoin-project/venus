@@ -18,9 +18,6 @@ type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner Address `json:"miner"`
 
-	// Reward is the address of the account actor beneficiary of the miner.
-	Reward Address `json:"reward"`
-
 	// Ticket is the winning ticket that was submitted with this block.
 	Ticket Signature `json:"ticket"`
 

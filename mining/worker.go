@@ -30,14 +30,11 @@ func init() {
 type Input struct {
 	Ctx    context.Context
 	TipSet core.TipSet
-	// TODO: should this contain both Mining and Reward Addresses?
-	MiningAddress types.Address
-	RewardAddress types.Address
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, ts core.TipSet, a types.Address, m types.Address) Input {
-	return Input{Ctx: ctx, TipSet: ts, RewardAddress: a, MiningAddress: m}
+func NewInput(ctx context.Context, ts core.TipSet) Input {
+	return Input{Ctx: ctx, TipSet: ts}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -57,8 +54,8 @@ func NewOutput(b *types.Block, e error) Output {
 type AsyncWorker struct {
 	blockGenerator BlockGenerator
 	createPoST     DoSomeWorkFunc // TODO: rename createPoSTFunc?
-	mine           mineFunc
 	nullBlockTimer NullBlockTimerFunc
+	minerAddr      types.Address // TODO: needs to be a key in the near future
 }
 
 // Worker is the mining interface consumers use. When you Start() a worker
@@ -78,28 +75,28 @@ type Worker interface {
 }
 
 // NewWorker instantiates a new Worker.
-func NewWorker(blockGenerator BlockGenerator) Worker {
-	return NewWorkerWithDeps(blockGenerator, Mine, createPoST, nullBlockTimer)
+func NewWorker(blockGenerator BlockGenerator, miner types.Address) Worker {
+	return NewWorkerWithDeps(blockGenerator, createPoST, nullBlockTimer, miner)
 }
 
 // NewWorkerWithDeps instantiates a new Worker with custom functions.
-func NewWorkerWithDeps(blockGenerator BlockGenerator, mine mineFunc, createPoST DoSomeWorkFunc, nullBlockTimer NullBlockTimerFunc) Worker {
+func NewWorkerWithDeps(blockGenerator BlockGenerator, createPoST DoSomeWorkFunc, nullBlockTimer NullBlockTimerFunc, miner types.Address) Worker {
 	return &AsyncWorker{
 		blockGenerator: blockGenerator,
 		createPoST:     createPoST,
-		mine:           mine,
 		nullBlockTimer: nullBlockTimer,
+		minerAddr:      miner,
 	}
 }
 
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the worker.
-func MineOnce(ctx context.Context, w Worker, ts core.TipSet, rewardAddress, miningAddress types.Address) Output {
+func MineOnce(ctx context.Context, w Worker, ts core.TipSet) Output {
 	subCtx, subCtxCancel := context.WithCancel(ctx)
 	defer subCtxCancel()
 
 	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, ts, rewardAddress, miningAddress) }()
+	go func() { inCh <- NewInput(subCtx, ts) }()
 	return <-outCh
 }
 
@@ -141,7 +138,7 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 					currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
 					doneWg.Add(1)
 					go func() {
-						w.mine(currentRunCtx, input, w.nullBlockTimer, w.blockGenerator, w.createPoST, outCh)
+						w.Mine(currentRunCtx, input, outCh)
 						doneWg.Done()
 					}()
 				} else {
@@ -165,7 +162,7 @@ type mineFunc func(ctx context.Context, input Input, nullBlockTimer NullBlockTim
 type NullBlockTimerFunc func()
 
 // Mine does the actual work. It's the implementation of worker.mine.
-func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, blockGenerator BlockGenerator, createPoST DoSomeWorkFunc, outCh chan<- Output) {
+func (w *AsyncWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 
@@ -186,7 +183,7 @@ func Mine(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, b
 
 		// TODO: Test the interplay of isWinningTicket() and createPoST()
 		if isWinningTicket(ticket, myPower, totalPower) {
-			next, err := blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, input.RewardAddress, input.MiningAddress)
+			next, err := w.blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, w.minerAddr)
 			if err == nil {
 				log.SetTag(ctx, "block", next)
 			}

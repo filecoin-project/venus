@@ -27,7 +27,7 @@ type GetWeight func(context.Context, core.TipSet) (uint64, uint64, error)
 
 // BlockGenerator is the primary interface for blockGenerator.
 type BlockGenerator interface {
-	Generate(context.Context, core.TipSet, types.Signature, uint64, types.Address, types.Address) (*types.Block, error)
+	Generate(context.Context, core.TipSet, types.Signature, uint64, types.Address) (*types.Block, error)
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
@@ -53,7 +53,7 @@ type blockGenerator struct {
 }
 
 // Generate returns a new block created from the messages in the pool.
-func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, rewardAddress types.Address, miningAddress types.Address) (*types.Block, error) {
+func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, miningAddress types.Address) (*types.Block, error) {
 	stateTree, ds, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")
@@ -79,7 +79,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
-	rewardMsg := types.NewMessage(address.NetworkAddress, rewardAddress, nonce, types.NewAttoFILFromFIL(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, miningAddress, nonce, types.NewAttoFILFromFIL(1000), "", nil)
 	srewardMsg := &types.SignedMessage{
 		Message:   *rewardMsg,
 		Signature: nil,
@@ -108,7 +108,6 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 
 	next := &types.Block{
 		Miner:             miningAddress,
-		Reward:            rewardAddress,
 		Height:            types.Uint64(blockHeight),
 		Messages:          res.SuccessfulMessages,
 		MessageReceipts:   receipts,

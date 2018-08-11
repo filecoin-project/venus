@@ -23,9 +23,6 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	nd := api.api.node
 	ts := nd.ChainMgr.GetHeaviestTipSet()
 
-	if nd.RewardAddress().Empty() {
-		return nil, ErrMissingRewardAddress
-	}
 	blockGenerator := mining.NewBlockGenerator(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
 		return nd.ChainMgr.State(ctx, ts.ToSlice())
 	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView)
@@ -35,7 +32,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 
-	res := mining.MineOnce(ctx, mining.NewWorker(blockGenerator), ts, nd.RewardAddress(), miningAddr)
+	res := mining.MineOnce(ctx, mining.NewWorker(blockGenerator, miningAddr), ts)
 	if res.Err != nil {
 		return nil, res.Err
 	}

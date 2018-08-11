@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -196,6 +197,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 			return err
 		}
 		smaStorage.Miners[maddr] = struct{}{}
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", maddr, m.Owner, m.Power)
 	}
 
 	smaStorage.TotalCommittedStorage = powerSum
