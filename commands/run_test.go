@@ -89,12 +89,13 @@ func runSuccessLines(td *TestDaemon, args ...string) []string {
 }
 
 type TestDaemon struct {
-	cmdAddr    string
-	swarmAddr  string
-	repoDir    string
-	walletFile string
-	walletAddr string
-	mockMine   bool
+	cmdAddr     string
+	swarmAddr   string
+	repoDir     string
+	walletFile  string
+	walletAddr  string
+	genesisFile string
+	mockMine    bool
 
 	init bool
 
@@ -603,6 +604,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
 	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
 	testGenesisFlag := fmt.Sprintf("--testgenesis=%t", td.walletFile != "")
+	genesisFileFlag := fmt.Sprintf("--genesisfile=%s", td.genesisFile)
 	mockMineFlag := ""
 
 	if td.mockMine {
@@ -610,7 +612,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	if td.init {
-		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag, testGenesisFlag)
+		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag, testGenesisFlag, genesisFileFlag)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)

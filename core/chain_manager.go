@@ -345,6 +345,8 @@ func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (
 		return Uninit, ErrUninit
 	}
 
+	// TODO: this is really confusing. This function needs a better name than 'state'
+	// and it should be much more clear about *why* its doing these things
 	switch _, _, err := cm.state(ctx, []*types.Block{blk}); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
@@ -779,12 +781,12 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 	}
 	st, _, err := cm.stateForBlockIDs(ctx, parentIDs)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get weight, stateForParents failed")
 	}
 
 	wNum, wDenom, err := ts.ParentWeight()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "computing parent weight")
 	}
 	if wDenom == uint64(0) {
 		return nil, errors.New("storage market with 0 bytes stored not handled")
@@ -794,13 +796,13 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 	// Each block in the tipset adds ECV + ECPrm * miner_power
 	totalBytes, err := cm.PwrTableView.Total(ctx, st, cm.ds)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "getting total power")
 	}
 	ratECV := big.NewRat(int64(ECV), int64(1))
 	for _, blk := range ts {
 		minerBytes, err := cm.PwrTableView.Miner(ctx, st, cm.ds, blk.Miner)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "getting miner power")
 		}
 		wNumBlk := int64(ECPrM * minerBytes)
 		wBlk := big.NewRat(wNumBlk, int64(totalBytes))

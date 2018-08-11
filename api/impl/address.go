@@ -83,30 +83,37 @@ func (api *nodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, 
 	return id, nil
 }
 
-func (api *nodeAddress) Import(ctx context.Context, f files.File) error {
+func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]types.Address, error) {
 	nd := api.api.node
 
 	kinfos, err := parseKeyInfos(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	dsb := nd.Wallet.Backends(wallet.DSBackendType)
 	if len(dsb) != 1 {
-		return fmt.Errorf("expected exactly one datastore wallet backend")
+		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
 	}
 
 	imp, ok := dsb[0].(wallet.Importer)
 	if !ok {
-		return fmt.Errorf("datastore backend wallets should implement importer")
+		return nil, fmt.Errorf("datastore backend wallets should implement importer")
 	}
 
+	var out []types.Address
 	for _, ki := range kinfos {
 		if err := imp.ImportKey(ki); err != nil {
-			return err
+			return nil, err
 		}
+
+		a, err := ki.Address()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
 	}
-	return nil
+	return out, nil
 }
 
 func (api *nodeAddress) Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error) {

@@ -135,9 +135,9 @@
     },
     {
       "author": "why",
-      "hash": "QmUe7hFx8ACivDWe1pF6X2ZTihGfeXppMc1aPjNBJ8cCHv",
+      "hash": "QmWkSGjYAhLbHFiq8bA73xA67EG3p6ERovd2ad8c7cmbxK",
       "name": "go-car",
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     {
       "author": "whyrusleeping",
@@ -165,3 +165,4 @@
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "version": "0.0.1"
 }
+
