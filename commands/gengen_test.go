@@ -37,7 +37,7 @@ func TestGenGenLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGensisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
 		t.Fatal(err)
 	}
 

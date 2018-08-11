@@ -60,7 +60,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	}
 
 	if !b.powerTable.HasPower(ctx, stateTree, ds, miningAddress) {
-		return nil, errors.New("bad miner address, miner must store files before mining.")
+		return nil, errors.New("bad miner address, miner must store files before mining")
 	}
 
 	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)

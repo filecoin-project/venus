@@ -24,6 +24,7 @@ import (
 	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 )
 
+// Miner is
 type Miner struct {
 	// Owner is the name of the key that owns this miner
 	// It must be a name of a key from the configs 'Keys' list
@@ -35,6 +36,7 @@ type Miner struct {
 	Power uint64
 }
 
+// GenesisCfg is
 type GenesisCfg struct {
 	// Keys is an array of names of keys. A random key will be generated
 	// for each name here.
@@ -50,7 +52,7 @@ type GenesisCfg struct {
 
 func randAddress() types.Address {
 	buf := make([]byte, 32)
-	rand.Read(buf)
+	_, _ = rand.Read(buf)
 
 	h, err := types.AddressHash(buf)
 	if err != nil {
@@ -147,11 +149,7 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	netact := &types.Actor{
 		Balance: types.NewAttoFILFromFIL(10000000000),
 	}
-	if err := st.SetActor(context.Background(), address.NetworkAddress, netact); err != nil {
-		return err
-	}
-
-	return nil
+	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
 func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.KeyInfo, miners []Miner) error {
@@ -209,20 +207,17 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
 	sma.Head = root
 
-	if err := st.SetActor(context.Background(), address.StorageMarketAddress, sma); err != nil {
-		return err
-	}
-
-	return nil
+	return st.SetActor(context.Background(), address.StorageMarketAddress, sma)
 }
 
-func GenGensisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, error) {
+// GenGenesisCar generates a car for the given genesis configuration
+func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, error) {
 	// TODO: these six lines are ugly. We can do better...
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
 	offl := offline.Exchange(bstore)
 	blkserv := bserv.New(bstore, offl)
-	cst := &hamt.CborIpldStore{blkserv}
+	cst := &hamt.CborIpldStore{Blocks: blkserv}
 	dserv := dag.NewDAGService(blkserv)
 
 	ctx := context.Background()

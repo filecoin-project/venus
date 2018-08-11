@@ -13,7 +13,7 @@ func writeKey(ki *types.KeyInfo, name string) error {
 	if err != nil {
 		return err
 	}
-	defer fi.Close()
+	defer fi.Close() // nolint: errcheck
 
 	return json.NewEncoder(fi).Encode(ki)
 }
@@ -41,7 +41,7 @@ $ cat setup.json
 }
 $ cat setup.json | gengen > genesis.car
 
-The outputed file can be used by go-filecoin during init to
+The outputted file can be used by go-filecoin during init to
 set the initial genesis block:
 $ go-filecoin init --genesisfile=genesis.car
 */
@@ -51,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	keys, err := gengen.GenGensisCar(&cfg, os.Stdout)
+	keys, err := gengen.GenGenesisCar(&cfg, os.Stdout)
 	if err != nil {
 		panic(err)
 	}

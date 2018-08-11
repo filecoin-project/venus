@@ -141,7 +141,7 @@ var walletImportCmd = &cmds.Command{
 		}
 
 		for _, a := range addrs {
-			re.Emit(a)
+			re.Emit(a) // nolint: errcheck
 		}
 	},
 	Type: types.Address{},
