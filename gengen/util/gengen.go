@@ -7,7 +7,6 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -75,7 +74,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 		return nil, nil, err
 	}
 
-	if err := setupMiners(st, keys, cfg.Miners); err != nil {
+	if err := setupMiners(st, cst, keys, cfg.Miners); err != nil {
 		return nil, nil, err
 	}
 
@@ -155,8 +154,8 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	return nil
 }
 
-func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) error {
-	smaStorage := &storagemarket.Storage{
+func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.KeyInfo, miners []Miner) error {
+	smaStorage := &storagemarket.State{
 		Miners: make(types.AddrSet),
 		Orderbook: &storagemarket.Orderbook{
 			Asks: make(storagemarket.AskSet),
@@ -174,7 +173,7 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 			return err
 		}
 
-		mst := &miner.Storage{
+		mst := &miner.State{
 			Owner:         addr,
 			PeerID:        "",
 			PublicKey:     nil,
@@ -185,12 +184,13 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 		}
 		powerSum = powerSum.Add(mst.Power)
 
-		storageBytes, err := actor.MarshalStorage(mst)
+		root, err := cst.Put(context.Background(), mst)
 		if err != nil {
 			return err
 		}
 
-		act := types.NewActorWithMemory(types.MinerActorCodeCid, nil, storageBytes)
+		act := types.NewActor(types.MinerActorCodeCid, nil)
+		act.Head = root
 
 		maddr := randAddress()
 
@@ -202,11 +202,12 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 
 	smaStorage.TotalCommittedStorage = powerSum
 
-	storageBytes, err := actor.MarshalStorage(smaStorage)
+	root, err := cst.Put(context.Background(), smaStorage)
 	if err != nil {
 		return err
 	}
-	sma := types.NewActorWithMemory(types.StorageMarketActorCodeCid, nil, storageBytes)
+	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
+	sma.Head = root
 
 	if err := st.SetActor(context.Background(), address.StorageMarketAddress, sma); err != nil {
 		return err
