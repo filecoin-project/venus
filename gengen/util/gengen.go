@@ -166,6 +166,7 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 		},
 	}
 
+	powerSum := types.NewBytesAmount(0)
 	for _, m := range miners {
 		addr, err := keys[m.Owner].Address()
 		if err != nil {
@@ -181,6 +182,7 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 			LockedStorage: types.NewBytesAmount(0),
 			Power:         types.NewBytesAmount(m.Power),
 		}
+		powerSum = powerSum.Add(mst.Power)
 
 		storageBytes, err := actor.MarshalStorage(mst)
 		if err != nil {
@@ -196,6 +198,8 @@ func setupMiners(st state.Tree, keys map[string]*types.KeyInfo, miners []Miner) 
 		}
 		smaStorage.Miners[maddr] = struct{}{}
 	}
+
+	smaStorage.TotalCommittedStorage = powerSum
 
 	storageBytes, err := actor.MarshalStorage(smaStorage)
 	if err != nil {

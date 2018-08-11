@@ -5,6 +5,7 @@ import (
 	"os"
 
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func writeKey(ki *types.KeyInfo, name string) error {
