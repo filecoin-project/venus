@@ -27,6 +27,7 @@ import (
 
 type Miner struct {
 	// Owner is the name of the key that owns this miner
+	// It must be a name of a key from the configs 'Keys' list
 	Owner string
 
 	// Power is the amount of power this miner should start off with
