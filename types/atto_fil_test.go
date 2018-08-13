@@ -12,6 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BigIntFromString(s string) *big.Int {
+	bigInt, _ := new(big.Int).SetString(s, 10)
+	return bigInt
+}
+
 func TestFILToAttoFIL(t *testing.T) {
 	assert := assert.New(t)
 
@@ -34,14 +39,14 @@ func TestAttoFILCreation(t *testing.T) {
 
 	as := a.String()
 	assert.Equal(as, "123")
-	c, ok := NewAttoFILFromFILString(as, 10)
+	c, ok := NewAttoFILFromFILString(as)
 	assert.True(ok)
 	assert.Equal(a, c)
 	d, ok := NewAttoFILFromString("123000000000000000000", 10)
 	assert.True(ok)
 	assert.Equal(a, d)
 
-	_, ok = NewAttoFILFromFILString("asdf", 10)
+	_, ok = NewAttoFILFromFILString("asdf")
 	assert.False(ok)
 }
 
@@ -244,6 +249,22 @@ func TestAttoFILJsonMarshaling(t *testing.T) {
 			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
+
+	t.Run("unmarshal(marshal(AttoFIL)) == AttoFIL for decimal FIL", func(t *testing.T) {
+		assert := assert.New(t)
+
+		toBeMarshaled, _ := NewAttoFILFromFILString("912129289198393.123456789012345678")
+
+		marshaled, err := json.Marshal(toBeMarshaled)
+		assert.NoError(err)
+
+		var unmarshaled AttoFIL
+		err = json.Unmarshal(marshaled, &unmarshaled)
+		assert.NoError(err)
+
+		assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
+	})
+
 	t.Run("cannot JSON marshall nil as *AttoFIL", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -325,5 +346,69 @@ func TestAttoFILIsZero(t *testing.T) {
 	t.Run("returns false if less than zero token", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(n.IsZero())
+	})
+}
+
+func TestString(t *testing.T) {
+	assert := assert.New(t)
+
+	// A very large number of attoFIL
+	attoFIL, _ := new(big.Int).SetString("912129289198393123456789012345678", 10)
+	assert.Equal("912129289198393.123456789012345678", NewAttoFIL(attoFIL).String())
+
+	// A multiple of 1000 attoFIL
+	attoFIL, _ = new(big.Int).SetString("9123372036854775000", 10)
+	assert.Equal("9.123372036854775", NewAttoFIL(attoFIL).String())
+
+	// Less than 10^18 attoFIL
+	attoFIL, _ = new(big.Int).SetString("36854775878", 10)
+	assert.Equal("0.000000036854775878", NewAttoFIL(attoFIL).String())
+
+	// A multiple of 100 attFIL that is less than 10^18
+	attoFIL, _ = new(big.Int).SetString("36854775800", 10)
+	assert.Equal("0.0000000368547758", NewAttoFIL(attoFIL).String())
+
+	// A number of attFIL that is an integer number of FIL
+	attoFIL, _ = new(big.Int).SetString("123000000000000000000", 10)
+	assert.Equal("123", NewAttoFIL(attoFIL).String())
+}
+
+func TestNewAttoFILFromFILString(t *testing.T) {
+	t.Run("parses legitimate values correctly", func(t *testing.T) {
+		assert := assert.New(t)
+
+		attoFIL, _ := NewAttoFILFromFILString(".12345")
+		assert.Equal(BigIntFromString("123450000000000000"), attoFIL.val)
+
+		attoFIL, _ = NewAttoFILFromFILString("000000.000000")
+		assert.Equal(BigIntFromString("0"), attoFIL.val)
+
+		attoFIL, _ = NewAttoFILFromFILString("0000.12345")
+		assert.Equal(BigIntFromString("123450000000000000"), attoFIL.val)
+
+		attoFIL, _ = NewAttoFILFromFILString("12345.0")
+		assert.Equal(BigIntFromString("12345000000000000000000"), attoFIL.val)
+
+		attoFIL, _ = NewAttoFILFromFILString("12345")
+		assert.Equal(BigIntFromString("12345000000000000000000"), attoFIL.val)
+	})
+
+	t.Run("rejects nonsense values", func(t *testing.T) {
+		assert := assert.New(t)
+
+		_, ok := NewAttoFILFromFILString("notanumber")
+		assert.False(ok)
+
+		_, ok = NewAttoFILFromFILString("384042.wat")
+		assert.False(ok)
+
+		_, ok = NewAttoFILFromFILString("78wat")
+		assert.False(ok)
+
+		_, ok = NewAttoFILFromFILString("1234567890abcde")
+		assert.False(ok)
+
+		_, ok = NewAttoFILFromFILString("127.0.0.1")
+		assert.False(ok)
 	})
 }

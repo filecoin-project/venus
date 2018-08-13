@@ -54,7 +54,7 @@ message to be mined to get the channelID.`,
 			return
 		}
 
-		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
 			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
 			return
@@ -157,7 +157,7 @@ var voucherCmd = &cmds.Command{
 			return
 		}
 
-		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
 			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
 			return
@@ -310,7 +310,7 @@ var extendCmd = &cmds.Command{
 			return
 		}
 
-		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
+		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
 			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
 			return
