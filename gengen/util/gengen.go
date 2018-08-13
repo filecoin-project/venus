@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	"gx/ipfs/QmPtncU95mqpLvp5G8xDytqyBfU11SWJwSFFunPhMUTWAw/go-car"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	"gx/ipfs/QmWkSGjYAhLbHFiq8bA73xA67EG3p6ERovd2ad8c7cmbxK/go-car"
 	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
@@ -229,5 +229,5 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 		return nil, err
 	}
 
-	return keys, car.WriteCar(ctx, dserv, c, out)
+	return keys, car.WriteCar(ctx, dserv, []*cid.Cid{c}, out)
 }
