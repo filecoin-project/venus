@@ -38,7 +38,7 @@ func TestSimple(t *testing.T) {
 	}
 
 	ag := types.NewAddressForTestGetter()
-	_, err = sb.Seal(sector, ag(), makeFilecoinParameters(testSectorSize, nodeSize))
+	_, err = sb.Seal(sector, ag())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,13 +48,6 @@ func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int)
 	sb, err := InitSectorBuilder(nd, types.MakeTestAddress("bar"), sectorSize, sectorDirsForTest)
 	require.NoError(err)
 
-	sb.publicParameters = makeFilecoinParameters(sectorSize, nodeSize)
-	sb.setup = func(minerKey []byte, parameters *PublicParameters, data []byte) ([]byte, error) {
-		reverseBytes(data)
-		return data, nil
-	}
-
-	require.NoError(err)
 	return sb
 }
 
@@ -161,15 +154,9 @@ func TestSectorBuilder(t *testing.T) {
 	assert.Equal(sealed.sectorLabel, sector.Label)
 	assert.Equal(sealed.pieces, sector.Pieces)
 	assert.Equal(sealed.size, sector.Size)
-	sealedData, err := sealed.ReadFile()
+	_, err := ioutil.ReadFile(sealed.filename)
+
 	assert.NoError(err)
-
-	// Create a padded copy of 'all' and reverse it -- which is what our bogus setup function does.
-	bytes := make([]byte, testSectorSize)
-	copy(bytes, all)
-	reverseBytes(bytes)
-
-	assert.Equal(string(bytes), string(sealedData))
 
 	meta := sb.CurSector.SectorMetadata()
 	assert.Len(meta.Pieces, 1)
@@ -201,7 +188,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		// Don't accidentally test Datastore namespacing implementation.
 		assert.Contains(k2, "sealedSectors")
 		assert.Contains(k2, "metadata")
-		assert.Contains(k2, merkleString(merkleRoot))
+		assert.Contains(k2, commRString(merkleRoot))
 	})
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
@@ -243,7 +230,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		require.Error(err)
 		require.Contains(err.Error(), "not found")
 
-		sealedmeta, err := sb.store.getSealedSectorMetadata(sector.sealed.merkleRoot)
+		sealedmeta, err := sb.store.getSealedSectorMetadata(sector.sealed.commR)
 		require.NoError(err)
 		require.NotNil(sealedmeta)
 
@@ -310,7 +297,7 @@ func TestSectorStore(t *testing.T) {
 		require.Equal(1, len(sb.SealedSectors))
 		sealedSector := sb.SealedSectors[0]
 
-		loaded, err := sb.store.getSealedSector(sealedSector.merkleRoot)
+		loaded, err := sb.store.getSealedSector(sealedSector.commR)
 		require.NoError(err)
 		sealedSectorsMustEqual(t, sealedSector, loaded)
 	})
@@ -446,7 +433,7 @@ func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *S
 	sealed := sector.sealed
 	if sealed != nil {
 		sealedMeta := sealed.SealedSectorMetadata()
-		sealedMetaPersisted, err := sb.store.getSealedSectorMetadata(sealed.merkleRoot)
+		sealedMetaPersisted, err := sb.store.getSealedSectorMetadata(sealed.commR)
 		require.NoError(err)
 		require.Equal(sealedMeta, sealedMetaPersisted)
 	} else {
@@ -506,7 +493,7 @@ func sealedSectorsMustEqual(t *testing.T, ss1 *SealedSector, ss2 *SealedSector) 
 	require.Equal(ss1.label, ss2.label)
 	require.Equal(ss1.sectorLabel, ss2.sectorLabel)
 	require.Equal(ss1.size, ss2.size)
-	require.True(bytes.Equal(ss1.merkleRoot, ss2.merkleRoot))
+	require.True(bytes.Equal(ss1.commR, ss2.commR))
 
 	require.Equal(len(ss1.pieces), len(ss2.pieces))
 	for i := 0; i < len(ss1.pieces); i++ {
@@ -532,14 +519,8 @@ func sectorsMustEqual(t *testing.T, s1 *Sector, s2 *Sector) {
 }
 
 func requireReadAll(require *require.Assertions, sector *Sector) string {
-	data, err := sector.ReadFile()
+	data, err := ioutil.ReadFile(sector.filename)
 	require.NoError(err)
 
 	return string(data)
-}
-
-func reverseBytes(s []byte) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
 }
