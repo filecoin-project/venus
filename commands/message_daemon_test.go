@@ -5,6 +5,7 @@ import (
 	"sync"
 	"testing"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +13,7 @@ import (
 func TestMessageSend(t *testing.T) {
 	t.Parallel()
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
+	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("mining", "once")
@@ -43,7 +44,7 @@ func TestMessageSend(t *testing.T) {
 func TestMessageWait(t *testing.T) {
 	t.Parallel()
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
+	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {

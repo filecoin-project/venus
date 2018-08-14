@@ -15,6 +15,7 @@ import (
 	"gx/ipfs/QmexBtiTTEwwn42Yi6ouKt6VqzpA6wjJgiW1oh9VfaRrup/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -24,7 +25,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
+	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
@@ -71,7 +72,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		eol := types.NewBlockHeight(20)
 		amt := types.NewAttoFILFromFIL(10000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 
 			ls := listChannelsAsStrs(d, &payer)[0]
 
@@ -90,12 +91,12 @@ func TestPaymentChannelLs(t *testing.T) {
 		eol := types.NewBlockHeight(20)
 		amt := types.NewAttoFILFromFIL(10000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 			args := []string{"paych", "ls"}
 			args = append(args, "--from", target.String())
 			args = append(args, "--payer", payer.String())
 
-			ls := runSuccessLines(d, args...)[0]
+			ls := th.RunSuccessLines(d, args...)[0]
 
 			assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID, target.String()), ls)
 		})
@@ -112,7 +113,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		eol := types.NewBlockHeight(20)
 		amt := types.NewAttoFILFromFIL(10000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 
 			ls := listChannelsAsStrs(d, &target)[0]
 
@@ -133,7 +134,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(20)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(100), &payer)
@@ -155,10 +156,10 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	amt := types.NewAttoFILFromFIL(10000)
 
 	wtf := tf.WalletFilePath()
-	targetDaemon := NewDaemon(t, WalletFile(wtf), WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(target.String())).Start()
 	defer targetDaemon.ShutdownSuccess()
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		d.ConnectSuccess(targetDaemon)
@@ -188,10 +189,10 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	amt := types.NewAttoFILFromFIL(10000)
 
 	wtf := tf.WalletFilePath()
-	targetDaemon := NewDaemon(t, WalletFile(wtf), WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(target.String())).Start()
 	defer targetDaemon.ShutdownSuccess()
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		d.ConnectSuccess(targetDaemon)
@@ -215,7 +216,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		assert.Contains(lsStr, "no channels")
 
 		args := []string{"wallet", "balance", payer.String()}
-		balStr := runSuccessFirstLine(d, args...)
+		balStr := th.RunSuccessFirstLine(d, args...)
 
 		// channel's original locked funds minus the redeemed voucher amount
 		// are returned to the payer
@@ -238,10 +239,10 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	amt := types.NewAttoFILFromFIL(10000)
 
 	wtf := tf.WalletFilePath()
-	targetDaemon := NewDaemon(t, WalletFile(wtf), WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(target.String())).Start()
 	defer targetDaemon.ShutdownSuccess()
 
-	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		d.ConnectSuccess(targetDaemon)
@@ -259,12 +260,12 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 		// channel's original locked funds minus the redeemed voucher amount
 		// are returned to the payer
 		args := []string{"wallet", "balance", payer.String()}
-		balStr := runSuccessFirstLine(d, args...)
+		balStr := th.RunSuccessFirstLine(d, args...)
 		assert.Equal("9999990", balStr)
 
 		// target's balance reflects redeemed voucher
 		args = []string{"wallet", "balance", target.String()}
-		balStr = runSuccessFirstLine(d, args...)
+		balStr = th.RunSuccessFirstLine(d, args...)
 		assert.Equal("10000010", balStr)
 	})
 }
@@ -281,7 +282,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(5)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *TestDaemon, channelID *types.ChannelID) {
+	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		extendedEOL := types.NewBlockHeight(6)
@@ -297,11 +298,11 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	})
 }
 
-func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, targetAddress *types.Address, fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*TestDaemon, *types.ChannelID)) {
+func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, targetAddress *types.Address, fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*th.TestDaemon, *types.ChannelID)) {
 	assert := assert.New(t)
 
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, WalletFile(wtf), WalletAddr(payerAddress.String())).Start()
+	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(payerAddress.String())).Start()
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
@@ -334,7 +335,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, tar
 	wg.Wait()
 }
 
-func mustCreateVoucher(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, fromAddress *types.Address) paymentbroker.PaymentVoucher {
+func mustCreateVoucher(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, fromAddress *types.Address) paymentbroker.PaymentVoucher {
 	require := require.New(t)
 
 	voucherString := createVoucherStr(t, d, channelID, amount, fromAddress)
@@ -349,21 +350,21 @@ func mustCreateVoucher(t *testing.T, d *TestDaemon, channelID *types.ChannelID, 
 	return voucher
 }
 
-func createVoucherStr(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *types.Address) string {
+func createVoucherStr(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *types.Address) string {
 	args := []string{"paych", "voucher", channelID.String(), amount.String()}
 	args = append(args, "--from", payerAddress.String())
 
-	return runSuccessFirstLine(d, args...)
+	return th.RunSuccessFirstLine(d, args...)
 }
 
-func listChannelsAsStrs(d *TestDaemon, fromAddress *types.Address) []string {
+func listChannelsAsStrs(d *th.TestDaemon, fromAddress *types.Address) []string {
 	args := []string{"paych", "ls"}
 	args = append(args, "--from", fromAddress.String())
 
-	return runSuccessLines(d, args...)
+	return th.RunSuccessLines(d, args...)
 }
 
-func mustExtendChannel(t *testing.T, d *TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight, payerAddress *types.Address) {
+func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight, payerAddress *types.Address) {
 	require := require.New(t)
 
 	args := []string{"paych", "extend"}
@@ -393,7 +394,7 @@ func mustExtendChannel(t *testing.T, d *TestDaemon, channelID *types.ChannelID, 
 	wg.Wait()
 }
 
-func mustRedeemVoucher(t *testing.T, d *TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *types.Address) {
+func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *types.Address) {
 	require := require.New(t)
 
 	args := []string{"paych", "redeem", mustEncodeVoucherStr(t, voucher)}
@@ -422,7 +423,7 @@ func mustRedeemVoucher(t *testing.T, d *TestDaemon, voucher paymentbroker.Paymen
 	wg.Wait()
 }
 
-func mustCloseChannel(t *testing.T, d *TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *types.Address) {
+func mustCloseChannel(t *testing.T, d *th.TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *types.Address) {
 	require := require.New(t)
 
 	args := []string{"paych", "close", mustEncodeVoucherStr(t, voucher)}
@@ -451,7 +452,7 @@ func mustCloseChannel(t *testing.T, d *TestDaemon, voucher paymentbroker.Payment
 	wg.Wait()
 }
 
-func mustReclaimChannel(t *testing.T, d *TestDaemon, channelID *types.ChannelID, payerAddress *types.Address) {
+func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, payerAddress *types.Address) {
 	require := require.New(t)
 
 	args := []string{"paych", "reclaim", channelID.String()}

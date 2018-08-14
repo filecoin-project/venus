@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"testing"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +22,7 @@ func TestVersion(t *testing.T) {
 	}
 	commit := string(gitOut)
 
-	d := NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	out := d.RunSuccess("version")

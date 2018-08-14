@@ -1,25 +1,20 @@
-package commands
+package gengen
 
 import (
 	"io/ioutil"
 	"strings"
 	"testing"
 
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
-// TODO:
-// This code only lives here because the 'NewDaemon' code only exists in this
-// package in test code. If it were its own package, we could use it from the
-// gengen directory and run tests there
-
-var testConfig = &gengen.GenesisCfg{
+var testConfig = &GenesisCfg{
 	Keys: []string{"bob", "hank", "steve", "laura"},
 	PreAlloc: map[string]string{
 		"bob":  "10",
 		"hank": "50",
 	},
-	Miners: []gengen.Miner{
+	Miners: []Miner{
 		{
 			Owner: "bob",
 			Power: 5000,
@@ -37,15 +32,13 @@ func TestGenGenLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = GenGenesisCar(testConfig, fi); err != nil {
 		t.Fatal(err)
 	}
 
 	fi.Close()
 
-	td := NewDaemon(t, func(td *TestDaemon) {
-		td.genesisFile = fi.Name()
-	}).Start()
+	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer td.Shutdown()
 
 	o := td.Run("actor", "ls").AssertSuccess()

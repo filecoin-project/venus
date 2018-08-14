@@ -22,6 +22,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
+const (
+	// SECP256K1 is a curve used to compute private keys
+	SECP256K1 = "secp256k1"
+)
+
 type nodeDaemon struct {
 	api *nodeAPI
 }
@@ -99,7 +104,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		nd.api.logger.Infof("initializing filecoin node with wallet file: %s\n", cfg.WalletFile)
 
 		// Load all the Address their Keys into memory
-		addressKeys, err := testhelpers.LoadWalletAddressAndKeysFromFile(cfg.WalletFile)
+		addressKeys, err := wallet.LoadWalletAddressAndKeysFromFile(cfg.WalletFile)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load wallet file: %s", cfg.WalletFile)
 		}
@@ -128,7 +133,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	return node.Init(ctx, rep, tif)
 }
 
-func loadAddress(ai testhelpers.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
+func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
 		return err

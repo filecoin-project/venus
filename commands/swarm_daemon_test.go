@@ -2,14 +2,16 @@ package commands
 
 import (
 	"testing"
+
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
 func TestSwarmConnectPeers(t *testing.T) {
 
-	d1 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
+	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
 
-	d2 := NewDaemon(t, SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
+	d2 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
 	defer d2.ShutdownSuccess()
 
 	t.Log("[failure] invalid peer")

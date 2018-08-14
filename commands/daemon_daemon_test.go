@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDaemonStartupMessage(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	daemon := NewDaemon(t).Start()
+	daemon := th.NewDaemon(t).Start()
 	daemon.ShutdownSuccess()
 
 	out := daemon.ReadStdout()
@@ -24,9 +25,9 @@ func TestDaemonStartupMessage(t *testing.T) {
 func TestDaemonApiFile(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	daemon := NewDaemon(t).Start()
+	daemon := th.NewDaemon(t).Start()
 
-	apiPath := filepath.Join(daemon.repoDir, "api")
+	apiPath := filepath.Join(daemon.RepoDir(), "api")
 	assert.FileExists(apiPath)
 
 	daemon.ShutdownEasy()
@@ -41,9 +42,9 @@ func TestDaemonCORS(t *testing.T) {
 	t.Run("default allowed origins work", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		td := NewDaemon(t).Start()
+		td := th.NewDaemon(t).Start()
 
-		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
+		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.CmdAddr())
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(err)
 		req.Header.Add("Origin", "http://localhost")
@@ -76,9 +77,9 @@ func TestDaemonCORS(t *testing.T) {
 	t.Run("non-configured origin fails", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		td := NewDaemon(t).Start()
+		td := th.NewDaemon(t).Start()
 
-		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
+		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.CmdAddr())
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(err)
 		req.Header.Add("Origin", "http://disallowed.origin")

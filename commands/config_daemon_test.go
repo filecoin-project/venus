@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +27,7 @@ func TestConfigDaemon(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		d := NewDaemon(t).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("config", "bootstrap")
@@ -52,7 +53,7 @@ func TestConfigDaemon(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		d := NewDaemon(t).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("config", "bootstrap",

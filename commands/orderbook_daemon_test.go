@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestOrderbookBids(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t, WalletFile(tf.WalletFilePath()), WalletAddr(testAddress3)).Start()
+	d := th.NewDaemon(t, th.WalletFile(tf.WalletFilePath()), th.WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
@@ -38,7 +39,7 @@ func TestOrderbookAsks(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	minerAddr := d.CreateMinerAddr()
@@ -65,12 +66,12 @@ func TestOrderbookDeals(t *testing.T) {
 	assert := assert.New(t)
 
 	// make a client
-	client := NewDaemon(t).Start()
+	client := th.NewDaemon(t).Start()
 	defer func() { t.Log(client.ReadStderr()) }()
 	defer client.ShutdownSuccess()
 
 	// make a miner
-	miner := NewDaemon(t).Start()
+	miner := th.NewDaemon(t).Start()
 	defer func() { t.Log(miner.ReadStderr()) }()
 	defer miner.ShutdownSuccess()
 

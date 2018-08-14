@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -32,7 +33,7 @@ func TestMinerCreate(t *testing.T) {
 		var err error
 		var addr types.Address
 
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
 		defer d.ShutdownSuccess()
 
 		tf := func(fromAddress types.Address, pid peer.ID, expectSuccess bool) {
@@ -88,7 +89,7 @@ func TestMinerCreate(t *testing.T) {
 	t.Run("from address failure", func(t *testing.T) {
 		t.Parallel()
 
-		d := NewDaemon(t).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		tf := func(fromAddress types.Address, pid peer.ID) {
@@ -110,7 +111,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("validation failure", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
 		defer d.ShutdownSuccess()
 
 		d.CreateWalletAddr()
@@ -139,7 +140,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("creation failure", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
 		defer d.ShutdownSuccess()
 
 		var wg sync.WaitGroup
@@ -166,7 +167,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress3)).Start()
+	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
@@ -211,7 +212,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	assert := assert.New(t)
 
 	wtf := tf.WalletFilePath()
-	d := NewDaemon(t, CmdTimeout(time.Second*90), WalletFile(wtf), WalletAddr(testAddress3)).Start()
+	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.WalletFile(wtf), th.WalletAddr(testAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()

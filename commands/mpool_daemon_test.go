@@ -10,6 +10,7 @@ import (
 
 	"sync"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 )
 
@@ -20,7 +21,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("return all messages", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
+		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
 		defer d.ShutdownSuccess()
 
 		d.RunSuccess("message", "send",
@@ -37,7 +38,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("wait for enough messages", func(t *testing.T) {
 		t.Parallel()
-		d := NewDaemon(t, WalletFile(wtf), WalletAddr(testAddress1)).Start()
+		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
 		defer d.ShutdownSuccess()
 
 		wg := sync.WaitGroup{}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
@@ -19,13 +20,13 @@ func TestDagDaemon(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		d := NewDaemon(t).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		// get the CID of the genesis block from the "chain ls" command output
 
 		op1 := d.RunSuccess("chain", "ls", "--enc", "json")
-		result1 := op1.readStdoutTrimNewlines()
+		result1 := op1.ReadStdoutTrimNewlines()
 		genesisBlockJSONStr := bytes.Split([]byte(result1), []byte{'\n'})[0]
 
 		var expectedRaw []types.Block
@@ -38,7 +39,7 @@ func TestDagDaemon(t *testing.T) {
 
 		op2 := d.RunSuccess("dag", "get", expected.Cid().String(), "--enc", "json")
 
-		result2 := op2.readStdoutTrimNewlines()
+		result2 := op2.ReadStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJSON(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
 		require.NoError(err)

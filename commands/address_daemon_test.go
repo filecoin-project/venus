@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +15,7 @@ func TestAddrsNewAndList(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	addrs := make([]string, 10)
@@ -32,27 +33,27 @@ func TestWalletBalance(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 	addr := d.CreateWalletAddr()
 
 	t.Log("[success] not found, zero")
 	balance := d.RunSuccess("wallet", "balance", addr)
-	assert.Equal("0", balance.readStdoutTrimNewlines())
+	assert.Equal("0", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] balance 10000000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal("10000000", balance.readStdoutTrimNewlines())
+	assert.Equal("10000000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("wallet addrs new")
-	balance = d.RunSuccess("wallet", "balance", addrNew.readStdoutTrimNewlines())
-	assert.Equal("0", balance.readStdoutTrimNewlines())
+	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdoutTrimNewlines())
+	assert.Equal("0", balance.ReadStdoutTrimNewlines())
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
-	d := NewDaemon(t, CmdTimeout(time.Second*90)).Start()
+	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90)).Start()
 	defer d.ShutdownSuccess()
 
 	minerPidForUpdate := core.RequireRandomPeerID()
@@ -60,10 +61,10 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	minerAddr := d.CreateMinerAddr()
 
 	// capture original, pre-update miner pid
-	lookupOutA := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
 
 	// update the miner's peer ID
-	updateMsg := runSuccessFirstLine(d,
+	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
 		minerAddr.String(),
 		minerPidForUpdate.Pretty(),
@@ -77,7 +78,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
 
 	// use the address lookup command to ensure update happened
-	lookupOutB := runSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
 	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(lookupOutA, lookupOutB)
 }
@@ -85,14 +86,14 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 func TestWalletLoadFromFile(t *testing.T) {
 	assert := assert.New(t)
 
-	d := NewDaemon(t, WalletFile("../testhelpers/testfiles/walletGenFile.toml"), WalletAddr("fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")).Start()
+	d := th.NewDaemon(t, th.WalletFile("../testhelpers/testfiles/walletGenFile.toml"), th.WalletAddr("fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")).Start()
 	defer d.ShutdownSuccess()
 
 	// assert we loaded the test address from the file
-	dw := d.RunSuccess("address", "ls").readStdoutTrimNewlines()
+	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
 	assert.Contains(dw, "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").readStdoutTrimNewlines()
+	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").ReadStdoutTrimNewlines()
 	assert.Contains(wb, "10000000")
 }

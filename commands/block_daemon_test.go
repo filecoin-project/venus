@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,16 +16,16 @@ func TestBlockDaemon(t *testing.T) {
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a Filecoin block", func(t *testing.T) {
 		require := require.New(t)
 
-		d := NewDaemon(t).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		// mine a block and get its CID
 
-		minedBlockCidStr := runSuccessFirstLine(d, "mining", "once")
+		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
 
 		// get the mined block by its CID
 
-		blockGetLine := runSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
+		blockGetLine := th.RunSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
 		var blockGetBlock types.Block
 		json.Unmarshal([]byte(blockGetLine), &blockGetBlock)
 

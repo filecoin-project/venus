@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
 func TestDSBackendSimple(t *testing.T) {
@@ -114,7 +112,7 @@ func TestDSBackendLoadAddressInfo(t *testing.T) {
 	assert.Len(fs.Addresses(), 0)
 
 	t.Log("generate a WalletFile with 2 addresses")
-	wf, err := th.GenerateWalletFile(2)
+	wf, err := GenerateWalletFile(2)
 	require.NoError(err)
 
 	t.Log("load address into datastore")

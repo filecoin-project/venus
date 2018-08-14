@@ -3,6 +3,8 @@ package commands
 import (
 	"testing"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -10,7 +12,7 @@ func TestBootstrapList(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	bs := d.RunSuccess("bootstrap ls")
