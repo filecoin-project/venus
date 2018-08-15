@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
+	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 // Context is the only thing exposed to an actor while executing.
@@ -200,6 +201,21 @@ func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initialize
 	}
 
 	return nil
+}
+
+// VerifySignature cryptographically verifies that 'sig' is the signed hash of 'data' with
+// the public key belonging to `addr`.
+func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.Signature) (bool, error) {
+	maybePk, err := wutil.Ecrecover(data, sig)
+	if err != nil {
+		return false, err
+	}
+	maybeAddrHash, err := types.AddressHash(maybePk)
+	if err != nil {
+		return false, err
+	}
+
+	return types.NewMainnetAddress(maybeAddrHash) == addr, nil
 }
 
 // Dependency injection setup.
