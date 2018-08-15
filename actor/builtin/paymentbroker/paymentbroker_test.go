@@ -251,6 +251,24 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	require.NoError(err)
 }
 
+func TestPaymentBrokerUpdateInvalidSig(t *testing.T) {
+	require := require.New(t)
+	sys := setup(t)
+
+	amt := types.NewAttoFILFromFIL(100)
+	signature, err := sys.Signature(amt)
+	require.NoError(err)
+	// make the signature invalid
+	signature[0] = 0
+	signature[1] = 1
+
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, ([]byte)(signature))
+	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
+	res, err := sys.ApplyMessage(msg, 0)
+	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
+	require.NoError(err)
+}
+
 func TestPaymentBrokerReclaim(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
