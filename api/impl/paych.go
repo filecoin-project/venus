@@ -24,32 +24,14 @@ func newNodePaych(api *nodeAPI) *nodePaych {
 }
 
 func (api *nodePaych) Create(ctx context.Context, fromAddr, target types.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return nil, err
-	}
-
-	params, err := abi.ToEncodedValues(target, eol)
-	if err != nil {
-		return nil, err
-	}
-
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.PaymentBrokerAddress, amount, "createChannel", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		amount,
+		"createChannel",
+		target, eol,
+	)
 }
 
 func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address) (map[string]*paymentbroker.PaymentChannel, error) {
@@ -63,23 +45,19 @@ func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address)
 		payerAddr = fromAddr
 	}
 
-	args, err := abi.ToEncodedValues(payerAddr)
+	value, err := sendQuery(
+		nd,
+		fromAddr,
+		"ls",
+		payerAddr,
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	retValue, retCode, err := nd.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, &fromAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	if retCode != 0 {
-		return nil, fmt.Errorf("Non-zero retrurn code executing ls")
 	}
 
 	var channels map[string]*paymentbroker.PaymentChannel
 
-	if err := cbor.DecodeInto(retValue[0], &channels); err != nil {
+	if err := cbor.DecodeInto(value[0], &channels); err != nil {
 		return nil, err
 	}
 
@@ -93,22 +71,18 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 		return "", err
 	}
 
-	args, err := abi.ToEncodedValues(channel, amount)
+	value, err := sendQuery(
+		nd,
+		fromAddr,
+		"voucher",
+		channel, amount,
+	)
 	if err != nil {
 		return "", err
-	}
-
-	retValue, retCode, err := nd.CallQueryMethod(address.PaymentBrokerAddress, "voucher", args, &fromAddr)
-	if err != nil {
-		return "", err
-	}
-
-	if retCode != 0 {
-		return "", fmt.Errorf("Non-zero return code executing voucher")
 	}
 
 	var voucher paymentbroker.PaymentVoucher
-	if err := cbor.DecodeInto(retValue[0], &voucher); err != nil {
+	if err := cbor.DecodeInto(value[0], &voucher); err != nil {
 		return "", err
 	}
 
@@ -124,12 +98,60 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 }
 
 func (api *nodePaych) Redeem(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
+	voucher, err := decodeVoucher(voucherRaw)
+	if err != nil {
 		return nil, err
 	}
 
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		types.NewAttoFILFromFIL(0),
+		"update",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+	)
+}
+
+func (api *nodePaych) Reclaim(ctx context.Context, fromAddr types.Address, channel *types.ChannelID) (*cid.Cid, error) {
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		types.NewAttoFILFromFIL(0),
+		"reclaim",
+		channel,
+	)
+}
+
+func (api *nodePaych) Close(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
+	voucher, err := decodeVoucher(voucherRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		types.NewAttoFILFromFIL(0),
+		"close",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+	)
+}
+
+func (api *nodePaych) Extend(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		amount,
+		"extend",
+		channel, eol,
+	)
+}
+
+func decodeVoucher(voucherRaw string) (*paymentbroker.PaymentVoucher, error) {
 	_, cborVoucher, err := multibase.Decode(voucherRaw)
 	if err != nil {
 		return nil, err
@@ -141,125 +163,23 @@ func (api *nodePaych) Redeem(ctx context.Context, fromAddr types.Address, vouche
 		return nil, err
 	}
 
-	params, err := abi.ToEncodedValues(voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Sign this message
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "update", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
+	return &voucher, nil
 }
 
-func (api *nodePaych) Reclaim(ctx context.Context, fromAddr types.Address, channel *types.ChannelID) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return nil, err
-	}
-
-	params, err := abi.ToEncodedValues(channel)
+func sendQuery(nd *node.Node, fromAddr types.Address, method string, params ...interface{}) ([][]byte, error) {
+	args, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Sign this message
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "reclaim", params)
+	retValue, retCode, err := nd.CallQueryMethod(address.PaymentBrokerAddress, method, args, &fromAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
+	if retCode != 0 {
+		return nil, fmt.Errorf("Non-zero return code executing voucher")
 	}
 
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
-}
-
-func (api *nodePaych) Close(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return nil, err
-	}
-
-	_, cborVoucher, err := multibase.Decode(voucherRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	var voucher paymentbroker.PaymentVoucher
-	if err := cbor.DecodeInto(cborVoucher, &voucher); err != nil {
-		return nil, err
-	}
-
-	params, err := abi.ToEncodedValues(voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Sign this message
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.PaymentBrokerAddress, types.NewAttoFILFromFIL(0), "close", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
-}
-
-func (api *nodePaych) Extend(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return nil, err
-	}
-
-	params, err := abi.ToEncodedValues(channel, eol)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Sign this message
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.PaymentBrokerAddress, amount, "extend", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
+	return retValue, nil
 }

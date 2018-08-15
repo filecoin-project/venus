@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -19,18 +20,19 @@ func newNodeMessage(api *nodeAPI) *nodeMessage {
 	return &nodeMessage{api: api}
 }
 
-func (api *nodeMessage) Send(ctx context.Context, from, to types.Address, val *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeMessage) Send(ctx context.Context, from, to types.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
 	nd := api.api.node
 
-	if from == (types.Address{}) {
-		ret, err := nd.DefaultSenderAddress()
-		if (err != nil && err == node.ErrNoDefaultMessageFromAddress) || ret == (types.Address{}) {
-			return nil, ErrCouldNotDefaultFromAddress
-		}
-		from = ret
+	if err := setDefaultFromAddr(&from, nd); err != nil {
+		return nil, err
 	}
 
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, from, to, val, "", nil)
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := node.NewMessageWithNextNonce(ctx, nd, from, to, val, method, encodedParams)
 	if err != nil {
 		return nil, err
 	}
