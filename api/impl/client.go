@@ -12,7 +12,6 @@ import (
 	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -28,33 +27,16 @@ func newNodeClient(api *nodeAPI) *nodeClient {
 }
 
 func (api *nodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return nil, err
-	}
-
 	funds := price.CalculatePrice(size)
-	params, err := abi.ToEncodedValues(price, size)
-	if err != nil {
-		return nil, err
-	}
 
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, fromAddr, address.StorageMarketAddress, funds, "addBid", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
+	return api.api.Message().Send(
+		ctx,
+		fromAddr,
+		address.StorageMarketAddress,
+		funds,
+		"addBid",
+		price, size,
+	)
 }
 
 func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error) {

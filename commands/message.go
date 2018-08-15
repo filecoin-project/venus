@@ -61,7 +61,7 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
-		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)))
+		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), "")
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
