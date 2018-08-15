@@ -267,16 +267,51 @@ func (td *TestDaemon) GetAddress() string {
 // ConnectSuccess connects the daemon to another daemon, asserting that
 // the operation was successful.
 func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
+	remoteAddr := remote.GetAddress()
+
 	// Connect the nodes
-	out := td.RunSuccess("swarm", "connect", remote.GetAddress())
-	peers1 := td.RunSuccess("swarm", "peers")
-	peers2 := remote.RunSuccess("swarm", "peers")
+	var out *Output
+	for i := 0; i < 5; i++ {
+		out = td.Run("swarm", "connect", remoteAddr)
+		if out.Error == nil && out.Code == 0 {
+			break
+		}
+	}
+	assert.Equal(td.test, out.Code, 0, "failed to execute swarm connect")
 
-	td.test.Log("[success] 1 -> 2")
-	require.Contains(td.test, peers1.ReadStdout(), remote.GetID())
+	delay := 100 * time.Millisecond
 
-	td.test.Log("[success] 2 -> 1")
-	require.Contains(td.test, peers2.ReadStdout(), td.GetID())
+	localID := td.GetID()
+	remoteID := remote.GetID()
+
+	connected1 := false
+	for i := 0; i < 10; i++ {
+		peers1 := td.RunSuccess("swarm", "peers")
+
+		p1 := peers1.ReadStdout()
+		connected1 = strings.Contains(p1, remoteID)
+		if connected1 {
+			break
+		}
+		td.test.Log(p1)
+		time.Sleep(delay)
+	}
+
+	connected2 := false
+	for i := 0; i < 10; i++ {
+		peers2 := remote.RunSuccess("swarm", "peers")
+
+		p2 := peers2.ReadStdout()
+		connected2 = strings.Contains(p2, localID)
+		if connected2 {
+			break
+		}
+		td.test.Log(p2)
+		time.Sleep(delay)
+	}
+
+	require.True(td.test, connected1, "failed to connect p1 -> p2")
+	require.True(td.test, connected2, "failed to connect p2 -> p1")
 
 	return out
 }
