@@ -221,10 +221,7 @@ func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, err
 		return types.Address{}, err
 	}
 
-	hash, err := types.AddressHash(buf.Bytes())
-	if err != nil {
-		return types.Address{}, err
-	}
+	hash := types.AddressHash(buf.Bytes())
 
 	return types.NewMainnetAddress(hash), nil
 }

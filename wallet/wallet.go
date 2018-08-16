@@ -195,10 +195,7 @@ func GenerateWalletFile(numAddrs int) (*File, error) {
 			panic("unknown public key type")
 		}
 
-		addrHash, err := types.AddressHash(cu.SerializeUncompressed(pub))
-		if err != nil {
-			return nil, err
-		}
+		addrHash := types.AddressHash(cu.SerializeUncompressed(pub))
 		// TODO: Use the address type we are running on from the config.
 		newAddr := types.NewMainnetAddress(addrHash)
 

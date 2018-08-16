@@ -159,10 +159,7 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 		return types.Address{}, err
 	}
 
-	hash, err := types.AddressHash(buf.Bytes())
-	if err != nil {
-		return types.Address{}, err
-	}
+	hash := types.AddressHash(buf.Bytes())
 
 	return types.NewMainnetAddress(hash), nil
 }
@@ -205,17 +202,15 @@ func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initialize
 
 // VerifySignature cryptographically verifies that 'sig' is the signed hash of 'data' with
 // the public key belonging to `addr`.
-func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.Signature) (bool, error) {
+func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.Signature) bool {
 	maybePk, err := wutil.Ecrecover(data, sig)
 	if err != nil {
-		return false, err
+		// Any error returned from Ecrecover means this signature is not valid.
+		return false
 	}
-	maybeAddrHash, err := types.AddressHash(maybePk)
-	if err != nil {
-		return false, err
-	}
+	maybeAddrHash := types.AddressHash(maybePk)
 
-	return types.NewMainnetAddress(maybeAddrHash) == addr, nil
+	return types.NewMainnetAddress(maybeAddrHash) == addr
 }
 
 // Dependency injection setup.

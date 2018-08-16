@@ -46,10 +46,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 		if !ok {
 			panic("unknown public key type")
 		}
-		addrHash, err := AddressHash(cu.SerializeUncompressed(pub))
-		if err != nil {
-			panic(err)
-		}
+		addrHash := AddressHash(cu.SerializeUncompressed(pub))
 		newAddr := NewMainnetAddress(addrHash)
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k

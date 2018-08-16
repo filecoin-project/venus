@@ -65,10 +65,7 @@ func (ki *KeyInfo) Address() (Address, error) {
 		return Address{}, err
 	}
 
-	addrHash, err := AddressHash(pub)
-	if err != nil {
-		return Address{}, err
-	}
+	addrHash := AddressHash(pub)
 
 	// TODO: Use the address type we are running on from the config.
 	return NewMainnetAddress(addrHash), nil

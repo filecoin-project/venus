@@ -12,11 +12,7 @@ var hashes = make([][]byte, 5)
 
 func init() {
 	for i := range hashes {
-		s, err := AddressHash([]byte(fmt.Sprintf("foo-%d", i)))
-		if err != nil {
-			panic(err)
-		}
-		hashes[i] = s
+		hashes[i] = AddressHash([]byte(fmt.Sprintf("foo-%d", i)))
 	}
 }
 

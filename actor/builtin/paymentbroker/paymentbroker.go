@@ -205,8 +205,7 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		data := append(chid.Bytes(), amt.Bytes()...)
-		valid, err := ctx.VerifySignature(data, payer, sig)
-		if err != nil || !valid {
+		if !ctx.VerifySignature(data, payer, sig) {
 			return nil, Errors[ErrInvalidSignature]
 		}
 
@@ -231,8 +230,8 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		data := append(chid.Bytes(), amt.Bytes()...)
-		valid, err := ctx.VerifySignature(data, payer, sig)
-		if err != nil || !valid {
+
+		if !ctx.VerifySignature(data, payer, sig) {
 			return nil, Errors[ErrInvalidSignature]
 		}
 
