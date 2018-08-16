@@ -214,8 +214,7 @@ func (o *Output) AssertSuccess() *Output {
 	o.test.Helper()
 	require.NoError(o.test, o.Error)
 	oErr := o.ReadStderr()
-	fmt.Println("stderr", oErr)
-	fmt.Println("stdout", o.ReadStdout())
+
 	require.Equal(o.test, 0, o.Code, oErr)
 	require.NotContains(o.test, oErr, "CRITICAL")
 	require.NotContains(o.test, oErr, "ERROR")
@@ -377,7 +376,6 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "1000")
-		fmt.Println("miner create done")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		require.NotEqual(td.test, addr, types.Address{})
@@ -385,10 +383,8 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 		wg.Done()
 	}()
 
-	fmt.Println("mpool")
 	// ensure mining runs after the command in our goroutine
 	td.RunSuccess("mpool --wait-for-count=1")
-	fmt.Println("mining ocne")
 	td.RunSuccess("mining", "once")
 
 	wg.Wait()

@@ -45,6 +45,7 @@ func TestOrderbookAsks(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		d.RunSuccess(
 			"miner", "add-ask",
+			"--from", th.TestAddress1,
 			minerAddr.String(), "1", fmt.Sprintf("%d", i),
 		)
 	}
