@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -163,18 +164,20 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 			return err
 		}
 
-		act := &types.Actor{
-			Balance: types.NewAttoFILFromFIL(valint),
+		act, err := account.NewActor(types.NewAttoFILFromFIL(valint))
+		if err != nil {
+			return err
 		}
-
 		if err := st.SetActor(context.Background(), addr, act); err != nil {
 			return err
 		}
 	}
 
-	netact := &types.Actor{
-		Balance: types.NewAttoFILFromFIL(10000000000),
+	netact, err := account.NewActor(types.NewAttoFILFromFIL(10000000000))
+	if err != nil {
+		return err
 	}
+
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 

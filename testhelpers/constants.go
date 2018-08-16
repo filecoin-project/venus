@@ -10,11 +10,11 @@ import (
 // If said file is modified these addresses will need to change as well
 //
 
-const TestAddress1 = "fcq8up4je9da37vf6dgs4jwytne435hdwxc6dyaas" // nolint: deadcode
-const TestAddress2 = "fcq9gshrqyd0rk0xtylne6laxf4wfkge04gpahzpe" // nolint: deadcode
-const TestAddress3 = "fcqcq3gtnukzq62pg7fm0he7nc84j6egkagdvqcks" // nolintb: deadcode
-const TestAddress4 = "fcqyplzqvsvvlmev53yfxqp8688j4xkrcy8fnhz78" // nolint: deadcode, varcheck, megacheck
-const TestAddress5 = "fcqmrw29j8l96naes25zrzkyydsaqnx5rdvfnv3lk" // nolint: deadcode, varcheck, megacheck
+const TestAddress1 = "fcqat3u6nmev9sy52r5djnkq9qjdyg7j9vxt0ayud" // nolint: deadcode
+const TestAddress2 = "fcq0dtn4s0dqpmevthqvz36xm7xftkkx4nnqsq8ku" // nolint: deadcode
+const TestAddress3 = "fcqtruwed863w9vgz82tjw90erpj3t74yqzv4szwj" // nolint: deadcode
+const TestAddress4 = "fcq2gz4yqx5dusqecxe79aa4kxhj8ejn645s67k9f" // nolint: deadcode, varcheck, megacheck
+const TestAddress5 = "fcq5y8lp6s6jtdavp0nahyr4hpufjfedtjcrntuf"  // nolint: deadcode, varcheck, megacheck
 
 // GenesisFilePath returns the path of the WalletFile
 // Head after running with setup.json is: zdpuAkgCshuhMj8nB5nHW3HFboWpvz8JxKvHxMBfDCaKeV2np
