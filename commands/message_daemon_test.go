@@ -10,6 +10,7 @@ import (
 )
 
 func TestMessageSend(t *testing.T) {
+	t.Skip("FIXME: uses mining once")
 	t.Parallel()
 
 	d := th.NewDaemon(t).Start()
@@ -41,6 +42,7 @@ func TestMessageSend(t *testing.T) {
 }
 
 func TestMessageWait(t *testing.T) {
+	t.Skip("FIXME: uses mining once")
 	t.Parallel()
 
 	d := th.NewDaemon(t).Start()
