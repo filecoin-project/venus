@@ -86,8 +86,7 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 		return "", err
 	}
 
-	data := append(channel.Bytes(), amount.Bytes()...)
-	sig, err := nd.Wallet.SignBytes(data, fromAddr)
+	sig, err := paymentbroker.SignVoucher(channel, amount, fromAddr, nd.Wallet)
 	if err != nil {
 		return "", err
 	}

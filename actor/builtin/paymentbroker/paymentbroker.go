@@ -204,7 +204,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		data := append(chid.Bytes(), amt.Bytes()...)
+		data := createVoucherSignatureData(chid, amt)
 		if !ctx.VerifySignature(data, payer, sig) {
 			return nil, Errors[ErrInvalidSignature]
 		}
@@ -229,8 +229,8 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		data := append(chid.Bytes(), amt.Bytes()...)
 
+		data := createVoucherSignatureData(chid, amt)
 		if !ctx.VerifySignature(data, payer, sig) {
 			return nil, Errors[ErrInvalidSignature]
 		}
@@ -432,4 +432,21 @@ func reclaim(ctx *vm.Context, state *State, payer types.Address, chid *types.Cha
 	}
 
 	return nil
+}
+
+// Separator is the separator used when concatenating channel and amount in a
+// voucher signature.
+const separator = 0x0
+
+// SignVoucher creates the signature for the given combination of
+// channel, amount and from address.
+// It does so by sign the following bytes: (channelID | 0x0 | amount)
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr types.Address, signer types.Signer) (types.Signature, error) {
+	data := createVoucherSignatureData(channelID, amount)
+	return signer.SignBytes(data, addr)
+}
+
+func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL) []byte {
+	data := append(channelID.Bytes(), separator)
+	return append(data, amount.Bytes()...)
 }

@@ -594,13 +594,11 @@ func setup(t *testing.T) system {
 }
 
 func (sys *system) Signature(amt *types.AttoFIL) ([]byte, error) {
-	data := append(sys.channelID.Bytes(), amt.Bytes()...)
-	signature, err := mockSigner.SignBytes(data, sys.payer)
+	sig, err := SignVoucher(sys.channelID, amt, sys.payer, mockSigner)
 	if err != nil {
 		return nil, err
 	}
-
-	return ([]byte)(signature), nil
+	return ([]byte)(sig), nil
 }
 
 func (sys *system) CallQueryMethod(method string, height uint64, params ...interface{}) ([][]byte, uint8, error) {

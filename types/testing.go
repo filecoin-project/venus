@@ -56,7 +56,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
-func (ms *MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
+func (ms MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
 		panic("unknown address")
