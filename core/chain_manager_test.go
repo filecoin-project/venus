@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 

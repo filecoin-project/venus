@@ -3,10 +3,10 @@ package mining
 import (
 	"context"
 
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
-
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -19,7 +19,7 @@ var log = logging.Logger("mining")
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, core.TipSet) (state.Tree, datastore.Datastore, error)
+type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
@@ -31,13 +31,15 @@ type BlockGenerator interface {
 }
 
 // NewBlockGenerator returns a new BlockGenerator.
-func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView) BlockGenerator {
+func NewBlockGenerator(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cstore *hamt.CborIpldStore) BlockGenerator {
 	return &blockGenerator{
 		messagePool:   messagePool,
 		getStateTree:  getStateTree,
 		getWeight:     getWeight,
 		applyMessages: applyMessages,
 		powerTable:    powerTable,
+		blockstore:    bs,
+		cstore:        cstore,
 	}
 }
 
@@ -50,17 +52,19 @@ type blockGenerator struct {
 	getWeight     GetWeight
 	applyMessages miningApplier
 	powerTable    core.PowerTableView
+	blockstore    blockstore.Blockstore
+	cstore        *hamt.CborIpldStore
 }
 
 // Generate returns a new block created from the messages in the pool.
 func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64, miningAddress types.Address) (*types.Block, error) {
-	stateTree, ds, err := b.getStateTree(ctx, baseTipSet)
+	stateTree, err := b.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")
 	}
 
-	if !b.powerTable.HasPower(ctx, stateTree, ds, miningAddress) {
-		return nil, errors.New("bad miner address, miner must store files before mining")
+	if !b.powerTable.HasPower(ctx, stateTree, b.cstore, miningAddress) {
+		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", miningAddress)
 	}
 
 	wNum, wDenom, err := b.getWeight(ctx, baseTipSet)
@@ -90,7 +94,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	messages[0] = srewardMsg // Reward message must come first since this is a part of the consensus rules.
 	copy(messages[1:], core.OrderMessagesByNonce(b.messagePool.Pending()))
 
-	vms := vm.NewStorageMap(ds)
+	vms := vm.NewStorageMap(b.blockstore)
 	res, err := b.applyMessages(ctx, messages, stateTree, vms, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, errors.Wrap(err, "generate apply messages")

@@ -409,13 +409,13 @@ type stateTreeMarketPeeker struct {
 	nd *Node
 }
 
-func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, datastore.Datastore, error) {
+func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
 	ts := stsa.nd.ChainMgr.GetHeaviestTipSet()
 	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
 }
 
 func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*storagemarket.State, error) {
-	st, _, err := stsa.loadStateTree(ctx)
+	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +507,7 @@ func (stsa *stateTreeMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) 
 }
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
-	st, _, err := stsa.loadStateTree(ctx)
+	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return types.Address{}, err
 	}

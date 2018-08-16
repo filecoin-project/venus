@@ -17,8 +17,8 @@ import (
 
 	"gx/ipfs/QmPtncU95mqpLvp5G8xDytqyBfU11SWJwSFFunPhMUTWAw/go-car"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
+	hamt "gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
@@ -78,6 +78,16 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 	}
 
 	if err := setupMiners(st, cst, keys, cfg.Miners); err != nil {
+		return nil, nil, err
+	}
+
+	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
 		return nil, nil, err
 	}
 
@@ -208,6 +218,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	}
 	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
 	sma.Head = root
+	fmt.Fprintln(os.Stderr, "storage market actor head: ", root)
 
 	return st.SetActor(context.Background(), address.StorageMarketAddress, sma)
 }
@@ -226,6 +237,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 
 	c, keys, err := GenGen(ctx, cfg, cst)
 	if err != nil {
+		fmt.Fprintln(os.Stderr, "error from gengen?")
 		return nil, err
 	}
 

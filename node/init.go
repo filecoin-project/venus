@@ -3,9 +3,9 @@ package node
 import (
 	"context"
 
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	bstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	ci "gx/ipfs/Qme1knMqwt1hKZbc1BmQFmnm9f36nyQGwXxPGVpVJ9rMK5/go-libp2p-crypto"
 
@@ -28,7 +28,7 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
-	cm := core.NewChainManager(r.Datastore(), cst)
+	cm := core.NewChainManager(r.Datastore(), bs, cst)
 	if err := cm.Genesis(ctx, gen); err != nil {
 		return errors.Wrap(err, "failed to initialize genesis")
 	}

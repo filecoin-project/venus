@@ -5,9 +5,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 
 	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	blocks "gx/ipfs/QmVzK524a2VWLqyvtBeiHKsUAWYgeAk4DBeZoY7vpNPNRx/go-block-format"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -21,7 +22,7 @@ import (
 
 // storageMap implements StorageMap as a map of Storage structs keyed by actor address.
 type storageMap struct {
-	datastore  datastore.Datastore
+	blockstore blockstore.Blockstore
 	storageMap map[types.Address]Storage
 }
 
@@ -34,9 +35,9 @@ type StorageMap interface {
 var _ StorageMap = &storageMap{}
 
 // NewStorageMap returns a storage object for the given datastore.
-func NewStorageMap(ds datastore.Datastore) StorageMap {
+func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 	return &storageMap{
-		datastore:  ds,
+		blockstore: bs,
 		storageMap: map[types.Address]Storage{},
 	}
 }
@@ -51,12 +52,12 @@ func (s *storageMap) NewStorage(addr types.Address, actor *types.Actor) Storage 
 		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.
 		// This ensures changes made to the actor appear in the state tree cache.
 		storage = Storage{
-			actor:     actor,
-			chunks:    storage.chunks,
-			datastore: s.datastore,
+			actor:      actor,
+			chunks:     storage.chunks,
+			blockstore: s.blockstore,
 		}
 	} else {
-		storage = NewStorage(s.datastore, actor)
+		storage = NewStorage(s.blockstore, actor)
 	}
 
 	s.storageMap[addr] = storage
@@ -78,19 +79,19 @@ func (s *storageMap) Flush() error {
 
 // Storage is a place to hold chunks that are created while processing a block.
 type Storage struct {
-	actor     *types.Actor
-	chunks    map[string]ipld.Node
-	datastore datastore.Datastore
+	actor      *types.Actor
+	chunks     map[string]ipld.Node
+	blockstore blockstore.Blockstore
 }
 
 var _ exec.Storage = (*Storage)(nil)
 
 // NewStorage creates a datastore backed storage object for the given actor
-func NewStorage(ds datastore.Datastore, act *types.Actor) Storage {
+func NewStorage(bs blockstore.Blockstore, act *types.Actor) Storage {
 	return Storage{
-		chunks:    map[string]ipld.Node{},
-		actor:     act,
-		datastore: ds,
+		chunks:     map[string]ipld.Node{},
+		actor:      act,
+		blockstore: bs,
 	}
 }
 
@@ -116,20 +117,15 @@ func (s Storage) Get(cid *cid.Cid) ([]byte, bool, error) {
 		return n.RawData(), ok, nil
 	}
 
-	chunk, err := s.datastore.Get(datastore.NewKey(key))
+	blk, err := s.blockstore.Get(cid)
 	if err != nil {
-		if err == datastore.ErrNotFound {
+		if err == blockstore.ErrNotFound {
 			return []byte{}, false, nil
 		}
 		return []byte{}, false, err
 	}
 
-	chunkBytes, ok := chunk.([]byte)
-	if !ok {
-		return []byte{}, false, errors.NewFaultError("Invalid format for retrieved chunk")
-	}
-
-	return chunkBytes, true, nil
+	return blk.RawData(), true, nil
 }
 
 // Commit updates the head of the current actor to the given cid.
@@ -186,15 +182,12 @@ func (s *Storage) Flush() error {
 		return err
 	}
 
+	blks := make([]blocks.Block, 0, len(liveIds))
 	for idKey := range liveIds {
-		chunk := s.chunks[idKey]
-		key := datastore.NewKey(idKey)
-		err = s.datastore.Put(key, chunk.RawData())
-		if err != nil {
-			return errors.RevertErrorWrapf(err, "Errors storing data chunk")
-		}
+		blks = append(blks, s.chunks[idKey])
 	}
-	return nil
+
+	return s.blockstore.PutMany(blks)
 }
 
 // liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.
@@ -203,7 +196,7 @@ func (s *Storage) Flush() error {
 func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 	chunk, ok := s.chunks[id.KeyString()]
 	if !ok {
-		has, err := s.datastore.Has(datastore.NewKey(id.KeyString()))
+		has, err := s.blockstore.Has(id)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "linked node, %s, missing from stage during flush", id)
 		}

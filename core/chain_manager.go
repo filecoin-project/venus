@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
@@ -117,7 +118,11 @@ type ChainManager struct {
 
 	cstore *hamt.CborIpldStore
 
+	// for mutable data
 	ds datastore.Datastore
+
+	// for ipld objects
+	Blockstore blockstore.Blockstore
 
 	// PwrTableView provides miner and total power for the EC chain weight
 	// computation.
@@ -134,10 +139,14 @@ type ChainManager struct {
 }
 
 // NewChainManager creates a new filecoin chain manager.
-func NewChainManager(ds datastore.Datastore, cs *hamt.CborIpldStore) *ChainManager {
+// TODO: taking three data things feels a bit weird. Two makes sense, mutable and immutable.
+//       figure out how to coalesce the blockstore and ipldstore into a single
+//       object (theyre the same under the hood)
+func NewChainManager(ds datastore.Datastore, bs blockstore.Blockstore, cs *hamt.CborIpldStore) *ChainManager {
 	cm := &ChainManager{
 		cstore:          cs,
 		ds:              ds,
+		Blockstore:      bs,
 		blockProcessor:  ProcessBlock,
 		tipSetProcessor: ProcessTipSet,
 		knownGoodBlocks: cid.NewSet(),
@@ -159,7 +168,7 @@ func (cm *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) (err e
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-	genesis, err := gen(cm.cstore, cm.ds)
+	genesis, err := gen(cm.cstore, cm.Blockstore)
 	if err != nil {
 		return err
 	}
@@ -347,7 +356,7 @@ func (cm *ChainManager) ProcessNewBlock(ctx context.Context, blk *types.Block) (
 
 	// TODO: this is really confusing. This function needs a better name than 'state'
 	// and it should be much more clear about *why* its doing these things
-	switch _, _, err := cm.state(ctx, []*types.Block{blk}); err {
+	switch _, err := cm.state(ctx, []*types.Block{blk}); err {
 	default:
 		return Unknown, errors.Wrap(err, "validate block failed")
 	case ErrInvalidBase:
@@ -407,7 +416,7 @@ func (cm *ChainManager) validateBlockStructure(ctx context.Context, b *types.Blo
 // validated state of the input blocks.  initializing a trace can't happen
 // within state because it is a recursive function and would log a new
 // trace for each invocation.
-func (cm *ChainManager) State(ctx context.Context, blks []*types.Block) (statetree.Tree, datastore.Datastore, error) {
+func (cm *ChainManager) State(ctx context.Context, blks []*types.Block) (statetree.Tree, error) {
 	ctx = log.Start(ctx, "State")
 	log.Info("Calling State")
 	return cm.state(ctx, blks)
@@ -415,48 +424,48 @@ func (cm *ChainManager) State(ctx context.Context, blks []*types.Block) (statetr
 
 // state returns the aggregate state tree for the blocks or an error if the
 // blocks are not a valid tipset or are not part of a valid chain.
-func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetree.Tree, datastore.Datastore, error) {
+func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetree.Tree, error) {
 	ts, err := cm.newValidTipSet(ctx, blks)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "blks do not form a valid tipset: %s", pp.StringFromBlocks(blks))
+		return nil, errors.Wrapf(err, "blks do not form a valid tipset: %s", pp.StringFromBlocks(blks))
 	}
 
 	// Return cache hit
 	if root, ok := cm.stateCache[ts.String()]; ok { // tipset in cache
 		st, err := statetree.LoadStateTree(ctx, cm.cstore, root, builtin.Actors)
-		return st, cm.ds, err
+		return st, err
 	}
 	// Base case is the genesis block
 	if len(ts) == 1 && blks[0].Cid().Equals(cm.genesisCid) { // genesis tipset
 		st, err := statetree.LoadStateTree(ctx, cm.cstore, blks[0].StateRoot, builtin.Actors)
-		return st, cm.ds, err
+		return st, err
 	}
 
 	// Recursive case: construct valid tipset from valid parent
 	pBlks, err := cm.fetchParentBlks(ctx, ts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(pBlks) == 0 { // invalid genesis tipset
-		return nil, nil, ErrInvalidBase
+		return nil, ErrInvalidBase
 	}
-	st, ds, err := cm.state(ctx, pBlks)
+	st, err := cm.state(ctx, pBlks)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	err = cm.validateMining(ctx, st, cm.ds, ts)
+	err = cm.validateMining(ctx, st, cm.cstore, ts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	vms := vm.NewStorageMap(cm.ds)
+	vms := vm.NewStorageMap(cm.Blockstore)
 	st, err = cm.runMessages(ctx, st, vms, ts)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err = cm.flushAndCache(ctx, st, vms, ts); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return st, ds, nil
+	return st, nil
 }
 
 // fetchParentBlks returns the blocks in the parent set of the input tipset.
@@ -484,9 +493,9 @@ func (cm *ChainManager) fetchBlksForIDs(ctx context.Context, ids types.SortedCid
 
 // validateMining throws an error if any tipset's block was mined by an invalid
 // miner address.
-func (cm *ChainManager) validateMining(ctx context.Context, st statetree.Tree, ds datastore.Datastore, ts TipSet) error {
+func (cm *ChainManager) validateMining(ctx context.Context, st statetree.Tree, cstore *hamt.CborIpldStore, ts TipSet) error {
 	for _, blk := range ts {
-		if !cm.PwrTableView.HasPower(ctx, st, ds, blk.Miner) {
+		if !cm.PwrTableView.HasPower(ctx, st, cstore, blk.Miner) {
 			return errors.New("invalid miner address without network power")
 		}
 	}
@@ -576,17 +585,17 @@ func (cm *ChainManager) addBlock(b *types.Block, id *cid.Cid) {
 }
 
 // AggregateStateTreeComputer is the signature for a function used to get the state of a tipset.
-type AggregateStateTreeComputer func(context.Context, TipSet) (statetree.Tree, datastore.Datastore, error)
+type AggregateStateTreeComputer func(context.Context, TipSet) (statetree.Tree, blockstore.Blockstore, error)
 
 // stateForBlockIDs returns the state of the tipset consisting of the input
 // blockIDs.
-func (cm *ChainManager) stateForBlockIDs(ctx context.Context, ids types.SortedCidSet) (statetree.Tree, datastore.Datastore, error) {
+func (cm *ChainManager) stateForBlockIDs(ctx context.Context, ids types.SortedCidSet) (statetree.Tree, error) {
 	blks, err := cm.fetchBlksForIDs(ctx, ids)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(blks) == 0 { // no ids
-		return nil, nil, errors.New("cannot get state of tipset with no members")
+		return nil, errors.New("cannot get state of tipset with no members")
 	}
 	return cm.state(ctx, blks)
 }
@@ -734,11 +743,11 @@ func (cm *ChainManager) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, 
 	if err != nil {
 		return nil, err
 	}
-	st, ds, err := cm.stateForBlockIDs(ctx, ids)
+	st, err := cm.stateForBlockIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	res, err := cm.tipSetProcessor(ctx, ts, st, vm.NewStorageMap(ds))
+	res, err := cm.tipSetProcessor(ctx, ts, st, vm.NewStorageMap(cm.Blockstore))
 	if err != nil {
 		return nil, err
 	}
@@ -779,7 +788,7 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 	if err != nil {
 		return nil, err
 	}
-	st, _, err := cm.stateForBlockIDs(ctx, parentIDs)
+	st, err := cm.stateForBlockIDs(ctx, parentIDs)
 	if err != nil {
 		return nil, errors.Wrap(err, "get weight, stateForParents failed")
 	}
@@ -794,13 +803,13 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 	w := big.NewRat(int64(wNum), int64(wDenom))
 
 	// Each block in the tipset adds ECV + ECPrm * miner_power
-	totalBytes, err := cm.PwrTableView.Total(ctx, st, cm.ds)
+	totalBytes, err := cm.PwrTableView.Total(ctx, st, cm.cstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting total power")
 	}
 	ratECV := big.NewRat(int64(ECV), int64(1))
 	for _, blk := range ts {
-		minerBytes, err := cm.PwrTableView.Miner(ctx, st, cm.ds, blk.Miner)
+		minerBytes, err := cm.PwrTableView.Miner(ctx, st, cm.cstore, blk.Miner)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting miner power")
 		}

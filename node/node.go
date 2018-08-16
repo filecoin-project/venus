@@ -8,8 +8,8 @@ import (
 	"gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap"
 	bsnet "gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap/network"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmXScvRbYh9X9okLuX9YMnz1HR4WgRTU2hocjBs15nmCNG/go-libp2p-floodsub"
 	"gx/ipfs/QmY51bqSM5XgxQZqsBrQcRkKTnCb8EKpJpR9K6Qax7Njco/go-libp2p"
 	"gx/ipfs/QmY51bqSM5XgxQZqsBrQcRkKTnCb8EKpJpR9K6Qax7Njco/go-libp2p/p2p/protocol/ping"
@@ -19,8 +19,6 @@ import (
 	bstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 	libp2ppeer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
-
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -102,6 +100,9 @@ type Node struct {
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
+
+	// Blockstore is the un-networked blocks interface
+	Blockstore bstore.Blockstore
 
 	// Blockservice is a higher level interface for fetching data
 	Blockservice bserv.BlockService
@@ -201,7 +202,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	cst := &hamt.CborIpldStore{Blocks: bserv}
 
-	chainMgr := core.NewChainManager(nc.Repo.Datastore(), cst)
+	chainMgr := core.NewChainManager(nc.Repo.Datastore(), bs, cst)
 	if nc.MockMineMode {
 		chainMgr.PwrTableView = &core.TestView{}
 	}
@@ -447,9 +448,9 @@ func (node *Node) StartMining() error {
 	}
 
 	if node.MiningWorker == nil {
-		blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return node.ChainMgr.State(ctx, ts.ToSlice())
-		}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView)
+		}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore)
 
 		node.MiningWorker = mining.NewWorker(blockGenerator, miningAddress)
 
@@ -503,7 +504,7 @@ func (node *Node) StopMining() {
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
 func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
-	st, _, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
+	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
 	}
@@ -535,7 +536,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // the actor's memory and also scans the message pool for any pending
 // messages.
 func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
-	st, _, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
+	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return 0, err
 	}
@@ -575,7 +576,7 @@ func (node *Node) NewAddress() (types.Address, error) {
 func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
 	ctx := context.Background()
 	bts := node.ChainMgr.GetHeaviestTipSet()
-	st, ds, err := node.ChainMgr.State(ctx, bts.ToSlice())
+	st, err := node.ChainMgr.State(ctx, bts.ToSlice())
 	if err != nil {
 		return nil, 1, err
 	}
@@ -593,7 +594,7 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 		fromAddr = *optFrom
 	}
 
-	vms := vm.NewStorageMap(ds)
+	vms := vm.NewStorageMap(node.Blockstore)
 	return core.CallQueryMethod(ctx, st, vms, to, method, args, fromAddr, types.NewBlockHeight(h))
 }
 

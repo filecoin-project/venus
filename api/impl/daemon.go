@@ -6,11 +6,10 @@ import (
 	"os"
 
 	car "gx/ipfs/QmPtncU95mqpLvp5G8xDytqyBfU11SWJwSFFunPhMUTWAw/go-car"
+	hamt "gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -90,7 +89,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 			return err
 		}
 
-		tif = func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
+		tif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 			var blk types.Block
 
 			if err := cst.Get(ctx, genCid, &blk); err != nil {

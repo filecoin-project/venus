@@ -16,8 +16,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -118,9 +116,9 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	_, err = subscription.Next(ctx)
 	require.NoError(err)
 
-	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return node.ChainMgr.State(ctx, ts.ToSlice())
-	}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView)
+	}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore)
 	cur := node.ChainMgr.GetHeaviestTipSet()
 	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator, address.TestAddress), cur)
 	require.NoError(out.Err)

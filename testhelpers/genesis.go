@@ -3,8 +3,8 @@ package testhelpers
 import (
 	"context"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -49,8 +49,8 @@ func NewEmptyConfig() *Config {
 }
 
 // MakeGenesisFunc is a method used to define a custom genesis function
-func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
-	gif := func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
+func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 		genCfg := NewEmptyConfig()
 		for _, opt := range opts {
 			opt(genCfg) // nolint: errcheck
@@ -58,7 +58,7 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, ds datasto
 
 		ctx := context.Background()
 		st := state.NewEmptyStateTree(cst)
-		storageMap := vm.NewStorageMap(ds)
+		storageMap := vm.NewStorageMap(bs)
 
 		// Initialize account actors
 		for addr, val := range genCfg.accounts {

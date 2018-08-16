@@ -3,8 +3,6 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -23,9 +21,9 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	nd := api.api.node
 	ts := nd.ChainMgr.GetHeaviestTipSet()
 
-	blockGenerator := mining.NewBlockGenerator(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+	blockGenerator := mining.NewBlockGenerator(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return nd.ChainMgr.State(ctx, ts.ToSlice())
-	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView)
+	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView, nd.Blockstore, nd.CborStore)
 
 	miningAddr, err := nd.MiningAddress()
 	if err != nil {

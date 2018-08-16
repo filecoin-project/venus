@@ -3,8 +3,8 @@ package core
 import (
 	"context"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -16,7 +16,7 @@ import (
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error)
+type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error)
 
 var (
 	defaultAccounts map[types.Address]*types.AttoFIL
@@ -31,10 +31,10 @@ func init() {
 }
 
 // InitGenesis is the default function to create the genesis block.
-func InitGenesis(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
+func InitGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 	ctx := context.Background()
 	st := state.NewEmptyStateTree(cst)
-	storageMap := vm.NewStorageMap(ds)
+	storageMap := vm.NewStorageMap(bs)
 
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)

@@ -27,9 +27,9 @@
     },
     {
       "author": "why",
-      "hash": "QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6",
+      "hash": "QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3",
       "name": "go-hamt-ipld",
-      "version": "0.0.12"
+      "version": "0.0.13"
     },
     {
       "author": "whyrusleeping",
