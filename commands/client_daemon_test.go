@@ -16,6 +16,7 @@ import (
 )
 
 func TestClientAddBidSuccess(t *testing.T) {
+	t.Skip("FIXME: this test is broken because you have to set up a miner to mine")
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -76,6 +77,7 @@ func TestClientAddBidFail(t *testing.T) {
 }
 
 func TestProposeDeal(t *testing.T) {
+	t.Skip("FIXME: depends on mining without a configured miner.")
 	t.Parallel()
 	assert := assert.New(t)
 

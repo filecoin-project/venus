@@ -42,9 +42,9 @@ func TestWalletBalance(t *testing.T) {
 	balance := d.RunSuccess("wallet", "balance", addr)
 	assert.Equal("0", balance.ReadStdoutTrimNewlines())
 
-	t.Log("[success] balance 10000000")
+	t.Log("[success] balance 10000000000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal("10000000", balance.ReadStdoutTrimNewlines())
+	assert.Equal("10000000000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("wallet addrs new")

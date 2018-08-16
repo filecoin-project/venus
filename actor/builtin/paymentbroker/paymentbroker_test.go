@@ -539,12 +539,14 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(channelID, voucherAmount)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", pdata, payer, types.NewBlockHeight(9))
-		require.NoError(err)
-		assert.Equal(uint8(0), exitCode)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		res, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(9))
+		assert.NoError(err)
+		assert.NoError(res.ExecutionError)
+		assert.Equal(uint8(0), res.Receipt.ExitCode)
 
 		voucher := PaymentVoucher{}
-		err = cbor.DecodeInto(returnValue[0], &voucher)
+		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
 		require.NoError(err)
 
 		assert.Equal(*channelID, voucher.Channel)
@@ -587,9 +589,11 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := core.MustConvertParams(channelID, voucherAmount)
 
-		_, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
-		assert.NotEqual(uint8(0), exitCode)
-		assert.Contains(fmt.Sprintf("%v", err), "exceeds amount")
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
+		res, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(9))
+		assert.NoError(err)
+		assert.NotEqual(uint8(0), res.Receipt.ExitCode)
+		assert.Contains(fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
 	})
 }
 

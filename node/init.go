@@ -13,6 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
@@ -43,18 +45,18 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 
 	// TODO: do we want this?
 	// TODO: but behind a config option if this should be generated
-	// if r.Config().Wallet.DefaultAddress == (types.Address{}) {
-	// 	addr, err := newAddress(r)
-	// 	if err != nil {
-	// 		return errors.Wrap(err, "failed to generate default address")
-	// 	}
+	if r.Config().Wallet.DefaultAddress == (types.Address{}) {
+		addr, err := newAddress(r)
+		if err != nil {
+			return errors.Wrap(err, "failed to generate default address")
+		}
 
-	// 	newConfig := r.Config()
-	// 	newConfig.Wallet.DefaultAddress = addr
-	// 	if err := r.ReplaceConfig(newConfig); err != nil {
-	// 		return errors.Wrap(err, "failed to update config")
-	// 	}
-	// }
+		newConfig := r.Config()
+		newConfig.Wallet.DefaultAddress = addr
+		if err := r.ReplaceConfig(newConfig); err != nil {
+			return errors.Wrap(err, "failed to update config")
+		}
+	}
 	return nil
 }
 
@@ -73,11 +75,11 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	return sk, nil
 }
 
-// func newAddress(r repo.Repo) (types.Address, error) {
-// 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-// 	if err != nil {
-// 		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
-// 	}
+func newAddress(r repo.Repo) (types.Address, error) {
+	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+	if err != nil {
+		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+	}
 
-// 	return backend.NewAddress()
-// }
+	return backend.NewAddress()
+}

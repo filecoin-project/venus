@@ -17,6 +17,7 @@ func parseInt(assert *assert.Assertions, s string) *big.Int {
 }
 
 func TestMiningGenBlock(t *testing.T) {
+	t.Skip("FIXME: need to set up a miner before we can mine")
 	t.Parallel()
 	assert := assert.New(t)
 	d := th.NewDaemon(t).Start()

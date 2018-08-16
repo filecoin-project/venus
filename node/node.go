@@ -567,7 +567,7 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 	}
 	h, err := bts.Height()
 	if err != nil {
-		return nil, 1, err
+		return nil, 1, errors.Wrap(err, "getting base tipset height")
 	}
 
 	fromAddr, err := node.DefaultSenderAddress()

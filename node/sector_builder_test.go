@@ -379,6 +379,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		nd := MakeNodesStarted(t, 1, false, true)[0]
 
+		nd.NewAddress() // TODO: default init make an address
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
 
@@ -423,6 +424,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		nd := MakeNodesStarted(t, 1, false, true)[0]
 
+		nd.NewAddress() // TODO: default init make an address
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
 		// Wait a sec, theres no miner here... how can we init a sector builder?

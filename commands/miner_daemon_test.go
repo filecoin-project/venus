@@ -84,6 +84,7 @@ func TestMinerCreate(t *testing.T) {
 		tf(testAddr, core.RequireRandomPeerID(), true)
 	})
 
+	/* TODO: probably delete this test, we have a notion of a 'default' address now in all cases
 	t.Run("from address failure", func(t *testing.T) {
 		t.Parallel()
 
@@ -106,6 +107,7 @@ func TestMinerCreate(t *testing.T) {
 		tf(types.Address{}, peer.ID(""))
 
 	})
+	*/
 
 	t.Run("validation failure", func(t *testing.T) {
 		t.Parallel()
