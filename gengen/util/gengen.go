@@ -225,7 +225,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 			return err
 		}
 		smaStorage.Miners[maddr] = struct{}{}
-		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", maddr, m.Owner, m.Power)
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", maddr, m.Owner, m.Power) // nolint: errcheck
 	}
 
 	smaStorage.TotalCommittedStorage = powerSum
@@ -236,7 +236,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	}
 	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
 	sma.Head = root
-	fmt.Fprintln(os.Stderr, "storage market actor head: ", root)
+	fmt.Fprintln(os.Stderr, "storage market actor head: ", root) // nolint: errcheck
 
 	return st.SetActor(context.Background(), address.StorageMarketAddress, sma)
 }
@@ -255,7 +255,6 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 
 	c, keys, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error from gengen?")
 		return nil, err
 	}
 

@@ -40,32 +40,27 @@ var Base32 = basex.NewAlphabet(Base32Charset)
 
 // AccountActorCodeObj is the code representation of the builtin account actor.
 var AccountActorCodeObj ipld.Node
+
+// AccountActorCodeCid is the cid of the above object
 var AccountActorCodeCid *cid.Cid
 
 // StorageMarketActorCodeObj is the code representation of the builtin storage market actor.
 var StorageMarketActorCodeObj ipld.Node
+
+// StorageMarketActorCodeCid is the cid of the above object
 var StorageMarketActorCodeCid *cid.Cid
 
 // PaymentBrokerActorCodeObj is the code representation of the builtin payment broker actor.
 var PaymentBrokerActorCodeObj ipld.Node
+
+// PaymentBrokerActorCodeCid is the cid of the above object
 var PaymentBrokerActorCodeCid *cid.Cid
 
 // MinerActorCodeObj is the code representation of the builtin miner actor.
 var MinerActorCodeObj ipld.Node
+
+// MinerActorCodeCid is the cid of the above object
 var MinerActorCodeCid *cid.Cid
-
-func cidFromString(input string) (*cid.Cid, error) {
-	prefix := cid.NewPrefixV1(cid.DagCBOR, DefaultHashFunction)
-	return prefix.Sum([]byte(input))
-}
-
-func mustCidFromString(s string) *cid.Cid {
-	c, err := cidFromString(s)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
 
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
 var ActorCodeCidTypeNames = make(map[*cid.Cid]string)

@@ -201,6 +201,20 @@ func Test_mine(t *testing.T) {
 	assert.True(r.NewBlock.Cid().Equals(next.Cid()))
 	mockBg.AssertExpectations(t)
 }
+
+// Implements NullBlockTimerFunc with the policy that it is always a good time
+// to create a null block.
+func nullBlockImmediately() {
+}
+
+// Returns a ticket checking function that return true every third time
+func everyThirdWinningTicket() func(_ []byte, _, _ int64) bool {
+	count := 0
+	return func(_ []byte, _, _ int64) bool {
+		count++
+		return count%3 == 0
+	}
+}
 */
 
 func TestIsWinningTicket(t *testing.T) {
@@ -263,19 +277,5 @@ func TestCreateChallenge(t *testing.T) {
 		r := createChallenge(parents, c.nullBlockCount)
 
 		assert.Equal(decoded, r)
-	}
-}
-
-// Implements NullBlockTimerFunc with the policy that it is always a good time
-// to create a null block.
-func nullBlockImmediately() {
-}
-
-// Returns a ticket checking function that return true every third time
-func everyThirdWinningTicket() func(_ []byte, _, _ int64) bool {
-	count := 0
-	return func(_ []byte, _, _ int64) bool {
-		count++
-		return count%3 == 0
 	}
 }

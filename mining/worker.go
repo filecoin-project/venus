@@ -156,8 +156,6 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 // is a good idea for now.
 type DoSomeWorkFunc func()
 
-type mineFunc func(ctx context.Context, input Input, nullBlockTimer NullBlockTimerFunc, bg BlockGenerator, createPoST DoSomeWorkFunc, out chan<- Output)
-
 // NullBlockTimerFunc blocks until it is time to add a null block.
 type NullBlockTimerFunc func()
 

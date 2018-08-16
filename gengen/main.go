@@ -14,8 +14,8 @@ func writeKey(ki *types.KeyInfo, name string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())
-	fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name)
+	fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())                                                          // nolint: errcheck
+	fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
 	fi, err := os.Create(name + ".key")
 	if err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -131,6 +132,11 @@ func TestBlockScore(t *testing.T) {
 			assert.Equal(uint64(b.Height), b.Score(), "block height: %d - block score %d", b.Height, b.Score())
 		}
 	})
+}
+
+func cidFromString(input string) (*cid.Cid, error) {
+	prefix := cid.NewPrefixV1(cid.DagCBOR, DefaultHashFunction)
+	return prefix.Sum([]byte(input))
 }
 
 func TestDecodeBlock(t *testing.T) {
