@@ -27,9 +27,9 @@
     },
     {
       "author": "why",
-      "hash": "QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo",
+      "hash": "QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW",
       "name": "go-hamt-ipld",
-      "version": "0.0.14"
+      "version": "0.0.15"
     },
     {
       "author": "whyrusleeping",
@@ -123,9 +123,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd",
+      "hash": "QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS",
       "name": "go-ipld-cbor",
-      "version": "1.4.6"
+      "version": "1.4.7"
     },
     {
       "author": "leesper",
@@ -135,9 +135,9 @@
     },
     {
       "author": "why",
-      "hash": "QmPtncU95mqpLvp5G8xDytqyBfU11SWJwSFFunPhMUTWAw",
+      "hash": "QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5",
       "name": "go-car",
-      "version": "1.1.0"
+      "version": "1.1.1"
     },
     {
       "author": "whyrusleeping",
