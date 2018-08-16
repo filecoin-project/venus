@@ -9,10 +9,9 @@ import (
 	"os"
 
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
-	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
+	"gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
 	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -59,13 +58,14 @@ func main() {
 		}
 		defer closeRepo(r)
 
-		cm, _ := getChainManager(r.Datastore())
+		bs := blockstore.NewBlockstore(r.Datastore())
+		cm, _ := getChainManager(r.Datastore(), bs)
 		err = cm.Load()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+		aggregateState := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return cm.State(ctx, ts.ToSlice())
 		}
 		err = fake(ctx, length, binom, cm.GetHeaviestTipSet, cm.ProcessNewBlock, aggregateState)
@@ -80,12 +80,13 @@ func main() {
 			log.Fatal(err)
 		}
 		defer closeRepo(r)
+		bs := blockstore.NewBlockstore(r.Datastore())
 
-		_, cst, cm, bts, err := getStateTree(ctx, r.Datastore())
+		_, cst, cm, bts, err := getStateTree(ctx, r.Datastore(), bs)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = fakeActors(ctx, cst, cm, bts)
+		err = fakeActors(ctx, cst, cm, bs, bts)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -99,30 +100,29 @@ func closeRepo(r *repo.FSRepo) {
 	}
 }
 
-func getChainManager(d repo.Datastore) (*core.ChainManager, *hamt.CborIpldStore) {
-	bs := blockstore.NewBlockstore(d)
+func getChainManager(d repo.Datastore, bs blockstore.Blockstore) (*core.ChainManager, *hamt.CborIpldStore) {
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	cm := core.NewChainManager(d, cst)
+	cm := core.NewChainManager(d, bs, cst)
 	// allow fakecoin to mine without having a correct storage market / state tree
 	cm.PwrTableView = &core.TestView{}
 	return cm, cst
 }
 
-func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore) mining.BlockGenerator {
-	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore, bs blockstore.Blockstore) mining.BlockGenerator {
+	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
-	}, cm.Weight, core.ApplyMessages, cm.PwrTableView)
+	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst)
 }
 
-func getStateTree(ctx context.Context, d repo.Datastore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, core.TipSet, error) {
-	cm, cst := getChainManager(d)
+func getStateTree(ctx context.Context, d repo.Datastore, bs blockstore.Blockstore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, core.TipSet, error) {
+	cm, cst := getChainManager(d, bs)
 	err := cm.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	bts := cm.GetHeaviestTipSet()
-	st, _, err := cm.State(ctx, bts.ToSlice())
+	st, err := cm.State(ctx, bts.ToSlice())
 	return st, cst, cm, bts, err
 }
 
@@ -152,7 +152,7 @@ func fake(ctx context.Context, length int, binom bool, getHeaviestTipSet core.He
 // fakeActors adds a block ensuring that the StateTree contains at least one of each extant Actor type, along with
 // well-formed data in its memory. For now, this exists primarily to exercise the Filecoin Explorer, though it may
 // be used for testing in the future.
-func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainManager, bts core.TipSet) (err error) {
+func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainManager, bs blockstore.Blockstore, bts core.TipSet) (err error) {
 	msgPool := core.NewMessagePool()
 
 	//// Have the storage market actor create a new miner
@@ -172,7 +172,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 		return err
 	}
 
-	blk, err := mineBlock(ctx, msgPool, cst, cm, bts.ToSlice())
+	blk, err := mineBlock(ctx, msgPool, cst, cm, bs, bts.ToSlice())
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 	}
 
 	// mine again
-	blk, err = mineBlock(ctx, msgPool, cst, cm, []*types.Block{blk})
+	blk, err = mineBlock(ctx, msgPool, cst, cm, bs, []*types.Block{blk})
 	if err != nil {
 		return err
 	}
@@ -252,13 +252,12 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 		return err
 	}
 
-	_, err = mineBlock(ctx, msgPool, cst, cm, []*types.Block{blk})
+	_, err = mineBlock(ctx, msgPool, cst, cm, bs, []*types.Block{blk})
 	return err
 }
 
-func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStore, cm *core.ChainManager, blks []*types.Block) (*types.Block, error) {
-	bg := getBlockGenerator(mp, cm, cst)
-	ra := types.MakeTestAddress("rewardaddress")
+func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStore, cm *core.ChainManager, bs blockstore.Blockstore, blks []*types.Block) (*types.Block, error) {
+	bg := getBlockGenerator(mp, cm, cst, bs)
 	ma := types.MakeTestAddress("miningaddress")
 
 	const nullBlockCount = 0
@@ -266,7 +265,7 @@ func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStor
 	if err != nil {
 		return nil, err
 	}
-	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ra, ma)
+	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ma)
 	if err != nil {
 		return nil, err
 	}

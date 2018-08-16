@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
-	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
+	"gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -79,6 +79,10 @@ func unmarshallActorState(ctx context.Context, st state.Tree, cstore *hamt.CborI
 func (v *marketView) HasPower(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore, mAddr types.Address) bool {
 	numBytes, err := v.Miner(ctx, st, cstore, mAddr)
 	if err != nil {
+		if state.IsActorNotFoundError(err) {
+			return false
+		}
+
 		panic(err) //hey guys, dropping errors is BAD
 	}
 

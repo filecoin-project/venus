@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
-	hamt "gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	hamt "gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
 	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer/test"
@@ -56,7 +56,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	if err != nil {
 		return nil, err
 	}
-	st, _, err := loadStateTreeTS(ctx, ts)
+	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 // p = 1/n.  Concretely this distribution corresponds to the configuration where
 // all miners have the same storage power.
 func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, ts TipSet, numMiners, epochs int) (TipSet, error) {
-	st, _, err := loadStateTreeTS(ctx, ts)
+	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}

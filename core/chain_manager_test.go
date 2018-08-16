@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -27,10 +27,9 @@ var (
 
 func init() {
 	cst := hamt.NewCborStore()
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-	genesis, err := InitGenesis(cst, ds)
+	genesis, err := InitGenesis(cst, bs)
 	if err != nil {
 		panic(err)
 	}
@@ -74,7 +73,8 @@ func newTestUtils() (context.Context, *hamt.CborIpldStore, datastore.Datastore, 
 	ctx := context.Background()
 	cs := hamt.NewCborStore()
 	ds := datastore.NewMapDatastore()
-	cm := NewChainManager(ds, cs)
+	bs := blockstore.NewBlockstore(ds)
+	cm := NewChainManager(ds, bs, cs)
 	cm.PwrTableView = &TestView{}
 	return ctx, cs, ds, cm
 }

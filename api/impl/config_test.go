@@ -71,7 +71,6 @@ func TestConfigSet(t *testing.T) {
 
 		// validate config write
 		cfg := n.Repo.Config()
-		defaultCfg.Mining.RewardAddress = n.RewardAddress()
 		assert.Equal(expected, cfg.Bootstrap)
 		assert.Equal(defaultCfg.API, cfg.API)
 		assert.Equal(defaultCfg.Datastore, cfg.Datastore)
@@ -104,7 +103,7 @@ func TestConfigSet(t *testing.T) {
 
 		// bad address
 		tomlBlobBadAddr := `"fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"`
-		_, err = api.Config().Set("mining.rewardAddress", tomlBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: mining.rewardAddress: invalid character")
+		_, err = api.Config().Set("wallet.defaultAddress", tomlBlobBadAddr)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character")
 	})
 }

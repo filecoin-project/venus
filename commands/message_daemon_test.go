@@ -6,14 +6,13 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageSend(t *testing.T) {
 	t.Parallel()
-	wtf := tf.WalletFilePath()
-	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
+
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("mining", "once")
@@ -22,29 +21,29 @@ func TestMessageSend(t *testing.T) {
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", testAddress1,
+		"--from", th.TestAddress1,
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] default from")
-	d.RunSuccess("message", "send", testAddress1)
+	d.RunSuccess("message", "send", th.TestAddress1)
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",
-		"--from", testAddress1, testAddress2,
+		"--from", th.TestAddress1, th.TestAddress2,
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", testAddress1,
-		"--value=10", testAddress2,
+		"--from", th.TestAddress1,
+		"--value=10", th.TestAddress2,
 	)
 }
 
 func TestMessageWait(t *testing.T) {
 	t.Parallel()
-	wtf := tf.WalletFilePath()
-	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress1)).Start()
+
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
@@ -52,9 +51,9 @@ func TestMessageWait(t *testing.T) {
 
 		msg := d.RunSuccess(
 			"message", "send",
-			"--from", testAddress1,
+			"--from", th.TestAddress1,
 			"--value=10",
-			testAddress2,
+			th.TestAddress2,
 		)
 
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")

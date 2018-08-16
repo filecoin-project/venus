@@ -437,7 +437,19 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
-	minerOwner := types.Address{} // TODO: get the miner owner to send this from
+	res, exitCode, err := sb.nd.CallQueryMethod(sb.MinerAddr, "getOwner", nil, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get miner owner")
+	}
+
+	if exitCode != uint8(0) {
+		return nil, fmt.Errorf("failed to get miner owner, exitCode: %d", exitCode)
+	}
+
+	minerOwner, err := types.NewAddressFromBytes(res[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "received invalid mining owner")
+	}
 	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", args)
 
 	smsg, err := types.NewSignedMessage(*msg, sb.nd.Wallet)

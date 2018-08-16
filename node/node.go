@@ -8,13 +8,13 @@ import (
 	"gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap"
 	bsnet "gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap/network"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
-	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmXScvRbYh9X9okLuX9YMnz1HR4WgRTU2hocjBs15nmCNG/go-libp2p-floodsub"
 	"gx/ipfs/QmY51bqSM5XgxQZqsBrQcRkKTnCb8EKpJpR9K6Qax7Njco/go-libp2p"
 	"gx/ipfs/QmY51bqSM5XgxQZqsBrQcRkKTnCb8EKpJpR9K6Qax7Njco/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmb8T6YBBsjYsVGfrihQLfCJveczZnneSBqBKkYEBWDjge/go-libp2p-host"
 	nonerouting "gx/ipfs/QmbFRJeEmEU16y3BmKKaD4a9fm5oHsEAMHe2vSB1UnfLMi/go-ipfs-routing/none"
+	"gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
 	"gx/ipfs/Qmc2faLf7URkHpsbfYM4EMbr8iSAcGAe8VPgVi64HVnwji/go-ipfs-exchange-interface"
 	bstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
@@ -43,8 +43,6 @@ var (
 	ErrNoMethod = errors.New("no method in message")
 	// ErrNoRepo is returned when the configs repo is nil
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
-	// ErrNoRewardAddress is returned when the node is not configured to have reward address.
-	ErrNoRewardAddress = errors.New("no reward address configured")
 	// ErrNoMinerAddress is returned when the node is not configured to have any miner addresses.
 	ErrNoMinerAddress = errors.New("no miner addresses configured")
 	// ErrNoDefaultMessageFromAddress is returned when the node's wallet is not configured to have a default address and the wallet contains more than one address.
@@ -126,11 +124,10 @@ type Node struct {
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts    []libp2p.Option
-	Repo          repo.Repo
-	OfflineMode   bool
-	MockMineMode  bool // TODO: this is a TEMPORARY workaround
-	RewardAddress types.Address
+	Libp2pOpts   []libp2p.Option
+	Repo         repo.Repo
+	OfflineMode  bool
+	MockMineMode bool // TODO: this is a TEMPORARY workaround
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -144,14 +141,6 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 			panic("Libp2pOptions can only be called once")
 		}
 		nc.Libp2pOpts = opts
-		return nil
-	}
-}
-
-// RewardAddress returns a node config option that sets the reward address on the node.
-func RewardAddress(addr types.Address) ConfigOpt {
-	return func(nc *Config) error {
-		nc.RewardAddress = addr
 		return nil
 	}
 }
@@ -222,6 +211,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	nd := &Node{
 		Blockservice:   bserv,
+		Blockstore:     bs,
 		CborStore:      cst,
 		ChainMgr:       chainMgr,
 		Exchange:       bswap,
@@ -245,11 +235,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network())
 
 	// On-chain lookup service
-	addr, err := nd.DefaultSenderAddress()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to obtain a default from-address")
-	}
-	nd.Lookup = lookup.NewChainLookupService(chainMgr, addr)
+	nd.Lookup = lookup.NewChainLookupService(chainMgr, nd.DefaultSenderAddress)
 
 	return nd, nil
 }
@@ -441,7 +427,6 @@ func (node *Node) MiningAddress() (types.Address, error) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
 func (node *Node) StartMining() error {
-
 	miningAddress, err := node.MiningAddress()
 	if err != nil {
 		return err
@@ -578,7 +563,7 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 	bts := node.ChainMgr.GetHeaviestTipSet()
 	st, err := node.ChainMgr.State(ctx, bts.ToSlice())
 	if err != nil {
-		return nil, 1, err
+		return nil, 1, errors.Wrap(err, "failed to retrieve state")
 	}
 	h, err := bts.Height()
 	if err != nil {
@@ -587,7 +572,7 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 
 	fromAddr, err := node.DefaultSenderAddress()
 	if err != nil {
-		return nil, 1, err
+		return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
 	}
 
 	if optFrom != nil {
@@ -602,8 +587,21 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 // It will wait for the the actor to appear on-chain and add its address to mining.minerAddresses in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
 func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (*types.Address, error) {
-	// TODO: pull public key from wallet
-	params, err := abi.ToEncodedValues(&pledge, []byte{}, pid)
+
+	// TODO: make this more streamlined in the wallet
+	backend, err := node.Wallet.Find(accountAddr)
+	if err != nil {
+		return nil, err
+	}
+	info, err := backend.GetKeyInfo(accountAddr)
+	if err != nil {
+		return nil, err
+	}
+	pubkey, err := info.PublicKey()
+	if err != nil {
+		return nil, err
+	}
+	params, err := abi.ToEncodedValues(&pledge, pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -663,8 +661,20 @@ func (node *Node) DefaultSenderAddress() (types.Address, error) {
 		return ret, err
 	}
 
-	if len(node.Wallet.Addresses()) == 1 {
-		return node.Wallet.Addresses()[0], nil
+	if len(node.Wallet.Addresses()) > 0 {
+		// TODO: this works for now, but is likely not a great solution.
+		// Need to figure out what better behaviour to define in regards
+		// to default addresses.
+		addr := node.Wallet.Addresses()[0]
+
+		newConfig := node.Repo.Config()
+		newConfig.Wallet.DefaultAddress = addr
+
+		if err := node.Repo.ReplaceConfig(newConfig); err != nil {
+			return types.Address{}, err
+		}
+
+		return addr, nil
 	}
 
 	return types.Address{}, ErrNoDefaultMessageFromAddress

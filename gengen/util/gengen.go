@@ -11,15 +11,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 
 	"gx/ipfs/QmPtncU95mqpLvp5G8xDytqyBfU11SWJwSFFunPhMUTWAw/go-car"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
-	hamt "gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	hamt "gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
@@ -65,13 +67,18 @@ func randAddress() types.Address {
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid.Cid, map[string]*types.KeyInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*cid.Cid, map[string]*types.KeyInfo, error) {
 	keys, err := genKeys(cfg.Keys)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	st := state.NewEmptyStateTree(cst)
+	storageMap := vm.NewStorageMap(bs)
+
+	if err := core.SetupDefaultActors(ctx, st, storageMap); err != nil {
+		return nil, nil, err
+	}
 
 	if err := setupPrealloc(st, keys, cfg.PreAlloc); err != nil {
 		return nil, nil, err
@@ -90,8 +97,16 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
 		return nil, nil, err
 	}
+	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
+		return nil, nil, err
+	}
 
 	stateRoot, err := st.Flush(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = storageMap.Flush()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -235,7 +250,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 
 	ctx := context.Background()
 
-	c, keys, err := GenGen(ctx, cfg, cst)
+	c, keys, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error from gengen?")
 		return nil, err

@@ -11,8 +11,11 @@ import (
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,10 +23,9 @@ import (
 var sectorDirsForTest = &repo.MemRepo{}
 var testSectorSize = 64
 
-func TestSimple(t *testing.T) {
+func TestSectorBuilderSimple(t *testing.T) {
 	require := require.New(t)
-	nd := MakeOfflineNode(t)
-	sb := requireSectorBuilder(require, nd, testSectorSize)
+	_, sb, _ := NodeWithSectorBuilder(t, testSectorSize)
 	sector, err := sb.NewSector()
 	require.NoError(err)
 
@@ -44,11 +46,37 @@ func TestSimple(t *testing.T) {
 	}
 }
 
-func requireSectorBuilder(require *require.Assertions, nd *Node, sectorSize int) *SectorBuilder {
-	sb, err := InitSectorBuilder(nd, types.MakeTestAddress("bar"), sectorSize, sectorDirsForTest)
+func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder, types.Address) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+
+	nd := MakeOfflineNode(t)
+
+	owner, err := nd.NewAddress()
 	require.NoError(err)
 
-	return sb
+	defaultAddr, err := nd.DefaultSenderAddress()
+	require.NoError(err)
+
+	tif := th.MakeGenesisFunc(
+		th.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
+		th.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
+	)
+	require.NoError(nd.ChainMgr.Genesis(ctx, tif))
+	require.NoError(nd.Start())
+
+	pledge := *types.NewBytesAmount(100000)
+	coll := *types.NewAttoFILFromFIL(100)
+
+	result := <-RunCreateMiner(t, nd, owner, pledge, core.RequireRandomPeerID(), coll)
+	require.NoError(result.Err)
+	require.NotNil(result.MinerAddress)
+
+	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sectorSize, sectorDirsForTest)
+	require.NoError(err)
+
+	return nd, sb, *result.MinerAddress
 }
 
 func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *PieceInfo {
@@ -71,18 +99,18 @@ func TestSectorBuilder(t *testing.T) {
 	fname := newSectorLabel()
 	assert.Len(fname, 32) // Sanity check, nothing more.
 
-	nd := MakeOfflineNode(t)
+	nd, sb, _ := NodeWithSectorBuilder(t, testSectorSize)
 
 	var sealingWg sync.WaitGroup
 	var sealingErr error
 	sealingWg.Add(1)
 
-	sb := requireSectorBuilder(require, nd, testSectorSize)
 	sector := sb.CurSector
 
 	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-		if ss.sectorLabel == sector.Label {
-			sealingErr = err
+		if err != nil {
+			panic(err)
+		} else if ss != nil && ss.sectorLabel == sector.Label {
 			sealingWg.Done()
 		}
 	}
@@ -196,7 +224,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 		ctx := context.Background()
 
-		nd := MakeOfflineNode(t)
+		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
 
 		var sealingWg sync.WaitGroup
 		var sealingErr error
@@ -205,7 +233,6 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		bytesA := make([]byte, 10+(sectorSize/2))
 		bytesB := make([]byte, (sectorSize/2)-10)
 
-		sb := requireSectorBuilder(require, nd, sectorSize)
 		sector := sb.CurSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
@@ -248,11 +275,9 @@ func TestSectorStore(t *testing.T) {
 
 		ctx := context.Background()
 
-		nd := MakeOfflineNode(t)
-
 		bytesA := make([]byte, 10+(sectorSize/2))
 
-		sb := requireSectorBuilder(require, nd, sectorSize)
+		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
 		sector := sb.CurSector
 
 		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
@@ -268,8 +293,6 @@ func TestSectorStore(t *testing.T) {
 
 		ctx := context.Background()
 
-		nd := MakeOfflineNode(t)
-
 		var sealingWg sync.WaitGroup
 		var sealingErr error
 		sealingWg.Add(1)
@@ -277,7 +300,7 @@ func TestSectorStore(t *testing.T) {
 		bytesA := make([]byte, 10+(sectorSize/2))
 		bytesB := make([]byte, (sectorSize/2)-10)
 
-		sb := requireSectorBuilder(require, nd, sectorSize)
+		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
 		sector := sb.CurSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
@@ -308,8 +331,6 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 
 	ctx := context.Background()
 
-	nd := MakeOfflineNode(t)
-
 	var sealingWg sync.WaitGroup
 	var sealingErr error
 	sealingWg.Add(1)
@@ -317,7 +338,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	bytesA := make([]byte, 10+(sectorSize/2))
 	bytesB := make([]byte, (sectorSize/2)-10)
 
-	sbA := requireSectorBuilder(require, nd, sectorSize)
+	nd, sbA, minerAddr := NodeWithSectorBuilder(t, sectorSize)
 	sector := sbA.CurSector
 
 	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
@@ -330,7 +351,8 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
 
 	// sector builder B should have the same state as sector builder A
-	sbB := requireSectorBuilder(require, nd, sectorSize)
+	sbB, err := InitSectorBuilder(nd, minerAddr, sectorSize, sectorDirsForTest)
+	require.NoError(err)
 
 	// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
 	sectorBuildersMustEqual(t, sbA, sbB)
@@ -343,7 +365,8 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	require.NoError(sealingErr)
 
 	// sector builder C should have the same state as sector builder A
-	sbC := requireSectorBuilder(require, nd, sectorSize)
+	sbC, err := InitSectorBuilder(nd, minerAddr, sectorSize, sectorDirsForTest)
+	require.NoError(err)
 
 	sectorBuildersMustEqual(t, sbA, sbC)
 }
@@ -354,9 +377,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		ctx := context.Background()
 
-		nd := MakeOfflineNode(t)
+		nd := MakeNodesStarted(t, 1, false, true)[0]
 
-		sbA, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		addr, err := nd.DefaultSenderAddress()
+		require.NoError(err)
+
+		sbA, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
@@ -376,7 +402,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ioutil.WriteFile(metaA.Filename, make([]byte, 90), 0600)
 
 		// initialize a new sector builder (simulates the node restarting)
-		sbB, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
 		metaB, err := sbB.store.getSectorMetadata(sbB.CurSector.Label)
@@ -395,9 +421,13 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		ctx := context.Background()
 
-		nd := MakeOfflineNode(t)
+		nd := MakeNodesStarted(t, 1, false, true)[0]
 
-		sbA, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		addr, err := nd.DefaultSenderAddress()
+		require.NoError(err)
+		// Wait a sec, theres no miner here... how can we init a sector builder?
+
+		sbA, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
@@ -411,7 +441,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		require.NoError(os.Truncate(metaA.Filename, int64(40)))
 
 		// initialize final sector builder
-		sbB, err := InitSectorBuilder(nd, nd.RewardAddress(), sectorSize, sectorDirsForTest)
+		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
 		metaB, err := sbA.store.getSectorMetadata(sbB.CurSector.Label)

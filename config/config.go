@@ -83,7 +83,6 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	RewardAddress  types.Address   `toml:"rewardAddress,omitempty"`
 	MinerAddresses []types.Address `toml:"minerAddresses"`
 }
 

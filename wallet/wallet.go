@@ -70,6 +70,7 @@ func (w *Wallet) Find(addr types.Address) (Backend, error) {
 
 // Addresses retrieves all stored addresses.
 // Safe for concurrent access.
+// Always sorted in the same order.
 // Note that the Golang runtime randomizes map iteration order, so the order in
 // which addresses appear in the returned list may differ across Addresses()
 // calls for the same wallet.

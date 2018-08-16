@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gx/ipfs/QmV1m7odB89Na2hw8YWK4TbP8NkotBt4jMTQaiqgYTdAm3/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmbwwhSsEcSPP4XfGumu6GMcuCLnCLVQAnp3mDxKuYNXJo/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
@@ -30,20 +30,20 @@ func TestGenerate(t *testing.T) {
 	//  - test nonce gap
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, datastore.Datastore, *cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, blockstore.Blockstore, *cid.Cid) {
 	cst := hamt.NewCborStore()
 	pool := core.NewMessagePool()
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	return cst, pool, ds, fakeActorCodeCid
+	ds := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(ds)
+	return cst, pool, bs, fakeActorCodeCid
 }
 
-func sharedSetup(t *testing.T) (state.Tree, datastore.Datastore, *core.MessagePool, []types.Address) {
+func sharedSetup(t *testing.T) (state.Tree, *hamt.CborIpldStore, blockstore.Blockstore, *core.MessagePool, []types.Address) {
 	require := require.New(t)
-	cst, pool, ds, fakeActorCodeCid := sharedSetupInitial()
-	vms := vm.NewStorageMap(ds)
+	cst, pool, bs, fakeActorCodeCid := sharedSetupInitial()
+	vms := vm.NewStorageMap(bs)
 
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
@@ -59,15 +59,15 @@ func sharedSetup(t *testing.T) (state.Tree, datastore.Datastore, *core.MessagePo
 		addr2: act2,
 		addr4: minerAct,
 	})
-	return st, ds, pool, []types.Address{addr1, addr2, addr3, addr4}
+	return st, cst, bs, pool, []types.Address{addr1, addr2, addr3, addr4}
 }
 
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	cst, _, ds, fakeActorCodeCid := sharedSetupInitial()
-	vms := vm.NewStorageMap(ds)
+	cst, _, bs, fakeActorCodeCid := sharedSetupInitial()
+	vms := vm.NewStorageMap(bs)
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
@@ -123,10 +123,10 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
-	st, ds, pool, addrs := sharedSetup(t)
+	st, cst, bs, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return st, ds, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -135,7 +135,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{}, bs, cst)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -152,7 +152,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:       stateRoot,
 		Nonce:           1,
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[0], addrs[3])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0, addrs[3])
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
@@ -167,10 +167,10 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
-	st, ds, pool, addrs := sharedSetup(t)
+	st, cst, bs, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return st, ds, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -179,7 +179,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{}, bs, cst)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -211,7 +211,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -230,10 +230,10 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, ds, pool, addrs := sharedSetup(t)
+	st, cst, bs, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return st, ds, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -242,7 +242,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{}, bs, cst)
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -254,20 +254,18 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		StateRoot:         newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+1, blk.Height)
-	assert.Equal(addrs[0], blk.Reward)
 	assert.Equal(addrs[3], blk.Miner)
 
-	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[0], addrs[3])
+	blk, err = generator.Generate(ctx, baseTipSet, nil, 1, addrs[3])
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
 	assert.Equal(wNum+10.0, blk.ParentWeightNum)
 	assert.Equal(wDenom, blk.ParentWeightDenom)
-	assert.Equal(addrs[0], blk.Reward)
 	assert.Equal(addrs[3], blk.Miner)
 }
 
@@ -278,10 +276,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, ds, pool, addrs := sharedSetup(t)
+	st, cst, bs, pool, addrs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return st, ds, nil
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -290,7 +288,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		}
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
-	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{})
+	generator := NewBlockGenerator(pool, getStateTree, getWeight, core.ApplyMessages, &core.TestView{}, bs, cst)
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -298,7 +296,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[0], addrs[3])
+	blk, err := generator.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0, addrs[3])
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -313,15 +311,15 @@ func TestGenerateError(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 
-	st, ds, pool, addrs := sharedSetup(t)
+	st, cst, bs, pool, addrs := sharedSetup(t)
 
-	explodingGetStateTree := func(c context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
+	explodingGetStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
 			return nil, errors.New("boom no flush")
 		}
 
-		return stt, ds, nil
+		return stt, nil
 	}
 	getWeight := func(c context.Context, ts core.TipSet) (uint64, uint64, error) {
 		num, den, err := ts.ParentWeight()
@@ -331,7 +329,7 @@ func TestGenerateError(t *testing.T) {
 		return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
 	}
 
-	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages, &core.TestView{})
+	generator := NewBlockGenerator(pool, explodingGetStateTree, getWeight, core.ApplyMessages, &core.TestView{}, bs, cst)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
@@ -346,7 +344,7 @@ func TestGenerateError(t *testing.T) {
 		StateRoot: newCid(),
 	}
 	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
-	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[0], addrs[3])
+	blk, err := generator.Generate(ctx, baseTipSet, nil, 0, addrs[3])
 	assert.Error(err, "boom")
 	assert.Nil(blk)
 

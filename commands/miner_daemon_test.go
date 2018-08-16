@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testfiles"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -24,8 +23,7 @@ func TestMinerCreate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	wtf := tf.WalletFilePath()
-	testAddr, err := types.NewAddressFromString(testAddress3)
+	testAddr, err := types.NewAddressFromString(th.TestAddress3)
 	require.NoError(err)
 
 	t.Run("success", func(t *testing.T) {
@@ -33,7 +31,7 @@ func TestMinerCreate(t *testing.T) {
 		var err error
 		var addr types.Address
 
-		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		tf := func(fromAddress types.Address, pid peer.ID, expectSuccess bool) {
@@ -111,7 +109,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("validation failure", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		d.CreateWalletAddr()
@@ -140,7 +138,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("creation failure", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddr.String())).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		var wg sync.WaitGroup
@@ -166,8 +164,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	wtf := tf.WalletFilePath()
-	d := th.NewDaemon(t, th.WalletFile(wtf), th.WalletAddr(testAddress3)).Start()
+	d := th.NewDaemon(t, th.WalletAddr(th.TestAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
@@ -177,7 +174,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", testAddress3, "1000000", "20")
+		miner := d.RunSuccess("miner", "create", "--from", th.TestAddress3, "1000000", "20")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
 		assert.NotEqual(addr, types.Address{})
@@ -195,7 +192,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		ask := d.RunSuccess("miner", "add-ask", minerAddr.String(), "2000", "10",
-			"--from", testAddress3,
+			"--from", th.TestAddress3,
 		)
 		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
 		require.NoError(t, err)
@@ -211,8 +208,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	wtf := tf.WalletFilePath()
-	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.WalletFile(wtf), th.WalletAddr(testAddress3)).Start()
+	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.WalletAddr(th.TestAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
@@ -223,7 +219,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		miner := d.RunSuccess("miner", "create",
-			"--from", testAddress3,
+			"--from", th.TestAddress3,
 			"--peerid", core.RequireRandomPeerID().Pretty(),
 			"1000000", "20",
 		)
@@ -249,16 +245,16 @@ func TestMinerAddAskFail(t *testing.T) {
 	d.RunFail(
 		"invalid miner address",
 		"miner", "add-ask", "hello", "2000", "10",
-		"--from", testAddress3,
+		"--from", th.TestAddress3,
 	)
 	d.RunFail(
 		"invalid size",
 		"miner", "add-ask", minerAddr.String(), "2f", "10",
-		"--from", testAddress3,
+		"--from", th.TestAddress3,
 	)
 	d.RunFail(
 		"invalid price",
 		"miner", "add-ask", minerAddr.String(), "10", "3f",
-		"--from", testAddress3,
+		"--from", th.TestAddress3,
 	)
 }

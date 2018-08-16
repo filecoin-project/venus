@@ -60,6 +60,7 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool
 
 		nd, err := New(context.Background(), opts...)
 		require.NoError(t, err)
+
 		out = append(out, nd)
 	}
 
