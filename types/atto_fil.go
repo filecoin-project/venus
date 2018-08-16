@@ -3,7 +3,10 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
@@ -17,6 +20,7 @@ func init() {
 	ZeroAttoFIL = NewZeroAttoFIL()
 }
 
+var attoPower = 18
 var tenToTheEighteen = big.NewInt(10).Exp(big.NewInt(10), big.NewInt(18), nil)
 
 // ZeroAttoFIL represents an AttoFIL quantity of 0
@@ -49,7 +53,7 @@ func (z *AttoFIL) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	token, ok := NewAttoFILFromFILString(s, 10)
+	token, ok := NewAttoFILFromFILString(s)
 	if !ok {
 		return errors.New("cannot convert string to token amount")
 	}
@@ -96,14 +100,25 @@ func NewAttoFILFromBytes(buf []byte) *AttoFIL {
 }
 
 // NewAttoFILFromFILString allocates a new AttoFIL set to the value of s filecoin,
-// interpreted in the given base, and returns it and a boolean indicating success.
-func NewAttoFILFromFILString(s string, base int) (*AttoFIL, bool) {
-	af := NewZeroAttoFIL()
-	_, ok := af.val.SetString(s, base)
-	if ok {
-		af.val = af.val.Mul(af.val, tenToTheEighteen)
+// interpreted as a decimal in base 10, and returns it and a boolean indicating success.
+func NewAttoFILFromFILString(s string) (*AttoFIL, bool) {
+	splitNumber := strings.Split(s, ".")
+	// If '.' is absent from string, add an empty string to become the decimal part
+	if len(splitNumber) == 1 {
+		splitNumber = append(splitNumber, "")
 	}
-	return af, ok
+	intPart := splitNumber[0]
+	decPart := splitNumber[1]
+	// A decimal part longer than 18 digits should be an error
+	if len(decPart) > attoPower || len(splitNumber) > 2 {
+		return nil, false
+	}
+	// The decimal is right padded with 0's if it less than 18 digits long
+	for len(decPart) < attoPower {
+		decPart += "0"
+	}
+
+	return NewAttoFILFromString(intPart+decPart, 10)
 }
 
 // NewAttoFILFromString allocates a new AttoFIL set to the value of s attofilecoin,
@@ -186,14 +201,13 @@ func (z *AttoFIL) Bytes() []byte {
 	return leb128.FromBigInt(z.val)
 }
 
-// String prints the quantity of *FILECOIN* -- *NOT* attofilecoin -- that
-// z represents. This is lossy. We don't yet print to or parse from
-// attofilecoin in commands.
-// https://github.com/filecoin-project/go-filecoin/issues/559
 func (z *AttoFIL) String() string {
 	ensureZeroAmounts(&z)
-	v := big.NewInt(0).Div(z.val, tenToTheEighteen)
-	return v.String()
+	attoPadLength := strconv.Itoa(attoPower + 1)
+	paddedStr := fmt.Sprintf("%0"+attoPadLength+"d", z.val)
+	decimaledStr := fmt.Sprintf("%s.%s", paddedStr[:len(paddedStr)-attoPower], paddedStr[len(paddedStr)-attoPower:])
+	noTrailZeroStr := strings.TrimRight(decimaledStr, "0")
+	return strings.TrimRight(noTrailZeroStr, ".")
 }
 
 // CalculatePrice treats z as a price in AttoFIL/Byte and applies it to numBytes to calculate a total price.

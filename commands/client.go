@@ -56,7 +56,7 @@ var clientAddBidCmd = &cmds.Command{
 			return
 		}
 
-		price, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
 			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
 			return

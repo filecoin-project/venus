@@ -62,7 +62,7 @@ message to be mined as this is required to return the address of the new miner.`
 			return
 		}
 
-		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1], 10)
+		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
 			re.SetError(ErrInvalidCollateral, cmdkit.ErrNormal)
 			return
@@ -163,7 +163,7 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		price, ok := types.NewAttoFILFromFILString(req.Arguments[2], 10)
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[2])
 		if !ok {
 			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
 			return
