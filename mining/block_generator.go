@@ -63,7 +63,7 @@ func (b blockGenerator) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 		return nil, errors.Wrap(err, "get state tree")
 	}
 
-	if !b.powerTable.HasPower(ctx, stateTree, b.cstore, miningAddress) {
+	if !b.powerTable.HasPower(ctx, stateTree, b.blockstore, miningAddress) {
 		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", miningAddress)
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
 
-	"math/big"
 	"testing"
 )
 
@@ -371,17 +370,17 @@ type TestView struct{}
 var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore) (uint64, error) {
+func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
 	return uint64(1), nil
 }
 
 // Miner always returns 0.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore, mAddr types.Address) (uint64, error) {
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) (uint64, error) {
 	return uint64(0), nil
 }
 
 // HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore, mAddr types.Address) bool {
+func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) bool {
 	return true
 }
 
@@ -399,7 +398,7 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 	// create miner
 	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, *pledge, RequireRandomPeerID(), types.NewZeroAttoFIL())
 	require.NoError(err)
-	b := requireMineOnce(ctx, t, cm, lastBlock, rewardAddress, mockSign(sn, msg))
+	b := RequireMineOnce(ctx, t, cm, lastBlock, rewardAddress, mockSign(sn, msg))
 	nonce++
 
 	minerAddr, err := types.NewAddressFromBytes(b.MessageReceipts[0].Return[0])
@@ -409,44 +408,17 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 		return minerAddr, b, nonce, nil
 	}
 
-	// create bid
-	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, types.NewZeroAttoFIL(), power)
+	// commit sector (thus adding power to miner and recording in storage market.
+	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, []byte("commitment"), power)
 	require.NoError(err)
-	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
-	nonce++
-
-	bidID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
-
-	// create ask
-	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, types.NewZeroAttoFIL(), power)
-	require.NoError(err)
-	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
-	nonce++
-
-	askID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
-
-	// create deal
-	ref, err := cid.NewPrefixV1(cid.DagCBOR, types.DefaultHashFunction).Sum([]byte("Blah"))
-	if err != nil {
-		return types.Address{}, nil, 0, err
-	}
-	msg, err = th.AddDealMessage(sn.Addresses[0], nonce, &askID, &bidID, sn.Addresses[0].Bytes(), ref.Bytes())
-	require.NoError(err)
-	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
-	nonce++
-
-	dealID := bigIntFromBytes(b.MessageReceipts[0].Return[0])
-
-	// commit sector for deal (thus adding power to miner and recording in storage market.
-	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, big.NewInt(0), []byte("commitment"), []uint64{dealID.Uint64()})
-	require.NoError(err)
-	b = requireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
+	b = RequireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
 	nonce++
 
 	return minerAddr, b, nonce, nil
 }
 
-func requireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress types.Address, msg *types.SignedMessage) *types.Block {
+// RequireMineOnce process one block and panic on error
+func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress types.Address, msg *types.SignedMessage) *types.Block {
 	require := require.New(t)
 
 	st, err := state.LoadStateTree(ctx, cm.cstore, lastBlock.StateRoot, builtin.Actors)
@@ -475,10 +447,4 @@ func requireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBl
 
 func mockSign(sn types.MockSigner, msg *types.Message) *types.SignedMessage {
 	return MustSign(sn, msg)[0]
-}
-
-func bigIntFromBytes(i []byte) big.Int {
-	var out big.Int
-	out.SetBytes(i)
-	return out
 }
