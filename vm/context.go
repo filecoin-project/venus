@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -14,6 +15,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
+
+var log = logging.Logger("vm")
 
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
@@ -206,6 +209,7 @@ func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.S
 	maybePk, err := wutil.Ecrecover(data, sig)
 	if err != nil {
 		// Any error returned from Ecrecover means this signature is not valid.
+		log.Infof("error in signature validation: %s", err)
 		return false
 	}
 	maybeAddrHash := types.AddressHash(maybePk)
