@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -12,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,9 +48,8 @@ func TestSendErrorHandling(t *testing.T) {
 	actor2 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := NewStorageMap(ds)
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	vms := NewStorageMap(bs)
 
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
 		assert := assert.New(t)

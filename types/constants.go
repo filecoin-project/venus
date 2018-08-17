@@ -4,6 +4,8 @@ import (
 	mh "gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmZo5avr9dhVVRzcpKnU9ZGQuPaU62pbufUHXBNB7GwLzQ/go-basex"
+	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
+	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 )
 
 // DefaultHashFunction represents the default hashing function to use
@@ -36,39 +38,42 @@ var Base32CharsetReverse = [128]int8{
 // Base32 is a basex instance using the Base32Charset.
 var Base32 = basex.NewAlphabet(Base32Charset)
 
-// AccountActorCodeCid is the CID of the builtin account actor.
+// AccountActorCodeObj is the code representation of the builtin account actor.
+var AccountActorCodeObj ipld.Node
+
+// AccountActorCodeCid is the cid of the above object
 var AccountActorCodeCid *cid.Cid
 
-// StorageMarketActorCodeCid is the CID of the builtin storage market actor.
+// StorageMarketActorCodeObj is the code representation of the builtin storage market actor.
+var StorageMarketActorCodeObj ipld.Node
+
+// StorageMarketActorCodeCid is the cid of the above object
 var StorageMarketActorCodeCid *cid.Cid
 
-// PaymentBrokerActorCodeCid is the CID of the builtin payment broker actor.
+// PaymentBrokerActorCodeObj is the code representation of the builtin payment broker actor.
+var PaymentBrokerActorCodeObj ipld.Node
+
+// PaymentBrokerActorCodeCid is the cid of the above object
 var PaymentBrokerActorCodeCid *cid.Cid
 
-// MinerActorCodeCid is the CID of the builtin miner actor.
+// MinerActorCodeObj is the code representation of the builtin miner actor.
+var MinerActorCodeObj ipld.Node
+
+// MinerActorCodeCid is the cid of the above object
 var MinerActorCodeCid *cid.Cid
-
-func cidFromString(input string) (*cid.Cid, error) {
-	prefix := cid.NewPrefixV1(cid.DagCBOR, DefaultHashFunction)
-	return prefix.Sum([]byte(input))
-}
-
-func mustCidFromString(s string) *cid.Cid {
-	c, err := cidFromString(s)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
 
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
 var ActorCodeCidTypeNames = make(map[*cid.Cid]string)
 
 func init() {
-	AccountActorCodeCid = mustCidFromString("accountactor")
-	StorageMarketActorCodeCid = mustCidFromString("storagemarket")
-	PaymentBrokerActorCodeCid = mustCidFromString("paymentbroker")
-	MinerActorCodeCid = mustCidFromString("mineractor")
+	AccountActorCodeObj = dag.NewRawNode([]byte("accountactor"))
+	AccountActorCodeCid = AccountActorCodeObj.Cid()
+	StorageMarketActorCodeObj = dag.NewRawNode([]byte("storagemarket"))
+	StorageMarketActorCodeCid = StorageMarketActorCodeObj.Cid()
+	PaymentBrokerActorCodeObj = dag.NewRawNode([]byte("paymentbroker"))
+	PaymentBrokerActorCodeCid = PaymentBrokerActorCodeObj.Cid()
+	MinerActorCodeObj = dag.NewRawNode([]byte("mineractor"))
+	MinerActorCodeCid = MinerActorCodeObj.Cid()
 
 	// New Actors need to be added here.
 	// TODO: Make this work with reflection -- but note that nasty import cycles lie on that path.

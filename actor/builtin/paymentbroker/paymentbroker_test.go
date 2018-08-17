@@ -7,15 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -538,12 +539,14 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(channelID, voucherAmount)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", pdata, payer, types.NewBlockHeight(9))
-		require.NoError(err)
-		assert.Equal(uint8(0), exitCode)
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		res, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(9))
+		assert.NoError(err)
+		assert.NoError(res.ExecutionError)
+		assert.Equal(uint8(0), res.Receipt.ExitCode)
 
 		voucher := PaymentVoucher{}
-		err = cbor.DecodeInto(returnValue[0], &voucher)
+		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
 		require.NoError(err)
 
 		assert.Equal(*channelID, voucher.Channel)
@@ -586,9 +589,11 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := core.MustConvertParams(channelID, voucherAmount)
 
-		_, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "voucher", args, payer, types.NewBlockHeight(9))
-		assert.NotEqual(uint8(0), exitCode)
-		assert.Contains(fmt.Sprintf("%v", err), "exceeds amount")
+		msg := types.NewMessage(payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
+		res, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(9))
+		assert.NoError(err)
+		assert.NotEqual(uint8(0), res.Receipt.ExitCode)
+		assert.Contains(fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
 	})
 }
 
@@ -622,12 +627,11 @@ func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *types.Actor
 func requireGenesis(ctx context.Context, t *testing.T, targetAddress types.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
 	require := require.New(t)
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := vm.NewStorageMap(ds)
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	vms := vm.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
-	blk, err := core.InitGenesis(cst, ds)
+	blk, err := core.InitGenesis(cst, bs)
 	require.NoError(err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)

@@ -98,8 +98,10 @@ type TestDaemon struct {
 	walletAddr  string
 	genesisFile string
 	mockMine    bool
+	keyFiles    []string
 
-	init bool
+	firstRun bool
+	init     bool
 
 	// The filecoin daemon process
 	process *exec.Cmd
@@ -210,13 +212,15 @@ func (td *TestDaemon) RunSuccess(args ...string) *Output {
 // AssertSuccess asserts that the output represents a successful execution.
 func (o *Output) AssertSuccess() *Output {
 	o.test.Helper()
-	assert.NoError(o.test, o.Error)
+	require.NoError(o.test, o.Error)
 	oErr := o.ReadStderr()
 
-	assert.Equal(o.test, 0, o.Code, oErr)
-	assert.NotContains(o.test, oErr, "CRITICAL")
-	assert.NotContains(o.test, oErr, "ERROR")
-	assert.NotContains(o.test, oErr, "WARNING")
+	require.Equal(o.test, 0, o.Code, oErr)
+	require.NotContains(o.test, oErr, "CRITICAL")
+	require.NotContains(o.test, oErr, "ERROR")
+	require.NotContains(o.test, oErr, "WARNING")
+	require.NotContains(o.test, oErr, "Error:")
+
 	return o
 
 }
@@ -232,10 +236,10 @@ func (td *TestDaemon) RunFail(err string, args ...string) *Output {
 // matching the passed in error.
 func (o *Output) AssertFail(err string) *Output {
 	o.test.Helper()
-	assert.NoError(o.test, o.Error)
-	assert.Equal(o.test, 1, o.Code)
-	assert.Empty(o.test, o.ReadStdout())
-	assert.Contains(o.test, o.ReadStderr(), err)
+	require.NoError(o.test, o.Error)
+	require.Equal(o.test, 1, o.Code)
+	require.Empty(o.test, o.ReadStdout())
+	require.Contains(o.test, o.ReadStderr(), err)
 	return o
 }
 
@@ -301,6 +305,14 @@ func (td *TestDaemon) ReadStderr() string {
 func (td *TestDaemon) Start() *TestDaemon {
 	require.NoError(td.test, td.process.Start())
 	require.NoError(td.test, td.WaitForAPI(), "Daemon failed to start")
+
+	// on first startup import key pairs, if defined
+	if td.firstRun {
+		for _, file := range td.keyFiles {
+			td.RunSuccess("wallet", "import", file)
+		}
+	}
+
 	return td
 }
 
@@ -354,31 +366,29 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAddr() types.Address {
+func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	// need money
 	td.RunSuccess("mining", "once")
-
-	addr := td.Config().Mining.RewardAddress
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
 
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", addr.String(), "1000000", "1000")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "1000")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(td.test, err)
-		assert.NotEqual(td.test, addr, types.Address{})
+		require.NoError(td.test, err)
+		require.NotEqual(td.test, addr, types.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
 
 	// ensure mining runs after the command in our goroutine
 	td.RunSuccess("mpool --wait-for-count=1")
-
 	td.RunSuccess("mining", "once")
 
 	wg.Wait()
+
 	return minerAddr
 }
 
@@ -499,7 +509,7 @@ func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 
 // MakeDeal will make a deal with the miner `miner`, using data `dealData`.
 // MakeDeal will return the cid of `dealData`
-func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
+func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon, fromAddr string) string {
 
 	// The daemons need 2 monies each.
 	td.MakeMoney(2)
@@ -508,11 +518,11 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 	// How long to wait for miner blocks to propagate to other nodes
 	propWait := time.Second * 3
 
-	m := miner.CreateMinerAddr()
+	m := miner.CreateMinerAddr(fromAddr)
 
 	askO := miner.RunSuccess(
 		"miner", "add-ask",
-		"--from", miner.Config().Mining.RewardAddress.String(),
+		"--from", fromAddr,
 		m.String(), "1200", "1",
 	)
 	miner.MineAndPropagate(propWait, td)
@@ -520,7 +530,7 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon) string {
 
 	td.RunSuccess(
 		"client", "add-bid",
-		"--from", td.Config().Mining.RewardAddress.String(),
+		"--from", fromAddr,
 		"500", "1",
 	)
 	td.MineAndPropagate(propWait, miner)
@@ -635,14 +645,17 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-		cmdAddr:    fmt.Sprintf(":%d", cmdPort),
-		swarmAddr:  fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-		test:       t,
-		repoDir:    dir,
-		init:       true, // we want to init unless told otherwise
-		walletFile: "",
-		mockMine:   true, // mine without setting up a valid storage market in the chain state by default.
-		cmdTimeout: DefaultDaemonCmdTimeout,
+		cmdAddr:     fmt.Sprintf(":%d", cmdPort),
+		swarmAddr:   fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+		test:        t,
+		repoDir:     dir,
+		init:        true, // we want to init unless told otherwise
+		firstRun:    true,
+		walletFile:  "",
+		mockMine:    true, // mine without setting up a valid storage market in the chain state by default.
+		cmdTimeout:  DefaultDaemonCmdTimeout,
+		genesisFile: GenesisFilePath(), // default file includes all test addresses,
+		keyFiles:    KeyFilePaths(),    // five default key pairs
 	}
 
 	// configure TestDaemon options

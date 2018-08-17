@@ -51,7 +51,6 @@ func TestWriteFile(t *testing.T) {
   address = "/ip4/127.0.0.1/tcp/6000"
 
 [mining]
-  rewardAddress = ""
   minerAddresses = []
 
 [wallet]
@@ -287,12 +286,12 @@ path = "mushroom-mushroom"}`
 		assert.Error(err)
 
 		// Corrupt address won't pass checksum
-		_, err = cfg.Set("mining.rewardAddress",
+		_, err = cfg.Set("mining.defaultAddress",
 			`"fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt"`)
-		assert.Error(err)
+		assert.Contains(err.Error(), "invalid")
 
-		_, err = cfg.Set("mining.rewardAddress", `"corruptandtooshort"`)
-		assert.Error(err)
+		_, err = cfg.Set("wallet.defaultAddress", `"corruptandtooshort"`)
+		assert.Contains(err.Error(), "invalid character")
 	})
 }
 

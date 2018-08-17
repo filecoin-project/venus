@@ -33,7 +33,7 @@ func ls(ctx context.Context, fcn *node.Node, actorGetter state.GetAllActorsFunc)
 	if len(ts) == 0 {
 		return nil, ErrHeaviestTipSetNotFound
 	}
-	st, _, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	st, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
 	if err != nil {
 		return nil, err
 	}

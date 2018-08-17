@@ -5,19 +5,23 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 
+	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5/go-car"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	"gx/ipfs/QmWkSGjYAhLbHFiq8bA73xA67EG3p6ERovd2ad8c7cmbxK/go-car"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
@@ -64,13 +68,18 @@ func randAddress() types.Address {
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid.Cid, map[string]*types.KeyInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*cid.Cid, map[string]*types.KeyInfo, error) {
 	keys, err := genKeys(cfg.Keys)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	st := state.NewEmptyStateTree(cst)
+	storageMap := vm.NewStorageMap(bs)
+
+	if err := core.SetupDefaultActors(ctx, st, storageMap); err != nil {
+		return nil, nil, err
+	}
 
 	if err := setupPrealloc(st, keys, cfg.PreAlloc); err != nil {
 		return nil, nil, err
@@ -80,7 +89,25 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore) (*cid
 		return nil, nil, err
 	}
 
+	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
+		return nil, nil, err
+	}
+
 	stateRoot, err := st.Flush(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = storageMap.Flush()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -137,18 +164,20 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 			return err
 		}
 
-		act := &types.Actor{
-			Balance: types.NewAttoFILFromFIL(valint),
+		act, err := account.NewActor(types.NewAttoFILFromFIL(valint))
+		if err != nil {
+			return err
 		}
-
 		if err := st.SetActor(context.Background(), addr, act); err != nil {
 			return err
 		}
 	}
 
-	netact := &types.Actor{
-		Balance: types.NewAttoFILFromFIL(10000000000),
+	netact, err := account.NewActor(types.NewAttoFILFromFIL(10000000000))
+	if err != nil {
+		return err
 	}
+
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
@@ -196,6 +225,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 			return err
 		}
 		smaStorage.Miners[maddr] = struct{}{}
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", maddr, m.Owner, m.Power) // nolint: errcheck
 	}
 
 	smaStorage.TotalCommittedStorage = powerSum
@@ -206,6 +236,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	}
 	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
 	sma.Head = root
+	fmt.Fprintln(os.Stderr, "storage market actor head: ", root) // nolint: errcheck
 
 	return st.SetActor(context.Background(), address.StorageMarketAddress, sma)
 }
@@ -222,10 +253,10 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 
 	ctx := context.Background()
 
-	c, keys, err := GenGen(ctx, cfg, cst)
+	c, keys, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
 		return nil, err
 	}
 
-	return keys, car.WriteCar(ctx, dserv, c, out)
+	return keys, car.WriteCar(ctx, dserv, []*cid.Cid{c}, out)
 }

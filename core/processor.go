@@ -283,13 +283,7 @@ var (
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
 func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to types.Address, method string, params []byte, from types.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
-	fromActor, err := st.GetActor(ctx, from)
-	if state.IsActorNotFoundError(err) {
-		return nil, 1, errAccountNotFound
-	} else if err != nil {
-		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get From actor %s", from)
-	}
-
+	// TODO: don't use from?
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
@@ -300,14 +294,13 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to t
 
 	msg := &types.Message{
 		To:     to,
-		From:   from,
 		Nonce:  0,
 		Value:  nil,
 		Method: method,
 		Params: params,
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, cachedSt, vms, optBh)
+	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err

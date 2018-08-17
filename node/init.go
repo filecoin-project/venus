@@ -3,9 +3,9 @@ package node
 import (
 	"context"
 
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	bstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	ci "gx/ipfs/Qme1knMqwt1hKZbc1BmQFmnm9f36nyQGwXxPGVpVJ9rMK5/go-libp2p-crypto"
 
@@ -28,11 +28,12 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
-	cm := core.NewChainManager(r.Datastore(), cst)
+	cm := core.NewChainManager(r.Datastore(), bs, cst)
 	if err := cm.Genesis(ctx, gen); err != nil {
 		return errors.Wrap(err, "failed to initialize genesis")
 	}
 
+	// TODO: make size configurable
 	sk, err := makePrivateKey(2048)
 	if err != nil {
 		return errors.Wrap(err, "failed to create nodes private key")
@@ -42,18 +43,20 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 		return errors.Wrap(err, "failed to store private key")
 	}
 
+	// TODO: do we want this?
 	// TODO: but behind a config option if this should be generated
-	addr, err := newAddress(r)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate reward address")
-	}
+	if r.Config().Wallet.DefaultAddress == (types.Address{}) {
+		addr, err := newAddress(r)
+		if err != nil {
+			return errors.Wrap(err, "failed to generate default address")
+		}
 
-	newConfig := r.Config()
-	newConfig.Mining.RewardAddress = addr
-	if err := r.ReplaceConfig(newConfig); err != nil {
-		return errors.Wrap(err, "failed to update config")
+		newConfig := r.Config()
+		newConfig.Wallet.DefaultAddress = addr
+		if err := r.ReplaceConfig(newConfig); err != nil {
+			return errors.Wrap(err, "failed to update config")
+		}
 	}
-
 	return nil
 }
 

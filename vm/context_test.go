@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/stretchr/testify/assert"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -30,9 +31,8 @@ func TestVMContextStorage(t *testing.T) {
 	st := state.NewEmptyStateTree(cst)
 	cstate := state.NewCachedStateTree(st)
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := NewStorageMap(ds)
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	vms := NewStorageMap(bs)
 
 	toActor, err := account.NewActor(nil)
 	assert.NoError(err)
@@ -72,9 +72,8 @@ func TestVMContextSendFailures(t *testing.T) {
 	fakeActorCid := types.NewCidForTestGetter()()
 	mockStateTree.BuiltinActors[fakeActorCid.KeyString()] = &actor.FakeActor{}
 	tree := state.NewCachedStateTree(&mockStateTree)
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := NewStorageMap(ds)
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	vms := NewStorageMap(bs)
 
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		assert := assert.New(t)
@@ -253,9 +252,8 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	vms := NewStorageMap(ds)
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	vms := NewStorageMap(bs)
 
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)

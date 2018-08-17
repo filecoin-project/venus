@@ -11,7 +11,7 @@ import (
 	"path"
 	"strings"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	uio "gx/ipfs/QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE/go-unixfs/io"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
@@ -437,8 +437,19 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
-	//minerOwner := types.Address{} // TODO: get the miner owner to send this from
-	minerOwner := sb.nd.rewardAddress
+	res, exitCode, err := sb.nd.CallQueryMethod(sb.MinerAddr, "getOwner", nil, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get miner owner")
+	}
+
+	if exitCode != uint8(0) {
+		return nil, fmt.Errorf("failed to get miner owner, exitCode: %d", exitCode)
+	}
+
+	minerOwner, err := types.NewAddressFromBytes(res[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "received invalid mining owner")
+	}
 	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", args)
 
 	smsg, err := types.NewSignedMessage(*msg, sb.nd.Wallet)

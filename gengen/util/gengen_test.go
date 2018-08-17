@@ -36,7 +36,7 @@ func TestGenGenLoading(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fi.Close()
+	_ = fi.Close()
 
 	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer td.Shutdown()

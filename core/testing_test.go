@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,7 +78,7 @@ func TestAddChain(t *testing.T) {
 	assert.Equal(1, countBlocks(cm))
 
 	bts := cm.GetHeaviestTipSet()
-	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, datastore.Datastore, error) {
+	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
 	}
 	_, err := AddChain(ctx, cm.ProcessNewBlock, stateGetter, bts.ToSlice(), 9)
@@ -100,7 +98,7 @@ func TestAddChainBinomBlocksPerEpoch(t *testing.T) {
 	startHeight, err := hts.Height()
 	require.NoError(err)
 
-	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, datastore.Datastore, error) {
+	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
 	}
 	_, err = AddChainBinomBlocksPerEpoch(ctx, cm.ProcessNewBlock, stateGetter, hts, 100, 199)

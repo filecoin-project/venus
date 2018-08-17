@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
+	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer/test"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -56,7 +56,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	if err != nil {
 		return nil, err
 	}
-	st, _, err := loadStateTreeTS(ctx, ts)
+	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 // p = 1/n.  Concretely this distribution corresponds to the configuration where
 // all miners have the same storage power.
 func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockProcessor, loadStateTreeTS AggregateStateTreeComputer, ts TipSet, numMiners, epochs int) (TipSet, error) {
-	st, _, err := loadStateTreeTS(ctx, ts)
+	st, err := loadStateTreeTS(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -344,23 +344,21 @@ func MustDecodeCid(cidStr string) *cid.Cid {
 
 // VMStorage creates a new storage object backed by an in memory datastore
 func VMStorage() vm.StorageMap {
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	return vm.NewStorageMap(ds)
+	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
 // CreateStorages creates an empty state tree and storage map.
 func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
 	cst := hamt.NewCborStore()
-	repo := repo.NewInMemoryRepo()
-	ds := repo.Datastore()
-	blk, err := InitGenesis(cst, ds)
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+	blk, err := InitGenesis(cst, bs)
 	require.NoError(t, err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	require.NoError(t, err)
 
-	vms := vm.NewStorageMap(ds)
+	vms := vm.NewStorageMap(bs)
 
 	return st, vms
 }
@@ -373,17 +371,17 @@ type TestView struct{}
 var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, ds datastore.Datastore) (uint64, error) {
+func (tv *TestView) Total(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore) (uint64, error) {
 	return uint64(1), nil
 }
 
 // Miner always returns 0.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, ds datastore.Datastore, mAddr types.Address) (uint64, error) {
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore, mAddr types.Address) (uint64, error) {
 	return uint64(0), nil
 }
 
 // HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, ds datastore.Datastore, mAddr types.Address) bool {
+func (tv *TestView) HasPower(ctx context.Context, st state.Tree, cstore *hamt.CborIpldStore, mAddr types.Address) bool {
 	return true
 }
 
@@ -452,7 +450,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBl
 	require := require.New(t)
 
 	st, err := state.LoadStateTree(ctx, cm.cstore, lastBlock.StateRoot, builtin.Actors)
-	vms := vm.NewStorageMap(cm.ds)
+	vms := vm.NewStorageMap(cm.Blockstore)
 	require.NoError(err)
 
 	b := MkChild([]*types.Block{lastBlock}, lastBlock.StateRoot, 0)

@@ -22,7 +22,6 @@ func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 			libp2p.ListenAddrStrings(cfg.Swarm.Address),
 			libp2p.Identity(sk),
 		),
-		RewardAddress(cfg.Mining.RewardAddress),
 	}
 
 	dsopt := func(c *Config) error {

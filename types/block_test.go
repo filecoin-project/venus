@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,7 +89,6 @@ func TestTriangleEncoding(t *testing.T) {
 		// pass when non-zero values do not due to nil/null encoding.
 		b := &Block{
 			Miner:             newAddress(),
-			Reward:            newAddress(),
 			Ticket:            Bytes([]byte{0x01, 0x02, 0x03}),
 			Parents:           NewSortedCidSet(SomeCid()),
 			ParentWeightNum:   Uint64(1),
@@ -102,7 +102,7 @@ func TestTriangleEncoding(t *testing.T) {
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 11, s.NumField())
+		require.Equal(t, 10, s.NumField())
 		testRoundTrip(t, b)
 	})
 }
@@ -132,6 +132,11 @@ func TestBlockScore(t *testing.T) {
 			assert.Equal(uint64(b.Height), b.Score(), "block height: %d - block score %d", b.Height, b.Score())
 		}
 	})
+}
+
+func cidFromString(input string) (*cid.Cid, error) {
+	prefix := cid.NewPrefixV1(cid.DagCBOR, DefaultHashFunction)
+	return prefix.Sum([]byte(input))
 }
 
 func TestDecodeBlock(t *testing.T) {

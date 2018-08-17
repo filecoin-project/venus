@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	car "gx/ipfs/QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5/go-car"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	car "gx/ipfs/QmWkSGjYAhLbHFiq8bA73xA67EG3p6ERovd2ad8c7cmbxK/go-car"
-	hamt "gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -90,7 +89,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 			return err
 		}
 
-		tif = func(cst *hamt.CborIpldStore, ds datastore.Datastore) (*types.Block, error) {
+		tif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 			var blk types.Block
 
 			if err := cst.Get(ctx, genCid, &blk); err != nil {
@@ -164,5 +163,14 @@ func loadGenesis(ctx context.Context, rep repo.Repo, fname string) (*cid.Cid, er
 
 	bs := blockstore.NewBlockstore(rep.Datastore())
 
-	return car.LoadCar(ctx, bs, fi)
+	ch, err := car.LoadCar(bs, fi)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ch.Roots) != 1 {
+		return nil, fmt.Errorf("expected car with only a single root")
+	}
+
+	return ch.Roots[0], nil
 }

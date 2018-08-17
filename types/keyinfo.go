@@ -5,7 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
@@ -60,22 +60,32 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (Address, error) {
-	prv, err := crypto.BytesToECDSA(ki.Key())
+	pub, err := ki.PublicKey()
 	if err != nil {
-		return Address{}, nil
+		return Address{}, err
 	}
 
-	pub, ok := prv.Public().(*ecdsa.PublicKey)
-	if !ok {
-		// means a something is wrong with key generation
-		return Address{}, fmt.Errorf("unknown public key type")
-	}
-
-	addrHash, err := AddressHash(cu.SerializeUncompressed(pub))
+	addrHash, err := AddressHash(pub)
 	if err != nil {
 		return Address{}, err
 	}
 
 	// TODO: Use the address type we are running on from the config.
 	return NewMainnetAddress(addrHash), nil
+}
+
+// PublicKey returns the public key part as uncompressed bytes.
+func (ki *KeyInfo) PublicKey() ([]byte, error) {
+	prv, err := crypto.BytesToECDSA(ki.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	pub, ok := prv.Public().(*ecdsa.PublicKey)
+	if !ok {
+		// means a something is wrong with key generation
+		return nil, fmt.Errorf("unknown public key type")
+	}
+
+	return cu.SerializeUncompressed(pub), nil
 }

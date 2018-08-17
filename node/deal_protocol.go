@@ -7,15 +7,13 @@ import (
 	"math/big"
 	"sync"
 
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	inet "gx/ipfs/QmPjvxTpVH8qJyQDnxnsxF9kv9jezKD1kozz1hs3fCGsNh/go-libp2p-net"
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
-
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -409,13 +407,13 @@ type stateTreeMarketPeeker struct {
 	nd *Node
 }
 
-func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, datastore.Datastore, error) {
+func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
 	ts := stsa.nd.ChainMgr.GetHeaviestTipSet()
 	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
 }
 
 func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*storagemarket.State, error) {
-	st, _, err := stsa.loadStateTree(ctx)
+	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -425,15 +423,12 @@ func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Con
 		return nil, err
 	}
 
-	chunk, err := stsa.nd.Repo.Datastore().Get(datastore.NewKey(act.Head.KeyString()))
+	blk, err := stsa.nd.Blockstore.Get(act.Head)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "faile to retrieve: %s", act.Head.String())
 	}
 
-	smaStateBytes, ok := chunk.([]byte)
-	if !ok {
-		return nil, errors.New("Incorrect data types stored for storage market state")
-	}
+	smaStateBytes := blk.RawData()
 
 	var storage storagemarket.State
 	err = cbor.DecodeInto(smaStateBytes, &storage)
@@ -507,7 +502,7 @@ func (stsa *stateTreeMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) 
 }
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
-	st, _, err := stsa.loadStateTree(ctx)
+	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return types.Address{}, err
 	}
@@ -521,15 +516,12 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddre
 		return types.Address{}, fmt.Errorf("address given did not belong to a miner actor")
 	}
 
-	chunk, err := stsa.nd.Repo.Datastore().Get(datastore.NewKey(act.Head.KeyString()))
+	blk, err := stsa.nd.Blockstore.Get(act.Head)
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	minerStateBytes, ok := chunk.([]byte)
-	if !ok {
-		return types.Address{}, errors.New("Incorrect data types stored for miner state")
-	}
+	minerStateBytes := blk.RawData()
 
 	var mst miner.State
 	err = cbor.DecodeInto(minerStateBytes, &mst)

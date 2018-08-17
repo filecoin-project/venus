@@ -40,7 +40,7 @@ func (api *nodeAddress) Balance(ctx context.Context, addr types.Address) (*types
 		return types.ZeroAttoFIL, ErrHeaviestTipSetNotFound
 	}
 
-	tree, _, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	tree, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
 	if err != nil {
 		return types.ZeroAttoFIL, err
 	}

@@ -16,6 +16,4 @@ var (
 	ErrCannotPingSelf = errors.New("cannot ping self")
 	// ErrNodeOffline indicates that the node must not be offline for the operation performed.
 	ErrNodeOffline = errors.New("node must be online")
-	// ErrMissingRewardAddress indicates that there is no reward address to which can be mined.
-	ErrMissingRewardAddress = errors.New("filecoin node requires a reward address to be set before mining")
 )

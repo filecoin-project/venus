@@ -19,13 +19,13 @@ type PeerLookupService interface {
 // ChainLookupService is a ChainManager-backed implementation of the PeerLookupService interface.
 type ChainLookupService struct {
 	chainManager           *core.ChainManager
-	queryMethodFromAddress types.Address
+	queryMethodFromAddress func() (types.Address, error)
 }
 
 var _ PeerLookupService = &ChainLookupService{}
 
 // NewChainLookupService creates a new ChainLookupService from a ChainManager and a Wallet.
-func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr types.Address) *ChainLookupService {
+func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr func() (types.Address, error)) *ChainLookupService {
 	return &ChainLookupService{
 		chainManager:           manager,
 		queryMethodFromAddress: queryMethodFromAddr,
@@ -35,15 +35,19 @@ func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr types
 // GetPeerIDByMinerAddress attempts to get a miner's libp2p identity by loading the actor from the state tree and sending
 // it a "getPeerID" message. The MinerActor is currently the only type of actor which has a peer ID.
 func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
-	st, ds, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
+	st, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to load state tree")
 	}
-
-	vms := vm.NewStorageMap(ds)
-	retValue, retCode, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, c.queryMethodFromAddress, nil)
+	addr, err := c.queryMethodFromAddress()
 	if err != nil {
-		return peer.ID(""), errors.Wrap(err, "failed to query local state tree")
+		return peer.ID(""), errors.Wrap(err, "failed to obtain a default from-address")
+	}
+
+	vms := vm.NewStorageMap(c.chainManager.Blockstore)
+	retValue, retCode, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, addr, nil)
+	if err != nil {
+		return peer.ID(""), errors.Wrapf(err, "failed to query local state tree(from %s, miner %s)", addr.String(), minerAddr.String())
 	}
 
 	if retCode != 0 {

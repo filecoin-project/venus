@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
@@ -9,6 +10,12 @@ import (
 )
 
 func writeKey(ki *types.KeyInfo, name string) error {
+	addr, err := ki.Address()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())                                                          // nolint: errcheck
+	fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
 	fi, err := os.Create(name + ".key")
 	if err != nil {
 		return err

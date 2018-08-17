@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj"
+	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -129,11 +131,28 @@ func (t *tree) GetActor(ctx context.Context, a types.Address) (*types.Actor, err
 	}
 
 	var act types.Actor
-	if err := act.Unmarshal(data); err != nil {
+	if err := hackTransferObject(data, &act); err != nil {
 		return nil, err
 	}
 
 	return &act, nil
+}
+
+func hackTransferObject(from, to interface{}) error {
+	m := obj.NewMarshaller(cbor.CborAtlas)
+	if err := m.Bind(from); err != nil {
+		return err
+	}
+
+	u := obj.NewUnmarshaller(cbor.CborAtlas)
+	if err := u.Bind(to); err != nil {
+		return err
+	}
+
+	return shared.TokenPump{
+		TokenSource: m,
+		TokenSink:   u,
+	}.Run()
 }
 
 // GetOrCreateActor retrieves an actor by their address
@@ -149,12 +168,7 @@ func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, crea
 // SetActor sets the memory slot at address 'a' to the given actor.
 // This operation can overwrite existing actors at that address.
 func (t *tree) SetActor(ctx context.Context, a types.Address, act *types.Actor) error {
-	data, err := act.Marshal()
-	if err != nil {
-		return errors.Wrap(err, "marshal actor failed")
-	}
-
-	if err := t.root.Set(ctx, a.String(), data); err != nil {
+	if err := t.root.Set(ctx, a.String(), act); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
 	return nil
@@ -174,12 +188,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 	for _, p := range ps {
 		fmt.Println("----")
 		for _, kv := range p.KVs {
-			res := map[string]interface{}{}
-			if err := cbor.DecodeInto(kv.Value, &res); err != nil {
-				fmt.Printf("%s: %X\n", kv.Key, kv.Value)
-			} else {
-				fmt.Printf("%s: \n%v\n\n", kv.Key, res)
-			}
+			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
 		}
 		if p.Link != nil {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
@@ -222,14 +231,13 @@ func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, state
 func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, actors []*types.Actor) {
 	for _, p := range ps {
 		for _, kv := range p.KVs {
-			a := new(types.Actor)
-			err := a.Unmarshal(kv.Value)
-			// An error here means kv.Value was not an actor.
-			// We won't append it to our results, but we should keep traversing the tree.
-			if err == nil {
-				addresses = append(addresses, kv.Key)
-				actors = append(actors, a)
+			var a types.Actor
+			if err := hackTransferObject(kv.Value, &a); err != nil {
+				panic(err) // uhm, ignoring errors is bad
 			}
+
+			addresses = append(addresses, kv.Key)
+			actors = append(actors, &a)
 		}
 		if p.Link != nil {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)

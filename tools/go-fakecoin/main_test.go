@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gx/ipfs/QmXJkSRxXHeAGmQJENct16anrKZHNECbmUoC7hMuCjLni6/go-hamt-ipld"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -46,9 +46,8 @@ func TestAddFakeChain(t *testing.T) {
 		pbCount++
 		return 0, nil
 	}
-	loadState := func(context context.Context, ts core.TipSet) (state.Tree, datastore.Datastore, error) {
-		return state.NewEmptyStateTree(hamt.NewCborStore()), repo.NewInMemoryRepo().Datastore(), nil
-
+	loadState := func(context context.Context, ts core.TipSet) (state.Tree, error) {
+		return state.NewEmptyStateTree(hamt.NewCborStore()), nil
 	}
 	fake(ctx, length, false, getHeaviestTipSet, processBlock, loadState)
 	assert.Equal(1, gbbCount)
@@ -65,21 +64,22 @@ func TestAddActors(t *testing.T) {
 	ctx := context.Background()
 
 	ds := datastore.NewMapDatastore()
-	cm, _ := getChainManager(ds)
+	bs := blockstore.NewBlockstore(ds)
+	cm, _ := getChainManager(ds, bs)
 
 	err := cm.Genesis(ctx, core.InitGenesis)
 	require.NoError(err)
 
-	st, cst, cm, bts, err := getStateTree(ctx, ds)
+	st, cst, cm, bts, err := getStateTree(ctx, ds, bs)
 	require.NoError(err)
 
 	_, allActors := state.GetAllActors(st)
 	initialActors := len(allActors)
 
-	err = fakeActors(ctx, cst, cm, bts)
+	err = fakeActors(ctx, cst, cm, bs, bts)
 	assert.NoError(err)
 
-	st, _, _, _, err = getStateTree(ctx, ds)
+	st, _, _, _, err = getStateTree(ctx, ds, bs)
 	require.NoError(err)
 
 	_, allActors = state.GetAllActors(st)

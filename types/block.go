@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	node "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
 )
@@ -17,9 +17,6 @@ func init() {
 type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner Address `json:"miner"`
-
-	// Reward is the address of the account actor beneficiary of the miner.
-	Reward Address `json:"reward"`
 
 	// Ticket is the winning ticket that was submitted with this block.
 	Ticket Signature `json:"ticket"`

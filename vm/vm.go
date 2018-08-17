@@ -6,7 +6,7 @@ package vm
 import (
 	"context"
 
-	cbor "gx/ipfs/QmSyK1ZiAP98YvnxsTfQpb669V2xeTHRbG4Y6fgKS3vVSd/go-ipld-cbor"
+	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -46,7 +46,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 
 	toExecutable, err := vmCtx.state.GetBuiltinActorCode(vmCtx.to.Code)
 	if err != nil {
-		return nil, 1, errors.FaultErrorWrap(err, "unable to load code for To actor")
+		return nil, 1, errors.FaultErrorWrapf(err, "unable to load code for To actor: %v", vmCtx.to)
 	}
 
 	if !toExecutable.Exports().Has(vmCtx.message.Method) {

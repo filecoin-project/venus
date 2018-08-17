@@ -33,7 +33,6 @@ const (
   address = "/ip4/127.0.0.1/tcp/6000"
 
 [mining]
-  rewardAddress = ""
   minerAddresses = []
 
 [wallet]
