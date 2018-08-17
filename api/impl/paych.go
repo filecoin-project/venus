@@ -86,8 +86,11 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 		return "", err
 	}
 
-	// TODO: really sign this thing
-	voucher.Signature = fromAddr.Bytes()
+	sig, err := paymentbroker.SignVoucher(channel, amount, fromAddr, nd.Wallet)
+	if err != nil {
+		return "", err
+	}
+	voucher.Signature = sig
 
 	cborVoucher, err := cbor.DumpObject(voucher)
 	if err != nil {

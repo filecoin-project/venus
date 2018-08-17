@@ -16,23 +16,23 @@ var addressHashConfig = &blake2b.Config{Size: AddressHashLength}
 
 // AddressHash hashes the given input using the default address hashing function,
 // Blake2b 160.
-func AddressHash(input []byte) ([]byte, error) {
+func AddressHash(input []byte) []byte {
 	hasher, err := blake2b.New(addressHashConfig)
 	if err != nil {
-		return nil, err
+		// If this happens sth is very wrong.
+		panic(fmt.Sprintf("invalid address hash configuration: %v", err))
 	}
 	if _, err := hasher.Write(input); err != nil {
-		return nil, err
+		// blake2bs Write implementation never returns an error in its current
+		// setup. So if this happens sth went very wrong.
+		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err))
 	}
-	return hasher.Sum(nil), nil
+	return hasher.Sum(nil)
 }
 
 // MakeTestAddress creates a new testnet address by hashing the given string
 func MakeTestAddress(input string) Address {
-	hash, err := AddressHash([]byte(input))
-	if err != nil {
-		panic(err)
-	}
+	hash := AddressHash([]byte(input))
 
 	return NewTestnetAddress(hash)
 }

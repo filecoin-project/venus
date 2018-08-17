@@ -6,13 +6,17 @@ import (
 	"encoding/binary"
 
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
+	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
+
+var log = logging.Logger("vm")
 
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
@@ -158,10 +162,7 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 		return types.Address{}, err
 	}
 
-	hash, err := types.AddressHash(buf.Bytes())
-	if err != nil {
-		return types.Address{}, err
-	}
+	hash := types.AddressHash(buf.Bytes())
 
 	return types.NewMainnetAddress(hash), nil
 }
@@ -200,6 +201,20 @@ func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initialize
 	}
 
 	return nil
+}
+
+// VerifySignature cryptographically verifies that 'sig' is the signed hash of 'data' with
+// the public key belonging to `addr`.
+func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.Signature) bool {
+	maybePk, err := wutil.Ecrecover(data, sig)
+	if err != nil {
+		// Any error returned from Ecrecover means this signature is not valid.
+		log.Infof("error in signature validation: %s", err)
+		return false
+	}
+	maybeAddrHash := types.AddressHash(maybePk)
+
+	return types.NewMainnetAddress(maybeAddrHash) == addr
 }
 
 // Dependency injection setup.

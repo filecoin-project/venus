@@ -46,10 +46,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 		if !ok {
 			panic("unknown public key type")
 		}
-		addrHash, err := AddressHash(cu.SerializeUncompressed(pub))
-		if err != nil {
-			panic(err)
-		}
+		addrHash := AddressHash(cu.SerializeUncompressed(pub))
 		newAddr := NewMainnetAddress(addrHash)
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k
@@ -59,7 +56,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
-func (ms *MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
+func (ms MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
 		panic("unknown address")

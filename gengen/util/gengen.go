@@ -58,10 +58,7 @@ func randAddress() types.Address {
 	buf := make([]byte, 32)
 	_, _ = rand.Read(buf)
 
-	h, err := types.AddressHash(buf)
-	if err != nil {
-		panic(err)
-	}
+	h := types.AddressHash(buf)
 	return types.NewAddress(types.Mainnet, h)
 }
 

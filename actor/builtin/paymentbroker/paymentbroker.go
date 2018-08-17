@@ -30,6 +30,8 @@ const (
 	ErrExpired = 40
 	// ErrAlreadyWithdrawn indicates amount of the voucher has already been withdrawn.
 	ErrAlreadyWithdrawn = 41
+	// ErrInvalidSignature indicates the signature is invalid.
+	ErrInvalidSignature = 42
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -43,6 +45,7 @@ var Errors = map[uint8]error{
 	ErrWrongTarget:              errors.NewCodedRevertError(ErrWrongTarget, "attempt to redeem channel from wrong target account"),
 	ErrExpired:                  errors.NewCodedRevertError(ErrExpired, "block height has exceeded channel's end of life"),
 	ErrAlreadyWithdrawn:         errors.NewCodedRevertError(ErrAlreadyWithdrawn, "update amount has already been redeemed"),
+	ErrInvalidSignature:         errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
 }
 
 func init() {
@@ -201,8 +204,10 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-
-		// TODO: check the signature against the other voucher components.
+		data := createVoucherSignatureData(chid, amt)
+		if !ctx.VerifySignature(data, payer, sig) {
+			return nil, Errors[ErrInvalidSignature]
+		}
 
 		channel, err := findChannel(&state, payer, chid)
 		if err != nil {
@@ -225,7 +230,10 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
-		// TODO: check the signature against the other voucher components.
+		data := createVoucherSignatureData(chid, amt)
+		if !ctx.VerifySignature(data, payer, sig) {
+			return nil, Errors[ErrInvalidSignature]
+		}
 
 		channel, err := findChannel(&state, payer, chid)
 		if err != nil {
@@ -424,4 +432,21 @@ func reclaim(ctx *vm.Context, state *State, payer types.Address, chid *types.Cha
 	}
 
 	return nil
+}
+
+// Separator is the separator used when concatenating channel and amount in a
+// voucher signature.
+const separator = 0x0
+
+// SignVoucher creates the signature for the given combination of
+// channel, amount and from address.
+// It does so by sign the following bytes: (channelID | 0x0 | amount)
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr types.Address, signer types.Signer) (types.Signature, error) {
+	data := createVoucherSignatureData(channelID, amount)
+	return signer.SignBytes(data, addr)
+}
+
+func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL) []byte {
+	data := append(channelID.Bytes(), separator)
+	return append(data, amount.Bytes()...)
 }

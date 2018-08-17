@@ -16,35 +16,18 @@ var (
 )
 
 func init() {
-	t, err := types.AddressHash([]byte("satoshi"))
-	if err != nil {
-		panic(err)
-	}
+	t := types.AddressHash([]byte("satoshi"))
 	TestAddress = types.NewMainnetAddress(t)
 
-	t, err = types.AddressHash([]byte("nakamoto"))
-	if err != nil {
-		panic(err)
-	}
+	t = types.AddressHash([]byte("nakamoto"))
 	TestAddress2 = types.NewMainnetAddress(t)
 
-	n, err := types.AddressHash([]byte("filecoin"))
-	if err != nil {
-		panic(err)
-	}
+	n := types.AddressHash([]byte("filecoin"))
 	NetworkAddress = types.NewMainnetAddress(n)
 
-	s, err := types.AddressHash([]byte("storage"))
-	if err != nil {
-		panic(err)
-	}
-
+	s := types.AddressHash([]byte("storage"))
 	StorageMarketAddress = types.NewMainnetAddress(s)
 
-	p, err := types.AddressHash([]byte("payments"))
-	if err != nil {
-		panic(err)
-	}
-
+	p := types.AddressHash([]byte("payments"))
 	PaymentBrokerAddress = types.NewMainnetAddress(p)
 }
