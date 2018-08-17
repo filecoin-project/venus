@@ -2,16 +2,12 @@ package impl
 
 import (
 	"context"
-	"fmt"
-
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmexBtiTTEwwn42Yi6ouKt6VqzpA6wjJgiW1oh9VfaRrup/go-multibase"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -45,9 +41,10 @@ func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address)
 		payerAddr = fromAddr
 	}
 
-	value, err := sendQuery(
-		nd,
+	values, _, err := api.api.Message().Query(
+		ctx,
 		fromAddr,
+		address.PaymentBrokerAddress,
 		"ls",
 		payerAddr,
 	)
@@ -57,7 +54,7 @@ func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address)
 
 	var channels map[string]*paymentbroker.PaymentChannel
 
-	if err := cbor.DecodeInto(value[0], &channels); err != nil {
+	if err := cbor.DecodeInto(values[0], &channels); err != nil {
 		return nil, err
 	}
 
@@ -71,9 +68,10 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 		return "", err
 	}
 
-	value, err := sendQuery(
-		nd,
+	values, _, err := api.api.Message().Query(
+		ctx,
 		fromAddr,
+		address.PaymentBrokerAddress,
 		"voucher",
 		channel, amount,
 	)
@@ -82,7 +80,7 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 	}
 
 	var voucher paymentbroker.PaymentVoucher
-	if err := cbor.DecodeInto(value[0], &voucher); err != nil {
+	if err := cbor.DecodeInto(values[0], &voucher); err != nil {
 		return "", err
 	}
 
@@ -167,22 +165,4 @@ func decodeVoucher(voucherRaw string) (*paymentbroker.PaymentVoucher, error) {
 	}
 
 	return &voucher, nil
-}
-
-func sendQuery(nd *node.Node, fromAddr types.Address, method string, params ...interface{}) ([][]byte, error) {
-	args, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, err
-	}
-
-	retValue, retCode, err := nd.CallQueryMethod(address.PaymentBrokerAddress, method, args, &fromAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	if retCode != 0 {
-		return nil, fmt.Errorf("Non-zero return code executing voucher")
-	}
-
-	return retValue, nil
 }
