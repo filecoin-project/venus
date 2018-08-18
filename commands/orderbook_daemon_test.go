@@ -13,7 +13,7 @@ func TestOrderbookBids(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := th.NewDaemon(t, th.WalletAddr(th.TestAddress3)).Start()
+	d := th.NewDaemon(t, th.KeyFile(th.TestKey3), th.WalletAddr(th.TestAddress3)).Start()
 	defer d.ShutdownSuccess()
 
 	d.CreateWalletAddr()
@@ -40,12 +40,14 @@ func TestOrderbookAsks(t *testing.T) {
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	minerAddr := d.CreateMinerAddr(th.TestAddress1)
+	addr := d.GetDefaultAddress()
+
+	minerAddr := d.CreateMinerAddr(addr)
 
 	for i := 0; i < 10; i++ {
 		d.RunSuccess(
 			"miner", "add-ask",
-			"--from", th.TestAddress1,
+			"--from", addr,
 			minerAddr.String(), "1", fmt.Sprintf("%d", i),
 		)
 	}
@@ -56,36 +58,5 @@ func TestOrderbookAsks(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		assert.Contains(list, fmt.Sprintf("\"price\":\"%d\"", i))
 	}
-
-}
-
-func TestOrderbookDeals(t *testing.T) {
-	t.Skip("FIXME: not sure why this one fails. Probably the usual though. Needs a miner set up to actually mine")
-	t.Parallel()
-	assert := assert.New(t)
-
-	// make a client
-	client := th.NewDaemon(t).Start()
-	defer func() { t.Log(client.ReadStderr()) }()
-	defer client.ShutdownSuccess()
-
-	// make a miner
-	miner := th.NewDaemon(t).Start()
-	defer func() { t.Log(miner.ReadStderr()) }()
-	defer miner.ShutdownSuccess()
-
-	// make friends
-	client.ConnectSuccess(miner)
-
-	// make a deal
-	dealData := "how linked lists will change the world"
-	dealDataCid := client.MakeDeal(dealData, miner, th.TestAddress1)
-
-	// both the miner and client can get the deal
-	// with the expected cid inside
-	cliDealO := client.RunSuccess("orderbook", "deals")
-	minDealO := miner.RunSuccess("orderbook", "deals")
-	assert.Contains(cliDealO.ReadStdout(), dealDataCid)
-	assert.Contains(minDealO.ReadStdout(), dealDataCid)
 
 }

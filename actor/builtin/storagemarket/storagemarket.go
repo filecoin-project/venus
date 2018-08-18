@@ -1,12 +1,9 @@
 package storagemarket
 
 import (
-	"bytes"
-	"fmt"
 	"math/big"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -66,7 +63,6 @@ var Errors = map[uint8]error{
 func init() {
 	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(struct{}{})
-	cbor.RegisterCborType(Filemap{})
 }
 
 // Actor implements the filecoin storage market. It is responsible
@@ -79,8 +75,6 @@ type State struct {
 	Miners types.AddrSet
 
 	Orderbook *Orderbook
-
-	Filemap *Filemap
 
 	TotalCommittedStorage *types.BytesAmount
 }
@@ -95,11 +89,8 @@ func (sma *Actor) InitializeState(storage exec.Storage, _ interface{}) error {
 	initStorage := &State{
 		Miners: make(types.AddrSet),
 		Orderbook: &Orderbook{
-			Asks: make(AskSet),
-			Bids: make(BidSet),
-		},
-		Filemap: &Filemap{
-			Files: make(map[string][]uint64),
+			StorageAsks: make(AskSet),
+			Bids:        make(BidSet),
 		},
 	}
 
@@ -140,9 +131,9 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{abi.Integer, abi.Integer, abi.Bytes, abi.Bytes},
 		Return: []abi.Type{abi.Integer},
 	},
-	"commitDeals": &exec.FunctionSignature{
-		Params: []abi.Type{abi.UintArray},
-		Return: []abi.Type{abi.BytesAmount},
+	"updatePower": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Bytes},
+		Return: nil,
 	},
 }
 
@@ -195,10 +186,10 @@ func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 			return nil, Errors[ErrUnknownMiner]
 		}
 
-		askID := storage.Orderbook.NextAskID
-		storage.Orderbook.NextAskID++
+		askID := storage.Orderbook.NextSAskID
+		storage.Orderbook.NextSAskID++
 
-		storage.Orderbook.Asks[askID] = &Ask{
+		storage.Orderbook.StorageAsks[askID] = &Ask{
 			ID:    askID,
 			Price: price,
 			Size:  size,
@@ -254,129 +245,25 @@ func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 	return bidID, 0, nil
 }
 
-// AddDeal creates a deal from the given ask and bid.
-// It must always called by the owner of the miner in the ask.
-func (sma *Actor) AddDeal(ctx exec.VMContext, askID, bidID *big.Int, bidOwnerSig []byte, refb []byte) (*big.Int, uint8, error) {
-	ref, err := cid.Cast(refb)
-	if err != nil {
-		return nil, 1, errors.NewRevertErrorf("'ref' input was not a valid cid: %s", err)
-	}
-
+// UpdatePower is called to reflect a change in the overall power of the network.
+// This occurs either when a miner adds a new commitment, or when one is removed
+// (via slashing or willful removal)
+func (sma *Actor) UpdatePower(ctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
 	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		// TODO: askset is a map from uint64, our input is a big int.
-		ask, ok := state.Orderbook.Asks[askID.Uint64()]
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		miner := ctx.Message().From
+
+		_, ok := state.Miners[miner]
 		if !ok {
-			return nil, Errors[ErrUnknownAsk]
+			return nil, Errors[ErrUnknownMiner]
 		}
 
-		bid, ok := state.Orderbook.Bids[bidID.Uint64()]
-		if !ok {
-			return nil, Errors[ErrUnknownBid]
-		}
-
-		mown, ret, err := ctx.Send(ask.Owner, "getOwner", nil, nil)
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrAskOwnerNotFound]
-		}
-
-		if !bytes.Equal(ctx.Message().From.Bytes(), mown[0]) {
-			return nil, Errors[ErrNotBidOwner]
-		}
-
-		if ask.Size.LessThan(bid.Size) {
-			return nil, Errors[ErrInsufficientSpace]
-		}
-
-		// TODO: real signature check and stuff
-		if !bytes.Equal(bid.Owner.Bytes(), bidOwnerSig) {
-			return nil, Errors[ErrInvalidSignature]
-		}
-
-		// mark bid as used (note: bid is a pointer)
-		bid.Used = true
-
-		// subtract used space from add
-		ask.Size = ask.Size.Sub(bid.Size)
-
-		d := &Deal{
-			// Expiry:  ???
-			DataRef: ref.String(),
-			Ask:     askID.Uint64(),
-			Bid:     bidID.Uint64(),
-		}
-
-		dealID := uint64(len(state.Filemap.Deals))
-		ks := ref.KeyString()
-		deals := state.Filemap.Files[ks]
-		state.Filemap.Files[ks] = append(deals, dealID)
-		state.Filemap.Deals = append(state.Filemap.Deals, d)
-
-		return big.NewInt(int64(dealID)), nil
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(delta)
+		return nil, nil
 	})
 	if err != nil {
-		return nil, errors.CodeError(err), err
+		return errors.CodeError(err), err
 	}
 
-	dealID, ok := ret.(*big.Int)
-	if !ok {
-		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
-	}
-
-	return dealID, 0, nil
-}
-
-// CommitDeals marks the given deals as committed, counts up the total space
-// occupied by those deals, updates the total storage count, and returns the
-// total size of these deals.
-func (sma *Actor) CommitDeals(ctx exec.VMContext, deals []uint64) (*types.BytesAmount, uint8, error) {
-	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		totalSize := types.NewBytesAmount(0)
-		for _, d := range deals {
-			if d >= uint64(len(state.Filemap.Deals)) {
-				return nil, Errors[ErrUnknownDeal]
-			}
-
-			deal := state.Filemap.Deals[d]
-			ask := state.Orderbook.Asks[deal.Ask]
-
-			// make sure that the miner actor who owns the asks calls this.
-			if ask.Owner != ctx.Message().From {
-				return nil, Errors[ErrNotDealOwner]
-			}
-
-			if deal.Committed {
-				return nil, Errors[ErrDealCommitted]
-			}
-
-			deal.Committed = true
-
-			// TODO: Check that deal has not expired
-
-			bid := state.Orderbook.Bids[deal.Bid]
-
-			// NB: if we allow for deals to be made at sizes other than the bid
-			// size, this will need to be changed.
-			totalSize = totalSize.Add(bid.Size)
-		}
-
-		// update the total data stored by the network.
-		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(totalSize)
-
-		return totalSize, nil
-	})
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	count, ok := ret.(*types.BytesAmount)
-	if !ok {
-		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
-	}
-
-	return count, 0, nil
+	return 0, nil
 }

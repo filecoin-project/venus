@@ -11,11 +11,14 @@ func newNodeOrderbook(api *nodeAPI) *nodeOrderbook {
 }
 
 func (api *nodeOrderbook) Asks() (storagemarket.AskSet, error) {
-	return api.api.node.StorageMarket.GetMarketPeeker().GetAskSet()
+	return api.api.node.StorageMarket.GetMarketPeeker().GetStorageAskSet()
 }
 func (api *nodeOrderbook) Bids() (storagemarket.BidSet, error) {
 	return api.api.node.StorageMarket.GetMarketPeeker().GetBidSet()
 }
+
+/*
 func (api *nodeOrderbook) Deals() ([]*storagemarket.Deal, error) {
 	return api.api.node.StorageMarket.GetMarketPeeker().GetDealList()
 }
+*/

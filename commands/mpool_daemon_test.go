@@ -19,7 +19,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("return all messages", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t).Start()
+		d := th.NewDaemon(t, th.KeyFile(th.TestKey1)).Start()
 		defer d.ShutdownSuccess()
 
 		d.RunSuccess("message", "send",
@@ -36,7 +36,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("wait for enough messages", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t).Start()
+		d := th.NewDaemon(t, th.KeyFile(th.TestKey1)).Start()
 		defer d.ShutdownSuccess()
 
 		wg := sync.WaitGroup{}
@@ -46,9 +46,9 @@ func TestMpool(t *testing.T) {
 		go func() {
 			out := d.RunSuccess("mpool", "--wait-for-count=3")
 			complete = true
-			wg.Done()
 			c := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
 			assert.Equal(3, len(c))
+			wg.Done()
 		}()
 
 		d.RunSuccess("message", "send",

@@ -23,7 +23,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := th.NewDaemon(t, th.WalletAddr(th.TestAddress1)).Start()
+	d := th.NewDaemon(t, th.KeyFile(th.TestKey1), th.WalletAddr(th.TestAddress1)).Start()
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
@@ -300,7 +300,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 func daemonTestWithPaymentChannel(t *testing.T, payerAddress *types.Address, targetAddress *types.Address, fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*th.TestDaemon, *types.ChannelID)) {
 	assert := assert.New(t)
 
-	d := th.NewDaemon(t).Start()
+	d := th.NewDaemon(t, th.KeyFile(th.TestKey1)).Start()
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}

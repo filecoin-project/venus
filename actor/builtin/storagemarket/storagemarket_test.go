@@ -13,9 +13,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,6 +88,7 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
+	require.NoError(result.ExecutionError)
 
 	// ensure our derived address is the address storage market creates
 	createdAddress, err := types.NewAddressFromBytes(result.Receipt.Return[0])
@@ -152,60 +151,6 @@ func TestStorageMarketAddBid(t *testing.T) {
 	assert.Contains(result.ExecutionError.Error(), "must send price * size funds to create bid")
 }
 
-func TestStorageMarketMakeDeal(t *testing.T) {
-	// TODO: add test cases for:
-	// - ask too small
-	// - not enough collateral
-	// - bid already used
-	// - multiple bids, one ask
-	// - cases where ask.price != bid.price (above and below)
-	// - bad 'signature'
-	assert := assert.New(t)
-	require := require.New(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	st, vms := core.CreateStorages(ctx, t)
-
-	// create a bid
-	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(20), types.NewBytesAmount(30))
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(600), "addBid", pdata)
-	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
-	assert.NoError(err)
-
-	assert.Equal(uint8(0), result.Receipt.ExitCode)
-	assert.Equal(big.NewInt(0), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
-
-	// create a miner
-	minerAddr := createTestMiner(require, st, vms, []byte{})
-
-	// add an ask on it
-	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(25), types.NewBytesAmount(35))
-	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg = types.NewMessage(address.TestAddress, minerAddr, nonce, nil, "addAsk", pdata)
-	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
-	assert.NoError(err)
-	assert.Equal(uint8(0), result.Receipt.ExitCode)
-
-	// now make a deal
-	ref := types.NewCidForTestGetter()()
-	sig := address.TestAddress.Bytes()
-	pdata = actor.MustConvertParams(big.NewInt(0), big.NewInt(0), sig, ref.Bytes()) // askID, bidID, signature, datacid
-	nonce = core.MustGetNonce(st, address.TestAddress)
-	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, nil, "addDeal", pdata)
-	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
-	assert.NoError(err)
-	assert.Equal(uint8(0), result.Receipt.ExitCode)
-
-	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
-	assert.NoError(err)
-	var sms State
-	builtin.RequireReadState(t, vms, address.StorageMarketAddress, sma, &sms)
-	assert.Len(sms.Filemap.Deals, 1)
-	assert.Equal("5", sms.Orderbook.Asks[0].Size.String())
-}
-
 // this is used to simulate an attack where someone derives the likely address of another miner's
 // minerActor and sends some FIL. If that FIL creates an actor tha cannot be upgraded to a miner
 // actor, this action will block the other user. Another possibility is that the miner actor will
@@ -224,18 +169,4 @@ func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, err
 	hash := types.AddressHash(buf.Bytes())
 
 	return types.NewMainnetAddress(hash), nil
-}
-
-// TODO: deduplicate with code in miner/miner_test.go
-func createTestMiner(require *require.Assertions, st state.Tree, vms vm.StorageMap, key []byte) types.Address {
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, core.RequireRandomPeerID())
-	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
-
-	result, err := core.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(err)
-
-	addr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
-	require.NoError(err)
-	return addr
 }

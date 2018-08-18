@@ -31,7 +31,7 @@ func newMockMsp() *mockStorageMarketPeeker {
 	}
 }
 
-func (msa *mockStorageMarketPeeker) GetAsk(ask uint64) (*storagemarket.Ask, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAsk(ask uint64) (*storagemarket.Ask, error) {
 	if uint64(len(msa.asks)) <= ask {
 		return nil, fmt.Errorf("no such ask")
 	}
@@ -45,7 +45,7 @@ func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*storagemarket.Bid, erro
 	return msa.bids[bid], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetAskSet() (storagemarket.AskSet, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
 	return nil, nil
 }
 

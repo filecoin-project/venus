@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -16,7 +17,6 @@ import (
 
 func init() {
 	cbor.RegisterCborType(State{})
-	cbor.RegisterCborType(Sector{})
 }
 
 // MaximumPublicKeySize is a limit on how big a public key can be.
@@ -27,8 +27,8 @@ const (
 	ErrPublicKeyTooBig = 33
 	// ErrInvalidSector indicates and invalid sector id.
 	ErrInvalidSector = 34
-	// ErrSectorCommited indicates the sector has already been committed.
-	ErrSectorCommited = 35
+	// ErrSectorCommitted indicates the sector has already been committed.
+	ErrSectorCommitted = 35
 	// ErrStoragemarketCallFailed indicates the call to commit the deal failed.
 	ErrStoragemarketCallFailed = 36
 	// ErrCallerUnauthorized signals an unauthorized caller.
@@ -41,7 +41,7 @@ const (
 var Errors = map[uint8]error{
 	ErrPublicKeyTooBig:         errors.NewCodedRevertErrorf(ErrPublicKeyTooBig, "public key must be less than %d bytes", MaximumPublicKeySize),
 	ErrInvalidSector:           errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
-	ErrSectorCommited:          errors.NewCodedRevertErrorf(ErrSectorCommited, "sector already committed"),
+	ErrSectorCommitted:         errors.NewCodedRevertErrorf(ErrSectorCommitted, "sector already committed"),
 	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
 	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
@@ -49,12 +49,6 @@ var Errors = map[uint8]error{
 
 // Actor is the miner actor.
 type Actor struct{}
-
-// Sector is the on-chain representation of a sector.
-type Sector struct {
-	CommR []byte
-	Deals []uint64
-}
 
 // State is the miner actors storage.
 type State struct {
@@ -74,7 +68,7 @@ type State struct {
 	// the miners pledge.
 	Collateral *types.AttoFIL
 
-	Sectors []*Sector
+	Sectors map[string]*types.BytesAmount
 
 	LockedStorage *types.BytesAmount // LockedStorage is the amount of the miner's storage that is used.
 	Power         *types.BytesAmount
@@ -94,6 +88,7 @@ func NewState(owner types.Address, key []byte, pledge *types.BytesAmount, pid pe
 		PledgeBytes:   pledge,
 		Collateral:    collateral,
 		LockedStorage: types.NewBytesAmount(0),
+		Sectors:       make(map[string]*types.BytesAmount),
 	}
 }
 
@@ -112,7 +107,7 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 
 	stateBytes, err := cbor.DumpObject(minerState)
 	if err != nil {
-		return err
+		return xerrors.Wrap(err, "failed to cbor marshal object")
 	}
 
 	id, err := storage.Put(stateBytes)
@@ -134,12 +129,8 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
-	"addDealsToSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.UintArray},
-		Return: []abi.Type{abi.Integer},
-	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.Bytes, abi.UintArray},
+		Params: []abi.Type{abi.Bytes},
 		Return: []abi.Type{abi.Integer},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -226,65 +217,25 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
 	return a, 0, nil
 }
 
-// AddDealsToSector adds deals to a sector. If the sectorID given is -1, a new
-// sector ID is allocated. The sector ID that deals are added to is returned.
-func (ma *Actor) AddDealsToSector(ctx exec.VMContext, sectorID int64, deals []uint64) (*big.Int, uint8,
-	error) {
-	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return state.upsertDealsToSector(sectorID, deals)
-	})
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	secIDout, ok := out.(int64)
-	if !ok {
-		return nil, 1, errors.NewRevertError("expected an int64")
-	}
-
-	return big.NewInt(secIDout), 0, nil
-}
-
-func (state *State) upsertDealsToSector(sectorID int64, deals []uint64) (int64, error) {
-	if sectorID == int64(len(state.Sectors)) {
-		state.Sectors = append(state.Sectors, new(Sector))
-	}
-	if sectorID > int64(len(state.Sectors)) {
-		return 0, Errors[ErrInvalidSector]
-	}
-	sector := state.Sectors[sectorID]
-	if sector.CommR != nil {
-		return 0, Errors[ErrSectorCommited]
-	}
-
-	sector.Deals = append(sector.Deals, deals...)
-	return sectorID, nil
-}
-
 // CommitSector adds a commitment to the specified sector
-// if sectorID is -1, a new sector will be allocated.
-// if passing an existing sector ID, any deals given here will be added to the
-// deals already added to that sector.
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID *big.Int, commR []byte, deals []uint64) (*big.Int, uint8, error) {
+// The sector must not already be committed
+// 'size' is the total number of bytes stored in the sector
+func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.BytesAmount) (*big.Int, uint8, error) {
 	var state State
 
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		sectorIDInt := sectorID.Int64()
-		if len(deals) != 0 {
-			sid, err := state.upsertDealsToSector(sectorIDInt, deals)
-			if err != nil {
-				return nil, err
-			}
-			sectorIDInt = sid
+		commRstr := string(commR) // proper fixed length array encoding in cbor is apparently 'hard'.
+		_, ok := state.Sectors[commRstr]
+		if ok {
+			return nil, Errors[ErrSectorCommitted]
 		}
 
-		sector := state.Sectors[sectorIDInt]
-		if sector.CommR != nil {
-			return nil, Errors[ErrSectorCommited]
-		}
+		// TODO: Validate 'size'
 
-		resp, ret, err := ctx.Send(address.StorageMarketAddress, "commitDeals", nil, []interface{}{sector.Deals})
+		state.Power = state.Power.Add(size)
+		state.Sectors[commRstr] = size
+
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", nil, []interface{}{size})
 		if err != nil {
 			return nil, err
 		}
@@ -292,11 +243,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID *big.Int, commR []byt
 			return nil, Errors[ErrStoragemarketCallFailed]
 		}
 
-		sector.CommR = commR
-		power := types.NewBytesAmountFromBytes(resp[0])
-		state.Power = state.Power.Add(power)
-
-		return sectorID, nil
+		return nil, nil
 	})
 	if err != nil {
 		return nil, errors.CodeError(err), err

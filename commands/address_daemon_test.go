@@ -57,9 +57,10 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90)).Start()
 	defer d.ShutdownSuccess()
 
+	addr := d.GetDefaultAddress()
 	minerPidForUpdate := core.RequireRandomPeerID()
 	fmt.Println("creating")
-	minerAddr := d.CreateMinerAddr(th.TestAddress1)
+	minerAddr := d.CreateMinerAddr(addr)
 	fmt.Println("created miner")
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
@@ -67,7 +68,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	// update the miner's peer ID
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
-		"--from", th.TestAddress1,
+		"--from", addr,
 		minerAddr.String(),
 		minerPidForUpdate.Pretty(),
 	)

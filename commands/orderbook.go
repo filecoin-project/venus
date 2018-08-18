@@ -15,9 +15,8 @@ var orderbookCmd = &cmds.Command{
 		Tagline: "Interact with the order book",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"asks":  askCmd,
-		"bids":  bidCmd,
-		"deals": dealCmd,
+		"asks": askCmd,
+		"bids": bidCmd,
 	},
 }
 
@@ -62,31 +61,6 @@ var bidCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, bid *storagemarket.Bid) error {
 			b, err := json.Marshal(bid)
-			if err != nil {
-				return err
-			}
-			_, err = w.Write(b)
-			return err
-		}),
-	},
-}
-
-var dealCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		deals, err := GetAPI(env).Orderbook().Deals()
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		for _, deal := range deals {
-			re.Emit(deal) // nolint errcheck
-		}
-	},
-	Type: &storagemarket.Deal{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *storagemarket.Deal) error {
-			b, err := json.Marshal(deal)
 			if err != nil {
 				return err
 			}
