@@ -73,12 +73,17 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 
 // SectorBuilderMetadata returns the metadata associated with a SectorBuilderMetadata.
 func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
+	sb.sealedSectorLk.RLock()
+	defer sb.sealedSectorLk.RUnlock()
+	sb.curSectorLk.RLock()
+	defer sb.curSectorLk.RUnlock()
+
 	meta := SectorBuilderMetadata{
 		MinerAddr:                      sb.MinerAddr,
-		CurSectorLabel:                 sb.CurSector.Label,
-		SealedSectorReplicaCommitments: make([][]byte, len(sb.SealedSectors)),
+		CurSectorLabel:                 sb.curSector.Label,
+		SealedSectorReplicaCommitments: make([][]byte, len(sb.sealedSectors)),
 	}
-	for i, sealed := range sb.SealedSectors {
+	for i, sealed := range sb.sealedSectors {
 		meta.SealedSectorReplicaCommitments[i] = sealed.commR
 	}
 	return &meta

@@ -105,7 +105,7 @@ func TestSectorBuilder(t *testing.T) {
 	var sealingErr error
 	sealingWg.Add(1)
 
-	sector := sb.CurSector
+	sector := sb.curSector
 
 	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
 		if err != nil {
@@ -120,7 +120,7 @@ func TestSectorBuilder(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	metadataMustMatch(require, sb, sb.CurSector, 0)
+	metadataMustMatch(require, sb, sb.curSector, 0)
 
 	// New paths are in the right places.
 	stagingPath, _ := sb.newSectorPath()
@@ -134,10 +134,10 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotEqual(stagingPath, stpath2)
 	assert.NotEqual(sealedPath, sepath2)
 
-	metadataMustMatch(require, sb, sb.CurSector, 0)
+	metadataMustMatch(require, sb, sb.curSector, 0)
 	text := "What's our vector, sector?" // len(text) = 26
 	requireAddPiece(text)
-	assert.Equal(sector, sb.CurSector)
+	assert.Equal(sector, sb.curSector)
 	all := text
 
 	metadataMustMatch(require, sb, sector, 1)
@@ -148,7 +148,7 @@ func TestSectorBuilder(t *testing.T) {
 
 	text2 := "We have clearance, Clarence." // len(text2) = 28
 	requireAddPiece(text2)
-	assert.Equal(sector, sb.CurSector)
+	assert.Equal(sector, sb.curSector)
 	all += text2
 
 	d2 := requireReadAll(require, sector)
@@ -165,12 +165,12 @@ func TestSectorBuilder(t *testing.T) {
 	sealingWg.Wait()
 	require.NoError(sealingErr)
 
-	assert.NotEqual(sector, sb.CurSector)
+	assert.NotEqual(sector, sb.curSector)
 
 	// persisted and calculated metadata match after a sector is sealed.
 	metadataMustMatch(require, sb, sector, 2)
 
-	newSector := sb.CurSector
+	newSector := sb.curSector
 	d4 := requireReadAll(require, newSector)
 	metadataMustMatch(require, sb, newSector, 1)
 
@@ -186,7 +186,7 @@ func TestSectorBuilder(t *testing.T) {
 
 	assert.NoError(err)
 
-	meta := sb.CurSector.SectorMetadata()
+	meta := sb.curSector.SectorMetadata()
 	assert.Len(meta.Pieces, 1)
 	assert.Equal(uint64(testSectorSize), meta.Size)
 	assert.Equal(testSectorSize-len(text3), int(meta.Free))
@@ -233,7 +233,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		bytesA := make([]byte, 10+(sectorSize/2))
 		bytesB := make([]byte, (sectorSize/2)-10)
 
-		sector := sb.CurSector
+		sector := sb.curSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
 			if ss.sectorLabel == sector.Label {
@@ -278,7 +278,7 @@ func TestSectorStore(t *testing.T) {
 		bytesA := make([]byte, 10+(sectorSize/2))
 
 		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
-		sector := sb.CurSector
+		sector := sb.curSector
 
 		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
 
@@ -301,7 +301,7 @@ func TestSectorStore(t *testing.T) {
 		bytesB := make([]byte, (sectorSize/2)-10)
 
 		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
-		sector := sb.CurSector
+		sector := sb.curSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
 			if ss.sectorLabel == sector.Label {
@@ -317,8 +317,8 @@ func TestSectorStore(t *testing.T) {
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
-		require.Equal(1, len(sb.SealedSectors))
-		sealedSector := sb.SealedSectors[0]
+		require.Equal(1, len(sb.sealedSectors))
+		sealedSector := sb.sealedSectors[0]
 
 		loaded, err := sb.store.getSealedSector(sealedSector.commR)
 		require.NoError(err)
@@ -339,7 +339,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	bytesB := make([]byte, (sectorSize/2)-10)
 
 	nd, sbA, minerAddr := NodeWithSectorBuilder(t, sectorSize)
-	sector := sbA.CurSector
+	sector := sbA.curSector
 
 	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
 		if ss.sectorLabel == sector.Label {
@@ -390,7 +390,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
 
-		metaA, err := sbA.store.getSectorMetadata(sbA.CurSector.Label)
+		metaA, err := sbA.store.getSectorMetadata(sbA.curSector.Label)
 		require.NoError(err)
 
 		infoA, err := os.Stat(metaA.Filename)
@@ -406,7 +406,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
-		metaB, err := sbB.store.getSectorMetadata(sbB.CurSector.Label)
+		metaB, err := sbB.store.getSectorMetadata(sbB.curSector.Label)
 		require.NoError(err)
 
 		infoB, err := os.Stat(metaB.Filename)
@@ -436,7 +436,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
 
-		metaA, err := sbA.store.getSectorMetadata(sbA.CurSector.Label)
+		metaA, err := sbA.store.getSectorMetadata(sbA.curSector.Label)
 		require.NoError(err)
 
 		// truncate the file such that its size < sum(size-of-pieces)
@@ -446,7 +446,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
 		require.NoError(err)
 
-		metaB, err := sbA.store.getSectorMetadata(sbB.CurSector.Label)
+		metaB, err := sbA.store.getSectorMetadata(sbB.curSector.Label)
 		require.NoError(err)
 
 		infoB, err := os.Stat(metaB.Filename)
@@ -506,11 +506,11 @@ func sectorBuildersMustEqual(t *testing.T, sb1 *SectorBuilder, sb2 *SectorBuilde
 	require.Equal(sb1.sectorSize, sb2.sectorSize)
 	require.Equal(sb1.stagingDir, sb2.stagingDir)
 
-	sectorsMustEqual(t, sb1.CurSector, sb2.CurSector)
+	sectorsMustEqual(t, sb1.curSector, sb2.curSector)
 
-	require.Equal(len(sb1.SealedSectors), len(sb2.SealedSectors))
-	for i := 0; i < len(sb1.SealedSectors); i++ {
-		sealedSectorsMustEqual(t, sb1.SealedSectors[i], sb2.SealedSectors[i])
+	require.Equal(len(sb1.sealedSectors), len(sb2.sealedSectors))
+	for i := 0; i < len(sb1.sealedSectors); i++ {
+		sealedSectorsMustEqual(t, sb1.sealedSectors[i], sb2.sealedSectors[i])
 	}
 }
 

@@ -87,10 +87,16 @@ func TestDealProtocolClient(t *testing.T) {
 	err = nds[1].Blockservice.AddBlock(data)
 	assert.NoError(err)
 
-	time.Sleep(time.Millisecond * 50)
+	equal := false
+	for i := 0; i < 10; i++ {
+		resp, err = client.QueryDeal(ctx, id)
+		assert.NoError(err)
 
-	resp, err = client.QueryDeal(ctx, id)
-	assert.NoError(err)
-
-	assert.Equal(Posted, resp.State)
+		equal = Posted == resp.State
+		if equal {
+			break
+		}
+		time.Sleep(time.Millisecond * 10)
+	}
+	assert.True(equal, "failed to sync")
 }

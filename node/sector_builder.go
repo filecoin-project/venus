@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -73,9 +74,14 @@ type SectorBuilder struct {
 	MinerAddr types.Address
 
 	// TODO: information about all sectors needs to be persisted to disk
-	CurSector     *Sector
-	SealedSectors []*SealedSector
-	Packer        binpack.Packer
+
+	// curSectorLk protects curSector
+	curSectorLk sync.RWMutex
+	curSector   *Sector
+	// sealedSectorLk protects sealedSectors
+	sealedSectorLk sync.RWMutex
+	sealedSectors  []*SealedSector
+	Packer         binpack.Packer
 
 	// OnCommitmentAddedToMempool is called when a sector has been sealed
 	// and its commitment added to the message pool.
@@ -125,7 +131,10 @@ type SealedSector struct {
 
 // GetCurrentBin implements Binner.
 func (sb *SectorBuilder) GetCurrentBin() binpack.Bin {
-	return sb.CurSector
+	sb.curSectorLk.RLock()
+	defer sb.curSectorLk.RUnlock()
+
+	return sb.curSector
 }
 
 // AddItem implements binpack.Binner.
@@ -218,7 +227,9 @@ func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, label, path
 		size:        s.Size,
 	}
 
-	sb.SealedSectors = append(sb.SealedSectors, ss)
+	sb.sealedSectorLk.Lock()
+	defer sb.sealedSectorLk.Unlock()
+	sb.sealedSectors = append(sb.sealedSectors, ss)
 
 	return ss
 }
@@ -242,20 +253,24 @@ func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sec
 	}
 
 	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
-
 	metadata, err := store.getSectorBuilderMetadata(minerAddr)
 	if err == nil {
 		if err := configureSectorBuilderFromMetadata(store, sb, metadata); err != nil {
 			return nil, err
 		}
 
-		return sb, sb.checkpoint(sb.CurSector)
+		sb.curSectorLk.RLock()
+		defer sb.curSectorLk.RUnlock()
+
+		return sb, sb.checkpoint(sb.curSector)
 	} else if strings.Contains(err.Error(), "not found") {
 		if err := configureFreshSectorBuilder(sb); err != nil {
 			return nil, err
 		}
+		sb.curSectorLk.RLock()
+		defer sb.curSectorLk.RUnlock()
 
-		return sb, sb.checkpoint(sb.CurSector)
+		return sb, sb.checkpoint(sb.curSector)
 	} else {
 		return nil, err
 	}
@@ -282,14 +297,19 @@ func configureSectorBuilderFromMetadata(store *sectorStore, sb *SectorBuilder, m
 		return errors.Wrapf(err, "failed to sync sector object with unsealed sector-file %s", sector.filename)
 	}
 
-	sb.CurSector = sector
+	sb.curSectorLk.Lock()
+	sb.curSector = sector
+	sb.curSectorLk.Unlock()
 
 	for _, commR := range metadata.SealedSectorReplicaCommitments {
 		sealed, err := store.getSealedSector(commR)
 		if err != nil {
 			return err
 		}
-		sb.SealedSectors = append(sb.SealedSectors, sealed)
+
+		sb.sealedSectorLk.Lock()
+		sb.sealedSectors = append(sb.sealedSectors, sealed)
+		sb.sealedSectorLk.Unlock()
 	}
 
 	np := &binpack.NaivePacker{}
@@ -304,7 +324,10 @@ func configureFreshSectorBuilder(sb *SectorBuilder) error {
 	if err != nil {
 		return err
 	}
-	sb.CurSector = firstBin.(*Sector)
+	sb.curSectorLk.Lock()
+	defer sb.curSectorLk.Unlock()
+
+	sb.curSector = firstBin.(*Sector)
 	sb.Packer = packer
 
 	return nil
@@ -336,12 +359,17 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
 			// What does this signify? Could use to signal something.
 			panic("no bin returned from Packer.AddItem")
 		}
-		sb.CurSector = bin.(*Sector)
+		sb.curSectorLk.Lock()
+		sb.curSector = bin.(*Sector)
+		sb.curSectorLk.Unlock()
 	}
+
+	sb.curSectorLk.RLock()
+	defer sb.curSectorLk.RUnlock()
 
 	// checkpoint after we've added the piece and updated the sector builder's
 	// "current sector"
-	if err := sb.checkpoint(sb.CurSector); err != nil {
+	if err := sb.checkpoint(sb.curSector); err != nil {
 		return err
 	}
 

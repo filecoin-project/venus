@@ -41,6 +41,8 @@ func (pool *MessagePool) Add(msg *types.SignedMessage) (*cid.Cid, error) {
 
 // Pending returns all pending messages.
 func (pool *MessagePool) Pending() []*types.SignedMessage {
+	pool.lk.Lock()
+	defer pool.lk.Unlock()
 	out := make([]*types.SignedMessage, 0, len(pool.pending))
 	for _, msg := range pool.pending {
 		out = append(out, msg)
@@ -51,6 +53,9 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 
 // Remove removes the message by CID from the pending pool.
 func (pool *MessagePool) Remove(c *cid.Cid) {
+	pool.lk.Lock()
+	defer pool.lk.Unlock()
+
 	delete(pool.pending, c.KeyString())
 }
 

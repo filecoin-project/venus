@@ -89,7 +89,7 @@ func (bpr BlockProcessResult) String() string {
 type ChainManager struct {
 	// heaviestTipSet is the set of blocks at the head of the best known chain
 	heaviestTipSet struct {
-		sync.Mutex
+		sync.RWMutex
 		ts TipSet
 	}
 
@@ -115,6 +115,8 @@ type ChainManager struct {
 
 	// Tracks state by tipset identifier
 	stateCache map[string]*cid.Cid
+	// stateCacheLk protects the stateCache.
+	stateCacheLk sync.RWMutex
 
 	cstore *hamt.CborIpldStore
 
@@ -175,13 +177,15 @@ func (cm *ChainManager) Genesis(ctx context.Context, gen GenesisInitFunc) (err e
 
 	cm.genesisCid = genesis.Cid()
 
-	cm.heaviestTipSet.Lock()
-	defer cm.heaviestTipSet.Unlock()
 	cm.addBlock(genesis, cm.genesisCid)
 	genTipSet, err := NewTipSet(genesis)
 	if err != nil {
 		return err
 	}
+
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
+
 	return cm.setHeaviestTipSet(ctx, genTipSet)
 }
 
@@ -248,7 +252,10 @@ func (cm *ChainManager) Load() error {
 	case 1:
 		// TODO: probably want to load the expected genesis block and assert it here?
 		cm.genesisCid = genesii[0].Cid()
+
+		cm.heaviestTipSet.Lock()
 		cm.heaviestTipSet.ts = ts
+		cm.heaviestTipSet.Unlock()
 	case 0:
 		panic("unreached")
 	default:
@@ -287,8 +294,9 @@ type HeaviestTipSetGetter func() TipSet
 
 // GetHeaviestTipSet returns the tipset at the head of our current 'best' chain.
 func (cm *ChainManager) getHeaviestTipSet() TipSet {
-	cm.heaviestTipSet.Lock()
-	defer cm.heaviestTipSet.Unlock()
+	cm.heaviestTipSet.RLock()
+	defer cm.heaviestTipSet.RUnlock()
+
 	return cm.heaviestTipSet.ts
 }
 
@@ -300,6 +308,7 @@ func (cm *ChainManager) maybeAcceptBlock(ctx context.Context, blk *types.Block) 
 	log.LogKV(ctx, "maybeAcceptBlock", blk.Cid().String())
 	cm.heaviestTipSet.Lock()
 	defer cm.heaviestTipSet.Unlock()
+
 	ts, err := cm.GetTipSetByBlock(blk)
 	if err != nil {
 		return Unknown, err
@@ -431,7 +440,11 @@ func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetr
 	}
 
 	// Return cache hit
-	if root, ok := cm.stateCache[ts.String()]; ok { // tipset in cache
+	cm.stateCacheLk.RLock()
+	root, ok := cm.stateCache[ts.String()]
+	cm.stateCacheLk.RUnlock()
+
+	if ok { // tipset in cache
 		st, err := statetree.LoadStateTree(ctx, cm.cstore, root, builtin.Actors)
 		return st, err
 	}
@@ -571,7 +584,10 @@ func (cm *ChainManager) flushAndCache(ctx context.Context, st statetree.Tree, vm
 	if err != nil {
 		return errors.Wrap(err, "failed to flush actor state")
 	}
+	cm.stateCacheLk.Lock()
 	cm.stateCache[ts.String()] = root
+	cm.stateCacheLk.Unlock()
+
 	return nil
 }
 
@@ -649,6 +665,8 @@ func (cm *ChainManagerForTest) SetHeaviestTipSetForTest(ctx context.Context, ts 
 		cm.addBlock(b, id)
 	}
 	defer log.Finish(ctx)
+	cm.heaviestTipSet.Lock()
+	defer cm.heaviestTipSet.Unlock()
 	return cm.setHeaviestTipSet(ctx, ts)
 }
 

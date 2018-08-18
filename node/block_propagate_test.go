@@ -64,10 +64,17 @@ func TestBlockPropTwoNodes(t *testing.T) {
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk))
 
-	time.Sleep(time.Millisecond * 75)
+	equal := false
+	for i := 0; i < 30; i++ {
+		otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
+		equal = otherBest.Cid().Equals(nextBlk.Cid())
+		if equal {
+			break
+		}
+		time.Sleep(time.Millisecond * 20)
+	}
 
-	otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
-	assert.Equal(otherBest.Cid(), nextBlk.Cid(), "Blocks not equal: %#+v, %#+v", otherBest, nextBlk)
+	assert.True(equal, "failed to sync chains")
 }
 
 func TestChainSync(t *testing.T) {
@@ -108,7 +115,15 @@ func TestChainSync(t *testing.T) {
 
 	connect(t, nodes[0], nodes[1])
 
-	time.Sleep(time.Millisecond * 50)
-	otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
-	assert.Equal(otherBest.Cid(), nextBlk3.Cid())
+	equal := false
+	for i := 0; i < 30; i++ {
+		otherBest := core.RequireBestBlock(nodes[1].ChainMgr, t)
+		equal = otherBest.Cid().Equals(nextBlk3.Cid())
+		if equal {
+			break
+		}
+		time.Sleep(time.Millisecond * 20)
+	}
+
+	assert.True(equal, "failed to sync chains")
 }

@@ -39,9 +39,17 @@ func TestMessagePropagation(t *testing.T) {
 	require.NoError(nodes[0].AddNewMessage(ctx, smsg))
 
 	// Wait for message to propagate across network
-	time.Sleep(time.Millisecond * 50)
+	synced := false
+	for i := 0; i < 30; i++ {
+		l1 := len(nodes[0].MsgPool.Pending())
+		l2 := len(nodes[1].MsgPool.Pending())
+		l3 := len(nodes[2].MsgPool.Pending())
+		synced = l1 == 1 && l2 == 1 && l3 == 1
+		if synced {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 
-	require.Equal(1, len(nodes[0].MsgPool.Pending()))
-	require.Equal(1, len(nodes[1].MsgPool.Pending()))
-	require.Equal(1, len(nodes[2].MsgPool.Pending()))
+	require.True(synced, "failed to propagate messages")
 }

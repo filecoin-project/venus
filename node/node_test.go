@@ -62,11 +62,11 @@ func TestNodeNetworking(t *testing.T) {
 
 func TestConnectsToBootstrapNodes(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	t.Run("no bootstrap nodes no problem", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
+		ctx := context.Background()
 
 		r := repo.NewInMemoryRepo()
 		require.NoError(Init(ctx, r, core.InitGenesis))
@@ -83,6 +83,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 	t.Run("connects to bootstrap nodes", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
+		ctx := context.Background()
 
 		// These are two bootstrap nodes we'll connect to.
 		nds := MakeNodesStarted(t, 2, false, true)
@@ -106,9 +107,20 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		defer nd.Stop()
 
 		// Ensure they're connected.
-		time.Sleep(100 * time.Millisecond)
-		assert.Len(nd.Host.Network().ConnsToPeer(nd1.Host.ID()), 1)
-		assert.Len(nd.Host.Network().ConnsToPeer(nd2.Host.ID()), 1)
+		connected := false
+		// poll until we are connected, to avoid flaky tests
+		for i := 0; i <= 30; i++ {
+			l1 := len(nd.Host.Network().ConnsToPeer(nd1.Host.ID()))
+			l2 := len(nd.Host.Network().ConnsToPeer(nd2.Host.ID()))
+
+			connected = l1 == 1 && l2 == 1
+			if connected {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		assert.True(connected, "failed to connect")
 	})
 }
 

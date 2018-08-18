@@ -2,6 +2,7 @@ package filnet
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,8 +29,13 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// protects callCount
+	var lk sync.Mutex
 	callCount := 0
 	b.Bootstrap = func([]peer.ID) {
+		lk.Lock()
+		defer lk.Unlock()
 		callCount++
 		if callCount == 3 {
 
@@ -44,6 +50,8 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	b.Start(ctx)
 	time.Sleep(1000 * time.Millisecond)
 
+	lk.Lock()
+	defer lk.Unlock()
 	assert.Equal(3, callCount)
 }
 
@@ -59,8 +67,11 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		assert.NotPanics(func() { b.bootstrap(currentPeers) })
 	})
 
+	var lk sync.Mutex
 	var connectCount int
 	countingConnect := func(context.Context, pstore.PeerInfo) error {
+		lk.Lock()
+		defer lk.Unlock()
 		connectCount++
 		return nil
 	}
@@ -68,7 +79,9 @@ func TestBootstrapperBootstrap(t *testing.T) {
 	t.Run("Connects if don't have enough peers", func(t *testing.T) {
 		assert := assert.New(t)
 		fakeHost := &fakeHost{ConnectImpl: countingConnect}
+		lk.Lock()
 		connectCount = 0
+		lk.Unlock()
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
 
 		bootstrapPeers := []pstore.PeerInfo{
@@ -81,13 +94,17 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
 		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)
+		lk.Lock()
 		assert.Equal(2, connectCount)
+		lk.Unlock()
 	})
 
 	t.Run("Doesn't try to connect to an already connected peer", func(t *testing.T) {
 		assert := assert.New(t)
 		fakeHost := &fakeHost{ConnectImpl: countingConnect}
+		lk.Lock()
 		connectCount = 0
+		lk.Unlock()
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
 
 		connectedPeerID := requireRandPeerID(t)
@@ -101,6 +118,8 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		currentPeers := []peer.ID{connectedPeerID} // Have 1, which is the bootstrap peer.
 		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)
+		lk.Lock()
 		assert.Equal(0, connectCount)
+		lk.Unlock()
 	})
 }
