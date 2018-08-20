@@ -45,11 +45,18 @@ var daemonCmd = &cmds.Command{
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	// third precedence is config file.
 	rep, err := getRepo(req)
 	if err != nil {
 		return err
 	}
 
+	// second highest precedence is env vars.
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		rep.Config().API.Address = envapi
+	}
+
+	// highest precedence is cmd line flag.
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
 		rep.Config().API.Address = apiAddress
 	}

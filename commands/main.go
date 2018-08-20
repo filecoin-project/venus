@@ -163,26 +163,28 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var out string
-
-	// lowest presedence is config file.
-	apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
-	if err != nil {
-		return "", nil
-	}
-
-	out, err = repo.APIAddrFromFile(apiFilePath)
-	if err != nil {
-		return "", err
-	}
-
-	// next highest presedence is env vars.
+	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
 		out = envapi
 	}
 
-	// cmd flags are the highest presedence.
+	// first highest precedence is cmd flag.
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
 		out = apiAddress
+	}
+
+	// we will read the api file if no other option is given.
+	if len(out) == 0 {
+		apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
+		if err != nil {
+			return "", errors.Wrap(err, "failed to read api file")
+		}
+
+		out, err = repo.APIAddrFromFile(apiFilePath)
+		if err != nil {
+			return "", err
+		}
+
 	}
 
 	maddr, err := ma.NewMultiaddr(out)
