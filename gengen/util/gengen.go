@@ -182,11 +182,8 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	smaStorage := &storagemarket.State{
 		Miners: make(types.AddrSet),
 		Orderbook: &storagemarket.Orderbook{
-			Asks: make(storagemarket.AskSet),
-			Bids: make(storagemarket.BidSet),
-		},
-		Filemap: &storagemarket.Filemap{
-			Files: make(map[string][]uint64),
+			StorageAsks: make(storagemarket.AskSet),
+			Bids:        make(storagemarket.BidSet),
 		},
 	}
 

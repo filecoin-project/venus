@@ -412,7 +412,7 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 func (node *Node) MiningAddress() (types.Address, error) {
 	// TODO: this is a temporary workaround to permit nodes to mine without setup.
 	if node.mockMineMode {
-		return types.Address{}, nil
+		return node.DefaultSenderAddress()
 	}
 	r := node.Repo
 	newConfig := r.Config()

@@ -97,9 +97,8 @@ func TestAddActors(t *testing.T) {
 	require.NoError(err)
 
 	assert.Equal(1, len(storageMkt.Miners))
-	assert.Equal(1, len(storageMkt.Orderbook.Asks))
+	assert.Equal(1, len(storageMkt.Orderbook.StorageAsks))
 	assert.Equal(1, len(storageMkt.Orderbook.Bids))
-	assert.Equal(1, len(storageMkt.Filemap.Deals))
 }
 
 func GetFakecoinBinary() (string, error) {

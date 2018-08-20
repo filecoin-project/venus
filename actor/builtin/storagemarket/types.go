@@ -16,9 +16,9 @@ func init() {
 // Orderbook holds all the bids and asks
 type Orderbook struct {
 	// Asks is the set of live asks in the orderbook
-	Asks AskSet
-	// NextAskID is the ID that will be assigned to the next ask that is created
-	NextAskID uint64
+	StorageAsks AskSet
+	// NextSAskID is the ID that will be assigned to the next ask that is created
+	NextSAskID uint64
 
 	Bids      BidSet
 	NextBidID uint64
@@ -54,14 +54,4 @@ type Deal struct {
 
 	Ask uint64 `json:"ask"`
 	Bid uint64 `json:"bid"`
-
-	Committed bool   `json:"committed"`
-	SectorID  uint64 `json:"sector"`
-}
-
-// Filemap maps files by hash to sets of deals storing those files
-type Filemap struct {
-	// Files maps file hash to file details
-	Files map[string][]uint64
-	Deals []*Deal
 }

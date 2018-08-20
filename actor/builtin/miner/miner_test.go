@@ -56,8 +56,8 @@ func TestAddAsk(t *testing.T) {
 
 	var strgMktStorage storagemarket.State
 	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage)
-	assert.Len(strgMktStorage.Orderbook.Asks, 1)
-	assert.Equal(minerAddr, strgMktStorage.Orderbook.Asks[0].Owner)
+	assert.Len(strgMktStorage.Orderbook.StorageAsks, 1)
+	assert.Equal(minerAddr, strgMktStorage.Orderbook.StorageAsks[0].Owner)
 
 	miner, err := st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
@@ -79,8 +79,8 @@ func TestAddAsk(t *testing.T) {
 
 	var strgMktStorage2 storagemarket.State
 	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage2)
-	assert.Len(strgMktStorage2.Orderbook.Asks, 2)
-	assert.Equal(minerAddr, strgMktStorage2.Orderbook.Asks[1].Owner)
+	assert.Len(strgMktStorage2.Orderbook.StorageAsks, 2)
+	assert.Equal(minerAddr, strgMktStorage2.Orderbook.StorageAsks[1].Owner)
 
 	miner, err = st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
@@ -119,10 +119,7 @@ func TestCBOREncodeState(t *testing.T) {
 	assert := assert.New(t)
 	state := NewState(address.TestAddress, []byte{}, types.NewBytesAmount(1), core.RequireRandomPeerID(), types.NewZeroAttoFIL())
 
-	sector := new(Sector)
-	sector.CommR = []byte{}
-	sector.Deals = []uint64{}
-	state.Sectors = append(state.Sectors, sector)
+	state.Sectors["foo"] = types.NewBytesAmount(4454)
 
 	_, err := actor.MarshalStorage(state)
 	assert.NoError(err)

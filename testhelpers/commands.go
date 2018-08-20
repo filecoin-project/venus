@@ -375,7 +375,7 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "1000")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		require.NotEqual(td.test, addr, types.Address{})
@@ -550,6 +550,12 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon, fromAddr stri
 	return ddCid
 }
 
+// GetDefaultAddress returns the default sender address for this daemon
+func (td *TestDaemon) GetDefaultAddress() string {
+	addrs := td.RunSuccess("wallet", "addrs", "ls")
+	return strings.Split(addrs.ReadStdout(), "\n")[0]
+}
+
 func tryAPICheck(td *TestDaemon) error {
 	url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
 	resp, err := http.Get(url)
@@ -614,6 +620,13 @@ func WalletAddr(a string) func(*TestDaemon) {
 	}
 }
 
+// KeyFile specifies a key file for this daemon to add to their wallet during init
+func KeyFile(kf string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.keyFiles = append(td.keyFiles, keyFilePath(kf))
+	}
+}
+
 // GenesisFile allows setting the `genesisFile` config option on the daemon.
 func GenesisFile(a string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -655,7 +668,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		mockMine:    true, // mine without setting up a valid storage market in the chain state by default.
 		cmdTimeout:  DefaultDaemonCmdTimeout,
 		genesisFile: GenesisFilePath(), // default file includes all test addresses,
-		keyFiles:    KeyFilePaths(),    // five default key pairs
 	}
 
 	// configure TestDaemon options

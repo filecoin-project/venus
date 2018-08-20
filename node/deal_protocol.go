@@ -161,7 +161,7 @@ func NewStorageMarket(nd *Node) *StorageMarket {
 
 // ProposeDeal the handler for incoming deal proposals
 func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, error) {
-	ask, err := sm.smi.GetAsk(propose.Deal.Ask)
+	ask, err := sm.smi.GetStorageAsk(propose.Deal.Ask)
 	if err != nil {
 		return &DealResponse{
 			Message: fmt.Sprintf("unknown ask: %s", err),
@@ -392,14 +392,13 @@ func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 }
 
 type storageMarketPeeker interface {
-	GetAsk(uint64) (*storagemarket.Ask, error)
+	GetStorageAsk(uint64) (*storagemarket.Ask, error)
 	GetBid(uint64) (*storagemarket.Bid, error)
 	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
-	GetAskSet() (storagemarket.AskSet, error)
+	GetStorageAskSet() (storagemarket.AskSet, error)
 	GetBidSet() (storagemarket.BidSet, error)
-	GetDealList() ([]*storagemarket.Deal, error)
 	GetMinerOwner(context.Context, types.Address) (types.Address, error)
 }
 
@@ -439,13 +438,13 @@ func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Con
 }
 
 // GetAsk returns the given ask from the current state of the storage market actor
-func (stsa *stateTreeMarketPeeker) GetAsk(id uint64) (*storagemarket.Ask, error) {
+func (stsa *stateTreeMarketPeeker) GetStorageAsk(id uint64) (*storagemarket.Ask, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
-	ask, ok := stor.Orderbook.Asks[id]
+	ask, ok := stor.Orderbook.StorageAsks[id]
 	if !ok {
 		return nil, fmt.Errorf("no such ask")
 	}
@@ -470,13 +469,13 @@ func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*storagemarket.Bid, error)
 
 // GetAskSet returns the given the entire ask set from the storage market
 // TODO limit number of results
-func (stsa *stateTreeMarketPeeker) GetAskSet() (storagemarket.AskSet, error) {
+func (stsa *stateTreeMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
 	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
-	return stor.Orderbook.Asks, nil
+	return stor.Orderbook.StorageAsks, nil
 }
 
 // GetBidSet returns the given the entire bid set from the storage market
@@ -488,17 +487,6 @@ func (stsa *stateTreeMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
 	}
 
 	return stor.Orderbook.Bids, nil
-}
-
-// GetDealList returns the given the entire bid set from the storage market
-// TODO limit the number of results
-func (stsa *stateTreeMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return stor.Filemap.Deals, nil
 }
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
