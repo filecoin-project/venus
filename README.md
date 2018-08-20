@@ -12,7 +12,7 @@ by providing storage to clients.
 ## Table of Contents
 
 - [Development](#development)
-  - [Install Go](#install-go)
+  - [Install Go and Rust](#install-go)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
@@ -24,10 +24,12 @@ by providing storage to clients.
 
 ### Install Go and Rust
 
-The build process for go-filecoin requires at least Go version 1.10, which you can download [here][1]. You'll also need
-Rust to build the `rust-proofs` submodule, which you can download [here][5].
+The build process for go-filecoin requires:
 
-(If you run into trouble, see the [Go install instructions][4]).
+- at least Go version 1.10, which you can download [here][1].
+  - If you run into trouble, see the [Go install instructions][4].
+  
+- Rust to build the `rust-proofs` submodule, which you can download [here][5].
 
 ### Clone
 
