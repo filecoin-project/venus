@@ -399,7 +399,6 @@ type storageMarketPeeker interface {
 	// more of a gape than a peek..
 	GetStorageAskSet() (storagemarket.AskSet, error)
 	GetBidSet() (storagemarket.BidSet, error)
-	//GetDealList() ([]*storagemarket.Deal, error)
 	GetMinerOwner(context.Context, types.Address) (types.Address, error)
 }
 
@@ -489,19 +488,6 @@ func (stsa *stateTreeMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
 
 	return stor.Orderbook.Bids, nil
 }
-
-/*
-// GetDealList returns the given the entire bid set from the storage market
-// TODO limit the number of results
-func (stsa *stateTreeMarketPeeker) GetDealList() ([]*storagemarket.Deal, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	return stor.Filemap.Deals, nil
-}
-*/
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
 	st, err := stsa.loadStateTree(ctx)

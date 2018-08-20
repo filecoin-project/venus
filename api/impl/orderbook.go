@@ -16,9 +16,3 @@ func (api *nodeOrderbook) Asks() (storagemarket.AskSet, error) {
 func (api *nodeOrderbook) Bids() (storagemarket.BidSet, error) {
 	return api.api.node.StorageMarket.GetMarketPeeker().GetBidSet()
 }
-
-/*
-func (api *nodeOrderbook) Deals() ([]*storagemarket.Deal, error) {
-	return api.api.node.StorageMarket.GetMarketPeeker().GetDealList()
-}
-*/
