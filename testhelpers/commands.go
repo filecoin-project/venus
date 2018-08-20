@@ -17,8 +17,10 @@ import (
 	"testing"
 	"time"
 
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -153,6 +155,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	}
 
 	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
+	fmt.Println(finalArgs)
 
 	td.test.Logf("run: %q\n", strings.Join(finalArgs, " "))
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
@@ -369,6 +372,7 @@ func (td *TestDaemon) WaitForAPI() error {
 func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	// need money
 	td.RunSuccess("mining", "once")
+	fmt.Println("mined once")
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
@@ -376,6 +380,7 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
+		fmt.Println("miner created")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		require.NotEqual(td.test, addr, types.Address{})
@@ -385,7 +390,10 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 
 	// ensure mining runs after the command in our goroutine
 	td.RunSuccess("mpool --wait-for-count=1")
+	fmt.Println("message in mempool")
+
 	td.RunSuccess("mining", "once")
+	fmt.Println("mined once")
 
 	wg.Wait()
 
@@ -557,7 +565,17 @@ func (td *TestDaemon) GetDefaultAddress() string {
 }
 
 func tryAPICheck(td *TestDaemon) error {
-	url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
+	maddr, err := ma.NewMultiaddr(td.cmdAddr)
+	if err != nil {
+		return err
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("http://%s/api/id", host)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -658,7 +676,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-		cmdAddr:     fmt.Sprintf(":%d", cmdPort),
+		cmdAddr:     fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", cmdPort),
 		swarmAddr:   fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
 		test:        t,
 		repoDir:     dir,

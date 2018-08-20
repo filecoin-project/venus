@@ -14,7 +14,6 @@ import (
 
 	badgerds "gx/ipfs/QmQoiqmV9gAKEQAELqeGACQwXyDeijE6fq7ARhirPMX2T2/go-ds-badger"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	lockfile "gx/ipfs/QmYzCZUe9CBDkyPNPcRNqXQK8KKhtUfXvc88PkFujAEJPe/go-fs-lock"
 	keystore "gx/ipfs/QmbRDw6b2xXnZywek9E8qk1z4NAVrGxqZvbvwfSioiSy1S/go-ipfs-keystore"
 	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
@@ -387,7 +386,7 @@ func (r *FSRepo) SealedDir() string {
 
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
-func (r *FSRepo) SetAPIAddr(port string) error {
+func (r *FSRepo) SetAPIAddr(maddr string) error {
 	f, err := os.Create(filepath.Join(r.path, APIFile))
 	if err != nil {
 		return errors.Wrap(err, "could not create API file")
@@ -395,11 +394,7 @@ func (r *FSRepo) SetAPIAddr(port string) error {
 
 	defer f.Close() // nolint: errcheck
 
-	maddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port[1:]))
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(maddr.String())
+	_, err = f.WriteString(maddr)
 	if err != nil {
 		// If we encounter an error writing to the API file,
 		// delete the API file. The error encountered while
@@ -425,16 +420,8 @@ func APIAddrFromFile(apiFilePath string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
 	}
-	maddr, err := ma.NewMultiaddr(string(contents))
-	if err != nil {
-		return "", err
-	}
-	port, err := maddr.ValueForProtocol(ma.P_TCP)
-	if err != nil {
-		return "", err
-	}
 
-	return fmt.Sprintf(":%s", port), nil
+	return string(contents), nil
 }
 
 // APIAddr reads the FSRepo's api file and returns the api address

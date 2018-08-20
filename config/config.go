@@ -33,7 +33,7 @@ type APIConfig struct {
 
 func newDefaultAPIConfig() *APIConfig {
 	return &APIConfig{
-		Address: ":3453",
+		Address: "/ip4/127.0.0.1/tcp/3453",
 		AccessControlAllowOrigin: []string{
 			"http://localhost",
 			"https://localhost",

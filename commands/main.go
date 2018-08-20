@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds/http"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
@@ -160,19 +162,40 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 }
 
 func getAPIAddress(req *cmds.Request) (string, error) {
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		return apiAddress, nil
-	}
+	var out string
 
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		return envapi, nil
-	}
-
+	// lowest presedence is config file.
 	apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
 	if err != nil {
 		return "", nil
 	}
-	return repo.APIAddrFromFile(apiFilePath)
+
+	out, err = repo.APIAddrFromFile(apiFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	// next highest presedence is env vars.
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		out = envapi
+	}
+
+	// cmd flags are the highest presedence.
+	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
+		out = apiAddress
+	}
+
+	maddr, err := ma.NewMultiaddr(out)
+	if err != nil {
+		return "", err
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return "", err
+	}
+
+	return host, nil
 }
 
 func requiresDaemon(req *cmds.Request) bool {

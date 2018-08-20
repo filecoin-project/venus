@@ -15,7 +15,7 @@ func TestDefaults(t *testing.T) {
 	cfg := NewDefaultConfig()
 
 	bs := []string{}
-	assert.Equal(":3453", cfg.API.Address)
+	assert.Equal("/ip4/127.0.0.1/tcp/3453", cfg.API.Address)
 	assert.Equal("/ip4/127.0.0.1/tcp/6000", cfg.Swarm.Address)
 	assert.Equal(bs, cfg.Bootstrap.Addresses)
 }
@@ -35,7 +35,7 @@ func TestWriteFile(t *testing.T) {
 
 	assert.Equal(
 		`[api]
-  address = ":3453"
+  address = "/ip4/127.0.0.1/tcp/3453"
   accessControlAllowOrigin = ["http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1"]
   accessControlAllowCredentials = false
   accessControlAllowMethods = ["GET", "POST", "PUT"]
@@ -86,7 +86,7 @@ func TestConfigReadFileDefaults(t *testing.T) {
 
 		cfgpath, cleaner, err := createConfigFile(`
 [api]
-address = ":9999"
+address = "/ip4/127.0.0.1/tcp/9999"
 # ignored
 other = false
 
@@ -99,7 +99,7 @@ other = "hello"
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
-		assert.Equal(cfg.API.Address, ":9999")
+		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
 		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
 	})
 
@@ -108,7 +108,7 @@ other = "hello"
 
 		cfgpath, cleaner, err := createConfigFile(`
 [api]
-address = ":9999"
+address = "/ip4/127.0.0.1/tcp/9999"
 # ignored
 other = false
 `)
@@ -117,7 +117,7 @@ other = false
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
-		assert.Equal(cfg.API.Address, ":9999")
+		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
 		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
 	})
 
@@ -130,7 +130,7 @@ other = false
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(err)
 
-		assert.Equal(cfg.API.Address, ":3453")
+		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/3453")
 		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
 	})
 }
