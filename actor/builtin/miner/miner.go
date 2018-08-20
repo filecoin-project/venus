@@ -220,10 +220,10 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
 // CommitSector adds a commitment to the specified sector
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.BytesAmount) (*big.Int, uint8, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.BytesAmount) (uint8, error) {
 	var state State
 
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		commRstr := string(commR) // proper fixed length array encoding in cbor is apparently 'hard'.
 		_, ok := state.Sectors[commRstr]
 		if ok {
@@ -246,15 +246,10 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.Byte
 		return nil, nil
 	})
 	if err != nil {
-		return nil, errors.CodeError(err), err
+		return errors.CodeError(err), err
 	}
 
-	secIDout, ok := out.(*big.Int)
-	if !ok {
-		return nil, 1, errors.NewRevertError("expected a big.Int")
-	}
-
-	return secIDout, 0, nil
+	return 0, nil
 }
 
 // GetKey returns the public key for this miner.
