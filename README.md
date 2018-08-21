@@ -27,7 +27,31 @@ by providing storage to clients.
 The build process for go-filecoin requires:
 
 - at least Go version 1.10, which you can download [here][1].
-  - If you run into trouble, see the [Go install instructions][4].
+
+> Quick install instructions for Linux:
+
+> Start in home
+
+> `cd $HOME`
+
+> Fetch go:
+> `curl -O https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz`
+
+> Extract go:
+
+> `tar xf go1.10.3.linux-amd64.tar.gz`
+
+> Add the go binary to your path:
+
+> `nano $HOME/.bash_profile`
+
+> Make Go available in your PATH:
+
+> `export PATH=$HOME/go/bin:$PATH`
+
+> after adding the above line to `.bash_profile` run `source $HOME/.bash_profile` to update your paths
+
+> > If you run into trouble, see the [Go install instructions][4].
   
 - Rust to build the `rust-proofs` submodule, which you can download [here][5].
 
