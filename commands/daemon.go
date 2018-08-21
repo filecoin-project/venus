@@ -124,8 +124,6 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	cfg.SetAllowedMethods(config.API.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(config.API.AccessControlAllowCredentials)
 
-	handler := cmdhttp.NewHandler(servenv, rootCmd, cfg)
-
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
 
@@ -134,18 +132,21 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		return err
 	}
 
-	_, host, err := manet.DialArgs(maddr)
+	// For the case when /ip4/127.0.0.1/tcp/0 is passed,
+	// we want to fetch the new multiaddr from the listener, as it may (should)
+	// have resolved to some other value. i.e. resolve port zero to real value.
+	apiLis, err := manet.Listen(maddr)
 	if err != nil {
 		return err
 	}
+	config.API.Address = apiLis.Multiaddr().String()
 
 	apiserv := http.Server{
-		Addr:    host,
-		Handler: handler,
+		Handler: cmdhttp.NewHandler(servenv, rootCmd, cfg),
 	}
 
 	go func() {
-		err := apiserv.ListenAndServe()
+		err := apiserv.Serve(manet.NetListener(apiLis))
 		if err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
