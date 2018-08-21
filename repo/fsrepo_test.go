@@ -30,7 +30,7 @@ const (
   path = "badger"
 
 [swarm]
-  address = "/ip4/127.0.0.1/tcp/6000"
+  address = "/ip4/0.0.0.0/tcp/6000"
 
 [mining]
   minerAddresses = []

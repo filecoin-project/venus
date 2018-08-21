@@ -16,7 +16,7 @@ func TestDefaults(t *testing.T) {
 
 	bs := []string{}
 	assert.Equal("/ip4/127.0.0.1/tcp/3453", cfg.API.Address)
-	assert.Equal("/ip4/127.0.0.1/tcp/6000", cfg.Swarm.Address)
+	assert.Equal("/ip4/0.0.0.0/tcp/6000", cfg.Swarm.Address)
 	assert.Equal(bs, cfg.Bootstrap.Addresses)
 }
 
@@ -48,7 +48,7 @@ func TestWriteFile(t *testing.T) {
   path = "badger"
 
 [swarm]
-  address = "/ip4/127.0.0.1/tcp/6000"
+  address = "/ip4/0.0.0.0/tcp/6000"
 
 [mining]
   minerAddresses = []
@@ -100,7 +100,7 @@ other = "hello"
 		assert.NoError(err)
 
 		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
-		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
+		assert.Equal(cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 
 	t.Run("missing one section", func(t *testing.T) {
@@ -118,7 +118,7 @@ other = false
 		assert.NoError(err)
 
 		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/9999")
-		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
+		assert.Equal(cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 
 	t.Run("empty file", func(t *testing.T) {
@@ -131,7 +131,7 @@ other = false
 		assert.NoError(err)
 
 		assert.Equal(cfg.API.Address, "/ip4/127.0.0.1/tcp/3453")
-		assert.Equal(cfg.Swarm.Address, "/ip4/127.0.0.1/tcp/6000")
+		assert.Equal(cfg.Swarm.Address, "/ip4/0.0.0.0/tcp/6000")
 	})
 }
 
