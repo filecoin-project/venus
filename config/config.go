@@ -65,7 +65,7 @@ type SwarmConfig struct {
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address: "/ip4/127.0.0.1/tcp/6000",
+		Address: "/ip4/0.0.0.0/tcp/6000",
 	}
 }
 
