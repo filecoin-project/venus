@@ -8,9 +8,11 @@ import (
 	"os/signal"
 	"time"
 
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds/http"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
@@ -43,11 +45,18 @@ var daemonCmd = &cmds.Command{
 }
 
 func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+	// third precedence is config file.
 	rep, err := getRepo(req)
 	if err != nil {
 		return err
 	}
 
+	// second highest precedence is env vars.
+	if envapi := os.Getenv("FIL_API"); envapi != "" {
+		rep.Config().API.Address = envapi
+	}
+
+	// highest precedence is cmd line flag.
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
 		rep.Config().API.Address = apiAddress
 	}
@@ -120,8 +129,18 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	signal.Notify(sigCh, os.Interrupt)
 	defer signal.Stop(sigCh)
 
+	maddr, err := ma.NewMultiaddr(config.API.Address)
+	if err != nil {
+		return err
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return err
+	}
+
 	apiserv := http.Server{
-		Addr:    config.API.Address,
+		Addr:    host,
 		Handler: handler,
 	}
 
@@ -134,8 +153,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 
 	// write our api address to file
 	// TODO: use api.Repo() once implemented
-	err := node.Repo.SetAPIAddr(config.API.Address)
-	if err != nil {
+	if err := node.Repo.SetAPIAddr(config.API.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
 

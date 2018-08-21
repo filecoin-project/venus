@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +47,13 @@ func TestDaemonCORS(t *testing.T) {
 		assert := assert.New(t)
 		td := th.NewDaemon(t).Start()
 
-		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.CmdAddr())
+		maddr, err := ma.NewMultiaddr(td.CmdAddr())
+		assert.NoError(err)
+
+		_, host, err := manet.DialArgs(maddr)
+		assert.NoError(err)
+
+		url := fmt.Sprintf("http://%s/api/id", host)
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(err)
 		req.Header.Add("Origin", "http://localhost")
@@ -79,7 +88,13 @@ func TestDaemonCORS(t *testing.T) {
 		assert := assert.New(t)
 		td := th.NewDaemon(t).Start()
 
-		url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.CmdAddr())
+		maddr, err := ma.NewMultiaddr(td.CmdAddr())
+		assert.NoError(err)
+
+		_, host, err := manet.DialArgs(maddr)
+		assert.NoError(err)
+
+		url := fmt.Sprintf("http://%s/api/id", host)
 		req, err := http.NewRequest("GET", url, nil)
 		assert.NoError(err)
 		req.Header.Add("Origin", "http://disallowed.origin")
