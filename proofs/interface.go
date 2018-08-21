@@ -27,6 +27,6 @@ type VerifySealRequest struct {
 
 // Prover provides an interface to the proving subsystem.
 type Prover interface {
-	Seal(SealRequest) SealResponse
-	VerifySeal(VerifySealRequest) bool
+	Seal(SealRequest) (SealResponse, error)
+	VerifySeal(VerifySealRequest) error
 }

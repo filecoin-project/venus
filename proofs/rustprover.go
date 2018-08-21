@@ -2,6 +2,8 @@ package proofs
 
 import (
 	"unsafe"
+
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 /*
@@ -30,7 +32,7 @@ type RustProver struct{}
 var _ Prover = &RustProver{}
 
 // Seal generates and returns a Proof of Replication along with supporting data.
-func (rp *RustProver) Seal(req SealRequest) SealResponse {
+func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 	// passing arrays in C (lengths are hard-coded on Rust side)
 	proverIDPtr := (*C.uchar)(unsafe.Pointer(&req.ProverID[0]))
 	challengeSeedPtr := (*C.uchar)(unsafe.Pointer(&req.ChallengeSeed[0]))
@@ -41,21 +43,47 @@ func (rp *RustProver) Seal(req SealRequest) SealResponse {
 	out := make([]uint8, 64)
 	outPtr := (*C.uchar)(unsafe.Pointer(&out[0]))
 
-	// mutates the out-array
-	C.seal(C.CString(req.UnsealedPath), C.CString(req.SealedPath), proverIDPtr, challengeSeedPtr, randomSeedPtr, outPtr)
+	unsealed := C.CString(req.UnsealedPath)
+	defer C.free(unsafe.Pointer(unsealed))
 
-	return SealResponse{
-		Commitments: CommitmentPair{
-			CommR: out[0:32],
-			CommD: out[32:64],
-		},
+	sealed := C.CString(req.SealedPath)
+	defer C.free(unsafe.Pointer(sealed))
+
+	// mutates the out-array
+	code := C.seal(unsealed, sealed, proverIDPtr, challengeSeedPtr, randomSeedPtr, outPtr)
+
+	if code != 0 {
+		err = errors.New(errorString(code))
+	} else {
+		res = SealResponse{
+			Commitments: CommitmentPair{
+				CommR: out[0:32],
+				CommD: out[32:64],
+			},
+		}
 	}
+
+	return
 }
 
-// VerifySeal returns true if the Seal operation from which its inputs were derived was valid.
-func (rp *RustProver) VerifySeal(req VerifySealRequest) bool {
+// VerifySeal returns nil if the Seal operation from which its inputs were
+// derived was valid, and an error if not.
+func (rp *RustProver) VerifySeal(req VerifySealRequest) error {
 	commRPtr := (*C.uchar)(unsafe.Pointer(&(req.Commitments.CommR)[0]))
 	commDPtr := (*C.uchar)(unsafe.Pointer(&(req.Commitments.CommD)[0]))
 
-	return (bool)(C.verify_seal(commRPtr, commDPtr))
+	code := C.verify_seal(commRPtr, commDPtr)
+
+	if code != 0 {
+		return errors.New(errorString(code))
+	}
+
+	return nil
+}
+
+func errorString(code C.uint8_t) string {
+	status := C.status_to_string(code)
+	defer C.free(unsafe.Pointer(status))
+
+	return C.GoString(status)
 }

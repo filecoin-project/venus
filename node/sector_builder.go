@@ -547,8 +547,10 @@ func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address) (_ *SealedSector
 		RandomSeed:    make([]byte, 32), // TODO: create real seed
 	}
 
-	// TODO: Come up with a plan for error reporting and handling.
-	res := (&proofs.RustProver{}).Seal(req)
+	res, err := (&proofs.RustProver{}).Seal(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to seal sector")
+	}
 
 	return sb.NewSealedSector(res.Commitments.CommR, res.Commitments.CommD, label, p, s), nil
 }
