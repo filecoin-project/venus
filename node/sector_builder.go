@@ -466,7 +466,7 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
-	res, exitCode, err := sb.nd.CallQueryMethod(sb.MinerAddr, "getOwner", nil, nil)
+	res, exitCode, err := sb.nd.CallQueryMethod(ctx, sb.MinerAddr, "getOwner", nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get miner owner")
 	}

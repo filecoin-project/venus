@@ -579,7 +579,7 @@ func TestQueryMessage(t *testing.T) {
 		args, err := abi.ToEncodedValues(nodeAddr)
 		require.NoError(err)
 
-		returnValue, exitCode, err := node.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, nil)
+		returnValue, exitCode, err := node.CallQueryMethod(ctx, address.PaymentBrokerAddress, "ls", args, nil)
 		require.NoError(err)
 		require.Equal(uint8(0), exitCode)
 

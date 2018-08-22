@@ -34,25 +34,25 @@ func newMockMsp() *mockStorageMarketPeeker {
 	}
 }
 
-func (msa *mockStorageMarketPeeker) GetStorageAsk(ask uint64) (*storagemarket.Ask, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAsk(ctx context.Context, ask uint64) (*storagemarket.Ask, error) {
 	if uint64(len(msa.asks)) <= ask {
 		return nil, fmt.Errorf("no such ask")
 	}
 	return msa.asks[ask], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*storagemarket.Bid, error) {
+func (msa *mockStorageMarketPeeker) GetBid(ctx context.Context, bid uint64) (*storagemarket.Bid, error) {
 	if uint64(len(msa.bids)) <= bid {
 		return nil, fmt.Errorf("no such bid")
 	}
 	return msa.bids[bid], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAskSet(ctx context.Context) (storagemarket.AskSet, error) {
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
+func (msa *mockStorageMarketPeeker) GetBidSet(ctx context.Context) (storagemarket.BidSet, error) {
 	return nil, nil
 }
 
@@ -109,6 +109,7 @@ func TestDealProtocol(t *testing.T) {
 	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
+	ctx := context.Background()
 
 	sm := NewStorageMarket(miner)
 
@@ -135,16 +136,17 @@ func TestDealProtocol(t *testing.T) {
 		Bid:     0,
 		DataRef: data.Cid().String(),
 	}
+
 	propose, err := NewDealProposal(deal, client.Wallet, clientAddr)
 	assert.NoError(err)
-	resp, err := sm.ProposeDeal(propose)
+	resp, err := sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Accepted, resp.State)
 	id := resp.ID
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = sm.QueryDeal(id)
+	resp, err = sm.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Started, resp.State)
@@ -154,7 +156,7 @@ func TestDealProtocol(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = sm.QueryDeal(id)
+	resp, err = sm.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Posted, resp.State)
@@ -166,6 +168,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
+	ctx := context.Background()
 
 	sm := NewStorageMarket(miner)
 
@@ -196,7 +199,7 @@ func TestDealProtocolMissing(t *testing.T) {
 		ClientSig: sig,
 	}
 
-	resp, err := sm.ProposeDeal(propose)
+	resp, err := sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown bid: no such bid", resp.Message)
@@ -209,7 +212,7 @@ func TestDealProtocolMissing(t *testing.T) {
 		ClientSig: sig,
 	}
 
-	resp, err = sm.ProposeDeal(propose)
+	resp, err = sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown ask: no such ask", resp.Message)
@@ -222,7 +225,7 @@ func TestDealProtocolMissing(t *testing.T) {
 		ClientSig: sig,
 	}
 
-	resp, err = sm.ProposeDeal(propose)
+	resp, err = sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("ask does not have enough space for bid", resp.Message)
@@ -313,7 +316,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		ask, err := mstmp.GetStorageAsk(askID)
+		ask, err := mstmp.GetStorageAsk(ctx, askID)
 		require.NoError(err)
 
 		assert.Equal(askID, ask.ID)
@@ -326,7 +329,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		bid, err := mstmp.GetBid(bidID)
+		bid, err := mstmp.GetBid(ctx, bidID)
 		require.NoError(err)
 
 		assert.Equal(bidID, bid.ID)
@@ -339,7 +342,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		asks, err := mstmp.GetStorageAskSet()
+		asks, err := mstmp.GetStorageAskSet(ctx)
 		require.NoError(err)
 
 		assert.Equal(1, len(asks))
@@ -355,7 +358,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		bids, err := mstmp.GetBidSet()
+		bids, err := mstmp.GetBidSet(ctx)
 		require.NoError(err)
 
 		assert.Equal(1, len(bids))

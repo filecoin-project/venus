@@ -175,8 +175,8 @@ func NewStorageMarket(nd *Node) *StorageMarket {
 }
 
 // ProposeDeal the handler for incoming deal proposals
-func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, error) {
-	ask, err := sm.smi.GetStorageAsk(propose.Deal.Ask)
+func (sm *StorageMarket) ProposeDeal(ctx context.Context, propose *DealProposal) (*DealResponse, error) {
+	ask, err := sm.smi.GetStorageAsk(ctx, propose.Deal.Ask)
 	if err != nil {
 		return &DealResponse{
 			Message: fmt.Sprintf("unknown ask: %s", err),
@@ -184,7 +184,7 @@ func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, erro
 		}, nil
 	}
 
-	bid, err := sm.smi.GetBid(propose.Deal.Bid)
+	bid, err := sm.smi.GetBid(ctx, propose.Deal.Bid)
 	if err != nil {
 		return &DealResponse{
 			Message: fmt.Sprintf("unknown bid: %s", err),
@@ -274,6 +274,7 @@ func (sm *StorageMarket) updateNegotiation(id [32]byte, op func(*Negotiation)) {
 }
 
 func (sm *StorageMarket) handleNewStreamPropose(s inet.Stream) {
+	ctx := context.TODO()
 	defer s.Close() // nolint: errcheck
 	r := cbu.NewMsgReader(s)
 	w := cbu.NewMsgWriter(s)
@@ -285,7 +286,7 @@ func (sm *StorageMarket) handleNewStreamPropose(s inet.Stream) {
 		return
 	}
 
-	resp, err := sm.ProposeDeal(&propose)
+	resp, err := sm.ProposeDeal(ctx, &propose)
 	if err != nil {
 		s.Reset() // nolint: errcheck
 		// TODO: metrics, more structured logging. This is fairly useful information
@@ -298,6 +299,7 @@ func (sm *StorageMarket) handleNewStreamPropose(s inet.Stream) {
 }
 
 func (sm *StorageMarket) handleNewStreamQuery(s inet.Stream) {
+	ctx := context.TODO()
 	defer s.Close() // nolint: errcheck
 	r := cbu.NewMsgReader(s)
 	w := cbu.NewMsgWriter(s)
@@ -309,7 +311,7 @@ func (sm *StorageMarket) handleNewStreamQuery(s inet.Stream) {
 		return
 	}
 
-	resp, err := sm.QueryDeal(q.ID)
+	resp, err := sm.QueryDeal(ctx, q.ID)
 	if err != nil {
 		s.Reset() // nolint: errcheck
 		// TODO: metrics, more structured logging. This is fairly useful information
@@ -322,7 +324,7 @@ func (sm *StorageMarket) handleNewStreamQuery(s inet.Stream) {
 }
 
 // QueryDeal is the handler for incoming deal queries
-func (sm *StorageMarket) QueryDeal(id [32]byte) (*DealResponse, error) {
+func (sm *StorageMarket) QueryDeal(ctx context.Context, id [32]byte) (*DealResponse, error) {
 	sm.deals.Lock()
 	defer sm.deals.Unlock()
 
@@ -414,13 +416,13 @@ func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 }
 
 type storageMarketPeeker interface {
-	GetStorageAsk(uint64) (*storagemarket.Ask, error)
-	GetBid(uint64) (*storagemarket.Bid, error)
+	GetStorageAsk(ctx context.Context, uint64) (*storagemarket.Ask, error)
+	GetBid(ctx context.Context, uint64) (*storagemarket.Bid, error)
 	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
-	GetStorageAskSet() (storagemarket.AskSet, error)
-	GetBidSet() (storagemarket.BidSet, error)
+	GetStorageAskSet(ctx context.Context) (storagemarket.AskSet, error)
+	GetBidSet(ctx context.Context) (storagemarket.BidSet, error)
 	GetMinerOwner(context.Context, types.Address) (types.Address, error)
 }
 
@@ -463,10 +465,10 @@ func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr types.
 }
 
 // GetAsk returns the given ask from the current state of the storage market actor
-func (stsa *stateTreeMarketPeeker) GetStorageAsk(id uint64) (*storagemarket.Ask, error) {
+func (stsa *stateTreeMarketPeeker) GetStorageAsk(ctx context.Context, id uint64) (*storagemarket.Ask, error) {
 	var ask storagemarket.Ask
 
-	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAsk", big.NewInt(int64(id)))
+	rets, err := stsa.queryMessage(ctx, address.StorageMarketAddress, "getAsk", big.NewInt(int64(id)))
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +481,7 @@ func (stsa *stateTreeMarketPeeker) GetStorageAsk(id uint64) (*storagemarket.Ask,
 }
 
 // GetBid returns the given bid from the current state of the storage market actor
-func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*storagemarket.Bid, error) {
+func (stsa *stateTreeMarketPeeker) GetBid(ctx context.Context, id uint64) (*storagemarket.Bid, error) {
 	var bid storagemarket.Bid
 
 	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getBid", big.NewInt(int64(id)))
@@ -497,7 +499,7 @@ func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*storagemarket.Bid, error)
 
 // GetAskSet returns the given the entire ask set from the storage market
 // TODO limit number of results
-func (stsa *stateTreeMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
+func (stsa *stateTreeMarketPeeker) GetStorageAskSet(ctx context.Context) (storagemarket.AskSet, error) {
 	askSet := storagemarket.AskSet{}
 
 	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAllAsks")
@@ -514,7 +516,7 @@ func (stsa *stateTreeMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, err
 
 // GetBidSet returns the given the entire bid set from the storage market
 // TODO limit number of results
-func (stsa *stateTreeMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
+func (stsa *stateTreeMarketPeeker) GetBidSet(ctx context.Context) (storagemarket.BidSet, error) {
 	bidSet := storagemarket.BidSet{}
 
 	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAllBids")

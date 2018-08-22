@@ -33,7 +33,7 @@ func NewStorageClient(nd *Node) *StorageClient {
 }
 
 func (sc *StorageClient) minerPidForAsk(ctx context.Context, askID uint64) (peer.ID, error) {
-	ask, err := sc.smi.GetStorageAsk(askID)
+	ask, err := sc.smi.GetStorageAsk(ctx, askID)
 	if err != nil {
 		return "", err
 	}
