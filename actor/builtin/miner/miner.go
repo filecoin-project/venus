@@ -7,6 +7,8 @@ import (
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
+	"fmt"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -130,8 +132,8 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
-		Return: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount},
+		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -144,6 +146,10 @@ var minerExports = exec.Exports{
 	"updatePeerID": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
+	},
+	"getStorage": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 }
 
@@ -304,4 +310,22 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 	}
 
 	return 0, nil
+}
+
+// GetStorage returns the amount of proven storage for this miner.
+func (ma *Actor) GetStorage(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.Power, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	count, ok := ret.(*types.BytesAmount)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
+	}
+
+	return count, 0, nil
 }

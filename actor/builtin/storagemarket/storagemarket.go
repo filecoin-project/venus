@@ -1,6 +1,7 @@
 package storagemarket
 
 import (
+	"fmt"
 	"math/big"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
@@ -132,8 +133,28 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	"updatePower": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
+		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
+	},
+	"getTotalStorage": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.BytesAmount},
+	},
+	"getAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getBid": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getAllAsks": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getAllBids": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Bytes},
 	},
 }
 
@@ -266,4 +287,98 @@ func (sma *Actor) UpdatePower(ctx exec.VMContext, delta *types.BytesAmount) (uin
 	}
 
 	return 0, nil
+}
+
+// GetTotalStorage returns the total amount of proven storage in the system.
+func (sma *Actor) GetTotalStorage(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.TotalCommittedStorage, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	count, ok := ret.(*types.BytesAmount)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
+	}
+
+	return count, 0, nil
+}
+
+// GetAsk returns the ask on the orderbook for the given askID
+func (sma *Actor) GetAsk(ctx exec.VMContext, askID *big.Int) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		ask := state.Orderbook.StorageAsks[askID.Uint64()]
+		return actor.MarshalStorage(ask)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	ask, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return ask, 0, nil
+}
+
+// GetBid returns the bid on the orderbook for the given bidID
+func (sma *Actor) GetBid(ctx exec.VMContext, bidID *big.Int) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		bid := state.Orderbook.Bids[bidID.Uint64()]
+		return actor.MarshalStorage(bid)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	bid, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return bid, 0, nil
+}
+
+// GetAllAsks returns all asks on the orderbook
+// TODO limit number of results
+func (sma *Actor) GetAllAsks(ctx exec.VMContext) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return actor.MarshalStorage(state.Orderbook.StorageAsks)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	asks, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return asks, 0, nil
+}
+
+// GetAllBids returns all bids on the orderbook
+// TODO limit number of results
+func (sma *Actor) GetAllBids(ctx exec.VMContext) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return actor.MarshalStorage(state.Orderbook.Bids)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	bids, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return bids, 0, nil
 }

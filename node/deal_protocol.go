@@ -16,12 +16,13 @@ import (
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // MakeDealProtocolID is the protocol ID for the make deal protocol
@@ -411,113 +412,115 @@ func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tre
 	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
 }
 
-func (stsa *stateTreeMarketPeeker) loadStorageMarketActorStorage(ctx context.Context) (*storagemarket.State, error) {
+func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr types.Address, method string, params ...interface{}) ([][]byte, error) {
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := abi.EncodeValues(vals)
+	if err != nil {
+		return nil, err
+	}
+
 	st, err := stsa.loadStateTree(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	act, err := st.GetActor(ctx, address.StorageMarketAddress)
+	vms := vm.NewStorageMap(stsa.nd.Blockstore)
+	rets, ec, err := core.CallQueryMethod(ctx, st, vms, addr, method, args, types.Address{}, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	blk, err := stsa.nd.Blockstore.Get(act.Head)
-	if err != nil {
-		return nil, errors.Wrapf(err, "faile to retrieve: %s", act.Head.String())
+	if ec != 0 {
+		return nil, errors.Errorf("Non-zero return code from query message: %d", ec)
 	}
 
-	smaStateBytes := blk.RawData()
-
-	var storage storagemarket.State
-	err = cbor.DecodeInto(smaStateBytes, &storage)
-	if err != nil {
-		return nil, err
-	}
-	return &storage, nil
+	return rets, nil
 }
 
 // GetAsk returns the given ask from the current state of the storage market actor
 func (stsa *stateTreeMarketPeeker) GetStorageAsk(id uint64) (*storagemarket.Ask, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	var ask storagemarket.Ask
+
+	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAsk", big.NewInt(int64(id)))
 	if err != nil {
 		return nil, err
 	}
 
-	ask, ok := stor.Orderbook.StorageAsks[id]
-	if !ok {
-		return nil, fmt.Errorf("no such ask")
+	if err := cbor.DecodeInto(rets[0], &ask); err != nil {
+		return nil, err
 	}
 
-	return ask, nil
+	return &ask, nil
 }
 
 // GetBid returns the given bid from the current state of the storage market actor
 func (stsa *stateTreeMarketPeeker) GetBid(id uint64) (*storagemarket.Bid, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	var bid storagemarket.Bid
+
+	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getBid", big.NewInt(int64(id)))
 	if err != nil {
 		return nil, err
 	}
 
-	bid, ok := stor.Orderbook.Bids[id]
-	if !ok {
-		return nil, fmt.Errorf("no such bid")
+	err = cbor.DecodeInto(rets[0], &bid)
+	if err != nil {
+		return nil, err
 	}
 
-	return bid, nil
+	return &bid, nil
 }
 
 // GetAskSet returns the given the entire ask set from the storage market
 // TODO limit number of results
 func (stsa *stateTreeMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	askSet := storagemarket.AskSet{}
+
+	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAllAsks")
 	if err != nil {
 		return nil, err
 	}
 
-	return stor.Orderbook.StorageAsks, nil
+	if err = cbor.DecodeInto(rets[0], &askSet); err != nil {
+		return nil, err
+	}
+
+	return askSet, nil
 }
 
 // GetBidSet returns the given the entire bid set from the storage market
 // TODO limit number of results
 func (stsa *stateTreeMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
-	stor, err := stsa.loadStorageMarketActorStorage(context.TODO())
+	bidSet := storagemarket.BidSet{}
+
+	rets, err := stsa.queryMessage(context.TODO(), address.StorageMarketAddress, "getAllBids")
 	if err != nil {
 		return nil, err
 	}
 
-	return stor.Orderbook.Bids, nil
+	err = cbor.DecodeInto(rets[0], &bidSet)
+	if err != nil {
+		return nil, err
+	}
+
+	return bidSet, nil
 }
 
 func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (types.Address, error) {
-	st, err := stsa.loadStateTree(ctx)
+	rets, err := stsa.queryMessage(ctx, minerAddress, "getOwner")
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	act, err := st.GetActor(ctx, minerAddress)
-	if err != nil {
-		return types.Address{}, errors.Wrap(err, "failed to find miner actor in state tree")
-	}
-
-	if act.Code == nil || !act.Code.Equals(types.MinerActorCodeCid) {
-		return types.Address{}, fmt.Errorf("address given did not belong to a miner actor")
-	}
-
-	blk, err := stsa.nd.Blockstore.Get(act.Head)
+	addr, err := types.NewAddressFromBytes(rets[0])
 	if err != nil {
 		return types.Address{}, err
 	}
 
-	minerStateBytes := blk.RawData()
-
-	var mst miner.State
-	err = cbor.DecodeInto(minerStateBytes, &mst)
-	if err != nil {
-		return types.Address{}, err
-	}
-
-	return mst.Owner, nil
+	return addr, nil
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain

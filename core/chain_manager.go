@@ -466,7 +466,7 @@ func (cm *ChainManager) state(ctx context.Context, blks []*types.Block) (statetr
 	if err != nil {
 		return nil, err
 	}
-	err = cm.validateMining(ctx, st, cm.cstore, ts)
+	err = cm.validateMining(ctx, st, cm.Blockstore, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -506,9 +506,9 @@ func (cm *ChainManager) fetchBlksForIDs(ctx context.Context, ids types.SortedCid
 
 // validateMining throws an error if any tipset's block was mined by an invalid
 // miner address.
-func (cm *ChainManager) validateMining(ctx context.Context, st statetree.Tree, cstore *hamt.CborIpldStore, ts TipSet) error {
+func (cm *ChainManager) validateMining(ctx context.Context, st statetree.Tree, bstore blockstore.Blockstore, ts TipSet) error {
 	for _, blk := range ts {
-		if !cm.PwrTableView.HasPower(ctx, st, cstore, blk.Miner) {
+		if !cm.PwrTableView.HasPower(ctx, st, bstore, blk.Miner) {
 			return errors.New("invalid miner address without network power")
 		}
 	}
@@ -821,13 +821,13 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 	w := big.NewRat(int64(wNum), int64(wDenom))
 
 	// Each block in the tipset adds ECV + ECPrm * miner_power
-	totalBytes, err := cm.PwrTableView.Total(ctx, st, cm.cstore)
+	totalBytes, err := cm.PwrTableView.Total(ctx, st, cm.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting total power")
 	}
 	ratECV := big.NewRat(int64(ECV), int64(1))
 	for _, blk := range ts {
-		minerBytes, err := cm.PwrTableView.Miner(ctx, st, cm.cstore, blk.Miner)
+		minerBytes, err := cm.PwrTableView.Miner(ctx, st, cm.Blockstore, blk.Miner)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting miner power")
 		}

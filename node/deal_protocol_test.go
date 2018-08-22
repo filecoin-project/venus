@@ -3,18 +3,21 @@ package node
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
+	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer/test"
 	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockStorageMarketPeeker struct {
@@ -241,4 +244,129 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 
 	assert.NoError(err)
 	assert.NotNil(dealCid)
+}
+
+func TestStateTreeMarketPeeker(t *testing.T) {
+	require := require.New(t)
+
+	nd := MakeNodesUnstarted(t, 1, true, true)[0]
+
+	ctx := context.Background()
+	cm := nd.ChainMgr
+	cm.PwrTableView = &core.TestView{}
+
+	// setup miner power in genesis block
+	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+	sn := types.NewMockSigner(ki)
+	testAddress := sn.Addresses[0]
+
+	testGen := th.MakeGenesisFunc(
+		th.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
+	)
+	require.NoError(cm.Genesis(ctx, testGen))
+
+	genesisBlock, err := cm.FetchBlock(ctx, cm.GetGenesisCid())
+	require.NoError(err)
+
+	// create miner
+	nonce := uint64(0)
+	pid, err := testutil.RandPeerID()
+	require.NoError(err)
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, *types.NewBytesAmount(10000000), pid, types.NewZeroAttoFIL())
+	require.NoError(err)
+	b := core.RequireMineOnce(ctx, t, cm, genesisBlock, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	nonce++
+
+	minerAddr, err := types.NewAddressFromBytes(b.MessageReceipts[0].Return[0])
+	require.NoError(err)
+
+	// add bid
+	bidPrice := types.NewAttoFIL(big.NewInt(23))
+	bidSize := types.NewBytesAmount(10000)
+	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, bidPrice, bidSize)
+	require.NoError(err)
+	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	nonce++
+
+	bidID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
+
+	// add ask
+	askSize := types.NewBytesAmount(1032300)
+	askPrice := types.NewAttoFIL(big.NewInt(96))
+	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, askPrice, askSize)
+	require.NoError(err)
+	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	nonce++
+
+	askID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
+
+	mstmp := &stateTreeMarketPeeker{nd}
+
+	t.Run("retrieves ask from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		ask, err := mstmp.GetStorageAsk(askID)
+		require.NoError(err)
+
+		assert.Equal(askID, ask.ID)
+		assert.Equal(askPrice, ask.Price)
+		assert.Equal(minerAddr, ask.Owner)
+		assert.Equal(askSize, ask.Size)
+	})
+
+	t.Run("retrieves bid from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		bid, err := mstmp.GetBid(bidID)
+		require.NoError(err)
+
+		assert.Equal(bidID, bid.ID)
+		assert.Equal(bidPrice, bid.Price)
+		assert.Equal(sn.Addresses[0], bid.Owner)
+		assert.Equal(bidSize, bid.Size)
+	})
+
+	t.Run("retrieves all asks from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		asks, err := mstmp.GetStorageAskSet()
+		require.NoError(err)
+
+		assert.Equal(1, len(asks))
+		ask := asks[0]
+
+		assert.Equal(askID, ask.ID)
+		assert.Equal(askPrice, ask.Price)
+		assert.Equal(minerAddr, ask.Owner)
+		assert.Equal(askSize, ask.Size)
+	})
+
+	t.Run("retrieves all bids from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		bids, err := mstmp.GetBidSet()
+		require.NoError(err)
+
+		assert.Equal(1, len(bids))
+		bid := bids[0]
+
+		assert.Equal(bidID, bid.ID)
+		assert.Equal(bidPrice, bid.Price)
+		assert.Equal(sn.Addresses[0], bid.Owner)
+		assert.Equal(bidSize, bid.Size)
+	})
+
+	t.Run("retrieves owner from miner", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		addr, err := mstmp.GetMinerOwner(ctx, minerAddr)
+		require.NoError(err)
+
+		assert.Equal(sn.Addresses[0], addr)
+	})
 }
