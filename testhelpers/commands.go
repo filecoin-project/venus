@@ -381,8 +381,8 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
 		fmt.Println("miner created")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		require.NoError(td.test, err)
-		require.NotEqual(td.test, addr, types.Address{})
+		assert.NoError(td.test, err)
+		assert.NotEqual(td.test, addr, types.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
