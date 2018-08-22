@@ -19,7 +19,7 @@ var ErrInvalidType = fmt.Errorf("invalid type")
 type Type uint64
 
 const (
-	// Invalid is the default value for 'Type' and represents an errorneously set type.
+	// Invalid is the default value for 'Type' and represents an erroneously set type.
 	Invalid = Type(iota)
 	// Address is a address.Address
 	Address

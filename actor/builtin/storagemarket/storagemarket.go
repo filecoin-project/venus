@@ -425,7 +425,7 @@ func (sma *Actor) GetAllAsks(vmctx exec.VMContext) ([]byte, uint8, error) {
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 
-		askLookup, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Orderbook.StorageAsks)
+		askLookup, err := actor.LoadTypedLookup(ctx, vmctx.Storage(), state.Orderbook.StorageAsks, &Ask{})
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for asks with CID: %s", state.Orderbook.StorageAsks)
 		}
@@ -444,17 +444,10 @@ func (sma *Actor) GetAllAsks(vmctx exec.VMContext) ([]byte, uint8, error) {
 				return nil, errors.FaultErrorWrap(err, "Invalid key in orderbook.asks")
 			}
 
-			var ask *Ask
-			askBytes, err := cbor.DumpObject(kv.Value)
-			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "Invalid ask in orderbook.asks")
+			ask, ok := kv.Value.(*Ask)
+			if !ok {
+				return nil, errors.NewFaultError("Expected Ask from ask lookup")
 			}
-
-			err = cbor.DecodeInto(askBytes, &ask)
-			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "Could not decode ask")
-			}
-
 			asks[id] = ask
 		}
 
@@ -479,7 +472,7 @@ func (sma *Actor) GetAllBids(vmctx exec.VMContext) ([]byte, uint8, error) {
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 
-		bidLookup, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Orderbook.Bids)
+		bidLookup, err := actor.LoadTypedLookup(ctx, vmctx.Storage(), state.Orderbook.Bids, &Bid{})
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for bids with CID: %s", state.Orderbook.Bids)
 		}
@@ -498,17 +491,10 @@ func (sma *Actor) GetAllBids(vmctx exec.VMContext) ([]byte, uint8, error) {
 				return nil, errors.FaultErrorWrap(err, "Invalid key in orderbook.bids")
 			}
 
-			var bid *Bid
-			bidBytes, err := cbor.DumpObject(kv.Value)
-			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "Invalid bid in orderbook.bids")
+			bid, ok := kv.Value.(*Bid)
+			if !ok {
+				return nil, errors.NewFaultError("Expected Bid from bid lookup")
 			}
-
-			err = cbor.DecodeInto(bidBytes, &bid)
-			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "Could not decode bid")
-			}
-
 			bids[id] = bid
 		}
 

@@ -179,7 +179,7 @@ func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor
 func DebugStateTree(t Tree) {
 	st, ok := t.(*tree)
 	if !ok {
-		panic("can debug non stateTree")
+		panic("can't debug non-stateTree")
 	}
 	st.debugPointer(st.root.Pointers)
 }

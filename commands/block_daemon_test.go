@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -31,7 +30,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// ensure that we were returned the correct block
 
-		require.True(core.MustDecodeCid(minedBlockCidStr).Equals(blockGetBlock.Cid()))
+		require.Equal(minedBlockCidStr, blockGetBlock.Cid().String())
 
 		// ensure that the JSON we received from block get conforms to schema
 

@@ -153,6 +153,7 @@ func TestDecodeBlock(t *testing.T) {
 
 		before := &Block{
 			Miner:     addrGetter(),
+			Ticket:    []uint8{},
 			Parents:   NewSortedCidSet(c1),
 			Height:    2,
 			Messages:  []*SignedMessage{newSignedMessage(), newSignedMessage()},
@@ -166,7 +167,7 @@ func TestDecodeBlock(t *testing.T) {
 		after, err := DecodeBlock(before.ToNode().RawData())
 		assert.NoError(err)
 		assert.Equal(after.Cid(), before.Cid())
-		assert.Equal(after, before)
+		assert.Equal(before, after)
 	})
 
 	t.Run("decode failure results in an error", func(t *testing.T) {

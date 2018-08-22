@@ -93,5 +93,7 @@ type Lookup interface {
 	Find(ctx context.Context, k string) (interface{}, error)
 	Set(ctx context.Context, k string, v interface{}) error
 	Commit(ctx context.Context) (*cid.Cid, error)
+	Delete(ctx context.Context, k string) error
+	IsEmpty() bool
 	Values(ctx context.Context) ([]*hamt.KV, error)
 }
