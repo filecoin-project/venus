@@ -26,14 +26,14 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 
 func stopNodes(nds []*Node) {
 	for _, nd := range nds {
-		nd.Stop()
+		nd.Stop(context.Background())
 	}
 }
 
 func startNodes(t *testing.T, nds []*Node) {
 	t.Helper()
 	for _, nd := range nds {
-		if err := nd.Start(); err != nil {
+		if err := nd.Start(context.Background()); err != nil {
 			t.Fatal(err)
 		}
 	}

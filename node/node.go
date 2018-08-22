@@ -245,7 +245,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 }
 
 // Start boots up the node.
-func (node *Node) Start() error {
+func (node *Node) Start(ctx context.Context) error {
 	if err := node.ChainMgr.Load(); err != nil {
 		return err
 	}
@@ -382,7 +382,7 @@ func (node *Node) cancelSubscriptions() {
 }
 
 // Stop initiates the shutdown of the node.
-func (node *Node) Stop() {
+func (node *Node) Stop(ctx context.Context) {
 	node.ChainMgr.HeaviestTipSetPubSub.Unsub(node.HeaviestTipSetCh)
 	if node.cancelMining != nil {
 		node.cancelMining()
@@ -447,7 +447,7 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
-func (node *Node) StartMining() error {
+func (node *Node) StartMining(ctx context.Context) error {
 	miningAddress, err := node.MiningAddress()
 	if err != nil {
 		return err
@@ -502,7 +502,8 @@ func (node *Node) initSectorBuilder(minerAddr types.Address) error {
 }
 
 // StopMining stops mining on new blocks.
-func (node *Node) StopMining() {
+func (node *Node) StopMining(ctx context.Context) {
+	// TODO should probably also keep track of and cancel last mining.Input.Ctx.
 	node.setIsMining(false)
 }
 
@@ -577,8 +578,7 @@ func (node *Node) NewAddress() (types.Address, error) {
 // tipset. It doesn't make any changes to the state/blockchain. It is useful
 // for interrogating actor state. The caller address is optional; if not
 // provided, an address will be chosen from the node's wallet.
-func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
-	ctx := context.Background()
+func (node *Node) CallQueryMethod(ctx context.Context, to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
 	bts := node.ChainMgr.GetHeaviestTipSet()
 	st, err := node.ChainMgr.State(ctx, bts.ToSlice())
 	if err != nil {
@@ -605,7 +605,7 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add its address to mining.minerAddresses in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (*types.Address, error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (_ *types.Address, err error) {
 
 	// TODO: make this more streamlined in the wallet
 	backend, err := node.Wallet.Find(accountAddr)

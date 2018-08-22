@@ -75,7 +75,7 @@ func TestActorLs(t *testing.T) {
 		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 		chainMgrForTest = nd.ChainMgr
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
-		assert.NoError(nd.Start())
+		assert.NoError(nd.Start(ctx))
 		tokenAmount := types.NewAttoFILFromFIL(100)
 
 		getActors := func(state.Tree) ([]string, []*types.Actor) {

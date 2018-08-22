@@ -64,7 +64,7 @@ func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder,
 		th.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
 	)
 	require.NoError(nd.ChainMgr.Genesis(ctx, tif))
-	require.NoError(nd.Start())
+	require.NoError(nd.Start(ctx))
 
 	pledge := *types.NewBytesAmount(100000)
 	coll := *types.NewAttoFILFromFIL(100)

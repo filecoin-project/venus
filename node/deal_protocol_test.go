@@ -242,7 +242,7 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	)
 	nd.ChainMgr.Genesis(ctx, tif)
 	assert.NoError(err)
-	assert.NoError(nd.Start())
+	assert.NoError(nd.Start(ctx))
 
 	msa := &stateTreeMarketPeeker{nd}
 
