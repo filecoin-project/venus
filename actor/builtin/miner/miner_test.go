@@ -36,6 +36,8 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap
 
 func TestAddAsk(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -47,17 +49,19 @@ func TestAddAsk(t *testing.T) {
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(100), types.NewBytesAmount(150))
 	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
 
+	_, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	assert.NoError(err)
+
+	pdata = actor.MustConvertParams(big.NewInt(0))
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
 	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
-	assert.Equal(0, big.NewInt(0).Cmp(big.NewInt(0).SetBytes(result.Receipt.Return[0])))
 
-	storageMkt, err := st.GetActor(ctx, address.StorageMarketAddress)
-	assert.NoError(err)
+	var ask storagemarket.Ask
+	err = actor.UnmarshalStorage(result.Receipt.Return[0], &ask)
+	require.NoError(err)
 
-	var strgMktStorage storagemarket.State
-	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage)
-	assert.Len(strgMktStorage.Orderbook.StorageAsks, 1)
-	assert.Equal(minerAddr, strgMktStorage.Orderbook.StorageAsks[0].Owner)
+	assert.Equal(minerAddr, ask.Owner)
 
 	miner, err := st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
@@ -68,19 +72,22 @@ func TestAddAsk(t *testing.T) {
 
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), types.NewBytesAmount(200))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 2, nil, "addAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
 
 	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
-	storageMkt, err = st.GetActor(ctx, address.StorageMarketAddress)
+	pdata = actor.MustConvertParams(big.NewInt(0))
+	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 4, types.NewZeroAttoFIL(), "getAsk", pdata)
+	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	var strgMktStorage2 storagemarket.State
-	builtin.RequireReadState(t, vms, address.StorageMarketAddress, storageMkt, &strgMktStorage2)
-	assert.Len(strgMktStorage2.Orderbook.StorageAsks, 2)
-	assert.Equal(minerAddr, strgMktStorage2.Orderbook.StorageAsks[1].Owner)
+	var ask2 storagemarket.Ask
+	err = actor.UnmarshalStorage(result.Receipt.Return[0], &ask2)
+	require.NoError(err)
+
+	assert.Equal(minerAddr, ask2.Owner)
 
 	miner, err = st.GetActor(ctx, minerAddr)
 	assert.NoError(err)
@@ -91,7 +98,7 @@ func TestAddAsk(t *testing.T) {
 
 	// now try to create an ask larger than our pledge
 	pdata = actor.MustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 5, nil, "addAsk", pdata)
 
 	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)

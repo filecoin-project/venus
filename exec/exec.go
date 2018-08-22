@@ -1,11 +1,13 @@
 package exec
 
 import (
+	"context"
+
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -80,7 +82,15 @@ type VMContext interface {
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
 	Put([]byte) (*cid.Cid, error)
-	Get(*cid.Cid) ([]byte, bool, error)
+	Get(*cid.Cid) ([]byte, error)
 	Commit(*cid.Cid, *cid.Cid) error
 	Head() *cid.Cid
+}
+
+// Lookup defines an internal interface for actor storage.
+type Lookup interface {
+	Find(ctx context.Context, k string) (interface{}, error)
+	Set(ctx context.Context, k string, v interface{}) error
+	Commit(ctx context.Context) (*cid.Cid, error)
+	Values(ctx context.Context) ([]*hamt.KV, error)
 }

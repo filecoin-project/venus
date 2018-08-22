@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -16,11 +17,11 @@ func init() {
 // Orderbook holds all the bids and asks
 type Orderbook struct {
 	// Asks is the set of live asks in the orderbook
-	StorageAsks AskSet
+	StorageAsks *cid.Cid
 	// NextSAskID is the ID that will be assigned to the next ask that is created
 	NextSAskID uint64
 
-	Bids      BidSet
+	Bids      *cid.Cid
 	NextBidID uint64
 }
 

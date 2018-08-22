@@ -37,9 +37,15 @@ func TestActorDaemon(t *testing.T) {
 
 		assert.NotZero(len(avs))
 
-		// Expect the second actor to be an account actor and to have no exports.
-		// This checks that a bug that gave all actors the same as the first has been fixed.
-		assert.Equal("AccountActor", avs[1].ActorType)
-		assert.Equal(0, len(avs[1].Exports))
+		// The order of actors is consistent, but only within builds of genesis.car.
+		// We just want to make sure the views have something valid in them.
+		for _, av := range avs {
+			assert.Contains([]string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor"}, av.ActorType)
+			if av.ActorType == "AccountActor" {
+				assert.Zero(len(av.Exports))
+			} else {
+				assert.NotZero(len(av.Exports))
+			}
+		}
 	})
 }

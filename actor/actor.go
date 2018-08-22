@@ -2,12 +2,16 @@
 package actor
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	block "gx/ipfs/QmVzK524a2VWLqyvtBeiHKsUAWYgeAk4DBeZoY7vpNPNRx/go-block-format"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -166,7 +170,11 @@ func MarshalValue(val interface{}) ([]byte, error) {
 
 // MarshalStorage encodes the passed in data into bytes.
 func MarshalStorage(in interface{}) ([]byte, error) {
-	return cbor.DumpObject(in)
+	bytes, err := cbor.DumpObject(in)
+	if err != nil {
+		return nil, errors.FaultErrorWrap(err, "Could not marshall actor state")
+	}
+	return bytes, nil
 }
 
 // UnmarshalStorage decodes the passed in bytes into the given object.
@@ -211,4 +219,126 @@ func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)
 	}
 
 	return ret, nil
+}
+
+// SetKeyValue convenience method to load a lookup, set one key value pair and commit.
+// This function is inefficient when multiple values need to be set into the lookup.
+func SetKeyValue(ctx context.Context, storage exec.Storage, id *cid.Cid, key string, value interface{}) (*cid.Cid, error) {
+	lookup, err := LoadLookup(ctx, storage, id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = lookup.Set(ctx, key, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return lookup.Commit(ctx)
+}
+
+// LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new on if it is nil.
+// The lookup provides access to a HAMT/CHAMP tree stored in storage.
+func LoadLookup(ctx context.Context, storage exec.Storage, cid *cid.Cid) (exec.Lookup, error) {
+	cborStore := &hamt.CborIpldStore{
+		Blocks: &storageAsBlocks{s: storage},
+		Atlas:  &cbor.CborAtlas,
+	}
+	var root *hamt.Node
+	var err error
+
+	if cid == nil {
+		root = hamt.NewNode(cborStore)
+	} else {
+		root, err = hamt.LoadNode(ctx, cborStore, cid)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &lookup{n: root, s: storage}, nil
+}
+
+// storageAsBlocks allows us to use an exec.Storage as a Blockstore
+type storageAsBlocks struct {
+	s exec.Storage
+}
+
+// GetBlock gets a block from underlying storage by cid
+func (sab *storageAsBlocks) GetBlock(ctx context.Context, c *cid.Cid) (block.Block, error) {
+	chunk, err := sab.s.Get(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return block.NewBlock(chunk), nil
+}
+
+// AddBlock add a block to underlying storage
+func (sab *storageAsBlocks) AddBlock(b block.Block) error {
+	_, err := sab.s.Put(b.RawData())
+	return err
+}
+
+// lookup implements exec.Lookup and provides structured key-value storage for actors
+type lookup struct {
+	n *hamt.Node
+	s exec.Storage
+}
+
+var _ exec.Lookup = (*lookup)(nil)
+
+// Find retrieves a value by key
+func (l *lookup) Find(ctx context.Context, k string) (interface{}, error) {
+	return l.n.Find(ctx, k)
+}
+
+// Set adds a value under the given key
+func (l *lookup) Set(ctx context.Context, k string, v interface{}) error {
+	return l.n.Set(ctx, k, v)
+}
+
+// Commit ensures all data in the tree is flushed to storage and returns the cid of the head node.
+func (l *lookup) Commit(ctx context.Context) (*cid.Cid, error) {
+	if err := l.n.Flush(ctx); err != nil {
+		return nil, err
+	}
+
+	chunk, err := cbor.DumpObject(l.n)
+	if err != nil {
+		return nil, err
+	}
+
+	return l.s.Put(chunk)
+}
+
+// Values returns a slice of all key-values stored in the lookup
+func (l *lookup) Values(ctx context.Context) ([]*hamt.KV, error) {
+	return l.values(ctx, []*hamt.KV{})
+}
+
+func (l *lookup) values(ctx context.Context, vs []*hamt.KV) ([]*hamt.KV, error) {
+	for _, p := range l.n.Pointers {
+		vs = append(vs, p.KVs...)
+
+		if p.Link == nil {
+			continue
+		}
+
+		subtree, err := LoadLookup(ctx, l.s, p.Link)
+		if err != nil {
+			return nil, err
+		}
+
+		sublookup, ok := subtree.(*lookup)
+		if !ok {
+			return nil, errors.NewFaultError("Non-actor.lookup found in hamt tree")
+		}
+
+		vs, err = sublookup.values(ctx, vs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return vs, nil
 }
