@@ -94,6 +94,7 @@ func deps() {
 		"gometalinter --install",
 		"go get github.com/stretchr/testify",
 		"go get github.com/xeipuuv/gojsonschema",
+		"go get github.com/ipfs/iptb",
 		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
@@ -121,6 +122,7 @@ func smartdeps() {
 		"github.com/whyrusleeping/gx",
 		"github.com/whyrusleeping/gx-go",
 		"github.com/xeipuuv/gojsonschema",
+		"github.com/ipfs/iptb",
 	}
 
 	gopath := os.Getenv("GOPATH")
