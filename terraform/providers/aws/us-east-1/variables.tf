@@ -16,3 +16,11 @@ variable "github_branch_name" {
 
 variable "datadog_api_key" {}
 variable "github_token" {}
+
+variable "es_ip_whitelist" {
+  type = "list"
+  default = [
+    "100.9.239.66/32", #C5-LA
+    "136.24.82.246/32" #eefahy
+  ]  
+}
