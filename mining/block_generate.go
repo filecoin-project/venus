@@ -1,8 +1,8 @@
 package mining
 
-// Block generation is part of the logic of the default Worker (miningWorker).
+// Block generation is part of the logic of the DefaultWorker.
 // 'generate' is that function that actually creates a new block from a base
-// TipSet using the miningWorker's many utilities.
+// TipSet using the DefaultWorker's many utilities.
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 )
 
 // Generate returns a new block created from the messages in the pool.
-func (w *MiningWorker) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64) (*types.Block, error) {
+func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64) (*types.Block, error) {
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")

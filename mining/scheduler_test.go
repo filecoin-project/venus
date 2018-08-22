@@ -3,6 +3,7 @@ package mining
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -25,7 +26,7 @@ func TestMineOnce(t *testing.T) {
 	assert, require, ts := newTestUtils(t)
 
 	// Echoes the sent block to output.
-	worker := newTestWorkerWithDeps(makeEchoMine(require))
+	worker := NewTestWorkerWithDeps(MakeEchoMine(require))
 	scheduler := NewScheduler(worker)
 	result := MineOnce(context.Background(), scheduler, ts)
 	assert.NoError(result.Err)
@@ -41,80 +42,156 @@ func TestSchedulerPassesValue(t *testing.T) {
 		assert.Equal(i.TipSet, ts)
 		outCh <- Output{}
 	}
-	worker := newTestWorkerWithDeps(checkValsMine)
+	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker)
 	inCh, outCh, _ := scheduler.Start(ctx)
-	inCh <- NewInput(context.Background(), ts)
+	inCh <- NewInput(ts)
 	<-outCh
 	cancel()
-	return
 }
 
-func TestSchedulerPassValue(t *testing.T) {
-	assert, require, ts := newTestUtils(t)
-	// Test that we can push multiple blocks through. There was an actual bug
-	// where multiply queued inputs were not all processed.
-	// Another scheduler test.  Now we need to have timing involved...
+// Test that we can push multiple blocks through.  This schedules tipsets
+// with successively higher block heights (aka epoch).
+func TestSchedulerPassesManyValues(t *testing.T) {
+	assert, require, ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	worker := newTestWorkerWithDeps(makeEchoMine(require))
+	var checkTS core.TipSet
+	// make tipsets with progressively higher heights
+	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
+	ts2 := core.RequireNewTipSet(require, blk2)
+	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
+	ts3 := core.RequireNewTipSet(require, blk3)
+
+	checkValsMine := func(c context.Context, i Input, outCh chan<- Output) {
+		assert.Equal(i.TipSet, checkTS)
+		outCh <- Output{}
+	}
+	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker)
 	inCh, outCh, _ := scheduler.Start(ctx)
 	// Note: inputs have to pass whatever check on newly arriving tipsets
-	// are in place in Start().
-	inCh <- NewInput(context.Background(), ts)
-	inCh <- NewInput(context.Background(), ts)
-	inCh <- NewInput(context.Background(), ts)
+	// are in place in Start().  For the (default) timingScheduler tipsets
+	// need increasing heights.
+	checkTS = ts1
+	inCh <- NewInput(ts1)
 	<-outCh
+	checkTS = ts2
+	inCh <- NewInput(ts2)
 	<-outCh
+	checkTS = ts3
+	inCh <- NewInput(ts3)
 	<-outCh
 	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
 	cancel()
 }
 
-func TestSchedulerCancelInputCtx(t *testing.T) {
-	assert, _, ts := newTestUtils(t)
-	// Test that canceling the Input.Ctx cancels that input's mining run.
-	// scheduler test.  Again state / timing considerations need to be respected now
-	// TODO: this test might need to go away with new scheduler patterns, at very least
-	// it should be reevaluated after we settle on a solid new pattern for canceling input runs.
-	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel := context.WithCancel(context.Background())
-	var gotMineCtx context.Context
-	fakeMine := func(c context.Context, i Input, outCh chan<- Output) {
-		gotMineCtx = c
+// TestSchedulerCollect tests that the scheduler collects tipsets before mining
+func TestSchedulerCollect(t *testing.T) {
+	assert, require, ts1 := newTestUtils(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
+	ts2 := core.RequireNewTipSet(require, blk2)
+	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
+	ts3 := core.RequireNewTipSet(require, blk3)
+	checkValsMine := func(c context.Context, i Input, outCh chan<- Output) {
+		assert.Equal(i.TipSet, ts3)
 		outCh <- Output{}
 	}
-	worker := newTestWorkerWithDeps(fakeMine)
+	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker)
-	inCh, outCh, _ := scheduler.Start(miningCtx)
-	inCh <- NewInput(inputCtx, ts)
+	inCh, outCh, _ := scheduler.Start(ctx)
+	inCh <- NewInput(ts1)
+	inCh <- NewInput(ts2)
+	inCh <- NewInput(ts3) // the scheduler will collect the latest input
 	<-outCh
-	inputCtxCancel()
-	assert.Error(gotMineCtx.Err()) // Same context as miningRunCtx.
-	assert.NoError(miningCtx.Err())
-	miningCtxCancel()
+	cancel()
+}
+
+// TestCannotInterruptMiner tests that a tipset from the same epoch, i.e. with
+// the same height, does not affect the base tipset for mining once the
+// mining delay has finished.
+func TestCannotInterruptMiner(t *testing.T) {
+	assert, require, ts1 := newTestUtils(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	blk1 := ts1.ToSlice()[0]
+	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 0}
+	ts2 := core.RequireNewTipSet(require, blk2)
+	blockingMine := func(c context.Context, i Input, outCh chan<- Output) {
+		time.Sleep(mineSleepTime)
+		assert.Equal(i.TipSet, ts1)
+		outCh <- Output{NewBlock: blk1}
+	}
+	worker := NewTestWorkerWithDeps(blockingMine)
+	scheduler := NewScheduler(worker)
+	inCh, outCh, _ := scheduler.Start(ctx)
+	inCh <- NewInput(ts1)
+	// Wait until well after the mining delay, and send a new input.
+	time.Sleep(4 * mineDelay)
+	inCh <- NewInput(ts2)
+	out := <-outCh
+	assert.Equal(out.NewBlock, blk1)
+	cancel()
 }
 
 func TestSchedulerCancelMiningCtx(t *testing.T) {
 	assert, _, ts := newTestUtils(t)
 	// Test that canceling the mining context stops mining, cancels
 	// the inner context, and closes the output channel.
-	// scheduler test
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel := context.WithCancel(context.Background())
-	gotMineCtx := context.Background()
-	fakeMine := func(c context.Context, i Input, outCh chan<- Output) {
-		gotMineCtx = c
-		outCh <- Output{}
+	shouldCancelMine := func(c context.Context, i Input, outCh chan<- Output) {
+		mineTimer := time.NewTimer(mineSleepTime)
+		select {
+		case <-mineTimer.C:
+			t.Fatal("should not take whole time")
+		case <-c.Done():
+		}
 	}
-	worker := newTestWorkerWithDeps(fakeMine)
+	worker := NewTestWorkerWithDeps(shouldCancelMine)
 	scheduler := NewScheduler(worker)
 	inCh, outCh, doneWg := scheduler.Start(miningCtx)
-	inCh <- NewInput(inputCtx, ts)
-	<-outCh
+	inCh <- NewInput(ts)
 	miningCtxCancel()
 	doneWg.Wait()
 	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
-	assert.Error(gotMineCtx.Err())
-	inputCtxCancel()
+}
+
+func TestSchedulerMultiRoundWithCollect(t *testing.T) {
+	assert, require, ts1 := newTestUtils(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	var checkTS core.TipSet
+	// make tipsets with progressively higher heights
+	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
+	ts2 := core.RequireNewTipSet(require, blk2)
+	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
+	ts3 := core.RequireNewTipSet(require, blk3)
+
+	checkValsMine := func(c context.Context, i Input, outCh chan<- Output) {
+		assert.Equal(i.TipSet, checkTS)
+		outCh <- Output{}
+	}
+	worker := NewTestWorkerWithDeps(checkValsMine)
+	scheduler := NewScheduler(worker)
+	inCh, outCh, doneWg := scheduler.Start(ctx)
+	// Note: inputs have to pass whatever check on newly arriving tipsets
+	// are in place in Start().  For the (default) timingScheduler tipsets
+	// need increasing heights.
+	checkTS = ts1
+	inCh <- NewInput(ts3)
+	inCh <- NewInput(ts2)
+	inCh <- NewInput(ts1)
+	<-outCh
+	checkTS = ts2
+	inCh <- NewInput(ts2)
+	inCh <- NewInput(ts1)
+	inCh <- NewInput(ts3)
+	inCh <- NewInput(ts2)
+	inCh <- NewInput(ts2)
+	<-outCh
+	checkTS = ts3
+	inCh <- NewInput(ts3)
+	<-outCh
+	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
+	cancel()
+	doneWg.Wait()
+	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
 }

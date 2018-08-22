@@ -2,16 +2,38 @@ package mining
 
 // The Scheduler listens for new heaviest TipSets and schedules mining work on
 // these TipSets.  The scheduler is ultimately responsible for informing the
-// rest of the system about new successful blocks.  This is the interface to
-// implement if you want to explore an alternate mining strategy.
+// rest of the system about new blocks mined by the Worker.  This is the
+// interface to implement if you want to explore an alternate mining strategy.
 //
-// The default Scheduler implementation, timingScheduler, operates in two
-// states, 'collect', where the scheduler listens for new heaviest tipsets to
-// replace the mining base, and 'ignore', where mining proceeds uninterrupted.
+// The default Scheduler implementation, timingScheduler, is an attempt to
+// prevent miners from getting interrupted by attackers strategically releasing
+// better base tipsets midway through a proving period. Such attacks are bad
+// because they causes miners to waste work.  Note that the term 'base tipset',
+// or 'mining base' is used to denote the tipset that the miner uses as the
+// parent of the block it attempts to generate during mining.
+//
+// The timingScheduler operates in two states, 'collect', where the scheduler
+// listens for new heaviest tipsets to use as the best mining base, and 'ignore',
+// where mining proceeds uninterrupted.  The scheduler enters the 'collect' state
+// each time a new heaviest tipset arrives with a greater height.  The
+// scheduler finishes the collect state after the mining delay time, a protocol
+// parameter, has passed.  The scheduler then enters the 'ignore' state.  Here
+// the scheduler mines, ignoring all inputs with the most recent and lower
+// heights.  'ignore' concludes when the scheduler receives an input tipset,
+// possibly the tipset consisting of the block the miner just mined, with
+// a greater height, and transitions back to collect.  It is in miners'
+// best interest to wait for the collection period so that they can wait to
+// work on a base tipset made up of all blocks mined at the new height.
+//
+// The current approach is limited. It does not prevent wasted work from all
+// strategic block witholding attacks.  This is also going to be effected by
+// current unknowns surrounding the specifics of the mining protocol (i.e. how
+// do VDFs and PoSTs fit into mining, and what is the lookback parameter for
+// challenge sampling.  For more details see:
+// https://gist.github.com/whyrusleeping/4c05fd902f7123bdd1c729e3fffed797
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -21,308 +43,195 @@ import (
 // Scheduler is the mining interface consumers use. When you Start() the
 // scheduler it returns two channels (inCh, outCh) and a sync.WaitGroup:
 //   - inCh: the caller sends Inputs to mine on to this channel.
-//   - outCh: the worker sends Outputs to the caller on this channel.
+//   - outCh: the scheduler sends Outputs to the caller on this channel.
 //   - doneWg: signals that the scheduler and any goroutines it launched
 //             have stopped. (Context cancelation happens async, so you
 //             need some way to know when it has actually stopped.)
 //
-// Once Start()ed, the Scheduler can be stopped by canceling its miningCtx, which
-// will signal on doneWg when it's actually done. Canceling an Input.Ctx
-// just cancels the run for that input. Canceling miningCtx cancels any run
-// in progress and shuts the worker down.
+// Once Start()ed, the Scheduler can be stopped by canceling its miningCtx,
+// which will signal on doneWg when it's actually done. Canceling miningCtx
+// cancels any run in progress and shuts the scheduler down.
 type Scheduler interface {
 	Start(miningCtx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup)
 }
 
 type timingScheduler struct {
-	miningAt uint64
-	base     Input
-	state    receiveState
-
+	// base tracks the current tipset being mined on.  It is only read and
+	// written from the timingScheduler's main receive loop, i.e. collect
+	// and ignore.
+	base Input
+	// worker contains the actual mining logic.
 	worker Worker
 }
 
-type receiveState int
+// mineDelay is the protocol mining delay. The timingScheduler waits for the
+// mining delay during its 'collect' state.  It's set so low right now to
+// facilitate testing.
+const mineDelay = time.Millisecond * 20
 
-const (
-	delay = iota
-	grace
-	ignore
-	end
-)
-
-// mineGrace is the protocol grace period
-const mineGrace = time.Second
-
-// mineSleepTime is the protocol's estimated mining time
-const mineSleepTime = mineGrace * 30
-
-// mineDelay is the protocol mining delay at the beginning of an epoch
-const mineDelay = mineGrace * 2
-
-// runMine runs the miner, inputs to the miner's goroutine are accepted on
-// mineInCh.  For each new input on mineInCh, runMine cancels the old mining
-// run to run the new input.  There is only one outstanding call to the 'mine'
-// function at a time.  Newly mined valid blocks are sent out on outCh. A
-// signal indicating that a run of 'mine' was completed without interruption,
-// even if it did not result in a valid block, is sent on mineOutCh.
-func (s *timingScheduler) runMine(miningCtx context.Context, outCh chan<- Output, mineInCh <-chan Input, mineOutCh chan<- struct{}, doneWg sync.WaitGroup) {
+// runWorker launches calls to worker.Mine().  Inputs to worker.Mine() are
+// accepted on mineInCh.  For each new input on mineInCh, runWorker cancels the
+// old call to worker.Mine() and mines on the new input.  There is only one
+// outstanding call to worker.Mine() at a time.  outCh is the channel read by
+// the scheduler's caller. Newly mined blocks are sent out on outCh if the
+// worker is able to mine a block.  Nothing is output over outCh if the worker
+// does not mine a block.  If there is a mining error it is sent over the
+// outCh.
+func (s *timingScheduler) runWorker(miningCtx context.Context, outCh chan<- Output, mineInCh <-chan Input, doneWg *sync.WaitGroup) {
 	defer doneWg.Done()
-	currentRunCancel := func() {}
 	var currentRunCtx context.Context
+	currentRunCancel := func() {}
 	for {
 		select {
 		case <-miningCtx.Done():
-			fmt.Printf("runMine: miningCtx.Done()\n")
 			currentRunCancel()
 			return
 		case input, ok := <-mineInCh:
-			fmt.Printf("runMine: mineInCh: %v\n", input)
-			if ok {
-				currentRunCancel()
-				currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
-				doneWg.Add(1)
-				go func() {
-					defer doneWg.Done()
-					fmt.Printf("mine: running 'mine'\n")
-					s.worker.Mine(currentRunCtx, input, outCh)
-					mineOutCh <- struct{}{}
-				}()
-			} else {
+			if !ok {
 				// sender closed mineCh, close and ignore
 				mineInCh = nil
+				continue
 			}
+			currentRunCancel()
+			currentRunCtx, currentRunCancel = context.WithCancel(miningCtx)
+			doneWg.Add(1)
+			go func() {
+				defer doneWg.Done()
+				s.worker.Mine(currentRunCtx, input, outCh)
+			}()
 		}
 	}
 }
 
-// delay runs for the protocol mining delay "mineDelay" and updates the base
+// collect runs for the protocol mining delay "mineDelay" and updates the base
 // tipset for mining to the latest tipset read from the input channel.
-// delay initializes the next round of mining, canceling any previous mining
-// calls still running. If mining work from the previous period is not
-// completed delay logs a warning as this indicates someone is speeding up PoST
-// generation somehow.
-func (s *timingScheduler) delay(miningCtx context.Context, inCh <-chan Input, mineInCh chan<- Input, mineOutCh <-chan struct{}) {
-	epoch, err := s.base.TipSet.Height()
-	if err != nil {
-		panic("this can't be happening")
-	}
-	epoch += s.base.NullBlks
-	// No blocks found last epoch? Add a null block for this epoch's input.
-	if s.miningAt > epoch {
-		input := NewInput(s.base.Ctx, s.base.TipSet)
-		input.NullBlks = s.base.NullBlks + uint64(1)
-		s.base = input
-		epoch++
-	}
-
-	// This is unexpected and means someone is generating
-	// PoSTs too fast.
-	defer func() {
-		if s.miningAt != epoch {
-			// log.Warningf("Not enough time to mine on epochs %d to %d", s.miningAt, epoch - 1)
-			s.miningAt = epoch
-		}
-	}()
+// If the scheduler should terminate collect() returns true. collect()
+// initializes the next round of mining, canceling any previous mining calls
+// still running. If the eager flag is set, collect starts mining right away,
+// possibly starting and stopping multiple mining jobs.
+func (s *timingScheduler) collect(miningCtx context.Context, inCh <-chan Input, mineInCh chan<- Input, eager bool) bool {
 	delayTimer := time.NewTimer(mineDelay)
 	for {
 		select {
 		case <-miningCtx.Done():
-			s.state = end
-			return
+			return true
 		case <-delayTimer.C:
-			s.state = grace
-			mineInCh <- s.base
-			return
+			if !eager {
+				mineInCh <- s.base
+			}
+			return false
 		case input, ok := <-inCh:
 			if !ok {
+				// sender closed inCh, close and ignore
 				inCh = nil
 				continue
 			}
-			inEpoch, err := input.TipSet.Height()
-			if err != nil {
-				panic("this can't be happening")
-			}
-			// Older epoch? Do nothing. TODO: is it secure that old heavier tipsets are ignored?
-			// Current epoch? Replace base.
-			// Newer epoch? Loop back to DELAY state for new epoch.
-			if inEpoch == epoch {
-				s.base = input
-			}
-			if inEpoch > epoch {
-				// log.Warning("miner preempted during mining delay")
-				s.base = input
-				epoch = inEpoch
-				return
-			}
-		case _, ok := <-mineOutCh:
-			if ok {
-				s.miningAt++
-			} else {
-				mineOutCh = nil
-			}
-		}
-	}
-}
 
-// grace waits for the protocol grace period "mineGrace".  During the grace
-// period mining is always running.  However grace restarts mining when
-// receiving new heavier base tipsets.
-func (s *timingScheduler) grace(miningCtx context.Context, inCh <-chan Input, mineInCh chan<- Input) {
-	epoch, err := s.base.TipSet.Height()
-	if err != nil {
-		panic("this can't be happening")
-	}
-	epoch += s.base.NullBlks
-
-	graceTimer := time.NewTimer(mineGrace)
-	for {
-		select {
-		case <-miningCtx.Done():
-			s.state = end
-			return
-		case <-graceTimer.C:
-			s.state = ignore
-			return
-		case input, ok := <-inCh:
-			if !ok {
-				inCh = nil
-				continue
-			}
-			inEpoch, err := input.TipSet.Height()
-			if err != nil {
-				panic("this can't be happening")
-			}
-			// Older epoch? Do nothing. TODO: is it secure that old heavier tipsets are ignored?
-			// Current epoch? Restart mining.
-			// Newer epoch? Loop back to DELAY state for new epoch.
-			if inEpoch == epoch {
-				s.base = input
+			log.Infof("scheduler receiving new base %s during collect", input.TipSet.String())
+			s.base = input
+			if eager {
 				mineInCh <- input
 			}
-			if inEpoch > epoch {
-				// log.Warning("miner preempted during grace period")
-				s.base = input
-				s.state = delay
-				return
-			}
 		}
 	}
 }
 
-// ignore waits for the mining period.  During this time no new tipsets of this
-// epoch are accepted as new mining bases.  ignore is finished when the mining
-// period is over, or a tipset of the next epoch is input.
-func (s *timingScheduler) ignore(miningCtx context.Context, inCh <-chan Input, mineOutCh <-chan struct{}) {
-	epoch, err := s.base.TipSet.Height()
-	if err != nil {
-		panic("this can't be happening")
-	}
-	epoch += s.base.NullBlks
-
-	mineTimer := time.NewTimer(mineSleepTime)
+// ignore() waits for a new heaviest tipset with a greater height. No new tipsets
+// from the current base tipset's height or lower heights are accepted as the
+// new mining base.  If the scheduler should terminate ignore() returns true.
+// The purpose of the ignore state is to de-incentivize strategic lagging of
+// block propagation part way through a proving period which can cause
+// competing miners to waste work.
+// Note: this strategy is limited, it does not prevent witholding tipsets of
+// greater heights than the current base or from witholding tipsets from miners
+// with a null block mining base.
+func (s *timingScheduler) ignore(miningCtx context.Context, inCh <-chan Input) bool {
 	for {
 		select {
 		case <-miningCtx.Done():
-			s.state = end
-			return
-		case <-mineTimer.C:
-			s.state = delay
-			return
+			return true
 		case input, ok := <-inCh:
 			if !ok {
 				inCh = nil
 				continue
 			}
-			inEpoch, err := input.TipSet.Height()
+
+			// Scheduler begins in ignore state with a nil base.
+			// This case handles base init on the very first input.
+			if s.base.TipSet == nil {
+				s.base = input
+				return false
+			}
+
+			curHeight, err := s.base.TipSet.Height()
 			if err != nil {
 				panic("this can't be happening")
 			}
-			// Older epoch? Current epoch? Do nothing.
-			// Newer epoch? Loop back to DELAY state for new epoch.
-			if inEpoch > epoch {
+			inHeight, err := input.TipSet.Height()
+			if err != nil {
+				panic("this can't be happening")
+			}
+
+			// Newer epoch? Loop back to collect state for new non-null epoch.
+			if inHeight > curHeight {
+				log.Infof("scheduler receiving new base %s during ignore, transition to collect", input.TipSet.String())
 				s.base = input
-				s.state = delay
-				return
+				return false
 			}
-		case _, ok := <-mineOutCh:
-			if ok {
-				s.miningAt++
-			} else {
-				mineOutCh = nil
-			}
+			log.Debugf("scheduler ignoring %s during ignore because height is not greater than height of current base", input.TipSet.String())
 		}
 	}
 }
 
-// Start is the main entrypoint for Worker. Call it to start mining. It returns
-// two channels: an input channel for blocks and an output channel for results.
-// It also returns a waitgroup that will signal that all mining runs have
-// completed. Each block that is received on the input channel causes the
-// worker to cancel the context of the previous mining run if any and start
-// mining on the new block. Any results are sent into its output channel.
-// Closing the input channel does not cause the worker to stop; cancel
-// the Input.Ctx to cancel an individual mining run or the mininCtx to
-// stop all mining and shut down the worker.
-//
-// TODO A potentially simpler interface here would be for the worker to
-// take the input channel from the caller and then shut everything down
-// when the input channel is closed.
+// Start is the main entrypoint for the timingScheduler. Call it to start
+// mining. It returns two channels: an input channel for tipsets and an output
+// channel for newly mined blocks. It also returns a waitgroup that will signal
+// that all mining runs and auxiliary goroutines have completed. Each tipset
+// that is received on the input channel is procssesed by the scheduler.
+// Depending on the tipset height and the time the input is received, a new
+// input may cancel the context of the previous mining run, or be ignorned.
+// Any successfully mined blocks are sent into the output channel. Closing the
+// input channel does not cause the scheduler to stop; cancel the miningCtx to
+// stop all mining and shut down the scheduler.
 func (s *timingScheduler) Start(miningCtx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
 	inCh := make(chan Input)
 	outCh := make(chan Output)
 	mineInCh := make(chan Input)
-	mineOutCh := make(chan struct{})
 	var doneWg sync.WaitGroup    // for internal use
 	var extDoneWg sync.WaitGroup // for external use
 
+	log.Debugf("scheduler starting 'runWorker' goroutine")
 	doneWg.Add(1)
-	go s.runMine(miningCtx, outCh, mineInCh, mineOutCh, doneWg)
+	go s.runWorker(miningCtx, outCh, mineInCh, &doneWg)
 
+	log.Debugf("scheduler starting main receive loop")
 	doneWg.Add(1)
 	go func() {
 		defer doneWg.Done()
-
-		// Wait for an initial value
-		input := <-inCh
-		s.base = input
-		fmt.Printf("Start: init\n")
-
-		// The receive loop.  The worker operates in three basic receiveStates:
-		//   delay  -- wait for the mining delay to receive the best tipset for this epoch
-		//   grace  -- start mining but restart off of better tipsets that arrive
-		//   ignore -- ignore all tipsets from the current epoch and finish mining
+		// for now keep 'eager' unset. TODO eventually pull from config or CLI flag.
+		eager := false
+		// The receive loop. The scheduler operates in two basic states
+		//   collect  -- wait for the mining delay to listen for better base tipsets
+		//   ignore -- mine on the best tipset, ignore all tipsets with height <= the height of the current base
 		for {
-			switch s.state {
-			case delay:
-				fmt.Printf("Start: delay\n")
-				s.delay(miningCtx, inCh, mineInCh, mineOutCh)
-			case grace:
-				fmt.Printf("Start: grace\n")
-				s.grace(miningCtx, inCh, mineInCh)
-			case ignore:
-				fmt.Printf("Start: ignore\n")
-				s.ignore(miningCtx, inCh, mineOutCh)
-			case end:
-				fmt.Printf("Start: end\n")
+			if end := s.ignore(miningCtx, inCh); end {
 				return
-			default:
-				panic("worker should never reach here")
+			}
+			if end := s.collect(miningCtx, inCh, mineInCh, eager); end {
+				return
 			}
 		}
 	}()
 
 	// This tear down goroutine waits for all work to be done before closing
 	// channels.  When this goroutine is complete, external code can
-	// consider the worker to be done.
+	// consider the scheduler to be done.
 	extDoneWg.Add(1)
 	go func() {
+		defer extDoneWg.Done()
 		doneWg.Wait()
 		close(outCh)
 		close(mineInCh)
-		close(mineOutCh)
-		extDoneWg.Done()
-		fmt.Printf("tear down all done\n")
 	}()
 	return inCh, outCh, &extDoneWg
 }
@@ -340,6 +249,6 @@ func MineOnce(ctx context.Context, s Scheduler, ts core.TipSet) Output {
 	defer subCtxCancel()
 
 	inCh, outCh, _ := s.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, ts) }()
+	go func() { inCh <- NewInput(ts) }()
 	return <-outCh
 }

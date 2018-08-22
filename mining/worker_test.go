@@ -26,37 +26,52 @@ func Test_Mine(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
 	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
-	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	ctx := context.Background()
+	tipSet := core.RequireNewTipSet(require, baseBlock)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// Success.
 	st, pool, addrs, cst, bs := sharedSetup(t)
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewMiningWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
-	next, err := worker.Generate(ctx, tipSet, nil, 0)
-	require.NoError(err)
+
+	// Success case. TODO: this case isn't testing much.  Testing w.Mine
+	// further needs a lot more attention.
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 	outCh := make(chan Output)
 	doSomeWorkCalled := false
 	worker.createPoST = func() { doSomeWorkCalled = true }
-	input := NewInput(ctx, tipSet)
+	input := NewInput(tipSet)
 	go worker.Mine(ctx, input, outCh)
 	r := <-outCh
 	assert.NoError(r.Err)
 	assert.True(doSomeWorkCalled)
-	assert.True(r.NewBlock.Cid().Equals(next.Cid()))
+	cancel()
 
 	// Block generation fails.
-	worker = NewMiningWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	ctx, cancel = context.WithCancel(context.Background())
+	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
-	input = NewInput(ctx, tipSet)
+	input = NewInput(tipSet)
 	go worker.Mine(ctx, input, outCh)
 	r = <-outCh
 	assert.Error(r.Err)
 	assert.True(doSomeWorkCalled)
+	cancel()
+
+	// Sent empty tipset
+	ctx, cancel = context.WithCancel(context.Background())
+	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	outCh = make(chan Output)
+	doSomeWorkCalled = false
+	worker.createPoST = func() { doSomeWorkCalled = true }
+	input = NewInput(core.TipSet{})
+	go worker.Mine(ctx, input, outCh)
+	r = <-outCh
+	assert.Error(r.Err)
+	assert.False(doSomeWorkCalled)
+	cancel()
 }
 
 func TestIsWinningTicket(t *testing.T) {
@@ -123,26 +138,12 @@ func TestCreateChallenge(t *testing.T) {
 	}
 }
 
-// Implements NullBlockTimerFunc with the policy that it is always a good time
-// to create a null block.
-func nullBlockImmediately() {
-}
-
-// Returns a ticket checking function that return true every third time
-func everyThirdWinningTicket() func(_ []byte, _, _ int64) bool {
-	count := 0
-	return func(_ []byte, _, _ int64) bool {
-		count++
-		return count%3 == 0
-	}
-}
-
 var seed = types.GenerateKeyInfoSeed()
 var ki = types.MustGenerateKeyInfo(10, seed)
 var mockSigner = types.NewMockSigner(ki)
 
 func TestGenerate(t *testing.T) {
-	// TODO fritz use core.FakeActor for state/contract tests for generate:
+	// TODO use core.FakeActor for state/contract tests for generate:
 	//  - test nonces out of order
 	//  - test nonce gap
 }
@@ -248,7 +249,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewMiningWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -285,7 +286,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewMiningWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -341,7 +342,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewMiningWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -379,7 +380,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewMiningWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -404,7 +405,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	worker := NewMiningWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)

@@ -22,25 +22,29 @@ func (s *MockScheduler) Start(ctx context.Context) (chan<- Input, <-chan Output,
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFun func(context.Context, Input, chan<- Output)
+	WorkFunc func(context.Context, Input, chan<- Output)
 }
 
-// Mine is the TestWorker's Work function.  It simply calls the workFun
+// Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
 func (w *TestWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
-	if w.WorkFun == nil {
-		panic("must set MutableTestWorker's WorkFun before calling Work")
+	if w.WorkFunc == nil {
+		panic("must set MutableTestWorker's WorkFunc before calling Work")
 	}
-	w.WorkFun(ctx, input, outCh)
+	w.WorkFunc(ctx, input, outCh)
 }
 
-func newTestWorkerWithDeps(f func(context.Context, Input, chan<- Output)) *TestWorker {
+// NewTestWorkerWithDeps creates a worker that calls the provided input
+// function when Mine() is called.
+func NewTestWorkerWithDeps(f func(context.Context, Input, chan<- Output)) *TestWorker {
 	return &TestWorker{
-		WorkFun: f,
+		WorkFunc: f,
 	}
 }
 
-func makeEchoMine(require *require.Assertions) func(context.Context, Input, chan<- Output) {
+// MakeEchoMine returns a test worker function that itself returns the first
+// block of the input tipset as output.
+func MakeEchoMine(require *require.Assertions) func(context.Context, Input, chan<- Output) {
 	echoMine := func(c context.Context, i Input, outCh chan<- Output) {
 		require.NotEqual(0, len(i.TipSet))
 		b := i.TipSet.ToSlice()[0]

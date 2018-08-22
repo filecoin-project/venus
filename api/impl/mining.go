@@ -26,7 +26,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 
-	worker := mining.NewMiningWorker(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	worker := mining.NewDefaultWorker(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return nd.ChainMgr.State(ctx, ts.ToSlice())
 	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView, nd.Blockstore, nd.CborStore, miningAddr)
 

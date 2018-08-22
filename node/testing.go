@@ -119,7 +119,7 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return node.ChainMgr.State(ctx, ts.ToSlice())
 	}
-	w := mining.NewMiningWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, address.TestAddress)
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, address.TestAddress)
 	cur := node.ChainMgr.GetHeaviestTipSet()
 	out := mining.MineOnce(ctx, mining.NewScheduler(w), cur)
 	require.NoError(out.Err)

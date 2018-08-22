@@ -324,7 +324,9 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 }
 
 func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet) {
+	currentBestCancel := func() {}
 	for ts := range node.HeaviestTipSetCh {
+		var currentBestCtx context.Context
 		newHead := ts.(core.TipSet)
 		if len(newHead) == 0 {
 			log.Error("TipSet of size 0 published on HeaviestTipSetCh:")
@@ -338,19 +340,25 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet)
 		}
 		head = newHead
 		if node.isMining() {
-
+			// The miningInCh should accept tipsets with strictly increasing
+			// weight, so cancel the previous input.
+			currentBestCancel()
+			currentBestCtx, currentBestCancel = context.WithCancel(context.Background())
 			node.miningDoneWg.Add(1)
 			go func() {
 				defer func() { node.miningDoneWg.Done() }()
 				select {
-				case <-node.miningCtx.Done():
+				case <-node.miningCtx.Done(): // mining is done
 					return
-				case node.miningInCh <- mining.NewInput(context.Background(), head):
+				case <-currentBestCtx.Done(): // this input is no longer the heaviest
+					return
+				case node.miningInCh <- mining.NewInput(head):
 				}
 			}()
 		}
 		node.HeaviestTipSetHandled()
 	}
+	currentBestCancel() // keep the linter happy
 }
 
 func (node *Node) cancelSubscriptions() {
@@ -436,7 +444,7 @@ func (node *Node) StartMining() error {
 		getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return node.ChainMgr.State(ctx, ts.ToSlice())
 		}
-		worker := mining.NewMiningWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, miningAddress)
+		worker := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, miningAddress)
 		node.MiningScheduler = mining.NewScheduler(worker)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
 		inCh, outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
@@ -455,15 +463,14 @@ func (node *Node) StartMining() error {
 	node.miningDoneWg.Add(1)
 	go func() {
 		defer func() { node.miningDoneWg.Done() }()
-		// TODO(EC): Here is where we kick mining off when we start off. Will
-		// need to change to pass in best tipsets, of which there can be multiple.
 		hts := node.ChainMgr.GetHeaviestTipSet()
 		select {
 		case <-node.miningCtx.Done():
 			return
-		case node.miningInCh <- mining.NewInput(context.Background(), hts):
+		case node.miningInCh <- mining.NewInput(hts):
 		}
 	}()
+
 	return nil
 }
 
@@ -482,7 +489,6 @@ func (node *Node) initSectorBuilder(minerAddr types.Address) error {
 
 // StopMining stops mining on new blocks.
 func (node *Node) StopMining() {
-	// TODO should probably also keep track of and cancel last mining.Input.Ctx.
 	node.setIsMining(false)
 }
 

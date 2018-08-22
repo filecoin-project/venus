@@ -108,9 +108,9 @@ func getChainManager(d repo.Datastore, bs blockstore.Blockstore) (*core.ChainMan
 	return cm, cst
 }
 
-func getWorker(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore, bs blockstore.Blockstore) *mining.MiningWorker {
+func getWorker(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore, bs blockstore.Blockstore) *mining.DefaultWorker {
 	ma := types.MakeTestAddress("miningAddress")
-	return mining.NewMiningWorker(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	return mining.NewDefaultWorker(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
 	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst, ma)
 }
