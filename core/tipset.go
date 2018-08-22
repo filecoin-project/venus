@@ -124,7 +124,7 @@ func (ts TipSet) MinTicket() (types.Signature, error) {
 	}
 	blks := ts.ToSlice()
 	min := blks[0].Ticket
-	for i := range blks[1:] {
+	for i := range blks[0:] {
 		if bytes.Compare(blks[i].Ticket, min) < 0 {
 			min = blks[i].Ticket
 		}

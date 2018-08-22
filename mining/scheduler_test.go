@@ -27,7 +27,7 @@ func TestMineOnce(t *testing.T) {
 
 	// Echoes the sent block to output.
 	worker := NewTestWorkerWithDeps(MakeEchoMine(require))
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	result := MineOnce(context.Background(), scheduler, ts)
 	assert.NoError(result.Err)
 	assert.True(ts.ToSlice()[0].StateRoot.Equals(result.NewBlock.StateRoot))
@@ -43,7 +43,7 @@ func TestSchedulerPassesValue(t *testing.T) {
 		outCh <- Output{}
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, _ := scheduler.Start(ctx)
 	inCh <- NewInput(ts)
 	<-outCh
@@ -67,7 +67,7 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 		outCh <- Output{}
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, _ := scheduler.Start(ctx)
 	// Note: inputs have to pass whatever check on newly arriving tipsets
 	// are in place in Start().  For the (default) timingScheduler tipsets
@@ -98,7 +98,7 @@ func TestSchedulerCollect(t *testing.T) {
 		outCh <- Output{}
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, _ := scheduler.Start(ctx)
 	inCh <- NewInput(ts1)
 	inCh <- NewInput(ts2)
@@ -117,16 +117,16 @@ func TestCannotInterruptMiner(t *testing.T) {
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 0}
 	ts2 := core.RequireNewTipSet(require, blk2)
 	blockingMine := func(c context.Context, i Input, outCh chan<- Output) {
-		time.Sleep(mineSleepTime)
+		time.Sleep(BlockTimeTest)
 		assert.Equal(i.TipSet, ts1)
 		outCh <- Output{NewBlock: blk1}
 	}
 	worker := NewTestWorkerWithDeps(blockingMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, _ := scheduler.Start(ctx)
 	inCh <- NewInput(ts1)
 	// Wait until well after the mining delay, and send a new input.
-	time.Sleep(4 * mineDelay)
+	time.Sleep(4 * MineDelayTest)
 	inCh <- NewInput(ts2)
 	out := <-outCh
 	assert.Equal(out.NewBlock, blk1)
@@ -139,7 +139,7 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	// the inner context, and closes the output channel.
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
 	shouldCancelMine := func(c context.Context, i Input, outCh chan<- Output) {
-		mineTimer := time.NewTimer(mineSleepTime)
+		mineTimer := time.NewTimer(BlockTimeTest)
 		select {
 		case <-mineTimer.C:
 			t.Fatal("should not take whole time")
@@ -147,7 +147,7 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 		}
 	}
 	worker := NewTestWorkerWithDeps(shouldCancelMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, doneWg := scheduler.Start(miningCtx)
 	inCh <- NewInput(ts)
 	miningCtxCancel()
@@ -170,7 +170,7 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 		outCh <- Output{}
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
-	scheduler := NewScheduler(worker)
+	scheduler := NewScheduler(worker, MineDelayTest)
 	inCh, outCh, doneWg := scheduler.Start(ctx)
 	// Note: inputs have to pass whatever check on newly arriving tipsets
 	// are in place in Start().  For the (default) timingScheduler tipsets

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap"
 	bsnet "gx/ipfs/QmNgGXeuaQRR1cy5EbX71R5P6Y8edFyH4GLZxbYd76n6ag/go-bitswap/network"
@@ -74,6 +75,7 @@ type Node struct {
 	cancelMining       context.CancelFunc
 	miningDoneWg       *sync.WaitGroup
 	AddNewlyMinedBlock newBlockFunc
+	blockTime          time.Duration
 
 	// Storage Market Interfaces
 	StorageClient *StorageClient
@@ -128,6 +130,7 @@ type Config struct {
 	Repo         repo.Repo
 	OfflineMode  bool
 	MockMineMode bool // TODO: this is a TEMPORARY workaround
+	BlockTime    time.Duration
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -224,6 +227,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		SectorBuilders: make(map[types.Address]*SectorBuilder),
 		Wallet:         fcWallet,
 		mockMineMode:   nc.MockMineMode,
+		blockTime:      nc.BlockTime,
 	}
 
 	// Bootstrapping network peers.
@@ -432,6 +436,15 @@ func (node *Node) MiningAddress() (types.Address, error) {
 	return newConfig.Mining.MinerAddresses[0], nil
 }
 
+// MiningTimes returns the configured time it takes to mine a block, and also
+// the mining delay duration, which is currently a fixed fraction of block time.
+// Note this is mocked behavior, in production this time is determined by how
+// long it takes to generate PoSTs.
+func (node *Node) MiningTimes() (time.Duration, time.Duration) {
+	mineDelay := node.blockTime / mining.MineDelayConversionFactor
+	return node.blockTime, mineDelay
+}
+
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
 func (node *Node) StartMining() error {
@@ -439,13 +452,14 @@ func (node *Node) StartMining() error {
 	if err != nil {
 		return err
 	}
+	blockTime, mineDelay := node.MiningTimes()
 
 	if node.MiningScheduler == nil {
 		getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 			return node.ChainMgr.State(ctx, ts.ToSlice())
 		}
-		worker := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, miningAddress)
-		node.MiningScheduler = mining.NewScheduler(worker)
+		worker := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, miningAddress, blockTime)
+		node.MiningScheduler = mining.NewScheduler(worker, mineDelay)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
 		inCh, outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
 		node.miningInCh = inCh

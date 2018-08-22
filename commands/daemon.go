@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -32,6 +33,7 @@ var daemonCmd = &cmds.Command{
 		cmdkit.StringOption(SwarmListen),
 		cmdkit.BoolOption(OfflineMode),
 		cmdkit.BoolOption(MockMineMode),
+		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		if err := daemonRun(req, re, env); err != nil {
@@ -83,6 +85,19 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 			return nil
 		})
 	}
+
+	durStr, ok := req.Options[BlockTime].(string)
+	if !ok {
+		return errors.New("Bad block time passed")
+	}
+	blockTime, err := time.ParseDuration(durStr)
+	if err != nil {
+		return errors.Wrap(err, "Bad block time passed")
+	}
+	opts = append(opts, func(c *node.Config) error {
+		c.BlockTime = blockTime
+		return nil
+	})
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {

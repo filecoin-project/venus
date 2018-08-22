@@ -3,10 +3,17 @@ package mining
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// BlockTimeTest is the block time used by workers during testing
+const BlockTimeTest = time.Millisecond * 300
+
+// MineDelayTest is the mining delay used by schedulers during testing
+const MineDelayTest = time.Millisecond * 10
 
 // MockScheduler is a mock Scheduler.
 type MockScheduler struct {
