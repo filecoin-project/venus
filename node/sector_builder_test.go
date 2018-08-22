@@ -28,6 +28,7 @@ func TestSectorBuilderSimple(t *testing.T) {
 	_, sb, _ := NodeWithSectorBuilder(t, testSectorSize)
 	sector, err := sb.NewSector()
 	require.NoError(err)
+	ctx := context.Background()
 
 	d1Data := []byte("hello world")
 	d1 := &PieceInfo{
@@ -35,12 +36,12 @@ func TestSectorBuilderSimple(t *testing.T) {
 		Size:   uint64(len(d1Data)),
 	}
 
-	if err := sector.WritePiece(d1, bytes.NewReader(d1Data)); err != nil {
+	if err := sector.WritePiece(ctx, d1, bytes.NewReader(d1Data)); err != nil {
 		t.Fatal(err)
 	}
 
 	ag := types.NewAddressForTestGetter()
-	_, err = sb.Seal(sector, ag())
+	_, err = sb.Seal(ctx, sector, ag())
 	if err != nil {
 		t.Fatal(err)
 	}
