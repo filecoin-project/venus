@@ -255,28 +255,75 @@ func (td *TestDaemon) GetID() string {
 }
 
 // GetAddress returns the first address of the daemon.
-func (td *TestDaemon) GetAddress() string {
+func (td *TestDaemon) GetAddress() []string {
 	out := td.RunSuccess("id")
 	var parsed map[string]interface{}
 	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
-
 	adders := parsed["Addresses"].([]interface{})
-	return adders[0].(string)
+
+	res := make([]string, len(adders))
+	for i, addr := range adders {
+		res[i] = addr.(string)
+	}
+	return res
 }
 
 // ConnectSuccess connects the daemon to another daemon, asserting that
 // the operation was successful.
 func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
+	remoteAddrs := remote.GetAddress()
+	delay := 100 * time.Millisecond
+
 	// Connect the nodes
-	out := td.RunSuccess("swarm", "connect", remote.GetAddress())
-	peers1 := td.RunSuccess("swarm", "peers")
-	peers2 := remote.RunSuccess("swarm", "peers")
+	// This usually works on the first try, but leaving this here, to ensure we
+	// connect and don't fail the test.
+	var out *Output
+Outer:
+	for i := 0; i < 5; i++ {
+		for j, remoteAddr := range remoteAddrs {
+			out = td.Run("swarm", "connect", remoteAddr)
+			if out.Error == nil && out.Code == 0 {
+				if i > 0 || j > 0 {
+					fmt.Printf("WARNING: swarm connect took %d tries", (i+1)*(j+1))
+				}
+				break Outer
+			}
+			time.Sleep(delay)
+		}
+	}
+	assert.Equal(td.test, out.Code, 0, "failed to execute swarm connect")
 
-	td.test.Log("[success] 1 -> 2")
-	require.Contains(td.test, peers1.ReadStdout(), remote.GetID())
+	localID := td.GetID()
+	remoteID := remote.GetID()
 
-	td.test.Log("[success] 2 -> 1")
-	require.Contains(td.test, peers2.ReadStdout(), td.GetID())
+	connected1 := false
+	for i := 0; i < 10; i++ {
+		peers1 := td.RunSuccess("swarm", "peers")
+
+		p1 := peers1.ReadStdout()
+		connected1 = strings.Contains(p1, remoteID)
+		if connected1 {
+			break
+		}
+		td.test.Log(p1)
+		time.Sleep(delay)
+	}
+
+	connected2 := false
+	for i := 0; i < 10; i++ {
+		peers2 := remote.RunSuccess("swarm", "peers")
+
+		p2 := peers2.ReadStdout()
+		connected2 = strings.Contains(p2, localID)
+		if connected2 {
+			break
+		}
+		td.test.Log(p2)
+		time.Sleep(delay)
+	}
+
+	require.True(td.test, connected1, "failed to connect p1 -> p2")
+	require.True(td.test, connected2, "failed to connect p2 -> p1")
 
 	return out
 }
@@ -371,7 +418,6 @@ func (td *TestDaemon) WaitForAPI() error {
 func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	// need money
 	td.RunSuccess("mining", "once")
-	fmt.Println("mined once")
 
 	var wg sync.WaitGroup
 	var minerAddr types.Address
@@ -379,7 +425,6 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
-		fmt.Println("miner created")
 		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(td.test, err)
 		assert.NotEqual(td.test, addr, types.Address{})
@@ -389,10 +434,8 @@ func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
 
 	// ensure mining runs after the command in our goroutine
 	td.RunSuccess("mpool --wait-for-count=1")
-	fmt.Println("message in mempool")
 
 	td.RunSuccess("mining", "once")
-	fmt.Println("mined once")
 
 	wg.Wait()
 
@@ -716,6 +759,8 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	// define filecoin daemon process
 	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, mockMineFlag, swarmListenFlag)
+	// disable REUSEPORT, it creates problems in tests
+	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
 
 	// setup process pipes
 	td.Stdout, err = td.process.StdoutPipe()
