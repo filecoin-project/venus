@@ -5,7 +5,6 @@ package mining
 // generating new blocks, and forwarding them out to the wider node.
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"math/big"
@@ -25,24 +24,18 @@ import (
 
 var (
 	ticketDomain *big.Int
-	// mineWarnThreshold is the number of seconds of mining after which the worker
-	// logs a warning that mining is wasting an unexpected amount of work.
-	mineWarnThreshold float64
-	log               = logging.Logger("mining")
+	log          = logging.Logger("mining")
 )
-
-// mineSleepTime is the estimated mining time.  We define this so that we can
-// fake mining with the current incomplete system.  TODO this needs to be
-// configurable to expediate both unit and large scale testing.
-const mineSleepTime = mineDelay * 30
 
 func init() {
 	ticketDomain = &big.Int{}
 	ticketDomain.Exp(big.NewInt(2), big.NewInt(256), nil)
 	ticketDomain.Sub(ticketDomain, big.NewInt(1))
-
-	mineWarnThreshold = mineSleepTime.Seconds() / 2.0
 }
+
+// DefaultBlockTime is the estimated proving period time.
+// We define this so that we can fake mining in the current incomplete system.
+const DefaultBlockTime = time.Millisecond * 200
 
 // Input is the TipSets the worker should mine on, the address
 // to accrue rewards to, and a context that the caller can use
@@ -100,15 +93,18 @@ type DefaultWorker struct {
 	powerTable    core.PowerTableView
 	blockstore    blockstore.Blockstore
 	cstore        *hamt.CborIpldStore
+	blockTime     time.Duration
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address) *DefaultWorker {
-	return NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, createPoST)
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, bt time.Duration) *DefaultWorker {
+	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, bt, func() {})
+	w.createPoST = w.fakeCreatePoST
+	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree:  getStateTree,
 		getWeight:     getWeight,
@@ -119,6 +115,7 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetSta
 		cstore:        cst,
 		createPoST:    createPoST,
 		minerAddr:     miner,
+		blockTime:     bt,
 	}
 }
 
@@ -151,14 +148,18 @@ func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Outp
 			return
 		}
 
-		challenge := createChallenge(input.TipSet, nullBlkCount)
+		challenge, err := createChallenge(input.TipSet, nullBlkCount)
+		if err != nil {
+			outCh <- Output{Err: err}
+			return
+		}
 		prCh := createProof(challenge, w.createPoST)
 		var ticket []byte
 		select {
 		case <-ctx.Done():
 			mineTime := time.Since(start)
-			log.Infof("Mining run on: %s canceled.", input.TipSet.String())
-			if mineTime.Seconds() < mineWarnThreshold {
+			log.Infof("Mining run on base %s with %d null blocks canceled.", input.TipSet.String(), nullBlkCount)
+			if mineTime < (w.blockTime / 2) {
 				log.Warningf("Abandoning mining after %f seconds.  Wasting lots of work...", mineTime.Seconds())
 			}
 			return
@@ -173,6 +174,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Outp
 				log.SetTag(ctx, "block", next)
 			}
 			outCh <- NewOutput(next, err)
+			return
 		}
 	}
 }
@@ -180,13 +182,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Outp
 // TODO -- in general this won't work with only the base tipset, we'll potentially
 // need some chain manager utils, similar to the State function, to sample
 // further back in the chain.
-func createChallenge(parents core.TipSet, nullBlkCount uint64) []byte {
-	// Find the smallest ticket from parent set
-	var smallest types.Signature
-	for _, v := range parents {
-		if smallest == nil || bytes.Compare(v.Ticket, smallest) < 0 {
-			smallest = v.Ticket
-		}
+func createChallenge(parents core.TipSet, nullBlkCount uint64) ([]byte, error) {
+	smallest, err := parents.MinTicket()
+	if err != nil {
+		return nil, err
 	}
 
 	buf := make([]byte, 4)
@@ -194,7 +193,7 @@ func createChallenge(parents core.TipSet, nullBlkCount uint64) []byte {
 	buf = append(smallest, buf[:n]...)
 
 	h := sha256.Sum256(buf)
-	return h[:]
+	return h[:], nil
 }
 
 // TODO: Actually use the results of the PoST once it is implemented.
@@ -222,12 +221,11 @@ var isWinningTicket = func(ticket []byte, myPower, totalPower int64) bool {
 
 	rhs := &big.Int{}
 	rhs.Mul(big.NewInt(myPower), ticketDomain)
-
 	return lhs.Cmp(rhs) < 0
 }
 
-// createPoST is the default implementation of DoSomeWorkFunc. Contrary to the
-// advertisement, it doesn't do anything yet.
-func createPoST() {
-	time.Sleep(mineSleepTime)
+// fakeCreatePoST is the default implementation of DoSomeWorkFunc.
+// It simply sleeps for the blockTime.
+func (w *DefaultWorker) fakeCreatePoST() {
+	time.Sleep(w.blockTime)
 }

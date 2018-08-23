@@ -112,7 +112,7 @@ func getWorker(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborI
 	ma := types.MakeTestAddress("miningAddress")
 	return mining.NewDefaultWorker(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
-	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst, ma)
+	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst, ma, mining.BlockTimeTest)
 }
 
 func getStateTree(ctx context.Context, d repo.Datastore, bs blockstore.Blockstore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, core.TipSet, error) {

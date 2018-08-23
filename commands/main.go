@@ -41,6 +41,10 @@ const (
 	MockMineMode = "mock-mine"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
+	// BlockTime is the duration string of the block time the daemon will
+	// run with.  TODO: this should eventually be more explicitly grouped
+	// with testing as we won't be able to set blocktime in production.
+	BlockTime = "block-time"
 )
 
 var rootCmd = &cmds.Command{

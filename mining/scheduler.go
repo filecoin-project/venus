@@ -62,12 +62,13 @@ type timingScheduler struct {
 	base Input
 	// worker contains the actual mining logic.
 	worker Worker
+	// mineDelay is the time the scheduler blocks for collection.
+	mineDelay time.Duration
 }
 
-// mineDelay is the protocol mining delay. The timingScheduler waits for the
-// mining delay during its 'collect' state.  It's set so low right now to
-// facilitate testing.
-const mineDelay = time.Millisecond * 20
+// MineDelayConversionFactor is the constant that divides the mining block time
+// to arrive and the mining delay.  TODO: get a legit value for this param.
+const MineDelayConversionFactor = 30
 
 // runWorker launches calls to worker.Mine().  Inputs to worker.Mine() are
 // accepted on mineInCh.  For each new input on mineInCh, runWorker cancels the
@@ -103,14 +104,14 @@ func (s *timingScheduler) runWorker(miningCtx context.Context, outCh chan<- Outp
 	}
 }
 
-// collect runs for the protocol mining delay "mineDelay" and updates the base
+// collect runs for the s.mineDelay and updates the base
 // tipset for mining to the latest tipset read from the input channel.
 // If the scheduler should terminate collect() returns true. collect()
 // initializes the next round of mining, canceling any previous mining calls
 // still running. If the eager flag is set, collect starts mining right away,
 // possibly starting and stopping multiple mining jobs.
 func (s *timingScheduler) collect(miningCtx context.Context, inCh <-chan Input, mineInCh chan<- Input, eager bool) bool {
-	delayTimer := time.NewTimer(mineDelay)
+	delayTimer := time.NewTimer(s.mineDelay)
 	for {
 		select {
 		case <-miningCtx.Done():
@@ -238,8 +239,8 @@ func (s *timingScheduler) Start(miningCtx context.Context) (chan<- Input, <-chan
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker) Scheduler {
-	return &timingScheduler{worker: w}
+func NewScheduler(w Worker, md time.Duration) Scheduler {
+	return &timingScheduler{worker: w, mineDelay: md}
 }
 
 // MineOnce is a convenience function that presents a synchronous blocking
