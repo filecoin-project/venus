@@ -116,12 +116,12 @@ func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.B
 	// wait for create miner call to put a message in the pool
 	_, err = subscription.Next(ctx)
 	require.NoError(err)
-
-	blockGenerator := mining.NewBlockGenerator(node.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return node.ChainMgr.State(ctx, ts.ToSlice())
-	}, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore)
+	}
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, node.ChainMgr.Weight, core.ApplyMessages, node.ChainMgr.PwrTableView, node.Blockstore, node.CborStore, address.TestAddress)
 	cur := node.ChainMgr.GetHeaviestTipSet()
-	out := mining.MineOnce(ctx, mining.NewWorker(blockGenerator, address.TestAddress), cur)
+	out := mining.MineOnce(ctx, mining.NewScheduler(w), cur)
 	require.NoError(out.Err)
 	require.NoError(node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, out.NewBlock)))
 

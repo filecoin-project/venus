@@ -4,37 +4,53 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-// MockBlockGenerator is a testify mock for BlockGenerator.
-type MockBlockGenerator struct {
+// MockScheduler is a mock Scheduler.
+type MockScheduler struct {
 	mock.Mock
 }
 
-var _ BlockGenerator = &MockBlockGenerator{}
-
-// Generate is a testify mock implementation.
-func (bg *MockBlockGenerator) Generate(ctx context.Context, h core.TipSet, ticket types.Signature, nullBlockCount uint64, m types.Address) (b *types.Block, err error) {
-	args := bg.Called(ctx, h, nullBlockCount, m)
-	if args.Get(0) != nil {
-		b = args.Get(0).(*types.Block)
-	}
-	err = args.Error(1)
-	return
-}
-
-// MockWorker is a mock Worker.
-type MockWorker struct {
-	mock.Mock
-}
-
-// Start is the MockWorker's Start function.
-func (w *MockWorker) Start(ctx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
-	args := w.Called(ctx)
+// Start is the MockScheduler's Start function.
+func (s *MockScheduler) Start(ctx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
+	args := s.Called(ctx)
 	return args.Get(0).(chan<- Input), args.Get(1).(<-chan Output), args.Get(2).(*sync.WaitGroup)
+}
+
+// TestWorker is a worker with a customizable work function to facilitate
+// easy testing.
+type TestWorker struct {
+	WorkFunc func(context.Context, Input, chan<- Output)
+}
+
+// Mine is the TestWorker's Work function.  It simply calls the WorkFunc
+// field.
+func (w *TestWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
+	if w.WorkFunc == nil {
+		panic("must set MutableTestWorker's WorkFunc before calling Work")
+	}
+	w.WorkFunc(ctx, input, outCh)
+}
+
+// NewTestWorkerWithDeps creates a worker that calls the provided input
+// function when Mine() is called.
+func NewTestWorkerWithDeps(f func(context.Context, Input, chan<- Output)) *TestWorker {
+	return &TestWorker{
+		WorkFunc: f,
+	}
+}
+
+// MakeEchoMine returns a test worker function that itself returns the first
+// block of the input tipset as output.
+func MakeEchoMine(require *require.Assertions) func(context.Context, Input, chan<- Output) {
+	echoMine := func(c context.Context, i Input, outCh chan<- Output) {
+		require.NotEqual(0, len(i.TipSet))
+		b := i.TipSet.ToSlice()[0]
+		outCh <- Output{NewBlock: b}
+	}
+	return echoMine
 }
 
 const (

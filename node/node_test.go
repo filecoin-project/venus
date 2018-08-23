@@ -145,14 +145,15 @@ func TestNodeMining(t *testing.T) {
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
-	mockWorker := &mining.MockWorker{}
-	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), &sync.WaitGroup{}
+	mockScheduler := &mining.MockScheduler{}
+	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
 	// Apparently you have to have exact types for testify.mock, so
 	// we use iCh and oCh for the specific return type of Start().
 	var iCh chan<- mining.Input = inCh
 	var oCh <-chan mining.Output = outCh
-	mockWorker.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
-	node.MiningWorker = mockWorker
+
+	mockScheduler.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
+	node.MiningScheduler = mockScheduler
 	// TODO: this is horrible, this setup needs to be a lot less dependent of the inner workings of the node!!
 	node.miningCtx, node.cancelMining = context.WithCancel(ctx)
 	node.miningInCh = inCh
@@ -206,12 +207,12 @@ func TestNodeMining(t *testing.T) {
 	// Ensure that the output is wired up correctly.
 	node = MakeNodesUnstarted(t, 1, true, true)[0]
 
-	mockWorker = &mining.MockWorker{}
+	mockScheduler = &mining.MockScheduler{}
 	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
 	iCh = inCh
 	oCh = outCh
-	mockWorker.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
-	node.MiningWorker = mockWorker
+	mockScheduler.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
+	node.MiningScheduler = mockScheduler
 	node.miningCtx, node.cancelMining = context.WithCancel(ctx)
 	node.miningInCh = inCh
 	node.miningDoneWg = doneWg

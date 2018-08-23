@@ -1,40 +1,59 @@
 package mining
 
+// The Worker Mines on Input received from a Scheduler.  The Worker is
+// responsible for generating the necessary proofs, checking for success,
+// generating new blocks, and forwarding them out to the wider node.
+
 import (
 	"bytes"
 	"context"
 	"encoding/binary"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	sha256 "gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
 )
 
 var (
 	ticketDomain *big.Int
+	// mineWarnThreshold is the number of seconds of mining after which the worker
+	// logs a warning that mining is wasting an unexpected amount of work.
+	mineWarnThreshold float64
+	log               = logging.Logger("mining")
 )
+
+// mineSleepTime is the estimated mining time.  We define this so that we can
+// fake mining with the current incomplete system.  TODO this needs to be
+// configurable to expediate both unit and large scale testing.
+const mineSleepTime = mineDelay * 30
 
 func init() {
 	ticketDomain = &big.Int{}
 	ticketDomain.Exp(big.NewInt(2), big.NewInt(256), nil)
 	ticketDomain.Sub(ticketDomain, big.NewInt(1))
+
+	mineWarnThreshold = mineSleepTime.Seconds() / 2.0
 }
 
 // Input is the TipSets the worker should mine on, the address
 // to accrue rewards to, and a context that the caller can use
 // to cancel this mining run.
 type Input struct {
-	Ctx    context.Context
 	TipSet core.TipSet
 }
 
 // NewInput instantiates a new Input.
-func NewInput(ctx context.Context, ts core.TipSet) Input {
-	return Input{Ctx: ctx, TipSet: ts}
+func NewInput(ts core.TipSet) Input {
+	return Input{TipSet: ts}
 }
 
 // Output is the result of a single mining run. It has either a new
@@ -50,105 +69,57 @@ func NewOutput(b *types.Block, e error) Output {
 	return Output{NewBlock: b, Err: e}
 }
 
-// AsyncWorker implements the plumbing that drives mining.
-type AsyncWorker struct {
-	blockGenerator BlockGenerator
-	createPoST     DoSomeWorkFunc // TODO: rename createPoSTFunc?
-	nullBlockTimer NullBlockTimerFunc
-	minerAddr      types.Address // TODO: needs to be a key in the near future
-}
-
-// Worker is the mining interface consumers use. When you Start() a worker
-// it returns two channels (inCh, outCh) and a sync.WaitGroup:
-//   - inCh: caller	 send Inputs to mine on to this channel
-//   - outCh: the worker sends Outputs to the caller on this channel
-//   - doneWg: signals that the worker and any mining runs it launched
-//             have stopped. (Context cancelation happens async, so you
-//             need some way to know when it has actually stopped.)
-//
-// Once Start()ed, the Worker can be stopped by canceling its miningCtx, which
-// will signal on doneWg when it's actually done. Canceling an Input.Ctx
-// just cancels the run for that input. Canceling miningCtx cancels any run
-// in progress and shuts the worker down.
+// Worker is the interface called by the Scheduler to run the mining work being
+// scheduled.
 type Worker interface {
-	Start(miningCtx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup)
+	Mine(runCtx context.Context, input Input, outCh chan<- Output)
 }
 
-// NewWorker instantiates a new Worker.
-func NewWorker(blockGenerator BlockGenerator, miner types.Address) Worker {
-	return NewWorkerWithDeps(blockGenerator, createPoST, nullBlockTimer, miner)
+// GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
+// its own function to facilitate testing.
+type GetStateTree func(context.Context, core.TipSet) (state.Tree, error)
+
+// GetWeight is a function that calculates the weight of a TipSet.  Weight is
+// expressed as two uint64s comprising a rational number.
+type GetWeight func(context.Context, core.TipSet) (uint64, uint64, error)
+
+type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (core.ApplyMessagesResponse, error)
+
+// DefaultWorker runs a mining job.
+type DefaultWorker struct {
+	createPoST DoSomeWorkFunc // TODO: rename createPoSTFunc
+	minerAddr  types.Address  // TODO: needs to be a key in the near future
+
+	// consensus things
+	getStateTree GetStateTree
+	getWeight    GetWeight
+
+	// core filecoin things
+	messagePool   *core.MessagePool
+	applyMessages miningApplier
+	powerTable    core.PowerTableView
+	blockstore    blockstore.Blockstore
+	cstore        *hamt.CborIpldStore
 }
 
-// NewWorkerWithDeps instantiates a new Worker with custom functions.
-func NewWorkerWithDeps(blockGenerator BlockGenerator, createPoST DoSomeWorkFunc, nullBlockTimer NullBlockTimerFunc, miner types.Address) Worker {
-	return &AsyncWorker{
-		blockGenerator: blockGenerator,
-		createPoST:     createPoST,
-		nullBlockTimer: nullBlockTimer,
-		minerAddr:      miner,
+// NewDefaultWorker instantiates a new Worker.
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address) *DefaultWorker {
+	return NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, createPoST)
+}
+
+// NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, createPoST DoSomeWorkFunc) *DefaultWorker {
+	return &DefaultWorker{
+		getStateTree:  getStateTree,
+		getWeight:     getWeight,
+		messagePool:   messagePool,
+		applyMessages: applyMessages,
+		powerTable:    powerTable,
+		blockstore:    bs,
+		cstore:        cst,
+		createPoST:    createPoST,
+		minerAddr:     miner,
 	}
-}
-
-// MineOnce is a convenience function that presents a synchronous blocking
-// interface to the worker.
-func MineOnce(ctx context.Context, w Worker, ts core.TipSet) Output {
-	subCtx, subCtxCancel := context.WithCancel(ctx)
-	defer subCtxCancel()
-
-	inCh, outCh, _ := w.Start(subCtx)
-	go func() { inCh <- NewInput(subCtx, ts) }()
-	return <-outCh
-}
-
-// Start is the main entrypoint for Worker. Call it to start mining. It returns
-// two channels: an input channel for blocks and an output channel for results.
-// It also returns a waitgroup that will signal that all mining runs have
-// completed. Each block that is received on the input channel causes the
-// worker to cancel the context of the previous mining run if any and start
-// mining on the new block. Any results are sent into its output channel.
-// Closing the input channel does not cause the worker to stop; cancel
-// the Input.Ctx to cancel an individual mining run or the mininCtx to
-// stop all mining and shut down the worker.
-//
-// TODO A potentially simpler interface here would be for the worker to
-// take the input channel from the caller and then shut everything down
-// when the input channel is closed.
-func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Output, *sync.WaitGroup) {
-	inCh := make(chan Input)
-	outCh := make(chan Output)
-	var doneWg sync.WaitGroup
-
-	doneWg.Add(1)
-	go func() {
-		defer doneWg.Done()
-		var currentRunCtx context.Context
-		var currentRunCancel = func() {}
-		for {
-			select {
-			case <-miningCtx.Done():
-				currentRunCancel()
-				close(outCh)
-				return
-			case input, ok := <-inCh:
-				if ok {
-					// TODO(EC): implement the mining logic described in the spec here:
-					//   https://github.com/filecoin-project/specs/pull/71/files#diff-a7e9cad7bc42c664eb72d7042276a22fR83
-					//   specifically:
-					currentRunCancel()
-					currentRunCtx, currentRunCancel = context.WithCancel(input.Ctx)
-					doneWg.Add(1)
-					go func() {
-						w.Mine(currentRunCtx, input, outCh)
-						doneWg.Done()
-					}()
-				} else {
-					// Sender closed the channel. Set it to nil to ignore it.
-					inCh = nil
-				}
-			}
-		}
-	}()
-	return inCh, outCh, &doneWg
 }
 
 // DoSomeWorkFunc is a dummy function that mimics doing something time-consuming
@@ -156,53 +127,60 @@ func (w *AsyncWorker) Start(miningCtx context.Context) (chan<- Input, <-chan Out
 // is a good idea for now.
 type DoSomeWorkFunc func()
 
-// NullBlockTimerFunc blocks until it is time to add a null block.
-type NullBlockTimerFunc func()
-
-// Mine does the actual work. It's the implementation of worker.mine.
-func (w *AsyncWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
+// Mine implements the DefaultWorkers main mining function..
+func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
-
+	if len(input.TipSet) == 0 {
+		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
+		return
+	}
 	// TODO: derive these from actual storage power.
-	// This means broadening the scope of the State function
-	// and powerTableView from the generator to the worker.
+	// This should now be pretty easy because the worker has getState and
+	// powertable view.
+	// To fix this and keep mock-mine mode actually generating blocks we'll
+	// need to update the view to give every miner a little power in the
+	// network.
 	const myPower = 1
 	const totalPower = 5
 
-	for nullBlockCount := uint64(0); ; nullBlockCount++ {
+	for nullBlkCount := uint64(0); ; nullBlkCount++ {
+		log.Infof("Mining on tipset: %s, with %d null blocks.", input.TipSet.String(), nullBlkCount)
+		start := time.Now()
 		if ctx.Err() != nil {
-			break
+			return
 		}
 
-		challenge := createChallenge(input.TipSet, nullBlockCount)
-		proof := createProof(challenge, createPoST)
-		ticket := createTicket(proof)
+		challenge := createChallenge(input.TipSet, nullBlkCount)
+		prCh := createProof(challenge, w.createPoST)
+		var ticket []byte
+		select {
+		case <-ctx.Done():
+			mineTime := time.Since(start)
+			log.Infof("Mining run on: %s canceled.", input.TipSet.String())
+			if mineTime.Seconds() < mineWarnThreshold {
+				log.Warningf("Abandoning mining after %f seconds.  Wasting lots of work...", mineTime.Seconds())
+			}
+			return
+		case proof := <-prCh:
+			ticket = createTicket(proof)
+		}
 
 		// TODO: Test the interplay of isWinningTicket() and createPoST()
 		if isWinningTicket(ticket, myPower, totalPower) {
-			next, err := w.blockGenerator.Generate(ctx, input.TipSet, ticket, nullBlockCount, w.minerAddr)
+			next, err := w.Generate(ctx, input.TipSet, ticket, nullBlkCount)
 			if err == nil {
 				log.SetTag(ctx, "block", next)
 			}
-
-			// TODO(EC): Consider what to do if we have found a winning ticket and are mining with
-			// it and a new tipset comes in with greater height. Currently Worker.Start() will cancel us.
-			// We should instead let the successful run proceed unless the context is explicitly canceled.
-			if ctx.Err() == nil {
-				outCh <- NewOutput(next, err)
-			} else {
-				log.Warningf("Abandoning successfully mined block without publishing: %s", input.TipSet.String())
-			}
-
-			break
+			outCh <- NewOutput(next, err)
 		}
-
-		nullBlockTimer()
 	}
 }
 
-func createChallenge(parents core.TipSet, nullBlockCount uint64) []byte {
+// TODO -- in general this won't work with only the base tipset, we'll potentially
+// need some chain manager utils, similar to the State function, to sample
+// further back in the chain.
+func createChallenge(parents core.TipSet, nullBlkCount uint64) []byte {
 	// Find the smallest ticket from parent set
 	var smallest types.Signature
 	for _, v := range parents {
@@ -212,17 +190,22 @@ func createChallenge(parents core.TipSet, nullBlockCount uint64) []byte {
 	}
 
 	buf := make([]byte, 4)
-	n := binary.PutUvarint(buf, nullBlockCount)
+	n := binary.PutUvarint(buf, nullBlkCount)
 	buf = append(smallest, buf[:n]...)
 
 	h := sha256.Sum256(buf)
 	return h[:]
 }
 
-func createProof(challenge []byte, createPoST DoSomeWorkFunc) []byte {
-	// TODO: Actually use the results of the PoST once it is implemented.
-	createPoST()
-	return challenge
+// TODO: Actually use the results of the PoST once it is implemented.
+// Currently createProof just passes the challenge value through.
+func createProof(challenge []byte, createPoST DoSomeWorkFunc) <-chan []byte {
+	c := make(chan []byte)
+	go func() {
+		createPoST() // TODO send new PoST on channel once we can create it
+		c <- challenge
+	}()
+	return c
 }
 
 func createTicket(proof []byte) []byte {
@@ -243,16 +226,8 @@ var isWinningTicket = func(ticket []byte, myPower, totalPower int64) bool {
 	return lhs.Cmp(rhs) < 0
 }
 
-// How long the node's mining Worker should sleep to simulate mining.
-const mineSleepTime = time.Millisecond * 10
-
 // createPoST is the default implementation of DoSomeWorkFunc. Contrary to the
 // advertisement, it doesn't do anything yet.
 func createPoST() {
-	time.Sleep(mineSleepTime)
-}
-
-// nullBlockTimer is the default implementation of NullBlockTimerFunc.
-func nullBlockTimer() {
 	time.Sleep(mineSleepTime)
 }

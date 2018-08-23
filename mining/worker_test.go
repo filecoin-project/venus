@@ -1,221 +1,78 @@
 package mining
 
 import (
-	//"context"
+	"context"
 	"encoding/hex"
-	//"errors"
+	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	//"github.com/filecoin-project/go-filecoin/util/swap"
 	"github.com/stretchr/testify/assert"
-	//"github.com/stretchr/testify/mock"
-	//"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	sha256 "gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 )
 
-/*
-func TestMineOnce(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	mockBg := &MockBlockGenerator{}
-	baseBlock := &types.Block{StateRoot: types.SomeCid()}
-	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	newAddr := types.NewAddressForTestGetter()
-	rewardAddr := newAddr()
-	miningAddr := newAddr()
-
-	var mineCtx context.Context
-	// Echoes the sent block to output.
-	echoMine := func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		mineCtx = c
-		require.Equal(1, len(i.TipSet))
-		b := i.TipSet.ToSlice()[0]
-		outCh <- Output{NewBlock: b}
-	}
-	worker := NewWorkerWithDeps(mockBg, echoMine, func() {}, nullBlockImmediately)
-	result := MineOnce(context.Background(), worker, tipSet, rewardAddr, miningAddr)
-	assert.NoError(result.Err)
-	assert.True(baseBlock.StateRoot.Equals(result.NewBlock.StateRoot))
-	assert.Error(mineCtx.Err())
-}
-
-func TestWorker_Start(t *testing.T) {
+func Test_Mine(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	newCid := types.NewCidForTestGetter()
-	baseBlock := &types.Block{StateRoot: newCid()}
-	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	mockBg := &MockBlockGenerator{}
-	newAddr := types.NewAddressForTestGetter()
-	rewardAddr := newAddr()
-	miningAddr := newAddr()
-
-	// Test that values are passed faithfully.
+	stateRoot := newCid()
+	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
+	tipSet := core.RequireNewTipSet(require, baseBlock)
 	ctx, cancel := context.WithCancel(context.Background())
-	doSomeWorkCalled := false
-	doSomeWork := func() { doSomeWorkCalled = true }
-	mineCalled := false
-	fakeMine := func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		mineCalled = true
-		assert.NotEqual(ctx, c)
-		require.Equal(1, len(i.TipSet))
-		b := i.TipSet.ToSlice()[0]
-		assert.True(baseBlock.StateRoot.Equals(b.StateRoot))
-		assert.Equal(mockBg, bg)
-		doSomeWork()
-		outCh <- Output{}
+
+	st, pool, addrs, cst, bs := sharedSetup(t)
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
 	}
-	worker := NewWorkerWithDeps(mockBg, fakeMine, doSomeWork, nullBlockImmediately)
-	inCh, outCh, _ := worker.Start(ctx)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
-	<-outCh
-	assert.True(mineCalled)
-	assert.True(doSomeWorkCalled)
-	cancel()
 
-	// Test that multi-block tipsets are passed faithfully
-	mineCalled = false
-	ctx, cancel = context.WithCancel(context.Background())
-	tipSet = core.RequireNewTipSet(require, []*types.Block{{StateRoot: newCid()}, {StateRoot: newCid()}}...)
-	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		mineCalled = true
-		require.Equal(2, len(i.TipSet))
-		tipSetMined := i.TipSet
-		assert.Equal(tipSet, tipSetMined)
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
-	inCh, outCh, _ = worker.Start(ctx)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
-	<-outCh
-	assert.True(mineCalled)
-	cancel()
-
-	// Test that we can push multiple blocks through. There was an actual bug
-	// where multiply queued inputs were not all processed.
-	ctx, cancel = context.WithCancel(context.Background())
-	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
-	inCh, outCh, _ = worker.Start(ctx)
-	// Note: inputs have to pass whatever check on newly arriving tipsets
-	// are in place in Start().
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
-	inCh <- NewInput(context.Background(), tipSet, rewardAddr, miningAddr)
-	<-outCh
-	<-outCh
-	<-outCh
-	assert.Equal(ChannelEmpty, ReceiveOutCh(outCh))
-	cancel() // Makes vet happy.
-
-	// Test that canceling the Input.Ctx cancels that input's mining run.
-	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel := context.WithCancel(context.Background())
-	var gotMineCtx context.Context
-	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		gotMineCtx = c
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
-	inCh, outCh, _ = worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, tipSet, rewardAddr, miningAddr)
-	<-outCh
-	inputCtxCancel()
-	assert.Error(gotMineCtx.Err()) // Same context as miningRunCtx.
-	assert.NoError(miningCtx.Err())
-	miningCtxCancel() // Make vet happy.
-
-	// Test that canceling the mining context stops mining, cancels
-	// the inner context, and closes the output channel.
-	miningCtx, miningCtxCancel = context.WithCancel(context.Background())
-	inputCtx, inputCtxCancel = context.WithCancel(context.Background())
-	gotMineCtx = context.Background()
-	fakeMine = func(c context.Context, i Input, _ NullBlockTimerFunc, bg BlockGenerator, doSomeWork DoSomeWorkFunc, outCh chan<- Output) {
-		gotMineCtx = c
-		outCh <- Output{}
-	}
-	worker = NewWorkerWithDeps(mockBg, fakeMine, func() {}, nullBlockImmediately)
-	inCh, outCh, doneWg := worker.Start(miningCtx)
-	inCh <- NewInput(inputCtx, tipSet, rewardAddr, miningAddr)
-	<-outCh
-	miningCtxCancel()
-	doneWg.Wait()
-	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
-	assert.Error(gotMineCtx.Err())
-	inputCtxCancel() // Make vet happy.
-}
-
-func Test_mine(t *testing.T) {
-	assert := assert.New(t)
-	baseBlock := &types.Block{Height: 2}
-	tipSet := core.TipSet{baseBlock.Cid().String(): baseBlock}
-	newAddr := types.NewAddressForTestGetter()
-	addr := newAddr()
-	miningAddr := newAddr()
-	next := &types.Block{Height: 3}
-	ctx := context.Background()
-
-	// Success.
-	mockBg := &MockBlockGenerator{}
+	// Success case. TODO: this case isn't testing much.  Testing w.Mine
+	// further needs a lot more attention.
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 	outCh := make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr, miningAddr).Return(next, nil)
 	doSomeWorkCalled := false
-	input := NewInput(ctx, tipSet)
-	go Mine(ctx, input, nullBlockImmediately, mockBg, func() { doSomeWorkCalled = true }, outCh)
+	worker.createPoST = func() { doSomeWorkCalled = true }
+	input := NewInput(tipSet)
+	go worker.Mine(ctx, input, outCh)
 	r := <-outCh
 	assert.NoError(r.Err)
 	assert.True(doSomeWorkCalled)
-	assert.True(r.NewBlock.Cid().Equals(next.Cid()))
-	mockBg.AssertExpectations(t)
+	cancel()
 
 	// Block generation fails.
-	mockBg = &MockBlockGenerator{}
+	ctx, cancel = context.WithCancel(context.Background())
+	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 	outCh = make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(0), addr, miningAddr).Return(nil, errors.New("boom"))
 	doSomeWorkCalled = false
-	input = NewInput(ctx, tipSet, addr, miningAddr)
-	go Mine(ctx, input, nullBlockImmediately, mockBg, func() { doSomeWorkCalled = true }, outCh)
+	worker.createPoST = func() { doSomeWorkCalled = true }
+	input = NewInput(tipSet)
+	go worker.Mine(ctx, input, outCh)
 	r = <-outCh
 	assert.Error(r.Err)
 	assert.True(doSomeWorkCalled)
-	mockBg.AssertExpectations(t)
+	cancel()
 
-	// Null block count is increased until we find a winning ticket.
-	mockBg = &MockBlockGenerator{}
+	// Sent empty tipset
+	ctx, cancel = context.WithCancel(context.Background())
+	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
 	outCh = make(chan Output)
-	mockBg.On("Generate", mock.Anything, tipSet, uint64(2), addr, miningAddr).Return(next, nil)
-	workCount := 0
-	input = NewInput(ctx, tipSet, addr, miningAddr)
-	(func() {
-		defer swap.Swap(&isWinningTicket, everyThirdWinningTicket())()
-		go Mine(ctx, input, nullBlockImmediately, mockBg, func() { workCount++ }, outCh)
-		r = <-outCh
-	})()
-	assert.NoError(r.Err)
-	assert.Equal(3, workCount)
-	assert.True(r.NewBlock.Cid().Equals(next.Cid()))
-	mockBg.AssertExpectations(t)
+	doSomeWorkCalled = false
+	worker.createPoST = func() { doSomeWorkCalled = true }
+	input = NewInput(core.TipSet{})
+	go worker.Mine(ctx, input, outCh)
+	r = <-outCh
+	assert.Error(r.Err)
+	assert.False(doSomeWorkCalled)
+	cancel()
 }
-
-// Implements NullBlockTimerFunc with the policy that it is always a good time
-// to create a null block.
-func nullBlockImmediately() {
-}
-
-// Returns a ticket checking function that return true every third time
-func everyThirdWinningTicket() func(_ []byte, _, _ int64) bool {
-	count := 0
-	return func(_ []byte, _, _ int64) bool {
-		count++
-		return count%3 == 0
-	}
-}
-*/
 
 func TestIsWinningTicket(t *testing.T) {
 	assert := assert.New(t)
@@ -248,6 +105,7 @@ func TestIsWinningTicket(t *testing.T) {
 	}
 }
 
+// worker test
 func TestCreateChallenge(t *testing.T) {
 	assert := assert.New(t)
 
@@ -277,5 +135,330 @@ func TestCreateChallenge(t *testing.T) {
 		r := createChallenge(parents, c.nullBlockCount)
 
 		assert.Equal(decoded, r)
+	}
+}
+
+var seed = types.GenerateKeyInfoSeed()
+var ki = types.MustGenerateKeyInfo(10, seed)
+var mockSigner = types.NewMockSigner(ki)
+
+func TestGenerate(t *testing.T) {
+	// TODO use core.FakeActor for state/contract tests for generate:
+	//  - test nonces out of order
+	//  - test nonce gap
+}
+
+func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
+	cst := hamt.NewCborStore()
+	pool := core.NewMessagePool()
+	// Install the fake actor so we can execute it.
+	fakeActorCodeCid := types.AccountActorCodeCid
+	return cst, pool, fakeActorCodeCid
+}
+
+func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+	require := require.New(t)
+	cst, pool, fakeActorCodeCid := sharedSetupInitial()
+	vms := core.VMStorage()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+
+	// TODO: We don't need fake actors here, so these could be made real.
+	//       And the NetworkAddress actor can/should be the real one.
+	// Stick two fake actors in the state tree so they can talk.
+	addr1, addr2, addr3, addr4, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3], mockSigner.Addresses[4]
+	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
+	act2 := core.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
+	fakeNetAct := core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
+	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	minerOwner := core.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
+	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
+		address.NetworkAddress: fakeNetAct,
+		addr1: act1,
+		addr2: act2,
+		addr4: minerAct,
+		addr5: minerOwner,
+	})
+	return st, pool, []types.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
+}
+
+// TODO this test belongs in core, it calls ApplyMessages
+func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	vms := core.VMStorage()
+
+	cst, _, fakeActorCodeCid := sharedSetupInitial()
+
+	// Stick two fake actors in the state tree so they can talk.
+	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
+	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
+	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+		addr1: act1,
+	})
+
+	ctx := context.Background()
+
+	// NOTE: it is important that each category (success, temporary failure, permanent failure) is represented below.
+	// If a given message's category changes in the future, it needs to be replaced here in tests by another so we fully
+	// exercise the categorization.
+	// addr2 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
+	msg1 := types.NewMessage(addr2, addr1, 0, nil, "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
+
+	// This is actually okay and should result in a receipt
+	msg2 := types.NewMessage(addr1, addr2, 0, nil, "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
+
+	// The following two are sending to self -- errSelfSend, a permanent error.
+	msg3 := types.NewMessage(addr1, addr1, 1, nil, "", nil)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
+	require.NoError(err)
+
+	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
+	require.NoError(err)
+
+	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
+
+	res, err := core.ApplyMessages(ctx, messages, st, vms, types.NewBlockHeight(0))
+
+	assert.Len(res.PermanentFailures, 2)
+	assert.Contains(res.PermanentFailures, smsg3)
+	assert.Contains(res.PermanentFailures, smsg4)
+
+	assert.Len(res.TemporaryFailures, 1)
+	assert.Contains(res.TemporaryFailures, smsg1)
+
+	assert.Len(res.Results, 1)
+	assert.Contains(res.SuccessfulMessages, smsg2)
+
+	assert.NoError(err)
+}
+
+func TestGenerateMultiBlockTipSet(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+	st, pool, addrs, cst, bs := sharedSetup(t)
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+
+	parents := types.NewSortedCidSet(newCid())
+	stateRoot := newCid()
+	baseBlock1 := types.Block{
+		Parents:         parents,
+		Height:          types.Uint64(100),
+		ParentWeightNum: types.Uint64(1000),
+		StateRoot:       stateRoot,
+	}
+	baseBlock2 := types.Block{
+		Parents:         parents,
+		Height:          types.Uint64(100),
+		ParentWeightNum: types.Uint64(1000),
+		StateRoot:       stateRoot,
+		Nonce:           1,
+	}
+	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0)
+	assert.NoError(err)
+
+	assert.Len(blk.Messages, 1) // This is the mining reward.
+	assert.Equal(types.Uint64(101), blk.Height)
+	assert.Equal(types.Uint64(1020), blk.ParentWeightNum)
+}
+
+// After calling Generate, do the new block and new state of the message pool conform to our expectations?
+func TestGeneratePoolBlockResults(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+	st, pool, addrs, cst, bs := sharedSetup(t)
+
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+
+	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
+	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	require.NoError(err)
+
+	// This is actually okay and should result in a receipt
+	msg2 := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	require.NoError(err)
+
+	// The following two are sending to self -- errSelfSend, a permanent error.
+	msg3 := types.NewMessage(addrs[0], addrs[0], 1, nil, "", nil)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
+	require.NoError(err)
+
+	msg4 := types.NewMessage(addrs[1], addrs[1], 0, nil, "", nil)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
+	require.NoError(err)
+
+	pool.Add(smsg1)
+	pool.Add(smsg2)
+	pool.Add(smsg3)
+	pool.Add(smsg4)
+
+	assert.Len(pool.Pending(), 4)
+	baseBlock := types.Block{
+		Parents:   types.NewSortedCidSet(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: newCid(),
+	}
+	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0)
+	assert.NoError(err)
+
+	assert.Len(pool.Pending(), 1) // This is the temporary failure.
+	assert.Contains(pool.Pending(), smsg1)
+
+	assert.Len(blk.Messages, 2) // This is the good message + the mining reward.
+
+	// Is the mining reward first? This will fail 50% of the time if we don't force the reward to come first.
+	assert.Equal(address.NetworkAddress, blk.Messages[0].From)
+}
+
+func TestGenerateSetsBasicFields(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+
+	st, pool, addrs, cst, bs := sharedSetup(t)
+
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+
+	h := types.Uint64(100)
+	wNum := types.Uint64(1000)
+	wDenom := types.Uint64(1)
+	baseBlock := types.Block{
+		Height:            h,
+		ParentWeightNum:   wNum,
+		ParentWeightDenom: wDenom,
+		StateRoot:         newCid(),
+	}
+	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
+	blk, err := worker.Generate(ctx, baseTipSet, nil, 0)
+	assert.NoError(err)
+
+	assert.Equal(h+1, blk.Height)
+	assert.Equal(addrs[3], blk.Miner)
+
+	blk, err = worker.Generate(ctx, baseTipSet, nil, 1)
+	assert.NoError(err)
+
+	assert.Equal(h+2, blk.Height)
+	assert.Equal(wNum+10.0, blk.ParentWeightNum)
+	assert.Equal(wDenom, blk.ParentWeightDenom)
+	assert.Equal(addrs[3], blk.Miner)
+}
+
+func TestGenerateWithoutMessages(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+
+	st, pool, addrs, cst, bs := sharedSetup(t)
+	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+
+	assert.Len(pool.Pending(), 0)
+	baseBlock := types.Block{
+		Parents:   types.NewSortedCidSet(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: newCid(),
+	}
+	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0)
+	assert.NoError(err)
+
+	assert.Len(pool.Pending(), 0) // This is the temporary failure.
+	assert.Len(blk.Messages, 1)   // This is the mining reward.
+}
+
+// If something goes wrong while generating a new block, even as late as when flushing it,
+// no block should be returned, and the message pool should not be pruned.
+func TestGenerateError(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	newCid := types.NewCidForTestGetter()
+
+	st, pool, addrs, cst, bs := sharedSetup(t)
+
+	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3])
+
+	// This is actually okay and should result in a receipt
+	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	require.NoError(err)
+	pool.Add(smsg)
+
+	assert.Len(pool.Pending(), 1)
+	baseBlock := types.Block{
+		Parents:   types.NewSortedCidSet(newCid()),
+		Height:    types.Uint64(100),
+		StateRoot: newCid(),
+	}
+	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
+	blk, err := worker.Generate(ctx, baseTipSet, nil, 0)
+	assert.Error(err, "boom")
+	assert.Nil(blk)
+
+	assert.Len(pool.Pending(), 1) // No messages are removed from the pool.
+}
+
+type StateTreeForTest struct {
+	state.Tree
+	TestFlush func(ctx context.Context) (*cid.Cid, error)
+}
+
+func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
+	stt := StateTreeForTest{
+		st,
+		st.Flush,
+	}
+	return &stt
+}
+
+func (st *StateTreeForTest) Flush(ctx context.Context) (*cid.Cid, error) {
+	return st.TestFlush(ctx)
+}
+
+func getWeightTest(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+	num, den, err := ts.ParentWeight()
+	if err != nil {
+		return uint64(0), uint64(0), err
+	}
+	return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
+}
+
+func makeExplodingGetStateTree(st state.Tree) func(context.Context, core.TipSet) (state.Tree, error) {
+	return func(c context.Context, ts core.TipSet) (state.Tree, error) {
+		stt := WrapStateTreeForTest(st)
+		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
+			return nil, errors.New("boom no flush")
+		}
+
+		return stt, nil
 	}
 }

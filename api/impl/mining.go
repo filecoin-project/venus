@@ -21,16 +21,16 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	nd := api.api.node
 	ts := nd.ChainMgr.GetHeaviestTipSet()
 
-	blockGenerator := mining.NewBlockGenerator(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
-		return nd.ChainMgr.State(ctx, ts.ToSlice())
-	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView, nd.Blockstore, nd.CborStore)
-
 	miningAddr, err := nd.MiningAddress()
 	if err != nil {
 		return nil, err
 	}
 
-	res := mining.MineOnce(ctx, mining.NewWorker(blockGenerator, miningAddr), ts)
+	worker := mining.NewDefaultWorker(nd.MsgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+		return nd.ChainMgr.State(ctx, ts.ToSlice())
+	}, nd.ChainMgr.Weight, core.ApplyMessages, nd.ChainMgr.PwrTableView, nd.Blockstore, nd.CborStore, miningAddr)
+
+	res := mining.MineOnce(ctx, mining.NewScheduler(worker), ts)
 	if res.Err != nil {
 		return nil, res.Err
 	}

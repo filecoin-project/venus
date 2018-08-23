@@ -108,10 +108,11 @@ func getChainManager(d repo.Datastore, bs blockstore.Blockstore) (*core.ChainMan
 	return cm, cst
 }
 
-func getBlockGenerator(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore, bs blockstore.Blockstore) mining.BlockGenerator {
-	return mining.NewBlockGenerator(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
+func getWorker(msgPool *core.MessagePool, cm *core.ChainManager, cst *hamt.CborIpldStore, bs blockstore.Blockstore) *mining.DefaultWorker {
+	ma := types.MakeTestAddress("miningAddress")
+	return mining.NewDefaultWorker(msgPool, func(ctx context.Context, ts core.TipSet) (state.Tree, error) {
 		return cm.State(ctx, ts.ToSlice())
-	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst)
+	}, cm.Weight, core.ApplyMessages, cm.PwrTableView, bs, cst, ma)
 }
 
 func getStateTree(ctx context.Context, d repo.Datastore, bs blockstore.Blockstore) (state.Tree, *hamt.CborIpldStore, *core.ChainManager, core.TipSet, error) {
@@ -257,15 +258,15 @@ func fakeActors(ctx context.Context, cst *hamt.CborIpldStore, cm *core.ChainMana
 }
 
 func mineBlock(ctx context.Context, mp *core.MessagePool, cst *hamt.CborIpldStore, cm *core.ChainManager, bs blockstore.Blockstore, blks []*types.Block) (*types.Block, error) {
-	bg := getBlockGenerator(mp, cm, cst, bs)
-	ma := types.MakeTestAddress("miningaddress")
+	mw := getWorker(mp, cm, cst, bs)
 
 	const nullBlockCount = 0
 	ts, err := core.NewTipSet(blks...)
 	if err != nil {
 		return nil, err
 	}
-	blk, err := bg.Generate(ctx, ts, nil, nullBlockCount, ma)
+	blk, err := mw.Generate(ctx, ts, nil, nullBlockCount)
+
 	if err != nil {
 		return nil, err
 	}
