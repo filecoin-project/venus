@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base32"
@@ -532,18 +533,23 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 }
 
 // Seal generates and returns a proof of replication along with supporting data.
-func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address) (_ *SealedSector, finalErr error) {
+func (sb *SectorBuilder) Seal(s *Sector, minerAddr types.Address) (*SealedSector, error) {
 	p, label := sb.newSealedSectorPath()
 
 	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {
 		return nil, errors.Wrap(err, "failed to create sealed sector path")
 	}
 
+	proverID, err := proverID(minerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create prover id from miner address")
+	}
+
 	req := proofs.SealRequest{
 		UnsealedPath:  s.filename,
 		SealedPath:    p,
 		ChallengeSeed: make([]byte, 32), // TODO: derive from chain
-		ProverID:      make([]byte, 31), // TODO: create from miner address
+		ProverID:      proverID,
 		RandomSeed:    make([]byte, 32), // TODO: create real seed
 	}
 
@@ -553,6 +559,26 @@ func (sb *SectorBuilder) Seal(s *Sector, minerID types.Address) (_ *SealedSector
 	}
 
 	return sb.NewSealedSector(res.Commitments.CommR, res.Commitments.CommD, label, p, s), nil
+}
+
+// proverID creates a prover id by padding an address hash to 31 bytes
+func proverID(addr types.Address) ([]byte, error) {
+	hash := addr.Hash()
+
+	dlen := 31          // desired length
+	hlen := len(hash)   // hash length
+	padl := dlen - hlen // padding length
+
+	prid := make([]byte, 31)
+
+	// will copy dlen bytes from hash
+	copy(prid, hash)
+
+	if padl > 0 {
+		copy(prid[hlen:], bytes.Repeat([]byte{0}, padl))
+	}
+
+	return prid, nil
 }
 
 // newSectorLabel returns a newly-generated, random 32-character base32 string.

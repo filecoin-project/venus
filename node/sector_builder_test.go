@@ -461,6 +461,18 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 	})
 }
 
+func TestProverIdCreation(t *testing.T) {
+	require := require.New(t)
+
+	hash := types.AddressHash([]byte("satoshi"))
+	addr := types.NewMainnetAddress(hash)
+
+	id, err := proverID(addr)
+	require.NoError(err)
+
+	require.Equal(31, len(id))
+}
+
 func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *Sector, pieces int) {
 	sealed := sector.sealed
 	if sealed != nil {
