@@ -63,14 +63,14 @@ func TestDealProtocolClient(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
-	propose := &DealProposal{
-		Deal: &storagemarket.Deal{
-			Ask:     0,
-			Bid:     0,
-			DataRef: data.Cid().String(),
-		},
-		ClientSig: clientAddr.String(),
+	deal := &storagemarket.Deal{
+		Ask:     0,
+		Bid:     0,
+		DataRef: data.Cid().String(),
 	}
+
+	propose, err := NewDealProposal(deal, nds[1].Wallet, clientAddr)
+	assert.NoError(err)
 
 	resp, err := client.ProposeDeal(ctx, propose)
 	assert.NoError(err)

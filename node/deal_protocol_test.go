@@ -93,7 +93,7 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 	return id
 }
 
-func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
+func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error) {
 	// TODO: something useful
 	msg := types.NewMessage(types.Address{}, types.Address{}, 0, nil, "", nil)
 	return msg.Cid()
@@ -130,15 +130,13 @@ func TestDealProtocol(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
-	propose := &DealProposal{
-		Deal: &storagemarket.Deal{
-			Ask:     0,
-			Bid:     0,
-			DataRef: data.Cid().String(),
-		},
-		ClientSig: clientAddr.String(),
+	deal := &storagemarket.Deal{
+		Ask:     0,
+		Bid:     0,
+		DataRef: data.Cid().String(),
 	}
-
+	propose, err := NewDealProposal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	resp, err := sm.ProposeDeal(propose)
 	assert.NoError(err)
 	assert.Equal(Accepted, resp.State)
@@ -190,9 +188,12 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
+	deal := &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid().String()}
+	sig, err := storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose := &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
 	resp, err := sm.ProposeDeal(propose)
@@ -200,9 +201,12 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown bid: no such bid", resp.Message)
 
+	deal = &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid().String()}
+	sig, err = storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -210,9 +214,12 @@ func TestDealProtocolMissing(t *testing.T) {
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown ask: no such ask", resp.Message)
 
+	deal = &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid().String()}
+	sig, err = storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
 	resp, err = sm.ProposeDeal(propose)
@@ -240,7 +247,7 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	msa := &stateTreeMarketPeeker{nd}
 
 	data := dag.NewRawNode([]byte("cats"))
-	dealCid, err := msa.AddDeal(ctx, nodeAddr, uint64(0), 0, string(address.TestAddress[:]), data.Cid())
+	dealCid, err := msa.AddDeal(ctx, nodeAddr, uint64(0), 0, address.TestAddress[:], data.Cid())
 
 	assert.NoError(err)
 	assert.NotNil(dealCid)

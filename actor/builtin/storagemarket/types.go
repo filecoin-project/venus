@@ -34,12 +34,12 @@ type Ask struct {
 
 // Bid is a storage market bid order.
 type Bid struct {
-	//Expiry *big.Int
+	// Expiry *big.Int
 	Price *types.AttoFIL     `json:"price"`
 	Size  *types.BytesAmount `json:"size"`
-	//Duration *big.Int
+	// Duration *big.Int
 	Collateral *types.AttoFIL `json:"collateral"`
-	//Coding ???
+	// Coding ???
 	Owner types.Address `json:"owner"`
 	ID    uint64        `json:"id"`
 
@@ -54,4 +54,9 @@ type Deal struct {
 
 	Ask uint64 `json:"ask"`
 	Bid uint64 `json:"bid"`
+}
+
+// Marshal serilizes the deal to cbor bytes
+func (d *Deal) Marshal() ([]byte, error) {
+	return cbor.DumpObject(d)
 }

@@ -61,13 +61,15 @@ func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *ci
 		return nil, err
 	}
 
-	propose := &node.DealProposal{
-		ClientSig: string(defaddr[:]), // TODO: actual crypto
-		Deal: &storagemarket.Deal{
-			Ask:     uint64(askID),
-			Bid:     uint64(bidID),
-			DataRef: c.String(),
-		},
+	deal := &storagemarket.Deal{
+		Ask:     uint64(askID),
+		Bid:     uint64(bidID),
+		DataRef: c.String(),
+	}
+
+	propose, err := node.NewDealProposal(deal, nd.Wallet, defaddr)
+	if err != nil {
+		return nil, err
 	}
 
 	return nd.StorageClient.ProposeDeal(ctx, propose)

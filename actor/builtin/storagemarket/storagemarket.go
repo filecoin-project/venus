@@ -266,6 +266,26 @@ func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 	return bidID, 0, nil
 }
 
+// VerifyDealSignature checks if the given deal and signature match to the provided address.
+func VerifyDealSignature(deal *Deal, sig types.Signature, addr types.Address) bool {
+	dealBytes, err := deal.Marshal()
+	if err != nil {
+		return false
+	}
+
+	return types.VerifySignature(dealBytes, addr, sig)
+}
+
+// SignDeal signs the given deal using the provided address.
+func SignDeal(deal *Deal, signer types.Signer, addr types.Address) (types.Signature, error) {
+	dealBytes, err := deal.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	return signer.SignBytes(dealBytes, addr)
+}
+
 // UpdatePower is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing or willful removal)

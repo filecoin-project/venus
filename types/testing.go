@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
-	wuitl "github.com/filecoin-project/go-filecoin/wallet/util"
+	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 // MockRecoverer implements the Recoverer interface
@@ -21,7 +21,7 @@ type MockRecoverer struct{}
 // Note: The returned public key should not be used to verify `data` is valid
 // since a public key may have N private key pairs
 func (mr *MockRecoverer) Ecrecover(data []byte, sig Signature) ([]byte, error) {
-	return wuitl.Ecrecover(data, sig)
+	return wutil.Ecrecover(data, sig)
 }
 
 // MockSigner implements the Signer interface
@@ -67,7 +67,7 @@ func (ms MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
 		return Signature{}, err
 	}
 
-	return wuitl.Sign(sk, data)
+	return wutil.Sign(sk, data)
 }
 
 // NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.

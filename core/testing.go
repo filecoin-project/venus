@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"testing"
 	"time"
 
 	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
@@ -21,9 +22,8 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"github.com/stretchr/testify/require"
 
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 // MkChild creates a new block with parent, blk, and supplied nonce.

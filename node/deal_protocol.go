@@ -43,7 +43,21 @@ func init() {
 // their signature over the deal.
 type DealProposal struct {
 	Deal      *storagemarket.Deal
-	ClientSig string
+	ClientSig types.Signature
+}
+
+// NewDealProposal will return a DealProposal with a signature derived from Address `addr`
+// and Signer `s`. If the address is unknown to the signer an error is returned.
+func NewDealProposal(deal *storagemarket.Deal, signer types.Signer, addr types.Address) (*DealProposal, error) {
+	sig, err := storagemarket.SignDeal(deal, signer, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DealProposal{
+		Deal:      deal,
+		ClientSig: sig,
+	}, nil
 }
 
 // DealQuery is used to query the state of a deal by its miner generated ID
@@ -204,6 +218,13 @@ func (sm *StorageMarket) ProposeDeal(propose *DealProposal) (*DealResponse, erro
 	if bid.Size.GreaterThan(ask.Size) {
 		return &DealResponse{
 			Message: "ask does not have enough space for bid",
+			State:   Rejected,
+		}, nil
+	}
+
+	if !storagemarket.VerifyDealSignature(propose.Deal, propose.ClientSig, bid.Owner) {
+		return &DealResponse{
+			Message: "invalid client signature",
 			State:   Rejected,
 		}, nil
 	}
@@ -395,7 +416,7 @@ func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 type storageMarketPeeker interface {
 	GetStorageAsk(uint64) (*storagemarket.Ask, error)
 	GetBid(uint64) (*storagemarket.Bid, error)
-	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig string, data *cid.Cid) (*cid.Cid, error)
+	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
 	GetStorageAskSet() (storagemarket.AskSet, error)
@@ -524,7 +545,7 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddre
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain
-func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
+func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error) {
 	pdata, err := abi.ToEncodedValues(big.NewInt(0).SetUint64(ask), big.NewInt(0).SetUint64(bid), []byte(sig), data.Bytes())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode abi values")
