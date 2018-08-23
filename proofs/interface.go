@@ -14,6 +14,19 @@ type SealResponse struct {
 	Commitments CommitmentPair
 }
 
+// UnsealResponse contains contains the number of bytes unsealed (and written) by Unseal().
+type UnsealResponse struct {
+	NumBytesWritten uint64
+}
+
+// UnsealRequest represents a request to unseal a sector.
+type UnsealRequest struct {
+	SealedPath  string // path to sealed sector-file
+	OutputPath  string // path to write unsealed file-bytes
+	StartOffset uint64 // zero-based byte offset in original, unsealed sector-file
+	NumBytes    uint64 // number of bytes to unseal (corresponds to contents of unsealed sector-file)
+}
+
 // CommitmentPair contains commD and commR from the Seal() operation.
 type CommitmentPair struct {
 	CommR []byte // replica commitment: 32-byte merkle root of replicated data
@@ -28,5 +41,6 @@ type VerifySealRequest struct {
 // Prover provides an interface to the proving subsystem.
 type Prover interface {
 	Seal(SealRequest) (SealResponse, error)
+	Unseal(UnsealRequest) (UnsealResponse, error)
 	VerifySeal(VerifySealRequest) error
 }

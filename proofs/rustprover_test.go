@@ -79,3 +79,51 @@ func TestStatusCodeToErrorStringMarshal(t *testing.T) {
 	expected := "invalid replica and/or data commitment"
 	require.Equal(expected, err.Error(), "received the wrong error")
 }
+
+func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
+	require := require.New(t)
+
+	p := &RustProver{}
+
+	tmpFile, err := ioutil.TempFile("", "")
+	require.NoError(err, "error creating temp (input) file")
+	defer os.Remove(tmpFile.Name())
+
+	bs := make([][]byte, 3)
+	bs[0] = []byte("foo")
+	bs[1] = []byte("risk")
+	bs[2] = []byte("xylon")
+
+	for _, b := range bs {
+		tmpFile.Write(b)
+	}
+
+	sealInputPath := tmpFile.Name()
+	sealOutputPath := fmt.Sprintf("%s_sealed", sealInputPath)
+	unsealOutputPath := fmt.Sprintf("%s_unsealed", sealOutputPath)
+	defer os.Remove(sealOutputPath)
+
+	_, err = p.Seal(SealRequest{
+		UnsealedPath:  sealInputPath,
+		SealedPath:    sealOutputPath,
+		ChallengeSeed: make([]byte, 32),
+		ProverID:      make([]byte, 31),
+		RandomSeed:    make([]byte, 32),
+	})
+	require.NoError(err, "seal operation failed")
+
+	ures, err := p.Unseal(UnsealRequest{
+		SealedPath:  sealOutputPath,
+		OutputPath:  unsealOutputPath,
+		StartOffset: uint64(len(bs[0])),
+		NumBytes:    uint64(len(bs[1])),
+	})
+	require.NoError(err, "unseal operation failed")
+	require.Equal(uint64(len(bs[1])), ures.NumBytesWritten)
+
+	bytes, err := ioutil.ReadFile(unsealOutputPath)
+	require.NoError(err)
+
+	// should have respected offset and number-of-bytes
+	require.Equal("risk", string(bytes))
+}

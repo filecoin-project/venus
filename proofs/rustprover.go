@@ -81,6 +81,33 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) error {
 	return nil
 }
 
+// Unseal unseales and writes the requested number of bytes (respecting the
+// provided offset, which is relative to the unsealed sector-file) to
+// req.OutputPath. It is possible that req.NumBytes > res.NumBytesWritten.
+// If this happens, callers should truncate the file at req.OutputPath back
+// to its pre-unseal() number of bytes.
+func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
+	inPath := C.CString(req.SealedPath)
+	defer C.free(unsafe.Pointer(inPath))
+
+	outPath := C.CString(req.OutputPath)
+	defer C.free(unsafe.Pointer(outPath))
+
+	// The unseal function will write to bytesWrittenPtr to indicate the number
+	// of bytes which have been written to the outPath.
+	var bytesWritten uint64
+	bytesWrittenPtr := (*C.uint64_t)(unsafe.Pointer(&bytesWritten))
+
+	code := C.unseal(inPath, outPath, C.uint64_t(req.StartOffset), C.uint64_t(req.NumBytes), bytesWrittenPtr)
+	if code != 0 {
+		return UnsealResponse{}, errors.New(errorString(code))
+	}
+
+	return UnsealResponse{
+		NumBytesWritten: bytesWritten,
+	}, nil
+}
+
 func errorString(code C.uint8_t) string {
 	status := C.status_to_string(code)
 	defer C.free(unsafe.Pointer(status))
