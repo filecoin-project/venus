@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 )
 
 func (l *Localfilecoin) isAlive() (bool, error) {

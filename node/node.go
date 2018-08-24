@@ -78,8 +78,10 @@ type Node struct {
 	blockTime          time.Duration
 
 	// Storage Market Interfaces
-	StorageClient *StorageClient
-	StorageBroker *StorageBroker
+	StorageClient      *StorageClient
+	StorageBroker      *StorageBroker
+	StorageMinerClient *StorageMinerClient
+	StorageMiner       *StorageMiner
 
 	// Network Fields
 	PubSub       *floodsub.PubSub
@@ -255,6 +257,8 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.StorageClient = NewStorageClient(node)
 	node.StorageBroker = NewStorageBroker(node)
+	node.StorageMiner = NewStorageMiner(node)
+	node.StorageMinerClient = NewStorageMinerClient(node)
 
 	// subscribe to block notifications
 	blkSub, err := node.PubSub.Subscribe(BlocksTopic)

@@ -91,6 +91,8 @@ func NewStorageMiner(nd *Node) *StorageMiner {
 }
 
 func (sm *StorageMiner) handleProposalStream(s inet.Stream) {
+	defer s.Close()
+
 	var proposal StorageDealProposal
 	if err := cbu.NewMsgReader(s).ReadMsg(&proposal); err != nil {
 		panic(err)
@@ -198,8 +200,58 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 	})
 }
 
+func (sm *StorageMiner) Query(ctx context.Context, c *cid.Cid) *StorageDealResponse {
+	sm.dealsLk.Lock()
+	defer sm.dealsLk.Unlock()
+	d, ok := sm.deals[c.KeyString()]
+	if !ok {
+		return &StorageDealResponse{
+			State:   Unknown,
+			Message: "no such deal",
+		}
+	}
+
+	return d.state
+}
+
+type storageDealQueryRequest struct {
+	Cid *cid.Cid
+}
+
+func (sm *StorageMiner) handleQuery(s inet.Stream) {
+	defer s.Close()
+
+	var q storageDealQueryRequest
+	if err := cbu.NewMsgReader(s).ReadMsg(&q); err != nil {
+		panic(err)
+	}
+
+	ctx := context.Background()
+	resp := sm.Query(ctx, q.Cid)
+
+	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
+		panic(err)
+	}
+}
+
 type StorageMinerClient struct {
 	nd *Node
+
+	deals   map[string]*clientStorageDealState
+	dealsLk sync.Mutex
+}
+
+func NewStorageMinerClient(nd *Node) *StorageMinerClient {
+	return &StorageMinerClient{
+		nd:    nd,
+		deals: make(map[string]*clientStorageDealState),
+	}
+}
+
+type clientStorageDealState struct {
+	miner     types.Address
+	proposal  *StorageDealProposal
+	lastState *StorageDealResponse
 }
 
 func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64, error) {
@@ -274,6 +326,42 @@ func (smc *StorageMinerClient) checkDealResponse(ctx context.Context, resp *Stor
 	}
 }
 
+func (smc *StorageMinerClient) minerForProposal(c *cid.Cid) (types.Address, error) {
+	smc.dealsLk.Lock()
+	defer smc.dealsLk.Unlock()
+	st, ok := smc.deals[c.KeyString()]
+	if !ok {
+		return types.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
+	}
+
+	return st.miner, nil
+}
+
 func (smc *StorageMinerClient) Query(ctx context.Context, c *cid.Cid) (*StorageDealResponse, error) {
-	panic("NYI")
+	mineraddr, err := smc.minerForProposal(c)
+	if err != nil {
+		return nil, err
+	}
+
+	minerpid, err := smc.nd.Lookup.GetPeerIDByMinerAddress(ctx, mineraddr)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := smc.nd.Host.NewStream(ctx, minerpid, StorageDealQueryProtocolID)
+	if err != nil {
+		return nil, err
+	}
+
+	q := storageDealQueryRequest{c}
+	if err := cbu.NewMsgWriter(s).WriteMsg(q); err != nil {
+		return nil, err
+	}
+
+	var resp StorageDealResponse
+	if err := cbu.NewMsgReader(s).ReadMsg(&resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }

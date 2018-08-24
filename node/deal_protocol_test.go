@@ -111,7 +111,7 @@ func TestDealProtocol(t *testing.T) {
 	client := nodes[1]
 	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
@@ -170,7 +170,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	client := nodes[1]
 	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)

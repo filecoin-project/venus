@@ -51,7 +51,7 @@ func TestDealProtocolClient(t *testing.T) {
 	clientAddr, err := nds[1].NewAddress()
 	assert.NoError(err)
 
-	sm := NewStorageMarket(nds[0])
+	sm := NewStorageBroker(nds[0])
 	client := NewStorageClient(nds[1])
 
 	msa := newMockMsp()

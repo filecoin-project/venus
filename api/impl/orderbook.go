@@ -15,8 +15,8 @@ func newNodeOrderbook(api *nodeAPI) *nodeOrderbook {
 }
 
 func (api *nodeOrderbook) Asks() (storagemarket.AskSet, error) {
-	return api.api.node.StorageMarket.GetMarketPeeker().GetStorageAskSet(context.TODO())
+	return api.api.node.StorageBroker.GetMarketPeeker().GetStorageAskSet(context.TODO())
 }
 func (api *nodeOrderbook) Bids() (storagemarket.BidSet, error) {
-	return api.api.node.StorageMarket.GetMarketPeeker().GetBidSet(context.TODO())
+	return api.api.node.StorageBroker.GetMarketPeeker().GetBidSet(context.TODO())
 }
