@@ -58,7 +58,7 @@ func (l *Localfilecoin) env() ([]string, error) {
 		}
 	}
 
-	return append(envs), nil
+	return append(envs, filecoinpath), nil
 }
 
 func (l *Localfilecoin) signalAndWait(p *os.Process, waitch <-chan struct{}, signal os.Signal, t time.Duration) error {
