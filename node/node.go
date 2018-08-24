@@ -79,7 +79,7 @@ type Node struct {
 
 	// Storage Market Interfaces
 	StorageClient *StorageClient
-	StorageMarket *StorageMarket
+	StorageBroker *StorageBroker
 
 	// Network Fields
 	PubSub       *floodsub.PubSub
@@ -254,7 +254,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.HelloSvc = core.NewHello(node.Host, node.ChainMgr.GetGenesisCid(), node.ChainMgr.InformNewTipSet, node.ChainMgr.GetHeaviestTipSet)
 
 	node.StorageClient = NewStorageClient(node)
-	node.StorageMarket = NewStorageMarket(node)
+	node.StorageBroker = NewStorageBroker(node)
 
 	// subscribe to block notifications
 	blkSub, err := node.PubSub.Subscribe(BlocksTopic)

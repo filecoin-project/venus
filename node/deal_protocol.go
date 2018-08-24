@@ -65,7 +65,7 @@ func (dp *DealProposal) LogTag() string {
 	return "dealProposal"
 }
 
-// DealQuery is used to query the state of a deal by its miner generated ID
+// DealQuery is used to query the state of a deal by its broker generated ID
 type DealQuery struct {
 	ID [32]byte
 }
@@ -93,8 +93,8 @@ func (dr *DealResponse) LogTag() string {
 	return "dealResponse"
 }
 
-// StorageMarket manages making storage deals with clients
-type StorageMarket struct {
+// StorageBroker manages making storage deals with clients
+type StorageBroker struct {
 	// TODO: don't depend directly on the node once we find out exactly the set
 	// of things we need from it. blah blah passing in function closure nonsense blah blah
 	nd *Node
@@ -104,7 +104,7 @@ type StorageMarket struct {
 		sync.Mutex
 	}
 
-	// smi allows the StorageMarket to fetch data on asks bids and deals from
+	// smi allows the StorageBroker to fetch data on asks bids and deals from
 	// the blockchain (or some mocked source for testing)
 	smi storageMarketPeeker
 }
@@ -134,6 +134,9 @@ const (
 	// Complete means the deal is complete
 	// TODO: distinguish this from 'Posted'
 	Complete
+
+	// Staged means that the data in the deal has been staged into a sector
+	Staged
 )
 
 func (s DealState) String() string {
@@ -169,10 +172,10 @@ type Negotiation struct {
 	MinerOwner types.Address
 }
 
-// NewStorageMarket sets up a new storage market protocol handler and registers
+// NewStorageBroker sets up a new storage market protocol handler and registers
 // it with libp2p
-func NewStorageMarket(nd *Node) *StorageMarket {
-	sm := &StorageMarket{
+func NewStorageBroker(nd *Node) *StorageBroker {
+	sm := &StorageBroker{
 		nd:  nd,
 		smi: &stateTreeMarketPeeker{nd},
 	}
@@ -185,7 +188,7 @@ func NewStorageMarket(nd *Node) *StorageMarket {
 }
 
 // ProposeDeal the handler for incoming deal proposals
-func (sm *StorageMarket) ProposeDeal(ctx context.Context, propose *DealProposal) (dr *DealResponse, err error) {
+func (sm *StorageBroker) ProposeDeal(ctx context.Context, propose *DealProposal) (dr *DealResponse, err error) {
 	ctx = log.Start(ctx, "StorageMarket.ProposeDeal")
 	log.SetTag(ctx, propose.LogTag(), propose)
 	defer func() {
@@ -285,14 +288,14 @@ func (sm *StorageMarket) ProposeDeal(ctx context.Context, propose *DealProposal)
 	}, nil
 }
 
-func (sm *StorageMarket) updateNegotiation(id [32]byte, op func(*Negotiation)) {
+func (sm *StorageBroker) updateNegotiation(id [32]byte, op func(*Negotiation)) {
 	sm.deals.Lock()
 	defer sm.deals.Unlock()
 
 	op(sm.deals.set[id])
 }
 
-func (sm *StorageMarket) handleNewStreamPropose(s inet.Stream) {
+func (sm *StorageBroker) handleNewStreamPropose(s inet.Stream) {
 	ctx := context.TODO()
 	defer s.Close() // nolint: errcheck
 	r := cbu.NewMsgReader(s)
@@ -317,7 +320,7 @@ func (sm *StorageMarket) handleNewStreamPropose(s inet.Stream) {
 	}
 }
 
-func (sm *StorageMarket) handleNewStreamQuery(s inet.Stream) {
+func (sm *StorageBroker) handleNewStreamQuery(s inet.Stream) {
 	ctx := context.TODO()
 	defer s.Close() // nolint: errcheck
 	r := cbu.NewMsgReader(s)
@@ -343,7 +346,7 @@ func (sm *StorageMarket) handleNewStreamQuery(s inet.Stream) {
 }
 
 // QueryDeal is the handler for incoming deal queries
-func (sm *StorageMarket) QueryDeal(ctx context.Context, id [32]byte) (dr *DealResponse, err error) {
+func (sm *StorageBroker) QueryDeal(ctx context.Context, id [32]byte) (dr *DealResponse, err error) {
 	ctx = log.Start(ctx, "StorageMarket.QueryDeal")
 	log.SetTag(ctx, "id", id)
 	defer func() {
@@ -352,7 +355,6 @@ func (sm *StorageMarket) QueryDeal(ctx context.Context, id [32]byte) (dr *DealRe
 		}
 		log.FinishWithErr(ctx, err)
 	}()
-
 	sm.deals.Lock()
 	defer sm.deals.Unlock()
 
@@ -379,7 +381,7 @@ func negotiationID(minerID types.Address, propose *DealProposal) [32]byte {
 	return sha256.Sum256(data)
 }
 
-func (sm *StorageMarket) processDeal(id [32]byte) {
+func (sm *StorageBroker) processDeal(id [32]byte) {
 	var propose *DealProposal
 	var minerOwner types.Address
 	sm.updateNegotiation(id, func(n *Negotiation) {
@@ -404,7 +406,7 @@ func (sm *StorageMarket) processDeal(id [32]byte) {
 	})
 }
 
-func (sm *StorageMarket) finishDeal(ctx context.Context, minerOwner types.Address, propose *DealProposal) (*cid.Cid, error) {
+func (sm *StorageBroker) finishDeal(ctx context.Context, minerOwner types.Address, propose *DealProposal) (*cid.Cid, error) {
 	// TODO: better file fetching
 	dataRef, err := cid.Decode(propose.Deal.DataRef)
 	if err != nil {
@@ -420,26 +422,21 @@ func (sm *StorageMarket) finishDeal(ctx context.Context, minerOwner types.Addres
 		return nil, err
 	}
 
-	if err := sm.stageForSealing(ctx, dataRef); err != nil {
-		// TODO: maybe wait until the deal gets finalized on the blockchain? (wait N blocks)
-		return nil, err
-	}
-
 	return msgcid, nil
 }
 
-func (sm *StorageMarket) stageForSealing(ctx context.Context, ref *cid.Cid) error {
+func (sm *StorageBroker) stageForSealing(ctx context.Context, ref *cid.Cid) error {
 	// TODO:
 	return nil
 }
 
-func (sm *StorageMarket) fetchData(ctx context.Context, ref *cid.Cid) error {
+func (sm *StorageBroker) fetchData(ctx context.Context, ref *cid.Cid) error {
 	return dag.FetchGraph(ctx, ref, dag.NewDAGService(sm.nd.Blockservice))
 }
 
 // GetMarketPeeker returns the storageMarketPeeker for this storage market
 // TODO: something something returning unexported interfaces?
-func (sm *StorageMarket) GetMarketPeeker() storageMarketPeeker { // nolint: golint
+func (sm *StorageBroker) GetMarketPeeker() storageMarketPeeker { // nolint: golint
 	return sm.smi
 }
 

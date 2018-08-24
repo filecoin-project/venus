@@ -19,4 +19,6 @@ type Client interface {
 	ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error)
 	QueryDeal(ctx context.Context, idSlice []byte) (*node.DealResponse, error)
 	ImportData(ctx context.Context, data io.Reader) (ipld.Node, error)
+	ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner types.Address, price *types.AttoFIL, duration uint64) (*cid.Cid, error)
+	QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*node.StorageDealResponse, error)
 }
