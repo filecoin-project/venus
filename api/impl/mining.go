@@ -43,11 +43,11 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	return res.NewBlock, nil
 }
 
-func (api *nodeMining) Start() error {
-	return api.api.node.StartMining()
+func (api *nodeMining) Start(ctx context.Context) error {
+	return api.api.node.StartMining(ctx)
 }
 
-func (api *nodeMining) Stop() error {
-	api.api.node.StopMining()
+func (api *nodeMining) Stop(ctx context.Context) error {
+	api.api.node.StopMining(ctx)
 	return nil
 }

@@ -40,7 +40,7 @@ var miningOnceCmd = &cmds.Command{
 
 var miningStartCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := GetAPI(env).Mining().Start(); err != nil {
+		if err := GetAPI(env).Mining().Start(req.Context); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -52,7 +52,7 @@ var miningStartCmd = &cmds.Command{
 
 var miningStopCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := GetAPI(env).Mining().Stop(); err != nil {
+		if err := GetAPI(env).Mining().Stop(req.Context); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

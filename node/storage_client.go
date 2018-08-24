@@ -33,7 +33,7 @@ func NewStorageClient(nd *Node) *StorageClient {
 }
 
 func (sc *StorageClient) minerPidForAsk(ctx context.Context, askID uint64) (peer.ID, error) {
-	ask, err := sc.smi.GetStorageAsk(askID)
+	ask, err := sc.smi.GetStorageAsk(ctx, askID)
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +47,16 @@ func (sc *StorageClient) minerPidForAsk(ctx context.Context, askID uint64) (peer
 }
 
 // ProposeDeal proposes a deal to the given miner
-func (sc *StorageClient) ProposeDeal(ctx context.Context, d *DealProposal) (*DealResponse, error) {
+func (sc *StorageClient) ProposeDeal(ctx context.Context, d *DealProposal) (dr *DealResponse, err error) {
+	ctx = log.Start(ctx, "StorageClient.ProposeDeal")
+	log.SetTag(ctx, d.LogTag(), d)
+	defer func() {
+		if dr != nil {
+			log.SetTag(ctx, dr.LogTag(), dr)
+		}
+		log.FinishWithErr(ctx, err)
+	}()
+
 	minerPid, err := sc.minerPidForAsk(ctx, d.Deal.Ask)
 	if err != nil {
 		return nil, err
@@ -95,7 +104,16 @@ func (sc *StorageClient) proposalForNegotiation(id [32]byte) *DealProposal {
 }
 
 // QueryDeal queries a deal from the given miner by its ID
-func (sc *StorageClient) QueryDeal(ctx context.Context, id [32]byte) (*DealResponse, error) {
+func (sc *StorageClient) QueryDeal(ctx context.Context, id [32]byte) (dr *DealResponse, err error) {
+	ctx = log.Start(ctx, "StorageClient.QueryDeal")
+	log.SetTag(ctx, "id", id)
+	defer func() {
+		if dr != nil {
+			log.SetTag(ctx, dr.LogTag(), dr)
+		}
+		log.FinishWithErr(ctx, err)
+	}()
+
 	propose := sc.proposalForNegotiation(id)
 	if propose == nil {
 		return nil, fmt.Errorf("unknown negotiation ID")

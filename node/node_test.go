@@ -37,7 +37,7 @@ func TestNodeConstruct(t *testing.T) {
 	nd := MakeNodesUnstarted(t, 1, false, true)[0]
 	assert.NotNil(nd.Host)
 
-	nd.Stop()
+	nd.Stop(context.Background())
 }
 
 func TestNodeNetworking(t *testing.T) {
@@ -56,8 +56,8 @@ func TestNodeNetworking(t *testing.T) {
 	err := nd1.Host.Connect(ctx, pinfo)
 	assert.NoError(err)
 
-	nd1.Stop()
-	nd2.Stop()
+	nd1.Stop(ctx)
+	nd2.Stop(ctx)
 }
 
 func TestConnectsToBootstrapNodes(t *testing.T) {
@@ -76,8 +76,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		nd, err := New(ctx, opts...)
 		require.NoError(err)
-		assert.NoError(nd.Start())
-		defer nd.Stop()
+		assert.NoError(nd.Start(ctx))
+		defer nd.Stop(ctx)
 	})
 
 	t.Run("connects to bootstrap nodes", func(t *testing.T) {
@@ -103,8 +103,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require.NoError(err)
 		nd.Bootstrapper.MinPeerThreshold = 2
 		nd.Bootstrapper.Period = 10 * time.Millisecond
-		assert.NoError(nd.Start())
-		defer nd.Stop()
+		assert.NoError(nd.Start(ctx))
+		defer nd.Stop(ctx)
 
 		// Ensure they're connected.
 		connected := false
@@ -127,13 +127,14 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 func TestNodeInit(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 
-	assert.NoError(nd.Start())
+	assert.NoError(nd.Start(ctx))
 
 	assert.NotNil(nd.ChainMgr.GetHeaviestTipSet())
-	nd.Stop()
+	nd.Stop(ctx)
 }
 
 func TestNodeMining(t *testing.T) {
@@ -165,8 +166,8 @@ func TestNodeMining(t *testing.T) {
 	var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
-	require.NoError(node.Start())
-	require.NoError(node.StartMining())
+	require.NoError(node.Start(ctx))
+	require.NoError(node.StartMining(ctx))
 	gotInput := <-inCh
 	require.Equal(1, len(gotInput.TipSet))
 	assert.True(b1.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
@@ -180,7 +181,7 @@ func TestNodeMining(t *testing.T) {
 
 	// Ensure we don't mine when stopped.
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
-	node.StopMining()
+	node.StopMining(ctx)
 	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b2))
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
@@ -192,8 +193,8 @@ func TestNodeMining(t *testing.T) {
 
 	chainMgrForTest = node.ChainMgr
 	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
-	assert.NoError(node.Start())
-	assert.NoError(node.StartMining())
+	assert.NoError(node.Start(ctx))
+	assert.NoError(node.StartMining(ctx))
 	workerDone := false
 	node.miningDoneWg.Add(1)
 	go func() {
@@ -201,7 +202,7 @@ func TestNodeMining(t *testing.T) {
 		workerDone = true
 		node.miningDoneWg.Done()
 	}()
-	node.Stop()
+	node.Stop(ctx)
 	assert.True(workerDone)
 
 	// Ensure that the output is wired up correctly.
@@ -217,7 +218,7 @@ func TestNodeMining(t *testing.T) {
 	node.miningInCh = inCh
 	node.miningDoneWg = doneWg
 	go node.handleNewMiningOutput(oCh)
-	assert.NoError(node.Start())
+	assert.NoError(node.Start(ctx))
 
 	var gotBlock *types.Block
 	gotBlockCh := make(chan struct{})
@@ -225,7 +226,7 @@ func TestNodeMining(t *testing.T) {
 		gotBlock = b
 		go func() { gotBlockCh <- struct{}{} }()
 	}
-	assert.NoError(node.StartMining())
+	assert.NoError(node.StartMining(ctx))
 	go func() { outCh <- mining.NewOutput(b1, nil) }()
 	<-gotBlockCh
 	assert.True(b1.Cid().Equals(gotBlock.Cid()))
@@ -249,7 +250,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	oldChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{m[2], m[3]}})
 	newChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
 	chainMgrForTest.SetHeaviestTipSetForTest(ctx, oldChain[len(oldChain)-1])
-	assert.NoError(node.Start())
+	assert.NoError(node.Start(ctx))
 	updateMsgPoolDoneCh := make(chan struct{})
 	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
 	// Triggers a notification, node should update the message pool as a result.
@@ -259,7 +260,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	pending := node.MsgPool.Pending()
 	assert.True(types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
 	assert.True(types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))
-	node.Stop()
+	node.Stop(ctx)
 }
 
 func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
@@ -287,12 +288,11 @@ type smsgsSet [][]*types.SignedMessage
 func TestWaitForMessage(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
-	err := node.Start()
+	err := node.Start(ctx)
 	assert.NoError(err)
 
 	stm := (*core.ChainManagerForTest)(node.ChainMgr)
@@ -308,7 +308,7 @@ func TestWaitForMessageError(t *testing.T) {
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
-	assert.NoError(node.Start())
+	assert.NoError(node.Start(ctx))
 
 	stm := (*core.ChainManagerForTest)(node.ChainMgr)
 
@@ -371,7 +371,7 @@ func TestWaitConflicting(t *testing.T) {
 	)
 	assert.NoError(node.ChainMgr.Genesis(ctx, testGen))
 
-	assert.NoError(node.Start())
+	assert.NoError(node.Start(ctx))
 	stm := (*core.ChainManagerForTest)(node.ChainMgr)
 
 	// Create conflicting messages
@@ -426,8 +426,8 @@ func TestGetSignature(t *testing.T) {
 		)
 		nd.ChainMgr.Genesis(ctx, tif)
 
-		assert.NoError(nd.Start())
-		defer nd.Stop()
+		assert.NoError(nd.Start(ctx))
+		defer nd.Stop(ctx)
 
 		sig, err := nd.GetSignature(ctx, nodeAddr, "")
 		assert.Equal(ErrNoMethod, err)
@@ -494,7 +494,7 @@ func TestNextNonce(t *testing.T) {
 
 		err = node.ChainMgr.Genesis(ctx, tif)
 		assert.NoError(err)
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		noActorAddress, err := node.NewAddress() // Won't have an actor.
 		assert.NoError(err)
@@ -516,7 +516,7 @@ func TestNextNonce(t *testing.T) {
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
 
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		// TODO: does sending a message to ourselves fit the spirit of the test?
 		msg := types.NewMessage(nodeAddr, nodeAddr, 0, nil, "foo", []byte{})
@@ -547,7 +547,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 			th.ActorNonce(nodeAddr, 42),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		bb := types.NewBlockForTest(core.RequireBestBlock(node.ChainMgr, t), 1)
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
@@ -574,12 +574,12 @@ func TestQueryMessage(t *testing.T) {
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		args, err := abi.ToEncodedValues(nodeAddr)
 		require.NoError(err)
 
-		returnValue, exitCode, err := node.CallQueryMethod(address.PaymentBrokerAddress, "ls", args, nil)
+		returnValue, exitCode, err := node.CallQueryMethod(ctx, address.PaymentBrokerAddress, "ls", args, nil)
 		require.NoError(err)
 		require.Equal(uint8(0), exitCode)
 
@@ -603,7 +603,7 @@ func TestCreateMiner(t *testing.T) {
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		assert.Equal(0, len(node.SectorBuilders))
 
@@ -625,7 +625,7 @@ func TestCreateMiner(t *testing.T) {
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		assert.Equal(0, len(node.SectorBuilders))
 
@@ -645,7 +645,7 @@ func TestCreateMiner(t *testing.T) {
 			th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-		assert.NoError(node.Start())
+		assert.NoError(node.Start(ctx))
 
 		assert.Equal(0, len(node.SectorBuilders))
 
@@ -673,7 +673,7 @@ func TestCreateSectorBuilders(t *testing.T) {
 		th.ActorAccount(minerAddr1, types.NewAttoFILFromFIL(10000)),
 	)
 	assert.NoError(node.ChainMgr.Genesis(ctx, tif))
-	assert.NoError(node.Start())
+	assert.NoError(node.Start(ctx))
 
 	assert.Equal(0, len(node.SectorBuilders))
 
@@ -682,7 +682,7 @@ func TestCreateSectorBuilders(t *testing.T) {
 
 	assert.Equal(0, len(node.SectorBuilders))
 
-	node.StartMining()
+	node.StartMining(ctx)
 	assert.Equal(1, len(node.SectorBuilders))
 
 	// ensure that that the sector builders have been configured
@@ -738,7 +738,7 @@ func TestLookupMinerAddress(t *testing.T) {
 			th.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
 		)
 		require.NoError(nd.ChainMgr.Genesis(ctx, tif))
-		require.NoError(nd.Start())
+		require.NoError(nd.Start(ctx))
 
 		// create a miner, owned by the account actor
 		result := <-RunCreateMiner(t, nd, minerOwnerAddr, *types.NewBytesAmount(100000), newMinerPid, *types.NewAttoFILFromFIL(100))

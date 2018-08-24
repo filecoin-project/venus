@@ -64,9 +64,9 @@ type SectorDirs interface {
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
-	Ref    *cid.Cid
-	Size   uint64
-	DealID uint64
+	Ref    *cid.Cid `json:"ref"`
+	Size   uint64   `json:"size"`
+	DealID uint64   `json:"deal_id"`
 }
 
 // SectorBuilder manages packing deals into sectors
@@ -139,7 +139,12 @@ func (sb *SectorBuilder) GetCurrentBin() binpack.Bin {
 }
 
 // AddItem implements binpack.Binner.
-func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin binpack.Bin) error {
+func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin binpack.Bin) (err error) {
+	ctx = log.Start(ctx, "SectorBuilder.AddItem")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
 	pi := item.(*PieceInfo)
 	s := bin.(*Sector)
 	root, err := sb.dserv.Get(ctx, pi.Ref)
@@ -152,7 +157,7 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 		return err
 	}
 
-	if err := s.WritePiece(pi, r); err != nil {
+	if err := s.WritePiece(ctx, pi, r); err != nil {
 		return err
 	}
 
@@ -340,7 +345,13 @@ func (sb *SectorBuilder) onCommitmentAddedToMempool(*SealedSector, *cid.Cid, err
 }
 
 // AddPiece writes the given piece into a sector
-func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) error {
+func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (err error) {
+	ctx = log.Start(ctx, "SectorBuilder.AddPiece")
+	log.SetTag(ctx, "piece", pi)
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
 	bin, err := sb.Packer.AddItem(ctx, pi)
 	if err == binpack.ErrItemTooLarge {
 		return ErrPieceTooLarge
@@ -423,8 +434,20 @@ func (s *Sector) SyncFile(f *os.File) error {
 
 // SealAndAddCommitmentToMempool seals the given sector, adds the sealed sector's commitment to the message pool, and
 // then returns the CID of the commitment message.
-func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *Sector) (*cid.Cid, error) {
-	ss, err := sb.Seal(s, sb.MinerAddr)
+func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *Sector) (c *cid.Cid, err error) {
+	ctx = log.Start(ctx, "SectorBuilder.SealAndAddCommitmentToMempool")
+	log.SetTags(ctx, map[string]interface{}{
+		"fileName": s.filename,
+		"lable":    s.Label,
+	})
+	defer func() {
+		if c != nil {
+			log.SetTag(ctx, "sectorCid", c.String())
+		}
+		log.FinishWithErr(ctx, err)
+	}()
+
+	ss, err := sb.Seal(ctx, s, sb.MinerAddr)
 	if err != nil {
 		// Hard to say what to do in this case.
 		// Depending on the error, it could be "try again"
@@ -451,7 +474,19 @@ func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *S
 
 // AddCommitmentToMempool adds the sealed sector's commitment to the message pool and returns the CID of the commitment
 // message.
-func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedSector) (*cid.Cid, error) {
+func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedSector) (c *cid.Cid, err error) {
+	ctx = log.Start(ctx, "SectorBuilder.AddCommitmentToMempool")
+	log.SetTags(ctx, map[string]interface{}{
+		"fileName": ss.filename,
+		"lable":    ss.label,
+	})
+	defer func() {
+		if c != nil {
+			log.SetTag(ctx, "sectorCid", c.String())
+		}
+		log.FinishWithErr(ctx, err)
+	}()
+
 	var deals []uint64
 	for _, p := range ss.pieces {
 		deals = append(deals, p.DealID)
@@ -466,7 +501,7 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
 	}
 
-	res, exitCode, err := sb.nd.CallQueryMethod(sb.MinerAddr, "getOwner", nil, nil)
+	res, exitCode, err := sb.nd.CallQueryMethod(ctx, sb.MinerAddr, "getOwner", nil, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get miner owner")
 	}
@@ -499,7 +534,12 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage
-func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
+func (s *Sector) WritePiece(ctx context.Context, pi *PieceInfo, r io.Reader) (finalErr error) {
+	ctx = log.Start(ctx, "Sector.WritePiece")
+	defer func() {
+		log.FinishWithErr(ctx, finalErr)
+	}()
+
 	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
@@ -533,7 +573,12 @@ func (s *Sector) WritePiece(pi *PieceInfo, r io.Reader) (finalErr error) {
 }
 
 // Seal generates and returns a proof of replication along with supporting data.
-func (sb *SectorBuilder) Seal(s *Sector, minerAddr types.Address) (*SealedSector, error) {
+func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Address) (_ *SealedSector, finalErr error) {
+	ctx = log.Start(ctx, "SectorBuilder.Seal")
+	defer func() {
+		log.FinishWithErr(ctx, finalErr)
+	}()
+
 	p, label := sb.newSealedSectorPath()
 
 	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {

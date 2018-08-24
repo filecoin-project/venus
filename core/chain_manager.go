@@ -674,11 +674,13 @@ func (cm *ChainManagerForTest) SetHeaviestTipSetForTest(ctx context.Context, ts 
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
 func (cm *ChainManager) BlockHistory(ctx context.Context) <-chan interface{} {
+	ctx = log.Start(ctx, "ChainManager.BlockHistory")
 	out := make(chan interface{})
 	tips := cm.GetHeaviestTipSet().ToSlice()
 
 	go func() {
 		defer close(out)
+		defer log.Finish(ctx)
 		err := cm.walkChain(tips, func(tips []*types.Block) (cont bool, err error) {
 			var raw interface{}
 			raw, err = NewTipSet(tips...)
@@ -797,7 +799,6 @@ const ECPrM uint64 = 100
 // weight returns the EC weight of this TipSet
 // TODO: this implementation needs to handle precision correctly, see issue #655.
 func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error) {
-	log.LogKV(ctx, "Weight", ts.String())
 	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(cm.genesisCid) {
 		return big.NewRat(int64(0), int64(1)), nil
 	}
@@ -840,7 +841,16 @@ func (cm *ChainManager) weight(ctx context.Context, ts TipSet) (*big.Rat, error)
 }
 
 // Weight returns the numerator and denominator of the weight of the input tipset.
-func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, uint64, error) {
+func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (numer uint64, denom uint64, err error) {
+	ctx = log.Start(ctx, "ChainManager.Weight")
+	log.SetTag(ctx, "tipSet", ts)
+	defer func() {
+		log.SetTags(ctx, map[string]interface{}{
+			"numerator":   numer,
+			"denominator": denom,
+		})
+		log.FinishWithErr(ctx, err)
+	}()
 	w, err := cm.weight(ctx, ts)
 	if err != nil {
 		return uint64(0), uint64(0), err
@@ -864,6 +874,8 @@ func (cm *ChainManager) Weight(ctx context.Context, ts TipSet) (uint64, uint64, 
 func (cm *ChainManager) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage,
 	*types.MessageReceipt) error) (retErr error) {
 	ctx = log.Start(ctx, "WaitForMessage")
+	log.SetTag(ctx, "messageCid", msgCid.String())
+	defer log.Finish(ctx)
 	log.Info("Calling WaitForMessage")
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.

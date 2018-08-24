@@ -245,7 +245,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 }
 
 // Start boots up the node.
-func (node *Node) Start() error {
+func (node *Node) Start(ctx context.Context) error {
 	if err := node.ChainMgr.Load(); err != nil {
 		return err
 	}
@@ -270,15 +270,15 @@ func (node *Node) Start() error {
 	}
 	node.MessageSub = msgSub
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cctx, cancel := context.WithCancel(context.Background())
 	node.cancelSubscriptionsCtx = cancel
 
-	go node.handleSubscription(ctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
-	go node.handleSubscription(ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
+	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
+	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainMgr.HeaviestTipSetPubSub.Sub(core.HeaviestTipSetTopic)
-	go node.handleNewHeaviestTipSet(ctx, node.ChainMgr.GetHeaviestTipSet())
+	go node.handleNewHeaviestTipSet(cctx, node.ChainMgr.GetHeaviestTipSet())
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -382,7 +382,7 @@ func (node *Node) cancelSubscriptions() {
 }
 
 // Stop initiates the shutdown of the node.
-func (node *Node) Stop() {
+func (node *Node) Stop(ctx context.Context) {
 	node.ChainMgr.HeaviestTipSetPubSub.Unsub(node.HeaviestTipSetCh)
 	if node.cancelMining != nil {
 		node.cancelMining()
@@ -447,7 +447,7 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // a SectorBuilder for each mining address.
-func (node *Node) StartMining() error {
+func (node *Node) StartMining(ctx context.Context) error {
 	miningAddress, err := node.MiningAddress()
 	if err != nil {
 		return err
@@ -502,12 +502,17 @@ func (node *Node) initSectorBuilder(minerAddr types.Address) error {
 }
 
 // StopMining stops mining on new blocks.
-func (node *Node) StopMining() {
+func (node *Node) StopMining(ctx context.Context) {
 	node.setIsMining(false)
 }
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
-func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (*exec.FunctionSignature, error) {
+func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, method string) (_ *exec.FunctionSignature, err error) {
+	ctx = log.Start(ctx, "Node.GetSignature")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
 	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load state tree")
@@ -539,12 +544,18 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr types.Address, met
 // NextNonce returns the next nonce for the given address. It checks
 // the actor's memory and also scans the message pool for any pending
 // messages.
-func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, error) {
+func NextNonce(ctx context.Context, node *Node, address types.Address) (nonce uint64, err error) {
+	ctx = log.Start(ctx, "Node.NextNonce")
+	defer func() {
+		log.SetTag(ctx, "nonce", nonce)
+		log.FinishWithErr(ctx, err)
+	}()
+
 	st, err := node.ChainMgr.State(ctx, node.ChainMgr.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return 0, err
 	}
-	nonce, err := core.NextNonce(ctx, st, node.MsgPool, address)
+	nonce, err = core.NextNonce(ctx, st, node.MsgPool, address)
 	if err != nil {
 		return 0, err
 	}
@@ -554,7 +565,12 @@ func NextNonce(ctx context.Context, node *Node, address types.Address) (uint64, 
 // NewMessageWithNextNonce returns a new types.Message whose
 // nonce is set to our best guess at the next appropriate value
 // (see NextNonce).
-func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.AttoFIL, method string, params []byte) (*types.Message, error) {
+func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to types.Address, value *types.AttoFIL, method string, params []byte) (_ *types.Message, err error) {
+	ctx = log.Start(ctx, "Node.NewMessageWithNextNonce")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
 	nonce, err := NextNonce(ctx, node, from)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get next nonce")
@@ -577,8 +593,12 @@ func (node *Node) NewAddress() (types.Address, error) {
 // tipset. It doesn't make any changes to the state/blockchain. It is useful
 // for interrogating actor state. The caller address is optional; if not
 // provided, an address will be chosen from the node's wallet.
-func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, optFrom *types.Address) ([][]byte, uint8, error) {
-	ctx := context.Background()
+func (node *Node) CallQueryMethod(ctx context.Context, to types.Address, method string, args []byte, optFrom *types.Address) (_ [][]byte, _ uint8, err error) {
+	ctx = log.Start(ctx, "Node.CallQueryMethod")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
 	bts := node.ChainMgr.GetHeaviestTipSet()
 	st, err := node.ChainMgr.State(ctx, bts.ToSlice())
 	if err != nil {
@@ -605,7 +625,11 @@ func (node *Node) CallQueryMethod(to types.Address, method string, args []byte, 
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add its address to mining.minerAddresses in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (*types.Address, error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr types.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (_ *types.Address, err error) {
+	ctx = log.Start(ctx, "Node.CreateMiner")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
 
 	// TODO: make this more streamlined in the wallet
 	backend, err := node.Wallet.Find(accountAddr)

@@ -72,7 +72,7 @@ func (api *nodeMessage) Query(ctx context.Context, from, to types.Address, metho
 	}
 
 	// make the request
-	retVals, ec, err := nd.CallQueryMethod(to, method, encodedParams, &from)
+	retVals, ec, err := nd.CallQueryMethod(ctx, to, method, encodedParams, &from)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed executing query method")
 	}
