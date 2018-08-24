@@ -270,15 +270,15 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.MessageSub = msgSub
 
-	ctx, cancel := context.WithCancel(context.Background())
+	cctx, cancel := context.WithCancel(context.Background())
 	node.cancelSubscriptionsCtx = cancel
 
-	go node.handleSubscription(ctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
-	go node.handleSubscription(ctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
+	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
+	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainMgr.HeaviestTipSetPubSub.Sub(core.HeaviestTipSetTopic)
-	go node.handleNewHeaviestTipSet(ctx, node.ChainMgr.GetHeaviestTipSet())
+	go node.handleNewHeaviestTipSet(cctx, node.ChainMgr.GetHeaviestTipSet())
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
