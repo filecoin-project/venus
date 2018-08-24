@@ -1,6 +1,9 @@
 FROM golang:1.10-stretch
 MAINTAINER Filecoin Dev Team
 
+RUN apt-get update && apt-get install -y ca-certificates file sudo
+RUN curl -sSf https://static.rust-lang.org/rustup.sh | sh -
+
 # This docker file is a modified version of
 # https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
 # Thanks Lars :)
@@ -28,9 +31,6 @@ RUN set -x \
   && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
   && chmod +x tini
 
-# Get the TLS CA certificates, they're not provided by busybox.
-RUN apt-get update && apt-get install -y ca-certificates
-
 # Now comes the actual target image, which aims to be as small as possible.
 FROM busybox:1-glibc
 MAINTAINER Filecoin Dev Team
@@ -45,6 +45,9 @@ COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
 COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
+COPY --from=0 /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
+COPY --from=0 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
+COPY --from=0 $SRC_DIR/proofs/rust-proofs/target/release/libproofs.so /lib/libproofs.so
 
 # Ports for Swarm and CmdAPI
 EXPOSE 6000
