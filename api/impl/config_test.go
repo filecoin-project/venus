@@ -55,7 +55,7 @@ func TestConfigSet(t *testing.T) {
 		defaultCfg := config.NewDefaultConfig()
 
 		n := node.MakeNodesUnstarted(t, 1, true, true, func(c *node.Config) error {
-			c.Repo.Config().API.Address = defaultCfg.API.Address
+			c.Repo.Config().API.Address = defaultCfg.API.Address // overwrite value set with testhelpers.GetFreePort()
 			return nil
 		})[0]
 		api := New(n)
@@ -75,7 +75,9 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(defaultCfg.API, cfg.API)
 		assert.Equal(defaultCfg.Datastore, cfg.Datastore)
 		assert.Equal(defaultCfg.Mining, cfg.Mining)
-		assert.Equal(defaultCfg.Swarm, cfg.Swarm)
+		assert.Equal(&config.SwarmConfig{
+			Address: "/ip4/0.0.0.0/tcp/0",
+		}, cfg.Swarm) // default overwritten in node.MakeNodesUnstarted()
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {

@@ -34,6 +34,7 @@ func TestIdOutput(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
+	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
 	err := node.Init(ctx, r, core.InitGenesis)
 	assert.NoError(err)

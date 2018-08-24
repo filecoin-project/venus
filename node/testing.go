@@ -27,6 +27,8 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool
 	var out []*Node
 	for i := 0; i < n; i++ {
 		r := repo.NewInMemoryRepo()
+		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+
 		err := Init(context.Background(), r, core.InitGenesis)
 		require.NoError(t, err)
 

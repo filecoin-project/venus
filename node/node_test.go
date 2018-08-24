@@ -69,6 +69,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		ctx := context.Background()
 
 		r := repo.NewInMemoryRepo()
+		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+
 		require.NoError(Init(ctx, r, core.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := OptionsFromRepo(r)
@@ -95,6 +97,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		// Create a node with the nodes above as bootstrap nodes.
 		r := repo.NewInMemoryRepo()
+		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+
 		require.NoError(Init(ctx, r, core.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 		opts, err := OptionsFromRepo(r)
