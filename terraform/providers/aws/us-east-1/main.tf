@@ -39,7 +39,7 @@ resource "aws_security_group" "filecoin" {
 }
 
 data "template_file" "user_data" {
-  template = "${file("../../../scripts/ubuntu_user_data.sh")}"
+  template = "${file("../../../scripts/docker_user_data.sh")}"
 
   vars {
     github_branch_name = "${var.github_branch_name}"
