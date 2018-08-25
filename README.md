@@ -12,7 +12,7 @@ by providing storage to clients.
 ## Table of Contents
 
 - [Development](#development)
-  - [Install Go and Rust](#install-go)
+  - [Prerequisites: Installing Go and Rust](#install-go)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
@@ -22,43 +22,15 @@ by providing storage to clients.
 
 ## Development
 
-### Install Go and Rust
+### Prerequisites: Installing Go and Rust
 
-The build process for go-filecoin requires:
+The build process for go-filecoin requires at least Go version 1.10. You'll also need Rust to build the `rust-proofs` submodule, which you can download [here][5].
 
-**Go version 1.10**, which you can download [here][1].
+We've found the Go install instructions can lead to some confusing behavior if you're not already familiar with Go's internals. If you're setting up Go for the first time specifically to experiment with Filecoin, we recommend the following process:
 
-#### Quick install instructions for Linux:
-
-Start in home
-
-`cd $HOME`
-
-Fetch go:
-
-`curl -O https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz`
-
-Extract go:
-
-`tar xf go1.10.3.linux-amd64.tar.gz`
-
-Add the go binary to your path:
-
-`nano $HOME/.bash_profile`
-
-Make Go available in your PATH:
-
-`export PATH=$HOME/go/bin:$PATH`
-
-after adding the above line to `.bash_profile` run `source $HOME/.bash_profile` to update your paths
-
-> If you run into trouble, see the [Go install instructions][4].
-  
-**Rust** to build the `rust-proofs` submodule, which you can download [here][5].
+[Here we need install instructions for Mac and Linux, using tarballs instead of the package installer. Introduce the concept of $GOPATH by telling the user to set it, even if it's already defaulted to the right place. Windows install instructions needed as well, TBD]
 
 ### Clone
-
-[I'm not seeing anything that sets the value of `{$GOPATH}`. Is there documentation for how this comes to exist?]
 
 ```sh
 > mkdir -p ${GOPATH}/src/github.com/filecoin-project
