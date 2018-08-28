@@ -56,6 +56,7 @@ resource "aws_instance" "filecoin" {
 
   subnet_id              = "${element(module.vpc.public_subnets, 0)}"
   vpc_security_group_ids = ["${aws_security_group.filecoin.id}"]
+  iam_instance_profile = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
 
   associate_public_ip_address = true
 
