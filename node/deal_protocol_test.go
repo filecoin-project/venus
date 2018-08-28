@@ -103,6 +103,7 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 - test query for deal not found
 - test deal fails once posted on chain (maybe)
 */
+// TODO: does this test even work? I'm not sure the nodes its making get connected
 func TestDealProtocol(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -111,7 +112,7 @@ func TestDealProtocol(t *testing.T) {
 	client := nodes[1]
 	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
@@ -170,7 +171,7 @@ func TestDealProtocolMissing(t *testing.T) {
 	client := nodes[1]
 	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)

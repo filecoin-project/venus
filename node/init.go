@@ -19,10 +19,31 @@ import (
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
 
+// InitCfg contains configuration for initializing a node
+type InitCfg struct {
+	PeerKey ci.PrivKey
+}
+
+// InitOpt is an init option function
+type InitOpt func(*InitCfg)
+
+// PrivKeyOpt sets the private key for the nodes 'self' key
+// this is the key that is used for libp2p identity
+func PrivKeyOpt(k ci.PrivKey) InitOpt {
+	return func(c *InitCfg) {
+		c.PeerKey = k
+	}
+}
+
 // Init initializes a filecoin node in the given repo
 // TODO: accept options?
 //  - configurable genesis block
-func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
+func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc, opts ...InitOpt) error {
+	cfg := new(InitCfg)
+	for _, o := range opts {
+		o(cfg)
+	}
+
 	// TODO(ipfs): make the blockstore and blockservice have the same interfaces
 	// so that this becomes less painful
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -33,13 +54,17 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
 		return errors.Wrap(err, "failed to initialize genesis")
 	}
 
-	// TODO: make size configurable
-	sk, err := makePrivateKey(2048)
-	if err != nil {
-		return errors.Wrap(err, "failed to create nodes private key")
+	if cfg.PeerKey == nil {
+		// TODO: make size configurable
+		sk, err := makePrivateKey(2048)
+		if err != nil {
+			return errors.Wrap(err, "failed to create nodes private key")
+		}
+
+		cfg.PeerKey = sk
 	}
 
-	if err := r.Keystore().Put("self", sk); err != nil {
+	if err := r.Keystore().Put("self", cfg.PeerKey); err != nil {
 		return errors.Wrap(err, "failed to store private key")
 	}
 

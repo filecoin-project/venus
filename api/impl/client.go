@@ -92,3 +92,11 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 
 	return imp.BuildDagFromReader(ds, spl)
 }
+
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner types.Address, price *types.AttoFIL, duration uint64) (*cid.Cid, error) {
+	return api.api.node.StorageMinerClient.TryToStoreData(ctx, miner, data, duration, price)
+}
+
+func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*node.StorageDealResponse, error) {
+	return api.api.node.StorageMinerClient.Query(ctx, prop)
+}
