@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"github.com/multiformats/go-multiaddr"
+	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
 // WaitOnAPI waits for a nodes api to come up.

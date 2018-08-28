@@ -58,12 +58,16 @@ func main() {
 		panic(err)
 	}
 
-	keys, err := gengen.GenGenesisCar(&cfg, os.Stdout)
+	info, err := gengen.GenGenesisCar(&cfg, os.Stdout)
 	if err != nil {
 		panic(err)
 	}
 
-	for name, k := range keys {
+	for _, m := range info.Miners {
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", m.Address, m.Owner, m.Power) // nolint: errcheck
+	}
+
+	for name, k := range info.Keys {
 		if err := writeKey(k, name); err != nil {
 			panic(err)
 		}

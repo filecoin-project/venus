@@ -14,9 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 	"github.com/ipfs/iptb/testbed/interfaces"

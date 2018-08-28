@@ -38,9 +38,9 @@ type StorageDealProposal struct {
 
 	Duration uint64
 
-	Payment PaymentInfo
+	//Payment PaymentInfo
 
-	Signature types.Signature
+	//Signature types.Signature
 }
 
 // PaymentInfo
@@ -259,9 +259,15 @@ func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64
 	if err != nil {
 		return 0, err
 	}
-	protonode := fnode.(*dag.ProtoNode) // YOLO cast
+	switch n := fnode.(type) {
+	case *dag.ProtoNode:
+		return unixfs.DataSize(n.Data())
+	case *dag.RawNode:
+		return n.Size()
+	default:
+		return 0, fmt.Errorf("unrecognized node type: %t", fnode)
+	}
 
-	return unixfs.DataSize(protonode.Data())
 }
 
 func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*cid.Cid, error) {
@@ -275,8 +281,8 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.A
 		Size:       types.NewBytesAmount(size),
 		TotalPrice: price,
 		Duration:   duration,
-		Payment:    PaymentInfo{},
-		Signature:  nil, // TODO: sign this
+		//Payment:    PaymentInfo{},
+		//Signature:  nil, // TODO: sign this
 	}
 
 	pid, err := smc.nd.Lookup.GetPeerIDByMinerAddress(ctx, miner)
