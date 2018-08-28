@@ -102,7 +102,7 @@ func NewStorageMiner(nd *Node) *StorageMiner {
 }
 
 func (sm *StorageMiner) handleProposalStream(s inet.Stream) {
-	defer s.Close()
+	defer s.Close() // nolint: errcheck
 
 	var proposal StorageDealProposal
 	if err := cbu.NewMsgReader(s).ReadMsg(&proposal); err != nil {
@@ -231,7 +231,7 @@ type storageDealQueryRequest struct {
 }
 
 func (sm *StorageMiner) handleQuery(s inet.Stream) {
-	defer s.Close()
+	defer s.Close() // nolint: errcheck
 
 	var q storageDealQueryRequest
 	if err := cbu.NewMsgReader(s).ReadMsg(&q); err != nil {
