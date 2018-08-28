@@ -1,10 +1,5 @@
 To run terraform commands the AWS CLI must be [installed locally](https://docs.aws.amazon.com/cli/latest/userguide/installing.html) and a [named profile](https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html) of `filecoin` must be configured.
 
-``` console
-$ cd terraform/providers/aws/us-east-1
-$ cp terraform.tfvars.example terraform.tfvars
-```
-
 Then initialize the project and check if the state file matches your local code:
 ``` console
 $ cd terraform/providers/aws/us-east-1

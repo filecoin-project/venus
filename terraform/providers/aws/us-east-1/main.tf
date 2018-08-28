@@ -42,9 +42,8 @@ data "template_file" "user_data" {
   template = "${file("../../../scripts/docker_user_data.sh")}"
 
   vars {
-    github_branch_name = "${var.github_branch_name}"
-    github_token       = "${var.github_token}"
-    datadog_api_key    = "${var.datadog_api_key}"
+    docker_uri = "${var.docker_uri}"
+    docker_tag = "${var.docker_tag}"
   }
 }
 
@@ -77,3 +76,4 @@ resource "aws_eip" "filecoin" {
 output "filecoin_dns" {
   value = "${aws_route53_record.service.fqdn}"
 }
+

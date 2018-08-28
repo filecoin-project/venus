@@ -1,6 +1,66 @@
 #!/bin/bash
 
 set -ex
+SETUPFILE=$$(cat <<-END
+{
+  "keys": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  "preAlloc": {
+    "0": "10000",
+    "1": "10000",
+    "2": "10000",
+    "3": "10000",
+    "4": "10000",
+    "5": "10000",
+    "6": "10000",
+    "7": "10000",
+    "8": "10000",
+    "9": "10000"
+  },
+  "miners": [
+    {
+      "owner":"0",
+      "power": 10000
+    },
+    {
+      "owner":"1",
+      "power": 10000
+    },
+    {
+      "owner":"2",
+      "power": 10000
+    },
+    {
+      "owner":"3",
+      "power": 10000
+    },
+    {
+      "owner":"4",
+      "power": 10000
+    },
+    {
+      "owner":"5",
+      "power": 10000
+    },
+    {
+      "owner":"6",
+      "power": 10000
+    },
+    {
+      "owner":"7",
+      "power": 10000
+    },
+    {
+      "owner":"8",
+      "power": 10000
+    },
+    {
+      "owner": "9",
+      "power": 10000
+    }
+  ]
+}
+END
+         )
 
 while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
   sleep 0.5
@@ -10,80 +70,107 @@ passwd -d root
 
 DEBIAN_FRONTEND=noninteractive apt-get purge -qy docker docker-engine docker.io || echo "Purged old versions of docker"
 DEBIAN_FRONTEND=noninteractive apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https ca-certificates curl software-properties-common awscli
+DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https ca-certificates curl software-properties-common awscli golang-go jq
 
 # add Docker gpg key and repo
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 DEBIAN_FRONTEND=noninteractive \
                add-apt-repository \
                "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-                 $(lsb_release -cs) stable"
+               $$(lsb_release -cs) stable"
 
 DEBIAN_FRONTEND=noninteractive apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce
 
-# get genesis.car
-wget -r -np -nH -nd https://ipfs.io/ipfs/QmRqXeU37aNKxSXkCFmcSJ5GTDG5cZwSr1aWSH4J7Dppuz -P /home/ubuntu/car
-
 # pull image
-DOCKER_IMAGE=657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:1d6357
+DOCKER_IMAGE=${docker_uri}:${docker_tag}
 eval $(aws --region us-east-1 ecr --no-include-email get-login)
-docker pull ${DOCKER_IMAGE}
+docker pull $${DOCKER_IMAGE}
+
+# generate genesis files
+CAR_DIR=/home/ubuntu/car
+mkdir -p $$CAR_DIR
+echo $$SETUPFILE > "$$CAR_DIR/"setup.json
+docker run \
+       -v "$$CAR_DIR":/var/filecoin/car \
+       --entrypoint='/bin/sh'\
+       --workdir=/var/filecoin/car/ \
+       $${DOCKER_IMAGE} \
+       -c 'cat setup.json | /usr/local/bin/gengen --json > genesis.car 2> gen.json'
 
 # initialize filecoin nodes
-for i in {0..9}; do mkdir -p /var/local/filecoins/$i; done
+for i in {0..9}; do mkdir -p /var/local/filecoins/$$i; done
 
-# TODO mount /data/filecoin from the host ?
+GOPATH=/home/ubuntu/go
+mkdir -p $GOPATH
+GOPATH=/home/ubuntu/go go get -u github.com/whyrusleeping/ipfs-key
 for i in {0..9}
 do
-  docker run -it \
+  # yes this one liner works
+  /home/ubuntu/go/bin/ipfs-key 2>&1 >"$$CAR_DIR/keyFile$$i" | tail -n1 | awk '{ print $$NF }' > "$$CAR_DIR/ID$$i"
+done
+
+# so here we need to pass the keyFile$i to the node to get a known peerID
+for i in {0..9}
+do
+  docker run \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v /var/local/filecoins:/var/local/filecoins \
          --entrypoint=/usr/local/bin/go-filecoin \
-         ${DOCKER_IMAGE} \
-         init --genesisfile=/var/filecoin/car/genesis.car --repodir=/var/local/filecoins/$i
+         $${DOCKER_IMAGE} \
+         init --genesisfile=/var/filecoin/car/genesis.car --repodir="/var/local/filecoins/$$i" --peerkeyfile="/var/filecoin/car/keyFile$$i"
 done
 
 chmod -R 0777 /var/local/filecoins/
-
 for i in {0..9}
 do
-  echo "Starting filecoin_$i"
-  docker run -d --name "filecoin_$i" --expose "9000" \
-         -v /var/local/filecoins/$i:/var/local/filecoin \
-         ${DOCKER_IMAGE} daemon \
-         --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000"
+  echo "Starting filecoin_$$i"
+  docker run -d --name "filecoin_$$i" --expose "9000" \
+         -v /home/ubuntu/car:/var/filecoin/car \
+         -v /var/local/filecoins/$$i:/var/local/filecoin \
+         $${DOCKER_IMAGE} daemon \
+         --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="5s"
 done
 
+# Here we add the miner address to the nodes config
+# so Miner[0] is imported by node 0, Miner[1] -> impprted to node1 etc.
 filcoin_exec="go-filecoin --repodir=/var/local/filecoin"
-miner_addresses=(fcq9d8najuh2fmah6wjcqctt0zuherg9exyfnnl0j fcqk8882zglteqk53wkesffm7vtl8sue0fayesspv fcqpnakl4v06mjevj0aa2e9egwfn24nd9q3c5glru fcqchmpkrjakgsez85d6h3sznmlgv6ukg7l4d53tz fcqaf4kwn3t6e8z4dlhdvcglu8jlwxdlh3t0vrf0c fcq8f29zfx82gt58pz5spz78apurn598pvllgjael fcqcnatvp3yljrm40lt999xvvucak9nh7pgsfegjp fcquwyyqzt23gyz3jxrgla4zx6ds7tkjpvtmg4w5m fcqf8pu3jeamvu0g7ytdnyewqk3rw3dlkx78ph0ne fcq22ke33d3xy05tt4echvl2r6rgq85pj4tvfkdrk)
-for i in "${!miner_addresses[@]}"
+for i in {0..9}
 do
-  miner=${miner_addresses[$i]}
-  echo "Adding miner ${miner} to filecoin_$i"
-  docker exec "filecoin_$i" $filcoin_exec \
-         config mining.minerAddresses [\"${miner}\"]
+  # how we get the miner address
+  miner=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[$${i}].Address")
+  echo "Adding miner $${miner} to filecoin_$$i"
+  docker exec "filecoin_$$i" $$filcoin_exec \
+         config mining.minerAddresses [$${miner}]
+done
+
+# next we need to import the coresponding keys used to generate the minerAddress, do this like:
+for i in {0..9}
+do
+  # this code has no honor
+  cat "$$CAR_DIR/gen.json" | jq -r ".Keys[\"$${i}\"]" > "$$CAR_DIR/wallet$$i"
+  docker exec "filecoin_$$i" sh -c "cat /var/filecoin/car/wallet$$i | /usr/local/bin/go-filecoin --repodir=/var/local/filecoin wallet import"
 done
 
 for i in {0..9}
 do
-  for node_addr in $(docker exec -it "filecoin_$i" $filcoin_exec id --format=\<addrs\>)
+  for node_addr in $$(docker exec "filecoin_$$i" $$filcoin_exec id --format=\<addrs\>)
   do
-    if [[ $node_addr = *"ip4/172"* ]]; then
-      node_docker_addr=$node_addr
+    if [[ $$node_addr = *"ip4/172"* ]]; then
+      node_docker_addr=$$node_addr
     fi
   done
 
-  echo $node_docker_addr
+  echo "$$i: $$node_docker_addr"
   for j in {0..9}
   do
-    echo "joining ${j} with peer at: ${node_docker_addr}"
-    docker exec -it "filecoin_$j" $filcoin_exec swarm connect "${node_docker_addr}" || true
+    echo "joining $${j} with peer at: $${node_docker_addr}"
+    docker exec "filecoin_$$j" $$filcoin_exec swarm connect "$${node_docker_addr}" || true
   done
 done
 
 for i in {0..9}
 do
-  docker exec "filecoin_$i" $filcoin_exec \
+  docker exec "filecoin_$$i" $$filcoin_exec \
          mining start
 done
