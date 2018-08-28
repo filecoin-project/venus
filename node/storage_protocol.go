@@ -27,6 +27,7 @@ func init() {
 	cbor.RegisterCborType(StorageDealResponse{})
 	cbor.RegisterCborType(PaymentInfo{})
 	cbor.RegisterCborType(ProofInfo{})
+	cbor.RegisterCborType(storageDealQueryRequest{})
 }
 
 type StorageDealProposal struct {
@@ -57,7 +58,7 @@ type StorageDealResponse struct {
 
 	// ProofInfo is a collection of information needed to convince the client that
 	// the miner has sealed the data into a sector.
-	ProofInfo *ProofInfo
+	//ProofInfo *ProofInfo
 
 	// Signature is a signature from the miner over the response
 	Signature types.Signature
@@ -86,6 +87,7 @@ func NewStorageMiner(nd *Node) *StorageMiner {
 		deals: make(map[string]*storageDealState),
 	}
 	nd.Host.SetStreamHandler(StorageDealProtocolID, sm.handleProposalStream)
+	nd.Host.SetStreamHandler(StorageDealQueryProtocolID, sm.handleQuery)
 
 	return sm
 }
@@ -196,7 +198,7 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 	// TODO: seal the data
 	sm.updateDealState(c, func(resp *StorageDealResponse) {
 		resp.State = Complete
-		resp.ProofInfo = new(ProofInfo)
+		//resp.ProofInfo = new(ProofInfo)
 	})
 }
 
@@ -310,13 +312,29 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.A
 
 	// TODO: send the miner the data (currently it gets requested by the miner, out of band)
 
-	// TODO: don't actually want to store this, just need its cid
-	propcid, err := smc.nd.CborStore.Put(ctx, proposal)
-	if err != nil {
+	if err := smc.addResponseToTracker(&response, miner, proposal); err != nil {
 		return nil, err
 	}
 
-	return propcid, nil
+	return response.Proposal, nil
+}
+
+func (smc *StorageMinerClient) addResponseToTracker(resp *StorageDealResponse, miner types.Address, p *StorageDealProposal) error {
+	smc.dealsLk.Lock()
+	defer smc.dealsLk.Unlock()
+	k := resp.Proposal.KeyString()
+	_, ok := smc.deals[k]
+	if ok {
+		return fmt.Errorf("deal in progress with that cid already exists")
+	}
+
+	smc.deals[k] = &clientStorageDealState{
+		lastState: resp,
+		miner:     miner,
+		proposal:  p,
+	}
+
+	return nil
 }
 
 func (smc *StorageMinerClient) checkDealResponse(ctx context.Context, resp *StorageDealResponse) error {

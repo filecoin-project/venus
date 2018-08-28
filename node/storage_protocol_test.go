@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -99,9 +100,10 @@ func TestStorageProtocolBasic(t *testing.T) {
 	ref, err := c.TryToStoreData(ctx, mineraddr, data.Cid(), 10, types.NewAttoFILFromFIL(60))
 	assert.NoError(err)
 
+	time.Sleep(time.Millisecond * 100) // Bad whyrusleeping, bad!
+
 	resp, err := c.Query(ctx, ref)
 	assert.NoError(err)
 
-	t.Log(resp)
-	t.Fatal("oh no")
+	assert.Equal(Complete, resp.State)
 }
