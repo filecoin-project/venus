@@ -425,11 +425,6 @@ func (sm *StorageBroker) finishDeal(ctx context.Context, minerOwner types.Addres
 	return msgcid, nil
 }
 
-func (sm *StorageBroker) stageForSealing(ctx context.Context, ref *cid.Cid) error {
-	// TODO:
-	return nil
-}
-
 func (sm *StorageBroker) fetchData(ctx context.Context, ref *cid.Cid) error {
 	return dag.FetchGraph(ctx, ref, dag.NewDAGService(sm.nd.Blockservice))
 }
