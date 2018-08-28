@@ -65,6 +65,7 @@ func randAddress() types.Address {
 	return types.NewAddress(types.Mainnet, h)
 }
 
+// RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
 	Keys map[string]*types.KeyInfo

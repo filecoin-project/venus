@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-const StorageDealProtocolID = protocol.ID("/fil/storage/mk/1.0.0")
-const StorageDealQueryProtocolID = protocol.ID("/fil/storage/qry/1.0.0")
+const StorageDealProtocolID = protocol.ID("/fil/storage/mk/1.0.0")       // nolint: golint
+const StorageDealQueryProtocolID = protocol.ID("/fil/storage/qry/1.0.0") // nolint: golint
 
 func init() {
 	cbor.RegisterCborType(StorageDealProposal{})
@@ -30,13 +30,18 @@ func init() {
 	cbor.RegisterCborType(storageDealQueryRequest{})
 }
 
+// StorageDealProposal is
 type StorageDealProposal struct {
+	// PieceRef is the cid of the piece being stored
 	PieceRef *cid.Cid
 
+	// Size is the total number of bytes the proposal is asking to store
 	Size *types.BytesAmount
 
+	// TotalPrice is the total price that will be paid for the entire storage operation
 	TotalPrice *types.AttoFIL
 
+	// Duration is the number of blocks to make a deal for
 	Duration uint64
 
 	//Payment PaymentInfo
@@ -44,10 +49,12 @@ type StorageDealProposal struct {
 	//Signature types.Signature
 }
 
-// PaymentInfo
+// PaymentInfo is
 type PaymentInfo struct{}
 
+// StorageDealResponse is
 type StorageDealResponse struct {
+	// State is the current state of this deal
 	State DealState
 
 	// Message is an optional message to add context to any given response
@@ -68,6 +75,7 @@ type StorageDealResponse struct {
 type ProofInfo struct {
 }
 
+// StorageMiner represents a storage miner
 type StorageMiner struct {
 	nd *Node
 
@@ -81,6 +89,7 @@ type storageDealState struct {
 	state *StorageDealResponse
 }
 
+// NewStorageMiner is
 func NewStorageMiner(nd *Node) *StorageMiner {
 	sm := &StorageMiner{
 		nd:    nd,
@@ -202,6 +211,7 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 	})
 }
 
+// Query responds to a query for the proposal referenced by the given cid
 func (sm *StorageMiner) Query(ctx context.Context, c *cid.Cid) *StorageDealResponse {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
@@ -236,6 +246,7 @@ func (sm *StorageMiner) handleQuery(s inet.Stream) {
 	}
 }
 
+// StorageMinerClient is a client interface to the StorageMiner
 type StorageMinerClient struct {
 	nd *Node
 
@@ -243,6 +254,7 @@ type StorageMinerClient struct {
 	dealsLk sync.Mutex
 }
 
+// NewStorageMinerClient creaters a new storage miner client
 func NewStorageMinerClient(nd *Node) *StorageMinerClient {
 	return &StorageMinerClient{
 		nd:    nd,
@@ -267,11 +279,12 @@ func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64
 	case *dag.RawNode:
 		return n.Size()
 	default:
-		return 0, fmt.Errorf("unrecognized node type: %t", fnode)
+		return 0, fmt.Errorf("unrecognized node type: %T", fnode)
 	}
 
 }
 
+// TryToStoreData needs a better name
 func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*cid.Cid, error) {
 	size, err := getFileSize(ctx, data, dag.NewDAGService(smc.nd.Blockservice))
 	if err != nil {
@@ -361,6 +374,7 @@ func (smc *StorageMinerClient) minerForProposal(c *cid.Cid) (types.Address, erro
 	return st.miner, nil
 }
 
+// Query queries an in-progress proposal
 func (smc *StorageMinerClient) Query(ctx context.Context, c *cid.Cid) (*StorageDealResponse, error) {
 	mineraddr, err := smc.minerForProposal(c)
 	if err != nil {

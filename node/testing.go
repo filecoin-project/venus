@@ -27,12 +27,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ChainSeed is
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
 	cst    *hamt.CborIpldStore
 	bstore blockstore.Blockstore
 }
 
+// MakeChainSeed is
 func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	t.Helper()
 
@@ -53,6 +55,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	}
 }
 
+// GenesisInitFunc is a core.GenesisInitFunc using the chain seed
 func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 	keys, err := cs.bstore.AllKeysChan(context.TODO())
 	if err != nil {
@@ -78,13 +81,14 @@ func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Bloc
 	return &blk, nil
 }
 
-func (s *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) types.Address {
+// GiveKey gives the given key to the given node
+func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) types.Address {
 	t.Helper()
 	bcks := nd.Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
-	kinfo, ok := s.info.Keys[key]
+	kinfo, ok := cs.info.Keys[key]
 	if !ok {
 		t.Fatalf("Key %q does not exist in chain seed", key)
 	}
@@ -96,19 +100,21 @@ func (s *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) types.Address {
 	return addr
 }
 
-func (s *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) types.Address {
+// GiveMiner gives the specified miner to the node
+func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) types.Address {
 	t.Helper()
 	cfg := nd.Repo.Config()
-	m := s.info.Miners[which]
+	m := cs.info.Miners[which]
 
 	cfg.Mining.MinerAddresses = append(cfg.Mining.MinerAddresses, m.Address)
 	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
 	return m.Address
 }
 
-func (s *ChainSeed) Addr(t *testing.T, key string) types.Address {
+// Addr returns the address for the given key
+func (cs *ChainSeed) Addr(t *testing.T, key string) types.Address {
 	t.Helper()
-	k, ok := s.info.Keys[key]
+	k, ok := cs.info.Keys[key]
 	if !ok {
 		t.Fatal("no such key: ", key)
 	}
@@ -121,6 +127,7 @@ func (s *ChainSeed) Addr(t *testing.T, key string) types.Address {
 	return a
 }
 
+// NodesWithChainSeed creates some nodes using the given chain seed
 func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
 	t.Helper()
 	var out []*Node
@@ -132,11 +139,13 @@ func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
 	return out
 }
 
-func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node {
+// NodeWithChainSeed makes a single node with the given chain seed, and some init options
+func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
 	return genNode(t, false, true, seed.GenesisInitFunc, initopts, nil)
 }
 
+// ConnectNodes connects two nodes together
 func ConnectNodes(t *testing.T, a, b *Node) {
 	t.Helper()
 	pi := pstore.PeerInfo{

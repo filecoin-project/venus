@@ -19,12 +19,16 @@ import (
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
 
+// InitCfg contains configuration for initializing a node
 type InitCfg struct {
 	PeerKey ci.PrivKey
 }
 
+// InitOpt is an init option function
 type InitOpt func(*InitCfg)
 
+// PrivKeyOpt sets the private key for the nodes 'self' key
+// this is the key that is used for libp2p identity
 func PrivKeyOpt(k ci.PrivKey) InitOpt {
 	return func(c *InitCfg) {
 		c.PeerKey = k
