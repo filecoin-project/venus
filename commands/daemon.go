@@ -73,17 +73,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
-		opts = append(opts, func(c *node.Config) error {
-			c.OfflineMode = offlineMode
-			return nil
-		})
+		opts = append(opts, node.OfflineMode(offlineMode))
 	}
 
 	if mockMineMode, ok := req.Options[MockMineMode].(bool); ok {
-		opts = append(opts, func(c *node.Config) error {
-			c.MockMineMode = mockMineMode
-			return nil
-		})
+		opts = append(opts, node.MockMineMode(mockMineMode))
 	}
 
 	durStr, ok := req.Options[BlockTime].(string)
@@ -94,10 +88,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	if err != nil {
 		return errors.Wrap(err, "Bad block time passed")
 	}
-	opts = append(opts, func(c *node.Config) error {
-		c.BlockTime = blockTime
-		return nil
-	})
+	opts = append(opts, node.BlockTime(blockTime))
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {

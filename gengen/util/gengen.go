@@ -210,7 +210,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 			return err
 		}
 
-		act := types.NewActor(types.MinerActorCodeCid, nil)
+		act := miner.NewActor()
 		act.Head = root
 
 		maddr := randAddress()
@@ -228,7 +228,10 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	if err != nil {
 		return err
 	}
-	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
+	sma, err := storagemarket.NewActor()
+	if err != nil {
+		return err
+	}
 	sma.Head = root
 	fmt.Fprintln(os.Stderr, "storage market actor head: ", root) // nolint: errcheck
 

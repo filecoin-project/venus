@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +19,6 @@ func (api *nodeMpool) View(ctx context.Context, messageCount uint) ([]*types.Sig
 	nd := api.api.node
 
 	pending := nd.MsgPool.Pending()
-	fmt.Println("pending", pending)
 	if len(pending) < int(messageCount) {
 		subscription, err := nd.PubSub.Subscribe(node.MessageTopic)
 		if err != nil {

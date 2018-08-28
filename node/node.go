@@ -136,6 +136,30 @@ type Config struct {
 // ConfigOpt is a configuration option for a filecoin node.
 type ConfigOpt func(*Config) error
 
+// OfflineMode enables or disables offline mode.
+func OfflineMode(offlineMode bool) ConfigOpt {
+	return func(c *Config) error {
+		c.OfflineMode = offlineMode
+		return nil
+	}
+}
+
+// BlockTime sets the blockTime.
+func BlockTime(blockTime time.Duration) ConfigOpt {
+	return func(c *Config) error {
+		c.BlockTime = blockTime
+		return nil
+	}
+}
+
+// MockMineMode enables or disable mocked mining.
+func MockMineMode(mockMineMode bool) ConfigOpt {
+	return func(c *Config) error {
+		c.MockMineMode = mockMineMode
+		return nil
+	}
+}
+
 // Libp2pOptions returns a node config option that sets up the libp2p node
 func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 	return func(nc *Config) error {

@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -59,12 +58,12 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	addr := d.GetDefaultAddress()
 	minerPidForUpdate := core.RequireRandomPeerID()
-	fmt.Println("creating")
+
 	minerAddr := d.CreateMinerAddr(addr)
-	fmt.Println("created miner")
+
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
-	fmt.Println("lookup", lookupOutA)
+
 	// update the miner's peer ID
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
@@ -72,11 +71,11 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 		minerAddr.String(),
 		minerPidForUpdate.Pretty(),
 	)
-	fmt.Println("mpool wait")
+
 	// ensure mining happens after update message gets included in mempool
 	d.RunSuccess("mpool --wait-for-count=1")
 	d.RunSuccess("mining once")
-	fmt.Println("wait for inclusion")
+
 	// wait for message to be included in a block
 	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
 

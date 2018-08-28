@@ -184,9 +184,7 @@ func lint(packages ...string) {
 
 func build() {
 	buildFilecoin()
-	// TODO add back when fixed, removed during:
-	// https://github.com/filecoin-project/go-filecoin/pull/659
-	// buildFakecoin()
+	buildFakecoin()
 }
 
 func buildFakecoin() {
