@@ -26,6 +26,8 @@ type DaemonInitConfig struct {
 	UseCustomGenesis bool
 	// RepoDir, path to the repo of the node on disk.
 	RepoDir string
+	// PeerKeyFile is the path to a file containing a libp2p peer id key
+	PeerKeyFile string
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -67,6 +69,14 @@ func GenesisFile(p string) DaemonInitOpt {
 func RepoDir(p string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.RepoDir = p
+		return nil
+	}
+}
+
+// PeerKeyFile defines the file to load a libp2p peer key from
+func PeerKeyFile(p string) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.PeerKeyFile = p
 		return nil
 	}
 }

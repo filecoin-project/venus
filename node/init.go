@@ -27,9 +27,9 @@ type InitCfg struct {
 // InitOpt is an init option function
 type InitOpt func(*InitCfg)
 
-// PrivKeyOpt sets the private key for the nodes 'self' key
+// PeerKeyOpt sets the private key for the nodes 'self' key
 // this is the key that is used for libp2p identity
-func PrivKeyOpt(k ci.PrivKey) InitOpt {
+func PeerKeyOpt(k ci.PrivKey) InitOpt {
 	return func(c *InitCfg) {
 		c.PeerKey = k
 	}
