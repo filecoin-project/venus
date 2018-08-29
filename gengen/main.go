@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 
@@ -53,6 +54,9 @@ set the initial genesis block:
 $ go-filecoin init --genesisfile=genesis.car
 */
 func main() {
+	jsonout := flag.Bool("json", false, "sets output to be json")
+	flag.Parse()
+
 	var cfg gengen.GenesisCfg
 	if err := json.NewDecoder(os.Stdin).Decode(&cfg); err != nil {
 		panic(err)
@@ -61,6 +65,18 @@ func main() {
 	info, err := gengen.GenGenesisCar(&cfg, os.Stdout)
 	if err != nil {
 		panic(err)
+	}
+
+	if *jsonout {
+		out, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		_, err = os.Stderr.Write(out)
+		if err != nil {
+			panic(err)
+		}
+		return
 	}
 
 	for _, m := range info.Miners {
