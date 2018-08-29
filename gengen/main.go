@@ -72,7 +72,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		os.Stderr.Write(out)
+		_, err = os.Stderr.Write(out)
+		if err != nil {
+			panic(err)
+		}
 		return
 	}
 
