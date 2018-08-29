@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
@@ -10,6 +11,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	crypto "gx/ipfs/Qme1knMqwt1hKZbc1BmQFmnm9f36nyQGwXxPGVpVJ9rMK5/go-libp2p-crypto"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -128,8 +130,27 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		tif = testhelpers.MakeGenesisFunc(actorOps...)
 	}
 
+	var initopts []node.InitOpt
+	if cfg.PeerKeyFile != "" {
+		k, err := loadPeerKey(cfg.PeerKeyFile)
+		if err != nil {
+			return err
+		}
+
+		initopts = append(initopts, node.PeerKeyOpt(k))
+	}
+
 	// TODO: don't create the repo if this fails
-	return node.Init(ctx, rep, tif)
+	return node.Init(ctx, rep, tif, initopts...)
+}
+
+func loadPeerKey(fname string) (crypto.PrivKey, error) {
+	data, err := ioutil.ReadFile(fname)
+	if err != nil {
+		return nil, err
+	}
+
+	return crypto.UnmarshalPrivateKey(data)
 }
 
 func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {

@@ -20,6 +20,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 		cmdkit.StringOption("genesisfile", "path of file containing archive of genesis block DAG data"),
 		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
+		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -29,6 +30,7 @@ var initCmd = &cmds.Command{
 		walletAddr, _ := req.Options["walletaddr"].(string)
 		genesisFile, _ := req.Options["genesisfile"].(string)
 		customGenesis, _ := req.Options["testgenesis"].(bool)
+		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
 
 		err := GetAPI(env).Daemon().Init(
 			req.Context,
@@ -37,6 +39,7 @@ var initCmd = &cmds.Command{
 			api.WalletAddr(walletAddr),
 			api.GenesisFile(genesisFile),
 			api.UseCustomGenesis(customGenesis),
+			api.PeerKeyFile(peerKeyFile),
 		)
 
 		if err != nil {

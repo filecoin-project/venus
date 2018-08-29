@@ -73,7 +73,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	seed := MakeChainSeed(t, testGenCfg)
 
 	// make two nodes, one of which is the miner (and gets the miner peer key)
-	miner := NodeWithChainSeed(t, seed, PrivKeyOpt(peerKeys[0]))
+	miner := NodeWithChainSeed(t, seed, PeerKeyOpt(peerKeys[0]))
 	client := NodeWithChainSeed(t, seed)
 
 	// Give the miner node the right private key, and set them up with
