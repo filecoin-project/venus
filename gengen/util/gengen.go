@@ -276,7 +276,7 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 	}
 	sma, err := storagemarket.NewActor()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sma.Head = root
 
