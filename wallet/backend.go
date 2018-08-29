@@ -20,12 +20,6 @@ type Backend interface {
 	// the public key `pk`.
 	Verify(data []byte, pk []byte, sig types.Signature) (bool, error)
 
-	// Ecrecover returns an uncompressed public key that could produce the given
-	// signature from data.
-	// Note: The returned public key should not be used to verify `data` is valid
-	// since a public key may have N private key pairs
-	Ecrecover(data []byte, sig types.Signature) ([]byte, error)
-
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
 	GetKeyInfo(addr types.Address) (*types.KeyInfo, error)

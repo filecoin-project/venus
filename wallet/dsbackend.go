@@ -158,14 +158,6 @@ func (backend *DSBackend) Verify(data []byte, pk []byte, sig types.Signature) (b
 	return wutil.Verify(pk, data, sig)
 }
 
-// Ecrecover returns an uncompressed public key that could produce the given
-// signature from data.
-// Note: The returned public key should not be used to verify `data` is valid
-// since a public key may have N private key pairs
-func (backend *DSBackend) Ecrecover(data []byte, sig types.Signature) ([]byte, error) {
-	return wutil.Ecrecover(data, sig)
-}
-
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
 func (backend *DSBackend) GetKeyInfo(addr types.Address) (*types.KeyInfo, error) {
