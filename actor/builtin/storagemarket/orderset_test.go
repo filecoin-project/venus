@@ -3,7 +3,7 @@ package storagemarket
 import (
 	"testing"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"

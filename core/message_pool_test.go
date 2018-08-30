@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -3,9 +3,9 @@ package impl
 import (
 	"context"
 
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
-	path "gx/ipfs/Qmet61sdJdo6ZHDc59ZbffN5ED79K5kqfqkRjBx7ncaDg4/go-path"
-	resolver "gx/ipfs/Qmet61sdJdo6ZHDc59ZbffN5ED79K5kqfqkRjBx7ncaDg4/go-path/resolver"
+	path "gx/ipfs/QmNmKx3KvS3gtSws9idLwyNFV4uYhGmxX8NWwemdcdH4G5/go-path"
+	resolver "gx/ipfs/QmNmKx3KvS3gtSws9idLwyNFV4uYhGmxX8NWwemdcdH4G5/go-path/resolver"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 )
 
 type nodeDag struct {

@@ -4,9 +4,9 @@ import (
 	"os"
 	"sync"
 
-	keystore "gx/ipfs/QmbRDw6b2xXnZywek9E8qk1z4NAVrGxqZvbvwfSioiSy1S/go-ipfs-keystore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-	dss "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore/sync"
+	keystore "gx/ipfs/QmTBWmvUbMDmvnZvzTpSjz6nVNJRiMMnj3JiFcgyJjvHaq/go-ipfs-keystore"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	dss "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore/sync"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )

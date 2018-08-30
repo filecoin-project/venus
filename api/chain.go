@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 )
 
 // Chain is the interface that defines methods to inspect the Filecoin blockchain.

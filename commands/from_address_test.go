@@ -3,7 +3,7 @@ package commands
 import (
 	"testing"
 
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/types"
 

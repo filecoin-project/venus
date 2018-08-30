@@ -3,7 +3,7 @@ package commands
 import (
 	"context"
 
-	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/api"
 )

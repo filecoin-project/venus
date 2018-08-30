@@ -1,9 +1,9 @@
 package node
 
 import (
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -154,7 +154,7 @@ func (st *sectorStore) getSectorMetadata(label string) (*SectorMetadata, error) 
 		return nil, err
 	}
 	var m SectorMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
+	if err := cbor.DecodeInto(data, &m); err != nil {
 		return nil, err
 	}
 	return &m, err
@@ -169,7 +169,7 @@ func (st *sectorStore) getSealedSectorMetadata(commR []byte) (*SealedSectorMetad
 		return nil, err
 	}
 	var m SealedSectorMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
+	if err := cbor.DecodeInto(data, &m); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +185,7 @@ func (st *sectorStore) getSectorBuilderMetadata(minerAddr types.Address) (*Secto
 		return nil, err
 	}
 	var m SectorBuilderMetadata
-	if err := cbor.DecodeInto(data.([]byte), &m); err != nil {
+	if err := cbor.DecodeInto(data, &m); err != nil {
 		return nil, err
 	}
 	return &m, err
