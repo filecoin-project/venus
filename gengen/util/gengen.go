@@ -2,14 +2,13 @@ package gengen
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"io"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -17,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
 	"gx/ipfs/QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5/go-car"
 	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
 	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
@@ -57,14 +56,6 @@ type GenesisCfg struct {
 	Miners []Miner
 }
 
-func randAddress() types.Address {
-	buf := make([]byte, 32)
-	_, _ = rand.Read(buf)
-
-	h := types.AddressHash(buf)
-	return types.NewAddress(types.Mainnet, h)
-}
-
 // RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
@@ -98,7 +89,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	st := state.NewEmptyStateTree(cst)
+	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 	storageMap := vm.NewStorageMap(bs)
 
 	if err := core.SetupDefaultActors(ctx, st, storageMap); err != nil {
@@ -109,7 +100,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, cst, keys, cfg.Miners)
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners)
 	if err != nil {
 		return nil, err
 	}
@@ -210,17 +201,11 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.KeyInfo, miners []Miner) ([]RenderedMinerInfo, error) {
-	smaStorage := &storagemarket.State{
-		Miners: make(types.AddrSet),
-		Orderbook: &storagemarket.Orderbook{
-			StorageAsks: make(storagemarket.AskSet),
-			Bids:        make(storagemarket.BidSet),
-		},
-	}
+func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner) ([]RenderedMinerInfo, error) {
 
 	var minfos []RenderedMinerInfo
-	powerSum := types.NewBytesAmount(0)
+	ctx := context.Background()
+
 	for _, m := range miners {
 		addr, err := keys[m.Owner].Address()
 		if err != nil {
@@ -234,54 +219,40 @@ func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.
 				return nil, err
 			}
 			pid = p
+		} else {
+			pid = core.RequireRandomPeerID()
 		}
 
-		mst := &miner.State{
-			Owner:         addr,
-			PeerID:        pid,
-			PublicKey:     nil,
-			PledgeBytes:   types.NewBytesAmount(10000000000),
-			Collateral:    types.NewAttoFILFromFIL(100000),
-			LockedStorage: types.NewBytesAmount(0),
-			Power:         types.NewBytesAmount(m.Power),
-		}
-		powerSum = powerSum.Add(mst.Power)
-
-		root, err := cst.Put(context.Background(), mst)
+		// give collateral to account actor
+		_, err = applyMessage(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
 		if err != nil {
 			return nil, err
 		}
 
-		act := miner.NewActor()
-		act.Head = root
-
-		maddr := randAddress()
-
-		if err := st.SetActor(context.Background(), maddr, act); err != nil {
+		// create miner
+		resp, err := applyMessage(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", types.NewBytesAmount(10000000000), []byte{}, pid)
+		if err != nil {
 			return nil, err
 		}
-		smaStorage.Miners[maddr] = struct{}{}
+
+		// get miner address
+		maddr, err := types.NewAddressFromBytes(resp.Receipt.Return[0])
+		if err != nil {
+			return nil, err
+		}
+
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
 			Power:   m.Power,
 		})
-	}
 
-	smaStorage.TotalCommittedStorage = powerSum
+		// commit sector to add power
+		_, err = applyMessage(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", []byte("xxxxxxxx"), types.NewBytesAmount(m.Power))
+		if err != nil {
+			return nil, err
+		}
 
-	root, err := cst.Put(context.Background(), smaStorage)
-	if err != nil {
-		return nil, err
-	}
-	sma, err := storagemarket.NewActor()
-	if err != nil {
-		return nil, err
-	}
-	sma.Head = root
-
-	if err := st.SetActor(context.Background(), address.StorageMarketAddress, sma); err != nil {
-		return nil, err
 	}
 
 	return minfos, nil
@@ -305,4 +276,20 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	}
 
 	return info, car.WriteCar(ctx, dserv, []*cid.Cid{info.GenesisCid}, out)
+}
+
+func applyMessage(ctx context.Context, st state.Tree, storageMap vm.StorageMap, from, to types.Address, value *types.AttoFIL, method string, params ...interface{}) (*core.ApplicationResult, error) {
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, err
+	}
+
+	fromActor, err := st.GetActor(ctx, from)
+	if err != nil {
+		return nil, err
+	}
+
+	message := types.NewMessage(from, to, uint64(fromActor.Nonce), value, method, encodedParams)
+
+	return core.ApplyMessage(ctx, st, storageMap, message, types.NewBlockHeight(0))
 }

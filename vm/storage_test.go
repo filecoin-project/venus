@@ -50,14 +50,12 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		require.NoError(err)
 
 		// get both objects from storage
-		chunk1, ok, err := as.Get(id1)
+		chunk1, err := as.Get(id1)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk1)
 
-		chunk2, ok, err := as.Get(id2)
+		chunk2, err := as.Get(id2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data2, chunk2)
 	})
 
@@ -74,9 +72,9 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		as2 := vms.NewStorage(address.TestAddress2, testActor)
 
 		// attempt to get from storage
-		_, ok, err := as2.Get(id)
-		require.NoError(err)
-		assert.False(ok)
+		_, err = as2.Get(id)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 	})
 
 	t.Run("Storage is consistent when using the same address", func(t *testing.T) {
@@ -92,9 +90,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		as2 := vms.NewStorage(address.TestAddress, testActor)
 
 		// attempt to get from storage
-		chunk, ok, err := as2.Get(id)
+		chunk, err := as2.Get(id)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk)
 	})
 }
@@ -125,14 +122,12 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
 
 		// get both objects from storage
-		chunk1, ok, err := as.Get(id1)
+		chunk1, err := as.Get(id1)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk1)
 
-		chunk2, ok, err := as.Get(id2)
+		chunk2, err := as.Get(id2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data2, chunk2)
 	})
 
@@ -140,9 +135,9 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress2, testActor) // different address
 
 		// attempt to get from storage
-		_, ok, err := as.Get(id1)
-		require.NoError(err)
-		assert.False(ok)
+		_, err := as.Get(id1)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 	})
 }
 
@@ -224,9 +219,8 @@ func TestDatastoreBacking(t *testing.T) {
 		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
-		chunk, ok, err := stage.Get(memory2.Cid())
+		chunk, err := stage.Get(memory2.Cid())
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(memory2.RawData(), chunk)
 	})
 
@@ -368,13 +362,12 @@ func TestValidationAndPruning(t *testing.T) {
 		require.NoError(err)
 
 		// retrieve cid from stage
-		_, ok, err := stage.Get(cid1)
-		require.NoError(err)
-		assert.False(ok)
+		_, err = stage.Get(cid1)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 
-		chunk, ok, err := stage.Get(cid2)
+		chunk, err := stage.Get(cid2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(memory3.RawData(), chunk)
 	})
 }

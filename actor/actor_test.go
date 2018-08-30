@@ -1,6 +1,7 @@
 package actor_test
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"testing"
@@ -12,7 +13,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
+	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type MockActor struct {
@@ -246,4 +253,98 @@ func TestMarshalValue(t *testing.T) {
 		assert.Equal(err.Error(), "unknown type: *big.Rat")
 		assert.Nil(out)
 	})
+}
+
+func TestLoadLookup(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ds := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(ds)
+	vms := vm.NewStorageMap(bs)
+	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	ctx := context.TODO()
+
+	lookup, err := LoadLookup(ctx, storage, nil)
+	require.NoError(err)
+
+	err = lookup.Set(ctx, "foo", "someData")
+	require.NoError(err)
+
+	cid, err := lookup.Commit(ctx)
+	require.NoError(err)
+
+	assert.NotNil(cid)
+
+	err = storage.Commit(cid, nil)
+	require.NoError(err)
+
+	err = vms.Flush()
+	require.NoError(err)
+
+	t.Run("Fetch chunk by cid", func(t *testing.T) {
+		bs = blockstore.NewBlockstore(ds)
+		vms = vm.NewStorageMap(bs)
+		storage = vms.NewStorage(address.TestAddress, &types.Actor{})
+
+		lookup, err = LoadLookup(ctx, storage, cid)
+		require.NoError(err)
+
+		value, err := lookup.Find(ctx, "foo")
+		require.NoError(err)
+
+		assert.Equal("someData", value)
+	})
+
+	t.Run("Get errs for missing key", func(t *testing.T) {
+		bs = blockstore.NewBlockstore(ds)
+		vms = vm.NewStorageMap(bs)
+		storage = vms.NewStorage(address.TestAddress, &types.Actor{})
+
+		lookup, err = LoadLookup(ctx, storage, cid)
+		require.NoError(err)
+
+		_, err := lookup.Find(ctx, "bar")
+		require.Error(err)
+		assert.Equal(hamt.ErrNotFound, err)
+	})
+}
+
+func TestLoadLookupWithInvalidCid(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ds := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(ds)
+	vms := vm.NewStorageMap(bs)
+	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	ctx := context.TODO()
+
+	cid := types.NewCidForTestGetter()()
+
+	_, err := LoadLookup(ctx, storage, cid)
+	require.Error(err)
+	assert.Equal(vm.ErrNotFound, err)
+}
+
+func TestSetKeyValue(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ds := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(ds)
+	vms := vm.NewStorageMap(bs)
+	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	ctx := context.TODO()
+
+	cid, err := SetKeyValue(ctx, storage, nil, "foo", "bar")
+	require.NoError(err)
+	assert.NotNil(cid)
+
+	lookup, err := LoadLookup(ctx, storage, cid)
+	require.NoError(err)
+
+	val, err := lookup.Find(ctx, "foo")
+	require.NoError(err)
+	assert.Equal("bar", val)
 }

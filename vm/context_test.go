@@ -239,9 +239,8 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Equal(fakeActorCid, act.Code)
 		actorStorage := vms.NewStorage(addr, act)
-		chunk, ok, err := actorStorage.Get(act.Head)
+		chunk, err := actorStorage.Get(act.Head)
 		require.NoError(err)
-		require.True(ok)
 
 		assert.True(len(chunk) > 0)
 	})

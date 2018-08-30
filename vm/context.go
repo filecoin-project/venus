@@ -56,15 +56,14 @@ func (ctx *Context) Message() *types.Message {
 
 // ReadStorage reads the storage from the associated to actor.
 func (ctx *Context) ReadStorage() ([]byte, error) {
-	stage := ctx.Storage()
+	storage := ctx.Storage()
 
-	memory, ok, err := stage.Get(stage.Head())
+	memory, err := storage.Get(storage.Head())
 	if err != nil {
+		if err == ErrNotFound {
+			return nil, errors.NewRevertErrorf("Actor state not found at cid %s", storage.Head())
+		}
 		return nil, err
-	}
-
-	if !ok {
-		return nil, errors.NewRevertErrorf("Actor state not found at cid %s", stage.Head())
 	}
 
 	out := make([]byte, len(memory))

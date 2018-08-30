@@ -474,7 +474,6 @@ func TestTipSetWeightDeepFailure(t *testing.T) {
 // TestTipSetWeightDeep sets up a genesis block with storage commitments and
 // tests that power fractions are accurately calculated.
 func TestTipSetWeightDeep(t *testing.T) {
-	t.Skip("FIXME")
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, _, _, stm := newTestUtils()

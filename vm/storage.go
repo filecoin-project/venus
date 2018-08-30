@@ -1,17 +1,22 @@
 package vm
 
 import (
+	"errors"
+
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	blocks "gx/ipfs/QmVzK524a2VWLqyvtBeiHKsUAWYgeAk4DBeZoY7vpNPNRx/go-block-format"
+	"gx/ipfs/QmVzK524a2VWLqyvtBeiHKsUAWYgeAk4DBeZoY7vpNPNRx/go-block-format"
 	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
 	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
 	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/vm/errors"
+	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+// ErrNotFound is returned by storage when no chunk in storage matches a requested Cid
+var ErrNotFound = errors.New("chunk not found")
 
 // Content-addressed storage API.
 // The storage API has a few goals:
@@ -108,24 +113,23 @@ func (s Storage) Put(chunk []byte) (*cid.Cid, error) {
 }
 
 // Get retrieves a chunk from either temporary storage or its backing store.
-// The returned bool indicates whether or not the object was found. The error
-// indicates and error fetching from storage.
-func (s Storage) Get(cid *cid.Cid) ([]byte, bool, error) {
+// If the chunk is not found in storage, a vm.ErrNotFound error is returned.
+func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
 	key := cid.KeyString()
 	n, ok := s.chunks[key]
 	if ok {
-		return n.RawData(), ok, nil
+		return n.RawData(), nil
 	}
 
 	blk, err := s.blockstore.Get(cid)
 	if err != nil {
 		if err == blockstore.ErrNotFound {
-			return []byte{}, false, nil
+			return []byte{}, ErrNotFound
 		}
-		return []byte{}, false, err
+		return []byte{}, err
 	}
 
-	return blk.RawData(), true, nil
+	return blk.RawData(), nil
 }
 
 // Commit updates the head of the current actor to the given cid.
@@ -198,7 +202,7 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 	if !ok {
 		has, err := s.blockstore.Has(id)
 		if err != nil {
-			return nil, errors.FaultErrorWrapf(err, "linked node, %s, missing from stage during flush", id)
+			return nil, vmerrors.FaultErrorWrapf(err, "linked node, %s, missing from stage during flush", id)
 		}
 
 		// unstaged chunk that exists in datastore is valid, but halts recursion.
@@ -206,7 +210,7 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 			return map[string]*cid.Cid{}, nil
 		}
 
-		return nil, errors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
+		return nil, vmerrors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
 	ids := map[string]*cid.Cid{id.KeyString(): id}

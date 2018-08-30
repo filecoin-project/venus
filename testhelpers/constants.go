@@ -10,19 +10,19 @@ import (
 // If said file is modified these addresses will need to change as well
 //
 
-const TestAddress1 = "fcqw4m5jrx7t9hgereyh0xjjls26pa0dhkemhvguf" // nolint: deadcode, golint
+const TestAddress1 = "fcqjq3pldz7ysy3fpg38rj87zqf7d7klx2mr0phc8" // nolint: deadcode, golint
 const TestKey1 = "a.key"                                         // nolint: deadcode, golint
 
-const TestAddress2 = "fcq7dqhwuygvngve5qyy5wcjte3j432envw8r4j6h" // nolint: deadcode, golint
+const TestAddress2 = "fcqa7alnxv28h7ecc8s52pmhwxguwfwum9m9t5ucl" // nolint: deadcode, golint
 const TestKey2 = "b.key"                                         // nolint: deadcode, golint
 
-const TestAddress3 = "fcq2dl6enxms7snd465c94faz3n6gq28p6h4mfsuw" // nolint: deadcode, golint
+const TestAddress3 = "fcq2fypy9gwfpa6s4accqr74twrkc8fhfp9ywxvuk" // nolint: deadcode, golint
 const TestKey3 = "c.key"                                         // nolint: deadcode, golint
 
-const TestAddress4 = "fcq8ndu3u6degy69evc5rfnqpupsur8t5e58yn2f0" // nolint: deadcode, varcheck, megacheck, golint
+const TestAddress4 = "fcq054jpfs4lfy2ua5hzxa7rzg584uzympye6e3eq" // nolint: deadcode, varcheck, megacheck, golint
 const TestKey4 = "d.key"                                         // nolint: deadcode, golint
 
-const TestAddress5 = "fcqygug6sjqp3l24mzft6k85helewt70368wexhld" // nolint: deadcode, varcheck, megacheck, golint
+const TestAddress5 = "fcqkss8dxwh3dx5kgp66rjyvasdsfpyqxpxg455ch" // nolint: deadcode, varcheck, megacheck, golint
 const TestKey5 = "e.key"                                         // nolint: deadcode, golint
 
 // GenesisFilePath returns the path of the WalletFile
