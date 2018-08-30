@@ -40,7 +40,7 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 
 	// the seal function will write into this array; prevents Go from having
 	// to make a second call into Rust to deallocate
-	out := make([]uint8, 64)
+	out := make([]uint8, 260)
 	outPtr := (*C.uchar)(unsafe.Pointer(&out[0]))
 
 	unsealed := C.CString(req.UnsealedPath)
@@ -56,10 +56,9 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 		err = errors.New(errorString(code))
 	} else {
 		res = SealResponse{
-			Commitments: CommitmentPair{
-				CommR: out[0:32],
-				CommD: out[32:64],
-			},
+			CommR:      out[0:32],
+			CommD:      out[32:64],
+			SnarkProof: out[64:260], // TODO: consume the exported constant from FPS
 		}
 	}
 
@@ -69,10 +68,13 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
 func (rp *RustProver) VerifySeal(req VerifySealRequest) error {
-	commRPtr := (*C.uchar)(unsafe.Pointer(&(req.Commitments.CommR)[0]))
-	commDPtr := (*C.uchar)(unsafe.Pointer(&(req.Commitments.CommD)[0]))
+	commRPtr := (*C.uchar)(unsafe.Pointer(&(req.CommR)[0]))
+	commDPtr := (*C.uchar)(unsafe.Pointer(&(req.CommD)[0]))
+	snarkPtr := (*C.uchar)(unsafe.Pointer(&(req.SnarkProof)[0]))
+	cSeedPtr := (*C.uchar)(unsafe.Pointer(&(req.ChallengeSeed)[0]))
+	provrPtr := (*C.uchar)(unsafe.Pointer(&(req.ProverID)[0]))
 
-	code := C.verify_seal(commRPtr, commDPtr)
+	code := C.verify_seal(commRPtr, commDPtr, provrPtr, cSeedPtr, snarkPtr)
 
 	if code != 0 {
 		return errors.New(errorString(code))
@@ -98,7 +100,9 @@ func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
 	var bytesWritten uint64
 	bytesWrittenPtr := (*C.uint64_t)(unsafe.Pointer(&bytesWritten))
 
-	code := C.unseal(inPath, outPath, C.uint64_t(req.StartOffset), C.uint64_t(req.NumBytes), bytesWrittenPtr)
+	provrPtr := (*C.uchar)(unsafe.Pointer(&(req.ProverID)[0]))
+
+	code := C.get_unsealed_range(inPath, outPath, C.uint64_t(req.StartOffset), C.uint64_t(req.NumBytes), provrPtr, bytesWrittenPtr)
 	if code != 0 {
 		return UnsealResponse{}, errors.New(errorString(code))
 	}

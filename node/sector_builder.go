@@ -3,7 +3,6 @@ package node
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/base32"
 	"fmt"
 	"io"
@@ -74,26 +73,30 @@ type PieceInfo struct {
 type SectorBuilder struct {
 	MinerAddr types.Address
 
-	// TODO: information about all sectors needs to be persisted to disk
-
-	// curSectorLk protects curSector
-	curSectorLk sync.RWMutex
-	curSector   *Sector
-	// sealedSectorLk protects sealedSectors
-	sealedSectorLk sync.RWMutex
+	curSectorLk    sync.RWMutex // curSectorLk protects curSector
+	curSector      *Sector
+	sealedSectorLk sync.RWMutex // sealedSectorLk protects sealedSectors
 	sealedSectors  []*SealedSector
-	Packer         binpack.Packer
+
+	// coordinates opening (creating), packing (writing to), and closing
+	// (sealing) sectors
+	Packer binpack.Packer
 
 	// OnCommitmentAddedToMempool is called when a sector has been sealed
 	// and its commitment added to the message pool.
 	OnCommitmentAddedToMempool func(*SealedSector, *cid.Cid, error)
 
-	stagingDir string
-	sealedDir  string
-
 	// yada yada don't hold a reference to this here, just take what you need
-	nd    *Node
-	store *sectorStore
+	nd *Node
+
+	// dispenses SectorAccess, used by FPS to determine where to read/write
+	// sector and unsealed sector file-bytes
+	sectorStore proofs.SectorStore
+
+	// persists and loads metadata
+	metadataStore *sectorMetadataStore
+
+	// used to stream piece-data to unsealed sector-file
 	dserv ipld.DAGService
 
 	sectorSize uint64
@@ -112,8 +115,8 @@ type Sector struct {
 	Pieces []*PieceInfo
 	ID     int64
 
-	Label    string
-	filename string
+	Label    string // TODO: replace Label and filename with SectorAccess
+	filename string // TODO: replace Label and filename with SectorAccess
 	sealed   *SealedSector
 }
 
@@ -123,9 +126,10 @@ var _ binpack.Bin = &Sector{}
 type SealedSector struct {
 	commD       []byte
 	commR       []byte
-	filename    string
+	snarkProof  []byte
+	filename    string // TODO: replace label and filename with SectorAccess
 	label       string
-	sectorLabel string
+	sectorLabel string // TODO: replace with sectorFileAccess
 	pieces      []*PieceInfo
 	size        uint64
 }
@@ -203,33 +207,39 @@ func (sb *SectorBuilder) SpaceAvailable(bin binpack.Bin) binpack.Space {
 
 // NewSector allocates and returns a new Sector with file initialized, along with any error.
 func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
-	p, label := sb.newSectorPath()
+	access, err := sb.sectorStore.NewStagingSectorAccess()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to dispense staging sector access")
+	}
+
 	s = &Sector{
 		Size:  sb.sectorSize,
 		Free:  sb.sectorSize,
-		Label: label,
+		Label: access,
 	}
-	err = os.MkdirAll(path.Dir(p), os.ModePerm)
+
+	err = os.MkdirAll(path.Dir(access), os.ModePerm)
 	if err != nil {
-		return s, errors.Wrap(err, "failed to create sector directory")
+		return nil, errors.Wrap(err, "failed to create sector directory")
 	}
-	s.filename = p
+	s.filename = access
 
 	return s, nil
 }
 
 // NewSealedSector creates a new SealedSector. The new SealedSector is appended to the slice of sealed sectors managed
 // by the SectorBuilder.
-func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, label, path string, s *Sector) *SealedSector {
+func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, snarkProof []byte, label, path string, s *Sector) *SealedSector {
 	s.filename = ""
 
 	ss := &SealedSector{
+		commD:       commD,
+		commR:       commR,
+		snarkProof:  snarkProof,
 		filename:    path,
 		label:       label,
-		commR:       commR,
-		commD:       commD,
-		pieces:      s.Pieces,
 		sectorLabel: s.Label,
+		pieces:      s.Pieces,
 		size:        s.Size,
 	}
 
@@ -244,18 +254,17 @@ func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, label, path
 // for the given miner, we reconstruct it using metadata from the datastore so that the miner can resume its work where
 // it left off.
 func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
-	store := &sectorStore{
+	store := &sectorMetadataStore{
 		store: nd.Repo.Datastore(),
 	}
 
 	sb := &SectorBuilder{
-		dserv:      dag.NewDAGService(nd.Blockservice),
-		MinerAddr:  minerAddr,
-		nd:         nd,
-		sectorSize: uint64(sectorSize),
-		store:      store,
-		stagingDir: fs.StagingDir(),
-		sealedDir:  fs.SealedDir(),
+		dserv:         dag.NewDAGService(nd.Blockservice),
+		MinerAddr:     minerAddr,
+		nd:            nd,
+		sectorSize:    uint64(sectorSize),
+		metadataStore: store,
+		sectorStore:   proofs.NewDiskBackedSectorStore(fs.StagingDir(), fs.SealedDir()),
 	}
 
 	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
@@ -282,7 +291,7 @@ func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs Sec
 	}
 }
 
-func configureSectorBuilderFromMetadata(store *sectorStore, sb *SectorBuilder, metadata *SectorBuilderMetadata) (finalErr error) {
+func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBuilder, metadata *SectorBuilderMetadata) (finalErr error) {
 	sector, err := store.getSector(metadata.CurSectorLabel)
 	if err != nil {
 		return err
@@ -579,9 +588,12 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Ad
 		log.FinishWithErr(ctx, finalErr)
 	}()
 
-	p, label := sb.newSealedSectorPath()
+	access, err := sb.sectorStore.NewSealedSectorAccess()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to dispense sealed sector access")
+	}
 
-	if err := os.MkdirAll(path.Dir(p), os.ModePerm); err != nil {
+	if err := os.MkdirAll(path.Dir(access), os.ModePerm); err != nil {
 		return nil, errors.Wrap(err, "failed to create sealed sector path")
 	}
 
@@ -592,7 +604,7 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Ad
 
 	req := proofs.SealRequest{
 		UnsealedPath:  s.filename,
-		SealedPath:    p,
+		SealedPath:    access,
 		ChallengeSeed: make([]byte, 32), // TODO: derive from chain
 		ProverID:      proverID,
 		RandomSeed:    make([]byte, 32), // TODO: create real seed
@@ -603,7 +615,7 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Ad
 		return nil, errors.Wrap(err, "failed to seal sector")
 	}
 
-	return sb.NewSealedSector(res.Commitments.CommR, res.Commitments.CommD, label, p, s), nil
+	return sb.NewSealedSector(res.CommR, res.CommD, res.SnarkProof, access, access, s), nil
 }
 
 // proverID creates a prover id by padding an address hash to 31 bytes
@@ -624,32 +636,6 @@ func proverID(addr types.Address) ([]byte, error) {
 	}
 
 	return prid, nil
-}
-
-// newSectorLabel returns a newly-generated, random 32-character base32 string.
-func newSectorLabel() string {
-	c := 20
-	b := make([]byte, c)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic("wtf")
-	}
-	encoded := base32.StdEncoding.EncodeToString(b)
-	return encoded
-}
-
-// newSectorPath returns a path to a new (random) filename in the staging directory.
-func (sb *SectorBuilder) newSectorPath() (pathname string, label string) {
-	label = newSectorLabel()
-	pathname = path.Join(sb.stagingDir, label)
-	return pathname, label
-}
-
-// newSealedSectorPath returns a path to a new (random) filename in the sealed directory.
-func (sb *SectorBuilder) newSealedSectorPath() (pathname string, label string) {
-	label = newSectorLabel()
-	pathname = path.Join(sb.sealedDir, label)
-	return pathname, label
 }
 
 func commRString(merkleRoot []byte) string {

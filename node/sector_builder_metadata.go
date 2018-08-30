@@ -34,6 +34,7 @@ type SealedSectorMetadata struct {
 	Pieces      []*PieceInfo
 	SectorLabel string
 	Size        uint64
+	SnarkProof  []byte
 }
 
 // SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
@@ -66,6 +67,7 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 		Pieces:      ss.pieces,
 		SectorLabel: ss.sectorLabel,
 		Size:        ss.size,
+		SnarkProof:  ss.snarkProof,
 	}
 
 	return meta
@@ -104,12 +106,12 @@ func builderMetadataKey(minerAddress types.Address) ds.Key {
 	return ds.KeyWithNamespaces(path).Instance(minerAddress.String())
 }
 
-type sectorStore struct {
+type sectorMetadataStore struct {
 	store repo.Datastore
 }
 
 // getSealedSector returns the sealed sector with the given replica commitment or an error if no match was found.
-func (st *sectorStore) getSealedSector(commR []byte) (*SealedSector, error) {
+func (st *sectorMetadataStore) getSealedSector(commR []byte) (*SealedSector, error) {
 	metadata, err := st.getSealedSectorMetadata(commR)
 	if err != nil {
 		return nil, err
@@ -118,16 +120,17 @@ func (st *sectorStore) getSealedSector(commR []byte) (*SealedSector, error) {
 	return &SealedSector{
 		commD:       metadata.CommD,
 		commR:       metadata.CommR,
+		snarkProof:  metadata.SnarkProof,
 		filename:    metadata.Filename,
 		label:       metadata.Label,
-		pieces:      metadata.Pieces,
 		sectorLabel: metadata.SectorLabel,
+		pieces:      metadata.Pieces,
 		size:        metadata.Size,
 	}, nil
 }
 
 // getSector returns the sector with the given label or an error if no match was found.
-func (st *sectorStore) getSector(label string) (*Sector, error) {
+func (st *sectorMetadataStore) getSector(label string) (*Sector, error) {
 	metadata, err := st.getSectorMetadata(label)
 	if err != nil {
 		return nil, err
@@ -146,7 +149,7 @@ func (st *sectorStore) getSector(label string) (*Sector, error) {
 }
 
 // getSectorMetadata returns the metadata for a sector with the given label or an error if no match was found.
-func (st *sectorStore) getSectorMetadata(label string) (*SectorMetadata, error) {
+func (st *sectorMetadataStore) getSectorMetadata(label string) (*SectorMetadata, error) {
 	key := metadataKey(label)
 
 	data, err := st.store.Get(key)
@@ -161,7 +164,7 @@ func (st *sectorStore) getSectorMetadata(label string) (*SectorMetadata, error) 
 }
 
 // getSealedSectorMetadata returns the metadata for a sealed sector with the given replica commitment.
-func (st *sectorStore) getSealedSectorMetadata(commR []byte) (*SealedSectorMetadata, error) {
+func (st *sectorMetadataStore) getSealedSectorMetadata(commR []byte) (*SealedSectorMetadata, error) {
 	key := sealedMetadataKey(commR)
 
 	data, err := st.store.Get(key)
@@ -177,7 +180,7 @@ func (st *sectorStore) getSealedSectorMetadata(commR []byte) (*SealedSectorMetad
 }
 
 // getSectorBuilderMetadata returns the metadata for a miner's SectorBuilder.
-func (st *sectorStore) getSectorBuilderMetadata(minerAddr types.Address) (*SectorBuilderMetadata, error) {
+func (st *sectorMetadataStore) getSectorBuilderMetadata(minerAddr types.Address) (*SectorBuilderMetadata, error) {
 	key := builderMetadataKey(minerAddr)
 
 	data, err := st.store.Get(key)
@@ -191,7 +194,7 @@ func (st *sectorStore) getSectorBuilderMetadata(minerAddr types.Address) (*Secto
 	return &m, err
 }
 
-func (st *sectorStore) setSectorMetadata(label string, meta *SectorMetadata) error {
+func (st *sectorMetadataStore) setSectorMetadata(label string, meta *SectorMetadata) error {
 	key := metadataKey(label)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
@@ -200,12 +203,12 @@ func (st *sectorStore) setSectorMetadata(label string, meta *SectorMetadata) err
 	return st.store.Put(key, data)
 }
 
-func (st *sectorStore) deleteSectorMetadata(label string) error {
+func (st *sectorMetadataStore) deleteSectorMetadata(label string) error {
 	key := metadataKey(label)
 	return st.store.Delete(key)
 }
 
-func (st *sectorStore) setSealedSectorMetadata(commR []byte, meta *SealedSectorMetadata) error {
+func (st *sectorMetadataStore) setSealedSectorMetadata(commR []byte, meta *SealedSectorMetadata) error {
 	key := sealedMetadataKey(commR)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
@@ -214,7 +217,7 @@ func (st *sectorStore) setSealedSectorMetadata(commR []byte, meta *SealedSectorM
 	return st.store.Put(key, data)
 }
 
-func (st *sectorStore) setSectorBuilderMetadata(minerAddress types.Address, meta *SectorBuilderMetadata) error {
+func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress types.Address, meta *SectorBuilderMetadata) error {
 	key := builderMetadataKey(minerAddress)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {
@@ -231,20 +234,20 @@ func (st *sectorStore) setSectorBuilderMetadata(minerAddress types.Address, meta
 // doing. As the SectorBuilder evolves, we will introduce some checks which
 // will optimize away redundant writes to the datastore.
 func (sb *SectorBuilder) checkpoint(s *Sector) error {
-	if err := sb.store.setSectorBuilderMetadata(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
+	if err := sb.metadataStore.setSectorBuilderMetadata(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
 		return errors.Wrap(err, "failed to save builder metadata")
 	}
 
 	if s.sealed == nil {
-		if err := sb.store.setSectorMetadata(s.Label, s.SectorMetadata()); err != nil {
+		if err := sb.metadataStore.setSectorMetadata(s.Label, s.SectorMetadata()); err != nil {
 			return errors.Wrap(err, "failed to save sector metadata")
 		}
 	} else {
-		if err := sb.store.setSealedSectorMetadata(s.sealed.commR, s.sealed.SealedSectorMetadata()); err != nil {
+		if err := sb.metadataStore.setSealedSectorMetadata(s.sealed.commR, s.sealed.SealedSectorMetadata()); err != nil {
 			return errors.Wrap(err, "failed to save sealed sector metadata")
 		}
 
-		if err := sb.store.deleteSectorMetadata(s.Label); err != nil {
+		if err := sb.metadataStore.deleteSectorMetadata(s.Label); err != nil {
 			return errors.Wrap(err, "failed to remove sector metadata")
 		}
 	}

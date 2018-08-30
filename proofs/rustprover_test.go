@@ -48,17 +48,12 @@ func TestRustProverRoundTrip(t *testing.T) {
 	_, err = os.Stat(dstPath)
 	require.NoError(err, "Seal() operation didn't create sealed sector-file %s", dstPath)
 
-	expected := "12345678901234567890123456789012"
-	require.Equal(expected, string(sres.Commitments.CommR), "incorrect replica commitment")
-
-	expected = "09876543210987654321098765432109"
-	require.Equal(expected, string(sres.Commitments.CommD), "incorrect data commitment")
-
 	err = p.VerifySeal(VerifySealRequest{
-		Commitments: CommitmentPair{
-			CommR: sres.Commitments.CommR,
-			CommD: sres.Commitments.CommD,
-		},
+		CommR:         sres.CommR,
+		CommD:         sres.CommD,
+		SnarkProof:    sres.SnarkProof,
+		ProverID:      proverID,
+		ChallengeSeed: challengeSeed,
 	})
 	require.NoError(err, "VerifySeal() operation failed")
 }
@@ -69,14 +64,15 @@ func TestStatusCodeToErrorStringMarshal(t *testing.T) {
 	p := &RustProver{}
 
 	err := p.VerifySeal(VerifySealRequest{
-		Commitments: CommitmentPair{
-			CommR: make([]byte, 32),
-			CommD: make([]byte, 32),
-		},
+		ChallengeSeed: make([]byte, 32),
+		CommD:         make([]byte, 32),
+		CommR:         make([]byte, 32),
+		ProverID:      make([]byte, 31),
+		SnarkProof:    make([]byte, 192), // TODO: consume the exported constant from FPS
 	})
 	require.Error(err)
 
-	expected := "invalid replica and/or data commitment"
+	expected := "unhandled verify_seal error"
 	require.Equal(expected, err.Error(), "received the wrong error")
 }
 
@@ -113,10 +109,11 @@ func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 	require.NoError(err, "seal operation failed")
 
 	ures, err := p.Unseal(UnsealRequest{
-		SealedPath:  sealOutputPath,
-		OutputPath:  unsealOutputPath,
-		StartOffset: uint64(len(bs[0])),
 		NumBytes:    uint64(len(bs[1])),
+		OutputPath:  unsealOutputPath,
+		ProverID:    make([]byte, 31),
+		SealedPath:  sealOutputPath,
+		StartOffset: uint64(len(bs[0])),
 	})
 	require.NoError(err, "unseal operation failed")
 	require.Equal(uint64(len(bs[1])), ures.NumBytesWritten)
