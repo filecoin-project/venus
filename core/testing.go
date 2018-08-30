@@ -2,13 +2,12 @@ package core
 
 import (
 	"context"
+	"math/rand"
 	"testing"
-	"time"
 
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer/test"
-	"gx/ipfs/QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P/go_rng"
 	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
@@ -76,6 +75,16 @@ func AddChain(ctx context.Context, processNewBlock NewBlockProcessor, loadStateT
 	return blks[0], nil
 }
 
+func getWinningMinerCount(n int, p float64) int {
+	wins := 0
+	for i := 0; i < n; i++ {
+		if rand.Float64() < p {
+			wins++
+		}
+	}
+	return wins
+}
+
 // AddChainBinomBlocksPerEpoch creates and processes a new chain without messages, the
 // given state generation function and block processors, and the input length.
 // The chain is based at the tipset "ts".  The number of blocks mined
@@ -97,21 +106,19 @@ func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockPr
 	var lastNull uint64
 	var head TipSet
 	blks := ts.ToSlice()
-	brng := rng.NewBinomialGenerator(time.Now().UnixNano())
-	n := int64(numMiners)
-	p := float64(1) / float64(n)
+	p := float64(1) / float64(numMiners)
 
 	// Construct a tipset for each epoch.
 	for i := uint64(0); i < l; i++ {
 		head = TipSet{}
 		// Draw number of blocks per TS from binom distribution.
-		nBlks := brng.Binomial(n, p)
-		if nBlks == int64(0) {
+		nBlks := getWinningMinerCount(numMiners, p)
+		if nBlks == 0 {
 			lastNull += uint64(1)
 		}
 
 		// Construct each block and force the chain manager to process them.
-		for j := int64(0); j < nBlks; j++ {
+		for j := 0; j < nBlks; j++ {
 			blk := MkChild(blks, stateRoot, uint64(j))
 			if lastNull > 0 { // TODO better include null block handling direcetly in MkChild interface
 				blk.Height = blk.Height + types.Uint64(lastNull)
@@ -127,7 +134,7 @@ func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockPr
 		}
 
 		// Update chain head and null block count.
-		if nBlks > int64(0) {
+		if nBlks > 0 {
 			lastNull = 0
 			blks = head.ToSlice()
 		}
