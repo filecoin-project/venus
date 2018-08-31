@@ -128,12 +128,6 @@
       "version": "1.4.8"
     },
     {
-      "author": "leesper",
-      "hash": "QmU5VurujVopGNSxBbuBqC7gr12UarswyGhi9iwghRvi5P",
-      "name": "go_rng",
-      "version": "0.0.0"
-    },
-    {
       "author": "why",
       "hash": "QmcQSyreJnxiZ1TCop3s5hjgsggpzCNjrbgqzUoQv4ywEW",
       "name": "go-car",
