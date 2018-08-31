@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -149,8 +150,8 @@ func MarshalValue(val interface{}) ([]byte, error) {
 		return t, nil
 	case string:
 		return []byte(t), nil
-	case types.Address:
-		if t == (types.Address{}) {
+	case address.Address:
+		if t == (address.Address{}) {
 			return []byte{}, nil
 		}
 		return t.Bytes(), nil

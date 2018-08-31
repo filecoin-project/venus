@@ -1,4 +1,4 @@
-package types
+package address
 
 import (
 	"encoding/json"
@@ -12,20 +12,20 @@ var hashes = make([][]byte, 5)
 
 func init() {
 	for i := range hashes {
-		hashes[i] = AddressHash([]byte(fmt.Sprintf("foo-%d", i)))
+		hashes[i] = Hash([]byte(fmt.Sprintf("foo-%d", i)))
 	}
 }
 
 func TestEmptyAddress(t *testing.T) {
 	assert := assert.New(t)
 	assert.True((Address{}).Empty())
-	assert.False(NewMainnetAddress(hashes[0]).Empty())
+	assert.False(NewMainnet(hashes[0]).Empty())
 }
 
-func TestNewAddress(t *testing.T) {
+func TestNew(t *testing.T) {
 	assert := assert.New(t)
 
-	a := NewMainnetAddress(hashes[0])
+	a := NewMainnet(hashes[0])
 	assert.Len(a.Hash(), 20)
 	assert.Equal(a.Hash(), hashes[0])
 
@@ -39,10 +39,10 @@ func TestValidAddresses(t *testing.T) {
 		input  Address
 		output string
 	}{
-		{NewMainnetAddress(hashes[0]), "fcqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9"},
-		{NewMainnetAddress(hashes[1]), "fcqwfptkd8ax6xqg7tvycd9wkfyg748fqjwnlt9a0"},
-		{NewTestnetAddress(hashes[0]), "tfqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8g9f95l"},
-		{NewTestnetAddress(hashes[1]), "tfqwfptkd8ax6xqg7tvycd9wkfyg748fqjwj03z34"},
+		{NewMainnet(hashes[0]), "fcqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9"},
+		{NewMainnet(hashes[1]), "fcqwfptkd8ax6xqg7tvycd9wkfyg748fqjwnlt9a0"},
+		{NewTestnet(hashes[0]), "tfqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8g9f95l"},
+		{NewTestnet(hashes[1]), "tfqwfptkd8ax6xqg7tvycd9wkfyg748fqjwj03z34"},
 	}
 
 	for _, tc := range testCases {
@@ -50,7 +50,7 @@ func TestValidAddresses(t *testing.T) {
 			assert := assert.New(t)
 			assert.Equal(tc.input.String(), tc.output)
 
-			a, err := NewAddressFromString(tc.input.String())
+			a, err := NewFromString(tc.input.String())
 			assert.NoError(err)
 			assert.Equal(a, tc.input)
 
@@ -62,7 +62,7 @@ func TestValidAddresses(t *testing.T) {
 		t.Run(fmt.Sprintf("roundtrip bytes: %s", tc.input), func(t *testing.T) {
 			assert := assert.New(t)
 
-			a, err := NewAddressFromBytes(tc.input.Bytes())
+			a, err := NewFromBytes(tc.input.Bytes())
 			assert.NoError(err)
 			assert.Equal(a, tc.input)
 		})
@@ -87,37 +87,37 @@ func TestInvalidAddressCreation(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("NewAddressFromString - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
+		t.Run(fmt.Sprintf("NewFromString - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
 			assert := assert.New(t)
 
-			_, err := NewAddressFromString(tc.input)
+			_, err := NewFromString(tc.input)
 			assert.Error(err)
 			assert.Contains(err.Error(), tc.expectedStrParseErrorMsg, fmt.Sprintf("input: %s", tc.input))
 		})
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("NewAddressFromBytes - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
+		t.Run(fmt.Sprintf("NewFromBytes - %s", tc.expectedStrParseErrorMsg), func(t *testing.T) {
 			assert := assert.New(t)
 
-			_, err := NewAddressFromBytes([]byte(tc.input))
+			_, err := NewFromBytes([]byte(tc.input))
 			assert.Error(err)
 			assert.Contains(err.Error(), "invalid bytes")
 		})
 	}
 
-	t.Run("NewAddressFromBytes supports only Testnet", func(t *testing.T) {
+	t.Run("NewFromBytes supports only Testnet", func(t *testing.T) {
 		assert := assert.New(t)
 
-		_, err := NewAddressFromBytes([]byte{Testnet + 1, AddressVersion, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+		_, err := NewFromBytes([]byte{Testnet + 1, Version, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 		assert.Error(err)
 		assert.Equal(ErrUnknownNetwork, err)
 	})
 
-	t.Run(fmt.Sprintf("NewAddressFromBytes supports only AddressVersion %d", AddressVersion), func(t *testing.T) {
+	t.Run(fmt.Sprintf("NewFromBytes supports only AddressVersion %d", Version), func(t *testing.T) {
 		assert := assert.New(t)
 
-		_, err := NewAddressFromBytes([]byte{Testnet, AddressVersion + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+		_, err := NewFromBytes([]byte{Testnet, Version + 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 		assert.Error(err)
 		assert.Equal(ErrUnknownVersion, err)
 	})

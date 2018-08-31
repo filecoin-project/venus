@@ -15,6 +15,7 @@ import (
 
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -263,7 +264,7 @@ func NewStorageMinerClient(nd *Node) *StorageMinerClient {
 }
 
 type clientStorageDealState struct {
-	miner     types.Address
+	miner     address.Address
 	proposal  *StorageDealProposal
 	lastState *StorageDealResponse
 }
@@ -285,7 +286,7 @@ func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64
 }
 
 // TryToStoreData needs a better name
-func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*cid.Cid, error) {
+func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*cid.Cid, error) {
 	size, err := getFileSize(ctx, data, dag.NewDAGService(smc.nd.Blockservice))
 	if err != nil {
 		return nil, err
@@ -332,7 +333,7 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner types.A
 	return response.Proposal, nil
 }
 
-func (smc *StorageMinerClient) addResponseToTracker(resp *StorageDealResponse, miner types.Address, p *StorageDealProposal) error {
+func (smc *StorageMinerClient) addResponseToTracker(resp *StorageDealResponse, miner address.Address, p *StorageDealProposal) error {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
 	k := resp.Proposal.KeyString()
@@ -363,12 +364,12 @@ func (smc *StorageMinerClient) checkDealResponse(ctx context.Context, resp *Stor
 	}
 }
 
-func (smc *StorageMinerClient) minerForProposal(c *cid.Cid) (types.Address, error) {
+func (smc *StorageMinerClient) minerForProposal(c *cid.Cid) (address.Address, error) {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
 	st, ok := smc.deals[c.KeyString()]
 	if !ok {
-		return types.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
+		return address.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
 	}
 
 	return st.miner, nil

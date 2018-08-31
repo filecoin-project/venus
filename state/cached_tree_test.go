@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestCachedStateGetCommit(t *testing.T) {
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
 
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
 
 	// add actors to underlying cache
@@ -93,7 +94,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	actorToCreate := actor.NewActor(types.AccountActorCodeCid, nil)
 
 	// can create actor in cache
-	addr := types.NewAddressForTestGetter()()
+	addr := address.NewForTestGetter()()
 	actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 		return actorToCreate, nil
 	})

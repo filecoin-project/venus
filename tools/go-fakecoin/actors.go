@@ -12,6 +12,7 @@ import (
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit/files"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -88,11 +89,11 @@ func cmdFakeActors(ctx context.Context, repodir string) error {
 // well-formed data in its memory. For now, this exists primarily to exercise the Filecoin Explorer, though it may
 // be used for testing in the future.
 func fakeActors(ctx context.Context, fc api.API) error {
-	clientAddr, err := types.NewAddressFromString(th.TestAddress1)
+	clientAddr, err := address.NewFromString(th.TestAddress1)
 	if err != nil {
 		return err
 	}
-	minerLocalAddr, err := types.NewAddressFromString(th.TestAddress2)
+	minerLocalAddr, err := address.NewFromString(th.TestAddress2)
 	if err != nil {
 		return err
 	}
@@ -100,7 +101,7 @@ func fakeActors(ctx context.Context, fc api.API) error {
 	log.Println("\t[miner] creating miner")
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var minerAddr types.Address
+	var minerAddr address.Address
 	go func() {
 		peer := core.RequireRandomPeerID()
 		var err error

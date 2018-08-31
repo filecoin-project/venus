@@ -54,7 +54,7 @@ type Actor struct{}
 
 // State is the miner actors storage.
 type State struct {
-	Owner types.Address
+	Owner address.Address
 
 	// PeerID references the libp2p identity that the miner is operating.
 	PeerID peer.ID
@@ -82,7 +82,7 @@ func NewActor() *actor.Actor {
 }
 
 // NewState creates a miner state struct
-func NewState(owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) *State {
+func NewState(owner address.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) *State {
 	return &State{
 		Owner:         owner,
 		PeerID:        pid,
@@ -206,18 +206,18 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.By
 }
 
 // GetOwner returns the miners owner.
-func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
+func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.Owner, nil
 	})
 	if err != nil {
-		return types.Address{}, errors.CodeError(err), err
+		return address.Address{}, errors.CodeError(err), err
 	}
 
-	a, ok := out.(types.Address)
+	a, ok := out.(address.Address)
 	if !ok {
-		return types.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
+		return address.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
 	}
 
 	return a, 0, nil

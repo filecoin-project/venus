@@ -22,6 +22,7 @@ import (
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -415,19 +416,19 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
+func (td *TestDaemon) CreateMinerAddr(fromAddr string) address.Address {
 	// need money
 	td.RunSuccess("mining", "once")
 
 	var wg sync.WaitGroup
-	var minerAddr types.Address
+	var minerAddr address.Address
 
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
-		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(td.test, err)
-		assert.NotEqual(td.test, addr, types.Address{})
+		assert.NotEqual(td.test, addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()

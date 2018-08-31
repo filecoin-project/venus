@@ -33,7 +33,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	require.NoError(err)
 	require.Nil(result.ExecutionError)
 
-	outAddr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
+	outAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 	minerActor, err := st.GetActor(ctx, outAddr)
 	require.NoError(err)
@@ -91,7 +91,7 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(result.ExecutionError)
 
 	// ensure our derived address is the address storage market creates
-	createdAddress, err := types.NewAddressFromBytes(result.Receipt.Return[0])
+	createdAddress, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 	assert.Equal(minerAddr, createdAddress)
 
@@ -167,7 +167,7 @@ func TestStorageMarketAddAndGetAsk(t *testing.T) {
 	require.NoError(err)
 	require.Nil(result.ExecutionError)
 
-	minerAddr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
+	minerAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 
 	// create a ask
@@ -212,7 +212,7 @@ func TestStorageMarketGetAllAsks(t *testing.T) {
 	require.NoError(err)
 	require.Nil(result.ExecutionError)
 
-	minerAddr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
+	minerAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 
 	// create a ask
@@ -235,7 +235,7 @@ func TestStorageMarketGetAllAsks(t *testing.T) {
 
 	// getAllAsks
 
-	res, _, err := core.CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getAllAsks", []byte{}, types.Address{}, types.NewBlockHeight(0))
+	res, _, err := core.CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getAllAsks", []byte{}, address.Address{}, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	var asks AskSet
@@ -261,18 +261,18 @@ func TestStorageMarketGetAllAsks(t *testing.T) {
 // minerActor and sends some FIL. If that FIL creates an actor tha cannot be upgraded to a miner
 // actor, this action will block the other user. Another possibility is that the miner actor will
 // overwrite the account with the balance thereby obliterating the FIL.
-func deriveMinerAddress(creator types.Address, nonce uint64) (types.Address, error) {
+func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address, error) {
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
-	hash := types.AddressHash(buf.Bytes())
+	hash := address.Hash(buf.Bytes())
 
-	return types.NewMainnetAddress(hash), nil
+	return address.NewMainnet(hash), nil
 }

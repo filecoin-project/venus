@@ -6,26 +6,26 @@ import (
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // PeerLookupService provides an interface through which callers look up a miner's libp2p identity by their Filecoin address.
 type PeerLookupService interface {
-	GetPeerIDByMinerAddress(context.Context, types.Address) (peer.ID, error)
+	GetPeerIDByMinerAddress(context.Context, address.Address) (peer.ID, error)
 }
 
 // ChainLookupService is a ChainManager-backed implementation of the PeerLookupService interface.
 type ChainLookupService struct {
 	chainManager           *core.ChainManager
-	queryMethodFromAddress func() (types.Address, error)
+	queryMethodFromAddress func() (address.Address, error)
 }
 
 var _ PeerLookupService = &ChainLookupService{}
 
 // NewChainLookupService creates a new ChainLookupService from a ChainManager and a Wallet.
-func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr func() (types.Address, error)) *ChainLookupService {
+func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr func() (address.Address, error)) *ChainLookupService {
 	return &ChainLookupService{
 		chainManager:           manager,
 		queryMethodFromAddress: queryMethodFromAddr,
@@ -34,7 +34,7 @@ func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr func(
 
 // GetPeerIDByMinerAddress attempts to get a miner's libp2p identity by loading the actor from the state tree and sending
 // it a "getPeerID" message. The MinerActor is currently the only type of actor which has a peer ID.
-func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
+func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	st, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to load state tree")

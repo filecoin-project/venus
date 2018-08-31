@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -43,10 +44,10 @@ var clientAddBidCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		o := req.Options["from"]
-		var fromAddr types.Address
+		var fromAddr address.Address
 		if o != nil {
 			var err error
-			fromAddr, err = types.NewAddressFromString(o.(string))
+			fromAddr, err = address.NewFromString(o.(string))
 			if err != nil {
 				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
 				return
@@ -234,7 +235,7 @@ var clientProposeStorageDealCmd = &cmds.Command{
 		cmdkit.StringOption("price", "price per byte per block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		miner, err := types.NewAddressFromString(req.Arguments[0])
+		miner, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

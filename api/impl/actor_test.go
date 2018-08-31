@@ -139,7 +139,7 @@ func TestActorLs(t *testing.T) {
 
 		assertSchemaValid(t, a, schemaLoader)
 
-		//addr, _ := types.NewAddressFromString("minerAddress")
+		//addr, _ := types.NewFromString("minerAddress")
 		actor = miner.NewActor()
 		// addr, []byte{}, types.NewBytesAmount(50000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(200))
 		a = makeActorView(actor, "address", &miner.Actor{})

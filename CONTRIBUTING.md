@@ -40,7 +40,7 @@ code walk-through if it would be helpful.
 ## Code Reviews
 
 With "prioritize progress" as a primary directive we can derive some
-corollaries for code reviews: 
+corollaries for code reviews:
 
   * Unless a reviewee asks for it, **avoid lengthy design discussions
   in PR reivews**. Design discussions in PRs shouldn't consume a lot
@@ -54,9 +54,9 @@ corollaries for code reviews:
   Exercise judgement about when not to defer design discussion. For
   example if deferring would ultimately require lots of painful
   refactoring or undoing lots of work, consider not deferring.
-  
+
   * Limit scope of comments to the story itself: avoid feature creep.
-  As above, prefer to defer the addition of new features to followup 
+  As above, prefer to defer the addition of new features to followup
   work.
 
   * Get comfortable with "good enough" and recognize that "good
@@ -79,7 +79,7 @@ the following protocol:
  should consider them but doesn't _have_ to respond or
  address them
   * a comment that says "BLOCKING" must be addressed
- and responded to. A reviewer has to decide how 
+ and responded to. A reviewer has to decide how
  to deliver a blocking comment: via "Request Changes" (merge blocking) or via
  "Add Comments" or "Approve" (not merge blocking):
     * If a reviewer makes a blocking comment while blocking merge
@@ -93,13 +93,13 @@ the following protocol:
   error. It's mandatory to fix but doesn't necessarily require
   another look from the reviewer.
   * Approval means approval even in the face of minor changes.
-  github should be configured to allow merging with earlier 
+  github should be configured to allow merging with earlier
   approval even after rebasing/minor changes.
 
 **Do not just leave comments in a code review.** Comments should be
 blocking or come with an approval unless you are still looking things
 over or you're asking for clarification. It's ok/encouraged to ask
-for explanations. The thing we want to avoid is *unnecessarily* 
+for explanations. The thing we want to avoid is *unnecessarily*
 requiring mutiple round trips from someone whose next availability
  might be 12 hours away.
 
@@ -119,7 +119,7 @@ requiring mutiple round trips from someone whose next availability
 | Blocked | If you are working on something but get stuck because of external factors. |
 | Closed | :tada:|
 
-- The first and last stages are kept up-to-date automatically. 
+- The first and last stages are kept up-to-date automatically.
    - New issues created in `go-filecoin` show up automatically in `Backlog`
    - When a PR is merged, the referenced issues are closed and moved to `Closed`.
 - All other stages are updated manually.
@@ -161,7 +161,7 @@ There are always exceptions but generally:
  * Protocol messages are nouns (eg, `DealQuery`, `DealResponse`) and their handlers are verbs (eg, `QueryDeal`)
  * Do not put implementation inline in command functions. Command implementation should be minimal, calling out functionality that exists elsewhere (eg on the node). Commands implementation is an important API which gets muddled when implementation happens inline in command functions.
 
-We use the following import ordering. 
+We use the following import ordering.
 ```
 import (
         [stdlib packages, alpha-sorted]
@@ -226,7 +226,7 @@ for message processing. Features should be informed by an awareness of
 related platforms.
 
 ## Testing Philosophy
-* All code must be unit tested and should hit our target coverage rate (80%). 
+* All code must be unit tested and should hit our target coverage rate (80%).
 * We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work).
 * Daemon tests (integration tests that run a node and send it commands):
   * Daemon tests are not a substitute for unit tests: the foo command implementation should be unit tested in the `foo_test.go` file
@@ -280,6 +280,4 @@ Likely future requirements:
   * Don't use `==` to compare `*types.Block`; use `Block.Equals()`
   * Ditto for `*cid.Cid`
   * For `types.Message` use `types.MsgCidsEqual` (or better submit a PR to add `Message.Equals()`)
-  * DO use `==` for `types.Address`, it's just an address
-
-
+  * DO use `==` for `address.Address`, it's just an address

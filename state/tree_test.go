@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func TestStatePutGet(t *testing.T) {
 	act2.IncNonce()
 	act2.IncNonce()
 
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
@@ -62,7 +63,7 @@ func TestStateErrors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	a, err := tree.GetActor(ctx, types.NewAddressForTestGetter()())
+	a, err := tree.GetActor(ctx, address.NewForTestGetter()())
 	assert.Nil(a)
 	assert.Error(err)
 	assert.True(IsActorNotFoundError(err))
@@ -80,7 +81,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	addr := types.NewAddressForTestGetter()()
+	addr := address.NewForTestGetter()()
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {
@@ -124,7 +125,7 @@ func TestGetAllActors(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	addr := types.NewAddressForTestGetter()()
+	addr := address.NewForTestGetter()()
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
 	err := tree.SetActor(ctx, addr, &actor)

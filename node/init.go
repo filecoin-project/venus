@@ -11,9 +11,9 @@ import (
 
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -70,7 +70,7 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc, opts ...In
 
 	// TODO: do we want this?
 	// TODO: but behind a config option if this should be generated
-	if r.Config().Wallet.DefaultAddress == (types.Address{}) {
+	if r.Config().Wallet.DefaultAddress == (address.Address{}) {
 		addr, err := newAddress(r)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate default address")
@@ -100,10 +100,10 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	return sk, nil
 }
 
-func newAddress(r repo.Repo) (types.Address, error) {
+func newAddress(r repo.Repo) (address.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
-		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+		return address.Address{}, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
 	return backend.NewAddress()

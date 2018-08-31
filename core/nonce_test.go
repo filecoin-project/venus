@@ -24,7 +24,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 
 		_, err := NextNonce(ctx, st, mp, address)
 		assert.Error(err)
@@ -37,7 +37,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 		actor, err := storagemarket.NewActor()
 		assert.NoError(err)
 		_ = state.MustSetActor(st, address, actor)
@@ -52,7 +52,7 @@ func TestNextNonce(t *testing.T) {
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 42

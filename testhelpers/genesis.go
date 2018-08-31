@@ -18,15 +18,15 @@ import (
 
 // Config is used to configure values in the GenesisInitFunction
 type Config struct {
-	accounts map[types.Address]*types.AttoFIL
-	nonces   map[types.Address]uint64
+	accounts map[address.Address]*types.AttoFIL
+	nonces   map[address.Address]uint64
 }
 
 // GenOption is a configuration option for the GenesisInitFunction
 type GenOption func(*Config) error
 
 // ActorAccount returns a config option that sets up an actor account
-func ActorAccount(addr types.Address, amt *types.AttoFIL) GenOption {
+func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 	return func(gc *Config) error {
 		gc.accounts[addr] = amt
 		return nil
@@ -34,7 +34,7 @@ func ActorAccount(addr types.Address, amt *types.AttoFIL) GenOption {
 }
 
 // ActorNonce returns a config option that sets the nonce of an existing actor
-func ActorNonce(addr types.Address, nonce uint64) GenOption {
+func ActorNonce(addr address.Address, nonce uint64) GenOption {
 	return func(gc *Config) error {
 		gc.nonces[addr] = nonce
 		return nil
@@ -44,8 +44,8 @@ func ActorNonce(addr types.Address, nonce uint64) GenOption {
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	genCfg := &Config{}
-	genCfg.accounts = make(map[types.Address]*types.AttoFIL)
-	genCfg.nonces = make(map[types.Address]uint64)
+	genCfg.accounts = make(map[address.Address]*types.AttoFIL)
+	genCfg.nonces = make(map[address.Address]uint64)
 	return genCfg
 }
 

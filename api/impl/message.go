@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +21,7 @@ func newNodeMessage(api *nodeAPI) *nodeMessage {
 	return &nodeMessage{api: api}
 }
 
-func (api *nodeMessage) Send(ctx context.Context, from, to types.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
+func (api *nodeMessage) Send(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&from, nd); err != nil {
@@ -51,7 +52,7 @@ func (api *nodeMessage) Send(ctx context.Context, from, to types.Address, val *t
 
 // Query requests information from an actor in the local state.
 // The information is based on the current heaviest tipset. Answers may change as new blocks are received.
-func (api *nodeMessage) Query(ctx context.Context, from, to types.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 	nd := api.api.node
 
 	// get correct from address

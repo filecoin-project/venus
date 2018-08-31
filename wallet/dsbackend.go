@@ -11,6 +11,7 @@ import (
 	dsq "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore/query"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -33,7 +34,7 @@ type DSBackend struct {
 	ds repo.Datastore
 
 	// TODO: proper cache
-	cache map[types.Address]struct{}
+	cache map[address.Address]struct{}
 }
 
 var _ Backend = (*DSBackend)(nil)
@@ -52,9 +53,9 @@ func NewDSBackend(ds repo.Datastore) (*DSBackend, error) {
 		return nil, errors.Wrap(err, "failed to read query results")
 	}
 
-	cache := make(map[types.Address]struct{})
+	cache := make(map[address.Address]struct{})
 	for _, el := range list {
-		parsedAddr, err := types.NewAddressFromString(strings.Trim(el.Key, "/"))
+		parsedAddr, err := address.NewFromString(strings.Trim(el.Key, "/"))
 		if err != nil {
 			return nil, errors.Wrapf(err, "trying to restore invalid address: %s", el.Key)
 		}
@@ -73,11 +74,11 @@ func (backend *DSBackend) ImportKey(ki *types.KeyInfo) error {
 }
 
 // Addresses returns a list of all addresses that are stored in this backend.
-func (backend *DSBackend) Addresses() []types.Address {
+func (backend *DSBackend) Addresses() []address.Address {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
-	var cpy []types.Address
+	var cpy []address.Address
 	for addr := range backend.cache {
 		cpy = append(cpy, addr)
 	}
@@ -86,7 +87,7 @@ func (backend *DSBackend) Addresses() []types.Address {
 
 // HasAddress checks if the passed in address is stored in this backend.
 // Safe for concurrent access.
-func (backend *DSBackend) HasAddress(addr types.Address) bool {
+func (backend *DSBackend) HasAddress(addr address.Address) bool {
 	backend.lk.RLock()
 	defer backend.lk.RUnlock()
 
@@ -96,10 +97,10 @@ func (backend *DSBackend) HasAddress(addr types.Address) bool {
 
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
-func (backend *DSBackend) NewAddress() (types.Address, error) {
+func (backend *DSBackend) NewAddress() (address.Address, error) {
 	prv, err := crypto.GenerateKey()
 	if err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	// TODO: maybe the above call should just return a keyinfo?
@@ -109,7 +110,7 @@ func (backend *DSBackend) NewAddress() (types.Address, error) {
 	}
 
 	if err := backend.putKeyInfo(ki); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	return ki.Address()
@@ -138,7 +139,7 @@ func (backend *DSBackend) putKeyInfo(ki *types.KeyInfo) error {
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
-func (backend *DSBackend) SignBytes(data []byte, addr types.Address) (types.Signature, error) {
+func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	ki, err := backend.GetKeyInfo(addr)
 	if err != nil {
 		return nil, err
@@ -160,7 +161,7 @@ func (backend *DSBackend) Verify(data []byte, pk []byte, sig types.Signature) (b
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
 // iff backend contains the addr.
-func (backend *DSBackend) GetKeyInfo(addr types.Address) (*types.KeyInfo, error) {
+func (backend *DSBackend) GetKeyInfo(addr address.Address) (*types.KeyInfo, error) {
 	if !backend.HasAddress(addr) {
 		return nil, errors.New("backend does not contain address")
 	}

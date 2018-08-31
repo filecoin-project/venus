@@ -5,8 +5,8 @@ import (
 	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -40,7 +40,7 @@ type SealedSectorMetadata struct {
 // SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
 type SectorBuilderMetadata struct {
 	CurSectorLabel                 string
-	MinerAddr                      types.Address
+	MinerAddr                      address.Address
 	SealedSectorReplicaCommitments [][]byte
 }
 
@@ -101,7 +101,7 @@ func sealedMetadataKey(commR []byte) ds.Key {
 	return ds.KeyWithNamespaces(path).Instance(commRString(commR))
 }
 
-func builderMetadataKey(minerAddress types.Address) ds.Key {
+func builderMetadataKey(minerAddress address.Address) ds.Key {
 	path := []string{"builder", "metadata"}
 	return ds.KeyWithNamespaces(path).Instance(minerAddress.String())
 }
@@ -180,7 +180,7 @@ func (st *sectorMetadataStore) getSealedSectorMetadata(commR []byte) (*SealedSec
 }
 
 // getSectorBuilderMetadata returns the metadata for a miner's SectorBuilder.
-func (st *sectorMetadataStore) getSectorBuilderMetadata(minerAddr types.Address) (*SectorBuilderMetadata, error) {
+func (st *sectorMetadataStore) getSectorBuilderMetadata(minerAddr address.Address) (*SectorBuilderMetadata, error) {
 	key := builderMetadataKey(minerAddr)
 
 	data, err := st.store.Get(key)
@@ -217,7 +217,7 @@ func (st *sectorMetadataStore) setSealedSectorMetadata(commR []byte, meta *Seale
 	return st.store.Put(key, data)
 }
 
-func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress types.Address, meta *SectorBuilderMetadata) error {
+func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress address.Address, meta *SectorBuilderMetadata) error {
 	key := builderMetadataKey(minerAddress)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {

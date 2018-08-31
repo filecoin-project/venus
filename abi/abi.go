@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -20,7 +21,7 @@ type Type uint64
 const (
 	// Invalid is the default value for 'Type' and represents an errorneously set type.
 	Invalid = Type(iota)
-	// Address is a types.Address
+	// Address is a address.Address
 	Address
 	// AttoFIL is a *types.AttoFIL
 	AttoFIL
@@ -47,7 +48,7 @@ func (t Type) String() string {
 	case Invalid:
 		return "<invalid>"
 	case Address:
-		return "types.Address"
+		return "address.Address"
 	case AttoFIL:
 		return "*types.AttoFIL"
 	case BytesAmount:
@@ -82,7 +83,7 @@ func (av *Value) String() string {
 	case Invalid:
 		return "<invalid>"
 	case Address:
-		return av.Val.(types.Address).String()
+		return av.Val.(address.Address).String()
 	case AttoFIL:
 		return av.Val.(*types.AttoFIL).String()
 	case BytesAmount:
@@ -121,9 +122,9 @@ func (av *Value) Serialize() ([]byte, error) {
 	case Invalid:
 		return nil, ErrInvalidType
 	case Address:
-		addr, ok := av.Val.(types.Address)
+		addr, ok := av.Val.(address.Address)
 		if !ok {
-			return nil, &typeError{types.Address{}, av.Val}
+			return nil, &typeError{address.Address{}, av.Val}
 		}
 		return addr.Bytes(), nil
 	case AttoFIL:
@@ -198,7 +199,7 @@ func ToValues(i []interface{}) ([]*Value, error) {
 	out := make([]*Value, 0, len(i))
 	for _, v := range i {
 		switch v := v.(type) {
-		case types.Address:
+		case address.Address:
 			out = append(out, &Value{Type: Address, Val: v})
 		case *types.AttoFIL:
 			out = append(out, &Value{Type: AttoFIL, Val: v})
@@ -244,7 +245,7 @@ func FromValues(vals []*Value) []interface{} {
 func Deserialize(data []byte, t Type) (*Value, error) {
 	switch t {
 	case Address:
-		addr, err := types.NewAddressFromBytes(data)
+		addr, err := address.NewFromBytes(data)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +316,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address:     reflect.TypeOf(types.Address{}),
+	Address:     reflect.TypeOf(address.Address{}),
 	AttoFIL:     reflect.TypeOf(&types.AttoFIL{}),
 	Bytes:       reflect.TypeOf([]byte{}),
 	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),

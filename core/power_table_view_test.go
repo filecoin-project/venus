@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -37,7 +38,7 @@ func TestMiner(t *testing.T) {
 	assert.Equal(power, actual)
 }
 
-func requireMinerWithPower(t *testing.T, power uint64) (context.Context, *ChainManager, types.Address, state.Tree) {
+func requireMinerWithPower(t *testing.T, power uint64) (context.Context, *ChainManager, address.Address, state.Tree) {
 	require := require.New(t)
 
 	ctx, _, _, cm := newTestUtils()

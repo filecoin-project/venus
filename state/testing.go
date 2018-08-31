@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // MustFlush flushes the StateTree or panics if it can't.
@@ -22,7 +22,7 @@ func MustFlush(st Tree) *cid.Cid {
 }
 
 // MustGetActor gets the actor or panics if it can't.
-func MustGetActor(st Tree, a types.Address) *actor.Actor {
+func MustGetActor(st Tree, a address.Address) *actor.Actor {
 	actor, err := st.GetActor(context.Background(), a)
 	if err != nil {
 		panic(err)
@@ -31,7 +31,7 @@ func MustGetActor(st Tree, a types.Address) *actor.Actor {
 }
 
 // MustSetActor sets the actor or panics if it can't.
-func MustSetActor(st Tree, address types.Address, actor *actor.Actor) *cid.Cid {
+func MustSetActor(st Tree, address address.Address, actor *actor.Actor) *cid.Cid {
 	err := st.SetActor(context.Background(), address, actor)
 	if err != nil {
 		panic(err)
@@ -48,7 +48,7 @@ type MockStateTree struct {
 }
 
 // GetActorStorage implements Tree interface
-func (m *MockStateTree) GetActorStorage(ctx context.Context, a types.Address, stg interface{}) error {
+func (m *MockStateTree) GetActorStorage(ctx context.Context, a address.Address, stg interface{}) error {
 	panic("do not call me")
 }
 
@@ -68,7 +68,7 @@ func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
 }
 
 // GetActor implements StateTree.GetActor.
-func (m *MockStateTree) GetActor(ctx context.Context, address types.Address) (a *actor.Actor, err error) {
+func (m *MockStateTree) GetActor(ctx context.Context, address address.Address) (a *actor.Actor, err error) {
 	if m.NoMocks {
 		return
 	}
@@ -82,7 +82,7 @@ func (m *MockStateTree) GetActor(ctx context.Context, address types.Address) (a 
 }
 
 // SetActor implements StateTree.SetActor.
-func (m *MockStateTree) SetActor(ctx context.Context, address types.Address, actor *actor.Actor) error {
+func (m *MockStateTree) SetActor(ctx context.Context, address address.Address, actor *actor.Actor) error {
 	if m.NoMocks {
 		return nil
 	}
@@ -92,7 +92,7 @@ func (m *MockStateTree) SetActor(ctx context.Context, address types.Address, act
 }
 
 // GetOrCreateActor implements StateTree.GetOrCreateActor.
-func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
+func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address address.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
 	return creator()
 }
 

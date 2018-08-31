@@ -4,8 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/types"
-
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +13,7 @@ import (
 // things.
 
 func TestBasicEncodingRoundTrip(t *testing.T) {
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	cases := map[string][]interface{}{
 		"empty":      nil,

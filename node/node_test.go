@@ -557,7 +557,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
 		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, bb))
 
-		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, types.NewAddressForTestGetter()(), nil, "foo", []byte{})
+		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
 		require.NoError(err)
 		assert.Equal(uint64(42), uint64(msg.Nonce))
 	})
@@ -692,12 +692,12 @@ func TestCreateSectorBuilders(t *testing.T) {
 	// ensure that that the sector builders have been configured
 	// with the mining address of each of the node's miners
 
-	sbaddrs := make(map[types.Address]struct{})
+	sbaddrs := make(map[address.Address]struct{})
 	for _, sb := range node.SectorBuilders {
 		sbaddrs[sb.MinerAddr] = struct{}{}
 	}
 
-	cfaddrs := make(map[types.Address]struct{})
+	cfaddrs := make(map[address.Address]struct{})
 	for _, addr := range node.Repo.Config().Mining.MinerAddresses {
 		cfaddrs[addr] = struct{}{}
 	}

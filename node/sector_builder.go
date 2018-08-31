@@ -20,6 +20,7 @@ import (
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/binpack"
@@ -71,7 +72,7 @@ type PieceInfo struct {
 // SectorBuilder manages packing deals into sectors
 // maybe this belongs somewhere else as part of a different thing?
 type SectorBuilder struct {
-	MinerAddr types.Address
+	MinerAddr address.Address
 
 	curSectorLk    sync.RWMutex // curSectorLk protects curSector
 	curSector      *Sector
@@ -253,7 +254,7 @@ func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, snarkProof 
 // InitSectorBuilder creates a new sector builder for the given miner. If a SectorBuilder had previously been created
 // for the given miner, we reconstruct it using metadata from the datastore so that the miner can resume its work where
 // it left off.
-func InitSectorBuilder(nd *Node, minerAddr types.Address, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
+func InitSectorBuilder(nd *Node, minerAddr address.Address, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
 	store := &sectorMetadataStore{
 		store: nd.Repo.Datastore(),
 	}
@@ -519,7 +520,7 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		return nil, fmt.Errorf("failed to get miner owner, exitCode: %d", exitCode)
 	}
 
-	minerOwner, err := types.NewAddressFromBytes(res[0])
+	minerOwner, err := address.NewFromBytes(res[0])
 	if err != nil {
 		return nil, errors.Wrap(err, "received invalid mining owner")
 	}
@@ -582,7 +583,7 @@ func (s *Sector) WritePiece(ctx context.Context, pi *PieceInfo, r io.Reader) (fi
 }
 
 // Seal generates and returns a proof of replication along with supporting data.
-func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Address) (_ *SealedSector, finalErr error) {
+func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr address.Address) (_ *SealedSector, finalErr error) {
 	ctx = log.Start(ctx, "SectorBuilder.Seal")
 	defer func() {
 		log.FinishWithErr(ctx, finalErr)
@@ -619,7 +620,7 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr types.Ad
 }
 
 // proverID creates a prover id by padding an address hash to 31 bytes
-func proverID(addr types.Address) ([]byte, error) {
+func proverID(addr address.Address) ([]byte, error) {
 	hash := addr.Hash()
 
 	dlen := 31          // desired length

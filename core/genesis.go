@@ -20,11 +20,11 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error)
 
 var (
-	defaultAccounts map[types.Address]*types.AttoFIL
+	defaultAccounts map[address.Address]*types.AttoFIL
 )
 
 func init() {
-	defaultAccounts = map[types.Address]*types.AttoFIL{
+	defaultAccounts = map[address.Address]*types.AttoFIL{
 		address.NetworkAddress: types.NewAttoFILFromFIL(10000000),
 		address.TestAddress:    types.NewAttoFILFromFIL(50000),
 		address.TestAddress2:   types.NewAttoFILFromFIL(60000),

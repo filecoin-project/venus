@@ -8,6 +8,7 @@ import (
 
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
@@ -26,15 +27,15 @@ func (mr *MockRecoverer) Ecrecover(data []byte, sig Signature) ([]byte, error) {
 
 // MockSigner implements the Signer interface
 type MockSigner struct {
-	AddrKeyInfo map[Address]KeyInfo
-	Addresses   []Address
+	AddrKeyInfo map[address.Address]KeyInfo
+	Addresses   []address.Address
 }
 
 // NewMockSigner returns a new mock signer, capable of signing data with
 // keys (addresses derived from) in keyinfo
 func NewMockSigner(kis []KeyInfo) MockSigner {
 	var ms MockSigner
-	ms.AddrKeyInfo = make(map[Address]KeyInfo)
+	ms.AddrKeyInfo = make(map[address.Address]KeyInfo)
 	for _, k := range kis {
 		// get the secret key
 		sk, err := crypto.BytesToECDSA(k.PrivateKey)
@@ -46,8 +47,8 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 		if !ok {
 			panic("unknown public key type")
 		}
-		addrHash := AddressHash(cu.SerializeUncompressed(pub))
-		newAddr := NewMainnetAddress(addrHash)
+		addrHash := address.Hash(cu.SerializeUncompressed(pub))
+		newAddr := address.NewMainnet(addrHash)
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k
 
@@ -56,7 +57,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
-func (ms MockSigner) SignBytes(data []byte, addr Address) (Signature, error) {
+func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
 		panic("unknown address")
@@ -83,7 +84,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 		i++
 		msg := NewMessage(
 			ms.Addresses[0], // from needs to be an address from the signer
-			NewMainnetAddress([]byte(s+"-to")),
+			address.NewMainnet([]byte(s+"-to")),
 			0,
 			NewAttoFILFromFIL(0),
 			s,
@@ -117,17 +118,6 @@ func NewCidForTestGetter() func() *cid.Cid {
 	}
 }
 
-// NewAddressForTestGetter returns a closure that returns an address unique to that invocation.
-// The address is unique wrt the closure returned, not globally.
-func NewAddressForTestGetter() func() Address {
-	i := 0
-	return func() Address {
-		s := fmt.Sprintf("address%d", i)
-		i++
-		return MakeTestAddress(s)
-	}
-}
-
 // NewMessageForTestGetter returns a closure that returns a message unique to that invocation.
 // The message is unique wrt the closure returned, not globally. You can use this function
 // in tests instead of manually creating messages -- it both reduces duplication and gives us
@@ -139,8 +129,8 @@ func NewMessageForTestGetter() func() *Message {
 		s := fmt.Sprintf("msg%d", i)
 		i++
 		return NewMessage(
-			NewMainnetAddress([]byte(s+"-from")),
-			NewMainnetAddress([]byte(s+"-to")),
+			address.NewMainnet([]byte(s+"-from")),
+			address.NewMainnet([]byte(s+"-to")),
 			0,
 			nil,
 			s,
@@ -236,7 +226,7 @@ func SmsgCidsEqual(m1, m2 *SignedMessage) bool {
 // NewMsgsWithAddrs returns a slice of `n` messages who's `From` field's are pulled
 // from `a`. This method should be used when the addresses returned are to be signed
 // at a later point.
-func NewMsgsWithAddrs(n int, a []Address) []*Message {
+func NewMsgsWithAddrs(n int, a []address.Address) []*Message {
 	if n > len(a) {
 		panic("cannot create more messages than there are addresess for")
 	}

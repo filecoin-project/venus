@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,7 +25,7 @@ import (
 
 func TestVMContextStorage(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	ctx := context.Background()
 
 	cst := hamt.NewCborStore()
@@ -64,7 +65,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
-	newAddress := types.NewAddressForTestGetter()
+	newAddress := address.NewForTestGetter()
 
 	mockStateTree := state.MockStateTree{
 		BuiltinActors: map[string]exec.ExecutableActor{},
@@ -163,7 +164,8 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
+
 				calls = append(calls, "GetOrCreateActor")
 				return nil, xerrors.New("error")
 			},
@@ -195,7 +197,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},

@@ -26,7 +26,7 @@ func newNodeClient(api *nodeAPI) *nodeClient {
 	return &nodeClient{api: api}
 }
 
-func (api *nodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeClient) AddBid(ctx context.Context, fromAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	funds := price.CalculatePrice(size)
 
 	return api.api.Message().Send(
@@ -93,7 +93,7 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 	return imp.BuildDagFromReader(ds, spl)
 }
 
-func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner types.Address, price *types.AttoFIL, duration uint64) (*cid.Cid, error) {
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, price *types.AttoFIL, duration uint64) (*cid.Cid, error) {
 	return api.api.node.StorageMinerClient.TryToStoreData(ctx, miner, data, duration, price)
 }
 

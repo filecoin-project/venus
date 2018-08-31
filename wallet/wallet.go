@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -45,7 +46,7 @@ func New(backends ...Backend) *Wallet {
 
 // HasAddress checks if the given address is stored.
 // Safe for concurrent access.
-func (w *Wallet) HasAddress(a types.Address) bool {
+func (w *Wallet) HasAddress(a address.Address) bool {
 	_, err := w.Find(a)
 	return err == nil
 }
@@ -53,7 +54,7 @@ func (w *Wallet) HasAddress(a types.Address) bool {
 // Find searches through all backends and returns the one storing the passed
 // in address.
 // Safe for concurrent access.
-func (w *Wallet) Find(addr types.Address) (Backend, error) {
+func (w *Wallet) Find(addr address.Address) (Backend, error) {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
@@ -75,11 +76,11 @@ func (w *Wallet) Find(addr types.Address) (Backend, error) {
 // which addresses appear in the returned list may differ across Addresses()
 // calls for the same wallet.
 // TODO: Should we make this ordering deterministic?
-func (w *Wallet) Addresses() []types.Address {
+func (w *Wallet) Addresses() []address.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
 
-	var out []types.Address
+	var out []address.Address
 	for _, backends := range w.backends {
 		for _, backend := range backends {
 			out = append(out, backend.Addresses()...)
@@ -101,7 +102,7 @@ func (w *Wallet) Backends(kind reflect.Type) []Backend {
 
 // SignBytes cryptographically signs `data` using the private key corresponding to
 // address `addr`
-func (w *Wallet) SignBytes(data []byte, addr types.Address) (types.Signature, error) {
+func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
@@ -143,7 +144,7 @@ type AddressInfo struct {
 
 // TypesAddressInfo makes it easier for the receiever to deal with types already made
 type TypesAddressInfo struct {
-	Address types.Address
+	Address address.Address
 	Balance *types.AttoFIL
 }
 
@@ -167,7 +168,7 @@ func LoadWalletAddressAndKeysFromFile(file string) (map[TypesAddressInfo]types.K
 
 	loadedAddrs := make(map[TypesAddressInfo]types.KeyInfo)
 	for _, akp := range wt.AddressKeyPairs {
-		addr, err := types.NewAddressFromString(akp.AddressInfo.Address)
+		addr, err := address.NewFromString(akp.AddressInfo.Address)
 		if err != nil {
 			return nil, err
 		}
@@ -195,9 +196,9 @@ func GenerateWalletFile(numAddrs int) (*File, error) {
 			panic("unknown public key type")
 		}
 
-		addrHash := types.AddressHash(cu.SerializeUncompressed(pub))
+		addrHash := address.Hash(cu.SerializeUncompressed(pub))
 		// TODO: Use the address type we are running on from the config.
-		newAddr := types.NewMainnetAddress(addrHash)
+		newAddr := address.NewMainnet(addrHash)
 
 		ki := &types.KeyInfo{
 			PrivateKey: crypto.ECDSAToBytes(prv),

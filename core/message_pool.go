@@ -9,6 +9,7 @@ import (
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -221,7 +222,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 // TODO order by time of receipt
 func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessage {
 	// TODO this could all be more efficient.
-	byAddress := make(map[types.Address][]*types.SignedMessage)
+	byAddress := make(map[address.Address][]*types.SignedMessage)
 	for _, m := range messages {
 		byAddress[m.From] = append(byAddress[m.From], m)
 	}
@@ -235,7 +236,7 @@ func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessag
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
 // If no messages from address are found, found will be false.
-func LargestNonce(pool *MessagePool, address types.Address) (largest uint64, found bool) {
+func LargestNonce(pool *MessagePool, address address.Address) (largest uint64, found bool) {
 	for _, m := range pool.Pending() {
 		if m.From == address {
 			found = true

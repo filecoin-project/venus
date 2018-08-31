@@ -9,20 +9,20 @@ import (
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/lookup"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
 
 type mockLookupService struct {
-	peerIdsByMinerAddr map[types.Address]peer.ID
+	peerIdsByMinerAddr map[address.Address]peer.ID
 }
 
 var _ lookup.PeerLookupService = &mockLookupService{}
 
 // GetPeerIdByMinerAddress provides an interface to a map from miner address to libp2p identity.
-func (mls *mockLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
+func (mls *mockLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	return mls.peerIdsByMinerAddr[minerAddr], nil
 }
 
@@ -40,7 +40,7 @@ func TestDealProtocolClient(t *testing.T) {
 	assert.NoError(err)
 
 	mls := &mockLookupService{
-		peerIdsByMinerAddr: map[types.Address]peer.ID{
+		peerIdsByMinerAddr: map[address.Address]peer.ID{
 			minerAddr: nds[0].Host.ID(),
 		},
 	}

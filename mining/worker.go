@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -80,8 +81,8 @@ type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
-	createPoST DoSomeWorkFunc // TODO: rename createPoSTFunc
-	minerAddr  types.Address  // TODO: needs to be a key in the near future
+	createPoST DoSomeWorkFunc  // TODO: rename createPoSTFunc
+	minerAddr  address.Address // TODO: needs to be a key in the near future
 
 	// consensus things
 	getStateTree GetStateTree
@@ -97,14 +98,14 @@ type DefaultWorker struct {
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, bt time.Duration) *DefaultWorker {
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
 	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, bt, func() {})
 	w.createPoST = w.fakeCreatePoST
 	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner types.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable core.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree:  getStateTree,
 		getWeight:     getWeight,

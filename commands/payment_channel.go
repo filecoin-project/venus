@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -48,7 +49,7 @@ message to be mined to get the channelID.`,
 			return
 		}
 
-		target, err := types.NewAddressFromString(req.Arguments[0])
+		target, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

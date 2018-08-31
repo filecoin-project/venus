@@ -5,8 +5,8 @@ import (
 
 	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +38,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(fs, backend)
 
 	t.Log("find unknown address")
-	randomAddr := types.NewAddressForTestGetter()()
+	randomAddr := address.NewForTestGetter()()
 
 	assert.False(w.HasAddress(randomAddr))
 

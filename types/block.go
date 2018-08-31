@@ -7,6 +7,8 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	node "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 func init() {
@@ -16,7 +18,7 @@ func init() {
 // Block is a block in the blockchain.
 type Block struct {
 	// Miner is the address of the miner actor that mined this block.
-	Miner Address `json:"miner"`
+	Miner address.Address `json:"miner"`
 
 	// Ticket is the winning ticket that was submitted with this block.
 	Ticket Signature `json:"ticket"`

@@ -4,6 +4,8 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 var (
@@ -47,24 +49,24 @@ func (smsg *SignedMessage) Cid() (*cid.Cid, error) {
 }
 
 // RecoverAddress returns the address derived from the signature and message encapsulated in `SignedMessage`
-func (smsg *SignedMessage) RecoverAddress(r Recoverer) (Address, error) {
+func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) {
 	if len(smsg.Signature) < 1 {
-		return Address{}, ErrMessageUnsigned
+		return address.Address{}, ErrMessageUnsigned
 	}
 
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
-		return Address{}, err
+		return address.Address{}, err
 	}
 
 	maybePk, err := r.Ecrecover(bmsg, smsg.Signature)
 	if err != nil {
-		return Address{}, err
+		return address.Address{}, err
 	}
 
-	maybeAddrHash := AddressHash(maybePk)
+	maybeAddrHash := address.Hash(maybePk)
 
-	return NewMainnetAddress(maybeAddrHash), nil
+	return address.NewMainnet(maybeAddrHash), nil
 
 }
 

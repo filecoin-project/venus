@@ -10,7 +10,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -83,23 +83,23 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddresses []types.Address `toml:"minerAddresses"`
+	MinerAddresses []address.Address `toml:"minerAddresses"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
 	return &MiningConfig{
-		MinerAddresses: make([]types.Address, 0),
+		MinerAddresses: make([]address.Address, 0),
 	}
 }
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress types.Address `toml:"defaultAddress,omitempty"`
+	DefaultAddress address.Address `toml:"defaultAddress,omitempty"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
 	return &WalletConfig{
-		DefaultAddress: types.Address{},
+		DefaultAddress: address.Address{},
 	}
 }
 

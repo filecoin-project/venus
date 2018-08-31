@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestMinerCreate(t *testing.T) {
@@ -24,18 +24,18 @@ func TestMinerCreate(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testAddr, err := types.NewAddressFromString(th.TestAddress3)
+	testAddr, err := address.NewFromString(th.TestAddress3)
 	require.NoError(err)
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		var err error
-		var addr types.Address
+		var addr address.Address
 
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		tf := func(fromAddress types.Address, pid peer.ID, expectSuccess bool) {
+		tf := func(fromAddress address.Address, pid peer.ID, expectSuccess bool) {
 			args := []string{"miner", "create"}
 			if !fromAddress.Empty() {
 				args = append(args, "--from", fromAddress.String())
@@ -56,9 +56,9 @@ func TestMinerCreate(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				miner := d.RunSuccess(args...)
-				addr, err = types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+				addr, err = address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 				assert.NoError(err)
-				assert.NotEqual(addr, types.Address{})
+				assert.NotEqual(addr, address.Address{})
 				wg.Done()
 			}()
 
@@ -75,7 +75,7 @@ func TestMinerCreate(t *testing.T) {
 
 		// If there's one address, --from can be omitted and we should default
 		tf(testAddr, peer.ID(""), true)
-		tf(types.Address{}, peer.ID(""), true)
+		tf(address.Address{}, peer.ID(""), true)
 
 		// If there's more than one address, then --from must be specified
 		d.CreateWalletAddr()
@@ -92,7 +92,7 @@ func TestMinerCreate(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		tf := func(fromAddress types.Address, pid peer.ID) {
+		tf := func(fromAddress address.Address, pid peer.ID) {
 			args := []string{"miner", "create"}
 
 			if pid.Pretty() != peer.ID("").Pretty() {
@@ -105,7 +105,7 @@ func TestMinerCreate(t *testing.T) {
 
 		// If there's more than one address, then --from must be specified
 		d.CreateWalletAddr()
-		tf(types.Address{}, peer.ID(""))
+		tf(address.Address{}, peer.ID(""))
 
 	})
 	*/
@@ -174,14 +174,14 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	d.CreateWalletAddr()
 
 	var wg sync.WaitGroup
-	var minerAddr types.Address
+	var minerAddr address.Address
 
 	wg.Add(1)
 	go func() {
 		miner := d.RunSuccess("miner", "create", "--from", th.TestAddress3, "1000000", "20")
-		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, types.Address{})
+		assert.NotEqual(addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
@@ -219,7 +219,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	d.CreateWalletAddr()
 
 	var wg sync.WaitGroup
-	var minerAddr types.Address
+	var minerAddr address.Address
 
 	wg.Add(1)
 	go func() {
@@ -228,9 +228,9 @@ func TestMinerAddAskFail(t *testing.T) {
 			"--peerid", core.RequireRandomPeerID().Pretty(),
 			"1000000", "20",
 		)
-		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, types.Address{})
+		assert.NotEqual(addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()

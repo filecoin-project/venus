@@ -74,7 +74,7 @@ type RenderedMinerInfo struct {
 	Owner string
 
 	// Address is the address generated on-chain for the miner
-	Address types.Address
+	Address address.Address
 
 	// Power is the amount of storage power this miner was created with
 	Power uint64
@@ -202,7 +202,6 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 }
 
 func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner) ([]RenderedMinerInfo, error) {
-
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -236,7 +235,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 		}
 
 		// get miner address
-		maddr, err := types.NewAddressFromBytes(resp.Receipt.Return[0])
+		maddr, err := address.NewFromBytes(resp.Receipt.Return[0])
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +277,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	return info, car.WriteCar(ctx, dserv, []*cid.Cid{info.GenesisCid}, out)
 }
 
-func applyMessage(ctx context.Context, st state.Tree, storageMap vm.StorageMap, from, to types.Address, value *types.AttoFIL, method string, params ...interface{}) (*core.ApplicationResult, error) {
+func applyMessage(ctx context.Context, st state.Tree, storageMap vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (*core.ApplicationResult, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, err

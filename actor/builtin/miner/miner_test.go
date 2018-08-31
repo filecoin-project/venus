@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr types.Address, key []byte, pid peer.ID) types.Address {
+func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
 	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, pid)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
@@ -29,7 +29,7 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap
 	result, err := core.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
-	addr, err := types.NewAddressFromBytes(result.Receipt.Return[0])
+	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	assert.NoError(err)
 	return addr
 }
@@ -184,7 +184,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 	})
 }
 
-func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr types.Address, minerAddr types.Address, newPid peer.ID) {
+func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
 	require := require.New(t)
 
 	updatePeerIdMsg := types.NewMessage(
@@ -201,7 +201,7 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms v
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)
 }
 
-func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr types.Address, minerAddr types.Address) peer.ID {
+func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address) peer.ID {
 	res, code, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)

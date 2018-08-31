@@ -157,7 +157,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
 	return cst, pool, fakeActorCodeCid
 }
 
-func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 	require := require.New(t)
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := core.VMStorage()
@@ -173,7 +173,7 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address, 
 	fakeNetAct := core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
 	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	minerOwner := core.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
+	_, st := core.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
 
@@ -182,7 +182,7 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address, 
 		addr4: minerAct,
 		addr5: minerOwner,
 	})
-	return st, pool, []types.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
+	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
 }
 
 // TODO this test belongs in core, it calls ApplyMessages
@@ -196,7 +196,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
+	_, st := core.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
 	})
 

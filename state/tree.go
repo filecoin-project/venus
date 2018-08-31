@@ -12,8 +12,8 @@ import (
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // tree is a state tree that maps addresses to actors.
@@ -33,9 +33,9 @@ type RevID int
 type Tree interface {
 	Flush(ctx context.Context) (*cid.Cid, error)
 
-	GetActor(ctx context.Context, a types.Address) (*actor.Actor, error)
-	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
-	SetActor(ctx context.Context, a types.Address, act *actor.Actor) error
+	GetActor(ctx context.Context, a address.Address) (*actor.Actor, error)
+	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
+	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
 }
@@ -123,7 +123,7 @@ func (t *tree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableActor, 
 // GetActor retrieves an actor by their address. If no actor
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
-func (t *tree) GetActor(ctx context.Context, a types.Address) (*actor.Actor, error) {
+func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
 	data, err := t.root.Find(ctx, a.String())
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
@@ -158,7 +158,7 @@ func hackTransferObject(from, to interface{}) error {
 
 // GetOrCreateActor retrieves an actor by their address
 // If no actor exists at the given address it returns a newly initialized actor.
-func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
+func (t *tree) GetOrCreateActor(ctx context.Context, address address.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
 	act, err := t.GetActor(ctx, address)
 	if IsActorNotFoundError(err) {
 		return creator()
@@ -168,7 +168,7 @@ func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, crea
 
 // SetActor sets the memory slot at address 'a' to the given actor.
 // This operation can overwrite existing actors at that address.
-func (t *tree) SetActor(ctx context.Context, a types.Address, act *actor.Actor) error {
+func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor) error {
 	if err := t.root.Set(ctx, a.String(), act); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}

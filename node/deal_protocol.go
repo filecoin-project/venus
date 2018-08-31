@@ -48,7 +48,7 @@ type DealProposal struct {
 
 // NewDealProposal will return a DealProposal with a signature derived from Address `addr`
 // and Signer `s`. If the address is unknown to the signer an error is returned.
-func NewDealProposal(deal *storagemarket.Deal, signer types.Signer, addr types.Address) (*DealProposal, error) {
+func NewDealProposal(deal *storagemarket.Deal, signer types.Signer, addr address.Address) (*DealProposal, error) {
 	sig, err := storagemarket.SignDeal(deal, signer, addr)
 	if err != nil {
 		return nil, err
@@ -169,7 +169,7 @@ type Negotiation struct {
 
 	// MinerOwner is the owner of the miner in this deals ask. It is controlled
 	// by this nodes operator.
-	MinerOwner types.Address
+	MinerOwner address.Address
 }
 
 // NewStorageBroker sets up a new storage market protocol handler and registers
@@ -370,7 +370,7 @@ func (sm *StorageBroker) QueryDeal(ctx context.Context, id [32]byte) (dr *DealRe
 	}, nil
 }
 
-func negotiationID(minerID types.Address, propose *DealProposal) [32]byte {
+func negotiationID(minerID address.Address, propose *DealProposal) [32]byte {
 	data, err := cbor.DumpObject(propose)
 	if err != nil {
 		panic(err)
@@ -383,7 +383,7 @@ func negotiationID(minerID types.Address, propose *DealProposal) [32]byte {
 
 func (sm *StorageBroker) processDeal(id [32]byte) {
 	var propose *DealProposal
-	var minerOwner types.Address
+	var minerOwner address.Address
 	sm.updateNegotiation(id, func(n *Negotiation) {
 		propose = n.DealProposal
 		minerOwner = n.MinerOwner
@@ -406,7 +406,7 @@ func (sm *StorageBroker) processDeal(id [32]byte) {
 	})
 }
 
-func (sm *StorageBroker) finishDeal(ctx context.Context, minerOwner types.Address, propose *DealProposal) (*cid.Cid, error) {
+func (sm *StorageBroker) finishDeal(ctx context.Context, minerOwner address.Address, propose *DealProposal) (*cid.Cid, error) {
 	// TODO: better file fetching
 	dataRef, err := cid.Decode(propose.Deal.DataRef)
 	if err != nil {
@@ -438,12 +438,12 @@ func (sm *StorageBroker) GetMarketPeeker() storageMarketPeeker { // nolint: goli
 type storageMarketPeeker interface {
 	GetStorageAsk(ctx context.Context, id uint64) (*storagemarket.Ask, error)
 	GetBid(ctx context.Context, id uint64) (*storagemarket.Bid, error)
-	AddDeal(ctx context.Context, from types.Address, bid, ask uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error)
+	AddDeal(ctx context.Context, from address.Address, bid, ask uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error)
 
 	// more of a gape than a peek..
 	GetStorageAskSet(ctx context.Context) (storagemarket.AskSet, error)
 	GetBidSet(ctx context.Context) (storagemarket.BidSet, error)
-	GetMinerOwner(context.Context, types.Address) (types.Address, error)
+	GetMinerOwner(context.Context, address.Address) (address.Address, error)
 }
 
 type stateTreeMarketPeeker struct {
@@ -455,7 +455,7 @@ func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tre
 	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
 }
 
-func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr types.Address, method string, params ...interface{}) ([][]byte, error) {
+func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr address.Address, method string, params ...interface{}) ([][]byte, error) {
 	vals, err := abi.ToValues(params)
 	if err != nil {
 		return nil, err
@@ -472,7 +472,7 @@ func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr types.
 	}
 
 	vms := vm.NewStorageMap(stsa.nd.Blockstore)
-	rets, ec, err := core.CallQueryMethod(ctx, st, vms, addr, method, args, types.Address{}, nil)
+	rets, ec, err := core.CallQueryMethod(ctx, st, vms, addr, method, args, address.Address{}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +586,7 @@ func (stsa *stateTreeMarketPeeker) GetBidSet(ctx context.Context) (bs storagemar
 	return bidSet, nil
 }
 
-func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress types.Address) (a types.Address, err error) {
+func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddress address.Address) (a address.Address, err error) {
 	ctx = log.Start(ctx, "StorageMarketPeerker.GetMinerOwner")
 	log.SetTag(ctx, "minerAddress", minerAddress.String())
 	defer func() {
@@ -596,19 +596,19 @@ func (stsa *stateTreeMarketPeeker) GetMinerOwner(ctx context.Context, minerAddre
 
 	rets, err := stsa.queryMessage(ctx, minerAddress, "getOwner")
 	if err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
-	addr, err := types.NewAddressFromBytes(rets[0])
+	addr, err := address.NewFromBytes(rets[0])
 	if err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	return addr, nil
 }
 
 // AddDeal adds a deal by sending a message to the storage market actor on chain
-func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from types.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (c *cid.Cid, err error) {
+func (stsa *stateTreeMarketPeeker) AddDeal(ctx context.Context, from address.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (c *cid.Cid, err error) {
 	ctx = log.Start(ctx, "StorageMarketPeerker.AddDeal")
 	log.SetTags(ctx, map[string]interface{}{
 		"from": from.String(),

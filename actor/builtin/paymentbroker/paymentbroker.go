@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -65,7 +66,7 @@ type accountPaymentChannels map[string]*PaymentChannel
 
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
-	Target         types.Address      `json:"target"`
+	Target         address.Address    `json:"target"`
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
 	Eol            *types.BlockHeight `json:"eol"`
@@ -74,8 +75,8 @@ type PaymentChannel struct {
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
 	Channel   types.ChannelID `json:"channel"`
-	Payer     types.Address   `json:"payer"`
-	Target    types.Address   `json:"target"`
+	Payer     address.Address `json:"payer"`
+	Target    address.Address `json:"target"`
 	Amount    types.AttoFIL   `json:"amount"`
 	Signature Signature       `json:"signature"`
 }
@@ -151,7 +152,7 @@ var paymentBrokerExports = exec.Exports{
 // CreateChannel creates a new payment channel from the caller to the target.
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
-func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
+func (pb *Actor) CreateChannel(ctx *vm.Context, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// require that from account be an account actor to ensure nonce is a valid id
@@ -201,7 +202,7 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 // target Update(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
+func (pb *Actor) Update(ctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		data := createVoucherSignatureData(chid, amt)
@@ -226,7 +227,7 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
+func (pb *Actor) Close(ctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
@@ -347,7 +348,7 @@ func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.A
 
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
-func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error) {
+func (pb *Actor) Ls(ctx *vm.Context, payer address.Address) ([]byte, uint8, error) {
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		byPayer, found := state.Channels[payer.String()]
@@ -364,7 +365,7 @@ func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error)
 	return ret.([]byte), 0, nil
 }
 
-func findChannel(state *State, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {
+func findChannel(state *State, payer address.Address, chid *types.ChannelID) (*PaymentChannel, error) {
 	actorsChannels, found := state.Channels[payer.String()]
 	if !found {
 		return nil, Errors[ErrUnknownChannel]
@@ -378,7 +379,7 @@ func findChannel(state *State, payer types.Address, chid *types.ChannelID) (*Pay
 	return channel, nil
 }
 
-func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
+func updateChannel(ctx *vm.Context, target address.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
@@ -408,7 +409,7 @@ func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChanne
 	return nil
 }
 
-func reclaim(ctx *vm.Context, state *State, payer types.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx *vm.Context, state *State, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
@@ -441,7 +442,7 @@ const separator = 0x0
 // SignVoucher creates the signature for the given combination of
 // channel, amount and from address.
 // It does so by sign the following bytes: (channelID | 0x0 | amount)
-func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr types.Address, signer types.Signer) (types.Signature, error) {
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr address.Address, signer types.Signer) (types.Signature, error) {
 	data := createVoucherSignatureData(channelID, amount)
 	return signer.SignBytes(data, addr)
 }

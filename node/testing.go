@@ -82,7 +82,7 @@ func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Bloc
 }
 
 // GiveKey gives the given key to the given node
-func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) types.Address {
+func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) address.Address {
 	t.Helper()
 	bcks := nd.Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
@@ -101,7 +101,7 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) types.Address {
 }
 
 // GiveMiner gives the specified miner to the node
-func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) types.Address {
+func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) address.Address {
 	t.Helper()
 	cfg := nd.Repo.Config()
 	m := cs.info.Miners[which]
@@ -112,7 +112,7 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) types.Address 
 }
 
 // Addr returns the address for the given key
-func (cs *ChainSeed) Addr(t *testing.T, key string) types.Address {
+func (cs *ChainSeed) Addr(t *testing.T, key string) address.Address {
 	t.Helper()
 	k, ok := cs.info.Keys[key]
 	if !ok {
@@ -232,12 +232,12 @@ func MakeOfflineNode(t *testing.T) *Node {
 
 // MustCreateMinerResult contains the result of a CreateMiner command
 type MustCreateMinerResult struct {
-	MinerAddress *types.Address
+	MinerAddress *address.Address
 	Err          error
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from types.Address, pledge types.BytesAmount, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
+func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge types.BytesAmount, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 

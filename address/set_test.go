@@ -1,4 +1,4 @@
-package types
+package address
 
 import (
 	"testing"
@@ -8,16 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAddrSetRoundtrip(t *testing.T) {
+func TestSetRoundtrip(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := NewAddressForTestGetter()
+	addrGetter := NewForTestGetter()
 
 	addrs := make([]Address, 10)
 	for i := range addrs {
 		addrs[i] = addrGetter()
 	}
 
-	set := AddrSet{}
+	set := Set{}
 
 	for _, addr := range addrs {
 		set[addr] = struct{}{}
@@ -26,7 +26,7 @@ func TestAddrSetRoundtrip(t *testing.T) {
 	bytes, err := cbor.DumpObject(set)
 	assert.NoError(err)
 
-	var setBack AddrSet
+	var setBack Set
 	assert.NoError(cbor.DecodeInto(bytes, &setBack))
 
 	assert.Equal(len(addrs), len(setBack))

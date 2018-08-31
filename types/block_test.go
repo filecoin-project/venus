@@ -10,6 +10,7 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func TestTriangleEncoding(t *testing.T) {
 	// into a block (second half of the second case). I don't claim this is ideal,
 	// see: https://github.com/filecoin-project/go-filecoin/issues/599
 
-	newAddress := NewAddressForTestGetter()
+	newAddress := address.NewForTestGetter()
 
 	// REVIVE AFTER https://github.com/filecoin-project/go-filecoin/issues/599 is fixed.
 	//
@@ -143,7 +144,7 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		assert := assert.New(t)
 
-		addrGetter := NewAddressForTestGetter()
+		addrGetter := address.NewForTestGetter()
 
 		c1, err := cidFromString("a")
 		assert.NoError(err)
@@ -203,7 +204,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	assert := assert.New(t)
 
 	var parent, child Block
-	child.Miner = NewAddressForTestGetter()()
+	child.Miner = address.NewForTestGetter()()
 	child.Height = 1
 	child.Nonce = Uint64(2)
 	child.Parents = NewSortedCidSet(parent.Cid())

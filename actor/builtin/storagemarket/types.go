@@ -6,6 +6,7 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,7 +30,7 @@ type Orderbook struct {
 type Ask struct {
 	Price *types.AttoFIL     `json:"price":` // nolint vet
 	Size  *types.BytesAmount `json:"size"`
-	Owner types.Address      `json:"owner"`
+	Owner address.Address    `json:"owner"`
 	ID    uint64             `json:"id"`
 }
 
@@ -41,8 +42,8 @@ type Bid struct {
 	// Duration *big.Int
 	Collateral *types.AttoFIL `json:"collateral"`
 	// Coding ???
-	Owner types.Address `json:"owner"`
-	ID    uint64        `json:"id"`
+	Owner address.Address `json:"owner"`
+	ID    uint64          `json:"id"`
 
 	// Used indicates whether or not this bid is in use by a deal
 	Used bool `json:"used"`

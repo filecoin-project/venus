@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -102,7 +103,7 @@ func (ctx *Context) IsFromAccountActor() bool {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+func (ctx *Context) Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -145,29 +146,29 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 // way that ethereum does.  Note that this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *Context) AddressForNewActor() (types.Address, error) {
+func (ctx *Context) AddressForNewActor() (address.Address, error) {
 	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
 }
 
-func computeActorAddress(creator types.Address, nonce uint64) (types.Address, error) {
+func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
-	hash := types.AddressHash(buf.Bytes())
+	hash := address.Hash(buf.Bytes())
 
-	return types.NewMainnetAddress(hash), nil
+	return address.NewMainnet(hash), nil
 }
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initializerData interface{}) error {
+func (ctx *Context) CreateNewActor(addr address.Address, code *cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -218,7 +219,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, types.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
+	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
 	Send             func(context.Context, *Context) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

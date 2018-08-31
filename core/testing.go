@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -144,7 +145,7 @@ func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockPr
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*actor.Actor) (*cid.Cid, state.Tree) {
+func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (*cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -175,7 +176,7 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
+func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, key, pledge, pid, coll)
@@ -187,13 +188,13 @@ func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr t
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid) *actor.Actor {
+func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid, amt *types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid, amt *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
@@ -237,7 +238,7 @@ func RequireBestBlock(cm *ChainManager, t *testing.T) *types.Block {
 }
 
 // MustGetNonce returns the next nonce for an actor at the given address or panics.
-func MustGetNonce(st state.Tree, a types.Address) uint64 {
+func MustGetNonce(st state.Tree, a address.Address) uint64 {
 	mp := NewMessagePool()
 	nonce, err := NextNonce(context.Background(), st, mp, a)
 	if err != nil {
@@ -382,19 +383,19 @@ func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.
 }
 
 // Miner always returns 0.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) (uint64, error) {
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	return uint64(0), nil
 }
 
 // HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) bool {
+func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
 }
 
 // CreateMinerWithPower uses storage market functionality to mine the messages needed to create a miner, ask, bid, and deal, and then commit that deal to give the miner power.
 // If the power is nil, this method will just create the miner.
 // The returned block and nonce should be used in subsequent calls to this method.
-func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress types.Address, power *types.BytesAmount) (types.Address, *types.Block, uint64, error) {
+func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress address.Address, power *types.BytesAmount) (address.Address, *types.Block, uint64, error) {
 	require := require.New(t)
 
 	pledge := power
@@ -408,7 +409,7 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 	b := RequireMineOnce(ctx, t, cm, lastBlock, rewardAddress, mockSign(sn, msg))
 	nonce++
 
-	minerAddr, err := types.NewAddressFromBytes(b.MessageReceipts[0].Return[0])
+	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
 	require.NoError(err)
 
 	if power == nil {
@@ -425,7 +426,7 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 }
 
 // RequireMineOnce process one block and panic on error
-func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress types.Address, msg *types.SignedMessage) *types.Block {
+func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress address.Address, msg *types.SignedMessage) *types.Block {
 	require := require.New(t)
 
 	st, err := state.LoadStateTree(ctx, cm.cstore, lastBlock.StateRoot, builtin.Actors)

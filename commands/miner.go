@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -76,9 +77,9 @@ message to be mined as this is required to return the address of the new miner.`
 
 		re.Emit(&addr) // nolint: errcheck
 	},
-	Type: types.Address{},
+	Type: address.Address{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *types.Address) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
 			return PrintString(w, a)
 		}),
 	},
@@ -97,7 +98,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
+		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -150,7 +151,7 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
+		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			err = errors.Wrap(err, "invalid miner address")
 			re.SetError(err, cmdkit.ErrNormal)

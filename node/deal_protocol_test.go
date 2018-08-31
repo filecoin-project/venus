@@ -25,12 +25,12 @@ type mockStorageMarketPeeker struct {
 	bids []*storagemarket.Bid
 	//deals []*core.Deal
 
-	minerOwners map[types.Address]types.Address
+	minerOwners map[address.Address]address.Address
 }
 
 func newMockMsp() *mockStorageMarketPeeker {
 	return &mockStorageMarketPeeker{
-		minerOwners: make(map[types.Address]types.Address),
+		minerOwners: make(map[address.Address]address.Address),
 	}
 }
 
@@ -60,17 +60,17 @@ func (msa *mockStorageMarketPeeker) GetDealList() ([]*storagemarket.Deal, error)
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a types.Address) (types.Address, error) {
+func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a address.Address) (address.Address, error) {
 	mo, ok := msa.minerOwners[a]
 	if !ok {
-		return types.Address{}, fmt.Errorf("no such miner")
+		return address.Address{}, fmt.Errorf("no such miner")
 	}
 
 	return mo, nil
 }
 
 // makes mocking existing asks easier
-func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint64) uint64 {
+func (msa *mockStorageMarketPeeker) addAsk(owner address.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.asks))
 	msa.asks = append(msa.asks, &storagemarket.Ask{
 		ID:    id,
@@ -82,7 +82,7 @@ func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint
 }
 
 // makes mocking existing bids easier
-func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint64) uint64 {
+func (msa *mockStorageMarketPeeker) addBid(owner address.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.bids))
 	msa.bids = append(msa.bids, &storagemarket.Bid{
 		ID:    id,
@@ -93,9 +93,9 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 	return id
 }
 
-func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error) {
+func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner address.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error) {
 	// TODO: something useful
-	msg := types.NewMessage(types.Address{}, types.Address{}, 0, nil, "", nil)
+	msg := types.NewMessage(address.Address{}, address.Address{}, 0, nil, "", nil)
 	return msg.Cid()
 }
 
@@ -288,7 +288,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	b := core.RequireMineOnce(ctx, t, cm, genesisBlock, sn.Addresses[0], core.MustSign(sn, msg)[0])
 	nonce++
 
-	minerAddr, err := types.NewAddressFromBytes(b.MessageReceipts[0].Return[0])
+	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
 	require.NoError(err)
 
 	// add bid

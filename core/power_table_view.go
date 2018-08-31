@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
@@ -22,11 +21,11 @@ type PowerTableView interface {
 
 	// Miner returns the total bytes stored by the miner of the
 	// input address in the given state.
-	Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) (uint64, error)
+	Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error)
 
 	// HasPower returns true if the input address is associated with a
 	// miner that has storage power in the network.
-	HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) bool
+	HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool
 }
 
 type marketView struct{}
@@ -39,7 +38,7 @@ var _ PowerTableView = &marketView{}
 // This should be increased for v1.
 func (v *marketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, types.Address{}, nil)
+	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Address{}, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -55,9 +54,9 @@ func (v *marketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 // If the total storage value exceeds the max value of a uint64 this method
 // errors. TODO: uint64 has enough bits to express about 1 exabyte.  This
 // should probably be increased for v1.
-func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) (uint64, error) {
+func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getStorage", []byte{}, types.Address{}, nil)
+	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getStorage", []byte{}, address.Address{}, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +70,7 @@ func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 
 // HasPower returns true if the provided address belongs to a miner with power
 // in the storage market
-func (v *marketView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr types.Address) bool {
+func (v *marketView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	numBytes, err := v.Miner(ctx, st, bstore, mAddr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {

@@ -6,13 +6,14 @@ import (
 
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWeight uint64, msg string) *types.Block {
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	m1 := types.NewMessage(mockSigner.Addresses[0], addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
 	sm1, err := types.NewSignedMessage(*m1, &mockSigner)

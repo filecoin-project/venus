@@ -34,7 +34,7 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, st, vms := requireGenesis(ctx, t, types.NewAddressForTestGetter()())
+	_, st, vms := requireGenesis(ctx, t, address.NewForTestGetter()())
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
@@ -51,7 +51,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	ctx := context.Background()
 
 	payer := address.TestAddress
-	target := types.NewAddressForTestGetter()()
+	target := address.NewForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, target)
 
 	pdata := core.MustConvertParams(target, big.NewInt(10))
@@ -89,12 +89,12 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	payee := types.NewAddressForTestGetter()()
+	payee := address.NewForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, payee)
 
 	// Create a non-account actor
 	payerActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(2000))
-	payer := types.NewAddressForTestGetter()()
+	payer := address.NewForTestGetter()()
 	state.MustSetActor(st, payer, payerActor)
 
 	pdata := core.MustConvertParams(payee, big.NewInt(10))
@@ -389,8 +389,8 @@ func TestPaymentBrokerLs(t *testing.T) {
 		defer cancel()
 
 		payer := address.TestAddress
-		target1 := types.NewAddressForTestGetter()()
-		target2 := types.NewAddressForTestGetter()()
+		target1 := address.NewForTestGetter()()
+		target2 := address.NewForTestGetter()()
 		_, st, vms := requireGenesis(ctx, t, target1)
 		targetActor2 := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, target2, targetActor2)
@@ -432,7 +432,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		defer cancel()
 
 		payer := address.TestAddress
-		target1 := types.NewAddressForTestGetter()()
+		target1 := address.NewForTestGetter()()
 		_, st, vms := requireGenesis(ctx, t, target1)
 
 		// retrieve channels
@@ -504,7 +504,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 	})
 }
 
-func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from types.Address, target types.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
@@ -520,7 +520,7 @@ func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, fro
 	return channelID
 }
 
-func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *actor.Actor, payer types.Address, channelID *types.ChannelID) *PaymentChannel {
+func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *actor.Actor, payer address.Address, channelID *types.ChannelID) *PaymentChannel {
 	require := require.New(t)
 
 	var pbStorage State
@@ -535,7 +535,7 @@ func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *actor.Actor
 	return channel
 }
 
-func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...types.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
+func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
 	require := require.New(t)
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
@@ -561,12 +561,12 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...types.
 type system struct {
 	t             *testing.T
 	ctx           context.Context
-	payer         types.Address
-	target        types.Address
+	payer         address.Address
+	target        address.Address
 	channelID     *types.ChannelID
 	st            state.Tree
 	vms           vm.StorageMap
-	addressGetter func() types.Address
+	addressGetter func() address.Address
 }
 
 func setup(t *testing.T) system {
@@ -574,7 +574,7 @@ func setup(t *testing.T) system {
 
 	ctx := context.Background()
 	payer := mockSigner.Addresses[0]
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	target := addrGetter()
 	_, st, vms := requireGenesis(ctx, t, target)
 
@@ -611,25 +611,25 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 	return core.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
-func (sys *system) ApplyUpdateMessage(target types.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyUpdateMessage(target address.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "update", 0)
 }
 
-func (sys *system) ApplyUpdateMessageWithBlockHeight(target types.Address, amtInt uint64, nonce uint64, height uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyUpdateMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*core.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "update", height)
 }
 
-func (sys *system) ApplyCloseMessage(target types.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "close", 0)
 }
 
-func (sys *system) applySignatureMessage(target types.Address, amtInt uint64, nonce uint64, method string, height uint64) (*core.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, nonce uint64, method string, height uint64) (*core.ApplicationResult, error) {
 	sys.t.Helper()
 
 	require := require.New(sys.t)

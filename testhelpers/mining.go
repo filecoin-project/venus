@@ -9,7 +9,7 @@ import (
 )
 
 // CreateMinerMessage creates a message to create a miner.
-func CreateMinerMessage(from types.Address, nonce uint64, pledge types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (*types.Message, error) {
+func CreateMinerMessage(from address.Address, nonce uint64, pledge types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (*types.Message, error) {
 	params, err := abi.ToEncodedValues(&pledge, []byte{}, pid)
 	if err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func CreateMinerMessage(from types.Address, nonce uint64, pledge types.BytesAmou
 }
 
 // AddBidMessage creates a message to add a bid.
-func AddBidMessage(from types.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
+func AddBidMessage(from address.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
 	funds := price.CalculatePrice(size)
 
 	params, err := abi.ToEncodedValues(price, size)
@@ -31,7 +31,7 @@ func AddBidMessage(from types.Address, nonce uint64, price *types.AttoFIL, size 
 }
 
 // AddAskMessage creates a message to add ask.
-func AddAskMessage(miner types.Address, from types.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
+func AddAskMessage(miner address.Address, from address.Address, nonce uint64, price *types.AttoFIL, size *types.BytesAmount) (*types.Message, error) {
 	params, err := abi.ToEncodedValues(price, size)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func AddAskMessage(miner types.Address, from types.Address, nonce uint64, price 
 }
 
 // CommitSectorMessage creates a message to commit a sector.
-func CommitSectorMessage(miner, from types.Address, nonce uint64, commR []byte, size *types.BytesAmount) (*types.Message, error) {
+func CommitSectorMessage(miner, from address.Address, nonce uint64, commR []byte, size *types.BytesAmount) (*types.Message, error) {
 	params, err := abi.ToEncodedValues(commR, size)
 	if err != nil {
 		return nil, err

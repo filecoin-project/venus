@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -17,11 +18,11 @@ func newNodeMiner(api *nodeAPI) *nodeMiner {
 	return &nodeMiner{api: api}
 }
 
-func (api *nodeMiner) Create(ctx context.Context, fromAddr types.Address, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (types.Address, error) {
+func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	if pid == "" {
@@ -30,13 +31,13 @@ func (api *nodeMiner) Create(ctx context.Context, fromAddr types.Address, pledge
 
 	res, err := nd.CreateMiner(ctx, fromAddr, *pledge, pid, *collateral)
 	if err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	return *res, nil
 }
 
-func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr types.Address, newPid peer.ID) (*cid.Cid, error) {
+func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -47,7 +48,7 @@ func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr type
 	)
 }
 
-func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,

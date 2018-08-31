@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -40,14 +41,14 @@ func TestSectorBuilderSimple(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ag := types.NewAddressForTestGetter()
+	ag := address.NewForTestGetter()
 	_, err = sb.Seal(ctx, sector, ag())
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder, types.Address) {
+func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder, address.Address) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -466,8 +467,8 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 func TestProverIdCreation(t *testing.T) {
 	require := require.New(t)
 
-	hash := types.AddressHash([]byte("satoshi"))
-	addr := types.NewMainnetAddress(hash)
+	hash := address.Hash([]byte("satoshi"))
+	addr := address.NewMainnet(hash)
 
 	id, err := proverID(addr)
 	require.NoError(err)

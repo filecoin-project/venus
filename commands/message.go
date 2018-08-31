@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -39,7 +40,7 @@ var msgSendCmd = &cmds.Command{
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		target, err := types.NewAddressFromString(req.Arguments[0])
+		target, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -51,10 +52,10 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		o := req.Options["from"]
-		var fromAddr types.Address
+		var fromAddr address.Address
 		if o != nil {
 			var err error
-			fromAddr, err = types.NewAddressFromString(o.(string))
+			fromAddr, err = address.NewFromString(o.(string))
 			if err != nil {
 				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
 				return

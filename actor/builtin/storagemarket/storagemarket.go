@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -159,7 +160,7 @@ var storageMarketExports = exec.Exports{
 
 // CreateMiner creates a new miner with the a pledge of the given size. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (types.Address, uint8, error) {
+func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		if pledge.LessThan(MinimumPledge) {
@@ -192,10 +193,10 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *types.BytesAmount, p
 		return addr, nil
 	})
 	if err != nil {
-		return types.Address{}, errors.CodeError(err), err
+		return address.Address{}, errors.CodeError(err), err
 	}
 
-	return ret.(types.Address), 0, nil
+	return ret.(address.Address), 0, nil
 }
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
@@ -290,7 +291,7 @@ func (sma *Actor) AddBid(vmctx exec.VMContext, price *types.AttoFIL, size *types
 }
 
 // VerifyDealSignature checks if the given deal and signature match to the provided address.
-func VerifyDealSignature(deal *Deal, sig types.Signature, addr types.Address) bool {
+func VerifyDealSignature(deal *Deal, sig types.Signature, addr address.Address) bool {
 	dealBytes, err := deal.Marshal()
 	if err != nil {
 		return false
@@ -300,7 +301,7 @@ func VerifyDealSignature(deal *Deal, sig types.Signature, addr types.Address) bo
 }
 
 // SignDeal signs the given deal using the provided address.
-func SignDeal(deal *Deal, signer types.Signer, addr types.Address) (types.Signature, error) {
+func SignDeal(deal *Deal, signer types.Signer, addr address.Address) (types.Signature, error) {
 	dealBytes, err := deal.Marshal()
 	if err != nil {
 		return nil, err

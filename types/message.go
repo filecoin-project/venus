@@ -6,6 +6,8 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 func init() {
@@ -21,8 +23,8 @@ var (
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
 type Message struct {
-	To   Address `json:"to"`
-	From Address `json:"from"`
+	To   address.Address `json:"to"`
+	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
@@ -56,7 +58,7 @@ func (msg *Message) Cid() (*cid.Cid, error) {
 }
 
 // NewMessage creates a new message.
-func NewMessage(from, to Address, nonce uint64, value *AttoFIL, method string, params []byte) *Message {
+func NewMessage(from, to address.Address, nonce uint64, value *AttoFIL, method string, params []byte) *Message {
 	return &Message{
 		From:   from,
 		To:     to,

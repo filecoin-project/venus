@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -283,7 +284,7 @@ var (
 // CallQueryMethod calls a method on an actor in the given state tree. It does
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
-func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to types.Address, method string, params []byte, from types.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
+func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
 	// TODO: don't use from?
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {

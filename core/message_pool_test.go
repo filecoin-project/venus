@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -431,7 +432,7 @@ func TestOrderMessagesByNonce(t *testing.T) {
 		ordered := OrderMessagesByNonce(p.Pending())
 		assert.Equal(len(p.Pending()), len(ordered))
 
-		lastSeen := make(map[types.Address]uint64)
+		lastSeen := make(map[address.Address]uint64)
 		for _, m := range ordered {
 			last, seen := lastSeen[m.From]
 			if seen {
@@ -452,7 +453,7 @@ func TestLargestNonce(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		_, found := LargestNonce(p, types.NewAddressForTestGetter()())
+		_, found := LargestNonce(p, address.NewForTestGetter()())
 		assert.False(found)
 	})
 

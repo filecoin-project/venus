@@ -7,6 +7,7 @@ import (
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 )
@@ -59,16 +60,16 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 }
 
 // Address returns the address for this keyinfo
-func (ki *KeyInfo) Address() (Address, error) {
+func (ki *KeyInfo) Address() (address.Address, error) {
 	pub, err := ki.PublicKey()
 	if err != nil {
-		return Address{}, err
+		return address.Address{}, err
 	}
 
-	addrHash := AddressHash(pub)
+	addrHash := address.Hash(pub)
 
 	// TODO: Use the address type we are running on from the config.
-	return NewMainnetAddress(addrHash), nil
+	return address.NewMainnet(addrHash), nil
 }
 
 // PublicKey returns the public key part as uncompressed bytes.

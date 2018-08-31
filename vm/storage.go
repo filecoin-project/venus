@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
@@ -28,12 +29,12 @@ var ErrNotFound = errors.New("chunk not found")
 // storageMap implements StorageMap as a map of Storage structs keyed by actor address.
 type storageMap struct {
 	blockstore blockstore.Blockstore
-	storageMap map[types.Address]Storage
+	storageMap map[address.Address]Storage
 }
 
 // StorageMap manages Storages.
 type StorageMap interface {
-	NewStorage(addr types.Address, actor *actor.Actor) Storage
+	NewStorage(addr address.Address, actor *actor.Actor) Storage
 	Flush() error
 }
 
@@ -43,7 +44,7 @@ var _ StorageMap = &storageMap{}
 func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 	return &storageMap{
 		blockstore: bs,
-		storageMap: map[types.Address]Storage{},
+		storageMap: map[address.Address]Storage{},
 	}
 }
 
@@ -51,7 +52,7 @@ func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 // Storage updates the given actor's storage by updating its Head property.
 // The instance of actor passed into this method needs to be the instance ultimately
 // persisted.
-func (s *storageMap) NewStorage(addr types.Address, actor *actor.Actor) Storage {
+func (s *storageMap) NewStorage(addr address.Address, actor *actor.Actor) Storage {
 	storage, ok := s.storageMap[addr]
 	if ok {
 		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.

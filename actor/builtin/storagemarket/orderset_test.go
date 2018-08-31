@@ -5,13 +5,14 @@ import (
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAskSetMarshaling(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	as := make(AskSet)
 	ask4 := &Ask{ID: 4, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(19), Size: types.NewBytesAmount(105)}
@@ -36,7 +37,7 @@ func TestAskSetMarshaling(t *testing.T) {
 func TestBidSetMarshaling(t *testing.T) {
 	assert := assert.New(t)
 	bs := make(BidSet)
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	bid4 := &Bid{ID: 4, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(19), Size: types.NewBytesAmount(105)}
 	bid5 := &Bid{ID: 5, Owner: addrGetter(), Price: types.NewAttoFILFromFIL(909), Size: types.NewBytesAmount(435)}

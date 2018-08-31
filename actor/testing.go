@@ -4,6 +4,7 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -107,26 +108,26 @@ func (ma *FakeActor) GoodCall(ctx exec.VMContext) (uint8, error) {
 }
 
 // NestedBalance sents 100 to the given address.
-func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target types.Address) (uint8, error) {
+func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, "", types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // SendTokens sends 100 to the given address.
-func (ma *FakeActor) SendTokens(ctx exec.VMContext, target types.Address) (uint8, error) {
+func (ma *FakeActor) SendTokens(ctx exec.VMContext, target address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, "", types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // CallSendTokens tells the target to invoke SendTokens to send tokens to the
 // to address (that is, it calls target.SendTokens(to)).
-func (ma *FakeActor) CallSendTokens(ctx exec.VMContext, target types.Address, to types.Address) (uint8, error) {
+func (ma *FakeActor) CallSendTokens(ctx exec.VMContext, target address.Address, to address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, "sendTokens", types.ZeroAttoFIL, []interface{}{to})
 	return code, err
 }
 
 // AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
-func (ma *FakeActor) AttemptMultiSpend1(ctx exec.VMContext, self, target types.Address) (uint8, error) {
+func (ma *FakeActor) AttemptMultiSpend1(ctx exec.VMContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
 	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
@@ -141,7 +142,7 @@ func (ma *FakeActor) AttemptMultiSpend1(ctx exec.VMContext, self, target types.A
 }
 
 // AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
-func (ma *FakeActor) AttemptMultiSpend2(ctx exec.VMContext, self, target types.Address) (uint8, error) {
+func (ma *FakeActor) AttemptMultiSpend2(ctx exec.VMContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
 	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {

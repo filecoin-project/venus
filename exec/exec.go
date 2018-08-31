@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -66,12 +67,12 @@ type FunctionSignature struct {
 type VMContext interface {
 	Message() *types.Message
 	Storage() Storage
-	Send(to types.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	AddressForNewActor() (types.Address, error)
+	Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 
-	CreateNewActor(addr types.Address, code *cid.Cid, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code *cid.Cid, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
