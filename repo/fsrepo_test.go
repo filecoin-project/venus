@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

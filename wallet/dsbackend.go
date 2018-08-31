@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	dsq "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore/query"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
-	dsq "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore/query"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -172,7 +172,7 @@ func (backend *DSBackend) GetKeyInfo(addr types.Address) (*types.KeyInfo, error)
 	}
 
 	ki := &types.KeyInfo{}
-	if err := ki.Unmarshal(kib.([]byte)); err != nil {
+	if err := ki.Unmarshal(kib); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal keyinfo from backend")
 	}
 

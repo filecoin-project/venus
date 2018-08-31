@@ -1,7 +1,7 @@
 package types
 
 import (
-	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
