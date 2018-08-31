@@ -4,221 +4,89 @@ package actor
 import (
 	"context"
 	"fmt"
-	"math/big"
-	"reflect"
-	"strings"
 
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	block "gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm/errors"
+	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MakeTypedExport finds the correct method on the given actor and returns it.
-// The returned function is wrapped such that it takes care of serialization and type checks.
+func init() {
+	cbor.RegisterCborType(Actor{})
+}
+
+var (
+	// ErrInvalidActorLength is returned when the actor length does not match the expected length.
+	ErrInvalidActorLength = errors.New("invalid actor length")
+)
+
+// Actor is the central abstraction of entities in the system.
 //
-// TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
-// TODO: find a better name, naming is hard..
-// TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFunc {
-	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
-	if !ok {
-		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in actor: %s", method))
-	}
-
-	exports := actor.Exports()
-	signature, ok := exports[method]
-	if !ok {
-		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in exports: %s", method))
-	}
-
-	val := f.Func
-	t := f.Type
-
-	badImpl := func() {
-		params := []string{"exec.VMContext"}
-		for _, p := range signature.Params {
-			params = append(params, p.String())
-		}
-		ret := []string{}
-		for _, r := range signature.Return {
-			ret = append(ret, r.String())
-		}
-		ret = append(ret, "uint8", "error")
-		sig := fmt.Sprintf("func (Actor, %s) (%s)", strings.Join(params, ", "), strings.Join(ret, ", "))
-		panic(fmt.Sprintf("MakeTypedExport must receive a function with signature: %s, but got: %s", sig, t))
-	}
-
-	if t.Kind() != reflect.Func || t.NumIn() != 2+len(signature.Params) || t.NumOut() != 2+len(signature.Return) {
-		badImpl()
-	}
-
-	for i, p := range signature.Params {
-		if !abi.TypeMatches(p, t.In(i+2)) {
-			badImpl()
-		}
-	}
-
-	for i, r := range signature.Return {
-		if !abi.TypeMatches(r, t.Out(i)) {
-			badImpl()
-		}
-	}
-
-	exitType := reflect.Uint8
-	errorType := reflect.TypeOf((*error)(nil)).Elem()
-
-	if t.Out(t.NumOut()-2).Kind() != exitType {
-		badImpl()
-	}
-
-	if !t.Out(t.NumOut() - 1).Implements(errorType) {
-		badImpl()
-	}
-
-	return func(ctx exec.VMContext) ([]byte, uint8, error) {
-		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
-		if err != nil {
-			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
-		}
-
-		args := []reflect.Value{
-			reflect.ValueOf(actor),
-			reflect.ValueOf(ctx),
-		}
-
-		for _, param := range params {
-			args = append(args, reflect.ValueOf(param.Val))
-		}
-
-		toInterfaces := func(v []reflect.Value) []interface{} {
-			r := make([]interface{}, 0, len(v))
-			for _, vv := range v {
-				r = append(r, vv.Interface())
-			}
-			return r
-		}
-
-		out := toInterfaces(val.Call(args))
-
-		exitCode, ok := out[len(out)-2].(uint8)
-		if !ok {
-			panic("invalid return value")
-		}
-
-		var retVal []byte
-		outErr, ok := out[len(out)-1].(error)
-		if ok {
-			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
-				panic("you are a bad person: error must be either a reverterror or a fault")
-			}
-		} else {
-			// The value of the returned error was nil.
-			outErr = nil
-
-			retVal, err = abi.ToEncodedValues(out[:len(out)-2]...)
-			if err != nil {
-				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
-			}
-		}
-
-		return retVal, exitCode, outErr
-	}
-}
-
-// MarshalValue serializes a given go type into a byte slice.
-// The returned format matches the format that is expected to be interoperapble between VM and
-// the rest of the system.
-func MarshalValue(val interface{}) ([]byte, error) {
-	switch t := val.(type) {
-	case *big.Int:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case *types.ChannelID:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case *types.BlockHeight:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case []byte:
-		return t, nil
-	case string:
-		return []byte(t), nil
-	case types.Address:
-		if t == (types.Address{}) {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	default:
-		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
-	}
-}
-
-// --
-// Below are helper functions that are used to implement actors.
-
-// MarshalStorage encodes the passed in data into bytes.
-func MarshalStorage(in interface{}) ([]byte, error) {
-	bytes, err := cbor.DumpObject(in)
-	if err != nil {
-		return nil, errors.FaultErrorWrap(err, "Could not marshall actor state")
-	}
-	return bytes, nil
-}
-
-// UnmarshalStorage decodes the passed in bytes into the given object.
-func UnmarshalStorage(raw []byte, to interface{}) error {
-	return cbor.DecodeInto(raw, to)
-}
-
-// WithState is a helper method that makes dealing with storage serialization
-// easier for implementors.
-// It is designed to be used like:
+// Both individual accounts, as well as contracts (user & system level) are
+// represented as actors. An actor has the following core functionality implemented on a system level:
+// - track a Filecoin balance, using the `Balance` field
+// - execute code stored in the `Code` field
+// - read & write memory
+// - replay protection, using the `Nonce` field
 //
-// var st MyStorage
-// ret, err := WithState(ctx, &st, func() (interface{}, error) {
-//   fmt.Println("hey look, my storage is loaded: ", st)
-//   return st.Thing, nil
-// })
+// Value sent to a non-existent address will be tracked as an empty actor that has a Balance but
+// nil Code and Memory. You must nil check Code cids before comparing them.
 //
-// Note that if 'f' returns an error, modifications to the storage are not
-// saved.
-func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
-	chunk, err := ctx.ReadStorage()
+// More specific capabilities for individual accounts or contract specific must be implemented
+// inside the code.
+//
+// Not safe for concurrent access.
+type Actor struct {
+	Code    *cid.Cid
+	Head    *cid.Cid
+	Nonce   types.Uint64
+	Balance *types.AttoFIL
+}
+
+// IncNonce increments the nonce of this actor by 1.
+func (a *Actor) IncNonce() {
+	a.Nonce = a.Nonce + 1
+}
+
+// Cid returns the canonical CID for the actor.
+// TODO: can we avoid returning an error?
+func (a *Actor) Cid() (*cid.Cid, error) {
+	obj, err := cbor.WrapObject(a, types.DefaultHashFunction, -1)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to marshal to cbor")
 	}
 
-	if err := UnmarshalStorage(chunk, st); err != nil {
-		return nil, err
-	}
+	return obj.Cid(), nil
+}
 
-	ret, err := f()
-	if err != nil {
-		return nil, err
+// NewActor constructs a new actor.
+func NewActor(code *cid.Cid, balance *types.AttoFIL) *Actor {
+	return &Actor{
+		Code:    code,
+		Head:    nil,
+		Nonce:   0,
+		Balance: balance,
 	}
+}
 
-	data, err := MarshalStorage(st)
-	if err != nil {
-		return nil, err
-	}
+// Unmarshal a actor from the given bytes.
+func (a *Actor) Unmarshal(b []byte) error {
+	return cbor.DecodeInto(b, a)
+}
 
-	if err := ctx.WriteStorage(data); err != nil {
-		return nil, err
-	}
+// Marshal the actor into bytes.
+func (a *Actor) Marshal() ([]byte, error) {
+	return cbor.DumpObject(a)
+}
 
-	return ret, nil
+// Format implements fmt.Formatter.
+func (a *Actor) Format(f fmt.State, c rune) {
+	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code), a, a.Balance, a.Nonce))) // nolint: errcheck
 }
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
@@ -332,7 +200,7 @@ func (l *lookup) values(ctx context.Context, vs []*hamt.KV) ([]*hamt.KV, error) 
 
 		sublookup, ok := subtree.(*lookup)
 		if !ok {
-			return nil, errors.NewFaultError("Non-actor.lookup found in hamt tree")
+			return nil, vmerrors.NewFaultError("Non-actor.lookup found in hamt tree")
 		}
 
 		vs, err = sublookup.values(ctx, vs)

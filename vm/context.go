@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -17,8 +18,8 @@ import (
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
 type Context struct {
-	from        *types.Actor
-	to          *types.Actor
+	from        *actor.Actor
+	to          *actor.Actor
 	message     *types.Message
 	state       *state.CachedTree
 	storageMap  StorageMap
@@ -30,7 +31,7 @@ type Context struct {
 var _ exec.VMContext = (*Context)(nil)
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
@@ -124,8 +125,8 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
-		return &types.Actor{}, nil
+	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
 	})
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
@@ -168,8 +169,8 @@ func computeActorAddress(creator types.Address, nonce uint64) (types.Address, er
 // If the address is occupied by a non-empty actor, this method will fail.
 func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
-	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*types.Actor, error) {
-		return &types.Actor{}, nil
+	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
 	})
 
 	if err != nil {
@@ -217,7 +218,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
+	GetOrCreateActor func(context.Context, types.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
 	Send             func(context.Context, *Context) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

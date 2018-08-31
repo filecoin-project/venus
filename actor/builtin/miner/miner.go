@@ -77,8 +77,8 @@ type State struct {
 }
 
 // NewActor returns a new miner actor
-func NewActor() *types.Actor {
-	return types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 }
 
 // NewState creates a miner state struct

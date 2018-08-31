@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, state.Tree) {
+func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*actor.Actor) (*cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -46,7 +46,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	toAddr := newAddress()
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: fromAct,
 	})
 
@@ -68,7 +68,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	assert.NoError(err)
 	expAct1, expAct2 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-550)), RequireNewEmptyActor(require, types.NewAttoFILFromFIL(550))
 	expAct1.IncNonce()
-	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: expAct1,
 		toAddr:   expAct2,
 	})
@@ -90,7 +90,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 
 	fromAddr1Act := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	fromAddr2Act := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr1: fromAddr1Act,
 		fromAddr2: fromAddr2Act,
 	})
@@ -122,7 +122,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	expAct1, expAct2, expAct3 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-550)), RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-50)), RequireNewEmptyActor(require, types.NewAttoFILFromFIL(550+50))
 	expAct1.IncNonce()
 	expAct2.IncNonce()
-	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr1: expAct1,
 		fromAddr2: expAct2,
 		toAddr:    expAct3,
@@ -140,7 +140,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: act1,
 	})
 
@@ -172,7 +172,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	expAct1, expAct2 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000-501)), RequireNewEmptyActor(require, types.NewAttoFILFromFIL(501))
 	expAct1.IncNonce()
-	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: expAct1,
 		toAddr:   expAct2,
 	})
@@ -197,7 +197,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1, act2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
-	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	stCid, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: act1,
 		toAddr:   act2,
 	})
@@ -225,7 +225,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
 	expectedAct1.IncNonce()
-	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expectedStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		fromAddr: expectedAct1,
 		toAddr:   expectedAct2,
 	})
@@ -246,7 +246,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
 	})
@@ -274,7 +274,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
 	})
@@ -300,7 +300,7 @@ func TestProcessBlockNonceTooLow(t *testing.T) {
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act1.Nonce = 5
 	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
 	})
@@ -322,7 +322,7 @@ func TestProcessBlockNonceTooHigh(t *testing.T) {
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	act2 := RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, types.NewBytesAmount(10000), RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
 	})
@@ -357,7 +357,7 @@ func TestNestedSendBalance(t *testing.T) {
 	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
 	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
-	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr0: act0,
 		addr1: act1,
 		addr2: act2,
@@ -379,7 +379,7 @@ func TestNestedSendBalance(t *testing.T) {
 	expAct1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(2))
 	expAct2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
 
-	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	expStCid, _ := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr0: expAct0,
 		addr1: expAct1,
 		addr2: expAct2,
@@ -408,7 +408,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
 	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
-	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr0: act0,
 		addr1: act1,
 		addr2: act2,
@@ -443,7 +443,7 @@ func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
 
 	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
 	act1 := RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	_, st := requireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := requireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 	})
 
@@ -491,7 +491,7 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	act1 := RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
 	act2 := RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
 
-	_, st := RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr0: act0,
 		addr1: act1,
 		addr2: act2,

@@ -6,21 +6,91 @@ import (
 	"math/big"
 	"testing"
 
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestActorMarshal(t *testing.T) {
+	assert := assert.New(t)
+	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
+	actor.Head = requireCid(t, "Actor Storage")
+	actor.IncNonce()
+
+	marshalled, err := actor.Marshal()
+	assert.NoError(err)
+
+	actorBack := Actor{}
+	err = actorBack.Unmarshal(marshalled)
+	assert.NoError(err)
+
+	assert.Equal(actor.Code, actorBack.Code)
+	assert.Equal(actor.Head, actorBack.Head)
+	assert.Equal(actor.Nonce, actorBack.Nonce)
+
+	c1, err := actor.Cid()
+	assert.NoError(err)
+	c2, err := actorBack.Cid()
+	assert.NoError(err)
+	assert.Equal(c1, c2)
+}
+
+func TestActorCid(t *testing.T) {
+	assert := assert.New(t)
+
+	actor1 := NewActor(types.AccountActorCodeCid, nil)
+	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+	actor2.Head = requireCid(t, "Actor 2 State")
+	actor1.IncNonce()
+
+	c1, err := actor1.Cid()
+	assert.NoError(err)
+	c2, err := actor2.Cid()
+	assert.NoError(err)
+
+	assert.NotEqual(c1.String(), c2.String())
+}
+
+func TestActorFormat(t *testing.T) {
+	assert := assert.New(t)
+	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+
+	formatted := fmt.Sprintf("%v", accountActor)
+	assert.Contains(formatted, "AccountActor")
+	assert.Contains(formatted, "balance: 5")
+	assert.Contains(formatted, "nonce: 0")
+
+	minerActor := NewActor(types.MinerActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", minerActor)
+	assert.Contains(formatted, "MinerActor")
+
+	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", storageMarketActor)
+	assert.Contains(formatted, "StorageMarketActor")
+
+	paymentBrokerActor := NewActor(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", paymentBrokerActor)
+	assert.Contains(formatted, "PaymentBrokerActor")
+}
+
+func requireCid(t *testing.T, data string) *cid.Cid {
+	prefix := cid.NewPrefixV1(cid.Raw, types.DefaultHashFunction)
+	cid, err := prefix.Sum([]byte(data))
+	require.NoError(t, err)
+	return cid
+}
 
 type MockActor struct {
 	exports exec.Exports
@@ -262,7 +332,7 @@ func TestLoadLookup(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
 	vms := vm.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
 	lookup, err := LoadLookup(ctx, storage, nil)
@@ -285,7 +355,7 @@ func TestLoadLookup(t *testing.T) {
 	t.Run("Fetch chunk by cid", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
 		vms = vm.NewStorageMap(bs)
-		storage = vms.NewStorage(address.TestAddress, &types.Actor{})
+		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, cid)
 		require.NoError(err)
@@ -299,7 +369,7 @@ func TestLoadLookup(t *testing.T) {
 	t.Run("Get errs for missing key", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
 		vms = vm.NewStorageMap(bs)
-		storage = vms.NewStorage(address.TestAddress, &types.Actor{})
+		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, cid)
 		require.NoError(err)
@@ -317,7 +387,7 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
 	vms := vm.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
 	cid := types.NewCidForTestGetter()()
@@ -334,7 +404,7 @@ func TestSetKeyValue(t *testing.T) {
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
 	vms := vm.NewStorageMap(bs)
-	storage := vms.NewStorage(address.TestAddress, &types.Actor{})
+	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
 	cid, err := SetKeyValue(ctx, storage, nil, "foo", "bar")

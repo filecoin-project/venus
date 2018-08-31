@@ -18,9 +18,9 @@ import (
 )
 
 func TestTransfer(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
-	actor3 := types.NewActor(nil, nil)
+	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor3 := actor.NewActor(nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
@@ -44,8 +44,8 @@ func TestTransfer(t *testing.T) {
 }
 
 func TestSendErrorHandling(t *testing.T) {
-	actor1 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
@@ -60,7 +60,7 @@ func TestSendErrorHandling(t *testing.T) {
 		msg.Value = types.NewAttoFILFromFIL(1) // exact value doesn't matter - needs to be non-nil
 
 		deps := sendDeps{
-			transfer: func(_ *types.Actor, _ *types.Actor, _ *types.AttoFIL) error {
+			transfer: func(_ *actor.Actor, _ *actor.Actor, _ *types.AttoFIL) error {
 				return transferErr
 			},
 		}

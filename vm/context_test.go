@@ -61,8 +61,8 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 	newAddress := types.NewAddressForTestGetter()
 
@@ -163,7 +163,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, _ func() (*types.Actor, error)) (*types.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ types.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return nil, xerrors.New("error")
 			},
@@ -195,7 +195,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, f func() (*types.Actor, error)) (*types.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ types.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
@@ -259,7 +259,7 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	ctx := NewVMContext(accountActor, nil, nil, nil, vms, nil)
 	assert.True(ctx.IsFromAccountActor())
 
-	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
+	nonAccountActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
 	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, nil)
 	assert.False(ctx.IsFromAccountActor())
 }

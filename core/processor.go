@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -324,11 +325,11 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 		return nil, errSelfSend
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*types.Actor, error) {
+	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
 		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
 		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
 		// actor to collect any balance that may be transferred.
-		return &types.Actor{}, nil
+		return &actor.Actor{}, nil
 	})
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")

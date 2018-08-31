@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -92,7 +93,7 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, bs blockst
 		}
 
 		// Create StorageMarketActor
-		stAct := types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL())
+		stAct := actor.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL())
 		storage := storageMap.NewStorage(address.StorageMarketAddress, stAct)
 		err = (&storagemarket.Actor{}).InitializeState(storage, nil)
 		if err != nil {
@@ -104,7 +105,7 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, bs blockst
 		}
 
 		// Create PaymentBrokerActor
-		pbAct := types.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
+		pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
 		storage = storageMap.NewStorage(address.PaymentBrokerAddress, pbAct)
 		err = (&paymentbroker.Actor{}).InitializeState(storage, nil)
 		pbAct.Balance = types.NewAttoFILFromFIL(0)

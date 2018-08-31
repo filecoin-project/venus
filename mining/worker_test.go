@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -172,9 +173,10 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []types.Address, 
 	fakeNetAct := core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
 	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	minerOwner := core.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
+
 		addr1: act1,
 		addr2: act2,
 		addr4: minerAct,
@@ -194,7 +196,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*types.Actor{
+	_, st := core.RequireMakeStateTree(require, cst, map[types.Address]*actor.Actor{
 		addr1: act1,
 	})
 

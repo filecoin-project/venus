@@ -3,15 +3,15 @@ package vm
 import (
 	"errors"
 
-	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/types"
-
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
 	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/types"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -33,7 +33,7 @@ type storageMap struct {
 
 // StorageMap manages Storages.
 type StorageMap interface {
-	NewStorage(addr types.Address, actor *types.Actor) Storage
+	NewStorage(addr types.Address, actor *actor.Actor) Storage
 	Flush() error
 }
 
@@ -51,7 +51,7 @@ func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 // Storage updates the given actor's storage by updating its Head property.
 // The instance of actor passed into this method needs to be the instance ultimately
 // persisted.
-func (s *storageMap) NewStorage(addr types.Address, actor *types.Actor) Storage {
+func (s *storageMap) NewStorage(addr types.Address, actor *actor.Actor) Storage {
 	storage, ok := s.storageMap[addr]
 	if ok {
 		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.
@@ -84,7 +84,7 @@ func (s *storageMap) Flush() error {
 
 // Storage is a place to hold chunks that are created while processing a block.
 type Storage struct {
-	actor      *types.Actor
+	actor      *actor.Actor
 	chunks     map[string]ipld.Node
 	blockstore blockstore.Blockstore
 }
@@ -92,7 +92,7 @@ type Storage struct {
 var _ exec.Storage = (*Storage)(nil)
 
 // NewStorage creates a datastore backed storage object for the given actor
-func NewStorage(bs blockstore.Blockstore, act *types.Actor) Storage {
+func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 	return Storage{
 		chunks:     map[string]ipld.Node{},
 		actor:      act,

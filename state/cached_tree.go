@@ -5,6 +5,7 @@ import (
 
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -13,14 +14,14 @@ import (
 // CachedTree is a read-through cache on top of a state tree.
 type CachedTree struct {
 	st    Tree
-	cache map[types.Address]*types.Actor
+	cache map[types.Address]*actor.Actor
 }
 
 // NewCachedStateTree returns a initialized empty CachedTree
 func NewCachedStateTree(st Tree) *CachedTree {
 	return &CachedTree{
 		st:    st,
-		cache: make(map[types.Address]*types.Actor),
+		cache: make(map[types.Address]*actor.Actor),
 	}
 }
 
@@ -31,7 +32,7 @@ func (t *CachedTree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableA
 
 // GetActor retrieves an actor from the cache. If it's not found it will get it from the
 // underlying tree and then set it in the cache before returning it.
-func (t *CachedTree) GetActor(ctx context.Context, a types.Address) (*types.Actor, error) {
+func (t *CachedTree) GetActor(ctx context.Context, a types.Address) (*actor.Actor, error) {
 	var err error
 	actor, found := t.cache[a]
 	if !found {
@@ -46,7 +47,7 @@ func (t *CachedTree) GetActor(ctx context.Context, a types.Address) (*types.Acto
 
 // GetOrCreateActor retrieves an actor from the cache. If it's not found it will GetOrCreate it from the
 // underlying tree and then set it in the cache before returning it.
-func (t *CachedTree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*types.Actor, error)) (*types.Actor, error) {
+func (t *CachedTree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
 	var err error
 	actor, found := t.cache[address]
 	if !found {
@@ -67,6 +68,6 @@ func (t *CachedTree) Commit(ctx context.Context) error {
 			return errors.FaultErrorWrap(err, "Could not commit cached actors to state tree.")
 		}
 	}
-	t.cache = make(map[types.Address]*types.Actor)
+	t.cache = make(map[types.Address]*actor.Actor)
 	return nil
 }

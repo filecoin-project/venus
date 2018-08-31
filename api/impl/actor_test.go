@@ -12,6 +12,7 @@ import (
 
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -24,7 +25,7 @@ import (
 
 func TestActorLs(t *testing.T) {
 	t.Parallel()
-	getActorsNoOp := func(st state.Tree) ([]string, []*types.Actor) {
+	getActorsNoOp := func(st state.Tree) ([]string, []*actor.Actor) {
 		return nil, nil
 	}
 
@@ -78,12 +79,12 @@ func TestActorLs(t *testing.T) {
 		assert.NoError(nd.Start(ctx))
 		tokenAmount := types.NewAttoFILFromFIL(100)
 
-		getActors := func(state.Tree) ([]string, []*types.Actor) {
+		getActors := func(state.Tree) ([]string, []*actor.Actor) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			actor3 := miner.NewActor()
-			actor4 := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21))
-			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}
+			actor4 := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21))
+			return []string{"address1", "address2", "address3", "address4"}, []*actor.Actor{actor1, actor2, actor3, actor4}
 		}
 
 		actorViews, err := ls(ctx, nd, getActors)

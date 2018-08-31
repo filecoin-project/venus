@@ -13,6 +13,7 @@ import (
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -92,7 +93,7 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 	_, st, vms := requireGenesis(ctx, t, payee)
 
 	// Create a non-account actor
-	payerActor := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(2000))
+	payerActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(2000))
 	payer := types.NewAddressForTestGetter()()
 	state.MustSetActor(st, payer, payerActor)
 
@@ -519,7 +520,7 @@ func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, fro
 	return channelID
 }
 
-func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *types.Actor, payer types.Address, channelID *types.ChannelID) *PaymentChannel {
+func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *actor.Actor, payer types.Address, channelID *types.ChannelID) *PaymentChannel {
 	require := require.New(t)
 
 	var pbStorage State

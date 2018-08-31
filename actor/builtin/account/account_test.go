@@ -5,6 +5,7 @@ import (
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ func TestAccountActorCborMarshaling(t *testing.T) {
 		out, err := cbor.DumpObject(preEncode)
 		require.NoError(err)
 
-		var postDecode types.Actor
+		var postDecode actor.Actor
 		err = cbor.DecodeInto(out, &postDecode)
 		require.NoError(err)
 

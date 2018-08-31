@@ -144,7 +144,7 @@ func AddChainBinomBlocksPerEpoch(ctx context.Context, processNewBlock NewBlockPr
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*types.Actor) (*cid.Cid, state.Tree) {
+func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[types.Address]*actor.Actor) (*cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -161,13 +161,13 @@ func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 
 // RequireNewEmptyActor creates a new empty actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewEmptyActor(require *require.Assertions, value *types.AttoFIL) *types.Actor {
-	return &types.Actor{Balance: value}
+func RequireNewEmptyActor(require *require.Assertions, value *types.AttoFIL) *actor.Actor {
+	return &actor.Actor{Balance: value}
 }
 
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *types.Actor {
+func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *actor.Actor {
 	act, err := account.NewActor(value)
 	require.NoError(err)
 	return act
@@ -175,8 +175,8 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *types.Actor {
-	act := types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
+	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, key, pledge, pid, coll)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
@@ -187,14 +187,14 @@ func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr t
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid) *types.Actor {
+func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid, amt *types.AttoFIL) *types.Actor {
-	act := types.NewActor(codeCid, amt)
+func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr types.Address, codeCid *cid.Cid, amt *types.AttoFIL) *actor.Actor {
+	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
 	require.NoError(err)

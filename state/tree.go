@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/shared"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -32,9 +33,9 @@ type RevID int
 type Tree interface {
 	Flush(ctx context.Context) (*cid.Cid, error)
 
-	GetActor(ctx context.Context, a types.Address) (*types.Actor, error)
-	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*types.Actor, error)) (*types.Actor, error)
-	SetActor(ctx context.Context, a types.Address, act *types.Actor) error
+	GetActor(ctx context.Context, a types.Address) (*actor.Actor, error)
+	GetOrCreateActor(ctx context.Context, a types.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
+	SetActor(ctx context.Context, a types.Address, act *actor.Actor) error
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
 }
@@ -122,7 +123,7 @@ func (t *tree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableActor, 
 // GetActor retrieves an actor by their address. If no actor
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
-func (t *tree) GetActor(ctx context.Context, a types.Address) (*types.Actor, error) {
+func (t *tree) GetActor(ctx context.Context, a types.Address) (*actor.Actor, error) {
 	data, err := t.root.Find(ctx, a.String())
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
@@ -130,7 +131,7 @@ func (t *tree) GetActor(ctx context.Context, a types.Address) (*types.Actor, err
 		return nil, err
 	}
 
-	var act types.Actor
+	var act actor.Actor
 	if err := hackTransferObject(data, &act); err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func hackTransferObject(from, to interface{}) error {
 
 // GetOrCreateActor retrieves an actor by their address
 // If no actor exists at the given address it returns a newly initialized actor.
-func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*types.Actor, error)) (*types.Actor, error) {
+func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, creator func() (*actor.Actor, error)) (*actor.Actor, error) {
 	act, err := t.GetActor(ctx, address)
 	if IsActorNotFoundError(err) {
 		return creator()
@@ -167,7 +168,7 @@ func (t *tree) GetOrCreateActor(ctx context.Context, address types.Address, crea
 
 // SetActor sets the memory slot at address 'a' to the given actor.
 // This operation can overwrite existing actors at that address.
-func (t *tree) SetActor(ctx context.Context, a types.Address, act *types.Actor) error {
+func (t *tree) SetActor(ctx context.Context, a types.Address, act *actor.Actor) error {
 	if err := t.root.Set(ctx, a.String(), act); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
 	}
@@ -203,21 +204,21 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 }
 
 // GetAllActors returns a slice of all actors in the StateTree, t.
-func GetAllActors(t Tree) ([]string, []*types.Actor) {
+func GetAllActors(t Tree) ([]string, []*actor.Actor) {
 	st := t.(*tree)
 
 	return st.getActorsFromPointers(st.root.Pointers)
 }
 
 // GetAllActorsFromStoreFunc is a function with the signature of GetAllActorsFromStore
-type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*types.Actor, error)
+type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*actor.Actor, error)
 
 // GetAllActorsFunc is a function with the signature of GetAllActors
-type GetAllActorsFunc = func(t Tree) ([]string, []*types.Actor)
+type GetAllActorsFunc = func(t Tree) ([]string, []*actor.Actor)
 
 // GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
 // Third returned value is any error that occurred when loading.
-func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string, []*types.Actor, error) {
+func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string, []*actor.Actor, error) {
 	st, err := LoadStateTree(ctx, store, stateRoot, nil)
 	if err != nil {
 		return nil, nil, err
@@ -228,10 +229,10 @@ func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, state
 }
 
 // NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.
-func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, actors []*types.Actor) {
+func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, actors []*actor.Actor) {
 	for _, p := range ps {
 		for _, kv := range p.KVs {
-			var a types.Actor
+			var a actor.Actor
 			if err := hackTransferObject(kv.Value, &a); err != nil {
 				panic(err) // uhm, ignoring errors is bad
 			}

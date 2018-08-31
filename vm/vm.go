@@ -24,7 +24,7 @@ func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
 }
 
 type sendDeps struct {
-	transfer func(*types.Actor, *types.Actor, *types.AttoFIL) error
+	transfer func(*actor.Actor, *actor.Actor, *types.AttoFIL) error
 }
 
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
@@ -65,7 +65,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 	return nil, code, err
 }
 
-func transfer(fromActor, toActor *types.Actor, value *types.AttoFIL) error {
+func transfer(fromActor, toActor *actor.Actor, value *types.AttoFIL) error {
 	if value.IsNegative() {
 		return errors.Errors[errors.ErrCannotTransferNegativeValue]
 	}
