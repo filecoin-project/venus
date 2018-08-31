@@ -3,17 +3,20 @@ package node
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base32"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -21,12 +24,70 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var sectorDirsForTest = &repo.MemRepo{}
+type tempSectorDirs struct {
+	stagingPath string
+	sealedPath  string
+}
+
+var _ SectorDirs = &tempSectorDirs{}
+
+func newTempSectorDirs() *tempSectorDirs {
+	return &tempSectorDirs{
+		stagingPath: randTempDir(),
+		sealedPath:  randTempDir(),
+	}
+}
+
+func (f *tempSectorDirs) StagingDir() string {
+	return f.stagingPath
+}
+
+func (f *tempSectorDirs) SealedDir() string {
+	return f.sealedPath
+}
+
+func (f *tempSectorDirs) remove() {
+	if err := os.RemoveAll(f.sealedPath); err != nil {
+		panic(err)
+	}
+
+	if err := os.RemoveAll(f.stagingPath); err != nil {
+		panic(err)
+	}
+}
+
 var testSectorSize = 64
 
+// randTempDir creates a subdirectory of os.TempDir() with a
+// randomized name and returns the directory's path
+func randTempDir() string {
+	// create a random string
+	b := make([]byte, 20)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic("couldn't read")
+	}
+	encoded := base32.StdEncoding.EncodeToString(b)
+
+	// append string to temp dir path
+	path := filepath.Join(os.TempDir(), encoded)
+
+	// create the directory
+	err = os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		panic(fmt.Sprintf("couldn't create temp dir %s", path))
+	}
+
+	return path
+}
+
 func TestSectorBuilderSimple(t *testing.T) {
+	t.Parallel()
+
 	require := require.New(t)
-	_, sb, _ := NodeWithSectorBuilder(t, testSectorSize)
+	dirs, _, sb, _ := nodeWithSectorBuilder(t, testSectorSize)
+	defer dirs.remove()
+
 	sector, err := sb.NewSector()
 	require.NoError(err)
 	ctx := context.Background()
@@ -48,7 +109,7 @@ func TestSectorBuilderSimple(t *testing.T) {
 	}
 }
 
-func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder, address.Address) {
+func nodeWithSectorBuilder(t *testing.T, sectorSize int) (*tempSectorDirs, *Node, *SectorBuilder, address.Address) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -75,10 +136,12 @@ func NodeWithSectorBuilder(t *testing.T, sectorSize int) (*Node, *SectorBuilder,
 	require.NoError(result.Err)
 	require.NotNil(result.MinerAddress)
 
-	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sectorSize, sectorDirsForTest)
+	dirs := newTempSectorDirs()
+
+	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sectorSize, dirs)
 	require.NoError(err)
 
-	return nd, sb, *result.MinerAddress
+	return dirs, nd, sb, *result.MinerAddress
 }
 
 func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *PieceInfo {
@@ -95,12 +158,13 @@ func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *Piec
 func TestSectorBuilder(t *testing.T) {
 	t.Skip("TODO: enable this test once we're doing the file writing and padding in Rust")
 
-	defer sectorDirsForTest.CleanupSectorDirs()
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
 
-	nd, sb, _ := NodeWithSectorBuilder(t, testSectorSize)
+	dirs, nd, sb, _ := nodeWithSectorBuilder(t, testSectorSize)
+	defer dirs.remove()
 
 	var sealingWg sync.WaitGroup
 	var sealingErr error
@@ -204,6 +268,7 @@ func TestSectorBuilder(t *testing.T) {
 
 func TestSectorBuilderMetadata(t *testing.T) {
 	t.Run("creating datastore keys", func(t *testing.T) {
+		t.Parallel()
 		assert := assert.New(t)
 
 		label := "SECTORFILENAMEWHATEVER"
@@ -223,11 +288,13 @@ func TestSectorBuilderMetadata(t *testing.T) {
 	})
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
 
-		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
+		dirs, nd, sb, _ := nodeWithSectorBuilder(t, sectorSize)
+		defer dirs.remove()
 
 		var sealingWg sync.WaitGroup
 		var sealingErr error
@@ -274,13 +341,16 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 func TestSectorStore(t *testing.T) {
 	t.Run("it loads a persisted sector", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
 
 		bytesA := make([]byte, 10+(sectorSize/2))
 
-		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
+		dirs, nd, sb, _ := nodeWithSectorBuilder(t, sectorSize)
+		defer dirs.remove()
+
 		sector := sb.curSector
 
 		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
@@ -292,6 +362,7 @@ func TestSectorStore(t *testing.T) {
 	})
 
 	t.Run("it loads a persisted, sealed sector", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -303,7 +374,9 @@ func TestSectorStore(t *testing.T) {
 		bytesA := make([]byte, 10+(sectorSize/2))
 		bytesB := make([]byte, (sectorSize/2)-10)
 
-		nd, sb, _ := NodeWithSectorBuilder(t, sectorSize)
+		dirs, nd, sb, _ := nodeWithSectorBuilder(t, sectorSize)
+		defer dirs.remove()
+
 		sector := sb.curSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
@@ -330,6 +403,7 @@ func TestSectorStore(t *testing.T) {
 }
 
 func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 
 	ctx := context.Background()
@@ -341,7 +415,9 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	bytesA := make([]byte, 10+(sectorSize/2))
 	bytesB := make([]byte, (sectorSize/2)-10)
 
-	nd, sbA, minerAddr := NodeWithSectorBuilder(t, sectorSize)
+	dirs, nd, sbA, minerAddr := nodeWithSectorBuilder(t, sectorSize)
+	defer dirs.remove()
+
 	sector := sbA.curSector
 
 	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
@@ -354,7 +430,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
 
 	// sector builder B should have the same state as sector builder A
-	sbB, err := InitSectorBuilder(nd, minerAddr, sectorSize, sectorDirsForTest)
+	sbB, err := InitSectorBuilder(nd, minerAddr, sectorSize, dirs)
 	require.NoError(err)
 
 	// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
@@ -368,7 +444,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	require.NoError(sealingErr)
 
 	// sector builder C should have the same state as sector builder A
-	sbC, err := InitSectorBuilder(nd, minerAddr, sectorSize, sectorDirsForTest)
+	sbC, err := InitSectorBuilder(nd, minerAddr, sectorSize, dirs)
 	require.NoError(err)
 
 	sectorBuildersMustEqual(t, sbA, sbC)
@@ -376,6 +452,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 
 func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 	t.Run("it truncates the file if file size > metadata size", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -386,7 +463,10 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
 
-		sbA, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
+		dirs := newTempSectorDirs()
+		defer dirs.remove()
+
+		sbA, err := InitSectorBuilder(nd, addr, sectorSize, dirs)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
@@ -406,7 +486,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ioutil.WriteFile(metaA.Filename, make([]byte, 90), 0600)
 
 		// initialize a new sector builder (simulates the node restarting)
-		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
+		sbB, err := InitSectorBuilder(nd, addr, sectorSize, dirs)
 		require.NoError(err)
 
 		metaB, err := sbB.metadataStore.getSectorMetadata(sbB.curSector.Label)
@@ -421,6 +501,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 	})
 
 	t.Run("it truncates the metadata if file size < metadata size", func(t *testing.T) {
+		t.Parallel()
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -430,9 +511,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		nd.NewAddress() // TODO: default init make an address
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
-		// Wait a sec, theres no miner here... how can we init a sector builder?
 
-		sbA, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
+		dirs := newTempSectorDirs()
+		defer dirs.remove()
+
+		// Wait a sec, theres no miner here... how can we init a sector builder?
+		sbA, err := InitSectorBuilder(nd, addr, sectorSize, dirs)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
@@ -446,7 +530,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		require.NoError(os.Truncate(metaA.Filename, int64(40)))
 
 		// initialize final sector builder
-		sbB, err := InitSectorBuilder(nd, addr, sectorSize, sectorDirsForTest)
+		sbB, err := InitSectorBuilder(nd, addr, sectorSize, dirs)
 		require.NoError(err)
 
 		metaB, err := sbA.metadataStore.getSectorMetadata(sbB.curSector.Label)
@@ -465,6 +549,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 }
 
 func TestProverIdCreation(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
 
 	hash := address.Hash([]byte("satoshi"))
