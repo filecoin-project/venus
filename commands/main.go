@@ -27,6 +27,8 @@ const (
 	APIPrefix = "/api"
 	// OfflineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
+	// ELStdout tells the daemon to write event logs to stdout.
+	ELStdout = "elstdout"
 	// MockMineMode replaces the normal chain weight and power table
 	// computations with simple computations that don't require the tip of
 	// a chain to hold a pointer to a valid state root. This mode exists
