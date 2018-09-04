@@ -10,6 +10,7 @@ import (
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds/http"
+	writer "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log/writer"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -33,6 +34,7 @@ var daemonCmd = &cmds.Command{
 		cmdkit.StringOption(SwarmListen),
 		cmdkit.BoolOption(OfflineMode),
 		cmdkit.BoolOption(MockMineMode),
+		cmdkit.BoolOption(ELStdout),
 		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
@@ -84,6 +86,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	if !ok {
 		return errors.New("Bad block time passed")
 	}
+
 	blockTime, err := time.ParseDuration(durStr)
 	if err != nil {
 		return errors.Wrap(err, "Bad block time passed")
@@ -102,6 +105,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		for _, a := range fcn.Host.Addrs() {
 			re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
 		}
+	}
+
+	if _, ok := req.Options[ELStdout].(bool); ok {
+		writer.WriterGroup.AddWriter(os.Stdout)
 	}
 
 	return runAPIAndWait(req.Context, fcn, rep.Config(), req)
