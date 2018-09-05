@@ -1,22 +1,10 @@
-data "aws_ami" "ubuntu" {
-    most_recent = true
-
-    filter {
-        name   = "name"
-        values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
-    }
-
-    filter {
-        name   = "virtualization-type"
-        values = ["hvm"]
-    }
-
-    owners = ["099720109477"]
-}
-
 resource "aws_key_pair" "filecoin" {
   key_name   = "filecoin"
   public_key = "${var.public_key}"
+}
+resource "aws_key_pair" "c5-gmasgras" {
+  key_name   = "C5-gmasgras"
+  public_key = "${var.gmasgras-public_key}"
 }
 
 resource "aws_security_group" "filecoin" {
@@ -38,41 +26,23 @@ resource "aws_security_group" "filecoin" {
   }
 }
 
-data "template_file" "user_data" {
-  template = "${file("../../../scripts/ubuntu_user_data.sh")}"
 
-  vars {
-    github_branch_name = "${var.github_branch_name}"
-    github_token       = "${var.github_token}"
-    datadog_api_key    = "${var.datadog_api_key}"
-  }
-}
+# instance
+module "filecoin-cluster" {
+  source = "../../../modules/aws/ec2/"
 
-resource "aws_instance" "filecoin" {
-  ami           = "${data.aws_ami.ubuntu.id}"
-  key_name      = "${aws_key_pair.filecoin.key_name}"
-  user_data     = "${data.template_file.user_data.rendered}"
-  instance_type = "c5.2xlarge"
-
-  subnet_id              = "${element(module.vpc.public_subnets, 0)}"
+  instance_name = "filecoin-cluster"
+  public_key_name = "${aws_key_pair.filecoin.key_name}"
+  vpc_id = "${module.vpc.vpc_id}"
+  subnet_id = "${element(module.vpc.public_subnets, 0)}"
   vpc_security_group_ids = ["${aws_security_group.filecoin.id}"]
-
-  associate_public_ip_address = true
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  tags {
-    Name = "filecoin"
-  }
+  iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
+  route53_zone_name = "${aws_route53_zone.kittyhawk.name}"
+  route53_zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
 }
-
-resource "aws_eip" "filecoin" {
-  instance = "${aws_instance.filecoin.id}"
-  vpc      = true
+output "filecoin-cluster-public_ip" {
+  value = "${module.filecoin-cluster.instance_public_ip}"
 }
-
-output "filecoin_dns" {
-  value = "${aws_route53_record.service.fqdn}"
+output "filecoin-cluster-dns" {
+  value = "${module.filecoin-cluster.instance_dns}"
 }

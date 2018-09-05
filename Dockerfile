@@ -15,7 +15,11 @@ COPY . $SRC_DIR
 # Build the thing.
 RUN cd $SRC_DIR \
   && go run ./build/*go deps \
-  && go run ./build/*go build
+  && go run ./build/*go build \
+  && go build -o ./gengen/gengen ./gengen
+
+# Build gengen
+RUN cd 
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -39,6 +43,7 @@ MAINTAINER Filecoin Dev Team
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
 COPY --from=0 $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
 COPY --from=0 $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
+COPY --from=0 $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
