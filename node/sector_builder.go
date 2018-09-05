@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os"
-	"path"
 	"strings"
 	"sync"
 
@@ -74,10 +72,10 @@ type PieceInfo struct {
 type SectorBuilder struct {
 	MinerAddr address.Address
 
-	curSectorLk    sync.RWMutex // curSectorLk protects curSector
-	curSector      *Sector
-	sealedSectorLk sync.RWMutex // sealedSectorLk protects sealedSectors
-	sealedSectors  []*SealedSector
+	curUnsealedSectorLk sync.RWMutex // curUnsealedSectorLk protects curUnsealedSector
+	curUnsealedSector   *UnsealedSector
+	sealedSectorsLk     sync.RWMutex // sealedSectorsLk protects sealedSectors
+	sealedSectors       []*SealedSector
 
 	// coordinates opening (creating), packing (writing to), and closing
 	// (sealing) sectors
@@ -105,42 +103,38 @@ type SectorBuilder struct {
 
 var _ binpack.Binner = &SectorBuilder{}
 
-// Sector is a filecoin storage sector. A miner fills this up with data, and
+// UnsealedSector is a filecoin storage sector. A miner fills this up with data, and
 // then seals it. The first part I can do, the second part needs to be figured out more.
 // Somehow, I turn this piecemap and backing data buffer into something that the chain can verify.
 // So something X has to be computed from this that convinces the chain that
 // this miner is storing all the deals referenced in the piece map...
-type Sector struct {
-	Size   uint64
-	Free   uint64
-	Pieces []*PieceInfo
-	ID     int64
-
-	Label    string // TODO: replace Label and filename with SectorAccess
-	filename string // TODO: replace Label and filename with SectorAccess
-	sealed   *SealedSector
+type UnsealedSector struct {
+	numBytesFree         uint64 // equals sector bytes - bytes used
+	numBytesUsed         uint64
+	pieces               []*PieceInfo
+	sealed               *SealedSector
+	unsealedSectorAccess string
 }
 
-var _ binpack.Bin = &Sector{}
+var _ binpack.Bin = &UnsealedSector{}
 
 // SealedSector is a sector that has been sealed by the PoRep setup process
 type SealedSector struct {
-	commD       []byte
-	commR       []byte
-	snarkProof  []byte
-	filename    string // TODO: replace label and filename with SectorAccess
-	label       string
-	sectorLabel string // TODO: replace with sectorFileAccess
-	pieces      []*PieceInfo
-	size        uint64
+	commD                []byte
+	commR                []byte
+	numBytes             uint64
+	pieces               []*PieceInfo
+	sealedSectorAccess   string
+	snarkProof           []byte
+	unsealedSectorAccess string
 }
 
 // GetCurrentBin implements Binner.
 func (sb *SectorBuilder) GetCurrentBin() binpack.Bin {
-	sb.curSectorLk.RLock()
-	defer sb.curSectorLk.RUnlock()
+	sb.curUnsealedSectorLk.RLock()
+	defer sb.curUnsealedSectorLk.RUnlock()
 
-	return sb.curSector
+	return sb.curUnsealedSector
 }
 
 // AddItem implements binpack.Binner.
@@ -151,7 +145,7 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 	}()
 
 	pi := item.(*PieceInfo)
-	s := bin.(*Sector)
+	s := bin.(*UnsealedSector)
 	root, err := sb.dserv.Get(ctx, pi.Ref)
 	if err != nil {
 		return err
@@ -162,7 +156,7 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 		return err
 	}
 
-	if err := s.WritePiece(ctx, pi, r); err != nil {
+	if err := sb.WritePiece(ctx, s, pi, r); err != nil {
 		return err
 	}
 
@@ -172,7 +166,7 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 // CloseBin implements binpack.Binner.
 func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
 	go func() {
-		sector := bin.(*Sector)
+		sector := bin.(*UnsealedSector)
 		msgCid, err := sb.SealAndAddCommitmentToMempool(context.Background(), sector)
 		if err != nil {
 			sb.OnCommitmentAddedToMempool(nil, nil, errors.Wrap(err, "failed to seal and commit sector"))
@@ -201,51 +195,44 @@ func (sb *SectorBuilder) ItemSize(item binpack.Item) binpack.Space {
 
 // SpaceAvailable implements binpack.Binner.
 func (sb *SectorBuilder) SpaceAvailable(bin binpack.Bin) binpack.Space {
-	return binpack.Space(bin.(*Sector).Free)
+	return binpack.Space(bin.(*UnsealedSector).numBytesFree)
 }
 
 // End binpack.Binner implementation
 
-// NewSector allocates and returns a new Sector with file initialized, along with any error.
-func (sb *SectorBuilder) NewSector() (s *Sector, err error) {
-	access, err := sb.sectorStore.NewStagingSectorAccess()
+// NewSector allocates and returns a new UnsealedSector with file initialized, along with any error.
+func (sb *SectorBuilder) NewSector() (s *UnsealedSector, err error) {
+	res, err := sb.sectorStore.NewStagingSectorAccess()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to dispense staging sector access")
+		return nil, errors.Wrap(err, "failed to dispense staging sector unsealedSectorAccess")
 	}
 
-	s = &Sector{
-		Size:  sb.sectorSize,
-		Free:  sb.sectorSize,
-		Label: access,
+	s = &UnsealedSector{
+		numBytesUsed:         sb.sectorSize,
+		numBytesFree:         sb.sectorSize,
+		unsealedSectorAccess: res.SectorAccess,
 	}
 
-	err = os.MkdirAll(path.Dir(access), os.ModePerm)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create sector directory")
-	}
-	s.filename = access
+	s.unsealedSectorAccess = res.SectorAccess
 
 	return s, nil
 }
 
 // NewSealedSector creates a new SealedSector. The new SealedSector is appended to the slice of sealed sectors managed
 // by the SectorBuilder.
-func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, snarkProof []byte, label, path string, s *Sector) *SealedSector {
-	s.filename = ""
-
+func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, snarkProof []byte, label, sealedSectorAccess string, s *UnsealedSector) *SealedSector {
 	ss := &SealedSector{
-		commD:       commD,
-		commR:       commR,
-		snarkProof:  snarkProof,
-		filename:    path,
-		label:       label,
-		sectorLabel: s.Label,
-		pieces:      s.Pieces,
-		size:        s.Size,
+		commD:                commD,
+		commR:                commR,
+		snarkProof:           snarkProof,
+		sealedSectorAccess:   sealedSectorAccess,
+		unsealedSectorAccess: s.unsealedSectorAccess,
+		pieces:               s.pieces,
+		numBytes:             s.numBytesUsed,
 	}
 
-	sb.sealedSectorLk.Lock()
-	defer sb.sealedSectorLk.Unlock()
+	sb.sealedSectorsLk.Lock()
+	defer sb.sealedSectorsLk.Unlock()
 	sb.sealedSectors = append(sb.sealedSectors, ss)
 
 	return ss
@@ -275,47 +262,36 @@ func InitSectorBuilder(nd *Node, minerAddr address.Address, sectorSize int, fs S
 			return nil, err
 		}
 
-		sb.curSectorLk.RLock()
-		defer sb.curSectorLk.RUnlock()
+		sb.curUnsealedSectorLk.RLock()
+		defer sb.curUnsealedSectorLk.RUnlock()
 
-		return sb, sb.checkpoint(sb.curSector)
+		return sb, sb.checkpoint(sb.curUnsealedSector)
 	} else if strings.Contains(err.Error(), "not found") {
 		if err := configureFreshSectorBuilder(sb); err != nil {
 			return nil, err
 		}
-		sb.curSectorLk.RLock()
-		defer sb.curSectorLk.RUnlock()
+		sb.curUnsealedSectorLk.RLock()
+		defer sb.curUnsealedSectorLk.RUnlock()
 
-		return sb, sb.checkpoint(sb.curSector)
+		return sb, sb.checkpoint(sb.curUnsealedSector)
 	} else {
 		return nil, err
 	}
 }
 
 func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBuilder, metadata *SectorBuilderMetadata) (finalErr error) {
-	sector, err := store.getSector(metadata.CurSectorLabel)
+	sector, err := store.getSector(metadata.CurUnsealedSectorAccess)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.OpenFile(sector.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return err
+	if err := sb.SyncFile(sector); err != nil {
+		return errors.Wrapf(err, "failed to sync sector object with unsealed sector %s", sector.unsealedSectorAccess)
 	}
 
-	defer func() {
-		if err := f.Close(); err != nil && finalErr == nil {
-			finalErr = errors.Wrapf(err, "failed to close unsealed sector-file %s", sector.filename)
-		}
-	}()
-
-	if err := sector.SyncFile(f); err != nil {
-		return errors.Wrapf(err, "failed to sync sector object with unsealed sector-file %s", sector.filename)
-	}
-
-	sb.curSectorLk.Lock()
-	sb.curSector = sector
-	sb.curSectorLk.Unlock()
+	sb.curUnsealedSectorLk.Lock()
+	sb.curUnsealedSector = sector
+	sb.curUnsealedSectorLk.Unlock()
 
 	for _, commR := range metadata.SealedSectorReplicaCommitments {
 		sealed, err := store.getSealedSector(commR)
@@ -323,9 +299,9 @@ func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBu
 			return err
 		}
 
-		sb.sealedSectorLk.Lock()
+		sb.sealedSectorsLk.Lock()
 		sb.sealedSectors = append(sb.sealedSectors, sealed)
-		sb.sealedSectorLk.Unlock()
+		sb.sealedSectorsLk.Unlock()
 	}
 
 	np := &binpack.NaivePacker{}
@@ -340,10 +316,10 @@ func configureFreshSectorBuilder(sb *SectorBuilder) error {
 	if err != nil {
 		return err
 	}
-	sb.curSectorLk.Lock()
-	defer sb.curSectorLk.Unlock()
+	sb.curUnsealedSectorLk.Lock()
+	defer sb.curUnsealedSectorLk.Unlock()
 
-	sb.curSector = firstBin.(*Sector)
+	sb.curUnsealedSector = firstBin.(*UnsealedSector)
 	sb.Packer = packer
 
 	return nil
@@ -381,17 +357,17 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (err error
 			// What does this signify? Could use to signal something.
 			panic("no bin returned from Packer.AddItem")
 		}
-		sb.curSectorLk.Lock()
-		sb.curSector = bin.(*Sector)
-		sb.curSectorLk.Unlock()
+		sb.curUnsealedSectorLk.Lock()
+		sb.curUnsealedSector = bin.(*UnsealedSector)
+		sb.curUnsealedSectorLk.Unlock()
 	}
 
-	sb.curSectorLk.RLock()
-	defer sb.curSectorLk.RUnlock()
+	sb.curUnsealedSectorLk.RLock()
+	defer sb.curUnsealedSectorLk.RUnlock()
 
 	// checkpoint after we've added the piece and updated the sector builder's
 	// "current sector"
-	if err := sb.checkpoint(sb.curSector); err != nil {
+	if err := sb.checkpoint(sb.curUnsealedSector); err != nil {
 		return err
 	}
 
@@ -400,10 +376,13 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (err error
 
 // SyncFile synchronizes the sector object and backing unsealed sector-file. SyncFile may mutate both the file and the
 // sector object in order to achieve a consistent view of the sector.
-func (s *Sector) SyncFile(f *os.File) error {
-	fi, err := f.Stat()
+// TODO: We should probably move most of this logic into Rust.
+func (sb *SectorBuilder) SyncFile(s *UnsealedSector) error {
+	res, err := sb.sectorStore.GetNumBytesUnsealed(proofs.GetNumBytesUnsealedRequest{
+		SectorAccess: s.unsealedSectorAccess,
+	})
 	if err != nil {
-		return errors.Wrapf(err, "failed to stat sector file %s", s.filename)
+		return errors.Wrapf(err, "failed to get number of bytes for unsealed sector %s", s.unsealedSectorAccess)
 	}
 
 	// | file size | metadata pieces | action                                        |
@@ -412,9 +391,8 @@ func (s *Sector) SyncFile(f *os.File) error {
 	// | 500 bytes | 100|100|400     | truncate file to 200 bytes, pieces to 100|100 |
 	// | 500 bytes | 100|400         | noop                                          |
 
-	cmpSize := func(s *Sector, info os.FileInfo) int {
-		storSize := int64(s.Size - s.Free)
-		fileSize := info.Size()
+	cmpSize := func(s *UnsealedSector, fileSize uint64) int {
+		storSize := s.numBytesUsed - s.numBytesFree
 
 		if storSize == fileSize {
 			return 0
@@ -425,18 +403,21 @@ func (s *Sector) SyncFile(f *os.File) error {
 		return +1
 	}
 
-	// remove pieces from the sector until (s.Size-s.Free) <= fi.Size()
-	for i := len(s.Pieces) - 1; i >= 0; i-- {
-		if cmpSize(s, fi) == 1 {
-			s.Free += s.Pieces[i].Size
-			s.Pieces = s.Pieces[:len(s.Pieces)-1]
+	// remove pieces from the sector until (s.numBytesUsed-s.numBytesFree) <= fi.size()
+	for i := len(s.pieces) - 1; i >= 0; i-- {
+		if cmpSize(s, res.NumBytes) == 1 {
+			s.numBytesFree += s.pieces[i].Size
+			s.pieces = s.pieces[:len(s.pieces)-1]
 		} else {
 			break
 		}
 	}
 
-	if cmpSize(s, fi) == -1 {
-		return f.Truncate(int64(s.Size - s.Free))
+	if cmpSize(s, res.NumBytes) == -1 {
+		return sb.sectorStore.TruncateUnsealed(proofs.TruncateUnsealedRequest{
+			SectorAccess: s.unsealedSectorAccess,
+			NumBytes:     s.numBytesUsed - s.numBytesFree,
+		})
 	}
 
 	return nil
@@ -444,11 +425,10 @@ func (s *Sector) SyncFile(f *os.File) error {
 
 // SealAndAddCommitmentToMempool seals the given sector, adds the sealed sector's commitment to the message pool, and
 // then returns the CID of the commitment message.
-func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *Sector) (c *cid.Cid, err error) {
+func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *UnsealedSector) (c *cid.Cid, err error) {
 	ctx = log.Start(ctx, "SectorBuilder.SealAndAddCommitmentToMempool")
 	log.SetTags(ctx, map[string]interface{}{
-		"fileName": s.filename,
-		"lable":    s.Label,
+		"unsealedSectorAccess": s.unsealedSectorAccess,
 	})
 	defer func() {
 		if c != nil {
@@ -487,8 +467,7 @@ func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *S
 func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedSector) (c *cid.Cid, err error) {
 	ctx = log.Start(ctx, "SectorBuilder.AddCommitmentToMempool")
 	log.SetTags(ctx, map[string]interface{}{
-		"fileName": ss.filename,
-		"lable":    ss.label,
+		"sealedSectorAccess": ss.sealedSectorAccess,
 	})
 	defer func() {
 		if c != nil {
@@ -544,58 +523,58 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage
-func (s *Sector) WritePiece(ctx context.Context, pi *PieceInfo, r io.Reader) (finalErr error) {
-	ctx = log.Start(ctx, "Sector.WritePiece")
+func (sb *SectorBuilder) WritePiece(ctx context.Context, s *UnsealedSector, pi *PieceInfo, r io.Reader) (finalErr error) {
+	ctx = log.Start(ctx, "UnsealedSector.WritePiece")
 	defer func() {
 		log.FinishWithErr(ctx, finalErr)
 	}()
 
-	f, err := os.OpenFile(s.filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// TODO: This is a temporary workaround. Once we complete rust-proofs issue
+	// 140, we can replace this buffer with a streaming implementation.
+	b := make([]byte, pi.Size)
+	n, err := r.Read(b)
 	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil && finalErr == nil {
-			finalErr = errors.Wrapf(err, "failed to close unsealed sector-file %s", s.filename)
-		}
-	}()
-
-	n, err := io.Copy(f, r)
-	if err != nil {
-		return errors.Wrapf(err, "failed to copy bytes to unsealed sector-file %s", s.filename)
+		return errors.Wrapf(err, "error reading piece bytes into buffer")
 	}
 
 	if uint64(n) != pi.Size {
-		err := fmt.Errorf("did not write all piece-bytes to file (pi.Size=%d, wrote=%d)", pi.Size, n)
+		return fmt.Errorf("could not read all piece-bytes to buffer (pi.size=%d, read=%d)", pi.Size, n)
+	}
 
-		if err1 := s.SyncFile(f); err1 != nil {
+	res, err := sb.sectorStore.WriteUnsealed(proofs.WriteUnsealedRequest{
+		SectorAccess: s.unsealedSectorAccess,
+		Data:         b,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to write bytes to unsealed sector %s", s.unsealedSectorAccess)
+	}
+
+	if res.NumBytesWritten != pi.Size {
+		err := fmt.Errorf("did not write all piece-bytes to file (pi.size=%d, wrote=%d)", pi.Size, n)
+
+		if err1 := sb.SyncFile(s); err1 != nil {
 			return NewErrCouldNotRevertUnsealedSector(err1, err)
 		}
 
 		return err
 	}
 
-	s.Free -= pi.Size
-	s.Pieces = append(s.Pieces, pi)
+	s.numBytesFree -= pi.Size
+	s.pieces = append(s.pieces, pi)
 
 	return nil
 }
 
 // Seal generates and returns a proof of replication along with supporting data.
-func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr address.Address) (_ *SealedSector, finalErr error) {
+func (sb *SectorBuilder) Seal(ctx context.Context, s *UnsealedSector, minerAddr address.Address) (_ *SealedSector, finalErr error) {
 	ctx = log.Start(ctx, "SectorBuilder.Seal")
 	defer func() {
 		log.FinishWithErr(ctx, finalErr)
 	}()
 
-	access, err := sb.sectorStore.NewSealedSectorAccess()
+	res1, err := sb.sectorStore.NewSealedSectorAccess()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to dispense sealed sector access")
-	}
-
-	if err := os.MkdirAll(path.Dir(access), os.ModePerm); err != nil {
-		return nil, errors.Wrap(err, "failed to create sealed sector path")
+		return nil, errors.Wrap(err, "failed to dispense sealed sector unsealedSectorAccess")
 	}
 
 	proverID, err := proverID(minerAddr)
@@ -604,19 +583,19 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *Sector, minerAddr address.
 	}
 
 	req := proofs.SealRequest{
-		UnsealedPath:  s.filename,
-		SealedPath:    access,
+		UnsealedPath:  s.unsealedSectorAccess,
+		SealedPath:    res1.SectorAccess,
 		ChallengeSeed: make([]byte, 32), // TODO: derive from chain
 		ProverID:      proverID,
 		RandomSeed:    make([]byte, 32), // TODO: create real seed
 	}
 
-	res, err := (&proofs.RustProver{}).Seal(req)
+	res2, err := (&proofs.RustProver{}).Seal(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to seal sector")
 	}
 
-	return sb.NewSealedSector(res.CommR, res.CommD, res.SnarkProof, access, access, s), nil
+	return sb.NewSealedSector(res2.CommR, res2.CommD, res2.SnarkProof, res1.SectorAccess, res1.SectorAccess, s), nil
 }
 
 // proverID creates a prover id by padding an address hash to 31 bytes
@@ -641,23 +620,4 @@ func proverID(addr address.Address) ([]byte, error) {
 
 func commRString(merkleRoot []byte) string {
 	return base32.StdEncoding.EncodeToString(merkleRoot)
-}
-
-// MemoryReadWriter implements data.ReadWriter and represents a simple byte slice in memory.
-type MemoryReadWriter struct {
-	data []byte
-}
-
-// NewMemoryReadWriter returns MemoryReadWriter initialized with data.
-func NewMemoryReadWriter(data []byte) MemoryReadWriter {
-	return MemoryReadWriter{data: data}
-}
-
-// DataAt implements data.ReadWriter.
-func (mrw MemoryReadWriter) DataAt(offset, length uint64, cb func([]byte) error) error {
-	if length == 0 {
-		// Define 0 length to mean read/write to end of data.
-		return cb(mrw.data[offset:])
-	}
-	return cb(mrw.data[offset : offset+length])
 }

@@ -15,43 +15,39 @@ func init() {
 	cbor.RegisterCborType(SectorBuilderMetadata{})
 }
 
-// SectorMetadata represent the persistent metadata associated with a Sector.
+// SectorMetadata represent the persistent metadata associated with a UnsealedSector.
 type SectorMetadata struct {
-	StagingPath string
-	Pieces      []*PieceInfo
-	Size        uint64
-	Free        uint64
-	Filename    string
-	ID          int64
+	NumBytesFree         uint64
+	NumBytesUsed         uint64
+	Pieces               []*PieceInfo
+	UnsealedSectorAccess string
 }
 
 // SealedSectorMetadata represent the persistent metadata associated with a SealedSector.
 type SealedSectorMetadata struct {
-	CommD       []byte
-	CommR       []byte
-	Filename    string
-	Label       string
-	Pieces      []*PieceInfo
-	SectorLabel string
-	Size        uint64
-	SnarkProof  []byte
+	CommD                []byte
+	CommR                []byte
+	NumBytes             uint64
+	Pieces               []*PieceInfo
+	SealedSectorAccess   string
+	SnarkProof           []byte
+	UnsealedSectorAccess string
 }
 
 // SectorBuilderMetadata represent the persistent metadata associated with a SectorBuilder.
 type SectorBuilderMetadata struct {
-	CurSectorLabel                 string
+	CurUnsealedSectorAccess        string
 	MinerAddr                      address.Address
 	SealedSectorReplicaCommitments [][]byte
 }
 
-// SectorMetadata returns the metadata associated with a Sector.
-func (s *Sector) SectorMetadata() *SectorMetadata {
+// SectorMetadata returns the metadata associated with a UnsealedSector.
+func (s *UnsealedSector) SectorMetadata() *SectorMetadata {
 	meta := &SectorMetadata{
-		Filename:    s.filename,
-		Free:        s.Free,
-		Pieces:      s.Pieces,
-		Size:        s.Size,
-		StagingPath: s.filename,
+		NumBytesFree:         s.numBytesFree,
+		NumBytesUsed:         s.numBytesUsed,
+		Pieces:               s.pieces,
+		UnsealedSectorAccess: s.unsealedSectorAccess,
 	}
 
 	return meta
@@ -60,14 +56,13 @@ func (s *Sector) SectorMetadata() *SectorMetadata {
 // SealedSectorMetadata returns the metadata associated with a SealedSector.
 func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 	meta := &SealedSectorMetadata{
-		CommD:       ss.commD,
-		CommR:       ss.commR,
-		Filename:    ss.filename,
-		Label:       ss.label,
-		Pieces:      ss.pieces,
-		SectorLabel: ss.sectorLabel,
-		Size:        ss.size,
-		SnarkProof:  ss.snarkProof,
+		CommD:                ss.commD,
+		CommR:                ss.commR,
+		NumBytes:             ss.numBytes,
+		Pieces:               ss.pieces,
+		SealedSectorAccess:   ss.sealedSectorAccess,
+		SnarkProof:           ss.snarkProof,
+		UnsealedSectorAccess: ss.unsealedSectorAccess,
 	}
 
 	return meta
@@ -75,14 +70,14 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 
 // SectorBuilderMetadata returns the metadata associated with a SectorBuilderMetadata.
 func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
-	sb.sealedSectorLk.RLock()
-	defer sb.sealedSectorLk.RUnlock()
-	sb.curSectorLk.RLock()
-	defer sb.curSectorLk.RUnlock()
+	sb.sealedSectorsLk.RLock()
+	defer sb.sealedSectorsLk.RUnlock()
+	sb.curUnsealedSectorLk.RLock()
+	defer sb.curUnsealedSectorLk.RUnlock()
 
 	meta := SectorBuilderMetadata{
 		MinerAddr:                      sb.MinerAddr,
-		CurSectorLabel:                 sb.curSector.Label,
+		CurUnsealedSectorAccess:        sb.curUnsealedSector.unsealedSectorAccess,
 		SealedSectorReplicaCommitments: make([][]byte, len(sb.sealedSectors)),
 	}
 	for i, sealed := range sb.sealedSectors {
@@ -118,31 +113,28 @@ func (st *sectorMetadataStore) getSealedSector(commR []byte) (*SealedSector, err
 	}
 
 	return &SealedSector{
-		commD:       metadata.CommD,
-		commR:       metadata.CommR,
-		snarkProof:  metadata.SnarkProof,
-		filename:    metadata.Filename,
-		label:       metadata.Label,
-		sectorLabel: metadata.SectorLabel,
-		pieces:      metadata.Pieces,
-		size:        metadata.Size,
+		commD:                metadata.CommD,
+		commR:                metadata.CommR,
+		numBytes:             metadata.NumBytes,
+		pieces:               metadata.Pieces,
+		sealedSectorAccess:   metadata.SealedSectorAccess,
+		snarkProof:           metadata.SnarkProof,
+		unsealedSectorAccess: metadata.UnsealedSectorAccess,
 	}, nil
 }
 
 // getSector returns the sector with the given label or an error if no match was found.
-func (st *sectorMetadataStore) getSector(label string) (*Sector, error) {
+func (st *sectorMetadataStore) getSector(label string) (*UnsealedSector, error) {
 	metadata, err := st.getSectorMetadata(label)
 	if err != nil {
 		return nil, err
 	}
 
-	s := &Sector{
-		Size:     metadata.Size,
-		Free:     metadata.Free,
-		Pieces:   metadata.Pieces,
-		ID:       metadata.ID,
-		Label:    label,
-		filename: metadata.Filename,
+	s := &UnsealedSector{
+		numBytesFree:         metadata.NumBytesFree,
+		numBytesUsed:         metadata.NumBytesUsed,
+		pieces:               metadata.Pieces,
+		unsealedSectorAccess: metadata.UnsealedSectorAccess,
 	}
 
 	return s, nil
@@ -233,13 +225,13 @@ func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress address.Add
 // we're making more writes to the datastore than we really need to be
 // doing. As the SectorBuilder evolves, we will introduce some checks which
 // will optimize away redundant writes to the datastore.
-func (sb *SectorBuilder) checkpoint(s *Sector) error {
+func (sb *SectorBuilder) checkpoint(s *UnsealedSector) error {
 	if err := sb.metadataStore.setSectorBuilderMetadata(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
 		return errors.Wrap(err, "failed to save builder metadata")
 	}
 
 	if s.sealed == nil {
-		if err := sb.metadataStore.setSectorMetadata(s.Label, s.SectorMetadata()); err != nil {
+		if err := sb.metadataStore.setSectorMetadata(s.unsealedSectorAccess, s.SectorMetadata()); err != nil {
 			return errors.Wrap(err, "failed to save sector metadata")
 		}
 	} else {
@@ -247,7 +239,7 @@ func (sb *SectorBuilder) checkpoint(s *Sector) error {
 			return errors.Wrap(err, "failed to save sealed sector metadata")
 		}
 
-		if err := sb.metadataStore.deleteSectorMetadata(s.Label); err != nil {
+		if err := sb.metadataStore.deleteSectorMetadata(s.unsealedSectorAccess); err != nil {
 			return errors.Wrap(err, "failed to remove sector metadata")
 		}
 	}

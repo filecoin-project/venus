@@ -48,6 +48,42 @@ type Prover interface {
 
 // SectorStore provides a mechanism for dispensing sector access
 type SectorStore interface {
-	NewSealedSectorAccess() (string, error)
-	NewStagingSectorAccess() (string, error)
+	NewSealedSectorAccess() (NewSectorAccessResponse, error)
+	NewStagingSectorAccess() (NewSectorAccessResponse, error)
+	WriteUnsealed(WriteUnsealedRequest) (WriteUnsealedResponse, error)
+	TruncateUnsealed(TruncateUnsealedRequest) error
+	GetNumBytesUnsealed(GetNumBytesUnsealedRequest) (GetNumBytesUnsealedResponse, error)
+}
+
+// WriteUnsealedRequest represents a request to write bytes to an unsealed sector.
+type WriteUnsealedRequest struct {
+	SectorAccess string
+	Data         []byte
+}
+
+// TruncateUnsealedRequest represents a request to truncate an unsealed sector.
+// TODO: This can disappear if we move metadata <--> file sync from Go to Rust.
+type TruncateUnsealedRequest struct {
+	SectorAccess string
+	NumBytes     uint64 // truncate the unsealed sector to NumBytes
+}
+
+// NewSectorAccessResponse contains the sector access provisioned by the sector store.
+type NewSectorAccessResponse struct {
+	SectorAccess string
+}
+
+// WriteUnsealedResponse contains the number of bytes unsealed (and written) by Unseal().
+type WriteUnsealedResponse struct {
+	NumBytesWritten uint64
+}
+
+// GetNumBytesUnsealedRequest represents a request to get the number of bytes in an unsealed sector.
+type GetNumBytesUnsealedRequest struct {
+	SectorAccess string
+}
+
+// GetNumBytesUnsealedResponse contains the number of bytes in an unsealed sector.
+type GetNumBytesUnsealedResponse struct {
+	NumBytes uint64
 }
