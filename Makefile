@@ -7,3 +7,4 @@ deps:
 # WARNING THIS BUILDS A GO PLUGIN AND PLUGINS *DO NOT* WORK ON WINDOWS SYSTEMS
 iptb:
 	make -C tools/iptb-plugins all
+	docker build -t go-filecoin .
