@@ -1,10 +1,15 @@
 package commands
 
 import (
+	"bufio"
+	"encoding/json"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
@@ -262,4 +267,60 @@ func TestMinerAddAskFail(t *testing.T) {
 		"miner", "add-ask", minerAddr.String(), "10", "3f",
 		"--from", th.TestAddress3,
 	)
+}
+
+func TestMinerOwner(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	actorLsOutput := d.RunSuccess("actor", "ls")
+
+	scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
+	var addressStruct struct{ Address string }
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "MinerActor") {
+			json.Unmarshal([]byte(line), &addressStruct)
+			break
+		}
+	}
+
+	ownerOutput := d.RunSuccess("miner", "owner", addressStruct.Address)
+
+	_, err = address.NewFromString(ownerOutput.ReadStdoutTrimNewlines())
+
+	assert.NoError(err)
+}
+
+var testConfig = &gengen.GenesisCfg{
+	Keys: []string{"bob", "hank", "steve", "laura"},
+	PreAlloc: map[string]string{
+		"bob":  "10",
+		"hank": "50",
+	},
+	Miners: []gengen.Miner{
+		{
+			Owner: "bob",
+			Power: 5000,
+		},
+		{
+			Owner: "laura",
+			Power: 1000,
+		},
+	},
 }

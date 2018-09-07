@@ -20,6 +20,7 @@ var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
 		"add-ask":       minerAddAskCmd,
+		"owner":         minerOwnerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
@@ -182,6 +183,32 @@ var minerAddAskCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
 			return PrintString(w, c)
+		}),
+	},
+}
+
+var minerOwnerCmd = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		ownerAddr, err := GetAPI(env).Miner().GetOwner(req.Context, minerAddr)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
+			return
+		}
+
+		re.Emit(&ownerAddr) // nolint: errcheck
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "the address of the miner"),
+	},
+	Type: address.Address{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
+			return PrintString(w, a)
 		}),
 	},
 }
