@@ -62,6 +62,19 @@ SETUPFILE=$$(cat <<-END
 END
          )
 
+# expose Docker daemon on TCP 2376
+DOCKER_OVERRIDE=$$(cat <<-END
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376
+END
+               )
+DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
+mkdir -p "$$DOCKER_OVERRIDE_PATH"
+echo "$$DOCKER_OVERRIDE" > "$$DOCKER_OVERRIDE_PATH/"override.conf
+/bin/systemctl daemon-reload
+
+
 while fuser /var/lib/dpkg/lock >/dev/null 2>&1 ; do
   sleep 0.5
 done
@@ -82,10 +95,15 @@ DEBIAN_FRONTEND=noninteractive \
 DEBIAN_FRONTEND=noninteractive apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce
 
-# pull image
-DOCKER_IMAGE=${docker_uri}:${docker_tag}
+# pull images
+FILECOIN_DOCKER_IMAGE=${docker_uri}:${docker_tag}
+FILEBEAT_DOCKER_IMAGE=${filebeat_docker_uri}:${filebeat_docker_tag}
 eval $(aws --region us-east-1 ecr --no-include-email get-login)
-docker pull $${DOCKER_IMAGE}
+docker pull $${FILECOIN_DOCKER_IMAGE}
+docker pull $${FILEBEAT_DOCKER_IMAGE}
+
+# start filebeat
+docker run -d -v /var/lib/docker/containers:/usr/share/dockerlogs:ro -v /var/run/docker.sock:/var/run/docker.sock --network host --name filebeat -e LOGSTASH_HOSTS=${logstash_hosts} $${FILEBEAT_DOCKER_IMAGE}
 
 # generate genesis files
 CAR_DIR=/home/ubuntu/car
@@ -95,7 +113,7 @@ docker run \
        -v "$$CAR_DIR":/var/filecoin/car \
        --entrypoint='/bin/sh'\
        --workdir=/var/filecoin/car/ \
-       $${DOCKER_IMAGE} \
+       $${FILECOIN_DOCKER_IMAGE} \
        -c 'cat setup.json | /usr/local/bin/gengen --json > genesis.car 2> gen.json'
 
 # initialize filecoin nodes
@@ -117,7 +135,7 @@ do
          -v /home/ubuntu/car:/var/filecoin/car \
          -v /var/local/filecoins:/var/local/filecoins \
          --entrypoint=/usr/local/bin/go-filecoin \
-         $${DOCKER_IMAGE} \
+         $${FILECOIN_DOCKER_IMAGE} \
          init --genesisfile=/var/filecoin/car/genesis.car --repodir="/var/local/filecoins/$$i" --peerkeyfile="/var/filecoin/car/keyFile$$i"
 done
 
@@ -128,7 +146,9 @@ do
   docker run -d --name "filecoin_$$i" --expose "9000" \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v /var/local/filecoins/$$i:/var/local/filecoin \
-         $${DOCKER_IMAGE} daemon \
+         -e IPFS_LOGGING_FMT=nocolor \
+         --log-driver json-file --log-opt max-size=10m \
+         $${FILECOIN_DOCKER_IMAGE} daemon --elstdout \
          --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="5s"
 done
 

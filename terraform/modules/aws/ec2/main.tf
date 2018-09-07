@@ -8,10 +8,19 @@ variable "docker_uri" {
 variable "docker_tag" {
   default = "latest"
 }
+variable "filebeat_docker_uri" {
+  default = "657871693752.dkr.ecr.us-east-1.amazonaws.com/filebeat"
+}
+variable "filebeat_docker_tag" {
+  default = "latest"
+}
 variable "vpc_security_group_ids" { type = "list" }
 variable "iam_instance_profile_name" {}
 variable "route53_zone_id" {}
 variable "route53_zone_name" {}
+variable "logstash_hosts" {
+  default = "172.17.0.1:5044" # comma separated
+}
 
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -56,6 +65,9 @@ data "template_file" "user_data" {
   vars {
     docker_uri = "${var.docker_uri}"
     docker_tag = "${var.docker_tag}"
+    filebeat_docker_uri = "${var.filebeat_docker_uri}"
+    filebeat_docker_tag = "${var.filebeat_docker_tag}"
+    logstash_hosts = "${var.logstash_hosts}"
   }
 }
 
@@ -72,4 +84,8 @@ output "instance_public_ip" {
 }
 output "instance_dns" {
   value = "${aws_route53_record.this.fqdn}"
+}
+
+output "user_data" {
+  value = "${data.template_file.user_data.rendered}"
 }
