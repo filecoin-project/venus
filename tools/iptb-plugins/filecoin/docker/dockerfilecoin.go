@@ -11,12 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 
@@ -24,26 +25,57 @@ import (
 	"github.com/ipfs/iptb/util"
 )
 
-// PluginName is the name of the plugin
+// PluginName is the name of the plugin.
 var PluginName = "dockerfilecoin"
 
-var ErrIsAlive = errors.New("node is already running") // nolint: golint
-var errTimeout = errors.New("timeout")
+// DefaultDockerHost is the hostname used when connecting to a docker daemon.
+var DefaultDockerHost = client.DefaultDockerHost
 
-// Dockerfilecoin represents a filecoin node
+// DefaultDockerImage is the image name the plugin will use when deploying a container>
+var DefaultDockerImage = "go-filecoin"
+
+// DefaultDockerUser is the user that will run the command(s) inside the container.
+var DefaultDockerUser = "filecoin"
+
+// DefaultDockerEntryPoint is the entrypoint to run when starting the container.
+var DefaultDockerEntryPoint = []string{"/usr/local/bin/go-filecoin"}
+
+// DefaultDockerVolumePrefix is a prefix added when using docker volumes
+// e.g. when running against a remote docker daemon a prefix like `/var/iptb/`
+// is usful wrt permissions
+var DefaultDockerVolumePrefix = ""
+
+// Dockerfilecoin represents attributes of a dockerized filecoin node.
 type Dockerfilecoin struct {
-	img       string
-	id        string
-	dir       string
-	peerid    *cid.Cid
-	apiaddr   multiaddr.Multiaddr
-	swarmaddr multiaddr.Multiaddr
+	Image        string
+	ID           string
+	Host         string
+	User         string
+	EntryPoint   []string
+	VolumePrefix string
+	dir          string
+	peerid       *cid.Cid
+	apiaddr      multiaddr.Multiaddr
+	swarmaddr    multiaddr.Multiaddr
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
 
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
+		dockerHost := DefaultDockerHost
+		dockerImage := DefaultDockerImage
+		dockerUser := DefaultDockerUser
+		dockerEntry := DefaultDockerEntryPoint
+		dockerVolumePrefix := DefaultDockerVolumePrefix
+
+		// the dockerid file is present once the container has started the daemon process,
+		// iptb uses the dockerid file to keep track of the containers its running
+		idb, err := ioutil.ReadFile(filepath.Join(dir, "dockerid"))
+		if err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+		dockerID := string(idb)
 
 		apiaddr, err := multiaddr.NewMultiaddr("/ip4/0.0.0.0/tcp/3453")
 		if err != nil {
@@ -55,8 +87,33 @@ func init() {
 			return nil, err
 		}
 
+		if v, ok := attrs["dockerHost"]; ok {
+			dockerHost = v
+		}
+
+		if v, ok := attrs["dockerImage"]; ok {
+			dockerImage = v
+		}
+
+		if v, ok := attrs["dockerUser"]; ok {
+			dockerUser = v
+		}
+
+		if v, ok := attrs["dockerEntry"]; ok {
+			dockerEntry[0] = v
+		}
+
+		if v, ok := attrs["dockerVolumePrefix"]; ok {
+			dockerVolumePrefix = v
+		}
+
 		return &Dockerfilecoin{
-			img: "go-filecoin",
+			EntryPoint:   dockerEntry,
+			Host:         dockerHost,
+			ID:           dockerID,
+			Image:        dockerImage,
+			User:         dockerUser,
+			VolumePrefix: dockerVolumePrefix,
 
 			dir:       dir,
 			apiaddr:   apiaddr,
@@ -65,46 +122,47 @@ func init() {
 	}
 }
 
-func GetClient() (*client.Client, error) {
-	// TODO pass opts here to control a docker daemon on a remote host
-	// E.g. -- yes the below works
-	//return client.NewClientWithOpts(client.WithVersion("1.37"), client.WithHost("tcp://192.168.0.200:9090")) // client requires this version or lower
-	return client.NewClientWithOpts(client.WithVersion("1.37"))
-}
-
 /** Core Interface **/
 
 // Init runs the node init process.
 func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
 	// Get the docker client
-	cli, err := GetClient()
+	cli, err := l.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
 	// define entrypoint command
-	cmds := []string{"init"}
+	// TODO use an env var
+	cmds := []string{"init",
+		fmt.Sprint("--repodir=/data/filecoin"),
+	}
 	cmds = append(cmds, args...)
+
 	resp, err := cli.ContainerCreate(ctx,
 		&container.Config{
-			Entrypoint: []string{"/usr/local/bin/go-filecoin"},
-			User:       "filecoin",
-			Image:      "go-filecoin",
+			Entrypoint: l.EntryPoint,
+			User:       l.User,
+			Image:      l.Image,
 			Cmd:        cmds,
 			Tty:        false,
 		},
 		&container.HostConfig{
-			Binds: []string{fmt.Sprintf("%s:%s", l.dir, "/data/filecoin")},
-		}, nil, "")
+			Binds: []string{
+				fmt.Sprintf("%s%s:%s", l.VolumePrefix, l.Dir(), "/data/filecoin"),
+			},
+		},
+		&network.NetworkingConfig{},
+		"")
 	if err != nil {
 		return nil, err
 	}
 
 	// This runs the init command, when the command completes the container will stop running, since we
-	// have the `Bind`ings above the repo will be persisted, meaning we can create a second container
+	// have the added the bindings above the repo will be persisted, meaning we can create a second container
 	// during the `iptb start` command that will use the repo created here.
 	// TODO find a better way to do that above..
-	if err := cli.ContainerStart(ctx, string(resp.ID), types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +183,7 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 	if err != nil {
 		panic(err)
 	}
-	defer out.Close()
+	defer out.Close() // nolint: errcheck
 
 	var outBuf, errBuf bytes.Buffer
 	outputDone := make(chan error)
@@ -151,49 +209,55 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 // Start starts the node process.
 func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (testbedi.Output, error) {
 	// check if we already have a container running in the testbed dir
-	// IsAlive check
-	if idb, err := ioutil.ReadFile(filepath.Join(l.dir, "dockerid")); !os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "container already running in testbed dir with ID: %s", string(idb))
+	if _, err := os.Stat(filepath.Join(l.Dir(), "dockerid")); err == nil {
+		return nil, errors.Errorf("container already running in testbed dir: %s", l.Dir())
 	}
 
-	cli, err := GetClient()
+	cli, err := l.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	cmds := []string{"daemon"}
+	// TODO use an env var
+	cmds := []string{"daemon",
+		fmt.Sprint("--repodir=/data/filecoin"),
+	}
 	cmds = append(cmds, args...)
+
 	// Create the container, first command needs to be daemon, now we have an ID for it
 	resp, err := cli.ContainerCreate(ctx,
 		&container.Config{
-			Entrypoint:   []string{"/usr/local/bin/go-filecoin"},
-			User:         "filecoin",
-			Image:        "go-filecoin",
+			Entrypoint:   l.EntryPoint,
+			User:         l.User,
+			Image:        l.Image,
 			Cmd:          cmds,
 			Tty:          false,
 			AttachStdout: true,
 			AttachStderr: true,
 		},
 		&container.HostConfig{
-			Binds: []string{fmt.Sprintf("%s:%s", l.dir, "/data/filecoin")},
-		}, nil, "")
+			Binds: []string{fmt.Sprintf("%s%s:%s", l.VolumePrefix, l.Dir(), "/data/filecoin")},
+		},
+		&network.NetworkingConfig{},
+		"")
 	if err != nil {
 		return nil, err
 	}
 
 	// this runs the daemon command, the container will now remain running until stop is called
-	if err := cli.ContainerStart(ctx, string(resp.ID), types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
 
 	// TODO this when it would be nice to have filecoin log to a file, then we could just mount that..
 	// Sleep for a bit, else we don't see any logs
 	time.Sleep(2 * time.Second)
+
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		return nil, err
 	}
-	defer out.Close()
+	defer out.Close() // nolint: errcheck
 
 	var outBuf, errBuf bytes.Buffer
 	outputDone := make(chan error)
@@ -213,8 +277,8 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 		return nil, ctx.Err()
 	}
 
-	// save the dockerid
-	if err = ioutil.WriteFile(filepath.Join(l.dir, "dockerid"), []byte(resp.ID), 0664); err != nil {
+	// save the dockerid to a file
+	if err = ioutil.WriteFile(filepath.Join(l.Dir(), "dockerid"), []byte(resp.ID), 0664); err != nil {
 		return nil, err
 	}
 
@@ -223,21 +287,18 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 
 // Stop stops the node process.
 func (l *Dockerfilecoin) Stop(ctx context.Context) error {
-	cli, err := GetClient()
+	cli, err := l.GetClient()
 	if err != nil {
 		return err
 	}
 
-	idb, err := ioutil.ReadFile(filepath.Join(l.dir, "dockerid"))
-	if err != nil {
+	// "2" is the same as Ctrl+C
+	if err := cli.ContainerKill(ctx, l.ID, "2"); err != nil {
 		return err
 	}
 
-	if err := cli.ContainerKill(ctx, string(idb), "2"); err != nil {
-		return err
-	}
-
-	if err := os.Remove(filepath.Join(l.dir, "dockerid")); err != nil {
+	// remove the dockerid file since we use this in `Start` as a liveness check
+	if err := os.Remove(filepath.Join(l.Dir(), "dockerid")); err != nil {
 		return err
 	}
 
@@ -247,19 +308,14 @@ func (l *Dockerfilecoin) Stop(ctx context.Context) error {
 // RunCmd runs a command in the context of the node.
 func (l *Dockerfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	// TODO pass opts here to control a docker daemon on a remote host
-	cli, err := GetClient()
+	cli, err := l.GetClient()
 	if err != nil {
 		return nil, err
 	}
 
-	idb, err := ioutil.ReadFile(filepath.Join(l.dir, "dockerid"))
-	if err != nil {
-		return nil, err
-	}
-
-	cmd := []string{"go-filecoin"}
-	cmd = append(cmd, args...)
-	return Exec(ctx, cli, string(idb), false, cmd...)
+	// TODO use an env var
+	args = append(args, fmt.Sprintf("--repodir=/data/filecoin"))
+	return Exec(ctx, cli, l.ID, false, args...)
 }
 
 // Connect connects the node to another testbed node.
@@ -272,7 +328,7 @@ func (l *Dockerfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	for _, a := range swarmaddrs {
 		// we should try all addresses
 		// TODO(frrist) libp2p has a better way to do this built in iirc
-		output, err := l.RunCmd(ctx, nil, "swarm", "connect", a)
+		output, err := l.RunCmd(ctx, nil, "go-filecoin", "swarm", "connect", a)
 		if err != nil {
 			return err
 		}
@@ -344,12 +400,12 @@ func (l *Dockerfilecoin) PeerID() (string, error) {
 
 // APIAddr returns the api address of the node.
 func (l *Dockerfilecoin) APIAddr() (string, error) {
-	panic("NYI")
+	return l.apiaddr.String(), nil
 }
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Dockerfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "id", "--format=<addrs>")
+	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format=<addrs>")
 	if err != nil {
 		return nil, err
 	}

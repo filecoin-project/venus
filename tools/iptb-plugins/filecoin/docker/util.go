@@ -125,3 +125,8 @@ func (l *Dockerfilecoin) GetPeerID() (*cid.Cid, error) {
 	// decode the parsed string to a cid...maybe
 	return cid.Decode(cidStr)
 }
+
+// GetClient creates a new docker sdk client
+func (l *Dockerfilecoin) GetClient() (*client.Client, error) {
+	return client.NewClientWithOpts(client.WithVersion("1.37"), client.WithHost(l.Host))
+}
