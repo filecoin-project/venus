@@ -70,12 +70,14 @@ func (res *ExecResult) Combined() string {
 // containing stdout, stderr, and exit code. Note:
 //  - this is a synchronous operation;
 //  - cmd stdin is closed.
-func Exec(ctx context.Context, cli client.APIClient, containerID string, cmd ...string) (testbedi.Output, error) {
+func Exec(ctx context.Context, cli client.APIClient, containerID string, detach bool, cmd ...string) (testbedi.Output, error) {
 	// prepare exec
 	execConfig := types.ExecConfig{
+		User:         "filecoin",
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          cmd,
+		Detach:       detach,
 	}
 	cresp, err := cli.ContainerExecCreate(ctx, containerID, execConfig)
 	if err != nil {
@@ -120,6 +122,28 @@ func Exec(ctx context.Context, cli client.APIClient, containerID string, cmd ...
 	return iptbutil.NewOutput(cmd, outBuf.Bytes(), errBuf.Bytes(), iresp.ExitCode, err), err
 }
 
+func (l *Dockerfilecoin) pullImage(cli client.APIClient) error {
+	// https://docs.docker.com/develop/sdk/examples/#pull-an-image-with-authentication
+	// might need an IPTB config file
+	// use the output of `aws --profile filecoin --region us-east-1 ecr --no-include-email get-login`
+	authConfig := types.AuthConfig{
+		Username:      "username",
+		Password:      "password",
+		ServerAddress: l.serverAddr,
+	}
+	encodedJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		panic(err)
+	}
+	authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+
+	_, err = cli.ImagePull(context.TODO(), l.imgAddr, types.ImagePullOptions{RegistryAuth: authStr})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
 		imagename := "go-filecoin"
@@ -155,39 +179,36 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 	if err != nil {
 		return nil, err
 	}
-	// https://docs.docker.com/develop/sdk/examples/#pull-an-image-with-authentication
-	// might need an IPTB config file
-	// use the output of `aws --profile filecoin --region us-east-1 ecr --no-include-email get-login`
-	authConfig := types.AuthConfig{
-		Username:      "username",
-		Password:      "password",
-		ServerAddress: l.serverAddr,
-	}
-	encodedJSON, err := json.Marshal(authConfig)
-	if err != nil {
-		panic(err)
-	}
-	authStr := base64.URLEncoding.EncodeToString(encodedJSON)
 
-	_, err = cli.ImagePull(ctx, l.imgAddr, types.ImagePullOptions{RegistryAuth: authStr})
-	if err != nil {
-		return nil, err
-	}
+	/*
+		// get the image THIS IS REALLY ANNOYING
+		// TODO figure out a better way, e.g. get it locally
+		if err := l.pullImage(cli); err != nil {
+			return nil, err
+		}
+	*/
 
+	cmds := []string{"init"}
+	cmds = append(cmds, args...)
 	// Create the container, first command needs to be daemon, now we have an ID for it
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: l.img,
-		Cmd:   []string{"daemon"},
-		Tty:   false,
-	}, nil, nil, "")
+	resp, err := cli.ContainerCreate(ctx,
+		&container.Config{
+			Entrypoint: []string{"/usr/local/bin/go-filecoin"},
+			User:       "filecoin",
+			Image:      "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin",
+			Cmd:        cmds,
+			Tty:        false,
+		},
+		&container.HostConfig{
+			Binds: []string{l.dir + ":" + "/data/filecoin"},
+		}, nil, "")
 	if err != nil {
+		fmt.Println(resp.Warnings)
 		return nil, err
 	}
-	l.id = resp.ID
 
-	idfile := filepath.Join(l.dir, "dockerid")
-	err = ioutil.WriteFile(idfile, []byte(l.id), 0664)
-	if err != nil {
+	// this runs the init command
+	if err := cli.ContainerStart(ctx, string(resp.ID), types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -196,19 +217,47 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 
 // Start starts the node process.
 func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (testbedi.Output, error) {
+	// TODO check is alive!
 	// TODO pass opts here to control a docker daemon on a remote host
 	cli, err := client.NewClientWithOpts(client.WithVersion("1.37")) // client requires this version or lower
 	if err != nil {
 		return nil, err
 	}
+
+	/*
+		if err := l.pullImage(cli); err != nil {
+			return nil, err
+		}
+	*/
+
+	cmds := []string{"daemon"}
+	cmds = append(cmds, args...)
+	// Create the container, first command needs to be daemon, now we have an ID for it
+	resp, err := cli.ContainerCreate(ctx,
+		&container.Config{
+			Entrypoint: []string{"/usr/local/bin/go-filecoin"},
+			User:       "filecoin",
+			Image:      "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin",
+			Cmd:        cmds,
+			Tty:        false,
+		},
+		&container.HostConfig{
+			Binds: []string{l.dir + ":" + "/data/filecoin"},
+		}, nil, "")
+
+	if err != nil {
+		fmt.Println(resp.Warnings)
+		return nil, err
+	}
+
 	idfile := filepath.Join(l.dir, "dockerid")
-	idb, err := ioutil.ReadFile(idfile)
+	err = ioutil.WriteFile(idfile, []byte(resp.ID), 0664)
 	if err != nil {
 		return nil, err
 	}
-	l.id = string(idb)
-	fmt.Print(l.id)
-	if err := cli.ContainerStart(ctx, l.id, types.ContainerStartOptions{}); err != nil {
+
+	// this runs the init command
+	if err := cli.ContainerStart(ctx, string(resp.ID), types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -222,14 +271,13 @@ func (l *Dockerfilecoin) Stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	idfile := filepath.Join(l.dir, "dockerid")
-	idb, err := ioutil.ReadFile(idfile)
+
+	idb, err := ioutil.ReadFile(filepath.Join(l.dir, "dockerid"))
 	if err != nil {
 		return err
 	}
-	l.id = string(idb)
-	fmt.Print(l.id)
-	if err := cli.ContainerKill(ctx, l.id, "9"); err != nil {
+
+	if err := cli.ContainerKill(ctx, string(idb), "2"); err != nil {
 		return err
 	}
 
@@ -249,7 +297,7 @@ func (l *Dockerfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...st
 		return nil, err
 	}
 
-	return Exec(ctx, cli, string(idb), args...)
+	return Exec(ctx, cli, string(idb), false, args...)
 }
 
 // Connect connects the node to another testbed node.
