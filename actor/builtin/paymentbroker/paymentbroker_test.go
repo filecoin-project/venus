@@ -34,15 +34,11 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_, st, vms := requireGenesis(ctx, t, address.NewForTestGetter()())
+	_, st, _ := requireGenesis(ctx, t, address.NewForTestGetter()())
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
 	assert.Equal(types.NewAttoFILFromFIL(0), paymentBroker.Balance)
-
-	var pbStorage State
-	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
-	assert.Equal(0, len(pbStorage.Channels))
 }
 
 func TestPaymentBrokerCreateChannel(t *testing.T) {
@@ -58,25 +54,18 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
 	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(result.ExecutionError)
 	require.NoError(err)
+	require.NoError(result.ExecutionError)
 
-	channelID := big.NewInt(0)
-	channelID.SetBytes(result.Receipt.Return[0])
+	st.Flush(ctx)
+
+	channelID := types.NewChannelIDFromBytes(result.Receipt.Return[0])
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
 	assert.Equal(types.NewAttoFILFromFIL(1000), paymentBroker.Balance)
 
-	var pbStorage State
-	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
-
-	require.Equal(1, len(pbStorage.Channels))
-	require.Equal(1, len(pbStorage.Channels[payer.String()]))
-	byPayer := pbStorage.Channels[payer.String()]
-
-	channel := byPayer[channelID.String()]
-	require.NotNil(channel)
+	channel := requireGetPaymentChannel(t, ctx, st, vms, payer, channelID)
 
 	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
@@ -123,7 +112,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 
 	assert.Equal(types.NewAttoFILFromFIL(100), payee.Balance)
 
-	channel := retrieveChannel(t, sys.vms, paymentBroker, sys.payer, sys.channelID)
+	channel := sys.retrieveChannel(paymentBroker)
 
 	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
@@ -217,8 +206,8 @@ func TestPaymentBrokerClose(t *testing.T) {
 	payerBalancePriorToClose := payerActor.Balance
 
 	result, err := sys.ApplyCloseMessage(sys.target, 100, 0)
-	require.NoError(result.ExecutionError)
 	require.NoError(err)
+	require.NoError(result.ExecutionError)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 
@@ -283,8 +272,8 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is after Eol
 	res, err := sys.ApplyMessage(msg, 11)
-	require.NoError(res.ExecutionError)
 	require.NoError(err)
+	require.NoError(res.ExecutionError)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 
@@ -335,21 +324,19 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
-	// check memory
+	// check value
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
 
-	var pbStorage State
-	builtin.RequireReadState(t, sys.vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
+	// get payment channel
+	channel := sys.retrieveChannel(paymentBroker)
 
-	byPayer := pbStorage.Channels[sys.payer.String()]
-	channel := byPayer[sys.channelID.String()]
 	assert.Equal(types.NewAttoFILFromFIL(2000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(1100), channel.AmountRedeemed)
 	assert.Equal(types.NewBlockHeight(20), channel.Eol)
 }
 
-func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
+func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -359,8 +346,8 @@ func TestPaymentBrokerExtendFailsWithNonExistantChannel(t *testing.T) {
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
-	require.EqualError(result.ExecutionError, "payment channel is unknown")
 	require.NoError(err)
+	require.EqualError(result.ExecutionError, "payment channel is unknown")
 	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
 }
 
@@ -520,21 +507,6 @@ func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, fro
 	return channelID
 }
 
-func retrieveChannel(t *testing.T, vms vm.StorageMap, paymentBroker *actor.Actor, payer address.Address, channelID *types.ChannelID) *PaymentChannel {
-	require := require.New(t)
-
-	var pbStorage State
-	builtin.RequireReadState(t, vms, address.PaymentBrokerAddress, paymentBroker, &pbStorage)
-
-	require.Equal(1, len(pbStorage.Channels))
-	require.Equal(1, len(pbStorage.Channels[payer.String()]))
-	byPayer := pbStorage.Channels[payer.String()]
-
-	channel := byPayer[channelID.String()]
-	require.NotNil(channel)
-	return channel
-}
-
 func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
 	require := require.New(t)
 
@@ -629,6 +601,27 @@ func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonc
 	return sys.applySignatureMessage(target, amtInt, nonce, "close", 0)
 }
 
+func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
+	assert := assert.New(sys.t)
+	require := require.New(sys.t)
+
+	// retrieve channels
+	args, err := abi.ToEncodedValues(sys.payer)
+	require.NoError(err)
+
+	returnValue, exitCode, err := core.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	require.NoError(err)
+	assert.Equal(uint8(0), exitCode)
+
+	channels := make(map[string]*PaymentChannel)
+	err = cbor.DecodeInto(returnValue[0], &channels)
+	require.NoError(err)
+
+	channel := channels[sys.channelID.KeyString()]
+	require.NotNil(channel)
+	return channel
+}
+
 func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, nonce uint64, method string, height uint64) (*core.ApplicationResult, error) {
 	sys.t.Helper()
 
@@ -646,4 +639,21 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 
 func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*core.ApplicationResult, error) {
 	return core.ApplyMessage(sys.ctx, sys.st, sys.vms, msg, types.NewBlockHeight(height))
+}
+
+func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
+	require := require.New(t)
+	var paymentMap map[string]*PaymentChannel
+
+	pdata := core.MustConvertParams(payer)
+	values, ec, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	require.Zero(ec)
+	require.NoError(err)
+
+	actor.UnmarshalStorage(values[0], &paymentMap)
+
+	result, ok := paymentMap[channelId.KeyString()]
+	require.True(ok)
+
+	return result
 }

@@ -199,6 +199,9 @@ func (s *Storage) Flush() error {
 // That is the given id , any links in the chunk referenced by the given id, or any links
 // referenced from those links.
 func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
+	if id == nil {
+		return make(map[string]*cid.Cid), nil
+	}
 	chunk, ok := s.chunks[id.KeyString()]
 	if !ok {
 		has, err := s.blockstore.Has(id)
