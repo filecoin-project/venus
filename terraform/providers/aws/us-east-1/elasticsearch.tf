@@ -5,6 +5,13 @@ data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
+locals {
+  ip_whitelist = [
+    "${var.es_ip_whitelist}",
+    "${module.vpc.nat_public_ips}"
+  ]
+}
+
 resource "aws_elasticsearch_domain" "filecoin-logs" {
   domain_name           = "${var.domain}"
   elasticsearch_version = "6.3"
@@ -35,7 +42,7 @@ resource "aws_elasticsearch_domain" "filecoin-logs" {
             "Effect": "Allow",
             "Resource": "arn:aws:es:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:domain/${var.domain}/*",
             "Condition": {
-                "IpAddress": {"aws:SourceIp": ${jsonencode(var.es_ip_whitelist)}}
+                "IpAddress": {"aws:SourceIp": ${jsonencode(local.ip_whitelist)}}
             }
         }
     ]
