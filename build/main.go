@@ -95,7 +95,7 @@ func deps() {
 		"go get github.com/stretchr/testify",
 		"go get github.com/xeipuuv/gojsonschema",
 		"go get github.com/ipfs/iptb",
-		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
+		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
 	for _, name := range list {
@@ -113,7 +113,7 @@ func smartdeps() {
 		"gx install",
 		"gx-go rewrite",
 		"gometalinter --install",
-		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
+		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 	// packages we need to install
 	pkgs := []string{

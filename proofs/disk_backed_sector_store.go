@@ -9,8 +9,9 @@ import (
 )
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,${SRCDIR}/rust-proofs/target/release/ -lproofs
-#include "./rust-proofs/libproofs.h"
+#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,${SRCDIR}/rust-proofs/target/release/ -lfilecoin_proofs -lsector_base
+#include "./rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
+#include "./rust-proofs/sector-base/libsector_base.h"
 
 */
 import "C"
@@ -19,7 +20,7 @@ var log = logging.Logger("DiskBackedSectorStore")
 
 // DiskBackedSectorStore is a struct which serves as a proxy for a DiskBackedSectorStore in Rust
 type DiskBackedSectorStore struct {
-	ptr *C.DiskBackedStorage
+	ptr *C.Box_SectorStore
 }
 
 var _ SectorStore = &DiskBackedSectorStore{}
@@ -154,7 +155,7 @@ func (ss *DiskBackedSectorStore) destroy() error {
 
 	// TODO: we need to be absolutely sure that this will not leak memory,
 	// specifically the string-fields allocated by Rust (see issue #781)
-	C.destroy_disk_backed_storage(ss.ptr)
+	C.destroy_storage(ss.ptr)
 	ss.ptr = nil
 
 	return nil
