@@ -74,6 +74,8 @@ RUN mkdir -p $FILECOIN_PATH \
 
 COPY --from=0 $SRC_DIR/gengen/setup.json /data
 RUN cat /data/setup.json | /usr/local/bin/gengen --json > /data/genesis.car 2> /data/gen.json
+RUN for i in $(seq 0 9); do cat /data/gen.json | jq ".Miners[$i].Address" > /data/minerAddr$i; done
+RUN for i in $(seq 0 9); do cat /data/gen.json | jq ".Keys[\"$i\"]" > /data/walletKey$i; done
 
 # Expose the fs-repo as a volume.
 # start_filecoin initializes an fs-repo if none is mounted.
