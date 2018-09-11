@@ -193,6 +193,7 @@ func lint(packages ...string) {
 func build() {
 	buildFilecoin()
 	buildFakecoin()
+	buildGengen()
 }
 
 func buildFakecoin() {
@@ -215,6 +216,13 @@ func buildFilecoin() {
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
 	)
+}
+
+func buildGengen() {
+	log.Println("Building gengen utils...")
+
+	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
+	runParts("go", "build", "-o", "./gengen/gensetup", "./gengen/setupgen")
 }
 
 func install() {

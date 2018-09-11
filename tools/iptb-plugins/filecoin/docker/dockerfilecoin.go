@@ -134,9 +134,7 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 
 	// define entrypoint command
 	// TODO use an env var
-	cmds := []string{"init",
-		fmt.Sprint("--repodir=/data/filecoin"),
-	}
+	cmds := []string{"init"}
 	cmds = append(cmds, args...)
 
 	resp, err := cli.ContainerCreate(ctx,
@@ -144,6 +142,7 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 			Entrypoint: l.EntryPoint,
 			User:       l.User,
 			Image:      l.Image,
+			Env:        []string{"FIL_PATH=/data/filecoin"},
 			Cmd:        cmds,
 			Tty:        false,
 		},
@@ -219,9 +218,7 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 	}
 
 	// TODO use an env var
-	cmds := []string{"daemon",
-		fmt.Sprint("--repodir=/data/filecoin"),
-	}
+	cmds := []string{"daemon"}
 	cmds = append(cmds, args...)
 
 	// Create the container, first command needs to be daemon, now we have an ID for it
@@ -230,6 +227,7 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 			Entrypoint:   l.EntryPoint,
 			User:         l.User,
 			Image:        l.Image,
+			Env:          []string{"FIL_PATH=/data/filecoin"},
 			Cmd:          cmds,
 			Tty:          false,
 			AttachStdout: true,
@@ -314,8 +312,7 @@ func (l *Dockerfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...st
 	}
 
 	// TODO use an env var
-	args = append(args, fmt.Sprintf("--repodir=/data/filecoin"))
-	return Exec(ctx, cli, l.ID, false, args...)
+	return Exec(ctx, cli, l.ID, false, "/data/filecoin", args...)
 }
 
 // Connect connects the node to another testbed node.

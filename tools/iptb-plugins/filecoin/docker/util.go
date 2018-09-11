@@ -3,6 +3,7 @@ package pluginlocalfilecoin
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -44,12 +45,15 @@ func (res *ExecResult) Combined() string {
 // containing stdout, stderr, and exit code. Note:
 //  - this is a synchronous operation;
 //  - cmd stdin is closed.
-func Exec(ctx context.Context, cli client.APIClient, containerID string, detach bool, cmd ...string) (testbedi.Output, error) {
+func Exec(ctx context.Context, cli client.APIClient, containerID string, detach bool, repoDir string, args ...string) (testbedi.Output, error) {
 	// prepare exec
+	cmd := []string{"sh", "-c"}
+	cmd = append(cmd, strings.Join(args, " "))
 	execConfig := types.ExecConfig{
 		User:         "filecoin",
 		AttachStdout: true,
 		AttachStderr: true,
+		Env:          []string{fmt.Sprintf("FIL_PATH=%s", repoDir)},
 		Cmd:          cmd,
 		Detach:       detach,
 	}
