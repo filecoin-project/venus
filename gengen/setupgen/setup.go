@@ -7,15 +7,15 @@ import (
 	"strconv"
 )
 
-type Miner struct {
+type miner struct {
 	Owner string
 	Power uint64
 }
 
-type SetupTemplate struct {
+type setupTemplate struct {
 	Keys     []string          `json:"keys"`
 	PreAlloc map[string]string `json:"preAlloc"`
-	Miner    []Miner           `json:"miners"`
+	Miner    []miner           `json:"miners"`
 }
 
 // this generates a setup.json file that can be passed to gengen
@@ -24,16 +24,16 @@ func main() {
 	numbPtr := flag.Int("count", 10, "how many entries to generate")
 	flag.Parse()
 
-	num := int(*numbPtr)
+	num := *numbPtr
 
-	st := new(SetupTemplate)
+	st := new(setupTemplate)
 	st.Keys = make([]string, num)
 	st.PreAlloc = make(map[string]string, num)
 
 	for i := 0; i < num; i++ {
 		st.Keys[i] = strconv.Itoa(i)
 		st.PreAlloc[strconv.Itoa(i)] = "10000"
-		m := Miner{
+		m := miner{
 			Owner: strconv.Itoa(i),
 			Power: 1000,
 		}

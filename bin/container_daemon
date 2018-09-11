@@ -26,4 +26,3 @@ else
 fi
 
 exec go-filecoin daemon "$@"
-
