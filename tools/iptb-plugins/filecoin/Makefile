@@ -8,7 +8,7 @@ CLEAN += localfilecoin.so
 
 filecoindocker:
 	gx-go rw
-	(cd docker/dockerfilecoin; go build -buildmode=plugin -o ../../dcokerfilecoin.so)
+	(cd docker/dockerfilecoin; go build -buildmode=plugin -o ../../dockerfilecoin.so)
 	gx-go uw
 CLEAN += dockerfilecoin.so
 
