@@ -20,7 +20,7 @@ var log = logging.Logger("DiskBackedSectorStore")
 
 // DiskBackedSectorStore is a struct which serves as a proxy for a DiskBackedSectorStore in Rust
 type DiskBackedSectorStore struct {
-	ptr *C.Box_SectorStore
+	ptr unsafe.Pointer
 }
 
 var _ SectorStore = &DiskBackedSectorStore{}
@@ -36,7 +36,7 @@ func NewDiskBackedSectorStore(staging string, sealed string) *DiskBackedSectorSt
 	ptr := C.init_disk_backed_storage(stagingDirPath, sealedDirPath)
 
 	dbs := &DiskBackedSectorStore{
-		ptr: ptr,
+		ptr: unsafe.Pointer(ptr),
 	}
 
 	// Note: When the GC finds an unreachable block with an associated finalizer,
@@ -56,11 +56,16 @@ func (ss *DiskBackedSectorStore) NewSealedSectorAccess() (NewSectorAccessRespons
 		return NewSectorAccessResponse{}, errors.New("NewSealedSectorAccess() - ss.ptr is nil")
 	}
 
-	p := C.new_sealed_sector_access(ss.ptr)
-	defer C.free(unsafe.Pointer(p))
+	var result *C.char
+	defer C.free(unsafe.Pointer(result))
+
+	code := C.new_sealed_sector_access((*C.Box_SectorStore)(ss.ptr), &result)
+	if code != 0 {
+		return NewSectorAccessResponse{}, errors.New(errorString(code))
+	}
 
 	return NewSectorAccessResponse{
-		SectorAccess: C.GoString(p),
+		SectorAccess: C.GoString(result),
 	}, nil
 }
 
@@ -70,11 +75,16 @@ func (ss *DiskBackedSectorStore) NewStagingSectorAccess() (NewSectorAccessRespon
 		return NewSectorAccessResponse{}, errors.New("NewStagingSectorAccess() - ss.ptr is nil")
 	}
 
-	p := C.new_staging_sector_access(ss.ptr)
-	defer C.free(unsafe.Pointer(p))
+	var result *C.char
+	defer C.free(unsafe.Pointer(result))
+
+	code := C.new_staging_sector_access((*C.Box_SectorStore)(ss.ptr), &result)
+	if code != 0 {
+		return NewSectorAccessResponse{}, errors.New(errorString(code))
+	}
 
 	return NewSectorAccessResponse{
-		SectorAccess: C.GoString(p),
+		SectorAccess: C.GoString(result),
 	}, nil
 }
 
@@ -96,7 +106,7 @@ func (ss *DiskBackedSectorStore) WriteUnsealed(req WriteUnsealedRequest) (WriteU
 	data := C.CBytes(req.Data)
 	defer C.free(data)
 
-	code := C.write_unsealed(ss.ptr, accessCStr, (*C.uint8_t)(data), C.size_t(len(req.Data)), bytesWrittenPtr)
+	code := C.write_unsealed((*C.Box_SectorStore)(ss.ptr), accessCStr, (*C.uint8_t)(data), C.size_t(len(req.Data)), bytesWrittenPtr)
 	if code != 0 {
 		return WriteUnsealedResponse{}, errors.New(errorString(code))
 	}
@@ -115,7 +125,7 @@ func (ss *DiskBackedSectorStore) TruncateUnsealed(req TruncateUnsealedRequest) e
 	accessCStr := C.CString(req.SectorAccess)
 	defer C.free(unsafe.Pointer(accessCStr))
 
-	code := C.truncate_unsealed(ss.ptr, accessCStr, C.uint64_t(req.NumBytes))
+	code := C.truncate_unsealed((*C.Box_SectorStore)(ss.ptr), accessCStr, C.uint64_t(req.NumBytes))
 	if code != 0 {
 		return errors.New(errorString(code))
 	}
@@ -137,7 +147,7 @@ func (ss *DiskBackedSectorStore) GetNumBytesUnsealed(req GetNumBytesUnsealedRequ
 	var numBytes uint64
 	numBytesPtr := (*C.uint64_t)(unsafe.Pointer(&numBytes))
 
-	code := C.num_unsealed_bytes(ss.ptr, accessCStr, numBytesPtr)
+	code := C.num_unsealed_bytes((*C.Box_SectorStore)(ss.ptr), accessCStr, numBytesPtr)
 	if code != 0 {
 		return GetNumBytesUnsealedResponse{}, errors.New(errorString(code))
 	}
@@ -145,6 +155,11 @@ func (ss *DiskBackedSectorStore) GetNumBytesUnsealed(req GetNumBytesUnsealedRequ
 	return GetNumBytesUnsealedResponse{
 		NumBytes: numBytes,
 	}, nil
+}
+
+// GetCPtr returns the underlying C pointer
+func (ss *DiskBackedSectorStore) GetCPtr() unsafe.Pointer {
+	return ss.ptr
 }
 
 // destroy deallocates and destroys a DiskBackedSectorStore
@@ -155,7 +170,11 @@ func (ss *DiskBackedSectorStore) destroy() error {
 
 	// TODO: we need to be absolutely sure that this will not leak memory,
 	// specifically the string-fields allocated by Rust (see issue #781)
-	C.destroy_storage(ss.ptr)
+	code := C.destroy_storage((*C.Box_SectorStore)(ss.ptr))
+	if code != 0 {
+		return errors.New(errorString(code))
+	}
+
 	ss.ptr = nil
 
 	return nil

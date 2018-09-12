@@ -25,12 +25,12 @@ type SectorMetadata struct {
 
 // SealedSectorMetadata represent the persistent metadata associated with a SealedSector.
 type SealedSectorMetadata struct {
-	CommD                []byte
-	CommR                []byte
+	CommD                [32]byte
+	CommR                [32]byte
 	NumBytes             uint64
 	Pieces               []*PieceInfo
+	Proof                [192]byte
 	SealedSectorAccess   string
-	SnarkProof           []byte
 	UnsealedSectorAccess string
 }
 
@@ -38,7 +38,7 @@ type SealedSectorMetadata struct {
 type SectorBuilderMetadata struct {
 	CurUnsealedSectorAccess        string
 	MinerAddr                      address.Address
-	SealedSectorReplicaCommitments [][]byte
+	SealedSectorReplicaCommitments [][32]byte
 }
 
 // SectorMetadata returns the metadata associated with a UnsealedSector.
@@ -61,7 +61,7 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 		NumBytes:             ss.numBytes,
 		Pieces:               ss.pieces,
 		SealedSectorAccess:   ss.sealedSectorAccess,
-		SnarkProof:           ss.snarkProof,
+		Proof:                ss.proof,
 		UnsealedSectorAccess: ss.unsealedSectorAccess,
 	}
 
@@ -78,7 +78,7 @@ func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
 	meta := SectorBuilderMetadata{
 		MinerAddr:                      sb.MinerAddr,
 		CurUnsealedSectorAccess:        sb.curUnsealedSector.unsealedSectorAccess,
-		SealedSectorReplicaCommitments: make([][]byte, len(sb.sealedSectors)),
+		SealedSectorReplicaCommitments: make([][32]byte, len(sb.sealedSectors)),
 	}
 	for i, sealed := range sb.sealedSectors {
 		meta.SealedSectorReplicaCommitments[i] = sealed.commR
@@ -91,7 +91,7 @@ func metadataKey(label string) ds.Key {
 	return ds.KeyWithNamespaces(path).Instance(label)
 }
 
-func sealedMetadataKey(commR []byte) ds.Key {
+func sealedMetadataKey(commR [32]byte) ds.Key {
 	path := []string{"sealedSectors", "metadata"}
 	return ds.KeyWithNamespaces(path).Instance(commRString(commR))
 }
@@ -106,7 +106,7 @@ type sectorMetadataStore struct {
 }
 
 // getSealedSector returns the sealed sector with the given replica commitment or an error if no match was found.
-func (st *sectorMetadataStore) getSealedSector(commR []byte) (*SealedSector, error) {
+func (st *sectorMetadataStore) getSealedSector(commR [32]byte) (*SealedSector, error) {
 	metadata, err := st.getSealedSectorMetadata(commR)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (st *sectorMetadataStore) getSealedSector(commR []byte) (*SealedSector, err
 		numBytes:             metadata.NumBytes,
 		pieces:               metadata.Pieces,
 		sealedSectorAccess:   metadata.SealedSectorAccess,
-		snarkProof:           metadata.SnarkProof,
+		proof:                metadata.Proof,
 		unsealedSectorAccess: metadata.UnsealedSectorAccess,
 	}, nil
 }
@@ -156,7 +156,7 @@ func (st *sectorMetadataStore) getSectorMetadata(label string) (*SectorMetadata,
 }
 
 // getSealedSectorMetadata returns the metadata for a sealed sector with the given replica commitment.
-func (st *sectorMetadataStore) getSealedSectorMetadata(commR []byte) (*SealedSectorMetadata, error) {
+func (st *sectorMetadataStore) getSealedSectorMetadata(commR [32]byte) (*SealedSectorMetadata, error) {
 	key := sealedMetadataKey(commR)
 
 	data, err := st.store.Get(key)
@@ -200,7 +200,7 @@ func (st *sectorMetadataStore) deleteSectorMetadata(label string) error {
 	return st.store.Delete(key)
 }
 
-func (st *sectorMetadataStore) setSealedSectorMetadata(commR []byte, meta *SealedSectorMetadata) error {
+func (st *sectorMetadataStore) setSealedSectorMetadata(commR [32]byte, meta *SealedSectorMetadata) error {
 	key := sealedMetadataKey(commR)
 	data, err := cbor.DumpObject(meta)
 	if err != nil {

@@ -12,7 +12,14 @@ import (
 func TestRustProverRoundTrip(t *testing.T) {
 	require := require.New(t)
 
-	p := &RustProver{}
+	sealed, err := ioutil.TempDir("", "sealed")
+	require.NoError(err)
+
+	staging, err := ioutil.TempDir("", "staging")
+	require.NoError(err)
+
+	rp := &RustProver{}
+	sm := NewDiskBackedSectorStore(staging, sealed)
 
 	tmpFile, err := ioutil.TempFile("", "")
 	require.NoError(err, "error creating temp (input) file")
@@ -21,39 +28,25 @@ func TestRustProverRoundTrip(t *testing.T) {
 	srcPath := tmpFile.Name()
 	dstPath := fmt.Sprintf("%s42", srcPath)
 
-	proverID := make([]uint8, 31)
-	for i := 0; i < 31; i++ {
-		proverID[i] = uint8(i)
-	}
-
-	challengeSeed := make([]uint8, 32)
-	for i := 0; i < 32; i++ {
-		challengeSeed[i] = uint8(i)
-	}
-
-	randomSeed := make([]uint8, 32)
-	for i := 31; i >= 0; i-- {
-		randomSeed[i] = uint8(i)
-	}
-
-	sres, err := p.Seal(SealRequest{
-		UnsealedPath:  srcPath,
-		SealedPath:    dstPath,
-		ChallengeSeed: challengeSeed,
-		ProverID:      proverID,
-		RandomSeed:    randomSeed,
+	sres, err := rp.Seal(SealRequest{
+		ProverID:     [31]byte{},
+		SealedPath:   dstPath,
+		SectorID:     [31]byte{},
+		Storage:      sm,
+		UnsealedPath: srcPath,
 	})
 	require.NoError(err, "Seal() operation failed")
 
 	_, err = os.Stat(dstPath)
 	require.NoError(err, "Seal() operation didn't create sealed sector-file %s", dstPath)
 
-	err = p.VerifySeal(VerifySealRequest{
-		CommR:         sres.CommR,
-		CommD:         sres.CommD,
-		SnarkProof:    sres.SnarkProof,
-		ProverID:      proverID,
-		ChallengeSeed: challengeSeed,
+	err = rp.VerifySeal(VerifySealRequest{
+		CommD:    sres.CommD,
+		CommR:    sres.CommR,
+		Proof:    sres.Proof,
+		ProverID: [31]byte{},
+		SectorID: [31]byte{},
+		Storage:  sm,
 	})
 	require.NoError(err, "VerifySeal() operation failed")
 }
@@ -61,16 +54,23 @@ func TestRustProverRoundTrip(t *testing.T) {
 func TestStatusCodeToErrorStringMarshal(t *testing.T) {
 	require := require.New(t)
 
-	p := &RustProver{}
+	sealed, err := ioutil.TempDir("", "sealed")
+	require.NoError(err)
 
-	err := p.VerifySeal(VerifySealRequest{
-		ChallengeSeed: make([]byte, 32),
-		CommD:         make([]byte, 32),
-		CommR:         make([]byte, 32),
-		ProverID:      make([]byte, 31),
-		SnarkProof:    make([]byte, 192), // TODO: consume the exported constant from FPS
+	staging, err := ioutil.TempDir("", "staging")
+	require.NoError(err)
+
+	rp := &RustProver{}
+	sm := NewDiskBackedSectorStore(staging, sealed)
+
+	err = rp.VerifySeal(VerifySealRequest{
+		CommD:    [32]byte{},
+		CommR:    [32]byte{},
+		Proof:    [192]byte{},
+		ProverID: [31]byte{},
+		SectorID: [31]byte{},
+		Storage:  sm,
 	})
-	require.Error(err)
 
 	expected := "unhandled verify_seal error"
 	require.Equal(expected, err.Error(), "received the wrong error")
@@ -79,7 +79,14 @@ func TestStatusCodeToErrorStringMarshal(t *testing.T) {
 func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 	require := require.New(t)
 
-	p := &RustProver{}
+	sealed, err := ioutil.TempDir("", "sealed")
+	require.NoError(err)
+
+	staging, err := ioutil.TempDir("", "staging")
+	require.NoError(err)
+
+	rp := &RustProver{}
+	sm := NewDiskBackedSectorStore(staging, sealed)
 
 	tmpFile, err := ioutil.TempFile("", "")
 	require.NoError(err, "error creating temp (input) file")
@@ -99,21 +106,23 @@ func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 	unsealOutputPath := fmt.Sprintf("%s_unsealed", sealOutputPath)
 	defer os.Remove(sealOutputPath)
 
-	_, err = p.Seal(SealRequest{
-		UnsealedPath:  sealInputPath,
-		SealedPath:    sealOutputPath,
-		ChallengeSeed: make([]byte, 32),
-		ProverID:      make([]byte, 31),
-		RandomSeed:    make([]byte, 32),
+	_, err = rp.Seal(SealRequest{
+		ProverID:     [31]byte{},
+		SealedPath:   sealOutputPath,
+		SectorID:     [31]byte{},
+		Storage:      sm,
+		UnsealedPath: sealInputPath,
 	})
 	require.NoError(err, "seal operation failed")
 
-	ures, err := p.Unseal(UnsealRequest{
+	ures, err := rp.Unseal(UnsealRequest{
 		NumBytes:    uint64(len(bs[1])),
 		OutputPath:  unsealOutputPath,
-		ProverID:    make([]byte, 31),
+		ProverID:    [31]byte{},
 		SealedPath:  sealOutputPath,
+		SectorID:    [31]byte{},
 		StartOffset: uint64(len(bs[0])),
+		Storage:     sm,
 	})
 	require.NoError(err, "unseal operation failed")
 	require.Equal(uint64(len(bs[1])), ures.NumBytesWritten)

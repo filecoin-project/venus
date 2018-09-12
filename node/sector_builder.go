@@ -120,12 +120,12 @@ var _ binpack.Bin = &UnsealedSector{}
 
 // SealedSector is a sector that has been sealed by the PoRep setup process
 type SealedSector struct {
-	commD                []byte
-	commR                []byte
+	commD                [32]byte
+	commR                [32]byte
 	numBytes             uint64
 	pieces               []*PieceInfo
+	proof                [192]byte
 	sealedSectorAccess   string
-	snarkProof           []byte
 	unsealedSectorAccess string
 }
 
@@ -165,11 +165,15 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 
 // CloseBin implements binpack.Binner.
 func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
+	// TODO: This should be rewritten to allow the caller to control
+	// concurrency (either by creating the goroutine or providing a callback
+	// function).
 	go func() {
 		sector := bin.(*UnsealedSector)
 		msgCid, err := sb.SealAndAddCommitmentToMempool(context.Background(), sector)
 		if err != nil {
 			sb.OnCommitmentAddedToMempool(nil, nil, errors.Wrap(err, "failed to seal and commit sector"))
+			return
 		}
 
 		// TODO: maybe send these values to a channel instead of calling the
@@ -220,11 +224,11 @@ func (sb *SectorBuilder) NewSector() (s *UnsealedSector, err error) {
 
 // NewSealedSector creates a new SealedSector. The new SealedSector is appended to the slice of sealed sectors managed
 // by the SectorBuilder.
-func (sb *SectorBuilder) NewSealedSector(commR []byte, commD []byte, snarkProof []byte, label, sealedSectorAccess string, s *UnsealedSector) *SealedSector {
+func (sb *SectorBuilder) NewSealedSector(commR [32]byte, commD [32]byte, proof [192]byte, label, sealedSectorAccess string, s *UnsealedSector) *SealedSector {
 	ss := &SealedSector{
 		commD:                commD,
 		commR:                commR,
-		snarkProof:           snarkProof,
+		proof:                proof,
 		sealedSectorAccess:   sealedSectorAccess,
 		unsealedSectorAccess: s.unsealedSectorAccess,
 		pieces:               s.pieces,
@@ -483,7 +487,7 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 
 	args, err := abi.ToEncodedValues(
 		noSectorID, // NB: we might already know the sector ID from having created it already
-		ss.commR,
+		ss.commR[:],
 		deals,
 	)
 	if err != nil {
@@ -583,11 +587,11 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *UnsealedSector, minerAddr 
 	}
 
 	req := proofs.SealRequest{
-		UnsealedPath:  s.unsealedSectorAccess,
-		SealedPath:    res1.SectorAccess,
-		ChallengeSeed: make([]byte, 32), // TODO: derive from chain
-		ProverID:      proverID,
-		RandomSeed:    make([]byte, 32), // TODO: create real seed
+		ProverID:     proverID,
+		SealedPath:   res1.SectorAccess,
+		SectorID:     [31]byte{},
+		Storage:      sb.sectorStore,
+		UnsealedPath: s.unsealedSectorAccess,
 	}
 
 	res2, err := (&proofs.RustProver{}).Seal(req)
@@ -595,21 +599,21 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *UnsealedSector, minerAddr 
 		return nil, errors.Wrap(err, "failed to seal sector")
 	}
 
-	return sb.NewSealedSector(res2.CommR, res2.CommD, res2.SnarkProof, res1.SectorAccess, res1.SectorAccess, s), nil
+	return sb.NewSealedSector(res2.CommR, res2.CommD, res2.Proof, res1.SectorAccess, res1.SectorAccess, s), nil
 }
 
 // proverID creates a prover id by padding an address hash to 31 bytes
-func proverID(addr address.Address) ([]byte, error) {
+func proverID(addr address.Address) ([31]byte, error) {
 	hash := addr.Hash()
 
 	dlen := 31          // desired length
 	hlen := len(hash)   // hash length
 	padl := dlen - hlen // padding length
 
-	prid := make([]byte, 31)
+	var prid [31]byte
 
 	// will copy dlen bytes from hash
-	copy(prid, hash)
+	copy(prid[:], hash)
 
 	if padl > 0 {
 		copy(prid[hlen:], bytes.Repeat([]byte{0}, padl))
@@ -618,6 +622,6 @@ func proverID(addr address.Address) ([]byte, error) {
 	return prid, nil
 }
 
-func commRString(merkleRoot []byte) string {
-	return base32.StdEncoding.EncodeToString(merkleRoot)
+func commRString(merkleRoot [32]byte) string {
+	return base32.StdEncoding.EncodeToString(merkleRoot[:])
 }

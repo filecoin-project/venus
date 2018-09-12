@@ -279,7 +279,9 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		assert.Contains(k, "metadata")
 		assert.Contains(k, label)
 
-		merkleRoot := ([]byte)("someMerkleRootLOL")
+		var merkleRoot [32]byte
+		copy(merkleRoot[:], ([]byte)("someMerkleRootLOL")[0:32])
+
 		k2 := sealedMetadataKey(merkleRoot).String()
 		// Don't accidentally test Datastore namespacing implementation.
 		assert.Contains(k2, "sealedSectors")
@@ -306,7 +308,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		sector := sb.curUnsealedSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-			if ss.unsealedSectorAccess == sector.unsealedSectorAccess {
+			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 				sealingErr = err
 				sealingWg.Done()
 			}
@@ -380,7 +382,7 @@ func TestSectorStore(t *testing.T) {
 		sector := sb.curUnsealedSector
 
 		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-			if ss.unsealedSectorAccess == sector.unsealedSectorAccess {
+			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 				sealingErr = err
 				sealingWg.Done()
 			}
@@ -421,7 +423,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sector := sbA.curUnsealedSector
 
 	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
-		if ss.unsealedSectorAccess == sector.unsealedSectorAccess {
+		if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 			sealingErr = err
 			sealingWg.Done()
 		}
@@ -622,7 +624,7 @@ func sealedSectorsMustEqual(t *testing.T, ss1 *SealedSector, ss2 *SealedSector) 
 	require.Equal(ss1.sealedSectorAccess, ss2.sealedSectorAccess)
 	require.Equal(ss1.unsealedSectorAccess, ss2.unsealedSectorAccess)
 	require.Equal(ss1.numBytes, ss2.numBytes)
-	require.True(bytes.Equal(ss1.commR, ss2.commR))
+	require.True(bytes.Equal(ss1.commR[:], ss2.commR[:]))
 
 	require.Equal(len(ss1.pieces), len(ss2.pieces))
 	for i := 0; i < len(ss1.pieces); i++ {
