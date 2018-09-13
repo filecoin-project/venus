@@ -157,6 +157,7 @@
   "license": "",
   "name": "go-filecoin",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "subtoolRequired": true
 }
 
