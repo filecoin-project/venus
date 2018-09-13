@@ -95,6 +95,10 @@ func deps() {
 		"go get github.com/stretchr/testify",
 		"go get github.com/xeipuuv/gojsonschema",
 		"go get github.com/ipfs/iptb",
+		"go get github.com/docker/docker/api/types",
+		"go get github.com/docker/docker/api/types/container",
+		"go get github.com/docker/docker/client",
+		"go get github.com/docker/docker/pkg/stdcopy",
 		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
@@ -118,11 +122,15 @@ func smartdeps() {
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",
+		"github.com/docker/docker/api/types",
+		"github.com/docker/docker/api/types/container",
+		"github.com/docker/docker/client",
+		"github.com/docker/docker/pkg/stdcopy",
+		"github.com/ipfs/iptb",
 		"github.com/stretchr/testify",
 		"github.com/whyrusleeping/gx",
 		"github.com/whyrusleeping/gx-go",
 		"github.com/xeipuuv/gojsonschema",
-		"github.com/ipfs/iptb",
 	}
 
 	gopath := os.Getenv("GOPATH")
@@ -185,6 +193,7 @@ func lint(packages ...string) {
 func build() {
 	buildFilecoin()
 	buildFakecoin()
+	buildGengen()
 }
 
 func buildFakecoin() {
@@ -207,6 +216,13 @@ func buildFilecoin() {
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
 	)
+}
+
+func buildGengen() {
+	log.Println("Building gengen utils...")
+
+	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
+	runParts("go", "build", "-o", "./gengen/gensetup", "./gengen/setupgen")
 }
 
 func install() {
