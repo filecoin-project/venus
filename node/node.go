@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -519,7 +520,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 func (node *Node) initSectorBuilder(minerAddr address.Address) error {
 	dirs := node.Repo.(SectorDirs)
 
-	sb, err := InitSectorBuilder(node, minerAddr, sectorSize, dirs)
+	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
+
+	sb, err := InitSectorBuilder(node, minerAddr, sstore)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}

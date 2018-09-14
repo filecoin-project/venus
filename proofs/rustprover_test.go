@@ -19,7 +19,7 @@ func TestRustProverRoundTrip(t *testing.T) {
 	require.NoError(err)
 
 	rp := &RustProver{}
-	sm := NewDiskBackedSectorStore(staging, sealed)
+	sm := NewProofTestSectorStore(staging, sealed)
 
 	tmpFile, err := ioutil.TempFile("", "")
 	require.NoError(err, "error creating temp (input) file")
@@ -61,7 +61,7 @@ func TestStatusCodeToErrorStringMarshal(t *testing.T) {
 	require.NoError(err)
 
 	rp := &RustProver{}
-	sm := NewDiskBackedSectorStore(staging, sealed)
+	sm := NewProofTestSectorStore(staging, sealed)
 
 	err = rp.VerifySeal(VerifySealRequest{
 		CommD:    [32]byte{},
@@ -86,7 +86,7 @@ func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 	require.NoError(err)
 
 	rp := &RustProver{}
-	sm := NewDiskBackedSectorStore(staging, sealed)
+	sm := NewProofTestSectorStore(staging, sealed)
 
 	tmpFile, err := ioutil.TempFile("", "")
 	require.NoError(err, "error creating temp (input) file")

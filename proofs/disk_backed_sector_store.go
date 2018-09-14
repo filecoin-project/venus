@@ -25,7 +25,11 @@ type DiskBackedSectorStore struct {
 
 var _ SectorStore = &DiskBackedSectorStore{}
 
-// NewDiskBackedSectorStore allocates and returns a new DiskBackedSectorStore
+// NewDiskBackedSectorStore allocates and returns a new SectorStore instance. This is store that should be used by
+// someone operating a real Filecoin node. The returned object should be passed to FPS operations. Note that when using
+// this constructor that FPS operations can take a very long time to complete.
+//
+// Note: Staging and sealed directories can be the same.
 func NewDiskBackedSectorStore(staging string, sealed string) *DiskBackedSectorStore {
 	stagingDirPath := C.CString(staging)
 	defer C.free(unsafe.Pointer(stagingDirPath))
@@ -33,7 +37,7 @@ func NewDiskBackedSectorStore(staging string, sealed string) *DiskBackedSectorSt
 	sealedDirPath := C.CString(sealed)
 	defer C.free(unsafe.Pointer(sealedDirPath))
 
-	ptr := C.init_disk_backed_storage(stagingDirPath, sealedDirPath)
+	ptr := C.init_new_sector_store(stagingDirPath, sealedDirPath)
 
 	dbs := &DiskBackedSectorStore{
 		ptr: unsafe.Pointer(ptr),
@@ -41,6 +45,59 @@ func NewDiskBackedSectorStore(staging string, sealed string) *DiskBackedSectorSt
 
 	// Note: When the GC finds an unreachable block with an associated finalizer,
 	// it clears the association and runs finalizer(obj) in a separate goroutine.
+	runtime.SetFinalizer(dbs, func(dbs *DiskBackedSectorStore) {
+		if err := dbs.destroy(); err != nil {
+			log.Error(err)
+		}
+	})
+
+	return dbs
+}
+
+// NewTestSectorStore allocates and returns a new SectorStore instance which is suitable for end-to-end testing. This
+// store does not fully exercise the proofs code.
+//
+// Note: Staging and sealed directories can be the same.
+func NewTestSectorStore(staging string, sealed string) *DiskBackedSectorStore {
+	stagingDirPath := C.CString(staging)
+	defer C.free(unsafe.Pointer(stagingDirPath))
+
+	sealedDirPath := C.CString(sealed)
+	defer C.free(unsafe.Pointer(sealedDirPath))
+
+	ptr := C.init_new_test_sector_store(stagingDirPath, sealedDirPath)
+
+	dbs := &DiskBackedSectorStore{
+		ptr: unsafe.Pointer(ptr),
+	}
+
+	runtime.SetFinalizer(dbs, func(dbs *DiskBackedSectorStore) {
+		if err := dbs.destroy(); err != nil {
+			log.Error(err)
+		}
+	})
+
+	return dbs
+}
+
+// NewProofTestSectorStore allocates and returns a new SectorStore instance which is suitable for end-to-end testing.
+// This store is configured with a small sector size and can be used in automated tests which require exercising the
+// proofs code.
+//
+// Note: Staging and sealed directories can be the same.
+func NewProofTestSectorStore(staging string, sealed string) *DiskBackedSectorStore {
+	stagingDirPath := C.CString(staging)
+	defer C.free(unsafe.Pointer(stagingDirPath))
+
+	sealedDirPath := C.CString(sealed)
+	defer C.free(unsafe.Pointer(sealedDirPath))
+
+	ptr := C.init_new_proof_test_sector_store(stagingDirPath, sealedDirPath)
+
+	dbs := &DiskBackedSectorStore{
+		ptr: unsafe.Pointer(ptr),
+	}
+
 	runtime.SetFinalizer(dbs, func(dbs *DiskBackedSectorStore) {
 		if err := dbs.destroy(); err != nil {
 			log.Error(err)
@@ -153,6 +210,26 @@ func (ss *DiskBackedSectorStore) GetNumBytesUnsealed(req GetNumBytesUnsealedRequ
 	}
 
 	return GetNumBytesUnsealedResponse{
+		NumBytes: numBytes,
+	}, nil
+}
+
+// GetMaxUnsealedBytesPerSector returns the number of bytes that will fit into an unsealed sector dispensed by this store.
+func (ss *DiskBackedSectorStore) GetMaxUnsealedBytesPerSector() (GetMaxUnsealedBytesPerSectorResponse, error) {
+	if ss.ptr == nil {
+		return GetMaxUnsealedBytesPerSectorResponse{}, errors.New("GetMaxUnsealedBytesPerSectorResponse() - ss.ptr is nil")
+	}
+
+	// max_unsealed_bytes_per_sector will write to this
+	var numBytes uint64
+	numBytesPtr := (*C.uint64_t)(unsafe.Pointer(&numBytes))
+
+	code := C.max_unsealed_bytes_per_sector((*C.Box_SectorStore)(ss.ptr), numBytesPtr)
+	if code != 0 {
+		return GetMaxUnsealedBytesPerSectorResponse{}, errors.New(errorString(code))
+	}
+
+	return GetMaxUnsealedBytesPerSectorResponse{
 		NumBytes: numBytes,
 	}, nil
 }

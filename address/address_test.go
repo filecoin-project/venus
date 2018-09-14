@@ -74,7 +74,6 @@ func TestInvalidAddressCreation(t *testing.T) {
 		input                    string
 		expectedStrParseErrorMsg string
 	}{
-		{"f", "too short"},                                                                     // < 2 chars
 		{"fcqeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9x", "too long"},                             // > 41 chars
 		{"fcQeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "mixed case"},                            // fc[Q]...
 		{"f qeutlg2sl9daptdcfm8sw7m3xzd0tqhz8f4nzc9", "invalid character human-readable part"}, // f[ ]...

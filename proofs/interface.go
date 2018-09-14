@@ -54,6 +54,7 @@ type Prover interface {
 // SectorStore provides a mechanism for dispensing sector access
 type SectorStore interface {
 	GetCPtr() unsafe.Pointer
+	GetMaxUnsealedBytesPerSector() (GetMaxUnsealedBytesPerSectorResponse, error)
 	GetNumBytesUnsealed(GetNumBytesUnsealedRequest) (GetNumBytesUnsealedResponse, error)
 	NewSealedSectorAccess() (NewSectorAccessResponse, error)
 	NewStagingSectorAccess() (NewSectorAccessResponse, error)
@@ -91,5 +92,10 @@ type GetNumBytesUnsealedRequest struct {
 
 // GetNumBytesUnsealedResponse contains the number of bytes in an unsealed sector.
 type GetNumBytesUnsealedResponse struct {
+	NumBytes uint64
+}
+
+// GetMaxUnsealedBytesPerSectorResponse contains the number of bytes that will fit into an unsealed sector.
+type GetMaxUnsealedBytesPerSectorResponse struct {
 	NumBytes uint64
 }

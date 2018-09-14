@@ -50,8 +50,6 @@ func (e *ErrCouldNotRevertUnsealedSector) Error() string {
 	return fmt.Sprintf("rollback error: %s, rollback cause: %s", e.rollbackErr.Error(), e.rollbackCause.Error())
 }
 
-const sectorSize = 1024
-
 var noSectorID = big.NewInt(-1)
 
 // SectorDirs describes the methods required to supply sector directories to a SectorBuilder.
@@ -245,25 +243,30 @@ func (sb *SectorBuilder) NewSealedSector(commR [32]byte, commD [32]byte, proof [
 // InitSectorBuilder creates a new sector builder for the given miner. If a SectorBuilder had previously been created
 // for the given miner, we reconstruct it using metadata from the datastore so that the miner can resume its work where
 // it left off.
-func InitSectorBuilder(nd *Node, minerAddr address.Address, sectorSize int, fs SectorDirs) (*SectorBuilder, error) {
-	store := &sectorMetadataStore{
+func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.SectorStore) (*SectorBuilder, error) {
+	mstore := &sectorMetadataStore{
 		store: nd.Repo.Datastore(),
+	}
+
+	res, err := sstore.GetMaxUnsealedBytesPerSector()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get number of bytes per sector from store")
 	}
 
 	sb := &SectorBuilder{
 		dserv:         dag.NewDAGService(nd.Blockservice),
 		MinerAddr:     minerAddr,
 		nd:            nd,
-		sectorSize:    uint64(sectorSize),
-		metadataStore: store,
-		sectorStore:   proofs.NewDiskBackedSectorStore(fs.StagingDir(), fs.SealedDir()),
+		sectorSize:    res.NumBytes,
+		metadataStore: mstore,
+		sectorStore:   sstore,
 	}
 
 	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
-	metadata, err := store.getSectorBuilderMetadata(minerAddr)
+	metadata, err := mstore.getSectorBuilderMetadata(minerAddr)
 	if err == nil {
-		if err := configureSectorBuilderFromMetadata(store, sb, metadata); err != nil {
-			return nil, err
+		if err1 := configureSectorBuilderFromMetadata(mstore, sb, metadata); err1 != nil {
+			return nil, err1
 		}
 
 		sb.curUnsealedSectorLk.RLock()
@@ -271,8 +274,8 @@ func InitSectorBuilder(nd *Node, minerAddr address.Address, sectorSize int, fs S
 
 		return sb, sb.checkpoint(sb.curUnsealedSector)
 	} else if strings.Contains(err.Error(), "not found") {
-		if err := configureFreshSectorBuilder(sb); err != nil {
-			return nil, err
+		if err1 := configureFreshSectorBuilder(sb); err1 != nil {
+			return nil, err1
 		}
 		sb.curUnsealedSectorLk.RLock()
 		defer sb.curUnsealedSectorLk.RUnlock()

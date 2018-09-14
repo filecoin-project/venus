@@ -1,11 +1,9 @@
 package proofs
 
 import (
-	"testing"
-
 	"io/ioutil"
-
 	"os"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -24,8 +22,7 @@ func TestDiskBackedStorage(t *testing.T) {
 	require.NoError(err)
 	defer os.RemoveAll(sealedDir)
 
-	ss := NewDiskBackedSectorStore(stagingDir, sealedDir)
-	defer ss.destroy()
+	ss := NewProofTestSectorStore(stagingDir, sealedDir)
 
 	// dispense some sector access
 
