@@ -20,13 +20,25 @@ variable "es_ip_whitelist" {
     "100.9.239.66/32", #C5-LA
     "136.24.82.246/32", #eefahy
     "54.162.174.163/32" #gmas dev box
-  ]  
+  ]
 }
 
 variable "docker_uri" {
-  default = "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin"  
+  default = "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin"
 }
 
 variable "docker_tag" {
   default = "latest"
+}
+
+variable "logstash_docker_uri" {
+  default = "657871693752.dkr.ecr.us-east-1.amazonaws.com/logstash"
+}
+
+variable "logstash_docker_tag" {
+  default = "latest"
+}
+
+variable "logstash_es_host" {
+  default = "https://search-filecoin-logs-feyxjodkwak6pulqamqtqwgddi.us-east-1.es.amazonaws.com:443"
 }

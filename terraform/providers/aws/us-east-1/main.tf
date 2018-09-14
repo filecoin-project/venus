@@ -59,6 +59,7 @@ module "kh-test" {
   iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
   route53_zone_name = "${aws_route53_zone.kittyhawk.name}"
   route53_zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
+  logstash_hosts = "${aws_route53_record.logstash_nlb.fqdn}"
 }
 output "kh-test-public_ip" {
   value = "${module.kh-test.instance_public_ip}"
