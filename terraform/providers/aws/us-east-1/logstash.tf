@@ -21,11 +21,11 @@ data "aws_ami" "bionic" {
   owners = ["099720109477"]
 }
 
-
 data "template_file" "logstash_user_data" {
-  template = "${file("./scripts/logstash_user_data.sh")}"
+  template = "${file("../../../scripts/logstash_user_data.sh")}"
 
   vars {
+    docker_install = "${data.template_file.docker_install.rendered}"
     logstash_docker_uri = "${var.logstash_docker_uri}"
     logstash_docker_tag = "${var.logstash_docker_tag}"
     es_host = "${var.logstash_es_host}"
@@ -89,10 +89,10 @@ module "logstash_nlb" {
   source = "../../../modules/aws/nlb"
 
   name        = "${local.name}"
-  is_internal = true  
+  is_internal = true
   vpc_id      = "${module.vpc.vpc_id}"
   subnets     = "${module.vpc.public_subnets}"
-  protocol    = "TCP"  
+  protocol    = "TCP"
   port        = "${local.port}"
 }
 

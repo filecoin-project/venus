@@ -63,6 +63,7 @@ data "template_file" "user_data" {
   template = "${file("${path.module}/scripts/docker_user_data.sh")}"
 
   vars {
+    docker_install = "${data.template_file.docker_install.rendered}"
     docker_uri = "${var.docker_uri}"
     docker_tag = "${var.docker_tag}"
     filebeat_docker_uri = "${var.filebeat_docker_uri}"
