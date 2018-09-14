@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -41,6 +42,8 @@ const (
 	UintArray
 	// PeerID is a libp2p peer ID
 	PeerID
+	// SectorID is a uint64
+	SectorID
 )
 
 func (t Type) String() string {
@@ -67,6 +70,8 @@ func (t Type) String() string {
 		return "[]uint64"
 	case PeerID:
 		return "peer.ID"
+	case SectorID:
+		return "uint64"
 	default:
 		return "<unknown type>"
 	}
@@ -102,6 +107,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.([]uint64))
 	case PeerID:
 		return av.Val.(peer.ID).String()
+	case SectorID:
+		return fmt.Sprint(av.Val.(uint64))
 	default:
 		return "<unknown type>"
 	}
@@ -184,6 +191,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte(pid), nil
+	case SectorID:
+		n, ok := av.Val.(uint64)
+		if !ok {
+			return nil, &typeError{0, av.Val}
+		}
+
+		return leb128.FromUInt64(n), nil
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -219,6 +233,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: UintArray, Val: v})
 		case peer.ID:
 			out = append(out, &Value{Type: PeerID, Val: v})
+		case uint64:
+			out = append(out, &Value{Type: SectorID, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -308,6 +324,11 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  id,
 		}, nil
+	case SectorID:
+		return &Value{
+			Type: t,
+			Val:  leb128.ToUInt64(data),
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -326,6 +347,7 @@ var typeTable = map[Type]reflect.Type{
 	String:      reflect.TypeOf(string("")),
 	UintArray:   reflect.TypeOf([]uint64{}),
 	PeerID:      reflect.TypeOf(peer.ID("")),
+	SectorID:    reflect.TypeOf(uint64(0)),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

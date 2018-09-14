@@ -41,8 +41,8 @@ func AddAskMessage(miner address.Address, from address.Address, nonce uint64, pr
 }
 
 // CommitSectorMessage creates a message to commit a sector.
-func CommitSectorMessage(miner, from address.Address, nonce uint64, commR []byte, size *types.BytesAmount) (*types.Message, error) {
-	params, err := abi.ToEncodedValues(commR, size)
+func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, commR []byte, size *types.BytesAmount) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(sectorID, commR, size)
 	if err != nil {
 		return nil, err
 	}

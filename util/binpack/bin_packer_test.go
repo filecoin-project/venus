@@ -11,9 +11,7 @@ func TestNaivePacker(t *testing.T) {
 	assert := assert.New(t)
 
 	binner := &testBinner{binSize: 20}
-	packer, firstBin, _ := NewNaivePacker(binner)
-
-	assert.Equal(Space(20), firstBin.(testBinner).binSize)
+	packer, _, _ := NewNaivePacker(binner)
 
 	newItem := func(size Space) testItem {
 		return testItem{size: size}
@@ -82,7 +80,7 @@ func (tb *testBinner) ItemSize(item Item) Space {
 }
 
 func (tb *testBinner) NewBin() (Bin, error) {
-	return testBinner{binSize: tb.binSize}, nil
+	return Space(tb.binSize), nil
 }
 
 func (tb *testBinner) SpaceAvailable(bin Bin) Space {

@@ -24,6 +24,7 @@ func TestBasicEncodingRoundTrip(t *testing.T) {
 		"two []byte": {[]byte("foo"), []byte("bar")},
 		"a string":   {"flugzeug"},
 		"mixed":      {big.NewInt(17), []byte("beep"), "mr rogers", addrGetter()},
+		"sector ids": {uint64(1234), uint64(0)},
 	}
 
 	for tname, tcase := range cases {

@@ -416,8 +416,12 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 		return minerAddr, b, nonce, nil
 	}
 
+	// TODO: We should obtain the SectorID from the SectorBuilder instead of
+	// hard-coding a value here.
+	sectorID := uint64(0)
+
 	// commit sector (thus adding power to miner and recording in storage market.
-	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, []byte("commitment"), power)
+	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, sectorID, []byte("commitment"), power)
 	require.NoError(err)
 	b = RequireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
 	nonce++

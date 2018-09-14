@@ -183,7 +183,7 @@ func TestSectorBuilder(t *testing.T) {
 	}
 
 	requireAddPiece := func(s string) {
-		err := sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(s)))
+		_, err := sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(s)))
 		assert.NoError(err)
 	}
 
@@ -266,7 +266,7 @@ func TestSectorBuilder(t *testing.T) {
 	text4 := "Aliquam molestie porttitor massa at sodales. Vestibulum euismod elit et justo ultrices, ut feugiat justo sodales. Duis ut nullam."
 	require.True(len(text4) > int(testSectorSize))
 
-	err = sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(text4)))
+	_, err = sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(text4)))
 	assert.EqualError(err, ErrPieceTooLarge.Error())
 }
 

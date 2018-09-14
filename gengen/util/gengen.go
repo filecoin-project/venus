@@ -247,7 +247,12 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 		})
 
 		// commit sector to add power
-		_, err = applyMessage(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", []byte("xxxxxxxx"), types.NewBytesAmount(m.Power))
+
+		// TODO: We should get a SectorID from the SectorBuilder instead of
+		// hard-coding a value here.
+		sectorID := uint64(0)
+
+		_, err = applyMessage(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, []byte("xxxxxxxx"), types.NewBytesAmount(m.Power))
 		if err != nil {
 			return nil, err
 		}

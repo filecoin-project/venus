@@ -20,6 +20,7 @@ type SectorMetadata struct {
 	NumBytesFree         uint64
 	NumBytesUsed         uint64
 	Pieces               []*PieceInfo
+	SectorID             uint64
 	UnsealedSectorAccess string
 }
 
@@ -31,6 +32,7 @@ type SealedSectorMetadata struct {
 	Pieces               []*PieceInfo
 	Proof                [192]byte
 	SealedSectorAccess   string
+	SectorID             uint64
 	UnsealedSectorAccess string
 }
 
@@ -39,6 +41,7 @@ type SectorBuilderMetadata struct {
 	CurUnsealedSectorAccess        string
 	MinerAddr                      address.Address
 	SealedSectorReplicaCommitments [][32]byte
+	SectorIDNonce                  uint64
 }
 
 // SectorMetadata returns the metadata associated with a UnsealedSector.
@@ -47,6 +50,7 @@ func (s *UnsealedSector) SectorMetadata() *SectorMetadata {
 		NumBytesFree:         s.numBytesFree,
 		NumBytesUsed:         s.numBytesUsed,
 		Pieces:               s.pieces,
+		SectorID:             s.sectorID,
 		UnsealedSectorAccess: s.unsealedSectorAccess,
 	}
 
@@ -60,8 +64,9 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 		CommR:                ss.commR,
 		NumBytes:             ss.numBytes,
 		Pieces:               ss.pieces,
-		SealedSectorAccess:   ss.sealedSectorAccess,
 		Proof:                ss.proof,
+		SealedSectorAccess:   ss.sealedSectorAccess,
+		SectorID:             ss.sectorID,
 		UnsealedSectorAccess: ss.unsealedSectorAccess,
 	}
 
@@ -76,9 +81,10 @@ func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
 	defer sb.curUnsealedSectorLk.RUnlock()
 
 	meta := SectorBuilderMetadata{
-		MinerAddr:                      sb.MinerAddr,
 		CurUnsealedSectorAccess:        sb.curUnsealedSector.unsealedSectorAccess,
+		MinerAddr:                      sb.MinerAddr,
 		SealedSectorReplicaCommitments: make([][32]byte, len(sb.sealedSectors)),
+		SectorIDNonce:                  sb.sectorIDNonce,
 	}
 	for i, sealed := range sb.sealedSectors {
 		meta.SealedSectorReplicaCommitments[i] = sealed.commR
@@ -117,8 +123,9 @@ func (st *sectorMetadataStore) getSealedSector(commR [32]byte) (*SealedSector, e
 		commR:                metadata.CommR,
 		numBytes:             metadata.NumBytes,
 		pieces:               metadata.Pieces,
-		sealedSectorAccess:   metadata.SealedSectorAccess,
 		proof:                metadata.Proof,
+		sealedSectorAccess:   metadata.SealedSectorAccess,
+		sectorID:             metadata.SectorID,
 		unsealedSectorAccess: metadata.UnsealedSectorAccess,
 	}, nil
 }
@@ -131,6 +138,7 @@ func (st *sectorMetadataStore) getSector(label string) (*UnsealedSector, error) 
 	}
 
 	s := &UnsealedSector{
+		sectorID:             metadata.SectorID,
 		numBytesFree:         metadata.NumBytesFree,
 		numBytesUsed:         metadata.NumBytesUsed,
 		pieces:               metadata.Pieces,

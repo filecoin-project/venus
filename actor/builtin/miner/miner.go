@@ -132,7 +132,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.BytesAmount},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.BytesAmount},
 		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -226,7 +226,7 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 // CommitSector adds a commitment to the specified sector
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.BytesAmount) (uint8, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commR []byte, size *types.BytesAmount) (uint8, error) {
 	var state State
 
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
