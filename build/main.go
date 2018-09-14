@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	gobuild "go/build"
 	"io"
 	"log"
 	"os"
@@ -134,6 +135,24 @@ func smartdeps() {
 	}
 
 	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = gobuild.Default.GOPATH
+	}
+
+	gpbin := filepath.Join(gopath, "bin")
+	var gopathBinFound bool
+	for _, s := range strings.Split(os.Getenv("PATH"), ":") {
+		if s == gpbin {
+			gopathBinFound = true
+		}
+	}
+
+	if !gopathBinFound {
+		fmt.Println("'$GOPATH/bin' is not in your $PATH.")
+		fmt.Println("See https://golang.org/doc/code.html#GOPATH for more information.")
+		return
+	}
+
 	// if the package exists locally install it, else fetch it
 	for _, pkg := range pkgs {
 		pkgpath := filepath.Join(gopath, "src", pkg)
