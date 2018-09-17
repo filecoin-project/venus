@@ -11,7 +11,7 @@ by providing storage to clients.
 
 ## Table of Contents
 
-- [Development](#development)
+- [Getting Started With Filecoin Development](#development)
   - [Prerequisites: Installing Go and Rust](#install-go)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
@@ -20,15 +20,23 @@ by providing storage to clients.
   - [Supported Commands](#supported-commands)
 - [Contribute](#contribute)
 
-## Development
+## Getting Started With Filecoin Development
 
 ### Prerequisites: Installing Go and Rust
 
-The build process for go-filecoin requires at least Go version 1.10. You'll also need Rust to build the `rust-proofs` submodule, which you can download [here][5].
+The build process for go-filecoin requires at least Go version 1.10. If you're setting up Go for the first time specifically to experiment with Filecoin, we recommend the following process:
 
-We've found the Go install instructions can lead to some confusing behavior if you're not already familiar with Go's internals. If you're setting up Go for the first time specifically to experiment with Filecoin, we recommend the following process:
+#### Mac/Linux
 
-[Here we need install instructions for Mac and Linux, using tarballs instead of the package installer. Introduce the concept of $GOPATH by telling the user to set it, even if it's already defaulted to the right place. Windows install instructions needed as well, TBD]
+Download and install Go by running
+
+```$ curl -O https://dl.google.com/go/go1.11.linux-amd64.tar.gz```
+
+```$ tar -C $HOME/local -xzf go1.11.linux-amd64.tar.gz```
+
+Next you'll set up your environment by defining your GOPATH. Note that certain versions of Go don't require this step, but doing deliberately so can help avoid pathing conflicts. If you're running MacOS, you'll open `$HOME/.bash_profile` in your favorite editor. If you have installed a different shell, substitute `$HOME/.bash_profile` with the correct location of your shell configuration.
+
+You'll also need to download Rust to ensure you can  build the `rust-proofs` submodule. Download Rust [here][5].
 
 ### Clone
 
