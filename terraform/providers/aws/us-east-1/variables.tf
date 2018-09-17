@@ -14,7 +14,7 @@ variable "gmasgras-public_key" {
   default = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDuTXotNHgU41qMau9CS1Kwv1v6eRQstdT6YJXDAO49132lJAKhGpsDepWuAK4iXWQdE2Cn7jFcHOMSxJpd3mmLObPPvajkIozGsE8lc0QanqAxM591XrXJ7fQdTCOFb0GaI0pB5eWpEFMwsosI7pPdbRp2No9X79ScvFd0ZlV+VYcHKuVQlW/sgen/rshJs1oiMHCIUxz1ok4E+ADg5uqVSsa44yitszRU/mi/ZQ0qj/B4kNYdwIQEJqHVB5Dc8rJgulhbyMYU4R6dNswcZPVOo0bVAEKBOdzVB9h4MBKoFupJX5xLegjDYvcGFr3VA+nQJSub7mmQl0rNviQpGdV gmas@Georges-MacBook-Pro-2.local"
 }
 
-variable "es_ip_whitelist" {
+variable "ip_whitelist" {
   type = "list"
   default = [
     "100.9.239.66/32", #C5-LA
@@ -41,4 +41,20 @@ variable "logstash_docker_tag" {
 
 variable "logstash_es_host" {
   default = "https://search-filecoin-logs-feyxjodkwak6pulqamqtqwgddi.us-east-1.es.amazonaws.com:443"
+}
+
+data "aws_ami" "bionic" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"]
 }

@@ -10,6 +10,9 @@ resource "aws_ecr_repository" "logstash" {
   name = "logstash"
 }
 
+resource "aws_ecr_repository" "prometheus" {
+  name = "prometheus"
+}
 
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
@@ -19,4 +22,7 @@ output "ecr-filebeat-url" {
 }
 output "ecr-logstash-url" {
   value = "${aws_ecr_repository.logstash.repository_url}"
+}
+output "ecr-prometheus-url" {
+  value = "${aws_ecr_repository.prometheus.repository_url}"
 }

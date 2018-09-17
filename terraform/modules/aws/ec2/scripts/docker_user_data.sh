@@ -86,6 +86,8 @@ docker pull $${FILEBEAT_DOCKER_IMAGE}
 # start filebeat
 docker run -d -v /var/lib/docker/containers:/usr/share/dockerlogs:ro -v /var/run/docker.sock:/var/run/docker.sock --network host --name filebeat -e LOGSTASH_HOSTS=${logstash_hosts} $${FILEBEAT_DOCKER_IMAGE}
 
+${cadvisor_install}
+
 # generate genesis files
 CAR_DIR=/home/ubuntu/car
 mkdir -p $$CAR_DIR

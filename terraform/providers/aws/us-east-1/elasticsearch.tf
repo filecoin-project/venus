@@ -7,7 +7,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   ip_whitelist = [
-    "${var.es_ip_whitelist}",
+    "${var.ip_whitelist}",
     "${module.vpc.nat_public_ips}"
   ]
 }

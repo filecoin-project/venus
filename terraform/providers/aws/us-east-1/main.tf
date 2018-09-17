@@ -35,7 +35,7 @@ module "filecoin-cluster" {
   public_key_name = "${aws_key_pair.filecoin.key_name}"
   vpc_id = "${module.vpc.vpc_id}"
   subnet_id = "${element(module.vpc.public_subnets, 0)}"
-  vpc_security_group_ids = ["${aws_security_group.filecoin.id}"]
+  vpc_security_group_ids = ["${aws_security_group.filecoin.id}","${aws_security_group.cadvisor.id}"]
   iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
   route53_zone_name = "${aws_route53_zone.kittyhawk.name}"
   route53_zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
@@ -55,7 +55,7 @@ module "kh-test" {
   public_key_name = "${aws_key_pair.c5-gmasgras.key_name}"
   vpc_id = "${module.vpc.vpc_id}"
   subnet_id = "${element(module.vpc.public_subnets, 0)}"
-  vpc_security_group_ids = ["${aws_security_group.filecoin.id}"]
+  vpc_security_group_ids = ["${aws_security_group.filecoin.id}","${aws_security_group.cadvisor.id}"]
   iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
   route53_zone_name = "${aws_route53_zone.kittyhawk.name}"
   route53_zone_id = "${aws_route53_zone.kittyhawk.zone_id}"

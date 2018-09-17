@@ -55,7 +55,8 @@ resource "aws_instance" "this" {
   }
 
   tags {
-    Name = "${var.instance_name}"
+    Name           = "${var.instance_name}"
+    export_metrics = "true"
   }
 }
 
@@ -63,6 +64,7 @@ data "template_file" "user_data" {
   template = "${file("${path.module}/scripts/docker_user_data.sh")}"
 
   vars {
+    cadvisor_install = "${data.template_file.cadvisor_install.rendered}"
     docker_install = "${data.template_file.docker_install.rendered}"
     docker_uri = "${var.docker_uri}"
     docker_tag = "${var.docker_tag}"
