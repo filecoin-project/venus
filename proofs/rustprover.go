@@ -34,13 +34,14 @@ var _ Prover = &RustProver{}
 // Seal generates and returns a Proof of Replication along with supporting data.
 func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 	// passing arrays in C (lengths are hard-coded on Rust side)
-	proverIDPtr := (*C.uint8_t)(unsafe.Pointer(&req.ProverID[0]))
-	sectorIDPtr := (*C.uint8_t)(unsafe.Pointer(&req.SectorID[0]))
+	proverIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&req.ProverID[0]))
+	sectorIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&req.SectorID[0]))
 
-	// the seal function will write into this array; prevents Go from having
+	// the seal function will write into these arrays; prevents Go from having
 	// to make a second call into Rust to deallocate
-	out := make([]uint8, 260)
-	outPtr := (*C.uint8_t)(unsafe.Pointer(&out[0]))
+	var commR [32]byte
+	var commD [32]byte
+	var proof [192]byte
 
 	unsealed := C.CString(req.UnsealedPath)
 	defer C.free(unsafe.Pointer(unsealed))
@@ -48,21 +49,16 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 	sealed := C.CString(req.SealedPath)
 	defer C.free(unsafe.Pointer(sealed))
 
+	commRPtr := (*[32]C.uint8_t)(unsafe.Pointer(&commR[0]))
+	commDPtr := (*[32]C.uint8_t)(unsafe.Pointer(&commD[0]))
+	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&proof[0]))
+
 	// mutates the out-array
-	code := C.seal((*C.Box_SectorStore)(req.Storage.GetCPtr()), unsealed, sealed, proverIDPtr, sectorIDPtr, outPtr)
+	code := C.seal((*C.Box_SectorStore)(req.Storage.GetCPtr()), unsealed, sealed, proverIDPtr, sectorIDPtr, commRPtr, commDPtr, proofPtr)
 
 	if code != 0 {
 		err = errors.New(errorString(code))
 	} else {
-		// copy items from out-array to Go arrays
-		var commR [32]byte
-		copy(commR[:], out[0:32])
-
-		var commD [32]byte
-		copy(commD[:], out[32:64])
-
-		var proof [192]byte
-		copy(proof[:], out[64:260])
 
 		res = SealResponse{
 			CommR: commR,
@@ -77,11 +73,11 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
 func (rp *RustProver) VerifySeal(req VerifySealRequest) error {
-	commRPtr := (*C.uint8_t)(unsafe.Pointer(&(req.CommR)[0]))
-	commDPtr := (*C.uint8_t)(unsafe.Pointer(&(req.CommD)[0]))
-	proofPtr := (*C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
-	sectorIDPtr := (*C.uint8_t)(unsafe.Pointer(&(req.SectorID)[0]))
-	proverIDPtr := (*C.uint8_t)(unsafe.Pointer(&(req.ProverID)[0]))
+	commRPtr := (*[32]C.uint8_t)(unsafe.Pointer(&(req.CommR)[0]))
+	commDPtr := (*[32]C.uint8_t)(unsafe.Pointer(&(req.CommD)[0]))
+	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
+	sectorIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&(req.SectorID)[0]))
+	proverIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&(req.ProverID)[0]))
 
 	code := C.verify_seal((*C.Box_SectorStore)(req.Storage.GetCPtr()), commRPtr, commDPtr, proverIDPtr, sectorIDPtr, proofPtr)
 
@@ -109,8 +105,8 @@ func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
 	var bytesWritten uint64
 	bytesWrittenPtr := (*C.uint64_t)(unsafe.Pointer(&bytesWritten))
 
-	proverIDPtr := (*C.uint8_t)(unsafe.Pointer(&(req.ProverID)[0]))
-	sectorIDPtr := (*C.uint8_t)(unsafe.Pointer(&(req.SectorID)[0]))
+	proverIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&(req.ProverID)[0]))
+	sectorIDPtr := (*[31]C.uint8_t)(unsafe.Pointer(&(req.SectorID)[0]))
 
 	code := C.get_unsealed_range((*C.Box_SectorStore)(req.Storage.GetCPtr()), inPath, outPath, C.uint64_t(req.StartOffset), C.uint64_t(req.NumBytes), proverIDPtr, sectorIDPtr, bytesWrittenPtr)
 	if code != 0 {
