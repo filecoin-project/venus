@@ -24,7 +24,7 @@ by providing storage to clients.
 
 ### Prerequisites: Installing Go and Rust
 
-The build process for go-filecoin requires at least Go version 1.10. If you're setting up Go for the first time specifically to experiment with Filecoin, we recommend the following process:
+The build process for go-filecoin requires at least Go version 1.10 (official install instructions [here][4]). If you're setting up Go for the first time specifically to work with Filecoin, we recommend the following process:
 
 #### Mac/Linux
 
@@ -34,9 +34,19 @@ Download and install Go by running
 
 ```$ tar -C $HOME/local -xzf go1.11.linux-amd64.tar.gz```
 
-Next you'll set up your environment by defining your GOPATH. Note that certain versions of Go don't require this step, but doing deliberately so can help avoid pathing conflicts. If you're running MacOS, you'll open `$HOME/.bash_profile` in your favorite editor. If you have installed a different shell, substitute `$HOME/.bash_profile` with the correct location of your shell configuration.
+Next you'll set up your environment by defining your GOPATH. Note that certain versions of Go don't require this step, but doing so deliberately can help avoid pathing conflicts. If you're running MacOS, you'll open `$HOME/.bash_profile` in your favorite editor. If you have installed a different shell, substitute `$HOME/.bash_profile` with the correct location of your shell configuration. From there, you'll add:
 
-You'll also need to download Rust to ensure you can  build the `rust-proofs` submodule. Download Rust [here][5].
+```
+export GOPATH=$HOME/go
+export GOROOT=$HOME/local/go
+
+export PATH=$GOROOT/bin:$PATH
+export PATH=$GOPATH/bin:$PATH
+```
+
+_Note: You'll need to restart your terminal for changes to take effect._
+
+Finally, you'll need to download Rust to ensure you can  build the `rust-proofs` submodule. Download Rust [here][5].
 
 ### Clone
 
