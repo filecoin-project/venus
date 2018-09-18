@@ -44,7 +44,7 @@ export PATH=$GOROOT/bin:$PATH
 export PATH=$GOPATH/bin:$PATH
 ```
 
-_Note: You'll need to restart your terminal for changes to take effect._
+Save and exit. Note that you'll need to restart your terminal for changes to take effect.
 
 Finally, you'll need to download Rust to ensure you can  build the `rust-proofs` submodule. Download Rust [here][5].
 
