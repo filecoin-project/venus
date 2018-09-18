@@ -324,7 +324,7 @@ func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBu
 	sb.curUnsealedSector = sector
 	sb.curUnsealedSectorLk.Unlock()
 
-	for _, commR := range metadata.SealedSectorReplicaCommitments {
+	for _, commR := range metadata.SealedSectorCommitments {
 		sealed, err := store.getSealedSector(commR)
 		if err != nil {
 			return err
