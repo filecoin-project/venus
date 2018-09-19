@@ -100,6 +100,7 @@ func deps() {
 		"go get github.com/docker/docker/api/types/container",
 		"go get github.com/docker/docker/client",
 		"go get github.com/docker/docker/pkg/stdcopy",
+		"go get github.com/ipsn/go-secp256k1",
 		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
@@ -132,6 +133,7 @@ func smartdeps() {
 		"github.com/whyrusleeping/gx",
 		"github.com/whyrusleeping/gx-go",
 		"github.com/xeipuuv/gojsonschema",
+		"github.com/ipsn/go-secp256k1",
 	}
 
 	gopath := os.Getenv("GOPATH")
