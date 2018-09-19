@@ -402,7 +402,7 @@ func (l *Dockerfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Dockerfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format=<addrs>")
+	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format='<addrs>'")
 	if err != nil {
 		return nil, err
 	}
