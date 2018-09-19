@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -27,6 +28,7 @@ import (
 
 // PluginName is the name of the plugin.
 var PluginName = "dockerfilecoin"
+var log = logging.Logger(PluginName)
 
 // DefaultDockerHost is the hostname used when connecting to a docker daemon.
 var DefaultDockerHost = client.DefaultDockerHost
@@ -348,13 +350,12 @@ func (l *Dockerfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 // Infof writes an info log.
 func (l *Dockerfilecoin) Infof(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, "INFO-[%s]  %s\n", l.Dir(), fmt.Sprintf(format, args...)) // nolint: errcheck
+	log.Infof("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // Errorf writes an error log.
 func (l *Dockerfilecoin) Errorf(format string, args ...interface{}) {
-	nformat := fmt.Sprintf("[ERROR]-[%s]  %s\n", l, format)
-	fmt.Fprintf(os.Stderr, nformat, args...) // nolint: errcheck
+	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // StderrReader returns a reader to the nodes stderr.
