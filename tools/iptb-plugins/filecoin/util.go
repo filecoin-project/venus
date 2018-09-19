@@ -8,9 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 )
+
+var log = logging.Logger("util")
 
 // WaitOnAPI waits for a nodes api to come up.
 func WaitOnAPI(l testbedi.Libp2p) error {
@@ -20,7 +24,7 @@ func WaitOnAPI(l testbedi.Libp2p) error {
 			return nil
 		}
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Warning(err.Error())
 		}
 		time.Sleep(time.Millisecond * 400)
 	}
@@ -93,8 +97,6 @@ func GetAPIAddrFromRepo(dir string) (multiaddr.Multiaddr, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("API Addr: %s", addrStr)
 
 	maddr, err := multiaddr.NewMultiaddr(string(addrStr))
 	if err != nil {

@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 )
 
 func (l *Localfilecoin) isAlive() (bool, error) {
@@ -83,7 +83,7 @@ func (l *Localfilecoin) readerFor(file string) (io.ReadCloser, error) {
 // TODO this a temp fix, should read the nodes keystore instead
 func (l *Localfilecoin) GetPeerID() (*cid.Cid, error) {
 	// run the id command
-	out, err := l.RunCmd(context.TODO(), nil, "id", "--format=<id>")
+	out, err := l.RunCmd(context.TODO(), nil, "go-filecoin", "id", "--format=<id>")
 	if err != nil {
 		return nil, err
 	}

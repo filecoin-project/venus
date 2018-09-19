@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -27,6 +28,7 @@ import (
 
 // PluginName is the name of the plugin.
 var PluginName = "dockerfilecoin"
+var log = logging.Logger(PluginName)
 
 // DefaultDockerHost is the hostname used when connecting to a docker daemon.
 var DefaultDockerHost = client.DefaultDockerHost
@@ -348,13 +350,12 @@ func (l *Dockerfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 // Infof writes an info log.
 func (l *Dockerfilecoin) Infof(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, "INFO-[%s]  %s\n", l.Dir(), fmt.Sprintf(format, args...)) // nolint: errcheck
+	log.Infof("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // Errorf writes an error log.
 func (l *Dockerfilecoin) Errorf(format string, args ...interface{}) {
-	nformat := fmt.Sprintf("[ERROR]-[%s]  %s\n", l, format)
-	fmt.Fprintf(os.Stderr, nformat, args...) // nolint: errcheck
+	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // StderrReader returns a reader to the nodes stderr.
@@ -402,7 +403,7 @@ func (l *Dockerfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Dockerfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format=<addrs>")
+	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format='<addrs>'")
 	if err != nil {
 		return nil, err
 	}

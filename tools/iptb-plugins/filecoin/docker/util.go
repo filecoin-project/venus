@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"

@@ -14,9 +14,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 	"github.com/ipfs/iptb/testbed/interfaces"
@@ -25,6 +26,8 @@ import (
 
 // PluginName is the name of the plugin
 var PluginName = "localfilecoin"
+
+var log = logging.Logger(PluginName)
 
 var ErrIsAlive = errors.New("node is already running") // nolint: golint
 var errTimeout = errors.New("timeout")
@@ -53,7 +56,7 @@ func init() {
 
 // Init runs the node init process.
 func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
-	args = append([]string{"init"}, args...)
+	args = append([]string{"go-filecoin", "init"}, args...)
 	output, oerr := l.RunCmd(ctx, nil, args...)
 	if oerr != nil {
 		return nil, oerr
@@ -71,12 +74,12 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 		return nil, err
 	}
 
-	_, err = lcfg.Set("api.address", `"/ip4/0.0.0.0/tcp/0"`)
+	_, err = lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("swarm.address", `"/ip4/0.0.0.0/tcp/0"`)
+	_, err = lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +143,10 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	if err := ioutil.WriteFile(filepath.Join(dir, "daemon.pid"), []byte(fmt.Sprint(pid)), 0666); err != nil {
 		return nil, err
 	}
-
-	return nil, filecoin.WaitOnAPI(l)
+	if err := filecoin.WaitOnAPI(l); err != nil {
+		return nil, err
+	}
+	return iptbutil.NewOutput(dargs, []byte{}, []byte{}, 0, err), nil
 }
 
 // Stop stops the node process.
@@ -204,14 +209,11 @@ func (l *Localfilecoin) Stop(ctx context.Context) error {
 // RunCmd runs a command in the context of the node.
 func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	env, err := l.env()
-
 	if err != nil {
 		return nil, fmt.Errorf("error getting env: %s", err)
 	}
 
-	repoFlag := fmt.Sprintf("--repodir=%s", l.Dir())
-	args = append(args, repoFlag)
-	cmd := exec.CommandContext(ctx, "go-filecoin", args...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Env = env
 	cmd.Stdin = stdin
 
@@ -264,7 +266,7 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 		return err
 	}
 
-	output, err := l.RunCmd(ctx, nil, "swarm", "connect", swarmaddrs[0])
+	output, err := l.RunCmd(ctx, nil, "go-filecoin", "swarm", "connect", swarmaddrs[0])
 
 	if err != nil {
 		return err
@@ -318,13 +320,12 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 // Infof writes an info log.
 func (l *Localfilecoin) Infof(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stdout, "INFO-[%s]\t %s\n", l.Dir(), fmt.Sprintf(format, args...)) // nolint: errcheck
+	log.Infof("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // Errorf writes an error log.
 func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
-	nformat := fmt.Sprintf("[ERROR]\t%s %s\n", l, format)
-	fmt.Fprintf(os.Stderr, nformat, args...) // nolint: errcheck
+	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
 // StderrReader returns a reader to the nodes stderr.
@@ -390,7 +391,7 @@ func (l *Localfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "id", "--format=<addrs>")
+	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format=<addrs>")
 	if err != nil {
 		return nil, err
 	}
