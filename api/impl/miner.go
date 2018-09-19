@@ -58,3 +58,17 @@ func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Ad
 		price, size,
 	)
 }
+
+func (api *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	bytes, _, err := api.api.Message().Query(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getOwner",
+	)
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return address.NewFromBytes(bytes[0])
+}
