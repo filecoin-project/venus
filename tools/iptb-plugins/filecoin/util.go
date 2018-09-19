@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // WaitOnAPI waits for a nodes api to come up.
