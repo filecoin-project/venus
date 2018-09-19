@@ -59,7 +59,6 @@ COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
 COPY --from=0 /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
 COPY --from=0 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
-COPY --from=0 $SRC_DIR/proofs/rust-proofs/target/release/libproofs.so /lib/libproofs.so
 COPY --from=0 $SRC_DIR/proofs/rust-proofs/target/release/libfilecoin_proofs.so /lib/libfilecoin_proofs.so
 COPY --from=0 $SRC_DIR/proofs/rust-proofs/target/release/libsector_base.so /lib/libsector_base.so
 
