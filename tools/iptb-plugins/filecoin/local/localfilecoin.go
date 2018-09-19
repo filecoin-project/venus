@@ -74,12 +74,12 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 		return nil, err
 	}
 
-	_, err = lcfg.Set("api.address", `"/ip4/localhost/tcp/0"`)
+	_, err = lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("swarm.address", `"/ip4/localhost/tcp/0"`)
+	_, err = lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`)
 	if err != nil {
 		return nil, err
 	}
