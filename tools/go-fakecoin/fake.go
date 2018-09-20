@@ -9,9 +9,12 @@ import (
 	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func cmdFake(ctx context.Context, repodir string) error {
@@ -21,8 +24,29 @@ func cmdFake(ctx context.Context, repodir string) error {
 	}
 	defer closeRepo(r)
 
+	genCid, err := impl.LoadGenesis(r, th.GenesisFilePath())
+	if err != nil {
+		return err
+	}
+
+	tif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+		var blk types.Block
+
+		if err := cst.Get(ctx, genCid, &blk); err != nil {
+			return nil, err
+		}
+
+		return &blk, nil
+	}
+
 	bs := blockstore.NewBlockstore(r.Datastore())
 	cm, _ := getChainManager(r.Datastore(), bs)
+
+	err = cm.Genesis(ctx, tif)
+	if err != nil {
+		return err
+	}
+
 	err = cm.Load()
 	if err != nil {
 		return err
@@ -67,7 +91,5 @@ func closeRepo(r *repo.FSRepo) {
 func getChainManager(d repo.Datastore, bs blockstore.Blockstore) (*core.ChainManager, *hamt.CborIpldStore) {
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	cm := core.NewChainManager(d, bs, cst)
-	// allow fakecoin to mine without having a correct storage market / state tree
-	cm.PwrTableView = &core.TestView{}
 	return cm, cst
 }

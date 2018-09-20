@@ -34,10 +34,15 @@ func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block
 	weight = uint64(len(blks))*10 + uint64(blks[0].ParentWeightNum)
 	height = uint64(blks[0].Height) + 1
 	parents = types.SortedCidSet{}
+	testMinerAddress, err := address.NewFromString(th.TestMinerAddress)
+	if err != nil {
+		return nil
+	}
 	for _, blk := range blks {
 		(&parents).Add(blk.Cid())
 	}
 	return &types.Block{
+		Miner:             testMinerAddress,
 		Parents:           parents,
 		Height:            types.Uint64(height),
 		ParentWeightNum:   types.Uint64(weight),
