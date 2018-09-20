@@ -115,7 +115,7 @@ var paymentBrokerExports = exec.Exports{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
 	},
-	"update": &exec.FunctionSignature{
+	"redeem": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
 		Return: nil,
 	},
@@ -174,7 +174,7 @@ func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *t
 	return channelID, 0, nil
 }
 
-// Update is called by the target account to withdraw funds with authorization from the payer.
+// Redeem is called by the target account to withdraw funds with authorization from the payer.
 // This method is exactly like Close except it doesn't close the channel.
 // This is useful when you want to checkpoint the value in a payment, but continue to use the
 // channel afterwards. The amt represents the total funds authorized so far, so that subsequent
@@ -182,11 +182,11 @@ func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *t
 // amt taken so far. A series of channel transactions might look like this:
 //                                Payer: 2000, Target: 0, Channel: 0
 // payer createChannel(1000)   -> Payer: 1000, Target: 0, Channel: 1000
-// target Update(100)          -> Payer: 1000, Target: 100, Channel: 900
-// target Update(200)          -> Payer: 1000, Target: 200, Channel: 800
+// target Redeem(100)          -> Payer: 1000, Target: 100, Channel: 900
+// target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Update(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
+func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
 	data := createVoucherSignatureData(chid, amt)
 	if !types.VerifySignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
@@ -223,7 +223,7 @@ func (pb *Actor) Update(vmctx *vm.Context, payer address.Address, chid *types.Ch
 	if err != nil {
 		// ensure error is properly wrapped
 		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
-			return 1, errors.FaultErrorWrap(err, "Error updating payment channel")
+			return 1, errors.FaultErrorWrap(err, "Error redeeming payment channel")
 		}
 		return errors.CodeError(err), err
 	}

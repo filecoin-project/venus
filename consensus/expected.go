@@ -87,6 +87,7 @@ func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (Tip
 // previous block has been validated. TODO: not yet signature checking
 func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) error {
 	// TODO: validate signature on block
+	ctx = log.Start(ctx, "Expected.validateBlockStructure")
 	log.LogKV(ctx, "ValidateBlockStructure", b.Cid().String())
 	if b.StateRoot == nil {
 		return fmt.Errorf("block has nil StateRoot")
@@ -100,6 +101,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 // TODO: this implementation needs to handle precision of long chains correctly,
 // see issue #655.
 func (c *Expected) weight(ctx context.Context, ts TipSet, pSt state.Tree) (*big.Rat, error) {
+	ctx = log.Start(ctx, "Expected.weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(c.genesisCid) {
 		return big.NewRat(int64(0), int64(1)), nil

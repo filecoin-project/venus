@@ -102,7 +102,7 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 
 	sys := setup(t)
 
-	result, err := sys.ApplyUpdateMessage(sys.target, 100, 0)
+	result, err := sys.ApplyRedeemMessage(sys.target, 100, 0)
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
@@ -126,14 +126,14 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	sys := setup(t)
 
 	// update message from payer instead of target results in error
-	result, err := sys.ApplyUpdateMessage(sys.payer, 100, 1)
+	result, err := sys.ApplyRedeemMessage(sys.payer, 100, 1)
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
 
 	// invalid channel id results in revert error
 	sys.channelID = types.NewChannelID(39932)
-	result, err = sys.ApplyUpdateMessage(sys.target, 100, 0)
+	result, err = sys.ApplyRedeemMessage(sys.target, 100, 0)
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -148,7 +148,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	wrongTargetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 	sys.st.SetActor(sys.ctx, wrongTargetAddress, wrongTargetActor)
 
-	result, err := sys.ApplyUpdateMessage(wrongTargetAddress, 100, 0)
+	result, err := sys.ApplyRedeemMessage(wrongTargetAddress, 100, 0)
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -159,7 +159,7 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 	require := require.New(t)
 	sys := setup(t)
 
-	result, err := sys.ApplyUpdateMessage(sys.target, 1100, 0)
+	result, err := sys.ApplyRedeemMessage(sys.target, 1100, 0)
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -171,14 +171,14 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 	sys := setup(t)
 
 	// redeem some
-	result, err := sys.ApplyUpdateMessage(sys.target, 500, 0)
+	result, err := sys.ApplyRedeemMessage(sys.target, 500, 0)
 	require.NoError(result.ExecutionError)
 	require.NoError(err)
 
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// redeeming funds already redeemed is an error
-	result, err = sys.ApplyUpdateMessage(sys.target, 400, 1)
+	result, err = sys.ApplyRedeemMessage(sys.target, 400, 1)
 	require.NoError(err)
 
 	require.NotEqual(uint8(0), result.Receipt.ExitCode)
@@ -191,7 +191,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	sys := setup(t)
 
 	// set block height to Eol
-	result, err := sys.ApplyUpdateMessageWithBlockHeight(sys.target, 500, 0, 10)
+	result, err := sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 10)
 	require.NoError(err)
 
 	// expect an error
@@ -244,7 +244,7 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestPaymentBrokerUpdateInvalidSig(t *testing.T) {
+func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	require := require.New(t)
 	sys := setup(t)
 
@@ -256,7 +256,7 @@ func TestPaymentBrokerUpdateInvalidSig(t *testing.T) {
 	signature[1] = 1
 
 	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, ([]byte)(signature))
-	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "update", pdata)
+	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
 	require.NoError(err)
@@ -319,7 +319,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	assert.Equal(uint8(0), result.Receipt.ExitCode)
 
 	// try to request too high an amount after the eol for the original channel
-	result, err = sys.ApplyUpdateMessageWithBlockHeight(sys.target, 1100, 0, 12)
+	result, err = sys.ApplyRedeemMessageWithBlockHeight(sys.target, 1100, 0, 12)
 	require.NoError(result.ExecutionError)
 
 	// expect success
@@ -585,16 +585,16 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 	return consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
-func (sys *system) ApplyUpdateMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, nonce, "update", 0)
+	return sys.applySignatureMessage(target, amtInt, nonce, "redeem", 0)
 }
 
-func (sys *system) ApplyUpdateMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, nonce, "update", height)
+	return sys.applySignatureMessage(target, amtInt, nonce, "redeem", height)
 }
 
 func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
