@@ -11,6 +11,7 @@ by providing storage to clients.
 
 ## Table of Contents
 
+- [Installation](#installation)
 - [Development](#development)
   - [Install Go](#install-go)
   - [Clone](#clone)
@@ -19,6 +20,15 @@ by providing storage to clients.
   - [Testing](#testing)
   - [Supported Commands](#supported-commands)
 - [Contribute](#contribute)
+
+## Installation
+
+You can prebuilt download binaries for linux and macOS from CircleCI.
+
+- Go to [the project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master).
+- Click on the top most successfull build, making sure that you use either `build_linux` or `build_macos` depending on the OS you want.
+- Click on the `Artifacts` tab.
+- Click on `Container 0 > filecoin.tar.gz` to download the release.
 
 ## Development
 

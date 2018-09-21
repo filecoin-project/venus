@@ -3,3 +3,4 @@ go-filecoin
 *.coverprofile
 *.out
 *.so
+filecoin

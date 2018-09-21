@@ -20,7 +20,7 @@ import (
 // -lproofs                                     <- Tell the linker to search for libproofs.dylib or libproofs.a in
 //                                                 the library search path.
 //
-#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,${SRCDIR}/rust-proofs/target/release/ -lfilecoin_proofs -lsector_base
+#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/rust-proofs/target/release/ -lfilecoin_proofs -lsector_base
 #include "./rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
 #include "./rust-proofs/sector-base/libsector_base.h"
 */

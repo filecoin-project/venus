@@ -1,6 +1,65 @@
 version: 2
 jobs:
-  build:
+  build_macos:
+    macos:
+      xcode: "10.0.0"
+    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    steps:
+      - run:
+          name: Configure environment variables
+          command: |
+            echo 'export PATH="/usr/local/go/bin:${HOME}/.cargo/bin:${PATH}:${HOME}/go/bin"' >> $BASH_ENV
+            echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
+      - add_ssh_keys:
+          fingerprints:
+              - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - checkout
+      - run:
+          name: Update submodules
+          command: git submodule update --init
+      - run:
+          command: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
+      - restore_cache:
+          key: v3-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+
+      - run:
+          name: Install go
+          command: |
+            curl -O https://dl.google.com/go/go1.11.darwin-amd64.pkg && \
+            sudo installer -pkg go1.11.darwin-amd64.pkg -target /
+      - run: go version
+      - run:
+          name: Install Rust
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+      - run:
+          name: Install dependencies
+          command: go run ./build/*.go smartdeps
+      - save_cache:
+          key: v3-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          paths:
+            - "~/go/pkg"
+            - "~/go/src/gx"
+            - "~/go/src/github.com"
+            - "~/go/src/golang.org"
+            - "~/.rustup"
+            - "~/.cargo"
+      - run:
+          name: Build
+          command: go run ./build/*.go build
+
+      - run:
+          name: Test
+          command: go run ./build/*.go test -v
+
+      - run:
+          name: Create macos bundle
+          command: ./build-macos.sh && tar -zcvf filecoin.tar.gz filecoin
+      - store_artifacts:
+          path: "~/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
+          destination: filecoin.tar.gz
+
+  build_linux:
     docker:
       - image: circleci/golang:1.10
 
@@ -62,8 +121,23 @@ jobs:
       - run:
           name: Lint
           command: go run ./build/*.go lint
+
+      - run:
+          name: Create linux bundle
+          command: ./build-linux.sh && tar -zcvf filecoin.tar.gz filecoin
+      - store_artifacts:
+          path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
+          destination: filecoin.tar.gz
 experimental:
   notify:
     branches:
       only:
         - master
+
+
+workflows:
+  version: 2
+  build_all:
+    jobs:
+      - build_macos
+      - build_linux
