@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -214,8 +215,9 @@ func TestSectorBuilder(t *testing.T) {
 
 	metadataMustMatch(require, sb, sector, 1)
 
-	d := requireReadAll(require, sector)
-	assert.Equal(all, string(d))
+	// TODO: replace this with a SectorStore#ReadUnsealed call
+	//d := requireReadAll(require, sector)
+	//assert.Equal(all, string(d))
 	assert.Nil(sector.sealed)
 
 	text2 := "In gravida quis nisl sit amet interdum. Phasellus metus." // len(text2) = 56
@@ -223,8 +225,9 @@ func TestSectorBuilder(t *testing.T) {
 	assert.Equal(sector, sb.curUnsealedSector)
 	all += text2
 
-	d2 := requireReadAll(require, sector)
-	assert.Equal(all, string(d2))
+	// TODO: replace this with a SectorStore#ReadUnsealed call
+	//d2 := requireReadAll(require, sector)
+	//assert.Equal(all, string(d2))
 	assert.Nil(sector.sealed)
 
 	// persisted and calculated metadata match.
@@ -243,10 +246,12 @@ func TestSectorBuilder(t *testing.T) {
 	metadataMustMatch(require, sb, sector, 2)
 
 	newSector := sb.curUnsealedSector
-	d4 := requireReadAll(require, newSector)
+	// TODO: replace this with a SectorStore#ReadUnsealed call
+	//d4 := requireReadAll(require, newSector)
+	//assert.Equal(text3, d4)
+
 	metadataMustMatch(require, sb, newSector, 1)
 
-	assert.Equal(text3, d4)
 	sealed := sector.sealed
 	assert.NotNil(sealed)
 	assert.Nil(newSector.sealed)
@@ -306,8 +311,17 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		var sealingErr error
 		sealingWg.Add(1)
 
-		bytesA := make([]byte, 10+(testSectorSize/2))
-		bytesB := make([]byte, (testSectorSize/2)-10)
+		a := testSectorSize / 2
+		b := testSectorSize - a
+
+		bytesA := make([]byte, a)
+		bytesB := make([]byte, b)
+
+		_, err := io.ReadFull(rand.Reader, bytesA)
+		require.NoError(err)
+
+		_, err = io.ReadFull(rand.Reader, bytesB)
+		require.NoError(err)
 
 		sector := sb.curUnsealedSector
 
@@ -380,8 +394,11 @@ func TestSectorStore(t *testing.T) {
 		dirs, nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
 		defer dirs.remove()
 
-		bytesA := make([]byte, 10+(testSectorSize/2))
-		bytesB := make([]byte, (testSectorSize/2)-10)
+		a := testSectorSize / 2
+		b := testSectorSize - a
+
+		bytesA := make([]byte, a)
+		bytesB := make([]byte, b)
 
 		sector := sb.curUnsealedSector
 
@@ -421,8 +438,11 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	dirs, nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
 	defer dirs.remove()
 
-	bytesA := make([]byte, 10+(testSectorSize/2))
-	bytesB := make([]byte, (testSectorSize/2)-10)
+	a := testSectorSize / 2
+	b := testSectorSize - a
+
+	bytesA := make([]byte, a)
+	bytesB := make([]byte, b)
 
 	sector := sbA.curUnsealedSector
 
@@ -486,11 +506,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
 
-		infoA, err := os.Stat(metaA.UnsealedSectorAccess)
-		require.NoError(err)
-
 		// size of file on disk should match what we've persisted as metadata
-		require.Equal(int(metaA.NumBytesUsed-metaA.NumBytesFree), int(infoA.Size()))
+		resA, errA := sbA.sectorStore.GetNumBytesUnsealed(proofs.GetNumBytesUnsealedRequest{
+			SectorAccess: metaA.UnsealedSectorAccess,
+		})
+		require.NoError(errA)
+		require.Equal(int(metaA.NumBytesUsed-metaA.NumBytesFree), int(resA.NumBytes))
 
 		// perform an out-of-band write to the file (replaces its contents)
 		ioutil.WriteFile(metaA.UnsealedSectorAccess, make([]byte, 90), 0600)
@@ -502,12 +523,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		metaB, err := sbB.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
 
-		infoB, err := os.Stat(metaB.UnsealedSectorAccess)
-		require.NoError(err)
-
 		// ensure that the file was truncated to match metadata
-		require.Equal(int(metaB.NumBytesUsed-metaB.NumBytesFree), int(infoB.Size()))
-		require.Equal(int(infoA.Size()), int(infoB.Size()))
+		resB, errB := sbA.sectorStore.GetNumBytesUnsealed(proofs.GetNumBytesUnsealedRequest{
+			SectorAccess: metaB.UnsealedSectorAccess,
+		})
+		require.NoError(errB)
+		require.Equal(int(resA.NumBytes), int(resB.NumBytes))
 	})
 
 	t.Run("it truncates the metadata if file size < metadata size", func(t *testing.T) {
@@ -548,15 +569,17 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		metaB, err := sbA.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
 
-		infoB, err := os.Stat(metaB.UnsealedSectorAccess)
-		require.NoError(err)
+		resB, errB := sbA.sectorStore.GetNumBytesUnsealed(proofs.GetNumBytesUnsealedRequest{
+			SectorAccess: metaB.UnsealedSectorAccess,
+		})
+		require.NoError(errB)
 
 		// ensure metadata was truncated
 		require.Equal(2, len(metaB.Pieces))
 		require.Equal(30, int(metaB.NumBytesUsed-metaB.NumBytesFree))
 
 		// ensure that the file was truncated to match metadata
-		require.Equal(int(metaB.NumBytesUsed-metaB.NumBytesFree), int(infoB.Size()))
+		require.Equal(int(metaB.NumBytesUsed-metaB.NumBytesFree), int(resB.NumBytes))
 	})
 }
 
