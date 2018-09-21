@@ -58,6 +58,7 @@ func GetFakecoinBinary() (string, error) {
 var testRepoPath = filepath.FromSlash("/tmp/fakecoin/")
 
 func TestCommandsSucceed(t *testing.T) {
+	t.Skip("TODO: flaky test")
 	require := require.New(t)
 
 	os.RemoveAll(testRepoPath)       // go-filecoin init will fail if repo exists.
