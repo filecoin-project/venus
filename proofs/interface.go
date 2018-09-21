@@ -44,10 +44,31 @@ type VerifySealRequest struct {
 	Storage  SectorStore // used to manipulate sectors
 }
 
+// GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
+type GeneratePoSTRequest struct {
+	Storage       SectorStore
+	CommRs        [][32]byte
+	ChallengeSeed [32]byte
+}
+
+// VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
+type VerifyPoSTRequest struct {
+	Storage SectorStore
+	Proof   [192]byte
+}
+
+// GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
+type GeneratePoSTResponse struct {
+	Faults []uint64
+	Proof  [192]byte
+}
+
 // Prover provides an interface to the proving subsystem.
 type Prover interface {
+	GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error)
 	Seal(SealRequest) (SealResponse, error)
 	Unseal(UnsealRequest) (UnsealResponse, error)
+	VerifyPoST(VerifyPoSTRequest) error
 	VerifySeal(VerifySealRequest) error
 }
 

@@ -118,6 +118,63 @@ func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
 	}, nil
 }
 
+// GeneratePoST produces a proof-of-spacetime for the provided commitment replicas.
+func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
+	cptr := (*C.GeneratePoSTResult)(unsafe.Pointer(C.init_generate_post_result()))
+	defer C.destroy_generate_post_result(cptr)
+
+	// flattening the byte slice makes it easier to copy into the C heap
+	flattened := make([]byte, 32*len(req.CommRs))
+	for idx, commR := range req.CommRs {
+		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
+	}
+
+	// copy the Go byte slice into C memory
+	cflattened := C.CBytes(flattened)
+	defer C.free(cflattened)
+
+	code := C.generate_post(
+		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
+		(*C.uint8_t)(cflattened),
+		C.size_t(len(flattened)),
+		(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])),
+		cptr)
+	if code != 0 {
+		return GeneratePoSTResponse{}, errors.New(errorString(code))
+	}
+
+	// copy proof bytes back to Go from C
+	proofSlice := C.GoBytes(unsafe.Pointer(&cptr.proof[0]), 192)
+	var proof [192]byte
+	copy(proof[:], proofSlice)
+
+	// create a temporary Go slice backed by a C array
+	faults := (*[1 << 30]uint64)(unsafe.Pointer(cptr.faults_ptr))[:cptr.faults_len:cptr.faults_len]
+
+	res := GeneratePoSTResponse{
+		Proof:  proof,
+		Faults: make([]uint64, len(faults), len(faults)),
+	}
+
+	// copy the bytes from our C-backed byte slice into a Go slice so that we
+	// can free the C array
+	copy(res.Faults, faults)
+
+	return res, nil
+}
+
+// VerifyPoST verifies that a proof-of-spacetime is valid. If invalid, an error is returned.
+func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) error {
+	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
+
+	code := C.verify_post((*C.Box_SectorStore)(req.Storage.GetCPtr()), proofPtr)
+	if code != 0 {
+		return errors.New(errorString(code))
+	}
+
+	return nil
+}
+
 func errorString(code C.uint32_t) string {
 	status := C.status_to_string(code)
 	defer C.free(unsafe.Pointer(status))

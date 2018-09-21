@@ -1,7 +1,9 @@
 package proofs
 
 import (
+	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -132,4 +134,49 @@ func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 
 	// should have respected offset and number-of-bytes
 	require.Equal("risk", string(bytes))
+}
+
+func TestPoSTCycle(t *testing.T) {
+	require := require.New(t)
+
+	sealed, err := ioutil.TempDir("", "sealed")
+	require.NoError(err)
+
+	staging, err := ioutil.TempDir("", "staging")
+	require.NoError(err)
+
+	rp := &RustProver{}
+	sm := NewProofTestSectorStore(staging, sealed)
+
+	res, err := rp.GeneratePoST(GeneratePoSTRequest{
+		CommRs:        [][32]byte{createDummyCommR(), createDummyCommR()},
+		ChallengeSeed: [32]byte{},
+		Storage:       sm,
+	})
+	require.NoError(err)
+
+	// TODO: Replace these hard-coded values (in rust-proofs) with an
+	// end-to-end PoST test over a small number of replica commitments
+	require.Equal("00101010", fmt.Sprintf("%08b", res.Proof[0]))
+	require.Equal(1, len(res.Faults))
+	require.Equal(0, int(res.Faults[0]))
+
+	err = rp.VerifyPoST(VerifyPoSTRequest{
+		Proof:   res.Proof,
+		Storage: sm,
+	})
+	require.NoError(err)
+}
+
+func createDummyCommR() [32]byte {
+	slice := make([]byte, 32)
+
+	if _, err := io.ReadFull(rand.Reader, slice); err != nil {
+		panic(err)
+	}
+
+	var commR [32]byte
+	copy(commR[:], slice)
+
+	return commR
 }
