@@ -43,7 +43,7 @@ resource "aws_security_group" "node_exporter" {
 
 resource "aws_instance" "prometheus" {
   ami           = "${data.aws_ami.bionic.id}"
-  key_name      = "${aws_key_pair.c5-gmasgras.key_name}"
+  key_name      = "${aws_key_pair.filecoin.key_name}"
   user_data     = "${data.template_file.prometheus_user_data.rendered}"
   instance_type = "c5d.large"
 
@@ -64,13 +64,23 @@ resource "aws_instance" "prometheus" {
   }
 }
 
+resource "aws_route53_record" "prometheus" {
+  name    = "prometheus.${aws_route53_zone.kittyhawk.name}"
+  zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
+  type    = "A"
+  records = ["${aws_instance.prometheus.public_ip}"]
+  ttl     = "30"
+
+}
 
 data "template_file" "prometheus_user_data" {
   template = "${file("../../../scripts/prometheus_user_data.sh")}"
 
   vars {
+    cadvisor_install = "${data.template_file.cadvisor_install.rendered}"
     node_exporter_install = "${data.template_file.node_exporter_install.rendered}"
     docker_install = "${data.template_file.docker_install.rendered}"
+    alerts_slack_api_url = "${var.alerts_slack_api_url}"
   }
 }
 

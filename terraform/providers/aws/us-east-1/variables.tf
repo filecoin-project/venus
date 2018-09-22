@@ -58,3 +58,5 @@ data "aws_ami" "bionic" {
 
   owners = ["099720109477"]
 }
+
+variable "alerts_slack_api_url" {}

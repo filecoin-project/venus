@@ -14,6 +14,10 @@ resource "aws_ecr_repository" "prometheus" {
   name = "prometheus"
 }
 
+resource "aws_ecr_repository" "alertmanager" {
+  name = "alertmanager"
+}
+
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
 }
@@ -25,4 +29,7 @@ output "ecr-logstash-url" {
 }
 output "ecr-prometheus-url" {
   value = "${aws_ecr_repository.prometheus.repository_url}"
+}
+output "ecr-alertmanager-url" {
+  value = "${aws_ecr_repository.alertmanager.repository_url}"
 }
