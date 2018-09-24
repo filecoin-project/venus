@@ -57,6 +57,16 @@ type VerifyPoSTRequest struct {
 	Proof   [192]byte
 }
 
+// VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
+type VerifyPoSTResponse struct {
+	IsValid bool
+}
+
+// VerifySealResponse communicates the validity of a provided proof-of-replication.
+type VerifySealResponse struct {
+	IsValid bool
+}
+
 // GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoSTResponse struct {
 	Faults []uint64
@@ -68,8 +78,8 @@ type Prover interface {
 	GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error)
 	Seal(SealRequest) (SealResponse, error)
 	Unseal(UnsealRequest) (UnsealResponse, error)
-	VerifyPoST(VerifyPoSTRequest) error
-	VerifySeal(VerifySealRequest) error
+	VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error)
+	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
 }
 
 // SectorStore provides a mechanism for dispensing sector access

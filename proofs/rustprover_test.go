@@ -11,31 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStatusCodeToErrorStringMarshal(t *testing.T) {
-	require := require.New(t)
-
-	sealed, err := ioutil.TempDir("", "sealed")
-	require.NoError(err)
-
-	staging, err := ioutil.TempDir("", "staging")
-	require.NoError(err)
-
-	rp := &RustProver{}
-	sm := NewProofTestSectorStore(staging, sealed)
-
-	err = rp.VerifySeal(VerifySealRequest{
-		CommD:    [32]byte{},
-		CommR:    [32]byte{},
-		Proof:    [192]byte{},
-		ProverID: createProverID(),
-		SectorID: createSectorID(),
-		Storage:  sm,
-	})
-
-	expected := "unhandled verify_seal error"
-	require.Equal(expected, err.Error(), "received the wrong error")
-}
-
 func TestRustProverSealAndUnsealSymmetry(t *testing.T) {
 	require := require.New(t)
 
@@ -163,7 +138,7 @@ func TestRustProverFullCycle(t *testing.T) {
 
 		// STEP THREE: verify the returned proof and commitments
 
-		err = (&RustProver{}).VerifySeal(VerifySealRequest{
+		res, err := (&RustProver{}).VerifySeal(VerifySealRequest{
 			CommD:    resSeal.CommD,
 			CommR:    resSeal.CommR,
 			Proof:    resSeal.Proof,
@@ -172,6 +147,7 @@ func TestRustProverFullCycle(t *testing.T) {
 			Storage:  store,
 		})
 		require.NoError(err)
+		require.True(res.IsValid)
 
 		// STEP FOUR: unseal the sealed sector and verify that we recovered
 		// our piece's bytes
@@ -210,24 +186,25 @@ func TestPoSTCycle(t *testing.T) {
 	rp := &RustProver{}
 	sm := NewProofTestSectorStore(staging, sealed)
 
-	res, err := rp.GeneratePoST(GeneratePoSTRequest{
+	gres, gerr := rp.GeneratePoST(GeneratePoSTRequest{
 		CommRs:        [][32]byte{createDummyCommR(), createDummyCommR()},
 		ChallengeSeed: [32]byte{},
 		Storage:       sm,
 	})
-	require.NoError(err)
+	require.NoError(gerr)
 
 	// TODO: Replace these hard-coded values (in rust-proofs) with an
 	// end-to-end PoST test over a small number of replica commitments
-	require.Equal("00101010", fmt.Sprintf("%08b", res.Proof[0]))
-	require.Equal(1, len(res.Faults))
-	require.Equal(0, int(res.Faults[0]))
+	require.Equal("00101010", fmt.Sprintf("%08b", gres.Proof[0]))
+	require.Equal(1, len(gres.Faults))
+	require.Equal(0, int(gres.Faults[0]))
 
-	err = rp.VerifyPoST(VerifyPoSTRequest{
-		Proof:   res.Proof,
+	vres, verr := rp.VerifyPoST(VerifyPoSTRequest{
+		Proof:   gres.Proof,
 		Storage: sm,
 	})
-	require.NoError(err)
+	require.NoError(verr)
+	require.True(vres.IsValid)
 }
 
 func createProverID() [31]byte {
