@@ -40,7 +40,7 @@ func TestActorDaemon(t *testing.T) {
 		// The order of actors is consistent, but only within builds of genesis.car.
 		// We just want to make sure the views have something valid in them.
 		for _, av := range avs {
-			assert.Contains([]string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor"}, av.ActorType)
+			assert.Contains([]string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor", "MinerActor"}, av.ActorType)
 			if av.ActorType == "AccountActor" {
 				assert.Zero(len(av.Exports))
 			} else {

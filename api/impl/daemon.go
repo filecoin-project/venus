@@ -86,7 +86,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	switch {
 	case cfg.GenesisFile != "":
 		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-		genCid, err := loadGenesis(ctx, rep, cfg.GenesisFile)
+		genCid, err := LoadGenesis(rep, cfg.GenesisFile)
 		if err != nil {
 			return err
 		}
@@ -175,7 +175,8 @@ func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) erro
 	return nil
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, fname string) (*cid.Cid, error) {
+// LoadGenesis gets the genesis block from a filecoin repo and a car file
+func LoadGenesis(rep repo.Repo, fname string) (*cid.Cid, error) {
 	fi, err := os.Open(fname)
 	if err != nil {
 		return nil, err
