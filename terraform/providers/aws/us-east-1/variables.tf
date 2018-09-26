@@ -60,3 +60,5 @@ data "aws_ami" "bionic" {
 }
 
 variable "alerts_slack_api_url" {}
+variable "prometheus_httpasswd" {}
+variable "alertmanager_httpasswd" {}

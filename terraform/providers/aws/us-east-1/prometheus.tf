@@ -9,6 +9,22 @@ resource "aws_security_group" "prometheus" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # prometheus  
+  ingress {
+    protocol    = "tcp"
+    from_port   = 9090
+    to_port     = 9090
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # alertmanager  
+  ingress {
+    protocol    = "tcp"
+    from_port   = 80
+    to_port     = 80
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     protocol    = "-1"
     from_port   = 0
@@ -70,7 +86,13 @@ resource "aws_route53_record" "prometheus" {
   type    = "A"
   records = ["${aws_instance.prometheus.public_ip}"]
   ttl     = "30"
-
+}
+resource "aws_route53_record" "alertmanager" {
+  name    = "alertmanager.${aws_route53_zone.kittyhawk.name}"
+  zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
+  type    = "A"
+  records = ["${aws_instance.prometheus.public_ip}"]
+  ttl     = "30"
 }
 
 data "template_file" "prometheus_user_data" {
@@ -81,6 +103,8 @@ data "template_file" "prometheus_user_data" {
     node_exporter_install = "${data.template_file.node_exporter_install.rendered}"
     docker_install = "${data.template_file.docker_install.rendered}"
     alerts_slack_api_url = "${var.alerts_slack_api_url}"
+    prometheus_httpasswd = "${var.prometheus_httpasswd}"
+    alertmanager_httpasswd = "${var.alertmanager_httpasswd}"
   }
 }
 
