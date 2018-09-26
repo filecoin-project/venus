@@ -31,7 +31,7 @@ resource "aws_security_group" "filecoin" {
 module "filecoin-cluster" {
   source = "../../../modules/aws/ec2/"
 
-  instance_name = "filecoin-cluster"
+  instance_name = "cluster"
   public_key_name = "${aws_key_pair.filecoin.key_name}"
   vpc_id = "${module.vpc.vpc_id}"
   subnet_id = "${element(module.vpc.public_subnets, 0)}"
