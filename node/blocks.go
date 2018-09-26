@@ -98,12 +98,12 @@ func (node *Node) AddNewMessage(ctx context.Context, msg *types.SignedMessage) (
 	}()
 
 	if _, err := node.MsgPool.Add(msg); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add message to the message pool")
 	}
 
 	msgdata, err := msg.Marshal()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal message")
 	}
 
 	return node.PubSub.Publish(MessageTopic, msgdata)

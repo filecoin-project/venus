@@ -2,6 +2,7 @@ package commands
 
 import (
 	"io"
+	"strconv"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
@@ -32,7 +33,7 @@ var minerCreateCmd = &cmds.Command{
 message to be mined as this is required to return the address of the new miner.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "the size of the pledge for the miner"),
+		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in sector count) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "the amount of collateral to be sent"),
 	},
 	Options: []cmdkit.Option{
@@ -58,8 +59,8 @@ message to be mined as this is required to return the address of the new miner.`
 			}
 		}
 
-		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
-		if !ok {
+		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
+		if err != nil {
 			re.SetError(ErrInvalidPledge, cmdkit.ErrNormal)
 			return
 		}

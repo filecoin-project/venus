@@ -4,3 +4,5 @@ go-filecoin
 *.out
 *.so
 filecoin
+gengen/gengen
+gengen/gensetup

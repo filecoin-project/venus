@@ -5,15 +5,20 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageSend(t *testing.T) {
-	t.Skip("FIXME: uses mining once")
 	t.Parallel()
 
-	d := th.NewDaemon(t).Start()
+	d := th.NewDaemon(
+		t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+	).Start()
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("mining", "once")
@@ -22,30 +27,34 @@ func TestMessageSend(t *testing.T) {
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", th.TestAddress1,
+		"--from", fixtures.TestAddresses[0],
 		"--value=10", "xyz",
 	)
 
-	t.Log("[success] default from")
-	d.RunSuccess("message", "send", th.TestAddress1)
-
 	t.Log("[success] with from")
+	defaultaddr := d.GetDefaultAddress()
 	d.RunSuccess("message", "send",
-		"--from", th.TestAddress1, th.TestAddress2,
+		"--from", fixtures.TestAddresses[0], defaultaddr,
 	)
+
+	// t.Log("[success] default from")
+	// d.RunSuccess("message", "send", fixtures.TestAddresses[1])
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", th.TestAddress1,
-		"--value=10", th.TestAddress2,
+		"--from", fixtures.TestAddresses[0],
+		"--value=10", fixtures.TestAddresses[1],
 	)
 }
 
 func TestMessageWait(t *testing.T) {
-	t.Skip("FIXME: uses mining once")
 	t.Parallel()
 
-	d := th.NewDaemon(t).Start()
+	d := th.NewDaemon(
+		t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+	).Start()
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
@@ -53,9 +62,9 @@ func TestMessageWait(t *testing.T) {
 
 		msg := d.RunSuccess(
 			"message", "send",
-			"--from", th.TestAddress1,
+			"--from", fixtures.TestAddresses[0],
 			"--value=10",
-			th.TestAddress2,
+			fixtures.TestAddresses[1],
 		)
 
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")

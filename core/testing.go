@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"math/big"
 	"math/rand"
 	"testing"
 
@@ -34,10 +35,7 @@ func MkChild(blks []*types.Block, stateRoot *cid.Cid, nonce uint64) *types.Block
 	weight = uint64(len(blks))*10 + uint64(blks[0].ParentWeightNum)
 	height = uint64(blks[0].Height) + 1
 	parents = types.SortedCidSet{}
-	testMinerAddress, err := address.NewFromString(th.TestMinerAddress)
-	if err != nil {
-		return nil
-	}
+	testMinerAddress := address.NewForTestGetter()()
 	for _, blk := range blks {
 		(&parents).Add(blk.Cid())
 	}
@@ -181,10 +179,10 @@ func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
+func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
-	initializerData := miner.NewState(owner, key, pledge, pid, coll)
+	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
 	require.NoError(storage.Flush())
 	require.NoError(err)
@@ -398,26 +396,26 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 }
 
 // CreateMinerWithPower uses storage market functionality to mine the messages needed to create a miner, ask, bid, and deal, and then commit that deal to give the miner power.
-// If the power is nil, this method will just create the miner.
+// If the power is 0, this method will just create the miner.
 // The returned block and nonce should be used in subsequent calls to this method.
-func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress address.Address, power *types.BytesAmount) (address.Address, *types.Block, uint64, error) {
+func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress address.Address, power uint64) (address.Address, *types.Block, uint64, error) {
 	require := require.New(t)
 
-	pledge := power
-	if pledge == nil {
-		pledge = types.NewBytesAmount(10000)
-	}
-
 	// create miner
-	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, *pledge, RequireRandomPeerID(), types.NewZeroAttoFIL())
+	pledge := power
+	if power == uint64(0) {
+		pledge = uint64(10)
+	}
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), types.NewZeroAttoFIL())
 	require.NoError(err)
-	b := RequireMineOnce(ctx, t, cm, lastBlock, rewardAddress, mockSign(sn, msg))
+	b := RequireMineOnce(ctx, t, cm, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)})
 	nonce++
 
+	require.Equal(uint8(0), b.MessageReceipts[0].ExitCode)
 	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
 	require.NoError(err)
 
-	if power == nil {
+	if power == uint64(0) {
 		return minerAddr, b, nonce, nil
 	}
 
@@ -426,16 +424,25 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, cm *ChainManager, l
 	sectorID := uint64(0)
 
 	// commit sector (thus adding power to miner and recording in storage market.
-	msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, sectorID, []byte("commitment"), power)
-	require.NoError(err)
-	b = RequireMineOnce(ctx, t, cm, b, rewardAddress, mockSign(sn, msg))
-	nonce++
+	msgs := make([]*types.SignedMessage, power)
+	for i := 0; uint64(i) < power; i++ {
+		msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, sectorID, th.MakeCommitment(), th.MakeCommitment())
+		require.NoError(err)
+		msgs[i] = mockSign(sn, msg)
+		sectorID++
+		nonce++
+	}
+
+	b = RequireMineOnce(ctx, t, cm, b, rewardAddress, msgs)
+	for _, r := range b.MessageReceipts {
+		require.Equal(uint8(0), r.ExitCode)
+	}
 
 	return minerAddr, b, nonce, nil
 }
 
 // RequireMineOnce process one block and panic on error
-func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress address.Address, msg *types.SignedMessage) *types.Block {
+func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBlock *types.Block, rewardAddress address.Address, msgs []*types.SignedMessage) *types.Block {
 	require := require.New(t)
 
 	st, err := state.LoadStateTree(ctx, cm.cstore, lastBlock.StateRoot, builtin.Actors)
@@ -444,9 +451,8 @@ func RequireMineOnce(ctx context.Context, t *testing.T, cm *ChainManager, lastBl
 
 	b := MkChild([]*types.Block{lastBlock}, lastBlock.StateRoot, 0)
 	b.Miner = rewardAddress
-	if msg != nil {
-		b.Messages = append(b.Messages, msg)
-	}
+	b.Messages = append(b.Messages, msgs...)
+
 	results, err := cm.blockProcessor(ctx, b, st, vms)
 	require.NoError(err)
 	for _, r := range results {

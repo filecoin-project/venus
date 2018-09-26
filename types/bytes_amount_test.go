@@ -285,3 +285,24 @@ func TestBytesAmountIsZero(t *testing.T) {
 		assert.False(n.IsZero())
 	})
 }
+
+func TestBytesAmountMul(t *testing.T) {
+	a := NewBytesAmount(8)
+	b := NewBytesAmount(9)
+
+	assert := assert.New(t)
+
+	aStr := a.String()
+	bStr := b.String()
+	mul := a.Mul(b)
+
+	assert.Equal(mul, NewBytesAmount(8*9))
+
+	// Storage is not reused
+	assert.NotEqual(&a, &mul)
+	assert.NotEqual(&b, &mul)
+
+	// Values have not changed.
+	assert.Equal(aStr, a.String())
+	assert.Equal(bStr, b.String())
+}

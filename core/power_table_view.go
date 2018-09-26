@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
+	"math/big"
 
-	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
@@ -46,17 +46,21 @@ func (v *marketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 	if ec != 0 {
 		return 0, errors.Errorf("Non-zero return code from query message: %d", ec)
 	}
+	res := big.NewInt(0)
+	res.SetBytes(rets[0])
 
-	return leb128.ToUInt64(rets[0]), nil
+	return res.Uint64(), nil
 }
 
 // Miner returns the storage that this miner has committed as a uint64.
 // If the total storage value exceeds the max value of a uint64 this method
-// errors. TODO: uint64 has enough bits to express about 1 exabyte.  This
+// errors.
+// TODO: currently power is in sectors, figure out if & how it should be converted to bytes.
+// TODO: uint64 has enough bits to express about 1 exabyte.  This
 // should probably be increased for v1.
 func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getStorage", []byte{}, address.Address{}, nil)
+	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Address{}, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -64,8 +68,9 @@ func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 	if ec != 0 {
 		return 0, errors.Errorf("Non-zero return code from query message: %d", ec)
 	}
+	ret := big.NewInt(0).SetBytes(rets[0])
 
-	return leb128.ToUInt64(rets[0]), nil
+	return ret.Uint64(), nil
 }
 
 // HasPower returns true if the provided address belongs to a miner with power

@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
@@ -53,50 +54,59 @@ func TestWalletBalance(t *testing.T) {
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
-	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90)).Start()
+	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
+	defer d1.ShutdownSuccess()
+
+	d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 	defer d.ShutdownSuccess()
 
-	addr := d.GetDefaultAddress()
+	d1.ConnectSuccess(d)
+
+	addr := fixtures.TestAddresses[0]
+	minerAddr := fixtures.TestMiners[0]
 	minerPidForUpdate := core.RequireRandomPeerID()
 
-	minerAddr := d.CreateMinerAddr(addr)
-
 	// capture original, pre-update miner pid
-	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
 
 	// update the miner's peer ID
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
 		"--from", addr,
-		minerAddr.String(),
+		minerAddr,
 		minerPidForUpdate.Pretty(),
 	)
 
 	// ensure mining happens after update message gets included in mempool
-	d.RunSuccess("mpool --wait-for-count=1")
-	d.RunSuccess("mining once")
+	d1.MineAndPropagate(time.Second, d)
 
 	// wait for message to be included in a block
 	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
 
 	// use the address lookup command to ensure update happened
-	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
 	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(lookupOutA, lookupOutB)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
-	t.Skip("FIXME: this should use wallet import now instead of relying on initialization")
 	assert := assert.New(t)
 
-	d := th.NewDaemon(t, th.WalletFile("../testhelpers/testfiles/walletGenFile.toml"), th.WalletAddr("fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	// assert we loaded the test address from the file
+	for _, p := range fixtures.KeyFilePaths() {
+		d.RunSuccess("wallet", "import", p)
+	}
+
 	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
-	assert.Contains(dw, "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")
+
+	for _, addr := range fixtures.TestAddresses {
+		// assert we loaded the test address from the file
+		assert.Contains(dw, addr)
+	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").ReadStdoutTrimNewlines()
-	assert.Contains(wb, "10000000")
+	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
+	assert.Contains(wb, "10000")
 }

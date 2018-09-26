@@ -19,7 +19,7 @@ func newNodeMiner(api *nodeAPI) *nodeMiner {
 	return &nodeMiner{api: api}
 }
 
-func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
+func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -30,7 +30,7 @@ func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pled
 		pid = nd.Host.ID()
 	}
 
-	res, err := nd.CreateMiner(ctx, fromAddr, *pledge, pid, *collateral)
+	res, err := nd.CreateMiner(ctx, fromAddr, pledge, pid, collateral)
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}

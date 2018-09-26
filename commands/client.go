@@ -114,6 +114,7 @@ var clientProposeDealCmd = &cmds.Command{
 		// TODO: use UintOption once its fixed, ref go-ipfs-cmdkit#15
 		cmdkit.UintOption("ask", "ID of ask to propose a deal for"),
 		cmdkit.UintOption("bid", "ID of bid to propose a deal for"),
+		cmdkit.StringOption("from", "address to send from"),
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("data", true, false, "cid of data to be referenced in deal"),
@@ -131,6 +132,12 @@ var clientProposeDealCmd = &cmds.Command{
 			return
 		}
 
+		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
 		// ensure arg is a valid cid
 		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
@@ -138,7 +145,7 @@ var clientProposeDealCmd = &cmds.Command{
 			return
 		}
 
-		resp, err := GetAPI(env).Client().ProposeDeal(req.Context, askID, bidID, c)
+		resp, err := GetAPI(env).Client().ProposeDeal(req.Context, fromAddr, askID, bidID, c)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -150,6 +157,7 @@ var clientProposeDealCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.DealResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			fmt.Fprintf(w, "ID: %x\n", resp.ID)                 // nolint: errcheck
 			return nil
 		}),

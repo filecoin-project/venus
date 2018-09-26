@@ -28,26 +28,7 @@ func (api *nodeMessage) Send(ctx context.Context, from, to address.Address, val 
 		return nil, err
 	}
 
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, err
-	}
-
-	msg, err := node.NewMessageWithNextNonce(ctx, nd, from, to, val, method, encodedParams)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, nd.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	return smsg.Cid()
+	return nd.SendMessage(ctx, from, to, val, method, params...)
 }
 
 // Query requests information from an actor in the local state.

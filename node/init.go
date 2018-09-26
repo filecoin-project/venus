@@ -21,7 +21,8 @@ var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") //
 
 // InitCfg contains configuration for initializing a node
 type InitCfg struct {
-	PeerKey ci.PrivKey
+	PeerKey              ci.PrivKey
+	DefaultWalletAddress address.Address
 }
 
 // InitOpt is an init option function
@@ -32,6 +33,13 @@ type InitOpt func(*InitCfg)
 func PeerKeyOpt(k ci.PrivKey) InitOpt {
 	return func(c *InitCfg) {
 		c.PeerKey = k
+	}
+}
+
+// DefaultWalletAddressOpt returns a config option that sets the default wallet address to the given address.
+func DefaultWalletAddressOpt(addr address.Address) InitOpt {
+	return func(c *InitCfg) {
+		c.DefaultWalletAddress = addr
 	}
 }
 
@@ -56,35 +64,40 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc, opts ...In
 
 	if cfg.PeerKey == nil {
 		// TODO: make size configurable
-		sk, err := makePrivateKey(2048)
+		peerKey, err := makePrivateKey(2048)
 		if err != nil {
 			return errors.Wrap(err, "failed to create nodes private key")
 		}
 
-		cfg.PeerKey = sk
+		cfg.PeerKey = peerKey
 	}
 
 	if err := r.Keystore().Put("self", cfg.PeerKey); err != nil {
 		return errors.Wrap(err, "failed to store private key")
 	}
 
-	// TODO: do we want this?
-	// TODO: but behind a config option if this should be generated
-	if r.Config().Wallet.DefaultAddress == (address.Address{}) {
+	newConfig := r.Config()
+
+	if cfg.DefaultWalletAddress != (address.Address{}) {
+		newConfig.Wallet.DefaultAddress = cfg.DefaultWalletAddress
+	} else if r.Config().Wallet.DefaultAddress == (address.Address{}) {
+		// TODO: but behind a config option if this should be generated
 		addr, err := newAddress(r)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate default address")
 		}
 
-		newConfig := r.Config()
 		newConfig.Wallet.DefaultAddress = addr
-		if err := r.ReplaceConfig(newConfig); err != nil {
-			return errors.Wrap(err, "failed to update config")
-		}
 	}
+
+	if err := r.ReplaceConfig(newConfig); err != nil {
+		return errors.Wrap(err, "failed to update config with new values")
+	}
+
 	return nil
 }
 
+// makePrivateKey generates a new private key, which is the basis for a libp2p identity.
 // borrowed from go-ipfs: `repo/config/init.go`
 func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	if nbits < 1024 {
@@ -100,11 +113,18 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	return sk, nil
 }
 
+// newAddress creates a new private-public keypair in the default wallet
+// and returns the address for it.
 func newAddress(r repo.Repo) (address.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
-	return backend.NewAddress()
+	addr, err := backend.NewAddress()
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to create address")
+	}
+
+	return addr, err
 }

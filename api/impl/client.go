@@ -54,10 +54,9 @@ func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 	return uio.NewDagReader(ctx, data, ds)
 }
 
-func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
+func (api *nodeClient) ProposeDeal(ctx context.Context, fromAddr address.Address, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
 	nd := api.api.node
-	defaddr, err := nd.DefaultSenderAddress()
-	if err != nil {
+	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +66,7 @@ func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *ci
 		DataRef: c.String(),
 	}
 
-	propose, err := node.NewDealProposal(deal, nd.Wallet, defaddr)
+	propose, err := node.NewDealProposal(deal, nd.Wallet, fromAddr)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -15,11 +16,10 @@ func TestBlockDaemon(t *testing.T) {
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a Filecoin block", func(t *testing.T) {
 		require := require.New(t)
 
-		d := th.NewDaemon(t).Start()
+		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
 		defer d.ShutdownSuccess()
 
 		// mine a block and get its CID
-
 		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
 
 		// get the mined block by its CID

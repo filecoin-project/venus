@@ -241,8 +241,8 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	nodeAddr, err := nd.NewAddress()
 	assert.NoError(err)
 
-	tif := th.MakeGenesisFunc(
-		th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+	tif := core.MakeGenesisFunc(
+		core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 	)
 	nd.ChainMgr.Genesis(ctx, tif)
 	assert.NoError(err)
@@ -271,8 +271,8 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	sn := types.NewMockSigner(ki)
 	testAddress := sn.Addresses[0]
 
-	testGen := th.MakeGenesisFunc(
-		th.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
+	testGen := core.MakeGenesisFunc(
+		core.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 	require.NoError(cm.Genesis(ctx, testGen))
 
@@ -283,9 +283,9 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	nonce := uint64(0)
 	pid, err := testutil.RandPeerID()
 	require.NoError(err)
-	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, *types.NewBytesAmount(10000000), pid, types.NewZeroAttoFIL())
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, 10000, pid, types.NewZeroAttoFIL())
 	require.NoError(err)
-	b := core.RequireMineOnce(ctx, t, cm, genesisBlock, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	b := core.RequireMineOnce(ctx, t, cm, genesisBlock, sn.Addresses[0], core.MustSign(sn, msg))
 	nonce++
 
 	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
@@ -296,7 +296,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	bidSize := types.NewBytesAmount(10000)
 	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, bidPrice, bidSize)
 	require.NoError(err)
-	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg))
 	nonce++
 
 	bidID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
@@ -306,7 +306,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	askPrice := types.NewAttoFIL(big.NewInt(96))
 	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, askPrice, askSize)
 	require.NoError(err)
-	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg)[0])
+	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg))
 	nonce++
 
 	askID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()

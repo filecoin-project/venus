@@ -3,9 +3,11 @@ package node
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
 
+	crypto "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
 	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
@@ -24,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,15 +103,19 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) address.Address
 	return addr
 }
 
-// GiveMiner gives the specified miner to the node
-func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) address.Address {
+// GiveMiner gives the specified miner to the node. Returns the address and the owner addresss
+func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Address, address.Address) {
 	t.Helper()
 	cfg := nd.Repo.Config()
 	m := cs.info.Miners[which]
 
-	cfg.Mining.MinerAddresses = append(cfg.Mining.MinerAddresses, m.Address)
+	cfg.Mining.MinerAddress = m.Address
 	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
-	return m.Address
+
+	ownerAddr, err := cs.info.Keys[m.Owner].Address()
+	require.NoError(t, err)
+
+	return m.Address, ownerAddr
 }
 
 // Addr returns the address for the given key
@@ -173,6 +180,18 @@ func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool
 	return out
 }
 
+// MakeNodeUnstartedSeed creates a new node with seeded setup.
+func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) *Node {
+	seed := MakeChainSeed(t, TestGenCfg)
+	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
+	seed.GiveKey(t, node, "foo")
+	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
+	_, err := NewStorageMiner(context.Background(), node, minerAddr, minerOwnerAddr)
+	assert.NoError(t, err)
+
+	return node
+}
+
 func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif core.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
@@ -204,12 +223,13 @@ func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif core.Genesis
 		return nil
 	})
 
-	opts = append(opts, func(c *Config) error {
-		c.MockMineMode = mockMineMode
-		return nil
-	})
-
 	nd, err := New(context.Background(), opts...)
+
+	if mockMineMode {
+		// fake the power of our miner
+		nd.ChainMgr.PwrTableView = &core.TestView{}
+	}
+
 	require.NoError(t, err)
 	return nd
 }
@@ -237,7 +257,7 @@ type MustCreateMinerResult struct {
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge types.BytesAmount, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
+func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint64, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 
@@ -255,7 +275,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge types
 	require.NoError(err)
 
 	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, pledge, pid, collateral)
+		minerAddr, err := node.CreateMiner(ctx, from, pledge, pid, &collateral)
 		resultChan <- MustCreateMinerResult{MinerAddress: minerAddr, Err: err}
 		wg.Done()
 	}()
@@ -275,4 +295,43 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge types
 	require.NoError(err)
 
 	return resultChan
+}
+
+// PeerKeys are a list of keys for peers that can be used in testing.
+var PeerKeys = []crypto.PrivKey{
+	mustGenKey(101),
+}
+
+// TestGenCfg is a genesis configuration used for tests.
+var TestGenCfg = &gengen.GenesisCfg{
+	Keys: []string{"foo", "bar"},
+	Miners: []gengen.Miner{
+		{
+			Owner:  "foo",
+			Power:  100,
+			PeerID: mustPeerID(PeerKeys[0]).Pretty(),
+		},
+	},
+	PreAlloc: map[string]string{
+		"foo": "10000",
+		"bar": "10000",
+	},
+}
+
+func mustGenKey(seed int64) crypto.PrivKey {
+	r := rand.New(rand.NewSource(seed))
+	priv, _, err := crypto.GenerateEd25519Key(r)
+	if err != nil {
+		panic(err)
+	}
+
+	return priv
+}
+
+func mustPeerID(k crypto.PrivKey) peer.ID {
+	pid, err := peer.IDFromPrivateKey(k)
+	if err != nil {
+		panic(err)
+	}
+	return pid
 }

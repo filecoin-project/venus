@@ -171,7 +171,7 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []address.Address
 	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
 	act2 := core.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
 	fakeNetAct := core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
-	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, types.NewBytesAmount(10000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
 	minerOwner := core.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
 	_, st := core.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.

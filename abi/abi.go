@@ -157,6 +157,9 @@ func (av *Value) Serialize() ([]byte, error) {
 		if !ok {
 			return nil, &typeError{types.BlockHeight{}, av.Val}
 		}
+		if ba == nil {
+			return nil, nil
+		}
 		return ba.Bytes(), nil
 	case Integer:
 		intgr, ok := av.Val.(*big.Int)

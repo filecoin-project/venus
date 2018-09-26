@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -94,8 +93,7 @@ func TestSectorBuilderSimple(t *testing.T) {
 
 	d1Data := []byte("hello world")
 	d1 := &PieceInfo{
-		DealID: 5,
-		Size:   uint64(len(d1Data)),
+		Size: uint64(len(d1Data)),
 	}
 
 	if err := sb.WritePiece(ctx, sector, d1, bytes.NewReader(d1Data)); err != nil {
@@ -122,14 +120,14 @@ func nodeWithSectorBuilder(t *testing.T) (*tempSectorDirs, *Node, *SectorBuilder
 	defaultAddr, err := nd.DefaultSenderAddress()
 	require.NoError(err)
 
-	tif := th.MakeGenesisFunc(
-		th.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
-		th.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
+	tif := core.MakeGenesisFunc(
+		core.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
+		core.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
 	)
 	require.NoError(nd.ChainMgr.Genesis(ctx, tif))
 	require.NoError(nd.Start(ctx))
 
-	pledge := *types.NewBytesAmount(100000)
+	pledge := uint64(100)
 	coll := *types.NewAttoFILFromFIL(100)
 
 	result := <-RunCreateMiner(t, nd, owner, pledge, core.RequireRandomPeerID(), coll)
@@ -143,21 +141,18 @@ func nodeWithSectorBuilder(t *testing.T) (*tempSectorDirs, *Node, *SectorBuilder
 	res, err := sstore.GetMaxUnsealedBytesPerSector()
 	require.NoError(err)
 
-	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sstore)
+	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sstore, 0)
 	require.NoError(err)
 
 	return dirs, nd, sb, *result.MinerAddress, res.NumBytes
 }
 
-func requirePieceInfo(require *require.Assertions, nd *Node, bytes []byte) *PieceInfo {
+func requirePieceInfo(require *require.Assertions, nd *Node, sb *SectorBuilder, bytes []byte) *PieceInfo {
 	data := dag.NewRawNode(bytes)
-	err := nd.Blockservice.AddBlock(data)
+	info, err := sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
 	require.NoError(err)
-	return &PieceInfo{
-		Ref:    data.Cid(),
-		Size:   uint64(len(bytes)),
-		DealID: 0, // FIXME parameterize
-	}
+	require.NoError(nd.Blockservice.AddBlock(data))
+	return info
 }
 
 func TestSectorBuilder(t *testing.T) {
@@ -175,16 +170,17 @@ func TestSectorBuilder(t *testing.T) {
 
 	sector := sb.curUnsealedSector
 
-	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
 		if err != nil {
-			panic(err)
+			sealingErr = err
+			sealingWg.Done()
 		} else if ss != nil && ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 			sealingWg.Done()
 		}
 	}
 
 	requireAddPiece := func(s string) {
-		_, err := sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(s)))
+		_, err := sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, []byte(s)))
 		assert.NoError(err)
 	}
 
@@ -271,7 +267,10 @@ func TestSectorBuilder(t *testing.T) {
 	text4 := "Aliquam molestie porttitor massa at sodales. Vestibulum euismod elit et justo ultrices, ut feugiat justo sodales. Duis ut nullam."
 	require.True(len(text4) > int(testSectorSize))
 
-	_, err = sb.AddPiece(ctx, requirePieceInfo(require, nd, []byte(text4)))
+	bytes := []byte(text4)
+	data := dag.NewRawNode(bytes)
+	require.NoError(nd.Blockservice.AddBlock(data))
+	_, err = sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
 	assert.EqualError(err, ErrPieceTooLarge.Error())
 }
 
@@ -325,19 +324,19 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 		sector := sb.curUnsealedSector
 
-		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
 			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 				sealingErr = err
 				sealingWg.Done()
 			}
 		}
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
 		sectormeta, err := sb.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
 		require.NoError(err)
 		require.NotNil(sectormeta)
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesB))
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
@@ -373,7 +372,7 @@ func TestSectorStore(t *testing.T) {
 
 		bytesA := make([]byte, 10+(testSectorSize/2))
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
 
 		loaded, err := sb.metadataStore.getSector(sector.unsealedSectorAccess)
 		require.NoError(err)
@@ -402,15 +401,15 @@ func TestSectorStore(t *testing.T) {
 
 		sector := sb.curUnsealedSector
 
-		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
 			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 				sealingErr = err
 				sealingWg.Done()
 			}
 		}
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesB))
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
@@ -446,33 +445,33 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 
 	sector := sbA.curUnsealedSector
 
-	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, err error) {
+	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
 		if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
 			sealingErr = err
 			sealingWg.Done()
 		}
 	}
 
-	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesA))
+	sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, bytesA))
 
 	// sector builder B should have the same state as sector builder A
 	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
 
-	sbB, err := InitSectorBuilder(nd, minerAddr, sstore)
+	sbB, err := InitSectorBuilder(nd, minerAddr, sstore, 0)
 	require.NoError(err)
 
 	// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
 	sectorBuildersMustEqual(t, sbA, sbB)
 
 	// trigger sealing by adding a second piece
-	sbA.AddPiece(ctx, requirePieceInfo(require, nd, bytesB))
+	sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, bytesB))
 
 	// wait for sealing to complete
 	sealingWg.Wait()
 	require.NoError(sealingErr)
 
 	// sector builder C should have the same state as sector builder A
-	sbC, err := InitSectorBuilder(nd, minerAddr, sstore)
+	sbC, err := InitSectorBuilder(nd, minerAddr, sstore, 0)
 	require.NoError(err)
 
 	sectorBuildersMustEqual(t, sbA, sbC)
@@ -496,12 +495,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
 
-		sbA, err := InitSectorBuilder(nd, addr, sstore)
+		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 50)))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -517,7 +516,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ioutil.WriteFile(metaA.UnsealedSectorAccess, make([]byte, 90), 0600)
 
 		// initialize a new sector builder (simulates the node restarting)
-		sbB, err := InitSectorBuilder(nd, addr, sstore)
+		sbB, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbB.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
@@ -549,12 +548,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
 
 		// Wait a sec, theres no miner here... how can we init a sector builder?
-		sbA, err := InitSectorBuilder(nd, addr, sstore)
+		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, make([]byte, 50)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 50)))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -563,7 +562,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		require.NoError(os.Truncate(metaA.UnsealedSectorAccess, int64(40)))
 
 		// initialize final sector builder
-		sbB, err := InitSectorBuilder(nd, addr, sstore)
+		sbB, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbA.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
@@ -624,10 +623,6 @@ func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
 		t.Fatalf("p1.size(%d) != p2.size(%d)\n", p1.Size, p2.Size)
 	}
 
-	if p1.DealID != p2.DealID {
-		t.Fatalf("p1.DealID(%d) != p2.DealID(%d)\n", p1.DealID, p2.DealID)
-	}
-
 	if !p1.Ref.Equals(p2.Ref) {
 		t.Fatalf("p1.Ref(%s) != p2.Ref(%s)\n", p1.Ref.String(), p2.Ref.String())
 	}
@@ -680,9 +675,9 @@ func sectorsMustEqual(t *testing.T, s1 *UnsealedSector, s2 *UnsealedSector) {
 	}
 }
 
-//func requireReadAll(require *require.Assertions, sector *UnsealedSector) string {
-//	data, err := ioutil.ReadFile(sector.unsealedSectorAccess)
+// func requireReadAll(require *require.Assertions, sector *UnsealedSector) string {
+// 	data, err := ioutil.ReadFile(sector.unsealedSectorAccess)
 //	require.NoError(err)
 //
-//	return string(data)
-//}
+// 	return string(data)
+// }

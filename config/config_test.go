@@ -51,7 +51,7 @@ func TestWriteFile(t *testing.T) {
   address = "/ip4/0.0.0.0/tcp/6000"
 
 [mining]
-  minerAddresses = []
+  minerAddress = ""
 
 [wallet]
   defaultAddress = ""

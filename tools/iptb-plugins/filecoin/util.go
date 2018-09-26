@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	logging "github.com/ipfs/go-log"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"github.com/multiformats/go-multiaddr"
+	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
 var log = logging.Logger("util")

@@ -17,10 +17,8 @@ import (
 	uio "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs/io"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/binpack"
 )
 
@@ -58,9 +56,8 @@ type SectorDirs interface {
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
-	Ref    *cid.Cid `json:"ref"`
-	Size   uint64   `json:"size"`
-	DealID uint64   `json:"deal_id"`
+	Ref  *cid.Cid `json:"ref"`
+	Size uint64   `json:"size"` // TODO: use BytesAmount
 }
 
 // SectorBuilder manages packing deals into sectors
@@ -79,7 +76,7 @@ type SectorBuilder struct {
 
 	// OnCommitmentAddedToMempool is called when a sector has been sealed
 	// and its commitment added to the message pool.
-	OnCommitmentAddedToMempool func(*SealedSector, *cid.Cid, error)
+	OnCommitmentAddedToMempool func(*SealedSector, *cid.Cid, uint64, error)
 
 	// yada yada don't hold a reference to this here, just take what you need
 	nd *Node
@@ -135,6 +132,28 @@ type SealedSector struct {
 	unsealedSectorAccess string
 }
 
+// GetID returns the identity of the sector.
+func (s *SealedSector) GetID() uint64 {
+	return s.sectorID
+}
+
+// CommR returns the commR of this sector.
+func (s *SealedSector) CommR() [32]byte {
+	return s.commR
+}
+
+// NewPieceInfo constructs a piece info, ensuring all parameters are valid.
+func (sb *SectorBuilder) NewPieceInfo(ref *cid.Cid, size uint64) (*PieceInfo, error) {
+	if binpack.Space(size) > sb.BinSize() {
+		return nil, ErrPieceTooLarge
+	}
+
+	return &PieceInfo{
+		Ref:  ref,
+		Size: size,
+	}, nil
+}
+
 // GetNextSectorID atomically increments the SectorBuilder's sector ID nonce and returns the incremented value.
 func (sb *SectorBuilder) GetNextSectorID() uint64 {
 	sb.sectorIDNonceLk.Lock()
@@ -188,13 +207,13 @@ func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
 		sector := bin.(*UnsealedSector)
 		msgCid, err := sb.SealAndAddCommitmentToMempool(context.Background(), sector)
 		if err != nil {
-			sb.OnCommitmentAddedToMempool(nil, nil, errors.Wrap(err, "failed to seal and commit sector"))
+			sb.OnCommitmentAddedToMempool(nil, nil, sector.GetID(), errors.Wrap(err, "failed to seal and commit sector"))
 			return
 		}
 
 		// TODO: maybe send these values to a channel instead of calling the
 		// callback directly
-		sb.OnCommitmentAddedToMempool(sector.sealed, msgCid, nil)
+		sb.OnCommitmentAddedToMempool(sector.sealed, msgCid, sector.GetID(), nil)
 	}()
 }
 
@@ -254,16 +273,24 @@ func (sb *SectorBuilder) NewSealedSector(commR [32]byte, commD [32]byte, proof [
 	}
 
 	sb.sealedSectorsLk.Lock()
-	defer sb.sealedSectorsLk.Unlock()
 	sb.sealedSectors = append(sb.sealedSectors, ss)
+	sb.sealedSectorsLk.Unlock()
 
 	return ss
+}
+
+// SealedSectors returns a list of all currently sealed sectors.
+func (sb *SectorBuilder) SealedSectors() []*SealedSector {
+	sb.sealedSectorsLk.RLock()
+	defer sb.sealedSectorsLk.RUnlock()
+
+	return sb.sealedSectors
 }
 
 // InitSectorBuilder creates a new sector builder for the given miner. If a SectorBuilder had previously been created
 // for the given miner, we reconstruct it using metadata from the datastore so that the miner can resume its work where
 // it left off.
-func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.SectorStore) (*SectorBuilder, error) {
+func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.SectorStore, lastUsedSectorID uint64) (*SectorBuilder, error) {
 	mstore := &sectorMetadataStore{
 		store: nd.Repo.Datastore(),
 	}
@@ -280,6 +307,7 @@ func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.Sector
 		sectorSize:    res.NumBytes,
 		metadataStore: mstore,
 		sectorStore:   sstore,
+		sectorIDNonce: lastUsedSectorID,
 	}
 
 	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
@@ -290,17 +318,19 @@ func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.Sector
 		}
 
 		sb.curUnsealedSectorLk.RLock()
-		defer sb.curUnsealedSectorLk.RUnlock()
+		sectors := sb.curUnsealedSector
+		sb.curUnsealedSectorLk.RUnlock()
 
-		return sb, sb.checkpoint(sb.curUnsealedSector)
+		return sb, sb.checkpoint(sectors)
 	} else if strings.Contains(err.Error(), "not found") {
 		if err1 := configureFreshSectorBuilder(sb); err1 != nil {
 			return nil, err1
 		}
 		sb.curUnsealedSectorLk.RLock()
-		defer sb.curUnsealedSectorLk.RUnlock()
+		sectors := sb.curUnsealedSector
+		sb.curUnsealedSectorLk.RUnlock()
 
-		return sb, sb.checkpoint(sb.curUnsealedSector)
+		return sb, sb.checkpoint(sectors)
 	} else {
 		return nil, err
 	}
@@ -315,10 +345,6 @@ func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBu
 	if err := sb.SyncFile(sector); err != nil {
 		return errors.Wrapf(err, "failed to sync sector object with unsealed sector %s", sector.unsealedSectorAccess)
 	}
-
-	sb.sectorIDNonceLk.Lock()
-	sb.sectorIDNonce = metadata.SectorIDNonce
-	sb.sectorIDNonceLk.Unlock()
 
 	sb.curUnsealedSectorLk.Lock()
 	sb.curUnsealedSector = sector
@@ -356,9 +382,10 @@ func configureFreshSectorBuilder(sb *SectorBuilder) error {
 	return nil
 }
 
-func (sb *SectorBuilder) onCommitmentAddedToMempool(*SealedSector, *cid.Cid, error) {
-	// TODO: wait for commitSector message to be included in a block so that we
-	// can update sealed sector metadata with the miner-created SectorID
+func (sb *SectorBuilder) onCommitmentAddedToMempool(sector *SealedSector, msg *cid.Cid, sectorID uint64, err error) {
+	if sb.nd.StorageMiner != nil {
+		sb.nd.StorageMiner.OnCommitmentAddedToMempool(sector, msg, sectorID, err)
+	}
 }
 
 // AddPiece writes the given piece into an unsealed sector and returns the id of that unsealed sector.
@@ -383,14 +410,13 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID 
 		panic(err)
 	}
 
-	if err == nil {
-		sb.curUnsealedSectorLk.Lock()
-		sb.curUnsealedSector = bin.NextBin.(*UnsealedSector)
-		sb.curUnsealedSectorLk.Unlock()
+	if err != nil {
+		return 0, err
 	}
 
-	sb.curUnsealedSectorLk.RLock()
-	defer sb.curUnsealedSectorLk.RUnlock()
+	sb.curUnsealedSectorLk.Lock()
+	sb.curUnsealedSector = bin.NextBin.(*UnsealedSector)
+	sb.curUnsealedSectorLk.Unlock()
 
 	// checkpoint after we've added the piece and updated the sector builder's
 	// "current sector"
@@ -503,56 +529,12 @@ func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedS
 		log.FinishWithErr(ctx, err)
 	}()
 
-	// TODO: The sealed sector, due to padding in rust-proofs, may contain more
-	// bytes than we determine by summing the size of each piece. This argument
-	// does not exist in the spec, so perhaps it's not something we need to
-	// worry about right now.
-	numBytesInSealedSector := uint64(0)
-	for _, p := range ss.pieces {
-		numBytesInSealedSector += p.Size
-	}
-
-	// TODO: These arguments are divergent from the spec, but at least match up
-	// with the Actor#CommitSector signature.
-	args, err := abi.ToEncodedValues(
-		ss.sectorID,
-		ss.commR[:],
-		types.NewBytesAmount(numBytesInSealedSector),
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to ABI encode commitSector arguments")
-	}
-
-	res, exitCode, err := sb.nd.CallQueryMethod(ctx, sb.MinerAddr, "getOwner", nil, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get miner owner")
-	}
-
-	if exitCode != uint8(0) {
-		return nil, fmt.Errorf("failed to get miner owner, exitCode: %d", exitCode)
-	}
-
-	minerOwner, err := address.NewFromBytes(res[0])
-	if err != nil {
-		return nil, errors.Wrap(err, "received invalid mining owner")
-	}
-	msg := types.NewMessage(minerOwner, sb.MinerAddr, 0, nil, "commitSector", args)
-
-	smsg, err := types.NewSignedMessage(*msg, sb.nd.Wallet)
+	minerOwnerAddr, err := sb.nd.MiningOwnerAddress(ctx, sb.MinerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sb.nd.AddNewMessage(ctx, smsg); err != nil {
-		return nil, errors.Wrap(err, "pushing out commitSector message failed")
-	}
-
-	smsgCid, err := smsg.Cid()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get commitSector message CID")
-	}
-
-	return smsgCid, nil
+	return sb.nd.SendMessage(ctx, minerOwnerAddr, sb.MinerAddr, nil, "commitSector", ss.GetID(), ss.commR[:], ss.commD[:])
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage
@@ -582,8 +564,9 @@ func (sb *SectorBuilder) WritePiece(ctx context.Context, s *UnsealedSector, pi *
 		return errors.Wrapf(err, "failed to write bytes to unsealed sector %s", s.unsealedSectorAccess)
 	}
 
-	if res.NumBytesWritten != pi.Size {
-		err := fmt.Errorf("did not write all piece-bytes to file (pi.size=%d, wrote=%d)", pi.Size, n)
+	// NumBytesWritten can be larger, due to padding
+	if res.NumBytesWritten < pi.Size {
+		err := fmt.Errorf("did not write all piece-bytes to file (pi.size=%d, wrote=%d)", pi.Size, res.NumBytesWritten)
 
 		if err1 := sb.SyncFile(s); err1 != nil {
 			return NewErrCouldNotRevertUnsealedSector(err1, err)
@@ -636,6 +619,22 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *UnsealedSector, minerAddr 
 	}
 
 	return sb.NewSealedSector(res2.CommR, res2.CommD, res2.Proof, res1.SectorAccess, res1.SectorAccess, s), nil
+}
+
+// GeneratePoSt creates the required PoSt, given a list of sector ids and matching seeds.
+// It returns the Snark Proof for the PoSt, and a list of sectors that faulted, if there were any faults.
+func (sb *SectorBuilder) GeneratePoSt(commRs [][32]byte, seed [32]byte) ([192]byte, []uint64, error) {
+	req := proofs.GeneratePoSTRequest{
+		Storage:       sb.sectorStore,
+		CommRs:        commRs,
+		ChallengeSeed: seed,
+	}
+	res, err := (&proofs.RustProver{}).GeneratePoST(req)
+	if err != nil {
+		return [192]byte{}, nil, errors.Wrap(err, "failed to generate PoSt")
+	}
+
+	return res.Proof, res.Faults, nil
 }
 
 // proverID creates a prover id by padding an address hash to 31 bytes

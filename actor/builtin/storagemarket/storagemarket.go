@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MinimumPledge is the minimum amount of space a user can pledge.
-var MinimumPledge = types.NewBytesAmount(10000)
+// MinimumPledge is the minimum amount of sectors a user can pledge.
+var MinimumPledge = big.NewInt(10)
 
 const (
 	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
@@ -52,7 +52,7 @@ const (
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s bytes", MinimumPledge),
+	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
 	ErrUnknownMiner:         errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
 	ErrUnknownAsk:           errors.NewCodedRevertErrorf(ErrUnknownAsk, "ask id not found"),
 	ErrUnknownBid:           errors.NewCodedRevertErrorf(ErrUnknownBid, "bid id not found"),
@@ -82,7 +82,9 @@ type State struct {
 
 	Orderbook *Orderbook
 
-	TotalCommittedStorage *types.BytesAmount
+	// TotalCommitedStorage is the number of sectors that are currently committed
+	// in the whole network.
+	TotalCommittedStorage *big.Int
 }
 
 // NewActor returns a new storage market actor.
@@ -93,7 +95,8 @@ func NewActor() (*actor.Actor, error) {
 // InitializeState stores the actor's initial data structure.
 func (sma *Actor) InitializeState(storage exec.Storage, _ interface{}) error {
 	initStorage := &State{
-		Orderbook: &Orderbook{},
+		Orderbook:             &Orderbook{},
+		TotalCommittedStorage: big.NewInt(0),
 	}
 	stateBytes, err := cbor.DumpObject(initStorage)
 	if err != nil {
@@ -117,7 +120,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount, abi.Bytes, abi.PeerID},
+		Params: []abi.Type{abi.Integer, abi.Bytes, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &exec.FunctionSignature{
@@ -133,12 +136,12 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	"updatePower": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount},
+		Params: []abi.Type{abi.Integer},
 		Return: nil,
 	},
 	"getTotalStorage": &exec.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.BytesAmount},
+		Return: []abi.Type{abi.Integer},
 	},
 	"getAsk": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Integer},
@@ -158,12 +161,12 @@ var storageMarketExports = exec.Exports{
 	},
 }
 
-// CreateMiner creates a new miner with the a pledge of the given size. The
+// CreateMiner creates a new miner with the a pledge of the given amount of sectors. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
+func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		if pledge.LessThan(MinimumPledge) {
+		if pledge.Cmp(MinimumPledge) < 0 {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, Errors[ErrPledgeTooLow]
 		}
@@ -312,8 +315,8 @@ func SignDeal(deal *Deal, signer types.Signer, addr address.Address) (types.Sign
 
 // UpdatePower is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
-// (via slashing or willful removal)
-func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
+// (via slashing or willful removal). The delta is in number of sectors.
+func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, error) {
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		miner := vmctx.Message().From
@@ -332,7 +335,8 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (u
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with address: %s", miner)
 		}
 
-		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(delta)
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(state.TotalCommittedStorage, delta)
+
 		return nil, nil
 	})
 	if err != nil {
@@ -343,7 +347,7 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (u
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error) {
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		return state.TotalCommittedStorage, nil
@@ -352,7 +356,7 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uin
 		return nil, errors.CodeError(err), err
 	}
 
-	count, ok := ret.(*types.BytesAmount)
+	count, ok := ret.(*big.Int)
 	if !ok {
 		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
 	}

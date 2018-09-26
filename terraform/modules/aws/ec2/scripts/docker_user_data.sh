@@ -142,7 +142,7 @@ do
   miner=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[$${i}].Address")
   echo "Adding miner $${miner} to filecoin_$$i"
   docker exec "filecoin_$$i" $$filcoin_exec \
-         config mining.minerAddresses [$${miner}]
+         config mining.minerAddress $${miner}
 done
 
 # next we need to import the coresponding keys used to generate the minerAddress, do this like:

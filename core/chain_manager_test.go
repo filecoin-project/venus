@@ -12,7 +12,6 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -485,15 +484,15 @@ func TestTipSetWeightDeep(t *testing.T) {
 	testAddress := mockSigner.Addresses[0]
 
 	// pwr1, pwr2 = 1/100. pwr3 = 98/100.
-	pwr1, pwr2, pwr3 := types.NewBytesAmount(10000), types.NewBytesAmount(10000), types.NewBytesAmount(980000)
-	testGen := th.MakeGenesisFunc(
-		th.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
+	pwr1, pwr2, pwr3 := uint64(10), uint64(10), uint64(980)
+	testGen := MakeGenesisFunc(
+		ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 	require.NoError(stm.Genesis(ctx, testGen))
 
 	genesisBlock, err := stm.FetchBlock(ctx, stm.genesisCid)
 	require.NoError(err)
-	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, stm, genesisBlock, mockSigner, 0, mockSigner.Addresses[0], nil)
+	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, stm, genesisBlock, mockSigner, 0, mockSigner.Addresses[0], uint64(0))
 	require.NoError(err)
 	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, stm, block, mockSigner, nonce, addr0, pwr1)
 	require.NoError(err)

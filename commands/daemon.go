@@ -33,7 +33,6 @@ var daemonCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(SwarmListen),
 		cmdkit.BoolOption(OfflineMode),
-		cmdkit.BoolOption(MockMineMode),
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
 	},
@@ -76,10 +75,6 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 
 	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
 		opts = append(opts, node.OfflineMode(offlineMode))
-	}
-
-	if mockMineMode, ok := req.Options[MockMineMode].(bool); ok {
-		opts = append(opts, node.MockMineMode(mockMineMode))
 	}
 
 	durStr, ok := req.Options[BlockTime].(string)

@@ -196,8 +196,6 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 		Faults: make([]uint64, faultsLen, faultsLen),
 	}
 
-	// copy the bytes from our C-backed byte slice into a Go slice so that we
-	// can free the C array
 	copy(res.Faults, faults)
 
 	return res, nil
@@ -207,8 +205,10 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
 
+	var fake *C.Box_SectorStore
+
 	// a mutable pointer to a VerifyPoSTResponse C-struct
-	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post((*C.Box_SectorStore)(req.Storage.GetCPtr()), proofPtr)))
+	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(fake, proofPtr)))
 	defer C.destroy_verify_post_response(resPtr)
 
 	if resPtr.status_code != 0 {

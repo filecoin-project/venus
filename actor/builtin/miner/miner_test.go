@@ -16,13 +16,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+
 	"github.com/stretchr/testify/require"
 )
 
 func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
-	pdata := actor.MustConvertParams(types.NewBytesAmount(10000), key, pid)
+	pdata := actor.MustConvertParams(big.NewInt(100), key, pid)
 	nonce := core.MustGetNonce(st, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
 
@@ -97,7 +99,7 @@ func TestAddAsk(t *testing.T) {
 	assert.Equal(types.NewBytesAmount(350), minerStorage2.LockedStorage)
 
 	// now try to create an ask larger than our pledge
-	pdata = actor.MustConvertParams(big.NewInt(55), types.NewBytesAmount(9900))
+	pdata = actor.MustConvertParams(types.NewAttoFIL(big.NewInt(55000)), types.NewBytesAmount(9900000))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 5, nil, "addAsk", pdata)
 
 	result, err = core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
@@ -124,9 +126,12 @@ func TestGetKey(t *testing.T) {
 
 func TestCBOREncodeState(t *testing.T) {
 	assert := assert.New(t)
-	state := NewState(address.TestAddress, []byte{}, types.NewBytesAmount(1), core.RequireRandomPeerID(), types.NewZeroAttoFIL())
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), core.RequireRandomPeerID(), types.NewZeroAttoFIL())
 
-	state.Sectors["foo"] = types.NewBytesAmount(4454)
+	state.Sectors["1"] = &Commitments{
+		CommR: [32]byte{},
+		CommD: [32]byte{},
+	}
 
 	_, err := actor.MarshalStorage(state)
 	assert.NoError(err)
@@ -210,4 +215,81 @@ func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.S
 	require.NoError(t, err)
 
 	return pid
+}
+
+func TestMinerCommitSector(t *testing.T) {
+	require := require.New(t)
+	ctx := context.Background()
+	st, vms := core.CreateStorages(ctx, t)
+
+	origPid := core.RequireRandomPeerID()
+	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
+
+	commR := th.MakeCommitment()
+	commD := th.MakeCommitment()
+
+	res, err := applyMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), commR, commD)
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	require.Equal(uint8(0), res.Receipt.ExitCode)
+
+	// check that the proving period matches
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart")
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	// blockheight was 3
+	require.Equal(types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
+
+	// fail because commR already exists
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(1), commR, commD)
+	require.NoError(err)
+	require.EqualError(res.ExecutionError, "sector already committed")
+	require.Equal(uint8(0x23), res.Receipt.ExitCode)
+}
+
+func TestMinerSubmitPoSt(t *testing.T) {
+	require := require.New(t)
+	ctx := context.Background()
+	st, vms := core.CreateStorages(ctx, t)
+
+	origPid := core.RequireRandomPeerID()
+	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
+
+	// add a sector
+	res, err := applyMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), th.MakeCommitment(), th.MakeCommitment())
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	require.Equal(uint8(0), res.Receipt.ExitCode)
+
+	// add another sector
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(2), th.MakeCommitment(), th.MakeCommitment())
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	require.Equal(uint8(0), res.Receipt.ExitCode)
+
+	// submit post
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", th.MakeProof())
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	require.Equal(uint8(0), res.Receipt.ExitCode)
+
+	// check that the proving period is now the next one
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart")
+	require.NoError(err)
+	require.NoError(res.ExecutionError)
+	require.Equal(types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
+
+	// fail to submit inside the proving period
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", th.MakeProof())
+	require.NoError(err)
+	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
+}
+
+func applyMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, params ...interface{}) (*core.ApplicationResult, error) {
+	t.Helper()
+
+	pdata := actor.MustConvertParams(params...)
+	nonce := core.MustGetNonce(st, address.TestAddress)
+	msg := types.NewMessage(address.TestAddress, to, nonce, types.NewAttoFILFromFIL(val), method, pdata)
+	return core.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(bh))
 }

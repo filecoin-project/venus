@@ -10,13 +10,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func writeKey(ki *types.KeyInfo, name string) error {
+func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
 	addr, err := ki.Address()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())                                                          // nolint: errcheck
-	fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
+	if !jsonout {
+		fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())                                                          // nolint: errcheck
+		fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck
+	}
 	fi, err := os.Create(name + ".key")
 	if err != nil {
 		return err
@@ -55,6 +57,7 @@ $ go-filecoin init --genesisfile=genesis.car
 */
 func main() {
 	jsonout := flag.Bool("json", false, "sets output to be json")
+	keypath := flag.String("keypath", ".", "sets location to write key files to")
 	flag.Parse()
 
 	var cfg gengen.GenesisCfg
@@ -65,6 +68,13 @@ func main() {
 	info, err := gengen.GenGenesisCar(&cfg, os.Stdout)
 	if err != nil {
 		panic(err)
+	}
+
+	for name, k := range info.Keys {
+		n := fmt.Sprintf("%s/%s", *keypath, name)
+		if err := writeKey(k, n, *jsonout); err != nil {
+			panic(err)
+		}
 	}
 
 	if *jsonout {
@@ -81,11 +91,5 @@ func main() {
 
 	for _, m := range info.Miners {
 		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", m.Address, m.Owner, m.Power) // nolint: errcheck
-	}
-
-	for name, k := range info.Keys {
-		if err := writeKey(k, name); err != nil {
-			panic(err)
-		}
 	}
 }

@@ -4,6 +4,7 @@ jobs:
     macos:
       xcode: "10.0.0"
     working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    resource_class: large
     steps:
       - run:
           name: Configure environment variables
@@ -20,7 +21,7 @@ jobs:
       - run:
           command: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
       - restore_cache:
-          key: v3-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          key: v4-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
       - run:
           name: Install go
@@ -36,7 +37,7 @@ jobs:
           name: Install dependencies
           command: go run ./build/*.go smartdeps
       - save_cache:
-          key: v3-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          key: v4-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
             - "~/go/pkg"
             - "~/go/src/gx"
@@ -50,7 +51,7 @@ jobs:
 
       - run:
           name: Test
-          command: go run ./build/*.go test -v
+          command: go run ./build/*.go test
 
       - run:
           name: Create macos bundle
@@ -64,6 +65,7 @@ jobs:
       - image: circleci/golang:1.10
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
+    resource_class: xlarge
     steps:
       - run:
           name: Configure environment variables
@@ -84,7 +86,7 @@ jobs:
       - run: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
 
       - restore_cache:
-          key: v3-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -101,7 +103,7 @@ jobs:
           command: go run ./build/*.go smartdeps
 
       - save_cache:
-          key: v3-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -116,7 +118,7 @@ jobs:
       - run:
           name: Test
           command: |
-            go run ./build/*.go test -v -covermode=atomic -coverprofile=coverage.txt &&
+            go run ./build/*.go test -covermode=atomic -coverprofile=coverage.txt &&
             bash <(curl -s https://codecov.io/bash)
       - run:
           name: Lint

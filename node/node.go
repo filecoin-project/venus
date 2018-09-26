@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWw71Mz9PXKgYG8ZfTYN7Ax2Zm48Eurbne3wC2y7CKmLz/go-ipfs-exchange-interface"
 	nonerouting "gx/ipfs/QmYYXrfYh14XcN5jhmK31HhdAG85HjHAg5czk3Eb9cGML4/go-ipfs-routing/none"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -98,8 +100,8 @@ type Node struct {
 	// it contains all persistent artifacts of the filecoin node
 	Repo repo.Repo
 
-	// SectorBuilders are used by the miners to fill and seal sectors
-	SectorBuilders map[address.Address]*SectorBuilder
+	// SectorBuilder is used by the miner to fill and seal sectors.
+	SectorBuilder *SectorBuilder
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -121,19 +123,14 @@ type Node struct {
 
 	// OfflineMode, when true, disables libp2p
 	OfflineMode bool
-
-	// mockMineMode, when true mocks mining and validation logic for tests.
-	// TODO: this is a TEMPORARY workaround
-	mockMineMode bool
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts   []libp2p.Option
-	Repo         repo.Repo
-	OfflineMode  bool
-	MockMineMode bool // TODO: this is a TEMPORARY workaround
-	BlockTime    time.Duration
+	Libp2pOpts  []libp2p.Option
+	Repo        repo.Repo
+	OfflineMode bool
+	BlockTime   time.Duration
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -151,14 +148,6 @@ func OfflineMode(offlineMode bool) ConfigOpt {
 func BlockTime(blockTime time.Duration) ConfigOpt {
 	return func(c *Config) error {
 		c.BlockTime = blockTime
-		return nil
-	}
-}
-
-// MockMineMode enables or disable mocked mining.
-func MockMineMode(mockMineMode bool) ConfigOpt {
-	return func(c *Config) error {
-		c.MockMineMode = mockMineMode
 		return nil
 	}
 }
@@ -222,9 +211,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	cst := &hamt.CborIpldStore{Blocks: bserv}
 
 	chainMgr := core.NewChainManager(nc.Repo.Datastore(), bs, cst)
-	if nc.MockMineMode {
-		chainMgr.PwrTableView = &core.TestView{}
-	}
 
 	msgPool := core.NewMessagePool()
 
@@ -240,21 +226,19 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	nd := &Node{
-		Blockservice:   bserv,
-		Blockstore:     bs,
-		CborStore:      cst,
-		ChainMgr:       chainMgr,
-		Exchange:       bswap,
-		Host:           host,
-		MsgPool:        msgPool,
-		OfflineMode:    nc.OfflineMode,
-		Ping:           pinger,
-		PubSub:         fsub,
-		Repo:           nc.Repo,
-		SectorBuilders: make(map[address.Address]*SectorBuilder),
-		Wallet:         fcWallet,
-		mockMineMode:   nc.MockMineMode,
-		blockTime:      nc.BlockTime,
+		Blockservice: bserv,
+		Blockstore:   bs,
+		CborStore:    cst,
+		ChainMgr:     chainMgr,
+		Exchange:     bswap,
+		Host:         host,
+		MsgPool:      msgPool,
+		OfflineMode:  nc.OfflineMode,
+		Ping:         pinger,
+		PubSub:       fsub,
+		Repo:         nc.Repo,
+		Wallet:       fcWallet,
+		blockTime:    nc.BlockTime,
 	}
 
 	// Bootstrapping network peers.
@@ -282,7 +266,6 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.StorageClient = NewStorageClient(node)
 	node.StorageBroker = NewStorageBroker(node)
-	node.StorageMiner = NewStorageMiner(node)
 	node.StorageMinerClient = NewStorageMinerClient(node)
 
 	// subscribe to block notifications
@@ -389,6 +372,10 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head core.TipSet)
 				}
 			}()
 		}
+
+		if node.StorageMiner != nil {
+			node.StorageMiner.OnNewHeaviestTipSet(newHead)
+		}
 		node.HeaviestTipSetHandled()
 	}
 	currentBestCancel() // keep the linter happy
@@ -451,18 +438,12 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 // MiningAddress returns the address of the mining actor mining on behalf of
 // the node.
 func (node *Node) MiningAddress() (address.Address, error) {
-	// TODO: this is a temporary workaround to permit nodes to mine without setup.
-	if node.mockMineMode {
-		return node.DefaultSenderAddress()
-	}
-	r := node.Repo
-	newConfig := r.Config()
-	if len(newConfig.Mining.MinerAddresses) == 0 {
+	addr := node.Repo.Config().Mining.MinerAddress
+	if addr == (address.Address{}) {
 		return address.Address{}, ErrNoMinerAddress
 	}
-	// TODO: mining start should include a flag to specify a specific
-	// mining addr.  For now default to the first created.
-	return newConfig.Mining.MinerAddresses[0], nil
+
+	return addr, nil
 }
 
 // MiningTimes returns the configured time it takes to mine a block, and also
@@ -475,7 +456,7 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
-// a SectorBuilder for each mining address.
+// the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
 	miningAddress, err := node.MiningAddress()
 	if err != nil {
@@ -498,7 +479,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		go node.handleNewMiningOutput(outCh)
 	}
 
-	if err := node.initSectorBuilder(miningAddress); err != nil {
+	if err := node.initSectorBuilder(ctx, miningAddress); err != nil {
 		return errors.Wrap(err, "failed to initialize sector builder")
 	}
 
@@ -517,17 +498,58 @@ func (node *Node) StartMining(ctx context.Context) error {
 	return nil
 }
 
-func (node *Node) initSectorBuilder(minerAddr address.Address) error {
+func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
+	rets, retCode, err := node.CallQueryMethod(ctx, minerAddr, "getLastUsedSectorID", []byte{}, nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
+	}
+	if retCode != 0 {
+		return 0, errors.New("non-zero status code returned by getLastUsedSectorID")
+	}
+
+	methodSignature, err := node.GetSignature(ctx, minerAddr, "getLastUsedSectorID")
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to get method signature for getLastUsedSectorID")
+	}
+
+	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to convert returned ABI value")
+	}
+	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
+	if !ok {
+		return 0, errors.New("failed to convert returned ABI value to uint64")
+	}
+
+	return lastUsedSectorID, nil
+}
+
+func (node *Node) initSectorBuilder(ctx context.Context, minerAddr address.Address) error {
 	dirs := node.Repo.(SectorDirs)
 
 	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
 
-	sb, err := InitSectorBuilder(node, minerAddr, sstore)
+	lastUsedSectorID, err := node.getLastUsedSectorID(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
+	}
+
+	sb, err := InitSectorBuilder(node, minerAddr, sstore, lastUsedSectorID)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}
 
-	node.SectorBuilders[minerAddr] = sb
+	node.SectorBuilder = sb
+
+	miningOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		log.Warningf("no mining owner available, skipping storage miner setup: %s", err)
+	} else {
+		node.StorageMiner, err = NewStorageMiner(ctx, node, minerAddr, miningOwnerAddr)
+		if err != nil {
+			return errors.Wrap(err, "failed to instantiate storage miner")
+		}
+	}
 
 	return nil
 }
@@ -635,6 +657,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve state")
 	}
+
 	h, err := bts.Height()
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "getting base tipset height")
@@ -654,9 +677,14 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.
-// It will wait for the the actor to appear on-chain and add its address to mining.minerAddresses in the config.
+// It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, pledge types.BytesAmount, pid libp2ppeer.ID, collateral types.AttoFIL) (_ *address.Address, err error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+	// Only create a miner if we don't already have one.
+	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
+		return nil, fmt.Errorf("Can only have on miner per node")
+	}
+
 	ctx = log.Start(ctx, "Node.CreateMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
@@ -675,12 +703,12 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	if err != nil {
 		return nil, err
 	}
-	params, err := abi.ToEncodedValues(&pledge, pubkey, pid)
+	params, err := abi.ToEncodedValues(big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
 
-	msg, err := NewMessageWithNextNonce(ctx, node, accountAddr, address.StorageMarketAddress, &collateral, "createMiner", params)
+	msg, err := NewMessageWithNextNonce(ctx, node, accountAddr, address.StorageMarketAddress, collateral, "createMiner", params)
 	if err != nil {
 		return nil, err
 	}
@@ -713,17 +741,13 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	}
 
 	err = node.saveMinerAddressToConfig(minerAddress)
-
-	// TODO: if the node is mining, should we now create a sector builder
-	// for this miner?
-
 	return &minerAddress, err
 }
 
 func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
-	newConfig.Mining.MinerAddresses = append(newConfig.Mining.MinerAddresses, addr)
+	newConfig.Mining.MinerAddress = addr
 
 	return r.ReplaceConfig(newConfig)
 }
@@ -760,4 +784,52 @@ func (node *Node) defaultWalletAddress() (address.Address, error) {
 		return address.Address{}, err
 	}
 	return addr.(address.Address), nil
+}
+
+// SendMessage is a convinent helper around adding a new message to the message pool.
+func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid params")
+	}
+
+	msg, err := NewMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid message")
+	}
+
+	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign message")
+	}
+
+	if err := node.AddNewMessage(ctx, smsg); err != nil {
+		return nil, errors.Wrap(err, "failed to submit message")
+	}
+
+	return smsg.Cid()
+}
+
+// MiningOwnerAddress returns the owner of the passed in mining address.
+// TODO: find a better home for this method
+func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
+	res, code, err := node.CallQueryMethod(ctx, miningAddr, "getOwner", nil, nil)
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to getOwner")
+	}
+	if code != 0 {
+		return address.Address{}, fmt.Errorf("failed to getOwner from the miner: exitCode = %d", code)
+	}
+
+	return address.NewFromBytes(res[0])
+}
+
+// BlockHeight returns the current block height of the chain.
+func (node *Node) BlockHeight() (*types.BlockHeight, error) {
+	bts := node.ChainMgr.GetHeaviestTipSet()
+	height, err := bts.Height()
+	if err != nil {
+		return nil, err
+	}
+	return types.NewBlockHeight(height), nil
 }

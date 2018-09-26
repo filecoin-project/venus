@@ -106,7 +106,7 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sign data")
+		return nil, errors.Wrapf(err, "failed to sign data with address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
 }

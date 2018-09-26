@@ -17,7 +17,7 @@ import (
 type Client interface {
 	AddBid(ctx context.Context, fromAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error)
 	Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error)
-	ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error)
+	ProposeDeal(ctx context.Context, fromAddr address.Address, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error)
 	QueryDeal(ctx context.Context, idSlice []byte) (*node.DealResponse, error)
 	ImportData(ctx context.Context, data io.Reader) (ipld.Node, error)
 	ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, price *types.AttoFIL, duration uint64) (*cid.Cid, error)

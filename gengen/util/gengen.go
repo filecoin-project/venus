@@ -2,11 +2,12 @@ package gengen
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
+	"math/big"
 	"strconv"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -223,15 +224,22 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 		}
 
 		// give collateral to account actor
-		_, err = applyMessage(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
+		_, err = core.ApplyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
 		if err != nil {
 			return nil, err
 		}
 
 		// create miner
-		resp, err := applyMessage(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", types.NewBytesAmount(10000000000), []byte{}, pid)
+		pubkey, err := keys[m.Owner].PublicKey()
 		if err != nil {
 			return nil, err
+		}
+		resp, err := core.ApplyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
+		if err != nil {
+			return nil, err
+		}
+		if resp.ExecutionError != nil {
+			return nil, fmt.Errorf("failed to createMiner: %s", resp.ExecutionError)
 		}
 
 		// get miner address
@@ -247,16 +255,27 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 		})
 
 		// commit sector to add power
+		for i := uint64(0); i < m.Power; i++ {
+			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
+			// which is initialized to 0 and incremented (for the first sector) to 1
+			sectorID := i + 1
 
-		// TODO: We should get a SectorID from the SectorBuilder instead of
-		// hard-coding a value here.
-		sectorID := uint64(0)
-
-		_, err = applyMessage(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, []byte("xxxxxxxx"), types.NewBytesAmount(m.Power))
-		if err != nil {
-			return nil, err
+			commR := make([]byte, 32)
+			commD := make([]byte, 32)
+			if _, err := rand.Read(commR[:]); err != nil {
+				return nil, err
+			}
+			if _, err := rand.Read(commD[:]); err != nil {
+				return nil, err
+			}
+			resp, err := core.ApplyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
+			if err != nil {
+				return nil, err
+			}
+			if resp.ExecutionError != nil {
+				return nil, fmt.Errorf("failed to commitSector: %s", resp.ExecutionError)
+			}
 		}
-
 	}
 
 	return minfos, nil
@@ -280,20 +299,4 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	}
 
 	return info, car.WriteCar(ctx, dserv, []*cid.Cid{info.GenesisCid}, out)
-}
-
-func applyMessage(ctx context.Context, st state.Tree, storageMap vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (*core.ApplicationResult, error) {
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, err
-	}
-
-	fromActor, err := st.GetActor(ctx, from)
-	if err != nil {
-		return nil, err
-	}
-
-	message := types.NewMessage(from, to, uint64(fromActor.Nonce), value, method, encodedParams)
-
-	return core.ApplyMessage(ctx, st, storageMap, message, types.NewBlockHeight(0))
 }

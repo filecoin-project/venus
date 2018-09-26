@@ -29,18 +29,6 @@ const (
 	OfflineMode = "offline"
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
-	// MockMineMode replaces the normal chain weight and power table
-	// computations with simple computations that don't require the tip of
-	// a chain to hold a pointer to a valid state root. This mode exists
-	// because many daemon tests rely on mining and block processing to
-	// extend the chain and process messages without setting up a storage
-	// market.
-	//
-	// TODO: This is a TEMPORARY WORKAROUND. Ideally similar functionality
-	// will be accomplished by running a node with Proof-Of-Bob consensus
-	// during tests.  Alternatively we could come up with a canonical set
-	// of testing genesii and allow the CLI to take in custom gensis blocks.
-	MockMineMode = "mock-mine"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
 	// BlockTime is the duration string of the block time the daemon will

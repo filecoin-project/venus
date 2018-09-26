@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 )
 

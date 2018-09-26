@@ -26,7 +26,8 @@ func GetFreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func getGoPath() (string, error) {
+// GetGoPath returns the current go path for the user.
+func GetGoPath() (string, error) {
 	gp := os.Getenv("GOPATH")
 	if gp != "" {
 		return gp, nil
@@ -40,9 +41,9 @@ func getGoPath() (string, error) {
 	return filepath.Join(home, "go"), nil
 }
 
-//GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.
+// GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.
 func GetFilecoinBinary() (string, error) {
-	gopath, err := getGoPath()
+	gopath, err := GetGoPath()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get GOPATH")
 	}

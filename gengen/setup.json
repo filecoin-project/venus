@@ -15,43 +15,43 @@
   "miners": [
     {
       "owner":"0",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"1",
-      "power": 9000
+      "power": 90
     },
     {
       "owner":"2",
-      "power": 8000
+      "power": 80
     },
     {
       "owner":"3",
-      "power": 6000
+      "power": 60
     },
     {
       "owner":"4",
-      "power": 5000
+      "power": 50
     },
     {
       "owner":"5",
-      "power": 4000
+      "power": 40
     },
     {
       "owner":"6",
-      "power": 3000
+      "power": 30
     },
     {
       "owner":"7",
-      "power": 1000
+      "power": 10
     },
     {
       "owner":"8",
-      "power": 1000
+      "power": 10
     },
     {
       "owner": "9",
-      "power": 1000
+      "power": 10
     }
   ]
 }

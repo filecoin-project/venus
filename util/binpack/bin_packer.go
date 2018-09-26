@@ -97,7 +97,6 @@ func (np *NaivePacker) AddItem(ctx context.Context, item Item) (AddItemResult, e
 	}
 
 	var result AddItemResult
-
 	if size > binner.SpaceAvailable(bin) {
 		newBin, err := np.closeBinAndOpenNew(ctx, bin)
 		if err != nil {

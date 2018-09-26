@@ -107,6 +107,15 @@ func (z *BytesAmount) Sub(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
+// Mul sets z to  x*y and returns z.
+func (z *BytesAmount) Mul(y *BytesAmount) *BytesAmount {
+	ensureBytesAmounts(&z, &y)
+	newVal := big.NewInt(0)
+	newVal.Mul(z.val, y.val)
+	newZ := BytesAmount{val: newVal}
+	return &newZ
+}
+
 // Equal returns true if z = y
 func (z *BytesAmount) Equal(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
@@ -164,4 +173,9 @@ func (z *BytesAmount) Bytes() []byte {
 func (z *BytesAmount) String() string {
 	ensureBytesAmounts(&z)
 	return z.val.String()
+}
+
+// Uint64 returns the uint64 representation of x. If x cannot be represented in a uint64, the result is undefined.
+func (z *BytesAmount) Uint64() uint64 {
+	return z.val.Uint64()
 }

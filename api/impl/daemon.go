@@ -13,12 +13,12 @@ import (
 	car "gx/ipfs/QmcQSyreJnxiZ1TCop3s5hjgsggpzCNjrbgqzUoQv4ywEW/go-car"
 	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -83,6 +83,23 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		return fmt.Errorf("cannot use testgenesis option and genesisfile together")
 	}
 
+	var initopts []node.InitOpt
+	if cfg.PeerKeyFile != "" {
+		peerKey, err := loadPeerKey(cfg.PeerKeyFile)
+		if err != nil {
+			return err
+		}
+		initopts = append(initopts, node.PeerKeyOpt(peerKey))
+	}
+
+	if cfg.WithMiner != (address.Address{}) {
+		newConfig := rep.Config()
+		newConfig.Mining.MinerAddress = cfg.WithMiner
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
 	switch {
 	case cfg.GenesisFile != "":
 		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
@@ -111,9 +128,9 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 
 		// Generate a genesis function to allocate the address funds
-		var actorOps []testhelpers.GenOption
+		var actorOps []core.GenOption
 		for k, v := range addressKeys {
-			actorOps = append(actorOps, testhelpers.ActorAccount(k.Address, k.Balance))
+			actorOps = append(actorOps, core.ActorAccount(k.Address, k.Balance))
 
 			// load an address into nodes wallet backend
 			if k.Address.String() == cfg.WalletAddr {
@@ -127,17 +144,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 				rep.Config().Wallet.DefaultAddress = k.Address
 			}
 		}
-		tif = testhelpers.MakeGenesisFunc(actorOps...)
-	}
-
-	var initopts []node.InitOpt
-	if cfg.PeerKeyFile != "" {
-		k, err := loadPeerKey(cfg.PeerKeyFile)
-		if err != nil {
-			return err
-		}
-
-		initopts = append(initopts, node.PeerKeyOpt(k))
+		tif = core.MakeGenesisFunc(actorOps...)
 	}
 
 	// TODO: don't create the repo if this fails

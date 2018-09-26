@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"

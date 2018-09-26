@@ -8,6 +8,7 @@ import (
 	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 )
 
@@ -21,6 +22,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption("genesisfile", "path of file containing archive of genesis block DAG data"),
 		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
 		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
+		cmdkit.StringOption("with-miner", "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -32,6 +34,16 @@ var initCmd = &cmds.Command{
 		customGenesis, _ := req.Options["testgenesis"].(bool)
 		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
 
+		var withMiner address.Address
+		if m, ok := req.Options["with-miner"].(string); ok {
+			var err error
+			withMiner, err = address.NewFromString(m)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+		}
+
 		err := GetAPI(env).Daemon().Init(
 			req.Context,
 			api.RepoDir(repoDir),
@@ -40,6 +52,7 @@ var initCmd = &cmds.Command{
 			api.GenesisFile(genesisFile),
 			api.UseCustomGenesis(customGenesis),
 			api.PeerKeyFile(peerKeyFile),
+			api.WithMiner(withMiner),
 		)
 
 		if err != nil {
