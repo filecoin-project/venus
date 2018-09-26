@@ -11,42 +11,34 @@ by providing storage to clients.
 
 ## Table of Contents
 
-- [Getting Started With Filecoin Development](#development)
-  - [Prerequisites: Installing Go and Rust](#install-go)
+- [Installation](#installation)
+- [Development](#development)
+  - [Install Go and Rust](#install-go-and-rust)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
   - [Testing](#testing)
   - [Supported Commands](#supported-commands)
 - [Contribute](#contribute)
+- [License](#license)
 
-## Getting Started With Filecoin Development
 
-### Prerequisites: Installing Go and Rust
+## Installation
 
-The build process for go-filecoin requires at least Go version 1.10 (official install instructions [here][4]). If you're setting up Go for the first time specifically to work with Filecoin, we recommend the following process:
+You can download prebuilt binaries for Linux and MacOS from CircleCI.
 
-#### Mac/Linux
+  - Go to the [filecoin project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). You may need to authenticate with GitHub.
+  - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
+  - Click the 'Artifacts' tab.
+  - Click `Container 0 > filecoin.tar.gz` to download the release.
 
-Download and install Go by running
 
-```$ curl -O https://dl.google.com/go/go1.11.linux-amd64.tar.gz```
+## Development
 
-```$ tar -C $HOME/local -xzf go1.11.linux-amd64.tar.gz```
+### Install Go and Rust
 
-Next you'll set up your environment by defining your GOPATH. Note that certain versions of Go don't require this step, but doing so deliberately can help avoid pathing conflicts. If you're running MacOS, you'll open `$HOME/.bash_profile` in your favorite editor. If you have installed a different shell, substitute `$HOME/.bash_profile` with the correct location of your shell configuration. From there, you'll add:
-
-```
-export GOPATH=$HOME/go
-export GOROOT=$HOME/local/go
-
-export PATH=$GOROOT/bin:$PATH
-export PATH=$GOPATH/bin:$PATH
-```
-
-Save and exit. Note that you'll need to restart your terminal for changes to take effect.
-
-Finally, you'll need to download Rust to ensure you can  build the `rust-proofs` submodule. Download Rust [here][5].
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - You'll also need Rust (v1.21.0 or later) to build the `rust-proofs` submodule, which you can download [here](https://www.rust-lang.org/en-US/install.html).
 
 ### Clone
 
@@ -66,6 +58,8 @@ other build and test dependencies, run:
 ```
 
 ### Managing Submodules
+
+Skip this step unless you want to edit `go-proofs`.
 
 Filecoin uses Git Submodules to consume `go-proofs`. To initialize the submodule, either run `deps` (as per above), or
 initialize the submodule manually:
@@ -138,6 +132,14 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 See [the contribute file](CONTRIBUTING.md).
 
 If editing the readme, please conform to the [standard-readme][3] specification.
+
+## License
+
+The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
 
 [1]: https://golang.org/dl/
 [2]: https://github.com/whyrusleeping/gx
