@@ -1,18 +1,18 @@
 locals {
-  name = "logstash"
+  name             = "logstash"
   hosted_zone_name = "${aws_route53_zone.kittyhawk.name}"
-  hosted_zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
-  port = "5044"
+  hosted_zone_id   = "${aws_route53_zone.kittyhawk.zone_id}"
+  port             = "5044"
 }
 
 data "template_file" "logstash_user_data" {
   template = "${file("../../../scripts/logstash_user_data.sh")}"
 
   vars {
-    docker_install = "${data.template_file.docker_install.rendered}"
+    docker_install      = "${data.template_file.docker_install.rendered}"
     logstash_docker_uri = "${var.logstash_docker_uri}"
     logstash_docker_tag = "${var.logstash_docker_tag}"
-    es_host = "${var.logstash_es_host}"
+    es_host             = "${var.logstash_es_host}"
   }
 }
 
@@ -21,16 +21,16 @@ resource "aws_security_group" "logstash" {
   vpc_id = "${module.vpc.vpc_id}"
 
   ingress {
-    protocol = "tcp"
-    from_port = "${local.port}"
-    to_port = "${local.port}"
+    protocol        = "tcp"
+    from_port       = "${local.port}"
+    to_port         = "${local.port}"
     security_groups = ["${aws_security_group.filecoin.id}"]
   }
 
   ingress {
-    protocol = "tcp"
-    from_port = "${local.port}"
-    to_port = "${local.port}"
+    protocol    = "tcp"
+    from_port   = "${local.port}"
+    to_port     = "${local.port}"
     cidr_blocks = ["${module.vpc.vpc_cidr_block}"]
   }
 
@@ -48,6 +48,7 @@ resource "aws_security_group" "logstash" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 resource "aws_instance" "logstash" {
   count         = "2"
   ami           = "${data.aws_ami.bionic.id}"
@@ -66,7 +67,6 @@ resource "aws_instance" "logstash" {
   tags {
     Name = "${local.name}-${count.index}"
   }
-
 }
 
 module "logstash_nlb" {
@@ -94,9 +94,9 @@ resource "aws_route53_record" "logstash_nlb" {
 }
 
 resource "aws_lb_target_group_attachment" "logstash" {
-  count = "2"
+  count            = "2"
   target_group_arn = "${module.logstash_nlb.default_target_group_arn}"
-  target_id = "${element(aws_instance.logstash.*.id, count.index)}"
-  port = "${local.port}"
-  depends_on = ["aws_instance.logstash"]
+  target_id        = "${element(aws_instance.logstash.*.id, count.index)}"
+  port             = "${local.port}"
+  depends_on       = ["aws_instance.logstash"]
 }

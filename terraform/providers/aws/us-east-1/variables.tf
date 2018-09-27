@@ -16,11 +16,12 @@ variable "gmasgras-public_key" {
 
 variable "ip_whitelist" {
   type = "list"
+
   default = [
-    "100.9.239.66/32", #C5-LA
-    "136.24.82.246/32", #eefahy
-    "54.162.174.163/32" #gmas dev box
-  ]
+    "100.9.239.66/32",   #C5-LA
+    "136.24.82.246/32",  #eefahy
+    "54.162.174.163/32",
+  ] #gmas dev box
 }
 
 variable "docker_uri" {

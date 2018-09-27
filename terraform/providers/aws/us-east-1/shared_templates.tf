@@ -9,4 +9,3 @@ data "template_file" "cadvisor_install" {
 data "template_file" "node_exporter_install" {
   template = "${file("../../../scripts/node_exporter_install.sh")}"
 }
-  

@@ -21,15 +21,19 @@ resource "aws_ecr_repository" "alertmanager" {
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
 }
+
 output "ecr-filebeat-url" {
   value = "${aws_ecr_repository.filebeat.repository_url}"
 }
+
 output "ecr-logstash-url" {
   value = "${aws_ecr_repository.logstash.repository_url}"
 }
+
 output "ecr-prometheus-url" {
   value = "${aws_ecr_repository.prometheus.repository_url}"
 }
+
 output "ecr-alertmanager-url" {
   value = "${aws_ecr_repository.alertmanager.repository_url}"
 }

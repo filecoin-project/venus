@@ -38,9 +38,9 @@ resource "aws_security_group" "cadvisor" {
   vpc_id = "${module.vpc.vpc_id}"
 
   ingress {
-    protocol    = "tcp"
-    from_port   = 8080
-    to_port     = 8080
+    protocol        = "tcp"
+    from_port       = 8080
+    to_port         = 8080
     security_groups = ["${aws_security_group.prometheus.id}"]
   }
 }
@@ -50,9 +50,9 @@ resource "aws_security_group" "node_exporter" {
   vpc_id = "${module.vpc.vpc_id}"
 
   ingress {
-    protocol    = "tcp"
-    from_port   = 9100
-    to_port     = 9100
+    protocol        = "tcp"
+    from_port       = 9100
+    to_port         = 9100
     security_groups = ["${aws_security_group.prometheus.id}"]
   }
 }
@@ -71,12 +71,12 @@ resource "aws_instance" "prometheus" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = ["ami"]
+    ignore_changes        = ["ami"]
   }
 
   tags {
-    Name = "prometheus"
-    metrics  = "true"
+    Name    = "prometheus"
+    metrics = "true"
   }
 }
 
@@ -87,6 +87,7 @@ resource "aws_route53_record" "prometheus" {
   records = ["${aws_instance.prometheus.public_ip}"]
   ttl     = "30"
 }
+
 resource "aws_route53_record" "alertmanager" {
   name    = "alertmanager.${aws_route53_zone.kittyhawk.name}"
   zone_id = "${aws_route53_zone.kittyhawk.zone_id}"
@@ -99,11 +100,11 @@ data "template_file" "prometheus_user_data" {
   template = "${file("../../../scripts/prometheus_user_data.sh")}"
 
   vars {
-    cadvisor_install = "${data.template_file.cadvisor_install.rendered}"
-    node_exporter_install = "${data.template_file.node_exporter_install.rendered}"
-    docker_install = "${data.template_file.docker_install.rendered}"
-    alerts_slack_api_url = "${var.alerts_slack_api_url}"
-    prometheus_httpasswd = "${var.prometheus_httpasswd}"
+    cadvisor_install       = "${data.template_file.cadvisor_install.rendered}"
+    node_exporter_install  = "${data.template_file.node_exporter_install.rendered}"
+    docker_install         = "${data.template_file.docker_install.rendered}"
+    alerts_slack_api_url   = "${var.alerts_slack_api_url}"
+    prometheus_httpasswd   = "${var.prometheus_httpasswd}"
     alertmanager_httpasswd = "${var.alertmanager_httpasswd}"
   }
 }
@@ -138,6 +139,7 @@ EOF
 resource "aws_iam_policy" "ec2_allow_describe" {
   name        = "ec2_allow_describe"
   description = "Allow EC2 describe access"
+
   policy = <<EOF
 {
   "Version": "2012-10-17",
