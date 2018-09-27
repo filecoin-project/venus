@@ -19,43 +19,43 @@ SETUPFILE=$$(cat <<-END
   "miners": [
     {
       "owner":"0",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"1",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"2",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"3",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"4",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"5",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"6",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"7",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"8",
-      "power": 10000
+      "power": 100
     },
     {
       "owner": "9",
-      "power": 10000
+      "power": 100
     }
   ]
 }
