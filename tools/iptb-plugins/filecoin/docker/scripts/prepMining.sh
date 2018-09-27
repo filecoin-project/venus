@@ -1,12 +1,13 @@
 #!/bin/bash
 
+# This script is useful when you want to setup dockerized filecoin instances that can mine.
+# This script can be ran like any other bash script.
+
 # This script is used to create an IPTB testbed, initialize the testbed nodes with a genesis file,
 # start the testbed nodes, configure the testbed nodes wallet addresses and miner address
 # from the addresses in the aforementioned genesis file s.t. the nodes can mine, and lastly connect the
 # testbed nodes together.
 #
-# This script is useful when you want to setup dockerized filecoin instances that can mine.
-# This script can be ran like any other bash script.
 # This script has a hard limit on the number of node called MAX_NODES, this is
 #   due to our docker configuration, for more information on this limit ask @frrist.
 

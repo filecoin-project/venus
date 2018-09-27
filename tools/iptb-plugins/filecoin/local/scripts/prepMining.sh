@@ -1,13 +1,13 @@
 #!/bin/bash
 
+# This script is useful when you want to setup local filecoin processes that can mine.
+# This script can be ran like any other bash script.
+
 # This script is used to create an IPTB testbed, initialize the testbed nodes with a genesis file,
 # start the testbed nodes, configure the testbed nodes wallet addresses and miner address
 # from the addresses in the aforementioned genesis file s.t. the nodes can mine, and lastly connect the
 # testbed nodes together.
 #
-# This script is useful when you want to setup local filecoin processes that can mine.
-# This script can be ran like any other bash script.
-
 # TODO add tests to verify this always works.
 
 

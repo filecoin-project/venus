@@ -1,6 +1,22 @@
 # How to use IPTB with go-filecoin
 
-# Setup
+## Setup Scripts
+Checkout the comments at the top of scripts in:
+- `tools/iptb-plugins/filecoin/local/scripts`
+- `tools/iptb-plugins/filecoin/docker/scripts`
+
+## Example usage
+Create 10 localfilecoin nodes:
+```shell
+sh tools/iptb-plugins/filecoin/local/scripts/prepMining.sh 10
+```
+
+Create 10 dockerfilecoin nodes:
+```shell
+sh tools/iptb-plugins/filecoin/docker/scripts/prepMining.sh 10`
+```
+
+# Manual Setup
 First, ensure you have the latest version of IPTB installed:
 ```shell
 $> go get -u github.com/ipfs/iptb

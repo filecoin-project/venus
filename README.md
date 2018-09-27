@@ -94,6 +94,11 @@ Note: Build and test can be combined:
 > go run ./build/*.go best
 ```
 
+#### Testing with IPTB
+
+Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
+
+
 ### Supported Commands
 
 ```sh
