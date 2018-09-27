@@ -535,7 +535,7 @@ func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64
 }
 
 // TryToStoreData needs a better name
-func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*cid.Cid, error) {
+func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*StorageDealResponse, error) {
 	size, err := getFileSize(ctx, data, dag.NewDAGService(smc.nd.Blockservice))
 	if err != nil {
 		return nil, err
@@ -579,7 +579,7 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address
 		return nil, err
 	}
 
-	return response.Proposal, nil
+	return &response, nil
 }
 
 func (smc *StorageMinerClient) addResponseToTracker(resp *StorageDealResponse, miner address.Address, p *StorageDealProposal) error {
