@@ -281,15 +281,11 @@ var clientProposeStorageDealCmd = &cmds.Command{
 
 		re.Emit(resp) // nolint: errcheck
 	},
-	Type: node.DealResponse{},
+	Type: node.StorageDealResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.DealResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.StorageDealResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
-			fmt.Fprintf(w, "ID: %x\n", resp.ID)                 // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
-			if resp.MsgCid != nil {
-				fmt.Fprintf(w, "MsgCid: %s\n", resp.MsgCid) // nolint: errcheck
-			}
 			return nil
 		}),
 	},

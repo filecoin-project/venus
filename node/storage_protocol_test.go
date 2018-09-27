@@ -117,7 +117,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	time.Sleep(time.Millisecond * 100) // Bad dignifiedquire, bad!
 	var done bool
 	for i := 0; i < 5; i++ {
-		resp, err := c.Query(ctx, ref)
+		resp, err := c.Query(ctx, ref.Proposal)
 		assert.NoError(err)
 		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Staged {
@@ -132,7 +132,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	// Now all things should be ready
 	done = false
 	for i := 0; i < 5; i++ {
-		resp, err := c.Query(ctx, ref)
+		resp, err := c.Query(ctx, ref.Proposal)
 		assert.NoError(err)
 		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Posted {
