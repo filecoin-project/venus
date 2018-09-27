@@ -10,6 +10,7 @@ import (
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds/http"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	writer "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log/writer"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
@@ -21,7 +22,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var log = logging.Logger("commands")
 
 // exposed here, to be available during testing
 var sigCh = make(chan os.Signal, 1)
@@ -166,6 +170,31 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
 
+	// This routine gets a heartbeat from a node every Heartbeat period,
+	// the period is a stats configuration option, and may be changed while the
+	// node is running.
+	go func() {
+		for {
+			beat, err := time.ParseDuration(config.Stats.HeartbeatPeriod)
+			if err != nil {
+				log.Warningf("invalid heartbeat value: %s, defaulting to 3s", err)
+				beat, _ = time.ParseDuration("3s") // set a sane default
+			}
+			time.Sleep(beat)
+
+			ctx = log.Start(ctx, "HeartBeat")
+
+			hb, err := NewHeartbeat(node)
+			if err != nil {
+				log.Errorf("Could not get heartbeat: %v", err)
+				log.FinishWithErr(ctx, err)
+				continue
+			}
+			log.SetTag(ctx, "heartbeat", hb)
+			log.Finish(ctx)
+		}
+	}()
+
 	<-sigCh
 	fmt.Println("Got interrupt, shutting down...")
 
@@ -178,4 +207,71 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	}
 
 	return api.Daemon().Stop(ctx)
+}
+
+// Heartbeat represents the information sent from a node about its state,
+// heartbeats allow users to gain visibility into connected nodes they have
+// heartbeats for.
+type Heartbeat struct {
+	MinerAddress    string
+	WalletAddresses []string
+
+	HeaviestTipset types.SortedCidSet
+	TipsetHeight   uint64
+
+	Peers  []string
+	PeerID string
+}
+
+// NewHeartbeat collects the information needed from a node to construct a heartbeat.
+func NewHeartbeat(node *node.Node) (*Heartbeat, error) {
+	// Get the Miner Address, set to empty string if unset
+	var minerAddress string
+	maddr, err := node.MiningAddress()
+	if err != nil {
+		log.Debug("No miner address configured during hearbeat")
+		minerAddress = ""
+	} else {
+		minerAddress = maddr.String()
+	}
+
+	// Get all the wallet addresses
+	var walletAddresses []string
+	waddrs := node.Wallet.Addresses()
+	for _, a := range waddrs {
+		walletAddresses = append(walletAddresses, a.String())
+	}
+
+	// Get the heaviest tipset
+	ts := node.ChainMgr.GetHeaviestTipSet()
+	heaviestTipset := ts.ToSortedCidSet()
+	// Get the heaviest tipset's height
+	tipsetHeight, err := ts.Height()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get tipset height")
+	}
+
+	// Get all peers of this node
+	var peers []string
+	for _, p := range node.Host.Peerstore().Peers() {
+		// lets not include our own peer ID in the connection list
+		if p == node.Host.ID() {
+			continue
+		}
+		peers = append(peers, p.Pretty())
+	}
+
+	// Get our peerID
+	peerID := node.Host.ID().Pretty()
+
+	return &Heartbeat{
+		MinerAddress:    minerAddress,
+		WalletAddresses: walletAddresses,
+
+		HeaviestTipset: heaviestTipset,
+		TipsetHeight:   tipsetHeight,
+
+		Peers:  peers,
+		PeerID: peerID,
+	}, nil
 }
