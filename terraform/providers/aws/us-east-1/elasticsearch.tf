@@ -1,26 +1,28 @@
 variable "domain" {
   default = "filecoin-logs"
 }
+
 data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
 locals {
   ip_whitelist = [
-    "${var.es_ip_whitelist}",
-    "${module.vpc.nat_public_ips}"
+    "${var.ip_whitelist}",
+    "${module.vpc.nat_public_ips}",
   ]
 }
 
 resource "aws_elasticsearch_domain" "filecoin-logs" {
   domain_name           = "${var.domain}"
   elasticsearch_version = "6.3"
+
   cluster_config {
-    instance_type = "m4.large.elasticsearch"
+    instance_type  = "m4.large.elasticsearch"
     instance_count = 2
   }
 
-  ebs_options{
+  ebs_options {
     ebs_enabled = true
     volume_type = "gp2"
     volume_size = 100

@@ -27,6 +27,7 @@ EOF
 resource "aws_iam_policy" "ecr_allow_all" {
   name        = "ecr_allow_all"
   description = "Allow ECR access"
+
   policy = <<EOF
 {
   "Version": "2012-10-17",
