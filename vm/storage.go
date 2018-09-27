@@ -4,7 +4,8 @@ import (
 	"errors"
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	"gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
+	blocks "gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
+	format "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
 	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
@@ -101,16 +102,26 @@ func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 	}
 }
 
-// Put adds a node to temporary storage by id
-func (s Storage) Put(chunk []byte) (*cid.Cid, error) {
-	n, err := cbor.Decode(chunk, types.DefaultHashFunction, -1)
+// Put adds a node to temporary storage by id.
+func (s Storage) Put(v interface{}) (*cid.Cid, error) {
+	var nd format.Node
+	var err error
+	if blk, ok := v.(blocks.Block); ok {
+		// optimize putting blocks
+		nd, err = cbor.DecodeBlock(blk)
+	} else if bytes, ok := v.([]byte); ok {
+		nd, err = cbor.Decode(bytes, types.DefaultHashFunction, -1)
+	} else {
+		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
+	}
 	if err != nil {
 		return nil, exec.Errors[exec.ErrDecode]
 	}
 
-	cid := n.Cid()
-	s.chunks[cid.KeyString()] = n
-	return cid, nil
+	c := nd.Cid()
+	s.chunks[c.KeyString()] = nd
+
+	return c, nil
 }
 
 // Get retrieves a chunk from either temporary storage or its backing store.

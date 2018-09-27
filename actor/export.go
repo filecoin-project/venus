@@ -91,38 +91,28 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 			args = append(args, reflect.ValueOf(param.Val))
 		}
 
-		toInterfaces := func(v []reflect.Value) []interface{} {
-			r := make([]interface{}, 0, len(v))
-			for _, vv := range v {
-				r = append(r, vv.Interface())
-			}
-			return r
-		}
+		out := val.Call(args)
+		exitCode := uint8(out[len(out)-2].Uint())
 
-		out := toInterfaces(val.Call(args))
-
-		exitCode, ok := out[len(out)-2].(uint8)
-		if !ok {
-			panic("invalid return value")
-		}
-
-		var retVal []byte
-		outErr, ok := out[len(out)-1].(error)
+		outErr, ok := out[len(out)-1].Interface().(error)
 		if ok {
 			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
 				panic("you are a bad person: error must be either a reverterror or a fault")
 			}
-		} else {
-			// The value of the returned error was nil.
-			outErr = nil
 
-			retVal, err = abi.ToEncodedValues(out[:len(out)-2]...)
-			if err != nil {
-				return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
-			}
+			return nil, exitCode, outErr
 		}
 
-		return retVal, exitCode, outErr
+		vals := make([]interface{}, 0, len(out)-2)
+		for _, vv := range out[:len(out)-2] {
+			vals = append(vals, vv.Interface())
+		}
+		retVal, err := abi.ToEncodedValues(vals...)
+		if err != nil {
+			return nil, 1, errors.FaultErrorWrap(err, "failed to marshal output value")
+		}
+
+		return retVal, exitCode, nil
 	}
 }
 

@@ -52,12 +52,7 @@ func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)
 		return nil, err
 	}
 
-	data, err := MarshalStorage(st)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := ctx.WriteStorage(data); err != nil {
+	if err := ctx.WriteStorage(st); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +151,7 @@ func (sab *storageAsBlocks) GetBlock(ctx context.Context, c *cid.Cid) (block.Blo
 
 // AddBlock add a block to underlying storage
 func (sab *storageAsBlocks) AddBlock(b block.Block) error {
-	_, err := sab.s.Put(b.RawData())
+	_, err := sab.s.Put(b)
 	return err
 }
 
@@ -205,12 +200,7 @@ func (l *lookup) Commit(ctx context.Context) (*cid.Cid, error) {
 		return nil, err
 	}
 
-	chunk, err := cbor.DumpObject(l.n)
-	if err != nil {
-		return nil, err
-	}
-
-	return l.s.Put(chunk)
+	return l.s.Put(l.n)
 }
 
 // IsEmpty returns true if this node contains no key values

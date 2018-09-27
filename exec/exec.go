@@ -76,13 +76,13 @@ type VMContext interface {
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
-	WriteStorage(memory []byte) error
+	WriteStorage(interface{}) error
 }
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
-	Put([]byte) (*cid.Cid, error)
+	Put(interface{}) (*cid.Cid, error)
 	Get(*cid.Cid) ([]byte, error)
 	Commit(*cid.Cid, *cid.Cid) error
 	Head() *cid.Cid

@@ -75,7 +75,7 @@ func (ctx *Context) ReadStorage() ([]byte, error) {
 }
 
 // WriteStorage writes to the storage of the associated to actor.
-func (ctx *Context) WriteStorage(memory []byte) error {
+func (ctx *Context) WriteStorage(memory interface{}) error {
 	stage := ctx.Storage()
 
 	cid, err := stage.Put(memory)
