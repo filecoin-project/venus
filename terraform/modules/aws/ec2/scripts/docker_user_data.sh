@@ -129,7 +129,7 @@ chmod -R 0777 "$${FILECOIN_STORAGE}"
 for i in {0..9}
 do
   echo "Starting filecoin_$$i"
-  docker run -d --name "filecoin_$$i" --expose "9000" \
+  docker run -d --name "filecoin_$$i" -p "900$$i:9000" \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor \
