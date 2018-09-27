@@ -11,16 +11,21 @@ import (
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	libp2ppeer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
+	routing "gx/ipfs/QmS4niovD1U6pRjUBXivr1zvvLBqiTKbERjFo994JU7oQS/go-libp2p-routing"
 	"gx/ipfs/QmT5K5mHn2KUyCDBntKoojQJAJftNzutxzpYR33w8JdN6M/go-libp2p-floodsub"
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	"gx/ipfs/QmTwzvuH2eYPJLdp3sL4ZsdSwCcqzdwc1Vk9ssVbk25EA2/go-bitswap"
 	bsnet "gx/ipfs/QmTwzvuH2eYPJLdp3sL4ZsdSwCcqzdwc1Vk9ssVbk25EA2/go-bitswap/network"
 	"gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p"
+	rhost "gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p/p2p/host/routed"
 	"gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWw71Mz9PXKgYG8ZfTYN7Ax2Zm48Eurbne3wC2y7CKmLz/go-ipfs-exchange-interface"
-	nonerouting "gx/ipfs/QmYYXrfYh14XcN5jhmK31HhdAG85HjHAg5czk3Eb9cGML4/go-ipfs-routing/none"
+	offroute "gx/ipfs/QmYYXrfYh14XcN5jhmK31HhdAG85HjHAg5czk3Eb9cGML4/go-ipfs-routing/offline"
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	dhtprotocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	dht "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht"
+	dhtopts "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht/opts"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -39,6 +44,8 @@ import (
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
+
+var filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
 
 var log = logging.Logger("node") // nolint: deadcode
 
@@ -176,35 +183,54 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 	return n.Build(ctx)
 }
 
+type blankValidator struct{}
+
+func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
+
 // Build instantiates a filecoin Node from the settings specified in the config.
 func (nc *Config) Build(ctx context.Context) (*Node, error) {
-	var host host.Host
-
-	if !nc.OfflineMode {
-		h, err := libp2p.New(ctx, nc.Libp2pOpts...)
-		if err != nil {
-			return nil, err
-		}
-
-		host = h
-	} else {
-		host = noopLibP2PHost{}
-	}
-
-	// set up pinger
-	pinger := ping.NewPingService(host)
-
 	if nc.Repo == nil {
 		nc.Repo = repo.NewInMemoryRepo()
 	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
-	// no content routing yet...
-	routing, _ := nonerouting.ConstructNilRouting(ctx, nil, nil, nil)
+	validator := blankValidator{}
+
+	var host host.Host
+	var router routing.IpfsRouting
+
+	if !nc.OfflineMode {
+		h, err := libp2p.New(ctx, nc.Libp2pOpts...)
+		if err != nil {
+			return nil, err
+		}
+		r, err := dht.New(
+			ctx, h,
+			dhtopts.Datastore(nc.Repo.Datastore()),
+			dhtopts.NamespacedValidator("v", validator),
+			dhtopts.Protocols(filecoinDHTProtocol),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to setup routing")
+		}
+
+		host = h
+		router = r
+	} else {
+		host = noopLibP2PHost{}
+		router = offroute.NewOfflineRouter(nc.Repo.Datastore(), validator)
+	}
+
+	// set up pinger
+	pinger := ping.NewPingService(host)
+
+	// use the DHT for routing information
+	peerHost := rhost.Wrap(host, router)
 
 	// set up bitswap
-	nwork := bsnet.NewFromIpfsHost(host, routing)
+	nwork := bsnet.NewFromIpfsHost(peerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bserv := bserv.New(bs, bswap)
 
@@ -231,7 +257,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		CborStore:    cst,
 		ChainMgr:     chainMgr,
 		Exchange:     bswap,
-		Host:         host,
+		Host:         peerHost,
 		MsgPool:      msgPool,
 		OfflineMode:  nc.OfflineMode,
 		Ping:         pinger,

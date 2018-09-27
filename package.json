@@ -150,6 +150,21 @@
       "hash": "QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb",
       "name": "go-cid",
       "version": "0.8.0"
+    },
+    {
+      "hash": "Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8",
+      "name": "go-libp2p-kad-dht",
+      "version": "4.3.7"
+    },
+    {
+      "hash": "QmYYXrfYh14XcN5jhmK31HhdAG85HjHAg5czk3Eb9cGML4",
+      "name": "go-ipfs-routing",
+      "version": "0.0.23"
+    },
+    {
+      "hash": "QmS4niovD1U6pRjUBXivr1zvvLBqiTKbERjFo994JU7oQS",
+      "name": "go-libp2p-routing",
+      "version": "2.4.9"
     }
   ],
   "gxVersion": "0.12.1",
@@ -157,7 +172,7 @@
   "license": "",
   "name": "go-filecoin",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.0.1",
-  "subtoolRequired": true
+  "subtoolRequired": true,
+  "version": "0.0.1"
 }
 
