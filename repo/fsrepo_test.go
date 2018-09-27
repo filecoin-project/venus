@@ -40,6 +40,7 @@ const (
 
 [stats]
   heartbeatPeriod = "3s"
+  nickname = ""
 `
 )
 
