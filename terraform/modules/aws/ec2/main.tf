@@ -21,6 +21,9 @@ variable "route53_zone_name" {}
 variable "logstash_hosts" {
   default = "172.17.0.1:5044" # comma separated
 }
+variable "instance_type" {
+  default = "m5d.large"
+}
 
 data "aws_ami" "ubuntu" {
   most_recent = true
@@ -42,7 +45,7 @@ resource "aws_instance" "this" {
   ami           = "${data.aws_ami.ubuntu.id}"
   key_name      = "${var.public_key_name}"
   user_data     = "${data.template_file.user_data.rendered}"
-  instance_type = "r4.large"
+  instance_type = "${var.instance_type}"
 
   subnet_id              = "${var.subnet_id}"
   vpc_security_group_ids = ["${var.vpc_security_group_ids}"]
