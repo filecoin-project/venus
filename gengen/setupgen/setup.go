@@ -35,7 +35,7 @@ func main() {
 		st.PreAlloc[strconv.Itoa(i)] = "10000"
 		m := miner{
 			Owner: strconv.Itoa(i),
-			Power: 1000,
+			Power: 100,
 		}
 		st.Miner = append(st.Miner, m)
 	}
