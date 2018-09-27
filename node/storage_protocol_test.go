@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializeProposal(t *testing.T) {
@@ -32,6 +33,7 @@ func TestSerializeProposal(t *testing.T) {
 func TestStorageProtocolBasic(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 
 	seed := MakeChainSeed(t, TestGenCfg)
@@ -113,23 +115,30 @@ func TestStorageProtocolBasic(t *testing.T) {
 	assert.NoError(err)
 
 	time.Sleep(time.Millisecond * 100) // Bad dignifiedquire, bad!
-
-	resp, err := c.Query(ctx, ref)
-	assert.NoError(err)
-	assert.Equal(Staged, resp.State, resp.Message)
-
-	assert.False(waitTimeout(&wg, 20*time.Second), "waiting for submission timed out")
-
-	// Now all things should be ready
 	var done bool
 	for i := 0; i < 5; i++ {
-		resp, err = c.Query(ctx, ref)
+		resp, err := c.Query(ctx, ref)
 		assert.NoError(err)
+		assert.NotEqual(Failed, resp.State, resp.Message)
+		if resp.State == Staged {
+			done = true
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	require.True(done)
+	require.False(waitTimeout(&wg, 20*time.Second), "waiting for submission timed out")
+
+	// Now all things should be ready
+	done = false
+	for i := 0; i < 5; i++ {
+		resp, err := c.Query(ctx, ref)
+		assert.NoError(err)
+		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Posted {
 			done = true
 			assert.True(resp.ProofInfo.SectorID > 0)
 		}
-		assert.NotEqual(Failed, resp.State, resp.Message)
 		time.Sleep(time.Millisecond * 500)
 	}
 
