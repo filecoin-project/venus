@@ -18,7 +18,7 @@ is __if something feels wrong, stop and surface the issue.__
 * [Error Handling](#error-handling)
 * [The Spec](#the-spec)
 * [Platform Considerations](#platform-considerations)
-* [Testing Philosophy](#testing-philosophy)
+* [Testing](#testing)
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
 * [Gotchas](#gotchas)
@@ -225,8 +225,8 @@ heavily on patterns in IPFS. Similarly we draw on patterns in Ethereum
 for message processing. Features should be informed by an awareness of
 related platforms.
 
-## Testing Philosophy
-* All code must be unit tested and should hit our target coverage rate (80%).
+## Testing
+* All code must be unit tested.
 * We prefer to test the output/contracts, not the individual lines of code (which we expect to change significantly during early work).
 * Daemon tests (integration tests that run a node and send it commands):
   * Daemon tests are not a substitute for unit tests: the foo command implementation should be unit tested in the `foo_test.go` file
