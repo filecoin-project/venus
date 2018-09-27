@@ -62,6 +62,8 @@ SETUPFILE=$$(cat <<-END
 END
          )
 
+${setup_instance_storage}
+
 # expose Docker daemon on TCP 2376
 DOCKER_OVERRIDE=$$(cat <<-END
 [Service]
@@ -73,7 +75,6 @@ DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
 mkdir -p "$$DOCKER_OVERRIDE_PATH"
 echo "$$DOCKER_OVERRIDE" > "$$DOCKER_OVERRIDE_PATH/"override.conf
 /bin/systemctl daemon-reload
-
 
 ${docker_install}
 # pull images

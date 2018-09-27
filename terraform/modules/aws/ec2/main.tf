@@ -70,6 +70,7 @@ data "template_file" "user_data" {
     node_exporter_install = "${data.template_file.node_exporter_install.rendered}"
     cadvisor_install = "${data.template_file.cadvisor_install.rendered}"
     docker_install = "${data.template_file.docker_install.rendered}"
+    setup_instance_storage = "${data.template_file.setup_instance_storage.rendered}"
     docker_uri = "${var.docker_uri}"
     docker_tag = "${var.docker_tag}"
     filebeat_docker_uri = "${var.filebeat_docker_uri}"

@@ -103,6 +103,7 @@ data "template_file" "prometheus_user_data" {
     cadvisor_install       = "${data.template_file.cadvisor_install.rendered}"
     node_exporter_install  = "${data.template_file.node_exporter_install.rendered}"
     docker_install         = "${data.template_file.docker_install.rendered}"
+    setup_instance_storage = "${data.template_file.setup_instance_storage.rendered}"
     alerts_slack_api_url   = "${var.alerts_slack_api_url}"
     prometheus_httpasswd   = "${var.prometheus_httpasswd}"
     alertmanager_httpasswd = "${var.alertmanager_httpasswd}"
