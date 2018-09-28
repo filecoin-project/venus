@@ -58,6 +58,7 @@ func TestWriteFile(t *testing.T) {
 
 [stats]
   heartbeatPeriod = "3s"
+  nickname = ""
 `,
 		string(content),
 	)

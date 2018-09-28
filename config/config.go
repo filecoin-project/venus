@@ -107,11 +107,13 @@ func newDefaultWalletConfig() *WalletConfig {
 // StatsConfig holds all configuration options related to node stats.
 type StatsConfig struct {
 	HeartbeatPeriod string `toml:"heartbeatPeriod,omitempty"`
+	Nickname        string `toml:"nickname"`
 }
 
 func newDefaultStatsConfig() *StatsConfig {
 	return &StatsConfig{
 		HeartbeatPeriod: "3s",
+		Nickname:        "",
 	}
 }
 
