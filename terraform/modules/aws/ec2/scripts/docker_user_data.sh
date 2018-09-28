@@ -19,48 +19,50 @@ SETUPFILE=$$(cat <<-END
   "miners": [
     {
       "owner":"0",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"1",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"2",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"3",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"4",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"5",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"6",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"7",
-      "power": 10000
+      "power": 100
     },
     {
       "owner":"8",
-      "power": 10000
+      "power": 100
     },
     {
       "owner": "9",
-      "power": 10000
+      "power": 100
     }
   ]
 }
 END
          )
+
+${setup_instance_storage}
 
 # expose Docker daemon on TCP 2376
 DOCKER_OVERRIDE=$$(cat <<-END
@@ -73,7 +75,6 @@ DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
 mkdir -p "$$DOCKER_OVERRIDE_PATH"
 echo "$$DOCKER_OVERRIDE" > "$$DOCKER_OVERRIDE_PATH/"override.conf
 /bin/systemctl daemon-reload
-
 
 ${docker_install}
 # pull images
@@ -100,8 +101,9 @@ docker run \
        $${FILECOIN_DOCKER_IMAGE} \
        -c 'cat setup.json | /usr/local/bin/gengen --json > genesis.car 2> gen.json'
 
+FILECOIN_STORAGE=/mnt/storage/filecoins
 # initialize filecoin nodes
-for i in {0..9}; do mkdir -p /var/local/filecoins/$$i; done
+for i in {0..9}; do mkdir -p "$${FILECOIN_STORAGE}"/$$i; done
 
 GOPATH=/home/ubuntu/go
 mkdir -p $GOPATH
@@ -117,19 +119,19 @@ for i in {0..9}
 do
   docker run \
          -v /home/ubuntu/car:/var/filecoin/car \
-         -v /var/local/filecoins:/var/local/filecoins \
+         -v "$${FILECOIN_STORAGE}":/var/local/filecoins \
          --entrypoint=/usr/local/bin/go-filecoin \
          $${FILECOIN_DOCKER_IMAGE} \
          init --genesisfile=/var/filecoin/car/genesis.car --repodir="/var/local/filecoins/$$i" --peerkeyfile="/var/filecoin/car/keyFile$$i"
 done
 
-chmod -R 0777 /var/local/filecoins/
+chmod -R 0777 "$${FILECOIN_STORAGE}"
 for i in {0..9}
 do
   echo "Starting filecoin_$$i"
-  docker run -d --name "filecoin_$$i" --expose "9000" \
+  docker run -d --name "filecoin_$$i" -p "900$$i:9000" \
          -v /home/ubuntu/car:/var/filecoin/car \
-         -v /var/local/filecoins/$$i:/var/local/filecoin \
+         -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor \
          --log-driver json-file --log-opt max-size=10m \
          $${FILECOIN_DOCKER_IMAGE} daemon --elstdout \

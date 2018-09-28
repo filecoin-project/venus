@@ -2,6 +2,8 @@
 
 set -ex
 
+${setup_instance_storage}
+
 NGINX_PROMETHEUS_CONFIG=$$(cat <<-'END'
 server {
   listen 9090;
@@ -25,13 +27,13 @@ server {
   }
 }
 END
-)
+                       )
 echo "$$NGINX_PROMETHEUS_CONFIG" > /home/ubuntu/prometheus.conf
 
 PROMETHEUS_HTTPASSWD=$$(cat <<-'END'
 ${prometheus_httpasswd}
 END
-)
+                    )
 echo "$$PROMETHEUS_HTTPASSWD" > /home/ubuntu/prometheus.httpasswd
 
 ALERTMANAGER_HTTPASSWD=$$(cat <<-'END'
@@ -40,23 +42,8 @@ END
 )
 echo "$$ALERTMANAGER_HTTPASSWD" > /home/ubuntu/alertmanager.httpasswd
 
-
-#mount instance storage
-STORAGE_DISK=$$(find /dev/disk/by-id/ -name "nvme-Amazon_EC2_NVMe_Instance_Storage*")
-STORAGE_PART="$${STORAGE_DISK}-part1"
-STORAGE_MOUNT="/mnt/storage"
+# create prometheus storage dir
 PROMETHEUS_STORAGE="$$STORAGE_MOUNT/prometheus"
-mkdir -p "$$STORAGE_MOUNT"
-parted "$$STORAGE_DISK" mklabel msdos
-parted "$$STORAGE_DISK" mkpart primary ext4 0% 100%
-sync
-while [ ! -b "$$STORAGE_PART" ]
-do
-  echo "Waiting for partition $$STORAGE_PART to be created" && sleep 3
-done
-mkfs.ext4 -F "$$STORAGE_PART"
-echo "$$STORAGE_PART   $$STORAGE_MOUNT        ext4   defaults,discard        0 0" >> /etc/fstab
-mount "$$STORAGE_MOUNT"
 mkdir -p "$$PROMETHEUS_STORAGE"
 chown -R nobody "$$PROMETHEUS_STORAGE"
 
