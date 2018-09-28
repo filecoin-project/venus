@@ -21,6 +21,7 @@ type Config struct {
 	Swarm     *SwarmConfig     `toml:"swarm"`
 	Mining    *MiningConfig    `toml:"mining"`
 	Wallet    *WalletConfig    `toml:"wallet"`
+	Stats     *StatsConfig     `toml:"stats"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -103,6 +104,17 @@ func newDefaultWalletConfig() *WalletConfig {
 	}
 }
 
+// StatsConfig holds all configuration options related to node stats.
+type StatsConfig struct {
+	HeartbeatPeriod string `toml:"heartbeatPeriod,omitempty"`
+}
+
+func newDefaultStatsConfig() *StatsConfig {
+	return &StatsConfig{
+		HeartbeatPeriod: "3s",
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -113,6 +125,7 @@ func NewDefaultConfig() *Config {
 		Swarm:     newDefaultSwarmConfig(),
 		Mining:    newDefaultMiningConfig(),
 		Wallet:    newDefaultWalletConfig(),
+		Stats:     newDefaultStatsConfig(),
 	}
 }
 
