@@ -23,6 +23,10 @@ jobs:
       - restore_cache:
           key: v4-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
+        # The second checkout ensures we have the most recent code since the
+        # restore_cache step above can override the go-filecoin code with cached code
+      - checkout
+
       - run:
           name: Install go
           command: |
