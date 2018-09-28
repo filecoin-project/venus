@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"unicode"
 
 	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	writer "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log/writer"
 	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
@@ -40,10 +42,20 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 		return err
 	}
 	peerID := nodeDetails.ID
+
 	// Get the nodes nickname.
 	nodeNic, err := api.api.Config().Get("stats.nickname")
 	if err != nil {
 		return err
+	}
+	nickname, ok := nodeNic.(string)
+	if !ok {
+		return errors.New("failed to cast nickname from config")
+	}
+	// sanitizing
+	if !isSanitary(nickname) {
+		log.Warningf("node nickname: %s contains non letter character, omitting from logs", nickname)
+		nickname = ""
 	}
 
 	// connection the logs will stream to
@@ -89,7 +101,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 			}
 			// "filter"
 			// add things to the event log here
-			event["peerName"] = nodeNic
+			event["peerName"] = nickname
 			event["peerID"] = peerID
 			if err := filterEncoder.Encode(event); err != nil {
 				log.Warningf("failed to encode event: %v", err)
@@ -106,4 +118,13 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	wconn.Flush() // nolint: errcheck
 
 	return nil
+}
+
+func isSanitary(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			return false
+		}
+	}
+	return true
 }
