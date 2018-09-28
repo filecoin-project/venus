@@ -17,10 +17,11 @@ import (
 	pstore "gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 )
 
+// RandPeerID is a libp2p random peer ID generator.
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the
 // whole repo as a dependency because we only need this small bit. However if we find
 // ourselves using more and more pieces we should just take a dependency on it.
-func randPeerID() (peer.ID, error) {
+func RandPeerID() (peer.ID, error) {
 	buf := make([]byte, 16)
 	if n, err := rand.Read(buf); n != 16 || err != nil {
 		if n != 16 && err == nil {
@@ -33,7 +34,7 @@ func randPeerID() (peer.ID, error) {
 }
 
 func requireRandPeerID(t testing.TB) peer.ID { // nolint: deadcode
-	p, err := randPeerID()
+	p, err := RandPeerID()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -77,7 +77,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		} // else err may be set and returned as normal
 	}()
 
-	tif := core.InitGenesis
+	tif := consensus.InitGenesis
 
 	if cfg.UseCustomGenesis && cfg.GenesisFile != "" {
 		return fmt.Errorf("cannot use testgenesis option and genesisfile together")
@@ -128,9 +128,9 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 
 		// Generate a genesis function to allocate the address funds
-		var actorOps []core.GenOption
+		var actorOps []consensus.GenOption
 		for k, v := range addressKeys {
-			actorOps = append(actorOps, core.ActorAccount(k.Address, k.Balance))
+			actorOps = append(actorOps, consensus.ActorAccount(k.Address, k.Balance))
 
 			// load an address into nodes wallet backend
 			if k.Address.String() == cfg.WalletAddr {
@@ -144,7 +144,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 				rep.Config().Wallet.DefaultAddress = k.Address
 			}
 		}
-		tif = core.MakeGenesisFunc(actorOps...)
+		tif = consensus.MakeGenesisFunc(actorOps...)
 	}
 
 	// TODO: don't create the repo if this fails

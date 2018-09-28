@@ -30,6 +30,7 @@ const (
 	lockFile               = "repo.lock"
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"
+	chainDatastorePrefix   = "chain"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 )
@@ -56,6 +57,7 @@ type FSRepo struct {
 	ds       Datastore
 	keystore keystore.Keystore
 	walletDs Datastore
+	chainDs  Datastore
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -120,6 +122,10 @@ func (r *FSRepo) loadFromDisk() error {
 
 	if err := r.openWalletDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open wallet datastore")
+	}
+
+	if err := r.openChainDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open chain datastore")
 	}
 	return nil
 }
@@ -205,6 +211,11 @@ func (r *FSRepo) WalletDatastore() Datastore {
 	return r.walletDs
 }
 
+// ChainDatastore returns the chain datastore.
+func (r *FSRepo) ChainDatastore() Datastore {
+	return r.chainDs
+}
+
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
@@ -222,6 +233,10 @@ func (r *FSRepo) Close() error {
 	}
 
 	if err := r.walletDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close datastore")
+	}
+
+	if err := r.chainDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close datastore")
 	}
 
@@ -309,6 +324,17 @@ func (r *FSRepo) openKeystore() error {
 	}
 
 	r.keystore = ks
+
+	return nil
+}
+
+func (r *FSRepo) openChainDatastore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, chainDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.chainDs = ds
 
 	return nil
 }

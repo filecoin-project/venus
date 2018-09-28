@@ -13,7 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -235,16 +236,18 @@ func TestDealProtocolMissing(t *testing.T) {
 func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
+
 	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 	nodeAddr, err := nd.NewAddress()
 	assert.NoError(err)
-
-	tif := core.MakeGenesisFunc(
-		core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+	tif := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 	)
-	nd.ChainMgr.Genesis(ctx, tif)
+	requireResetNodeGen(require, nd, tif)
+
 	assert.NoError(err)
 	assert.NoError(nd.Start(ctx))
 
@@ -260,24 +263,21 @@ func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 func TestStateTreeMarketPeeker(t *testing.T) {
 	require := require.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, true, true)[0]
-
-	ctx := context.Background()
-	cm := nd.ChainMgr
-	cm.PwrTableView = &core.TestView{}
-
 	// setup miner power in genesis block
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	sn := types.NewMockSigner(ki)
 	testAddress := sn.Addresses[0]
-
-	testGen := core.MakeGenesisFunc(
-		core.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
+	testGen := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
-	require.NoError(cm.Genesis(ctx, testGen))
 
-	genesisBlock, err := cm.FetchBlock(ctx, cm.GetGenesisCid())
-	require.NoError(err)
+	nd := MakeNodesStartedWithGif(t, 1, true, true, testGen)[0]
+	ctx := context.Background()
+
+	genTS := nd.ChainReader.Head()
+	genesisBlock := genTS.ToSlice()[0]
+	genCid := nd.ChainReader.GenesisCid()
+	require.True(genCid.Equals(genesisBlock.Cid())) // sanity check
 
 	// create miner
 	nonce := uint64(0)
@@ -285,7 +285,8 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	require.NoError(err)
 	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, 10000, pid, types.NewZeroAttoFIL())
 	require.NoError(err)
-	b := core.RequireMineOnce(ctx, t, cm, genesisBlock, sn.Addresses[0], core.MustSign(sn, msg))
+
+	b := chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, genesisBlock, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
 	nonce++
 
 	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
@@ -296,7 +297,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	bidSize := types.NewBytesAmount(10000)
 	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, bidPrice, bidSize)
 	require.NoError(err)
-	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg))
+	b = chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, b, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
 	nonce++
 
 	bidID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
@@ -306,7 +307,7 @@ func TestStateTreeMarketPeeker(t *testing.T) {
 	askPrice := types.NewAttoFIL(big.NewInt(96))
 	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, askPrice, askSize)
 	require.NoError(err)
-	b = core.RequireMineOnce(ctx, t, cm, b, sn.Addresses[0], core.MustSign(sn, msg))
+	b = chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, b, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
 	nonce++
 
 	askID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()

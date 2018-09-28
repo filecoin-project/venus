@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,7 @@ func TestNextNonce(t *testing.T) {
 		assert.Equal(uint64(2), nonce)
 
 		msg := types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		smsg := MustSign(mockSigner, msg)
+		smsg := testhelpers.MustSign(mockSigner, msg)
 		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)
@@ -87,7 +88,7 @@ func TestNextNonce(t *testing.T) {
 		assert.Equal(uint64(3), nonce)
 
 		msg = types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		smsg = MustSign(mockSigner, msg)
+		smsg = testhelpers.MustSign(mockSigner, msg)
 		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)

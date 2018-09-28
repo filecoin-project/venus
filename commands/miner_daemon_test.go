@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/fixtures"
+
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
@@ -76,7 +76,7 @@ func TestMinerCreate(t *testing.T) {
 		tf(testAddr, peer.ID(""))
 
 		// Will accept a peer ID if one is provided
-		tf(testAddr, core.RequireRandomPeerID())
+		tf(testAddr, th.RequireRandomPeerID())
 	})
 
 	t.Run("validation failure", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	go func() {
 		miner := d.RunSuccess("miner", "create",
 			"--from", fixtures.TestAddresses[2],
-			"--peerid", core.RequireRandomPeerID().Pretty(),
+			"--peerid", th.RequireRandomPeerID().Pretty(),
 			"100", "20",
 		)
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))

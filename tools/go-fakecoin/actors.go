@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/api/impl"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -103,7 +102,7 @@ func fakeActors(ctx context.Context, fc api.API) error {
 	wg.Add(1)
 	var minerAddr address.Address
 	go func() {
-		peer := core.RequireRandomPeerID()
+		peer := th.RequireRandomPeerID()
 		var err error
 		minerAddr, err = fc.Miner().Create(ctx, minerLocalAddr, uint64(100), peer, types.NewAttoFILFromFIL(400))
 		if err != nil {

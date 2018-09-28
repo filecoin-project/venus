@@ -36,12 +36,8 @@ func (api *nodeAddress) Addrs() api.Addrs {
 
 func (api *nodeAddress) Balance(ctx context.Context, addr address.Address) (*types.AttoFIL, error) {
 	fcn := api.api.node
-	ts := fcn.ChainMgr.GetHeaviestTipSet()
-	if len(ts) == 0 {
-		return types.ZeroAttoFIL, ErrHeaviestTipSetNotFound
-	}
 
-	tree, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	tree, err := fcn.ChainReader.LatestState(ctx)
 	if err != nil {
 		return types.ZeroAttoFIL, err
 	}

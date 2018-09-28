@@ -69,7 +69,7 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 func (api *nodeMessage) Wait(ctx context.Context, msgCid *cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
 	nd := api.api.node
 
-	return nd.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+	return nd.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 		signature, err := nd.GetSignature(ctx, msg.To, msg.Method)
 		if err != nil && err != node.ErrNoMethod {
 			return errors.Wrap(err, "unable to determine return type")

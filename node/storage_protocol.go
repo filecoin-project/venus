@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -294,7 +294,7 @@ func (sm *StorageMiner) OnCommitmentAddedToMempool(sector *SealedSector, msgCid 
 
 	for _, c := range deals {
 		go func(c *cid.Cid, sectorID uint64) {
-			err = sm.nd.ChainMgr.WaitForMessage(
+			err = sm.nd.MessageWaiter.WaitForMessage(
 				context.Background(),
 				msgCid,
 				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
@@ -338,7 +338,7 @@ func (sm *StorageMiner) OnCommitmentAddedToMempool(sector *SealedSector, msgCid 
 
 // OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
 // It is used to check if we are in a new proving period and need to trigger PoSt submission.
-func (sm *StorageMiner) OnNewHeaviestTipSet(ts core.TipSet) {
+func (sm *StorageMiner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	sectors := sm.sectorBuilder().SealedSectors()
 
 	if len(sectors) == 0 {
@@ -444,7 +444,7 @@ func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*Sea
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	err = sm.nd.ChainMgr.WaitForMessage(ctx, msgCid, func(blk *types.Block, smgs *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err = sm.nd.MessageWaiter.WaitForMessage(ctx, msgCid, func(blk *types.Block, smgs *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 		}

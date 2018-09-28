@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -451,8 +451,7 @@ type stateTreeMarketPeeker struct {
 }
 
 func (stsa *stateTreeMarketPeeker) loadStateTree(ctx context.Context) (state.Tree, error) {
-	ts := stsa.nd.ChainMgr.GetHeaviestTipSet()
-	return stsa.nd.ChainMgr.State(ctx, ts.ToSlice())
+	return stsa.nd.ChainReader.LatestState(ctx)
 }
 
 func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr address.Address, method string, params ...interface{}) ([][]byte, error) {
@@ -472,7 +471,8 @@ func (stsa *stateTreeMarketPeeker) queryMessage(ctx context.Context, addr addres
 	}
 
 	vms := vm.NewStorageMap(stsa.nd.Blockstore)
-	rets, ec, err := core.CallQueryMethod(ctx, st, vms, addr, method, args, address.Address{}, nil)
+
+	rets, ec, err := consensus.CallQueryMethod(ctx, st, vms, addr, method, args, address.Address{}, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 
@@ -36,7 +36,7 @@ func TestIdOutput(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-	err := node.Init(ctx, r, core.InitGenesis)
+	err := node.Init(ctx, r, consensus.InitGenesis)
 	assert.NoError(err)
 
 	// define repo option

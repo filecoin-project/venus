@@ -2,9 +2,11 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 
 	ci "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
@@ -12,12 +14,14 @@ import (
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
+var genesisKey = datastore.NewKey("/consensus/genesisCid")
 
 // InitCfg contains configuration for initializing a node
 type InitCfg struct {
@@ -46,7 +50,7 @@ func DefaultWalletAddressOpt(addr address.Address) InitOpt {
 // Init initializes a filecoin node in the given repo
 // TODO: accept options?
 //  - configurable genesis block
-func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc, opts ...InitOpt) error {
+func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts ...InitOpt) error {
 	cfg := new(InitCfg)
 	for _, o := range opts {
 		o(cfg)
@@ -57,9 +61,36 @@ func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc, opts ...In
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
-	cm := core.NewChainManager(r.Datastore(), bs, cst)
-	if err := cm.Genesis(ctx, gen); err != nil {
-		return errors.Wrap(err, "failed to initialize genesis")
+	// TODO the following should be wrapped in the chain.Store or a sub
+	// interface.
+	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, nil)
+	// Generate the genesis tipset.
+	genesis, err := gen(cst, bs)
+	if err != nil {
+		return err
+	}
+	genTipSet, err := consensus.NewTipSet(genesis)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate genesis block")
+	}
+	// Persist the genesis tipset to the repo.
+	genTsas := &chain.TipSetAndState{
+		TipSet:          genTipSet,
+		TipSetStateRoot: genesis.StateRoot,
+	}
+	if err = chainStore.PutTipSetAndState(ctx, genTsas); err != nil {
+		return errors.Wrap(err, "failed to put genesis block in chain store")
+	}
+	if err = chainStore.SetHead(ctx, genTipSet); err != nil {
+		return errors.Wrap(err, "failed to persist genesis block in chain store")
+	}
+	// Persist the genesis cid to the repo.
+	val, err := json.Marshal(genesis.Cid())
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis cid")
+	}
+	if err = r.Datastore().Put(genesisKey, val); err != nil {
+		return errors.Wrap(err, "failed to persist genesis cid")
 	}
 
 	if cfg.PeerKey == nil {

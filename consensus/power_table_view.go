@@ -1,4 +1,4 @@
-package core
+package consensus
 
 import (
 	"context"
@@ -28,15 +28,18 @@ type PowerTableView interface {
 	HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool
 }
 
-type marketView struct{}
+// MarketView is the power table view used for running expected consensus in
+// production.  It's methods use data from an input state's storage market to
+// determine power values in a chain.
+type MarketView struct{}
 
-var _ PowerTableView = &marketView{}
+var _ PowerTableView = &MarketView{}
 
 // Total returns the total storage as a uint64.  If the total storage
 // value exceeds the max value of a uint64 this method errors.
 // TODO: uint64 has enough bits to express about 1 exabyte of total storage.
 // This should be increased for v1.
-func (v *marketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Address{}, nil)
 	if err != nil {
@@ -58,7 +61,7 @@ func (v *marketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 // TODO: currently power is in sectors, figure out if & how it should be converted to bytes.
 // TODO: uint64 has enough bits to express about 1 exabyte.  This
 // should probably be increased for v1.
-func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Address{}, nil)
 	if err != nil {
@@ -75,7 +78,7 @@ func (v *marketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 
 // HasPower returns true if the provided address belongs to a miner with power
 // in the storage market
-func (v *marketView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+func (v *MarketView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	numBytes, err := v.Miner(ctx, st, bstore, mAddr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {

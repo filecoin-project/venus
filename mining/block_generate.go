@@ -10,13 +10,14 @@ import (
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // Generate returns a new block created from the messages in the pool.
-func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet core.TipSet, ticket types.Signature, nullBlockCount uint64) (*types.Block, error) {
+func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSet, ticket types.Signature, nullBlockCount uint64) (*types.Block, error) {
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")
@@ -63,6 +64,10 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet core.TipSet, ti
 	newStateTreeCid, err := stateTree.Flush(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "generate flush state tree")
+	}
+
+	if err = vms.Flush(); err != nil {
+		return nil, errors.Wrap(err, "generate flush vm storage map")
 	}
 
 	var receipts []*types.MessageReceipt

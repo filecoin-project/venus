@@ -17,8 +17,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -53,7 +55,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	pdata := core.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
-	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.NoError(result.ExecutionError)
 
@@ -88,7 +90,7 @@ func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
 
 	pdata := core.MustConvertParams(payee, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
-	_, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	_, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 
 	// expect error
 	require.Error(err)
@@ -143,7 +145,7 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	sys := setup(t)
 
 	wrongTargetAddress := sys.addressGetter()
-	wrongTargetActor := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+	wrongTargetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 	sys.st.SetActor(sys.ctx, wrongTargetAddress, wrongTargetActor)
 
 	result, err := sys.ApplyUpdateMessage(wrongTargetAddress, 100, 0)
@@ -379,7 +381,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		target1 := address.NewForTestGetter()()
 		target2 := address.NewForTestGetter()()
 		_, st, vms := requireGenesis(ctx, t, target1)
-		targetActor2 := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+		targetActor2 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, target2, targetActor2)
 
 		channelID1 := establishChannel(ctx, st, vms, payer, target1, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
@@ -389,7 +391,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -426,7 +428,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, exitCode, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -494,7 +496,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
-	result, err := core.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
 	}
@@ -514,14 +516,14 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	vms := vm.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
-	blk, err := core.InitGenesis(cst, bs)
+	blk, err := consensus.InitGenesis(cst, bs)
 	require.NoError(err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
 	require.NoError(err)
 
 	for _, addr := range targetAddresses {
-		targetActor := core.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+		targetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, addr, targetActor)
 	}
 
@@ -550,7 +552,7 @@ func setup(t *testing.T) system {
 	target := addrGetter()
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	payerActor := core.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
+	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
 	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
@@ -580,22 +582,22 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 
 	args := core.MustConvertParams(params...)
 
-	return core.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
+	return consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
-func (sys *system) ApplyUpdateMessage(target address.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyUpdateMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "update", 0)
 }
 
-func (sys *system) ApplyUpdateMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyUpdateMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "update", height)
 }
 
-func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*core.ApplicationResult, error) {
+func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, nonce, "close", 0)
@@ -609,7 +611,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(err)
 
-	returnValue, exitCode, err := core.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(err)
 	assert.Equal(uint8(0), exitCode)
 
@@ -622,7 +624,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	return channel
 }
 
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, nonce uint64, method string, height uint64) (*core.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, nonce uint64, method string, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	require := require.New(sys.t)
@@ -637,8 +639,8 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	return sys.ApplyMessage(msg, height)
 }
 
-func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*core.ApplicationResult, error) {
-	return core.ApplyMessage(sys.ctx, sys.st, sys.vms, msg, types.NewBlockHeight(height))
+func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.ApplicationResult, error) {
+	return consensus.ApplyMessage(sys.ctx, sys.st, sys.vms, msg, types.NewBlockHeight(height))
 }
 
 func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
@@ -646,7 +648,7 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := core.MustConvertParams(payer)
-	values, ec, err := core.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
 	require.Zero(ec)
 	require.NoError(err)
 

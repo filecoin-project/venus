@@ -30,11 +30,7 @@ func (api *nodeActor) Ls(ctx context.Context) ([]*api.ActorView, error) {
 }
 
 func ls(ctx context.Context, fcn *node.Node, actorGetter state.GetAllActorsFunc) ([]*api.ActorView, error) {
-	ts := fcn.ChainMgr.GetHeaviestTipSet()
-	if len(ts) == 0 {
-		return nil, ErrHeaviestTipSetNotFound
-	}
-	st, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	st, err := fcn.ChainReader.LatestState(ctx)
 	if err != nil {
 		return nil, err
 	}

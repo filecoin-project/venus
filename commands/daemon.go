@@ -243,7 +243,7 @@ func NewHeartbeat(node *node.Node) (*Heartbeat, error) {
 	}
 
 	// Get the heaviest tipset
-	ts := node.ChainMgr.GetHeaviestTipSet()
+	ts := node.ChainReader.Head()
 	heaviestTipset := ts.ToSortedCidSet()
 	// Get the heaviest tipset's height
 	tipsetHeight, err := ts.Height()

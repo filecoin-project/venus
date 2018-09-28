@@ -8,8 +8,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,17 +29,18 @@ func Test_Mine(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
 	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
-	tipSet := core.RequireNewTipSet(require, baseBlock)
+	tipSet := consensus.RequireNewTipSet(require, baseBlock)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
 
 	// Success case. TODO: this case isn't testing much.  Testing w.Mine
 	// further needs a lot more attention.
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+
 	outCh := make(chan Output)
 	doSomeWorkCalled := false
 	worker.createPoST = func() { doSomeWorkCalled = true }
@@ -50,7 +53,7 @@ func Test_Mine(t *testing.T) {
 
 	// Block generation fails.
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
@@ -63,11 +66,11 @@ func Test_Mine(t *testing.T) {
 
 	// Sent empty tipset
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
-	input = NewInput(core.TipSet{})
+	input = NewInput(consensus.TipSet{})
 	go worker.Mine(ctx, input, outCh)
 	r = <-outCh
 	assert.Error(r.Err)
@@ -128,7 +131,7 @@ func TestCreateChallenge(t *testing.T) {
 		decoded, err := hex.DecodeString(c.challenge)
 		assert.NoError(err)
 
-		parents := core.TipSet{}
+		parents := consensus.TipSet{}
 		for _, t := range c.parentTickets {
 			b := types.Block{Ticket: t}
 			parents.AddBlock(&b)
@@ -160,7 +163,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
 func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 	require := require.New(t)
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
-	vms := core.VMStorage()
+	vms := th.VMStorage()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 
@@ -168,12 +171,12 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []address.Address
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2, addr3, addr4, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3], mockSigner.Addresses[4]
-	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	act2 := core.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
-	fakeNetAct := core.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
-	minerAct := core.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, core.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	minerOwner := core.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	act1 := th.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
+	act2 := th.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
+	fakeNetAct := th.RequireNewFakeActor(require, vms, addr3, fakeActorCodeCid)
+	minerAct := th.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	minerOwner := th.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward message failures.
 		address.NetworkAddress: fakeNetAct,
 
@@ -189,14 +192,14 @@ func sharedSetup(t *testing.T) (state.Tree, *core.MessagePool, []address.Address
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	vms := core.VMStorage()
+	vms := th.VMStorage()
 
 	cst, _, fakeActorCodeCid := sharedSetupInitial()
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
-	act1 := core.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	_, st := core.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	act1 := th.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
 	})
 
@@ -226,7 +229,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
-	res, err := core.ApplyMessages(ctx, messages, st, vms, types.NewBlockHeight(0))
+	res, err := consensus.ApplyMessages(ctx, messages, st, vms, types.NewBlockHeight(0))
 
 	assert.Len(res.PermanentFailures, 2)
 	assert.Contains(res.PermanentFailures, smsg3)
@@ -248,10 +251,10 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -268,7 +271,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:       stateRoot,
 		Nonce:           1,
 	}
-	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0)
+	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0)
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
@@ -285,10 +288,10 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -320,7 +323,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0)
+	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock), nil, 0)
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 1) // This is the temporary failure.
@@ -341,10 +344,10 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -355,7 +358,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		ParentWeightDenom: wDenom,
 		StateRoot:         newCid(),
 	}
-	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
+	baseTipSet := consensus.RequireNewTipSet(require, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, 0)
 	assert.NoError(err)
 
@@ -379,10 +382,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts core.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -390,7 +393,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	blk, err := worker.Generate(ctx, core.RequireNewTipSet(require, &baseBlock), nil, 0)
+	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock), nil, 0)
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -407,7 +410,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, core.ApplyMessages, &core.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
@@ -421,7 +424,7 @@ func TestGenerateError(t *testing.T) {
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 	}
-	baseTipSet := core.RequireNewTipSet(require, &baseBlock)
+	baseTipSet := consensus.RequireNewTipSet(require, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, 0)
 	assert.Error(err, "boom")
 	assert.Nil(blk)
@@ -446,16 +449,16 @@ func (st *StateTreeForTest) Flush(ctx context.Context) (*cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
-func getWeightTest(c context.Context, ts core.TipSet) (uint64, uint64, error) {
+func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, uint64, error) {
 	num, den, err := ts.ParentWeight()
 	if err != nil {
 		return uint64(0), uint64(0), err
 	}
-	return num + uint64(int64(len(ts))*int64(core.ECV)), den, nil
+	return num + uint64(int64(len(ts))*int64(consensus.ECV)), den, nil
 }
 
-func makeExplodingGetStateTree(st state.Tree) func(context.Context, core.TipSet) (state.Tree, error) {
-	return func(c context.Context, ts core.TipSet) (state.Tree, error) {
+func makeExplodingGetStateTree(st state.Tree) func(context.Context, consensus.TipSet) (state.Tree, error) {
+	return func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
 			return nil, errors.New("boom no flush")

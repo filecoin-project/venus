@@ -9,14 +9,16 @@ import (
 	"time"
 
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -70,7 +72,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, core.InitGenesis))
+		require.NoError(Init(ctx, r, consensus.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -98,7 +100,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, core.InitGenesis))
+		require.NoError(Init(ctx, r, consensus.InitGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -136,7 +138,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(nd.Start(ctx))
 
-	assert.NotNil(nd.ChainMgr.GetHeaviestTipSet())
+	assert.NotNil(nd.ChainReader.Head())
 	nd.Stop(ctx)
 }
 
@@ -166,27 +168,29 @@ func TestNodeMining(t *testing.T) {
 	go node.handleNewMiningOutput(oCh)
 
 	// Ensure that the initial input (the best tipset) is wired up properly.
-	b1 := &types.Block{StateRoot: newCid()}
-	var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
-	chainMgrForTest = node.ChainMgr
-	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
+	chainForTest, ok := node.ChainReader.(chain.Store)
+	require.True(ok)
 	require.NoError(node.Start(ctx))
+	genTS := chainForTest.Head()
+	b1 := genTS.ToSlice()[0]
 	require.NoError(node.StartMining(ctx))
 	gotInput := <-inCh
 	require.Equal(1, len(gotInput.TipSet))
 	assert.True(b1.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
 
 	// Ensure that the successive inputs (new best tipsets) are wired up properly.
-	b2 := core.MkChild([]*types.Block{b1}, newCid(), 0)
-	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b2))
+	b2 := chain.RequireMkFakeChild(require, genTS, node.ChainReader.GenesisCid(), newCid(), uint64(0), uint64(0))
+	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
 	gotInput = <-inCh
 	require.Equal(1, len(gotInput.TipSet))
 	assert.True(b2.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
 
 	// Ensure we don't mine when stopped.
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
+
 	node.StopMining(ctx)
-	node.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b2))
+	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
+
 	time.Sleep(20 * time.Millisecond)
 	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
 
@@ -195,10 +199,9 @@ func TestNodeMining(t *testing.T) {
 	// Kinda lame to test this way, but better than not testing.
 	node = MakeNodeUnstartedSeed(t, true, true)
 
-	chainMgrForTest = node.ChainMgr
-	chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
 	assert.NoError(node.Start(ctx))
 	assert.NoError(node.StartMining(ctx))
+
 	workerDone := false
 	node.miningDoneWg.Add(1)
 	go func() {
@@ -241,24 +244,41 @@ func TestUpdateMessagePool(t *testing.T) {
 	// Note: majority of tests are in message_pool_test. This test
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
+	chainForTest, ok := node.ChainReader.(chain.Store)
+	require.True(ok)
 
-	var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: gosimple, megacheck, golint
-
-	// Msg pool: [m0, m1],   Chain: b[m2, m3]
+	// Msg pool: [m0, m1],   Chain: gen -> b[m2, m3]
 	// to
-	// Msg pool: [m0, m3],   Chain: b[] -> b[m1, m2]
+	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
+	chainForTest.Load(ctx) // load up head to get genesis block
+	genTS := chainForTest.Head()
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
-	oldChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{m[2], m[3]}})
-	newChain := core.NewChainWithMessages(node.CborStore, nil, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
-	chainMgrForTest.SetHeaviestTipSetForTest(ctx, oldChain[len(oldChain)-1])
+
+	oldChain := core.NewChainWithMessages(node.CborStore, genTS, [][]*types.SignedMessage{{m[2], m[3]}})
+	newChain := core.NewChainWithMessages(node.CborStore, genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
+
+	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+		TipSet:          oldChain[len(oldChain)-1],
+		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
+	})
+	chainForTest.SetHead(ctx, oldChain[len(oldChain)-1])
 	assert.NoError(node.Start(ctx))
 	updateMsgPoolDoneCh := make(chan struct{})
 	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
 	// Triggers a notification, node should update the message pool as a result.
-	chainMgrForTest.SetHeaviestTipSetForTest(ctx, newChain[len(newChain)-1])
+	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+		TipSet:          newChain[len(newChain)-2],
+		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
+	})
+	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+		TipSet:          newChain[len(newChain)-1],
+		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
+	})
+	chainForTest.SetHead(ctx, newChain[len(newChain)-1])
 	<-updateMsgPoolDoneCh
 	assert.Equal(2, len(node.MsgPool.Pending()))
 	pending := node.MsgPool.Pending()
@@ -267,7 +287,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	node.Stop(ctx)
 }
 
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainManager, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, node *Node, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
 		cb = func(b *types.Block, msg *types.SignedMessage,
@@ -282,7 +302,7 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, cm *core.ChainM
 	}
 	assert.NoError(err)
 
-	err = cm.WaitForMessage(context.Background(), expectCid, cb)
+	err = node.WaitForMessage(context.Background(), expectCid, cb)
 	assert.Equal(expectError, err != nil)
 }
 
@@ -292,6 +312,7 @@ type smsgsSet [][]*types.SignedMessage
 func TestWaitForMessage(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
@@ -299,64 +320,78 @@ func TestWaitForMessage(t *testing.T) {
 	err := node.Start(ctx)
 	assert.NoError(err)
 
-	stm := (*core.ChainManagerForTest)(node.ChainMgr)
+	testWaitExisting(ctx, assert, require, node)
+	testWaitNew(ctx, assert, require, node)
+}
 
-	testWaitExisting(ctx, assert, node, stm)
-	testWaitNew(ctx, assert, node, stm)
+func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
+	chainStore, ok := node.ChainReader.(chain.Store)
+	assert.True(ok)
+
+	m1, m2 := newSignedMessage(), newSignedMessage()
+	chainWithMsgs := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}})
+	ts := chainWithMsgs[len(chainWithMsgs)-1]
+	require.Equal(1, len(ts))
+	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+		TipSet:          ts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+	})
+	require.NoError(chainStore.SetHead(ctx, ts))
+
+	testWaitHelp(nil, assert, node, m1, false, nil)
+	testWaitHelp(nil, assert, node, m2, false, nil)
+}
+
+func testWaitNew(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
+	var wg sync.WaitGroup
+	chainStore, ok := node.ChainReader.(chain.Store)
+	assert.True(ok)
+
+	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
+	m3, m4 := newSignedMessage(), newSignedMessage()
+	chainWithMsgs := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m3, m4}})
+
+	wg.Add(2)
+	go testWaitHelp(&wg, assert, node, m3, false, nil)
+	go testWaitHelp(&wg, assert, node, m4, false, nil)
+	time.Sleep(10 * time.Millisecond)
+
+	ts := chainWithMsgs[len(chainWithMsgs)-1]
+	require.Equal(1, len(ts))
+	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+		TipSet:          ts,
+		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+	})
+	require.NoError(chainStore.SetHead(ctx, ts))
+
+	wg.Wait()
 }
 
 func TestWaitForMessageError(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 
 	node := MakeNodesUnstarted(t, 1, true, true)[0]
 
-	assert.NoError(node.Start(ctx))
+	err := node.Start(ctx)
+	assert.NoError(err)
 
-	stm := (*core.ChainManagerForTest)(node.ChainMgr)
-
-	testWaitError(ctx, assert, node, stm)
+	testWaitError(ctx, assert, require, node)
 }
 
-func testWaitExisting(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	m1, m2 := newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
-
-	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
-
-	testWaitHelp(nil, assert, stm, m1, false, nil)
-	testWaitHelp(nil, assert, stm, m2, false, nil)
-}
-
-func testWaitNew(ctx context.Context, assert *assert.Assertions, node *Node,
-	stm *core.ChainManagerForTest) {
-	var wg sync.WaitGroup
-
-	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
-	m3, m4 := newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m3, m4}})
-
-	wg.Add(2)
-	go testWaitHelp(&wg, assert, stm, m3, false, nil)
-	go testWaitHelp(&wg, assert, stm, m4, false, nil)
-	time.Sleep(10 * time.Millisecond)
-
-	stm.SetHeaviestTipSetForTest(ctx, chain[len(chain)-1])
-	wg.Wait()
-}
-
-func testWaitError(ctx context.Context, assert *assert.Assertions, node *Node, stm *core.ChainManagerForTest) {
-	stm.FetchBlock = func(ctx context.Context, cid *cid.Cid) (*types.Block, error) {
-		return nil, fmt.Errorf("error fetching block (in test)")
-	}
+func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
+	chainStore, ok := node.ChainReader.(chain.Store)
+	assert.True(ok)
 
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(node.CborStore, stm.GetHeaviestTipSet(), smsgsSet{smsgs{m1, m2}})
-	chain2 := core.NewChainWithMessages(node.CborStore, chain[len(chain)-1], smsgsSet{smsgs{m3, m4}})
-	stm.SetHeaviestTipSetForTest(ctx, chain2[len(chain2)-1])
+	chain := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	// set the head without putting the ancestor block in the chainStore.
+	err := chainStore.SetHead(ctx, chain[len(chain)-1])
+	assert.Nil(err)
 
-	testWaitHelp(nil, assert, stm, m2, true, nil)
+	testWaitHelp(nil, assert, node, m2, true, nil)
 }
 
 func TestWaitConflicting(t *testing.T) {
@@ -366,17 +401,16 @@ func TestWaitConflicting(t *testing.T) {
 	ctx := context.Background()
 
 	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
-
-	node := MakeNodesUnstarted(t, 1, true, true)[0]
-	testGen := core.MakeGenesisFunc(
-		core.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
-		core.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
-		core.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
+	testGen := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
+		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
+		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
 	)
-	assert.NoError(node.ChainMgr.Genesis(ctx, testGen))
+	node := MakeNodesUnstartedWithGif(t, 1, true, true, testGen)[0]
+	chainForTest, ok := node.ChainReader.(chain.Store)
+	require.True(ok)
 
 	assert.NoError(node.Start(ctx))
-	stm := (*core.ChainManagerForTest)(node.ChainMgr)
 
 	// Create conflicting messages
 	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
@@ -387,19 +421,26 @@ func TestWaitConflicting(t *testing.T) {
 	sm2, err := types.NewSignedMessage(*m2, &mockSigner)
 	require.NoError(err)
 
-	base := stm.GetHeaviestTipSet().ToSlice()
-	require.Equal(1, len(base))
+	baseTS := node.ChainReader.Head()
+	require.Equal(1, len(baseTS))
+	baseBlock := baseTS.ToSlice()[0]
 
-	b1 := core.MkChild(base, base[0].StateRoot, 0)
+	b1 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(0), uint64(0))
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(node.CborStore, b1)
-	b2 := core.MkChild(base, base[0].StateRoot, 1)
+
+	b2 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(1), uint64(0))
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}
 	core.MustPut(node.CborStore, b2)
 
-	stm.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1, b2))
+	ts := consensus.RequireNewTipSet(require, b1, b2)
+	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+		TipSet:          ts,
+		TipSetStateRoot: baseBlock.StateRoot,
+	})
+	chainForTest.SetHead(ctx, ts)
 	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
 		assert.NotNil(rcp)
@@ -411,11 +452,12 @@ func TestWaitConflicting(t *testing.T) {
 		return nil
 	}
 
-	testWaitHelp(nil, assert, stm, sm1, false, msgApplySucc)
-	testWaitHelp(nil, assert, stm, sm2, false, msgApplyFail)
+	testWaitHelp(nil, assert, node, sm1, false, msgApplySucc)
+	testWaitHelp(nil, assert, node, sm2, false, msgApplyFail)
 }
 
 func TestGetSignature(t *testing.T) {
+	require := require.New(t)
 	t.Parallel()
 	t.Run("no method", func(t *testing.T) {
 		ctx := context.Background()
@@ -425,10 +467,10 @@ func TestGetSignature(t *testing.T) {
 		nodeAddr, err := nd.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		nd.ChainMgr.Genesis(ctx, tif)
+		requireResetNodeGen(require, nd, tif)
 
 		assert.NoError(nd.Start(ctx))
 		defer nd.Stop(ctx)
@@ -444,7 +486,7 @@ func TestOptionWithError(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r, core.InitGenesis))
+	assert.NoError(Init(ctx, r, consensus.InitGenesis))
 
 	opts, err := OptionsFromRepo(r)
 	assert.NoError(err)
@@ -487,17 +529,17 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account does not exist", func(t *testing.T) {
 		assert := assert.New(t)
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
+		require := require.New(t)
 
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
+		requireResetNodeGen(require, node, tif)
 
-		err = node.ChainMgr.Genesis(ctx, tif)
-		assert.NoError(err)
 		assert.NoError(node.Start(ctx))
 
 		noActorAddress, err := node.NewAddress() // Won't have an actor.
@@ -510,15 +552,16 @@ func TestNextNonce(t *testing.T) {
 
 	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
 		assert := assert.New(t)
+		require := require.New(t)
 
 		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		requireResetNodeGen(require, node, tif)
 
 		assert.NoError(node.Start(ctx))
 
@@ -542,20 +585,29 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 	t.Run("includes correct nonce", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
+
 		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-			core.ActorNonce(nodeAddr, 42),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+			consensus.ActorNonce(nodeAddr, 42),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+
+		requireResetNodeGen(require, node, tif)
+
 		assert.NoError(node.Start(ctx))
 
-		bb := types.NewBlockForTest(core.RequireBestBlock(node.ChainMgr, t), 1)
-		var chainMgrForTest *core.ChainManagerForTest = node.ChainMgr // nolint: golint
-		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, bb))
+		bb := types.NewBlockForTest(node.ChainReader.Head().ToSlice()[0], 1)
+		headTS := consensus.RequireNewTipSet(require, bb)
+		chainForTest, ok := node.ChainReader.(chain.Store)
+		require.True(ok)
+		chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+			TipSet:          headTS,
+			TipSetStateRoot: bb.StateRoot,
+		})
+		chainForTest.SetHead(ctx, headTS)
 
 		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
 		require.NoError(err)
@@ -565,19 +617,22 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 
 func TestQueryMessage(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	t.Run("can contact payment broker", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
+		ctx := context.Background()
+
 		node := MakeNodesUnstarted(t, 1, true, true)[0]
 		nodeAddr, err := node.NewAddress()
 		require.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+
+		requireResetNodeGen(require, node, tif)
+
 		assert.NoError(node.Start(ctx))
 
 		args, err := abi.ToEncodedValues(nodeAddr)
@@ -595,23 +650,24 @@ func TestCreateMiner(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		ctx := context.Background()
-
 		node := MakeOfflineNode(t)
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+
+		requireResetNodeGen(require, node, tif)
+
 		assert.NoError(node.Start(ctx))
 
 		assert.Nil(node.SectorBuilder)
 
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(100), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
+		result := <-RunCreateMiner(t, node, nodeAddr, uint64(100), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
 		require.NoError(result.Err)
 		assert.NotNil(result.MinerAddress)
 
@@ -619,41 +675,41 @@ func TestCreateMiner(t *testing.T) {
 	})
 
 	t.Run("fail with pledge too low", func(t *testing.T) {
-		ctx := context.Background()
-
 		node := MakeOfflineNode(t)
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+		requireResetNodeGen(require, node, tif)
+
 		assert.NoError(node.Start(ctx))
 
 		assert.Nil(node.SectorBuilder)
 
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(1), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(10))
+		result := <-RunCreateMiner(t, node, nodeAddr, uint64(1), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(10))
 		assert.Error(result.Err)
 		assert.Contains(result.Err.Error(), "pledge must be at least")
 	})
 
 	t.Run("fail with insufficient funds", func(t *testing.T) {
-		ctx := context.Background()
-
 		node := MakeOfflineNode(t)
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		assert.NoError(node.ChainMgr.Genesis(ctx, tif))
+
+		requireResetNodeGen(require, node, tif)
+
 		assert.NoError(node.Start(ctx))
 
 		assert.Nil(node.SectorBuilder)
 
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(20), core.RequireRandomPeerID(), *types.NewAttoFILFromFIL(1000000))
+		result := <-RunCreateMiner(t, node, nodeAddr, uint64(20), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(1000000))
+
 		assert.Error(result.Err)
 		assert.Contains(result.Err.Error(), "not enough balance")
 	})
@@ -680,19 +736,20 @@ func TestLookupMinerAddress(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		nd := MakeNodesUnstarted(t, 1, true, true)[0]
-
-		newMinerPid := core.RequireRandomPeerID()
-
 		// Note: we should probably just have nodes make an address for themselves during init
+		nd := MakeNodesUnstarted(t, 1, true, true)[0]
 		minerOwnerAddr, err := nd.NewAddress()
 		require.NoError(err)
 
 		// initialize genesis block
-		tif := core.MakeGenesisFunc(
-			core.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		require.NoError(nd.ChainMgr.Genesis(ctx, tif))
+
+		requireResetNodeGen(require, nd, tif)
+
+		newMinerPid := th.RequireRandomPeerID()
+
 		require.NoError(nd.Start(ctx))
 
 		// create a miner, owned by the account actor
