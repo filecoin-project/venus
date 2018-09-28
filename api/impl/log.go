@@ -64,7 +64,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	// add the pipe to the event log writer group
 	writer.WriterGroup.AddWriter(w)
 
-	/*** THIS IS A HACK FOR TEAM WEEK ***/
+	/*** THIS IS A HACK FOR DEMO ***/
 	// Lets make a crappy filter
 	filterR, filterW := io.Pipe()
 	go func() {

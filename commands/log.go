@@ -41,6 +41,7 @@ var logStreamToCmd = &cmds.Command{
 		ShortDescription: `
 Sends all json-encoded log messages to the multiaddr, for example node heartbeats and event logs.
 Heartbeats may be configured via the config stats.heartbeatPeriod options.
+This command will run until its killed.
 `,
 	},
 	Arguments: []cmdkit.Argument{
