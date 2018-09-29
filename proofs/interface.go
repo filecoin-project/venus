@@ -69,7 +69,7 @@ type VerifySealResponse struct {
 
 // GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoSTResponse struct {
-	Faults []uint64
+	Faults []uint8
 	Proof  [192]byte
 }
 

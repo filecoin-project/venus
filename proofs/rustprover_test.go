@@ -197,7 +197,7 @@ func TestPoSTCycle(t *testing.T) {
 	// end-to-end PoST test over a small number of replica commitments
 	require.Equal("00101010", fmt.Sprintf("%08b", gres.Proof[0]))
 	require.Equal(1, len(gres.Faults))
-	require.Equal(0, int(gres.Faults[0]))
+	require.Equal(uint8(0), gres.Faults[0])
 
 	vres, verr := rp.VerifyPoST(VerifyPoSTRequest{
 		Proof:   gres.Proof,

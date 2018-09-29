@@ -183,22 +183,10 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 	var proof [192]byte
 	copy(proof[:], proofSlice)
 
-	faultsLen := uint64(resPtr.faults_len)
-
-	// create a temporary Go slice backed by a C array
-	var faults []uint64
-	if faultsLen != 0 {
-		faults = (*[1 << 30]uint64)(unsafe.Pointer(resPtr.faults_ptr))[:faultsLen:faultsLen]
-	}
-
-	res := GeneratePoSTResponse{
+	return GeneratePoSTResponse{
 		Proof:  proof,
-		Faults: make([]uint64, faultsLen, faultsLen),
-	}
-
-	copy(res.Faults, faults)
-
-	return res, nil
+		Faults: C.GoBytes(unsafe.Pointer(resPtr.faults_ptr), C.int(resPtr.faults_len)),
+	}, nil
 }
 
 // VerifyPoST verifies that a proof-of-spacetime is valid.

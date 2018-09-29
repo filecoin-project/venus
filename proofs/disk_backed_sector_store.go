@@ -136,9 +136,9 @@ func (ss *DiskBackedSectorStore) WriteUnsealed(req WriteUnsealedRequest) (WriteU
 	cBytes := C.CBytes(req.Data)
 	defer C.free(cBytes)
 
-	// a mutable pointer to a WriteUnsealed C-struct
-	resPtr := C.write_unsealed((*C.Box_SectorStore)(ss.ptr), accessCStr, (*C.uint8_t)(cBytes), C.size_t(len(req.Data)))
-	defer C.destroy_write_unsealed_response(resPtr)
+	// a mutable pointer to a WriteAndPreprocessResponse C-struct
+	resPtr := C.write_and_preprocess((*C.Box_SectorStore)(ss.ptr), accessCStr, (*C.uint8_t)(cBytes), C.size_t(len(req.Data)))
+	defer C.destroy_write_and_preprocess_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return WriteUnsealedResponse{}, errors.New(C.GoString(resPtr.error_msg))
