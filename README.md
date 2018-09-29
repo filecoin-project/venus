@@ -17,8 +17,11 @@ by providing storage to clients.
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
-  - [Testing](#testing)
-  - [Supported Commands](#supported-commands)
+  - [Running tests](#running-tests)
+  - [Build Commands](#build-commands)
+- [Running Filecoin](#running-filecoin)
+   - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
+   - [Sample Commands](#sample-commands)
 - [Contribute](#contribute)
 
 ## Installation
@@ -74,7 +77,7 @@ Later, when the head of the `go-proofs` `master` branch changes, you may want to
 
 Note that updating the `go-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
-### Testing
+### Running Tests
 
 The filecoin binary must be built prior to testing changes made during development. To do so, run:
 
@@ -94,12 +97,7 @@ Note: Build and test can be combined:
 > go run ./build/*.go best
 ```
 
-#### Testing with IPTB
-
-Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
-
-
-### Supported Commands
+### Build Commands
 
 ```sh
 # Build
@@ -128,6 +126,96 @@ Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/
 ```
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
+
+## Running Filecoin
+
+```
+rm -fr ~/.filecoin      # <== optional, in case you have a pre-existing install
+go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-filecoin init --help`
+go-filecoin daemon      # Starts the daemon, you may now issue it commands in another terminal
+```
+
+To set up a single node capable of mining:
+```
+rm -fr ~/.filecoin
+go-filecoin init --genesisfile ./fixtures/genesis.car     # TODO include instructions on setting sealing params, etc
+go-filecoin daemon
+# Switch terminals
+# The miner is present in the genesis block car file created from the 
+# json file, but the node is not yet configured to use it. Get the 
+# miner address from the json file fixtures/gen.json and replace X
+# in the command below with it:
+go-filecoin config mining.minerAddress \"X\"
+# The account that owns the miner is also not yet configured in the node
+# so note that owner key name in fixtures/gen.json (eg, "a") and 
+# import that key from the fixtures, assuming it was X:
+go-filecoin wallet import fixtures/X.key
+# The miner was not created with a pre-set peerid, so set it so that
+# clients can find it.
+go-filecoin miner update-peerid
+```
+
+To set up a node and connect into an existing cluster:
+```
+TODO
+```
+#### Running multiple nodes with IPTB
+
+IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
+For example, it enables you to easily start up 10 mining nodes locally on your machine.
+Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
+
+#### Sample commands
+
+```
+# ----- List and ping a peer ----- 
+go-filecoin swarm peers
+go-filecoin ping <peerID>
+
+#  ----- View latest mined block ----- 
+go-filecoin chain head
+go-filecoin show block <blockID> | jq
+
+#  ----- Create a miner ----- 
+# Requires the node be a part of a cluster that already has miners and 
+# no miner configured for this node yet.
+go-filecoin miner create 10 10
+# Waits for the message to be included on chain, updates the minerAddress in the
+# node's config, and sets the peerid appropriately.
+# Get your miner address
+go-filecoin config mining.minerAddress
+# And the owner:
+go-filecoin miner owner <minerAddress>
+
+#  ----- As a miner, force a block to be mined immediately ----- 
+go-filecoin mine once
+
+#  ----- As a miner, make an ask ----- 
+# Get your miner address
+go-filecoin config mining.minerAddress
+# Get your miner owner address 
+go-filecoin miner owner <minerAddress>
+go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
+# Wait for the block to be mined (~30s) and view the ask:
+go-filecoin orderbook asks | jq
+
+#  ----- As a client, make a deal ----- 
+echo "Hi my name is $USER"> hello.txt
+go-filecoin client import ./hello.txt
+# Verify it was imported:
+go-filecoin client cat <data CID>
+# Get the file size:
+go-filecoin client cat <data CID> | wc -c
+# Find a miner by looking through the orderbook
+go-filecoin orderbook asks | jq
+# Propose a storage deal, using the <miner address> from the ask.
+go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
+# Check the status:
+go-filecoin client query-storage-deal <id returned above>
+# Wait for the deal to be Sealed, once it is, retrieve the piece
+# Note: might want to configure setting so that this happens quickly (TODO include this config option above)
+go-filecoin client cat <data CID>
+```
 
 ## Contribute
 
