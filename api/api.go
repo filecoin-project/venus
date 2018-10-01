@@ -21,6 +21,7 @@ type API interface {
 	Orderbook() Orderbook
 	Paych() Paych
 	Ping() Ping
+	RetrievalClient() RetrievalClient
 	Swarm() Swarm
 	Version() Version
 }

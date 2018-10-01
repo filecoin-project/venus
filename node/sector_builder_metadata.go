@@ -4,6 +4,7 @@ import (
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -17,7 +18,7 @@ func init() {
 
 // SectorMetadata represent the persistent metadata associated with a UnsealedSector.
 type SectorMetadata struct {
-	NumBytesFree         uint64
+	MaxBytes             uint64
 	NumBytesUsed         uint64
 	Pieces               []*PieceInfo
 	SectorID             uint64
@@ -46,7 +47,7 @@ type SectorBuilderMetadata struct {
 // SectorMetadata returns the metadata associated with a UnsealedSector.
 func (s *UnsealedSector) SectorMetadata() *SectorMetadata {
 	meta := &SectorMetadata{
-		NumBytesFree:         s.numBytesFree,
+		MaxBytes:             s.maxBytes,
 		NumBytesUsed:         s.numBytesUsed,
 		Pieces:               s.pieces,
 		SectorID:             s.sectorID,
@@ -72,15 +73,8 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 	return meta
 }
 
-// SectorBuilderMetadata returns the metadata associated with a SectorBuilderMetadata.
-func (sb *SectorBuilder) SectorBuilderMetadata() *SectorBuilderMetadata {
-	sb.sealedSectorsLk.RLock()
-	sb.curUnsealedSectorLk.RLock()
-	defer func() {
-		sb.sealedSectorsLk.RUnlock()
-		sb.curUnsealedSectorLk.RUnlock()
-	}()
-
+// dumpCurrentState returns the current state of the sector builder.
+func (sb *SectorBuilder) dumpCurrentState() *SectorBuilderMetadata {
 	meta := SectorBuilderMetadata{
 		CurUnsealedSectorAccess: sb.curUnsealedSector.unsealedSectorAccess,
 		MinerAddr:               sb.MinerAddr,
@@ -111,6 +105,43 @@ type sectorMetadataStore struct {
 	store repo.Datastore
 }
 
+// UnsealArgs is a struct holding the arguments to pass to the Prover#Unseal method for a given piece.
+type UnsealArgs struct {
+	sealedSectorAccess string
+	startOffset        uint64
+	numBytes           uint64
+	sectorID           uint64
+}
+
+func (st *sectorMetadataStore) getUnsealArgsForPiece(minerAddr address.Address, pieceCid *cid.Cid) (UnsealArgs, error) {
+	metadata, err := st.getSectorBuilderMetadata(minerAddr)
+	if err != nil {
+		return UnsealArgs{}, errors.Wrapf(err, "failed to get sector builder metadata for miner with addr %s", minerAddr.String())
+	}
+
+	for _, commR := range metadata.SealedSectorCommitments {
+		sealedSector, err := st.getSealedSector(commR)
+		if err != nil {
+			return UnsealArgs{}, errors.Wrapf(err, "failed to get sealed sector with commR %s", pieceCid.String())
+		}
+
+		offset := uint64(0)
+		for _, pieceInfo := range sealedSector.pieces {
+			if pieceInfo.Ref.Equals(pieceCid) {
+				return UnsealArgs{
+					sectorID:           sealedSector.sectorID,
+					startOffset:        offset,
+					numBytes:           pieceInfo.Size,
+					sealedSectorAccess: sealedSector.sealedSectorAccess,
+				}, nil
+			}
+			offset += pieceInfo.Size
+		}
+	}
+
+	return UnsealArgs{}, errors.Errorf("failed to find a sealed sector holding piece with cid %s", pieceCid.String())
+}
+
 // getSealedSector returns the sealed sector with the given replica commitment or an error if no match was found.
 func (st *sectorMetadataStore) getSealedSector(commR [32]byte) (*SealedSector, error) {
 	metadata, err := st.getSealedSectorMetadata(commR)
@@ -139,7 +170,7 @@ func (st *sectorMetadataStore) getSector(label string) (*UnsealedSector, error) 
 
 	s := &UnsealedSector{
 		sectorID:             metadata.SectorID,
-		numBytesFree:         metadata.NumBytesFree,
+		maxBytes:             metadata.MaxBytes,
 		numBytesUsed:         metadata.NumBytesUsed,
 		pieces:               metadata.Pieces,
 		unsealedSectorAccess: metadata.UnsealedSectorAccess,
@@ -234,7 +265,7 @@ func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress address.Add
 // doing. As the SectorBuilder evolves, we will introduce some checks which
 // will optimize away redundant writes to the datastore.
 func (sb *SectorBuilder) checkpoint(s *UnsealedSector) error {
-	if err := sb.metadataStore.setSectorBuilderMetadata(sb.MinerAddr, sb.SectorBuilderMetadata()); err != nil {
+	if err := sb.metadataStore.setSectorBuilderMetadata(sb.MinerAddr, sb.dumpCurrentState()); err != nil {
 		return errors.Wrap(err, "failed to save builder metadata")
 	}
 

@@ -100,6 +100,8 @@ func NewProofTestSectorStore(staging string, sealed string) *DiskBackedSectorSto
 
 // NewSealedSectorAccess dispenses a new sealed sector access
 func (ss *DiskBackedSectorStore) NewSealedSectorAccess() (NewSectorAccessResponse, error) {
+	defer elapsed("NewSealedSectorAccess")()
+
 	// a mutable pointer to a NewSealedSectorAccessResponse C-struct
 	resPtr := (*C.NewSealedSectorAccessResponse)(unsafe.Pointer(C.new_sealed_sector_access((*C.Box_SectorStore)(ss.ptr))))
 	defer C.destroy_new_sealed_sector_access_response(resPtr)
@@ -115,6 +117,8 @@ func (ss *DiskBackedSectorStore) NewSealedSectorAccess() (NewSectorAccessRespons
 
 // NewStagingSectorAccess dispenses a new staging sector access
 func (ss *DiskBackedSectorStore) NewStagingSectorAccess() (NewSectorAccessResponse, error) {
+	defer elapsed("NewStagingSectorAccess")()
+
 	// a mutable pointer to a NewStagingSectorAccessResponse C-struct
 	resPtr := (*C.NewStagingSectorAccessResponse)(unsafe.Pointer(C.new_staging_sector_access((*C.Box_SectorStore)(ss.ptr))))
 	defer C.destroy_new_staging_sector_access_response(resPtr)
@@ -130,6 +134,8 @@ func (ss *DiskBackedSectorStore) NewStagingSectorAccess() (NewSectorAccessRespon
 
 // WriteUnsealed writes bytes to an unsealed sector.
 func (ss *DiskBackedSectorStore) WriteUnsealed(req WriteUnsealedRequest) (WriteUnsealedResponse, error) {
+	defer elapsed("WriteUnsealed")()
+
 	accessCStr := C.CString(req.SectorAccess)
 	defer C.free(unsafe.Pointer(accessCStr))
 
@@ -149,8 +155,34 @@ func (ss *DiskBackedSectorStore) WriteUnsealed(req WriteUnsealedRequest) (WriteU
 	}, nil
 }
 
+// ReadUnsealed reads bytes from a non-sealed sector.
+func (ss *DiskBackedSectorStore) ReadUnsealed(req ReadUnsealedRequest) (ReadUnsealedResponse, error) {
+	defer elapsed("ReadUnsealed")()
+
+	accessCStr := C.CString(req.SectorAccess)
+	defer C.free(unsafe.Pointer(accessCStr))
+
+	// a mutable pointer to a ReadRawResponse C-struct
+	resPtr := C.read_raw(
+		(*C.Box_SectorStore)(ss.ptr),
+		accessCStr,
+		C.uint64_t(req.StartOffset),
+		C.uint64_t(req.NumBytes))
+	defer C.destroy_read_raw_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return ReadUnsealedResponse{}, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return ReadUnsealedResponse{
+		Data: C.GoBytes(unsafe.Pointer(resPtr.data_ptr), C.int(resPtr.data_len)),
+	}, nil
+}
+
 // TruncateUnsealed truncates the unsealed sector identified by `SectorAccess` to `NumBytes`.
 func (ss *DiskBackedSectorStore) TruncateUnsealed(req TruncateUnsealedRequest) error {
+	defer elapsed("TruncateUnsealed")()
+
 	accessCStr := C.CString(req.SectorAccess)
 	defer C.free(unsafe.Pointer(accessCStr))
 
@@ -167,6 +199,8 @@ func (ss *DiskBackedSectorStore) TruncateUnsealed(req TruncateUnsealedRequest) e
 
 // GetNumBytesUnsealed returns the number of bytes in an unsealed sector.
 func (ss *DiskBackedSectorStore) GetNumBytesUnsealed(req GetNumBytesUnsealedRequest) (GetNumBytesUnsealedResponse, error) {
+	defer elapsed("GetNumBytesUnsealed")()
+
 	accessCStr := C.CString(req.SectorAccess)
 	defer C.free(unsafe.Pointer(accessCStr))
 
@@ -185,6 +219,8 @@ func (ss *DiskBackedSectorStore) GetNumBytesUnsealed(req GetNumBytesUnsealedRequ
 
 // GetMaxUnsealedBytesPerSector returns the number of bytes that will fit into an unsealed sector dispensed by this store.
 func (ss *DiskBackedSectorStore) GetMaxUnsealedBytesPerSector() (GetMaxUnsealedBytesPerSectorResponse, error) {
+	defer elapsed("GetMaxUnsealedBytesPerSector")()
+
 	resPtr := C.max_unsealed_bytes_per_sector((*C.Box_SectorStore)(ss.ptr))
 	defer C.destroy_max_unsealed_bytes_per_sector_response(resPtr)
 

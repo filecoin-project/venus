@@ -157,7 +157,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
 
-	td.test.Logf("run: %q\n", strings.Join(finalArgs, " "))
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 
 	if stdin != nil {
@@ -258,8 +258,8 @@ func (td *TestDaemon) GetID() string {
 	return parsed["ID"].(string)
 }
 
-// GetAddress returns the first address of the daemon.
-func (td *TestDaemon) GetAddress() []string {
+// GetAddresses returns all of the addresses of the daemon.
+func (td *TestDaemon) GetAddresses() []string {
 	out := td.RunSuccess("id")
 	var parsed map[string]interface{}
 	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
@@ -275,7 +275,7 @@ func (td *TestDaemon) GetAddress() []string {
 // ConnectSuccess connects the daemon to another daemon, asserting that
 // the operation was successful.
 func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
-	remoteAddrs := remote.GetAddress()
+	remoteAddrs := remote.GetAddresses()
 	delay := 100 * time.Millisecond
 
 	// Connect the nodes
@@ -776,15 +776,18 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	if td.init {
 		t.Logf("run: go-filecoin init %s", initopts)
-		out, err := RunInit(initopts...)
+		out, err := RunInit(td, initopts...)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)
 		}
 	}
 
+	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+
 	// define filecoin daemon process
-	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag)
+	td.process = exec.Command(filecoinBin, finalArgs...)
 	// disable REUSEPORT, it creates problems in tests
 	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
 
@@ -806,18 +809,16 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 }
 
 // RunInit is the equivialent of executing `go-filecoin init`.
-func RunInit(opts ...string) ([]byte, error) {
-	return RunCommand("init", opts...)
-}
-
-// RunCommand executes the given cmd against `go-filecoin`.
-func RunCommand(cmd string, opts ...string) ([]byte, error) {
+func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin, err := GetFilecoinBinary()
 	if err != nil {
 		return nil, err
 	}
 
-	process := exec.Command(filecoinBin, append([]string{"init"}, opts...)...)
+	finalArgs := append([]string{"init"}, opts...)
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+
+	process := exec.Command(filecoinBin, finalArgs...)
 	return process.CombinedOutput()
 }
 

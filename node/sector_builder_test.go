@@ -159,6 +159,7 @@ func requirePieceInfo(require *require.Assertions, nd *Node, sb *SectorBuilder, 
 
 func TestSectorBuilder(t *testing.T) {
 	t.Parallel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -181,9 +182,11 @@ func TestSectorBuilder(t *testing.T) {
 		}
 	}
 
-	requireAddPiece := func(s string) {
-		_, err := sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, []byte(s)))
+	requireAddPiece := func(s string) *cid.Cid {
+		pieceInfo := requirePieceInfo(require, nd, sb, []byte(s))
+		_, err := sb.AddPiece(ctx, pieceInfo)
 		assert.NoError(err)
+		return pieceInfo.Ref
 	}
 
 	metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
@@ -206,33 +209,25 @@ func TestSectorBuilder(t *testing.T) {
 	assert.NotEqual(sealedRes1.SectorAccess, sealedRes2.SectorAccess)
 
 	metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
-	text := "Lorem ipsum dolor sit amet, consectetur turpis duis." // len(text) = 52
-	requireAddPiece(text)
+	text1 := "Lorem ipsum dolor sit amet, consectetur turpis duis." // len(text) = 52
+	cid1 := requireAddPiece(text1)
 	assert.Equal(sector, sb.curUnsealedSector)
-	all := text
+	all := text1
 
 	metadataMustMatch(require, sb, sector, 1)
-
-	// TODO: replace this with a SectorStore#ReadUnsealed call
-	//d := requireReadAll(require, sector)
-	//assert.Equal(all, string(d))
 	assert.Nil(sector.sealed)
 
 	text2 := "In gravida quis nisl sit amet interdum. Phasellus metus." // len(text2) = 56
-	requireAddPiece(text2)
+	cid2 := requireAddPiece(text2)
 	assert.Equal(sector, sb.curUnsealedSector)
 	all += text2
-
-	// TODO: replace this with a SectorStore#ReadUnsealed call
-	//d2 := requireReadAll(require, sector)
-	//assert.Equal(all, string(d2))
 	assert.Nil(sector.sealed)
 
 	// persisted and calculated metadata match.
 	metadataMustMatch(require, sb, sector, 2)
 
 	text3 := "Ut sit amet mi eget enim scelerisque egestas. Ut volutpat." // len(text3) = 58
-	requireAddPiece(text3)
+	requireAddPiece(text3)                                                // triggers seal, as piece won't fit
 
 	// wait for sector sealing to complete
 	sealingWg.Wait()
@@ -240,14 +235,24 @@ func TestSectorBuilder(t *testing.T) {
 
 	assert.NotEqual(sector, sb.curUnsealedSector)
 
+	// unseal first piece and confirm its bytes
+	reader1, err := sb.ReadPieceFromSealedSector(cid1)
+	require.NoError(err)
+	cid1Bytes, err := ioutil.ReadAll(reader1)
+	require.NoError(err)
+	assert.Equal(text1, string(cid1Bytes))
+
+	// unseal second piece and confirm its bytes, too
+	reader2, err := sb.ReadPieceFromSealedSector(cid2)
+	require.NoError(err)
+	cid2Bytes, err := ioutil.ReadAll(reader2)
+	require.NoError(err)
+	assert.Equal(text2, string(cid2Bytes))
+
 	// persisted and calculated metadata match after a sector is sealed.
 	metadataMustMatch(require, sb, sector, 2)
 
 	newSector := sb.curUnsealedSector
-	// TODO: replace this with a SectorStore#ReadUnsealed call
-	//d4 := requireReadAll(require, newSector)
-	//assert.Equal(text3, d4)
-
 	metadataMustMatch(require, sb, newSector, 1)
 
 	sealed := sector.sealed
@@ -263,8 +268,8 @@ func TestSectorBuilder(t *testing.T) {
 
 	meta := sb.curUnsealedSector.SectorMetadata()
 	assert.Len(meta.Pieces, 1)
-	assert.Equal(uint64(testSectorSize), meta.NumBytesUsed)
-	assert.Equal(int(testSectorSize)-len(text3), int(meta.NumBytesFree))
+	assert.Equal(int(testSectorSize), int(meta.MaxBytes))
+	assert.Equal(len(text3), int(meta.NumBytesUsed))
 
 	text4 := "Aliquam molestie porttitor massa at sodales. Vestibulum euismod elit et justo ultrices, ut feugiat justo sodales. Duis ut nullam."
 	require.True(len(text4) > int(testSectorSize))
@@ -279,6 +284,7 @@ func TestSectorBuilder(t *testing.T) {
 func TestSectorBuilderMetadata(t *testing.T) {
 	t.Run("creating datastore keys", func(t *testing.T) {
 		t.Parallel()
+
 		assert := assert.New(t)
 
 		label := "SECTORFILENAMEWHATEVER"
@@ -301,6 +307,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
 		t.Parallel()
+
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -363,6 +370,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 func TestSectorStore(t *testing.T) {
 	t.Run("it loads a persisted sector", func(t *testing.T) {
 		t.Parallel()
+
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -383,7 +391,11 @@ func TestSectorStore(t *testing.T) {
 	})
 
 	t.Run("it loads a persisted, sealed sector", func(t *testing.T) {
-		t.Parallel()
+		// t.Parallel()
+		//
+		// TODO: no test which uses the FPS seal operation can safely be
+		// parallelized until rust-proofs #209 is complete
+
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -428,6 +440,7 @@ func TestSectorStore(t *testing.T) {
 
 func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	t.Parallel()
+
 	require := require.New(t)
 
 	ctx := context.Background()
@@ -477,11 +490,17 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	require.NoError(err)
 
 	sectorBuildersMustEqual(t, sbA, sbC)
+
+	// can't swap sector stores if their sector sizes differ
+	sstore2 := proofs.NewDiskBackedSectorStore(dirs.StagingDir(), dirs.SealedDir())
+	_, err = InitSectorBuilder(nd, minerAddr, sstore2, 0)
+	require.Error(err)
 }
 
 func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 	t.Run("it truncates the file if file size > metadata size", func(t *testing.T) {
 		t.Parallel()
+
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -512,7 +531,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 			SectorAccess: metaA.UnsealedSectorAccess,
 		})
 		require.NoError(errA)
-		require.Equal(int(metaA.NumBytesUsed-metaA.NumBytesFree), int(resA.NumBytes))
+		require.Equal(int(metaA.NumBytesUsed), int(resA.NumBytes))
 
 		// perform an out-of-band write to the file (replaces its contents)
 		ioutil.WriteFile(metaA.UnsealedSectorAccess, make([]byte, 90), 0600)
@@ -534,6 +553,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 	t.Run("it truncates the metadata if file size < metadata size", func(t *testing.T) {
 		t.Parallel()
+
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -577,10 +597,10 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		// ensure metadata was truncated
 		require.Equal(2, len(metaB.Pieces))
-		require.Equal(30, int(metaB.NumBytesUsed-metaB.NumBytesFree))
+		require.Equal(30, int(metaB.NumBytesUsed))
 
 		// ensure that the file was truncated to match metadata
-		require.Equal(int(metaB.NumBytesUsed-metaB.NumBytesFree), int(resB.NumBytes))
+		require.Equal(int(metaB.NumBytesUsed), int(resB.NumBytes))
 	})
 }
 
@@ -591,8 +611,7 @@ func TestProverIdCreation(t *testing.T) {
 	hash := address.Hash([]byte("satoshi"))
 	addr := address.NewMainnet(hash)
 
-	id, err := proverID(addr)
-	require.NoError(err)
+	id := addressToProverID(addr)
 
 	require.Equal(31, len(id))
 }
@@ -614,7 +633,7 @@ func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *U
 		require.Equal(metaPersisted, meta)
 	}
 
-	builderMeta := sb.SectorBuilderMetadata()
+	builderMeta := sb.dumpCurrentState()
 	builderMetaPersisted, err := sb.metadataStore.getSectorBuilderMetadata(sb.MinerAddr)
 	require.NoError(err)
 	require.Equal(builderMeta, builderMetaPersisted)
@@ -666,7 +685,7 @@ func sectorsMustEqual(t *testing.T, s1 *UnsealedSector, s2 *UnsealedSector) {
 	require := require.New(t)
 
 	require.Equal(s1.unsealedSectorAccess, s2.unsealedSectorAccess)
-	require.Equal(s1.numBytesFree, s2.numBytesFree)
+	require.Equal(s1.maxBytes, s2.maxBytes)
 	require.Equal(s1.numBytesUsed, s2.numBytesUsed)
 
 	sealedSectorsMustEqual(t, s1.sealed, s2.sealed)
@@ -676,10 +695,3 @@ func sectorsMustEqual(t *testing.T, s1 *UnsealedSector, s2 *UnsealedSector) {
 		pieceInfoMustEqual(t, s1.pieces[i], s2.pieces[i])
 	}
 }
-
-// func requireReadAll(require *require.Assertions, sector *UnsealedSector) string {
-// 	data, err := ioutil.ReadFile(sector.unsealedSectorAccess)
-//	require.NoError(err)
-//
-// 	return string(data)
-// }

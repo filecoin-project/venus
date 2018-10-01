@@ -1,8 +1,10 @@
 package proofs
 
 import (
+	"time"
 	"unsafe"
 
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
@@ -26,13 +28,24 @@ import (
 */
 import "C"
 
+var log = logging.Logger("fps") // nolint: deadcode
+
 // RustProver provides an interface to rust-proofs.
 type RustProver struct{}
 
 var _ Prover = &RustProver{}
 
+func elapsed(what string) func() {
+	start := time.Now()
+	return func() {
+		log.Infof("%s took %v\n", what, time.Since(start))
+	}
+}
+
 // Seal generates and returns a Proof of Replication along with supporting data.
 func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
+	defer elapsed("Seal")()
+
 	unsealed := C.CString(req.UnsealedPath)
 	defer C.free(unsafe.Pointer(unsealed))
 
@@ -82,6 +95,8 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
 func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
+	defer elapsed("VerifySeal")()
+
 	commDCBytes := C.CBytes(req.CommD[:])
 	defer C.free(commDCBytes)
 
@@ -123,6 +138,8 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 // If this happens, callers should truncate the file at req.OutputPath back
 // to its pre-unseal() number of bytes.
 func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
+	defer elapsed("Unseal")()
+
 	inPath := C.CString(req.SealedPath)
 	defer C.free(unsafe.Pointer(inPath))
 
@@ -156,6 +173,8 @@ func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
 
 // GeneratePoST produces a proof-of-spacetime for the provided commitment replicas.
 func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
+	defer elapsed("GeneratePoST")()
+
 	// flattening the byte slice makes it easier to copy into the C heap
 	flattened := make([]byte, 32*len(req.CommRs))
 	for idx, commR := range req.CommRs {
@@ -191,6 +210,8 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 
 // VerifyPoST verifies that a proof-of-spacetime is valid.
 func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+	defer elapsed("VerifyPoST")()
+
 	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
 
 	var fake *C.Box_SectorStore

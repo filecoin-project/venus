@@ -106,7 +106,7 @@ var _ binpack.Binner = &SectorBuilder{}
 // this miner is storing all the deals referenced in the piece map...
 type UnsealedSector struct {
 	numBytesUsed         uint64
-	numBytesFree         uint64 // equals sector bytes - bytes used
+	maxBytes             uint64
 	pieces               []*PieceInfo
 	sealed               *SealedSector
 	sectorID             uint64
@@ -234,7 +234,7 @@ func (sb *SectorBuilder) ItemSize(item binpack.Item) binpack.Space {
 
 // SpaceAvailable implements binpack.Binner.
 func (sb *SectorBuilder) SpaceAvailable(bin binpack.Bin) binpack.Space {
-	return binpack.Space(bin.(*UnsealedSector).numBytesFree)
+	return binpack.Space(bin.(*UnsealedSector).maxBytes - bin.(*UnsealedSector).numBytesUsed)
 }
 
 // End binpack.Binner implementation
@@ -248,8 +248,8 @@ func (sb *SectorBuilder) NewSector() (s *UnsealedSector, err error) {
 
 	s = &UnsealedSector{
 		sectorID:             sb.GetNextSectorID(),
-		numBytesUsed:         sb.sectorSize,
-		numBytesFree:         sb.sectorSize,
+		numBytesUsed:         0,
+		maxBytes:             sb.sectorSize,
 		unsealedSectorAccess: res.SectorAccess,
 	}
 
@@ -342,6 +342,19 @@ func configureSectorBuilderFromMetadata(store *sectorMetadataStore, sb *SectorBu
 		return err
 	}
 
+	// note: The following guard exists to prevent a situation in which the
+	// sector builder was initialized with a sector store configured to use
+	// large sectors (PerformRealProofs=false), user data was written to
+	// the staging area, and then the node was reconfigured to use small
+	// sector sizes (PerformRealProofs=true).
+	//
+	// Going forward, the SectorBuilder should be able to manage multiple
+	// unsealed sectors concurrently, segregating them (and their sealed
+	// counterparts) by sector size.
+	if sb.sectorSize != sector.maxBytes {
+		return errors.Errorf("sector builder has been configured to use %d-byte sectors, but loaded unsealed sector uses %d-byte sectors", sb.sectorSize, sector.maxBytes)
+	}
+
 	if err := sb.SyncFile(sector); err != nil {
 		return errors.Wrapf(err, "failed to sync sector object with unsealed sector %s", sector.unsealedSectorAccess)
 	}
@@ -388,8 +401,78 @@ func (sb *SectorBuilder) onCommitmentAddedToMempool(sector *SealedSector, msg *c
 	}
 }
 
+// ReadPieceFromSealedSector produces a Reader used to get original piece-bytes from a sealed sector.
+func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
+	unsealArgs, err := sb.metadataStore.getUnsealArgsForPiece(sb.MinerAddr, pieceCid)
+	if err != nil {
+		return nil, errors.Wrapf(err, "no piece with cid %s has yet been sealed into a sector", pieceCid.String())
+	}
+
+	// TODO: Find a way to clean up these temporary files. See message below
+	// where we're truncating to 0 bytes. We should probably unseal the full
+	// sector (regardless of which piece was requested) to a location which
+	// we persist to metadata and then ReadUnsealed from that location.
+	res, err := sb.sectorStore.NewStagingSectorAccess()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to dispense new staging sector access")
+	}
+
+	res2, err2 := (&proofs.RustProver{}).Unseal(proofs.UnsealRequest{
+		NumBytes:    unsealArgs.numBytes,
+		OutputPath:  res.SectorAccess,
+		ProverID:    addressToProverID(sb.MinerAddr),
+		SealedPath:  unsealArgs.sealedSectorAccess,
+		SectorID:    sectorIDToBytes(unsealArgs.sectorID),
+		StartOffset: unsealArgs.startOffset,
+		Storage:     sb.sectorStore,
+	})
+	if err2 != nil {
+		return nil, errors.Wrapf(err, "failed to unseal")
+	}
+
+	if res2.NumBytesWritten != unsealArgs.numBytes {
+		return nil, errors.Errorf("number of bytes written and expected differed - expected: %d, actual: %d", unsealArgs.numBytes, res2.NumBytesWritten)
+	}
+
+	res3, err3 := sb.sectorStore.ReadUnsealed(proofs.ReadUnsealedRequest{
+		SectorAccess: res.SectorAccess,
+		StartOffset:  0,
+		NumBytes:     res2.NumBytesWritten,
+	})
+	if err3 != nil {
+		return nil, errors.Wrapf(err, "failed to read unsealed bytes from sector access %s", res.SectorAccess)
+	}
+
+	// TODO: This is not an acceptable way to clean up, but rather a stop-
+	// gap which meets short-term goals.
+	//
+	// We should either:
+	//
+	// 1) delete the unseal target after we're done reading from it or
+	// 2) unseal the whole sealed sector to a location which we persist
+	//    to metadata (so we can subsequent requests to unseal a sector
+	//    do not create new files)
+	err4 := sb.sectorStore.TruncateUnsealed(proofs.TruncateUnsealedRequest{
+		SectorAccess: res.SectorAccess,
+		NumBytes:     0,
+	})
+	if err4 != nil {
+		return nil, errors.Errorf("failed to truncate temporary unseal target to 0 bytes %s", res.SectorAccess)
+	}
+
+	return bytes.NewReader(res3.Data), nil
+}
+
 // AddPiece writes the given piece into an unsealed sector and returns the id of that unsealed sector.
 func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error) {
+	log.Infof("SectorBuilder.AddPiece wants sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
+	sb.curUnsealedSectorLk.Lock()
+	defer func() {
+		log.Infof("SectorBuilder.AddPiece relinquishes sb.curUnsealedSectorLk for piece %s", pi.Ref.String())
+		sb.curUnsealedSectorLk.Unlock()
+	}()
+	log.Infof("SectorBuilder.AddPiece got sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
+
 	ctx = log.Start(ctx, "SectorBuilder.AddPiece")
 	log.SetTag(ctx, "piece", pi)
 	defer func() {
@@ -414,9 +497,7 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID 
 		return 0, err
 	}
 
-	sb.curUnsealedSectorLk.Lock()
 	sb.curUnsealedSector = bin.NextBin.(*UnsealedSector)
-	sb.curUnsealedSectorLk.Unlock()
 
 	// checkpoint after we've added the piece and updated the sector builder's
 	// "current sector"
@@ -445,12 +526,10 @@ func (sb *SectorBuilder) SyncFile(s *UnsealedSector) error {
 	// | 500 bytes | 100|400         | noop                                          |
 
 	cmpSize := func(s *UnsealedSector, fileSize uint64) int {
-		storSize := s.numBytesUsed - s.numBytesFree
-
-		if storSize == fileSize {
+		if s.numBytesUsed == fileSize {
 			return 0
 		}
-		if storSize < fileSize {
+		if s.numBytesUsed < fileSize {
 			return -1
 		}
 		return +1
@@ -459,7 +538,7 @@ func (sb *SectorBuilder) SyncFile(s *UnsealedSector) error {
 	// remove pieces from the sector until (s.numBytesUsed-s.numBytesFree) <= fi.size()
 	for i := len(s.pieces) - 1; i >= 0; i-- {
 		if cmpSize(s, res.NumBytes) == 1 {
-			s.numBytesFree += s.pieces[i].Size
+			s.numBytesUsed -= s.pieces[i].Size
 			s.pieces = s.pieces[:len(s.pieces)-1]
 		} else {
 			break
@@ -469,7 +548,7 @@ func (sb *SectorBuilder) SyncFile(s *UnsealedSector) error {
 	if cmpSize(s, res.NumBytes) == -1 {
 		return sb.sectorStore.TruncateUnsealed(proofs.TruncateUnsealedRequest{
 			SectorAccess: s.unsealedSectorAccess,
-			NumBytes:     s.numBytesUsed - s.numBytesFree,
+			NumBytes:     s.numBytesUsed,
 		})
 	}
 
@@ -575,7 +654,7 @@ func (sb *SectorBuilder) WritePiece(ctx context.Context, s *UnsealedSector, pi *
 		return err
 	}
 
-	s.numBytesFree -= pi.Size
+	s.numBytesUsed += pi.Size
 	s.pieces = append(s.pieces, pi)
 
 	return nil
@@ -593,22 +672,10 @@ func (sb *SectorBuilder) Seal(ctx context.Context, s *UnsealedSector, minerAddr 
 		return nil, errors.Wrap(err, "failed to dispense sealed sector unsealedSectorAccess")
 	}
 
-	proverID, err := proverID(minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create prover id from miner address")
-	}
-
-	// TODO: There has got to be a better way to do this
-	slice := make([]byte, 31)
-	binary.LittleEndian.PutUint64(slice, s.sectorID)
-
-	var sectorID [31]byte
-	copy(sectorID[:], slice)
-
 	req := proofs.SealRequest{
-		ProverID:     proverID,
+		ProverID:     addressToProverID(minerAddr),
 		SealedPath:   res1.SectorAccess,
-		SectorID:     sectorID,
+		SectorID:     sectorIDToBytes(s.sectorID),
 		Storage:      sb.sectorStore,
 		UnsealedPath: s.unsealedSectorAccess,
 	}
@@ -637,8 +704,8 @@ func (sb *SectorBuilder) GeneratePoSt(commRs [][32]byte, seed [32]byte) ([192]by
 	return res.Proof, res.Faults, nil
 }
 
-// proverID creates a prover id by padding an address hash to 31 bytes
-func proverID(addr address.Address) ([31]byte, error) {
+// addressToProverID creates a prover id by padding an address hash to 31 bytes
+func addressToProverID(addr address.Address) [31]byte {
 	hash := addr.Hash()
 
 	dlen := 31          // desired length
@@ -654,7 +721,18 @@ func proverID(addr address.Address) ([31]byte, error) {
 		copy(prid[hlen:], bytes.Repeat([]byte{0}, padl))
 	}
 
-	return prid, nil
+	return prid
+}
+
+// sectorIDToBytes creates a prover id by padding an address hash to 31 bytes
+func sectorIDToBytes(sectorID uint64) [31]byte {
+	slice := make([]byte, 31)
+	binary.LittleEndian.PutUint64(slice, sectorID)
+
+	var sectorIDAsBytes [31]byte
+	copy(sectorIDAsBytes[:], slice)
+
+	return sectorIDAsBytes
 }
 
 func commRString(merkleRoot [32]byte) string {

@@ -29,6 +29,8 @@ const (
 	OfflineMode = "offline"
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
+	// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
+	PerformRealProofs = "perform-real-proofs"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
 	// BlockTime is the duration string of the block time the daemon will
@@ -53,28 +55,29 @@ var rootCmd = &cmds.Command{
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":     actorCmd,
-	"address":   addrsCmd,
-	"bootstrap": bootstrapCmd,
-	"chain":     chainCmd,
-	"config":    configCmd,
-	"client":    clientCmd,
-	"daemon":    daemonCmd,
-	"dag":       dagCmd,
-	"id":        idCmd,
-	"init":      initCmd,
-	"log":       logCmd,
-	"message":   msgCmd,
-	"miner":     minerCmd,
-	"mining":    miningCmd,
-	"mpool":     mpoolCmd,
-	"orderbook": orderbookCmd,
-	"paych":     paymentChannelCmd,
-	"ping":      pingCmd,
-	"show":      showCmd,
-	"swarm":     swarmCmd,
-	"version":   versionCmd,
-	"wallet":    walletCmd,
+	"actor":            actorCmd,
+	"address":          addrsCmd,
+	"bootstrap":        bootstrapCmd,
+	"chain":            chainCmd,
+	"config":           configCmd,
+	"client":           clientCmd,
+	"daemon":           daemonCmd,
+	"dag":              dagCmd,
+	"id":               idCmd,
+	"init":             initCmd,
+	"log":              logCmd,
+	"message":          msgCmd,
+	"miner":            minerCmd,
+	"mining":           miningCmd,
+	"mpool":            mpoolCmd,
+	"orderbook":        orderbookCmd,
+	"paych":            paymentChannelCmd,
+	"ping":             pingCmd,
+	"retrieval-client": retrievalClientCmd,
+	"show":             showCmd,
+	"swarm":            swarmCmd,
+	"version":          versionCmd,
+	"wallet":           walletCmd,
 }
 
 func init() {

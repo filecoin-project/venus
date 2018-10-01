@@ -105,6 +105,10 @@ type Node struct {
 	StorageMinerClient *StorageMinerClient
 	StorageMiner       *StorageMiner
 
+	// Retrieval Interfaces
+	RetrievalClient *RetrievalClient
+	RetrievalMiner  *RetrievalMiner
+
 	// Network Fields
 	PubSub       *floodsub.PubSub
 	BlockSub     *floodsub.Subscription
@@ -350,6 +354,9 @@ func (node *Node) Start(ctx context.Context) error {
 	node.StorageBroker = NewStorageBroker(node)
 	node.StorageMinerClient = NewStorageMinerClient(node)
 
+	node.RetrievalClient = NewRetrievalClient(node)
+	node.RetrievalMiner = NewRetrievalMiner(node)
+
 	// subscribe to block notifications
 	blkSub, err := node.PubSub.Subscribe(BlocksTopic)
 	if err != nil {
@@ -583,7 +590,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		go node.handleNewMiningOutput(outCh)
 	}
 
-	if err := node.initSectorBuilder(ctx, miningAddress); err != nil {
+	if err := node.initSectorBuilder(ctx); err != nil {
 		return errors.Wrap(err, "failed to initialize sector builder")
 	}
 
@@ -628,10 +635,18 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func (node *Node) initSectorBuilder(ctx context.Context, minerAddr address.Address) error {
+func (node *Node) initSectorBuilder(ctx context.Context) error {
+	minerAddr, err := node.MiningAddress()
+	if err != nil {
+		return errors.Wrap(err, "failed to get node's mining address")
+	}
+
 	dirs := node.Repo.(SectorDirs)
 
-	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
+	sstore := proofs.NewDiskBackedSectorStore(dirs.StagingDir(), dirs.SealedDir())
+	if node.Repo.Config().Mining.PerformRealProofs {
+		sstore = proofs.NewProofTestSectorStore(dirs.StagingDir(), dirs.SealedDir())
+	}
 
 	lastUsedSectorID, err := node.getLastUsedSectorID(ctx, minerAddr)
 	if err != nil {

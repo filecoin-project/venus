@@ -55,6 +55,7 @@ func TestConfigSet(t *testing.T) {
 		defaultCfg := config.NewDefaultConfig()
 
 		n := node.MakeNodesUnstarted(t, 1, true, true, func(c *node.Config) error {
+			c.Repo.Config().Mining.PerformRealProofs = false     // overwrite value set with testhelpers.ensurePerformRealProofsDefaultsToTrue
 			c.Repo.Config().API.Address = defaultCfg.API.Address // overwrite value set with testhelpers.GetFreePort()
 			return nil
 		})[0]

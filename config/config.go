@@ -84,12 +84,14 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddress address.Address `toml:"minerAddress"`
+	MinerAddress      address.Address `toml:"minerAddress"`
+	PerformRealProofs bool            `toml:"performRealProofs"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
 	return &MiningConfig{
-		MinerAddress: address.Address{},
+		MinerAddress:      address.Address{},
+		PerformRealProofs: false,
 	}
 }
 

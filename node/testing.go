@@ -196,11 +196,45 @@ func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, op
 	return node
 }
 
+// ensurePerformRealProofsDefaultsToTrue appends an InitOpt which causes the
+// node to perform real proofs and use small sector sizes if no InitOpt of
+// that type already exists in the provided `initopts` slice.
+func ensurePerformRealProofsDefaultsToTrue(initopts []InitOpt) []InitOpt {
+	cfg := new(InitCfg)
+	cfg.PerformRealProofs = true
+
+	for _, o := range initopts {
+		o(cfg)
+	}
+
+	if !cfg.PerformRealProofs {
+		// an InitOpt was provided which disabled real
+		// proofs; eject
+		return initopts
+	}
+
+	cfg.PerformRealProofs = false
+
+	for _, o := range initopts {
+		o(cfg)
+	}
+
+	if cfg.PerformRealProofs {
+		// an InitOpt was provided which enabled real
+		// proofs; eject
+		return initopts
+	}
+
+	// no InitOpt for configuring proofs was provided,
+	// so we add one here
+	return append(initopts, PerformRealProofsOpt(true))
+}
+
 func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-	err := Init(context.Background(), r, gif, initopts...)
+	err := Init(context.Background(), r, gif, ensurePerformRealProofsDefaultsToTrue(initopts)...)
 	require.NoError(t, err)
 
 	// set a random port here so things don't break in the event we make

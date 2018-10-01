@@ -52,6 +52,7 @@ func TestWriteFile(t *testing.T) {
 
 [mining]
   minerAddress = ""
+  performRealProofs = false
 
 [wallet]
   defaultAddress = ""

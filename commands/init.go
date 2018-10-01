@@ -23,6 +23,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
 		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
 		cmdkit.StringOption("with-miner", "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
+		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -33,6 +34,7 @@ var initCmd = &cmds.Command{
 		genesisFile, _ := req.Options["genesisfile"].(string)
 		customGenesis, _ := req.Options["testgenesis"].(bool)
 		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
+		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options["with-miner"].(string); ok {
@@ -53,6 +55,7 @@ var initCmd = &cmds.Command{
 			api.UseCustomGenesis(customGenesis),
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
+			api.PerformRealProofs(performRealProofs),
 		)
 
 		if err != nil {

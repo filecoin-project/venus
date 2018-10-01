@@ -34,6 +34,7 @@ const (
 
 [mining]
   minerAddress = ""
+  performRealProofs = false
 
 [wallet]
   defaultAddress = ""

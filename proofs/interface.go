@@ -91,6 +91,7 @@ type SectorStore interface {
 	NewStagingSectorAccess() (NewSectorAccessResponse, error)
 	TruncateUnsealed(TruncateUnsealedRequest) error
 	WriteUnsealed(WriteUnsealedRequest) (WriteUnsealedResponse, error)
+	ReadUnsealed(ReadUnsealedRequest) (ReadUnsealedResponse, error)
 }
 
 // WriteUnsealedRequest represents a request to write bytes to an unsealed sector.
@@ -129,4 +130,16 @@ type GetNumBytesUnsealedResponse struct {
 // GetMaxUnsealedBytesPerSectorResponse contains the number of bytes that will fit into an unsealed sector.
 type GetMaxUnsealedBytesPerSectorResponse struct {
 	NumBytes uint64
+}
+
+// ReadUnsealedRequest is a request to read unadulterated user piece-bytes from a sector access.
+type ReadUnsealedRequest struct {
+	SectorAccess string
+	StartOffset  uint64
+	NumBytes     uint64
+}
+
+// ReadUnsealedResponse holds the data read from the unsealed sector access.
+type ReadUnsealedResponse struct {
+	Data []byte
 }

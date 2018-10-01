@@ -32,6 +32,8 @@ type DaemonInitConfig struct {
 	PeerKeyFile string
 	// WithMiner, if set, sets the config value for the local miner to this address.
 	WithMiner address.Address
+	// PerformRealProofs, if true, will cause the node to exercise the real PoRep and PoSt operations
+	PerformRealProofs bool
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -89,6 +91,14 @@ func PeerKeyFile(p string) DaemonInitOpt {
 func WithMiner(miner address.Address) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.WithMiner = miner
+		return nil
+	}
+}
+
+// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
+func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.PerformRealProofs = performRealProofs
 		return nil
 	}
 }

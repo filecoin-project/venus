@@ -1,17 +1,19 @@
 package repo
 
 import (
+	"io/ioutil"
 	"os"
 	"sync"
 
-	keystore "gx/ipfs/QmTBWmvUbMDmvnZvzTpSjz6nVNJRiMMnj3JiFcgyJjvHaq/go-ipfs-keystore"
+	"gx/ipfs/QmTBWmvUbMDmvnZvzTpSjz6nVNJRiMMnj3JiFcgyJjvHaq/go-ipfs-keystore"
 	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	dss "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore/sync"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )
 
-// MemRepo is an in memory implementation of the filecoin repo
+// MemRepo is a mostly (see `stagingDir` and `sealedDir`) in-memory
+// implementation of the Repo interface.
 type MemRepo struct {
 	// lk guards the config
 	lk         sync.RWMutex
@@ -22,19 +24,33 @@ type MemRepo struct {
 	Chain      Datastore
 	version    uint
 	apiAddress string
+	stagingDir string
+	sealedDir  string
 }
 
 var _ Repo = (*MemRepo)(nil)
 
-// NewInMemoryRepo makes a new one of these
+// NewInMemoryRepo makes a new instance of MemRepo
 func NewInMemoryRepo() *MemRepo {
+	stagingDir, err := ioutil.TempDir("", "staging")
+	if err != nil {
+		panic(err)
+	}
+
+	sealedDir, err := ioutil.TempDir("", "staging")
+	if err != nil {
+		panic(err)
+	}
+
 	return &MemRepo{
-		C:       config.NewDefaultConfig(),
-		D:       dss.MutexWrap(datastore.NewMapDatastore()),
-		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
-		W:       dss.MutexWrap(datastore.NewMapDatastore()),
-		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
-		version: Version,
+		C:          config.NewDefaultConfig(),
+		D:          dss.MutexWrap(datastore.NewMapDatastore()),
+		Ks:         keystore.MutexWrap(keystore.NewMemKeystore()),
+		W:          dss.MutexWrap(datastore.NewMapDatastore()),
+		Chain:      dss.MutexWrap(datastore.NewMapDatastore()),
+		version:    Version,
+		stagingDir: stagingDir,
+		sealedDir:  sealedDir,
 	}
 }
 
@@ -81,7 +97,8 @@ func (mr *MemRepo) Version() uint {
 	return mr.version
 }
 
-// Close is a noop, just filling out the interface.
+// Close deletes the temporary directories which hold staged piece data and
+// sealed sectors.
 func (mr *MemRepo) Close() error {
 	mr.CleanupSectorDirs()
 	return nil
@@ -89,12 +106,12 @@ func (mr *MemRepo) Close() error {
 
 // StagingDir implements node.StagingDir.
 func (mr *MemRepo) StagingDir() string {
-	return "/tmp/sectors/staging/"
+	return mr.stagingDir
 }
 
 // SealedDir implements node.SectorDirs.
 func (mr *MemRepo) SealedDir() string {
-	return "/tmp/sectors/sealed/"
+	return mr.sealedDir
 }
 
 // CleanupSectorDirs removes all sector directories and their contents.
