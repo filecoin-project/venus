@@ -214,7 +214,7 @@ go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --
 go-filecoin client query-storage-deal <id returned above>
 # Wait for the deal to be Sealed, once it is, retrieve the piece
 # Note: might want to configure setting so that this happens quickly (TODO include this config option above)
-go-filecoin client cat <data CID>
+go-filecoin client cat <data CID> . # Note: this command likely replaced soon by retrieval-client command.
 ```
 
 ## Contribute
