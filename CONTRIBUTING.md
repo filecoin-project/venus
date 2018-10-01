@@ -10,6 +10,9 @@ phases.
 Also: these guidelines should not replace common sense. The golden rule
 is __if something feels wrong, stop and surface the issue.__
 
+Filecoin, including go-filecoin and all related modules, follows the
+[Filecoin Code of Conduct](CODE_OF_CONDUCT.md).
+
 ### Table Of Contents
 * [Enable Progress](#enable-progress)
 * [Code Reviews](#code-reviews)
@@ -43,7 +46,7 @@ With "prioritize progress" as a primary directive we can derive some
 corollaries for code reviews:
 
   * Unless a reviewee asks for it, **avoid lengthy design discussions
-  in PR reivews**. Design discussions in PRs shouldn't consume a lot
+  in PR reviews**. Design discussions in PRs shouldn't consume a lot
   of time or be open-ended. If it seems like something is going to
   take more than a few quick iterations or would require sweeping
   changes, prefer to merge and defer the design discussion to a follow
@@ -133,7 +136,7 @@ of the issue. That is, when you pick up a story spend some time with
 it and then clarify what you think should happen with someone familiar
 with the issue and code. Typically this is the person who filed the
 issue but a different stakeholder could be called out explicitly in
-the issue or found in slack. Reflect any decisions that were made or
+the issue or found in Slack. Reflect any decisions that were made or
 directives you receive back into the issue to avoid misunderstandings.
 Only implement once you're sure you have a solid plan.
 
@@ -252,7 +255,7 @@ Present (Q1'18) NON-requirements:
 
 Likely future requirements:
  * Integration tested
- * Respects Juan’s most important API requirements
+ * Respects @jbenet’s most important API requirements
 
 ## Pull Requests
 
@@ -266,7 +269,7 @@ Likely future requirements:
 
 #### Size
 * PRs should modify no more than 400 lines or 8 files
-* If unavoidable to make a larger PR break changes into clearly scoped commits.  It is ok if individual commits do not build when making the PR, only squashed commits are required to build.
+* If unavoidable to make a larger PR, break changes into clearly scoped commits.  It is ok if individual commits do not build when making the PR. Only squashed commits are required to build.
 
 #### Style
 * Always squash commits.
@@ -274,6 +277,9 @@ Likely future requirements:
     merge because they have most context. Creators, if you really care
     about the commit message, squash ahead of time and provide a nice
     commit message because someone might merge for you.
+
+## Where should I start?
+* Take a look at issues labelled [E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue) or [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-helped-wanted).
 
 ## Gotchas
 * Equality
