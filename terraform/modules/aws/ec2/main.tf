@@ -115,6 +115,7 @@ data "template_file" "user_data" {
     filebeat_docker_uri    = "${var.filebeat_docker_uri}"
     filebeat_docker_tag    = "${var.filebeat_docker_tag}"
     logstash_hosts         = "${var.logstash_hosts}"
+    instance_name          = "${var.instance_name}"
   }
 }
 
