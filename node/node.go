@@ -325,7 +325,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
-	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network())
+	periodStr := nd.Repo.Config().Bootstrap.Period
+	period, err := time.ParseDuration(periodStr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
+	}
+	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
+	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network(), minPeerThreshold, period)
 
 	// On-chain lookup service
 	nd.Lookup = lookup.NewChainLookupService(nd.ChainReader, nd.DefaultSenderAddress, bs)

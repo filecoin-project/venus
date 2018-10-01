@@ -157,7 +157,15 @@ go-filecoin miner update-peerid
 
 To set up a node and connect into an existing cluster:
 ```
-TODO
+rm -fr ~/.filecoin
+# filecoin must be initialized in the right way to connect to the existing
+# cluster.  You must init with the same genesis.car file as the bootstrappers.
+# Finally you must configure your daemon with the proper bootstrap peers.
+# For lab week the easiest way to do this is by calling init with the
+# cluster-teamweek flag set.  Alternatively you can set the config's bootstrap
+# addrs manually after running init and before running daemon.
+go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
+go-filecoin daemon
 ```
 #### Running multiple nodes with IPTB
 

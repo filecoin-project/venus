@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -97,6 +98,17 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	if cfg.WithMiner != (address.Address{}) {
 		newConfig := rep.Config()
 		newConfig.Mining.MinerAddress = cfg.WithMiner
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
+	// Setup labweek release specific config options.
+	if cfg.LabWeekCluster {
+		newConfig := rep.Config()
+		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
+		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.Period = "10s"
 		if err := rep.ReplaceConfig(newConfig); err != nil {
 			return err
 		}

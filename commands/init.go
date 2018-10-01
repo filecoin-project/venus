@@ -24,6 +24,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
 		cmdkit.StringOption("with-miner", "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
 		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
+		cmdkit.BoolOption("cluster-teamweek", "when set, populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -35,6 +36,7 @@ var initCmd = &cmds.Command{
 		customGenesis, _ := req.Options["testgenesis"].(bool)
 		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
 		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
+		teamWeek, _ := req.Options["cluster-teamweek"].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options["with-miner"].(string); ok {
@@ -56,6 +58,7 @@ var initCmd = &cmds.Command{
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
 			api.PerformRealProofs(performRealProofs),
+			api.LabWeekCluster(teamWeek),
 		)
 
 		if err != nil {

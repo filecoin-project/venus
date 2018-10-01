@@ -72,13 +72,17 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Addresses []string `toml:"addresses"`
+	Addresses        []string `toml:"addresses"`
+	MinPeerThreshold int      `toml:"minPeerThreshold,omitempty"`
+	Period           string   `toml:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
-		Addresses: []string{},
+		Addresses:        []string{},
+		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
+		Period:           "1m",
 	}
 }
 

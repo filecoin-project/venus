@@ -24,6 +24,8 @@ const (
 
 [bootstrap]
   addresses = []
+  minPeerThreshold = 0
+  period = "1m"
 
 [datastore]
   type = "badgerds"
