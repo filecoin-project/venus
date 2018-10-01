@@ -6,3 +6,6 @@ go-filecoin
 filecoin
 gengen/gengen
 gengen/gensetup
+fixtures/*.key
+fixtures/gen.json
+fixtures/genesis.car

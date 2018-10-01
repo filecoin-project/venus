@@ -215,6 +215,18 @@ func build() {
 	buildFilecoin()
 	buildFakecoin()
 	buildGengen()
+	generateGenesis()
+}
+
+func generateGenesis() {
+	log.Println("Generating genesis...")
+	runParts(
+		"./gengen/gengen",
+		"--keypath", "fixtures",
+		"--out-car", "fixtures/genesis.car",
+		"--out-json", "fixtures/gen.json",
+		"--config", "./fixtures/setup.json",
+	)
 }
 
 func buildFakecoin() {
@@ -279,6 +291,10 @@ func main() {
 		buildFakecoin()
 	case "build-filecoin":
 		buildFilecoin()
+	case "build-gengen":
+		buildGengen()
+	case "generate-genesis":
+		generateGenesis()
 	case "build":
 		build()
 	case "test":
