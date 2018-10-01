@@ -138,7 +138,7 @@ go-filecoin daemon      # Starts the daemon, you may now issue it commands in an
 To set up a single node capable of mining:
 ```
 rm -fr ~/.filecoin
-go-filecoin init --genesisfile ./fixtures/genesis.car     # TODO include instructions on setting sealing params, etc
+go-filecoin init --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
 # Switch terminals
 # The miner is present in the genesis block car file created from the 
@@ -212,9 +212,16 @@ go-filecoin orderbook asks | jq
 go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
 # Check the status:
 go-filecoin client query-storage-deal <id returned above>
-# Wait for the deal to be Sealed, once it is, retrieve the piece
-# Note: might want to configure setting so that this happens quickly (TODO include this config option above)
-go-filecoin client cat <data CID>  # Note: this command likely replaced soon by retrieval-client command.
+# If you want to retreive the piece immediately you can bypass the retrieval market.
+# Note that this is kind of cheatsy but what works at the moment.
+go-filecoin client cat <data CID>
+
+# TDOO Retrieval Miner
+# If you want to fetch the piece from the miner's sealed sector, 
+# wait for the deal to be Sealed per query-storage-deal status above, and
+# then use the retrieval miner. Warning: this requires the sector be unsealed, 
+# which takes minutes to run:
+# go-filecoin retrieval-client retrieve-piece ... (exact command line TBD)
 ```
 
 ## Contribute
