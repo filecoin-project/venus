@@ -62,7 +62,6 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelLs(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
@@ -127,7 +126,6 @@ func TestPaymentChannelLs(t *testing.T) {
 }
 
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	t.Parallel()
 	require := require.New(t)
 
@@ -149,7 +147,6 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	t.Parallel()
 	require := require.New(t)
 
@@ -161,7 +158,11 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(20)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	targetDaemon := th.NewDaemon(t, th.WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(
+		t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+	).Start()
 	defer targetDaemon.ShutdownSuccess()
 
 	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
@@ -169,17 +170,16 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 		d.ConnectSuccess(targetDaemon)
 
-		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(111), &payer)
+		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer)
 
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
 
 		ls := listChannelsAsStrs(d, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID, target.String()), ls)
+		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID.String(), target.String()), ls)
 	})
 }
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	t.Parallel()
 	require := require.New(t)
 
@@ -194,7 +194,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(20)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	targetDaemon := th.NewDaemon(t, th.WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[1]), th.WithMiner(fixtures.TestMiners[0])).Start()
 	defer targetDaemon.ShutdownSuccess()
 
 	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
@@ -203,7 +203,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		d.ConnectSuccess(targetDaemon)
 
 		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(10), &payer)
+		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(10), &payer)
 
 		// target redeems the voucher (on-chain)
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
@@ -230,7 +230,6 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	require := require.New(t)
 
 	// Initial Balance 10,000,000
@@ -244,7 +243,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(100)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	targetDaemon := th.NewDaemon(t, th.WalletAddr(target.String())).Start()
+	targetDaemon := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[1]), th.WithMiner(fixtures.TestMiners[0])).Start()
 	defer targetDaemon.ShutdownSuccess()
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
@@ -276,7 +275,6 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
-	t.Skip("FIXME: paych encoding bug")
 	t.Parallel()
 	require := require.New(t)
 
@@ -286,16 +284,16 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	require.NoError(err)
 
 	eol := types.NewBlockHeight(5)
-	amt := types.NewAttoFILFromFIL(10000)
+	amt := types.NewAttoFILFromFIL(2000)
 
 	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
 		assert := assert.New(t)
 
 		extendedEOL := types.NewBlockHeight(6)
-		extendedAmt := types.NewAttoFILFromFIL(10001)
+		extendedAmt := types.NewAttoFILFromFIL(3001)
 
 		lsStr := listChannelsAsStrs(d, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: %s", channelID.String(), target.String(), eol.String()), lsStr)
+		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 2000, amt redeemed: 0, eol: %s", channelID.String(), target.String(), eol.String()), lsStr)
 
 		mustExtendChannel(t, d, channelID, extendedAmt, extendedEOL, &payer)
 
@@ -405,10 +403,10 @@ func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelI
 	wg.Wait()
 }
 
-func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *address.Address) {
+func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAddress *address.Address) {
 	require := require.New(t)
 
-	args := []string{"paych", "redeem", mustEncodeVoucherStr(t, voucher)}
+	args := []string{"paych", "redeem", voucher}
 	args = append(args, "--from", targetAddress.String())
 
 	redeemCmd := d.RunSuccess(args...)

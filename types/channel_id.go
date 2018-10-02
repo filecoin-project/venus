@@ -82,7 +82,7 @@ func (z *ChannelID) String() string {
 
 // KeyString returns a compact string version of the ID
 func (z *ChannelID) KeyString() string {
-	return z.val.Text(36)
+	return z.val.String()
 }
 
 // Inc increments the value of the channel id

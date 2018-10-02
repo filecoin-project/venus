@@ -4,7 +4,7 @@ import (
 	"context"
 	"gx/ipfs/QmSbvata2WqNkqGtZNg8MR3SKwnB8iQ7vTPJgWqB8bC5kR/go-multibase"
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -109,8 +109,8 @@ func (api *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, vouc
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
-		"update",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+		"redeem",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
@@ -137,7 +137,7 @@ func (api *nodePaych) Close(ctx context.Context, fromAddr address.Address, vouch
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
 		"close",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
