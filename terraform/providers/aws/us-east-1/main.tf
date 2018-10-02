@@ -84,6 +84,8 @@ output "filecoin-cluster-dns" {
 module "kh-test" {
   source = "../../../modules/aws/ec2/"
 
+  docker_tag      = "211e55"
+  instance_type   = "c5d.4xlarge"
   instance_name   = "test"
   public_key_name = "${aws_key_pair.filecoin.key_name}"
   vpc_id          = "${module.vpc.vpc_id}"
