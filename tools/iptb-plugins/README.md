@@ -1,22 +1,14 @@
 # How to use IPTB with go-filecoin
 
-## Setup Scripts
-Checkout the comments at the top of scripts in:
-- `tools/iptb-plugins/filecoin/local/scripts`
-- `tools/iptb-plugins/filecoin/docker/scripts`
+These scripts allow one to:
 
-## Example usage
-Create 10 localfilecoin nodes:
-```shell
-sh tools/iptb-plugins/filecoin/local/scripts/prepMining.sh 10
-```
+- Create the IPTB testbed
+- Initialize the testbed nodes with a genesis file
+- Start the testbed nodes
+- Configure the testbed nodes wallet addresses and miner address
+- Connect the testbed nodes together
 
-Create 10 dockerfilecoin nodes:
-```shell
-sh tools/iptb-plugins/filecoin/docker/scripts/prepMining.sh 10`
-```
-
-# Manual Setup
+## Setup
 First, ensure you have the latest version of IPTB installed:
 ```shell
 $> go get -u github.com/ipfs/iptb
@@ -24,9 +16,9 @@ $> go get -u github.com/ipfs/iptb
 
 Next, ensure you have go-filecoin **installed**, IPTB requires that the go-filecoin bin be in your path:
 ```shell
-$> cd $GOPATH/filecoin-project/go-filecoin
-$> go run ./build/*.go deps
-$> go run ./build/*.go install
+$> cd $GOPATH/src/github.com/filecoin-project/go-filecoin
+$> go run build/main.go deps
+$> go run build/main.go install
 ```
 
 Now, build the `localfilecoin` iptb plugin:
@@ -38,7 +30,26 @@ And verify the plugin was created:
 $> ls $HOME/testbed/plugins/
 localfilecoin.so
 ```
-# Usage
+
+*NOTE:* If you want to create Docker nodes, be sure to build the docker image first:
+```shell
+$> docker build .
+```
+
+## Initialization
+
+### Simple
+Create 10 local Filecoin nodes:
+```shell
+sh tools/iptb-plugins/filecoin/local/scripts/prepMining.sh 10
+```
+
+Create 10 Docker Filecoin nodes:
+```shell
+sh tools/iptb-plugins/filecoin/docker/scripts/prepMining.sh 10
+```
+
+### Advanced
 
 Create a 10 node `testbed`:
 ```shell
@@ -65,9 +76,9 @@ $> cat $HOME/testbed/testbeds/default/nodespec.json
   }
 ]
 ```
-NOTE: multipule testbeds can exist under the `$HOME/testbed/testbeds` directory, they may be created & interacted with by using the `--testbed` flag.
+NOTE: multiple testbeds can exist under the `$HOME/testbed/testbeds` directory, they may be created & interacted with by using the `--testbed` flag.
 
-Initalize the nodes in testbed `default`:
+Initialize the nodes in testbed `default`:
 ```shell
 $> iptb init
 node[0] exit 0
@@ -80,7 +91,7 @@ node[9] exit 0
 
 initializing filecoin node at /home/frrist/testbed/testbeds/default/9
 ```
-Verify the nodes initalized their repositories correctly:
+Verify the nodes initialized their repositories correctly:
 ```shell
 $> ls $HOME/testbed/testbeds/default/0/
 badger/  config.toml  keystore/  snapshots/  version  wallet/
@@ -118,6 +129,8 @@ node[0] exit 0
 /ip4/127.0.0.1/tcp/40671/ipfs/QmTG8s5TMUfGA1hwZ9umMBjG2bRD9DJTQg14U3XzLpqR23
 /ip4/127.0.0.1/tcp/45755/ipfs/QmTqjCLwJhxG4LyKRKhd536bDJ9UEBDix4HNUvRJMK8qL2
 ```
+
+## Running Commands
 
 Run a command on all the nodes:
 ```
