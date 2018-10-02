@@ -105,7 +105,7 @@ $> iptb connect
 
 Verify the connections were made:
 ```shell
-$> iptb run -- swarm peers
+$> iptb run -- go-filecoin swarm peers
 node[0] exit 0
 
 /ip4/127.0.0.1/tcp/33427/ipfs/QmVihFTmJDpWc8iAQXcbp4mavc6dWDuHqktm9EfFyTvBiC
@@ -121,7 +121,7 @@ node[0] exit 0
 
 Run a command on all the nodes:
 ```
-$> iptb run -- wallet addrs ls
+$> iptb run -- go-filecoin wallet addrs ls
 node[0] exit 0
 
 fcqd8399qra4a94tspmplcrh68x7vkhqzxaxtk6nw
@@ -135,7 +135,7 @@ fcqn9054lff4s9v6rlt76h08k4ra0gt9xmpymcl9w
 
 Or just the even number nodes:
 ```shell
-$> iptb run [0,2,4,6,8] -- id
+$> iptb run [0,2,4,6,8] -- go-filecoin id
 node[0] exit 0
 
 {
@@ -154,7 +154,7 @@ node[0] exit 0
 ```
 Or nodes 3-5:
 ```shell
-$> iptb run [3-5] -- swarm peers
+$> iptb run [3-5] -- go-filecoin swarm peers
 node[3] exit 0
 
 node[4] exit 0
