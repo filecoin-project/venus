@@ -13,7 +13,7 @@ by providing storage to clients.
 
 - [Installation](#installation)
 - [Development](#development)
-  - [Install Go](#install-go)
+  - [Install Go and Rust](#install-go-and-rust)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
@@ -23,6 +23,18 @@ by providing storage to clients.
    - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
 - [Contribute](#contribute)
+- [License](#license)
+
+
+## Installation
+
+You can download prebuilt binaries for Linux and MacOS from CircleCI.
+
+  - Go to the [filecoin project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). You may need to authenticate with GitHub.
+  - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
+  - Click the 'Artifacts' tab.
+  - Click `Container 0 > filecoin.tar.gz` to download the release.
+
 
 ## Installation
 
@@ -37,10 +49,8 @@ You can prebuilt download binaries for linux and macOS from CircleCI.
 
 ### Install Go and Rust
 
-The build process for go-filecoin requires at least Go version 1.10, which you can download [here][1]. You'll also need
-Rust to build the `rust-proofs` submodule, which you can download [here][5].
-
-(If you run into trouble, see the [Go install instructions][4]).
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule, which you can download [here](https://www.rust-lang.org/).
 
 ### Clone
 
@@ -61,7 +71,9 @@ other build and test dependencies, run:
 
 ### Managing Submodules
 
-Filecoin uses Git Submodules to consume `go-proofs`. To initialize the submodule, either run `deps` (as per above), or
+This step is necessary if you want to edit `rust-proofs`. If you're not editing `rust-proofs` there's no need to do this manually, because the `deps` build step will do it for you.
+
+Filecoin uses Git Submodules to consume `rust-proofs`. To initialize the submodule, either run `deps` (as per above), or
 initialize the submodule manually:
 
 ```sh
@@ -69,13 +81,13 @@ initialize the submodule manually:
 > git submodule update --init
 ```
 
-Later, when the head of the `go-proofs` `master` branch changes, you may want to update `go-filecoin` to use these changes:
+Later, when the head of the `rust-proofs` `master` branch changes, you may want to update `go-filecoin` to use these changes:
 
 ```sh
 > git submodule update --remote
 ```
 
-Note that updating the `go-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
+Note that updating the `rust-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
 ### Running Tests
 
@@ -242,8 +254,9 @@ If editing the readme, please conform to the [standard-readme][3] specification.
 
 The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0, ([LICENSE-APACHE](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](https://github.com/filecoin-project/go-filecoin/blob/master/LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
 
 [1]: https://golang.org/dl/
 [2]: https://github.com/whyrusleeping/gx
