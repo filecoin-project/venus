@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"net"
 	"os"
 	"path/filepath"
 
@@ -96,13 +95,12 @@ func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) 
 }
 
 type executor struct {
-	api     string
-	running bool
-	exec    cmds.Executor
+	api  string
+	exec cmds.Executor
 }
 
 func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-	if !e.running {
+	if e.api == "" {
 		return e.exec.Execute(req, re, env)
 	}
 
@@ -138,23 +136,13 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		}
 	}
 
-	isDaemonRunning, err := daemonRunning(api)
-	if err != nil {
-		return nil, err
-	}
-
-	if isDaemonRunning && req.Command == daemonCmd {
-		return nil, ErrAlreadyRunning
-	}
-
-	if !isDaemonRunning && isDaemonRequired {
+	if api == "" && isDaemonRequired {
 		return nil, ErrMissingDaemon
 	}
 
 	return &executor{
-		api:     api,
-		exec:    cmds.NewExecutor(rootCmd),
-		running: isDaemonRunning,
+		api:  api,
+		exec: cmds.NewExecutor(rootCmd),
 	}, nil
 }
 
@@ -207,20 +195,4 @@ func requiresDaemon(req *cmds.Request) bool {
 	}
 
 	return true
-}
-
-func daemonRunning(api string) (bool, error) {
-	// TODO: use lockfile once implemented
-	// for now we just check if the port is available
-
-	ln, err := net.Listen("tcp", api)
-	if err != nil {
-		return true, nil
-	}
-
-	if err := ln.Close(); err != nil {
-		return false, err
-	}
-
-	return false, nil
 }
