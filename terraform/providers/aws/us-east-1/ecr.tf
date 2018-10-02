@@ -30,6 +30,10 @@ resource "aws_ecr_repository" "dashboard-visualizer" {
   name = "dashboard-visualizer"
 }
 
+resource "aws_ecr_repository" "filecoin-faucet" {
+  name = "filecoin-faucet"
+}
+
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
 }
@@ -59,4 +63,8 @@ output "ecr-dashboard-aggregator-url" {
 }
 output "ecr-dashboard-visualizer-url" {
   value = "${aws_ecr_repository.dashboard-visualizer.repository_url}"
+}
+
+output "ecr-filecoin-faucet-url" {
+  value = "${aws_ecr_repository.filecoin-faucet.repository_url}"
 }
