@@ -63,8 +63,10 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	pieceA, bytesA := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize/2)
 	pieceB, bytesB := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize-(testSectorSize/2))
 
-	minerNode.SectorBuilder().AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
-	minerNode.SectorBuilder().AddPiece(ctx, pieceB) // triggers seal
+	_, err = minerNode.SectorBuilder().AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
+	require.NoError(err)
+	_, err = minerNode.SectorBuilder().AddPiece(ctx, pieceB) // triggers seal
+	require.NoError(err)
 
 	// wait for commitSector to make it into the chain
 	cancelA := make(chan struct{})

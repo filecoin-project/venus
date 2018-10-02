@@ -81,7 +81,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	)
 
 	// ensure mining happens after update message gets included in mempool
-	d1.MineAndPropagate(time.Second, d)
+	d1.MineAndPropagate(10*time.Second, d)
 
 	// wait for message to be included in a block
 	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))

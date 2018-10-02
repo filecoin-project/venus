@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	types "github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -35,13 +36,13 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
 
 func TestHelloHandshake(t *testing.T) {
 	t.Parallel()
+	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require := require.New(t)
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
-	assert.NoError(t, err)
+	require.NoError(err)
 
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
@@ -61,13 +62,31 @@ func TestHelloHandshake(t *testing.T) {
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
 
-	mn.LinkAll()
-	mn.ConnectAllButSelf()
+	require.NoError(mn.LinkAll())
+	require.NoError(mn.ConnectAllButSelf())
 
-	time.Sleep(time.Millisecond * 50)
+	require.NoError(th.WaitForIt(10, 50*time.Millisecond, func() (bool, error) {
+		var msc1Done bool
+		var msc2Done bool
+		for _, call := range msc1.Calls {
+			if call.Method == "SyncCallback" {
+				if _, differences := msc1.ExpectedCalls[0].Arguments.Diff(call.Arguments); differences == 0 {
+					msc1Done = true
+					break
+				}
+			}
+		}
+		for _, call := range msc2.Calls {
+			if call.Method == "SyncCallback" {
+				if _, differences := msc2.ExpectedCalls[0].Arguments.Diff(call.Arguments); differences == 0 {
+					msc2Done = true
+					break
+				}
+			}
+		}
 
-	msc1.AssertExpectations(t)
-	msc2.AssertExpectations(t)
+		return msc1Done && msc2Done, nil
+	}))
 }
 
 func TestHelloBadGenesis(t *testing.T) {

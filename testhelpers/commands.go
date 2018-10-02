@@ -772,6 +772,8 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// uncomment this and comment out the following 4 lines to output daemon stderr to os stderr
+	//td.process.Stderr = os.Stderr
 	td.Stderr, err = td.process.StderrPipe()
 	if err != nil {
 		t.Fatal(err)
