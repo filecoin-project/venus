@@ -215,6 +215,7 @@ func build() {
 	buildFilecoin()
 	buildFakecoin()
 	buildGengen()
+	buildFaucet()
 	generateGenesis()
 }
 
@@ -256,6 +257,12 @@ func buildGengen() {
 
 	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
 	runParts("go", "build", "-o", "./gengen/gensetup", "./gengen/setupgen")
+}
+
+func buildFaucet() {
+	log.Println("Building faucet...")
+
+	runParts("go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/")
 }
 
 func install() {
