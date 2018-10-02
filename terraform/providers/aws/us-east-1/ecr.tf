@@ -18,6 +18,10 @@ resource "aws_ecr_repository" "alertmanager" {
   name = "alertmanager"
 }
 
+resource "aws_ecr_repository" "blockexplorer" {
+  name = "blockexplorer"
+}
+
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
 }
@@ -36,4 +40,8 @@ output "ecr-prometheus-url" {
 
 output "ecr-alertmanager-url" {
   value = "${aws_ecr_repository.alertmanager.repository_url}"
+}
+
+output "ecr-blockexplorer-url" {
+  value = "${aws_ecr_repository.blockexplorer.repository_url}"
 }

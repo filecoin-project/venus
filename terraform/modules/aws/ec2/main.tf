@@ -35,6 +35,14 @@ variable "instance_type" {
   default = "m5d.large"
 }
 
+variable "has_many_instance_storage" {
+  default = "false"
+}
+
+locals {
+  storage_setup = "${var.has_many_instance_storage == "true" ? data.template_file.setup_lvm_instance_storage.rendered : data.template_file.setup_instance_storage.rendered}"
+}
+
 data "aws_ami" "ubuntu" {
   most_recent = true
 
@@ -109,12 +117,13 @@ data "template_file" "user_data" {
     node_exporter_install  = "${data.template_file.node_exporter_install.rendered}"
     cadvisor_install       = "${data.template_file.cadvisor_install.rendered}"
     docker_install         = "${data.template_file.docker_install.rendered}"
-    setup_instance_storage = "${data.template_file.setup_instance_storage.rendered}"
+    setup_instance_storage = "${local.storage_setup}"
     docker_uri             = "${var.docker_uri}"
     docker_tag             = "${var.docker_tag}"
     filebeat_docker_uri    = "${var.filebeat_docker_uri}"
     filebeat_docker_tag    = "${var.filebeat_docker_tag}"
     logstash_hosts         = "${var.logstash_hosts}"
+    instance_name          = "${var.instance_name}"
   }
 }
 

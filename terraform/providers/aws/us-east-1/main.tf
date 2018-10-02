@@ -24,6 +24,23 @@ resource "aws_security_group" "filecoin" {
     from_port   = 9000
     to_port     = 9009
     cidr_blocks = ["0.0.0.0/0"]
+    description = "swarm addresses"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 8000
+    to_port     = 8000
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "block explorer"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 34530
+    to_port     = 34530
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "filecoin-0 API"
   }
 
   egress {

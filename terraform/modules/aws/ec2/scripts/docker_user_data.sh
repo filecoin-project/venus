@@ -62,6 +62,15 @@ SETUPFILE=$$(cat <<-END
 END
          )
 
+FILECOIN_CONFIG=$$(cat  <<-END
+[api]
+  address = "/ip4/0.0.0.0/tcp/3453"
+  accessControlAllowOrigin = ["http://${instance_name}.kittyhawk.wtf:8000"]
+  accessControlAllowCredentials = false
+  accessControlAllowMethods = ["GET", "POST", "PUT", "OPTIONS", "HEAD"]
+END
+               )
+
 ${setup_instance_storage}
 
 # expose Docker daemon on TCP 2376
@@ -123,13 +132,17 @@ do
          --entrypoint=/usr/local/bin/go-filecoin \
          $${FILECOIN_DOCKER_IMAGE} \
          init --genesisfile=/var/filecoin/car/genesis.car --repodir="/var/local/filecoins/$$i" --peerkeyfile="/var/filecoin/car/keyFile$$i"
+  echo "$$FILECOIN_CONFIG" > "/mnt/storage/filecoins/$i/config.toml"
 done
-
 chmod -R 0777 "$${FILECOIN_STORAGE}"
+
+docker network create filecoin
 for i in {0..9}
 do
-  echo "Starting filecoin_$$i"
-  docker run -d --name "filecoin_$$i" -p "900$$i:9000" \
+  echo "Starting filecoin-$$i"
+  docker run -d \
+         --name "filecoin-$$i" --hostname "filecoin-$$i" \
+         --network=filecoin -p "900$$i:9000" -p "3453$$i:3453" \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor \
@@ -145,8 +158,8 @@ for i in {0..9}
 do
   # how we get the miner address
   miner=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[$${i}].Address")
-  echo "Adding miner $${miner} to filecoin_$$i"
-  docker exec "filecoin_$$i" $$filcoin_exec \
+  echo "Adding miner $${miner} to filecoin-$$i"
+  docker exec "filecoin-$$i" $$filcoin_exec \
          config mining.minerAddress $${miner}
 done
 
@@ -155,12 +168,12 @@ for i in {0..9}
 do
   # this code has no honor
   cat "$$CAR_DIR/gen.json" | jq -r ".Keys[\"$${i}\"]" > "$$CAR_DIR/wallet$$i"
-  docker exec "filecoin_$$i" sh -c "cat /var/filecoin/car/wallet$$i | /usr/local/bin/go-filecoin --repodir=/var/local/filecoin wallet import"
+  docker exec "filecoin-$$i" sh -c "cat /var/filecoin/car/wallet$$i | /usr/local/bin/go-filecoin --repodir=/var/local/filecoin wallet import"
 done
 
 for i in {0..9}
 do
-  for node_addr in $$(docker exec "filecoin_$$i" $$filcoin_exec id --format=\<addrs\>)
+  for node_addr in $$(docker exec "filecoin-$$i" $$filcoin_exec id --format=\<addrs\>)
   do
     if [[ $$node_addr = *"ip4/172"* ]]; then
       node_docker_addr=$$node_addr
@@ -171,12 +184,18 @@ do
   for j in {0..9}
   do
     echo "joining $${j} with peer at: $${node_docker_addr}"
-    docker exec "filecoin_$$j" $$filcoin_exec swarm connect "$${node_docker_addr}" || true
+    docker exec "filecoin-$$j" $$filcoin_exec swarm connect "$${node_docker_addr}" || true
   done
 done
 
 for i in {0..9}
 do
-  docker exec "filecoin_$$i" $$filcoin_exec \
+  docker exec "filecoin-$$i" $$filcoin_exec \
          mining start
 done
+
+# start block explorer
+docker run -d \
+       --name block-exporter -p 8000:8000 -e PORT=8000 \
+       -e REACT_APP_API_PORT=34530 -e REACT_APP_API_URL="${instance_name}.kittyhawk.wtf" \
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer
