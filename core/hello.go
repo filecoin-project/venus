@@ -93,6 +93,8 @@ var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 func (h *Hello) processHelloMessage(from peer.ID, msg *HelloMsg) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
+		log.Errorf("Their genesis cid: %s", msg.GenesisHash.String())
+		log.Errorf("Our genesis cid: %s", h.genesis.String())
 		return ErrBadGenesis
 	}
 

@@ -52,11 +52,11 @@ type Bootstrapper struct {
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
 // to the filecoin network by connecting to the given bootstrap peers.
-func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer) *Bootstrapper {
+func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, minPeer int, period time.Duration) *Bootstrapper {
 	b := &Bootstrapper{
-		MinPeerThreshold:  0, // TODO: we don't actually have any bootstrap peers yet!
+		MinPeerThreshold:  minPeer,
 		bootstrapPeers:    bootstrapPeers,
-		Period:            time.Minute,
+		Period:            period,
 		ConnectionTimeout: 20 * time.Second,
 
 		h: h,

@@ -68,6 +68,7 @@ func TestConfigSet(t *testing.T) {
 		// validate output
 		expected := config.NewDefaultConfig().Bootstrap
 		expected.Addresses = []string{"bootup1", "bootup2"}
+		expected.Period = ""
 		assert.Equal(expected, out)
 
 		// validate config write

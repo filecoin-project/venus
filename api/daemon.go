@@ -34,6 +34,8 @@ type DaemonInitConfig struct {
 	WithMiner address.Address
 	// PerformRealProofs, if true, will cause the node to exercise the real PoRep and PoSt operations
 	PerformRealProofs bool
+	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
+	LabWeekCluster bool
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -99,6 +101,14 @@ func WithMiner(miner address.Address) DaemonInitOpt {
 func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.PerformRealProofs = performRealProofs
+		return nil
+	}
+}
+
+// LabWeekCluster sets the LabWeekCluster option.
+func LabWeekCluster(doit bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.LabWeekCluster = doit
 		return nil
 	}
 }
