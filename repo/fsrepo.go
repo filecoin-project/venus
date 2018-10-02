@@ -12,12 +12,11 @@ import (
 	"sync"
 	"time"
 
-	badgerds "gx/ipfs/QmQoiqmV9gAKEQAELqeGACQwXyDeijE6fq7ARhirPMX2T2/go-ds-badger"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
+	keystore "gx/ipfs/QmTBWmvUbMDmvnZvzTpSjz6nVNJRiMMnj3JiFcgyJjvHaq/go-ipfs-keystore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	lockfile "gx/ipfs/QmYzCZUe9CBDkyPNPcRNqXQK8KKhtUfXvc88PkFujAEJPe/go-fs-lock"
-	keystore "gx/ipfs/QmbRDw6b2xXnZywek9E8qk1z4NAVrGxqZvbvwfSioiSy1S/go-ipfs-keystore"
-	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
+	lockfile "gx/ipfs/QmZzgxSj8QpR58KmdeNj97eD66X6xeDAFNjpP2xTY9oKeQ/go-fs-lock"
+	badgerds "gx/ipfs/QmciWFTxK1t1PNyPdoTsv8wtj3DWim2qRFjaUEcFWCnV8D/go-ds-badger"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -31,6 +30,7 @@ const (
 	lockFile               = "repo.lock"
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"
+	chainDatastorePrefix   = "chain"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
 )
@@ -57,6 +57,7 @@ type FSRepo struct {
 	ds       Datastore
 	keystore keystore.Keystore
 	walletDs Datastore
+	chainDs  Datastore
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -121,6 +122,10 @@ func (r *FSRepo) loadFromDisk() error {
 
 	if err := r.openWalletDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open wallet datastore")
+	}
+
+	if err := r.openChainDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open chain datastore")
 	}
 	return nil
 }
@@ -206,6 +211,11 @@ func (r *FSRepo) WalletDatastore() Datastore {
 	return r.walletDs
 }
 
+// ChainDatastore returns the chain datastore.
+func (r *FSRepo) ChainDatastore() Datastore {
+	return r.chainDs
+}
+
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
@@ -223,6 +233,10 @@ func (r *FSRepo) Close() error {
 	}
 
 	if err := r.walletDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close datastore")
+	}
+
+	if err := r.chainDs.Close(); err != nil {
 		return errors.Wrap(err, "failed to close datastore")
 	}
 
@@ -314,6 +328,17 @@ func (r *FSRepo) openKeystore() error {
 	return nil
 }
 
+func (r *FSRepo) openChainDatastore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, chainDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.chainDs = ds
+
+	return nil
+}
+
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
 	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), nil)
@@ -387,7 +412,7 @@ func (r *FSRepo) SealedDir() string {
 
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
 // `port` to be of the form `:<port>`.
-func (r *FSRepo) SetAPIAddr(port string) error {
+func (r *FSRepo) SetAPIAddr(maddr string) error {
 	f, err := os.Create(filepath.Join(r.path, APIFile))
 	if err != nil {
 		return errors.Wrap(err, "could not create API file")
@@ -395,11 +420,7 @@ func (r *FSRepo) SetAPIAddr(port string) error {
 
 	defer f.Close() // nolint: errcheck
 
-	maddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%s", port[1:]))
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(maddr.String())
+	_, err = f.WriteString(maddr)
 	if err != nil {
 		// If we encounter an error writing to the API file,
 		// delete the API file. The error encountered while
@@ -425,16 +446,8 @@ func APIAddrFromFile(apiFilePath string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read API file")
 	}
-	maddr, err := ma.NewMultiaddr(string(contents))
-	if err != nil {
-		return "", err
-	}
-	port, err := maddr.ValueForProtocol(ma.P_TCP)
-	if err != nil {
-		return "", err
-	}
 
-	return fmt.Sprintf(":%s", port), nil
+	return string(contents), nil
 }
 
 // APIAddr reads the FSRepo's api file and returns the api address

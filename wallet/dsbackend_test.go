@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

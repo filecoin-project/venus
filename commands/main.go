@@ -2,14 +2,15 @@ package commands
 
 import (
 	"context"
-	"net"
 	"os"
 	"path/filepath"
 
-	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds/http"
+	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	cmdhttp "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds/http"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
@@ -25,20 +26,16 @@ const (
 	APIPrefix = "/api"
 	// OfflineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
-	// MockMineMode replaces the normal chain weight and power table
-	// computations with simple computations that don't require the tip of
-	// a chain to hold a pointer to a valid state root. This mode exists
-	// because many daemon tests rely on mining and block processing to
-	// extend the chain and process messages without setting up a storage
-	// market.
-	//
-	// TODO: This is a TEMPORARY WORKAROUND. Ideally similar functionality
-	// will be accomplished by running a node with Proof-Of-Bob consensus
-	// during tests.  Alternatively we could come up with a canonical set
-	// of testing genesii and allow the CLI to take in custom gensis blocks.
-	MockMineMode = "mock-mine"
+	// ELStdout tells the daemon to write event logs to stdout.
+	ELStdout = "elstdout"
+	// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
+	PerformRealProofs = "perform-real-proofs"
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
+	// BlockTime is the duration string of the block time the daemon will
+	// run with.  TODO: this should eventually be more explicitly grouped
+	// with testing as we won't be able to set blocktime in production.
+	BlockTime = "block-time"
 )
 
 var rootCmd = &cmds.Command{
@@ -57,28 +54,29 @@ var rootCmd = &cmds.Command{
 
 // all top level commands. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
-	"actor":     actorCmd,
-	"address":   addrsCmd,
-	"bootstrap": bootstrapCmd,
-	"chain":     chainCmd,
-	"config":    configCmd,
-	"client":    clientCmd,
-	"daemon":    daemonCmd,
-	"dag":       dagCmd,
-	"id":        idCmd,
-	"init":      initCmd,
-	"log":       logCmd,
-	"message":   msgCmd,
-	"miner":     minerCmd,
-	"mining":    miningCmd,
-	"mpool":     mpoolCmd,
-	"orderbook": orderbookCmd,
-	"paych":     paymentChannelCmd,
-	"ping":      pingCmd,
-	"show":      showCmd,
-	"swarm":     swarmCmd,
-	"version":   versionCmd,
-	"wallet":    walletCmd,
+	"actor":            actorCmd,
+	"address":          addrsCmd,
+	"bootstrap":        bootstrapCmd,
+	"chain":            chainCmd,
+	"config":           configCmd,
+	"client":           clientCmd,
+	"daemon":           daemonCmd,
+	"dag":              dagCmd,
+	"id":               idCmd,
+	"init":             initCmd,
+	"log":              logCmd,
+	"message":          msgCmd,
+	"miner":            minerCmd,
+	"mining":           miningCmd,
+	"mpool":            mpoolCmd,
+	"orderbook":        orderbookCmd,
+	"paych":            paymentChannelCmd,
+	"ping":             pingCmd,
+	"retrieval-client": retrievalClientCmd,
+	"show":             showCmd,
+	"swarm":            swarmCmd,
+	"version":          versionCmd,
+	"wallet":           walletCmd,
 }
 
 func init() {
@@ -97,13 +95,12 @@ func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) 
 }
 
 type executor struct {
-	api     string
-	running bool
-	exec    cmds.Executor
+	api  string
+	exec cmds.Executor
 }
 
 func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-	if !e.running {
+	if e.api == "" {
 		return e.exec.Execute(req, re, env)
 	}
 
@@ -139,40 +136,53 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		}
 	}
 
-	isDaemonRunning, err := daemonRunning(api)
-	if err != nil {
-		return nil, err
-	}
-
-	if isDaemonRunning && req.Command == daemonCmd {
-		return nil, ErrAlreadyRunning
-	}
-
-	if !isDaemonRunning && isDaemonRequired {
+	if api == "" && isDaemonRequired {
 		return nil, ErrMissingDaemon
 	}
 
 	return &executor{
-		api:     api,
-		exec:    cmds.NewExecutor(rootCmd),
-		running: isDaemonRunning,
+		api:  api,
+		exec: cmds.NewExecutor(rootCmd),
 	}, nil
 }
 
 func getAPIAddress(req *cmds.Request) (string, error) {
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		return apiAddress, nil
-	}
-
+	var out string
+	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		return envapi, nil
+		out = envapi
 	}
 
-	apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
-	if err != nil {
-		return "", nil
+	// first highest precedence is cmd flag.
+	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
+		out = apiAddress
 	}
-	return repo.APIAddrFromFile(apiFilePath)
+
+	// we will read the api file if no other option is given.
+	if len(out) == 0 {
+		apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
+		if err != nil {
+			return "", errors.Wrap(err, "failed to read api file")
+		}
+
+		out, err = repo.APIAddrFromFile(apiFilePath)
+		if err != nil {
+			return "", err
+		}
+
+	}
+
+	maddr, err := ma.NewMultiaddr(out)
+	if err != nil {
+		return "", err
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return "", err
+	}
+
+	return host, nil
 }
 
 func requiresDaemon(req *cmds.Request) bool {
@@ -185,20 +195,4 @@ func requiresDaemon(req *cmds.Request) bool {
 	}
 
 	return true
-}
-
-func daemonRunning(api string) (bool, error) {
-	// TODO: use lockfile once implemented
-	// for now we just check if the port is available
-
-	ln, err := net.Listen("tcp", api)
-	if err != nil {
-		return true, nil
-	}
-
-	if err := ln.Close(); err != nil {
-		return false, err
-	}
-
-	return false, nil
 }

@@ -5,27 +5,28 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"os"
+	"math/big"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
-	"gx/ipfs/QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5/go-car"
-	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
-	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
-	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
+	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
+	"gx/ipfs/QmcQSyreJnxiZ1TCop3s5hjgsggpzCNjrbgqzUoQv4ywEW/go-car"
+	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 )
 
 // Miner is
@@ -33,6 +34,9 @@ type Miner struct {
 	// Owner is the name of the key that owns this miner
 	// It must be a name of a key from the configs 'Keys' list
 	Owner string
+
+	// PeerID is the peer ID to set as the miners owner
+	PeerID string
 
 	// Power is the amount of power this miner should start off with
 	// TODO: this will get more complicated when we actually have to
@@ -54,59 +58,76 @@ type GenesisCfg struct {
 	Miners []Miner
 }
 
-func randAddress() types.Address {
-	buf := make([]byte, 32)
-	_, _ = rand.Read(buf)
+// RenderedGenInfo contains information about a genesis block creation
+type RenderedGenInfo struct {
+	// Keys is the set of keys generated
+	Keys map[string]*types.KeyInfo
 
-	h := types.AddressHash(buf)
-	return types.NewAddress(types.Mainnet, h)
+	// Miners is the list of addresses of miners created
+	Miners []RenderedMinerInfo
+
+	// GenesisCid is the cid of the created genesis block
+	GenesisCid *cid.Cid
+}
+
+// RenderedMinerInfo contains info about a created miner
+type RenderedMinerInfo struct {
+	// Owner is the key name of the owner of this miner
+	Owner string
+
+	// Address is the address generated on-chain for the miner
+	Address address.Address
+
+	// Power is the amount of storage power this miner was created with
+	Power uint64
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*cid.Cid, map[string]*types.KeyInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
 	keys, err := genKeys(cfg.Keys)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	st := state.NewEmptyStateTree(cst)
+	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 	storageMap := vm.NewStorageMap(bs)
 
-	if err := core.SetupDefaultActors(ctx, st, storageMap); err != nil {
-		return nil, nil, err
+	if err := consensus.SetupDefaultActors(ctx, st, storageMap); err != nil {
+		return nil, err
 	}
 
 	if err := setupPrealloc(st, keys, cfg.PreAlloc); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	if err := setupMiners(st, cst, keys, cfg.Miners); err != nil {
-		return nil, nil, err
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	stateRoot, err := st.Flush(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	err = storageMap.Flush()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	geneblk := &types.Block{
@@ -115,10 +136,14 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 
 	c, err := cst.Put(ctx, geneblk)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return c, keys, nil
+	return &RenderedGenInfo{
+		Keys:       keys,
+		GenesisCid: c,
+		Miners:     miners,
+	}, nil
 }
 
 func genKeys(cfgkeys []string) (map[string]*types.KeyInfo, error) {
@@ -178,65 +203,87 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, cst *hamt.CborIpldStore, keys map[string]*types.KeyInfo, miners []Miner) error {
-	smaStorage := &storagemarket.State{
-		Miners: make(types.AddrSet),
-		Orderbook: &storagemarket.Orderbook{
-			StorageAsks: make(storagemarket.AskSet),
-			Bids:        make(storagemarket.BidSet),
-		},
-	}
+func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner) ([]RenderedMinerInfo, error) {
+	var minfos []RenderedMinerInfo
+	ctx := context.Background()
 
-	powerSum := types.NewBytesAmount(0)
 	for _, m := range miners {
 		addr, err := keys[m.Owner].Address()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		mst := &miner.State{
-			Owner:         addr,
-			PeerID:        "",
-			PublicKey:     nil,
-			PledgeBytes:   types.NewBytesAmount(10000000000),
-			Collateral:    types.NewAttoFILFromFIL(100000),
-			LockedStorage: types.NewBytesAmount(0),
-			Power:         types.NewBytesAmount(m.Power),
+		var pid peer.ID
+		if m.PeerID != "" {
+			p, err := peer.IDB58Decode(m.PeerID)
+			if err != nil {
+				return nil, err
+			}
+			pid = p
+		} else {
+			pid = th.RequireRandomPeerID()
 		}
-		powerSum = powerSum.Add(mst.Power)
 
-		root, err := cst.Put(context.Background(), mst)
+		// give collateral to account actor
+		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		act := types.NewActor(types.MinerActorCodeCid, nil)
-		act.Head = root
-
-		maddr := randAddress()
-
-		if err := st.SetActor(context.Background(), maddr, act); err != nil {
-			return err
+		// create miner
+		pubkey, err := keys[m.Owner].PublicKey()
+		if err != nil {
+			return nil, err
 		}
-		smaStorage.Miners[maddr] = struct{}{}
-		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", maddr, m.Owner, m.Power) // nolint: errcheck
+		resp, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
+		if err != nil {
+			return nil, err
+		}
+		if resp.ExecutionError != nil {
+			return nil, fmt.Errorf("failed to createMiner: %s", resp.ExecutionError)
+		}
+
+		// get miner address
+		maddr, err := address.NewFromBytes(resp.Receipt.Return[0])
+		if err != nil {
+			return nil, err
+		}
+
+		minfos = append(minfos, RenderedMinerInfo{
+			Address: maddr,
+			Owner:   m.Owner,
+			Power:   m.Power,
+		})
+
+		// commit sector to add power
+		for i := uint64(0); i < m.Power; i++ {
+			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
+			// which is initialized to 0 and incremented (for the first sector) to 1
+			sectorID := i + 1
+
+			commR := make([]byte, 32)
+			commD := make([]byte, 32)
+			if _, err := rand.Read(commR[:]); err != nil {
+				return nil, err
+			}
+			if _, err := rand.Read(commD[:]); err != nil {
+				return nil, err
+			}
+			resp, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
+			if err != nil {
+				return nil, err
+			}
+			if resp.ExecutionError != nil {
+				return nil, fmt.Errorf("failed to commitSector: %s", resp.ExecutionError)
+			}
+		}
 	}
 
-	smaStorage.TotalCommittedStorage = powerSum
-
-	root, err := cst.Put(context.Background(), smaStorage)
-	if err != nil {
-		return err
-	}
-	sma := types.NewActor(types.StorageMarketActorCodeCid, nil)
-	sma.Head = root
-	fmt.Fprintln(os.Stderr, "storage market actor head: ", root) // nolint: errcheck
-
-	return st.SetActor(context.Background(), address.StorageMarketAddress, sma)
+	return minfos, nil
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
-func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, error) {
+func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 	// TODO: these six lines are ugly. We can do better...
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
@@ -247,10 +294,10 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (map[string]*types.KeyInfo, e
 
 	ctx := context.Background()
 
-	c, keys, err := GenGen(ctx, cfg, cst, bstore)
+	info, err := GenGen(ctx, cfg, cst, bstore)
 	if err != nil {
 		return nil, err
 	}
 
-	return keys, car.WriteCar(ctx, dserv, []*cid.Cid{c}, out)
+	return info, car.WriteCar(ctx, dserv, []*cid.Cid{info.GenesisCid}, out)
 }

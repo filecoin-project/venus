@@ -1,12 +1,12 @@
 package commands
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"github.com/stretchr/testify/assert"
@@ -42,9 +42,9 @@ func TestWalletBalance(t *testing.T) {
 	balance := d.RunSuccess("wallet", "balance", addr)
 	assert.Equal("0", balance.ReadStdoutTrimNewlines())
 
-	t.Log("[success] balance 10000000000")
+	t.Log("[success] balance 9999900000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal("10000000000", balance.ReadStdoutTrimNewlines())
+	assert.Equal("9999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("wallet addrs new")
@@ -54,50 +54,59 @@ func TestWalletBalance(t *testing.T) {
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
-	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90)).Start()
+	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
+	defer d1.ShutdownSuccess()
+
+	d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 	defer d.ShutdownSuccess()
 
-	addr := d.GetDefaultAddress()
-	minerPidForUpdate := core.RequireRandomPeerID()
-	fmt.Println("creating")
-	minerAddr := d.CreateMinerAddr(addr)
-	fmt.Println("created miner")
+	d1.ConnectSuccess(d)
+
+	addr := fixtures.TestAddresses[0]
+	minerAddr := fixtures.TestMiners[0]
+	minerPidForUpdate := th.RequireRandomPeerID()
+
 	// capture original, pre-update miner pid
-	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
-	fmt.Println("lookup", lookupOutA)
+	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
+
 	// update the miner's peer ID
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
 		"--from", addr,
-		minerAddr.String(),
+		minerAddr,
 		minerPidForUpdate.Pretty(),
 	)
-	fmt.Println("mpool wait")
+
 	// ensure mining happens after update message gets included in mempool
-	d.RunSuccess("mpool --wait-for-count=1")
-	d.RunSuccess("mining once")
-	fmt.Println("wait for inclusion")
+	d1.MineAndPropagate(time.Second, d)
+
 	// wait for message to be included in a block
 	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
 
 	// use the address lookup command to ensure update happened
-	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr.String())
+	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
 	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
 	assert.NotEqual(lookupOutA, lookupOutB)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
-	t.Skip("FIXME: this should use wallet import now instead of relying on initialization")
 	assert := assert.New(t)
 
-	d := th.NewDaemon(t, th.WalletFile("../testhelpers/testfiles/walletGenFile.toml"), th.WalletAddr("fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")).Start()
+	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	// assert we loaded the test address from the file
+	for _, p := range fixtures.KeyFilePaths() {
+		d.RunSuccess("wallet", "import", p)
+	}
+
 	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
-	assert.Contains(dw, "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth")
+
+	for _, addr := range fixtures.TestAddresses {
+		// assert we loaded the test address from the file
+		assert.Contains(dw, addr)
+	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", "fcqrn3nwxlpqng6ms8kp4tk44zrjyh4nurrmg6wth").ReadStdoutTrimNewlines()
-	assert.Contains(wb, "10000000")
+	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
+	assert.Contains(wb, "10000")
 }

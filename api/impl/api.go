@@ -1,7 +1,7 @@
 package impl
 
 import (
-	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -11,26 +11,27 @@ type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	actor     *nodeActor
-	address   *nodeAddress
-	block     *nodeBlock
-	bootstrap *nodeBootstrap
-	chain     *nodeChain
-	config    *nodeConfig
-	client    *nodeClient
-	daemon    *nodeDaemon
-	dag       *nodeDag
-	id        *nodeID
-	log       *nodeLog
-	message   *nodeMessage
-	miner     *nodeMiner
-	mining    *nodeMining
-	mpool     *nodeMpool
-	orderbook *nodeOrderbook
-	paych     *nodePaych
-	ping      *nodePing
-	swarm     *nodeSwarm
-	version   *nodeVersion
+	actor           *nodeActor
+	address         *nodeAddress
+	block           *nodeBlock
+	bootstrap       *nodeBootstrap
+	chain           *nodeChain
+	config          *nodeConfig
+	client          *nodeClient
+	daemon          *nodeDaemon
+	dag             *nodeDag
+	id              *nodeID
+	log             *nodeLog
+	message         *nodeMessage
+	miner           *nodeMiner
+	mining          *nodeMining
+	mpool           *nodeMpool
+	orderbook       *nodeOrderbook
+	paych           *nodePaych
+	ping            *nodePing
+	retrievalClient *nodeRetrievalClient
+	swarm           *nodeSwarm
+	version         *nodeVersion
 }
 
 // Assert that nodeAPI fullfills the api.API interface.
@@ -61,6 +62,7 @@ func New(node *node.Node) api.API {
 	api.orderbook = newNodeOrderbook(api)
 	api.paych = newNodePaych(api)
 	api.ping = newNodePing(api)
+	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)
 	api.version = newNodeVersion(api)
 
@@ -137,6 +139,10 @@ func (api *nodeAPI) Paych() api.Paych {
 
 func (api *nodeAPI) Ping() api.Ping {
 	return api.ping
+}
+
+func (api *nodeAPI) RetrievalClient() api.RetrievalClient {
+	return api.retrievalClient
 }
 
 func (api *nodeAPI) Swarm() api.Swarm {

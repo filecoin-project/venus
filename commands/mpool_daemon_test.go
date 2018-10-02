@@ -4,12 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/stretchr/testify/assert"
 
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
@@ -19,12 +20,12 @@ func TestMpool(t *testing.T) {
 
 	t.Run("return all messages", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t, th.KeyFile(th.TestKey1)).Start()
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
 		d.RunSuccess("message", "send",
-			"--from", th.TestAddress1,
-			"--value=10", th.TestAddress3,
+			"--from", fixtures.TestAddresses[0],
+			"--value=10", fixtures.TestAddresses[2],
 		)
 
 		out := d.RunSuccess("mpool")
@@ -36,7 +37,7 @@ func TestMpool(t *testing.T) {
 
 	t.Run("wait for enough messages", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t, th.KeyFile(th.TestKey1)).Start()
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
 		wg := sync.WaitGroup{}
@@ -52,22 +53,22 @@ func TestMpool(t *testing.T) {
 		}()
 
 		d.RunSuccess("message", "send",
-			"--from", th.TestAddress1,
-			"--value=10", th.TestAddress2,
+			"--from", fixtures.TestAddresses[0],
+			"--value=10", fixtures.TestAddresses[1],
 		)
 
 		assert.False(complete)
 
 		d.RunSuccess("message", "send",
-			"--from", th.TestAddress1,
-			"--value=10", th.TestAddress2,
+			"--from", fixtures.TestAddresses[0],
+			"--value=10", fixtures.TestAddresses[1],
 		)
 
 		assert.False(complete)
 
 		d.RunSuccess("message", "send",
-			"--from", th.TestAddress1,
-			"--value=10", th.TestAddress2,
+			"--from", fixtures.TestAddresses[0],
+			"--value=10", fixtures.TestAddresses[1],
 		)
 
 		wg.Wait()

@@ -3,12 +3,13 @@ package types
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	// TODO: allow more types than just strings for the params
 	// currently []interface{} results in type information getting lost when doing
@@ -38,7 +39,7 @@ func TestMessageMarshal(t *testing.T) {
 
 func TestMessageCid(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 
 	msg1 := NewMessage(
 		addrGetter(),

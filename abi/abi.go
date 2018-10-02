@@ -5,9 +5,11 @@ import (
 	"math/big"
 	"reflect"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -18,9 +20,9 @@ var ErrInvalidType = fmt.Errorf("invalid type")
 type Type uint64
 
 const (
-	// Invalid is the default value for 'Type' and represents an errorneously set type.
+	// Invalid is the default value for 'Type' and represents an erroneously set type.
 	Invalid = Type(iota)
-	// Address is a types.Address
+	// Address is a address.Address
 	Address
 	// AttoFIL is a *types.AttoFIL
 	AttoFIL
@@ -40,6 +42,8 @@ const (
 	UintArray
 	// PeerID is a libp2p peer ID
 	PeerID
+	// SectorID is a uint64
+	SectorID
 )
 
 func (t Type) String() string {
@@ -47,7 +51,7 @@ func (t Type) String() string {
 	case Invalid:
 		return "<invalid>"
 	case Address:
-		return "types.Address"
+		return "address.Address"
 	case AttoFIL:
 		return "*types.AttoFIL"
 	case BytesAmount:
@@ -66,6 +70,8 @@ func (t Type) String() string {
 		return "[]uint64"
 	case PeerID:
 		return "peer.ID"
+	case SectorID:
+		return "uint64"
 	default:
 		return "<unknown type>"
 	}
@@ -82,7 +88,7 @@ func (av *Value) String() string {
 	case Invalid:
 		return "<invalid>"
 	case Address:
-		return av.Val.(types.Address).String()
+		return av.Val.(address.Address).String()
 	case AttoFIL:
 		return av.Val.(*types.AttoFIL).String()
 	case BytesAmount:
@@ -101,6 +107,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.([]uint64))
 	case PeerID:
 		return av.Val.(peer.ID).String()
+	case SectorID:
+		return fmt.Sprint(av.Val.(uint64))
 	default:
 		return "<unknown type>"
 	}
@@ -121,9 +129,9 @@ func (av *Value) Serialize() ([]byte, error) {
 	case Invalid:
 		return nil, ErrInvalidType
 	case Address:
-		addr, ok := av.Val.(types.Address)
+		addr, ok := av.Val.(address.Address)
 		if !ok {
-			return nil, &typeError{types.Address{}, av.Val}
+			return nil, &typeError{address.Address{}, av.Val}
 		}
 		return addr.Bytes(), nil
 	case AttoFIL:
@@ -148,6 +156,9 @@ func (av *Value) Serialize() ([]byte, error) {
 		ba, ok := av.Val.(*types.BlockHeight)
 		if !ok {
 			return nil, &typeError{types.BlockHeight{}, av.Val}
+		}
+		if ba == nil {
+			return nil, nil
 		}
 		return ba.Bytes(), nil
 	case Integer:
@@ -183,6 +194,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte(pid), nil
+	case SectorID:
+		n, ok := av.Val.(uint64)
+		if !ok {
+			return nil, &typeError{0, av.Val}
+		}
+
+		return leb128.FromUInt64(n), nil
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -198,7 +216,7 @@ func ToValues(i []interface{}) ([]*Value, error) {
 	out := make([]*Value, 0, len(i))
 	for _, v := range i {
 		switch v := v.(type) {
-		case types.Address:
+		case address.Address:
 			out = append(out, &Value{Type: Address, Val: v})
 		case *types.AttoFIL:
 			out = append(out, &Value{Type: AttoFIL, Val: v})
@@ -218,6 +236,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: UintArray, Val: v})
 		case peer.ID:
 			out = append(out, &Value{Type: PeerID, Val: v})
+		case uint64:
+			out = append(out, &Value{Type: SectorID, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -244,7 +264,7 @@ func FromValues(vals []*Value) []interface{} {
 func Deserialize(data []byte, t Type) (*Value, error) {
 	switch t {
 	case Address:
-		addr, err := types.NewAddressFromBytes(data)
+		addr, err := address.NewFromBytes(data)
 		if err != nil {
 			return nil, err
 		}
@@ -307,6 +327,11 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  id,
 		}, nil
+	case SectorID:
+		return &Value{
+			Type: t,
+			Val:  leb128.ToUInt64(data),
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -315,7 +340,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address:     reflect.TypeOf(types.Address{}),
+	Address:     reflect.TypeOf(address.Address{}),
 	AttoFIL:     reflect.TypeOf(&types.AttoFIL{}),
 	Bytes:       reflect.TypeOf([]byte{}),
 	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),
@@ -325,6 +350,7 @@ var typeTable = map[Type]reflect.Type{
 	String:      reflect.TypeOf(string("")),
 	UintArray:   reflect.TypeOf([]uint64{}),
 	PeerID:      reflect.TypeOf(peer.ID("")),
+	SectorID:    reflect.TypeOf(uint64(0)),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

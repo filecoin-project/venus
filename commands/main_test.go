@@ -2,10 +2,9 @@ package commands
 
 import (
 	"context"
-	"net"
 	"testing"
 
-	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -21,23 +20,4 @@ func TestRequiresDaemon(t *testing.T) {
 
 	assert.True(requiresDaemon(reqWithDaemon))
 	assert.False(requiresDaemon(reqWithoutDaemon))
-}
-
-func TestDaemonRunning(t *testing.T) {
-	assert := assert.New(t)
-
-	// No daemon running
-	isRunning, err := daemonRunning(":3456")
-	assert.NoError(err)
-	assert.False(isRunning)
-
-	// something is running on this port
-
-	ln, err := net.Listen("tcp", ":3456")
-	assert.NoError(err)
-	defer ln.Close()
-
-	isRunning, err = daemonRunning(":3456")
-	assert.NoError(err)
-	assert.True(isRunning)
 }

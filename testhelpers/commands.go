@@ -17,9 +17,12 @@ import (
 	"testing"
 	"time"
 
+	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -97,8 +100,8 @@ type TestDaemon struct {
 	walletFile  string
 	walletAddr  string
 	genesisFile string
-	mockMine    bool
 	keyFiles    []string
+	withMiner   string
 
 	firstRun bool
 	init     bool
@@ -154,7 +157,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	finalArgs := append(args, "--repodir="+td.repoDir, "--cmdapiaddr="+td.cmdAddr)
 
-	td.test.Logf("run: %q\n", strings.Join(finalArgs, " "))
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 
 	if stdin != nil {
@@ -174,6 +177,9 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	stdoutBytes, err := ioutil.ReadAll(stdout)
 	require.NoError(td.test, err)
+
+	td.test.Logf("stdout\n%s", string(stdoutBytes))
+	td.test.Logf("stderr\n%s", string(stderrBytes))
 
 	o := &Output{
 		Args:   args,
@@ -252,29 +258,76 @@ func (td *TestDaemon) GetID() string {
 	return parsed["ID"].(string)
 }
 
-// GetAddress returns the first address of the daemon.
-func (td *TestDaemon) GetAddress() string {
+// GetAddresses returns all of the addresses of the daemon.
+func (td *TestDaemon) GetAddresses() []string {
 	out := td.RunSuccess("id")
 	var parsed map[string]interface{}
 	require.NoError(td.test, json.Unmarshal([]byte(out.ReadStdout()), &parsed))
-
 	adders := parsed["Addresses"].([]interface{})
-	return adders[0].(string)
+
+	res := make([]string, len(adders))
+	for i, addr := range adders {
+		res[i] = addr.(string)
+	}
+	return res
 }
 
 // ConnectSuccess connects the daemon to another daemon, asserting that
 // the operation was successful.
 func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
+	remoteAddrs := remote.GetAddresses()
+	delay := 100 * time.Millisecond
+
 	// Connect the nodes
-	out := td.RunSuccess("swarm", "connect", remote.GetAddress())
-	peers1 := td.RunSuccess("swarm", "peers")
-	peers2 := remote.RunSuccess("swarm", "peers")
+	// This usually works on the first try, but leaving this here, to ensure we
+	// connect and don't fail the test.
+	var out *Output
+Outer:
+	for i := 0; i < 5; i++ {
+		for j, remoteAddr := range remoteAddrs {
+			out = td.Run("swarm", "connect", remoteAddr)
+			if out.Error == nil && out.Code == 0 {
+				if i > 0 || j > 0 {
+					fmt.Printf("WARNING: swarm connect took %d tries", (i+1)*(j+1))
+				}
+				break Outer
+			}
+			time.Sleep(delay)
+		}
+	}
+	assert.Equal(td.test, out.Code, 0, "failed to execute swarm connect")
 
-	td.test.Log("[success] 1 -> 2")
-	require.Contains(td.test, peers1.ReadStdout(), remote.GetID())
+	localID := td.GetID()
+	remoteID := remote.GetID()
 
-	td.test.Log("[success] 2 -> 1")
-	require.Contains(td.test, peers2.ReadStdout(), td.GetID())
+	connected1 := false
+	for i := 0; i < 10; i++ {
+		peers1 := td.RunSuccess("swarm", "peers")
+
+		p1 := peers1.ReadStdout()
+		connected1 = strings.Contains(p1, remoteID)
+		if connected1 {
+			break
+		}
+		td.test.Log(p1)
+		time.Sleep(delay)
+	}
+
+	connected2 := false
+	for i := 0; i < 10; i++ {
+		peers2 := remote.RunSuccess("swarm", "peers")
+
+		p2 := peers2.ReadStdout()
+		connected2 = strings.Contains(p2, localID)
+		if connected2 {
+			break
+		}
+		td.test.Log(p2)
+		time.Sleep(delay)
+	}
+
+	require.True(td.test, connected1, "failed to connect p1 -> p2")
+	require.True(td.test, connected2, "failed to connect p2 -> p1")
 
 	return out
 }
@@ -366,25 +419,26 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAddr(fromAddr string) types.Address {
+func (td *TestDaemon) CreateMinerAddr(fromAddr string) address.Address {
 	// need money
 	td.RunSuccess("mining", "once")
 
 	var wg sync.WaitGroup
-	var minerAddr types.Address
+	var minerAddr address.Address
 
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
-		addr, err := types.NewAddressFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		require.NoError(td.test, err)
-		require.NotEqual(td.test, addr, types.Address{})
+		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(td.test, err)
+		assert.NotEqual(td.test, addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
 
 	// ensure mining runs after the command in our goroutine
 	td.RunSuccess("mpool --wait-for-count=1")
+
 	td.RunSuccess("mining", "once")
 
 	wg.Wait()
@@ -550,14 +604,29 @@ func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon, fromAddr stri
 	return ddCid
 }
 
-// GetDefaultAddress returns the default sender address for this daemon
+// GetDefaultAddress returns the default sender address for this daemon.
 func (td *TestDaemon) GetDefaultAddress() string {
 	addrs := td.RunSuccess("wallet", "addrs", "ls")
 	return strings.Split(addrs.ReadStdout(), "\n")[0]
 }
 
+// GetMinerAddress returns the miner address for this daemon.
+func (td *TestDaemon) GetMinerAddress() address.Address {
+	return td.Config().Mining.MinerAddress
+}
+
 func tryAPICheck(td *TestDaemon) error {
-	url := fmt.Sprintf("http://127.0.0.1%s/api/id", td.cmdAddr)
+	maddr, err := ma.NewMultiaddr(td.cmdAddr)
+	if err != nil {
+		return err
+	}
+
+	_, host, err := manet.DialArgs(maddr)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("http://%s/api/id", host)
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -623,7 +692,7 @@ func WalletAddr(a string) func(*TestDaemon) {
 // KeyFile specifies a key file for this daemon to add to their wallet during init
 func KeyFile(kf string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
-		td.keyFiles = append(td.keyFiles, keyFilePath(kf))
+		td.keyFiles = append(td.keyFiles, kf)
 	}
 }
 
@@ -631,6 +700,13 @@ func KeyFile(kf string) func(*TestDaemon) {
 func GenesisFile(a string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
 		td.genesisFile = a
+	}
+}
+
+// WithMiner allows setting the --with-miner flag on init.
+func WithMiner(m string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.withMiner = m
 	}
 }
 
@@ -658,14 +734,14 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-		cmdAddr:     fmt.Sprintf(":%d", cmdPort),
-		swarmAddr:   fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
-		test:        t,
-		repoDir:     dir,
-		init:        true, // we want to init unless told otherwise
-		firstRun:    true,
-		walletFile:  "",
-		mockMine:    true, // mine without setting up a valid storage market in the chain state by default.
+		cmdAddr:    fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", cmdPort),
+		swarmAddr:  fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+		test:       t,
+		repoDir:    dir,
+		init:       true, // we want to init unless told otherwise
+		firstRun:   true,
+		walletFile: "",
+
 		cmdTimeout:  DefaultDaemonCmdTimeout,
 		genesisFile: GenesisFilePath(), // default file includes all test addresses,
 	}
@@ -674,31 +750,46 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	for _, option := range options {
 		option(td)
 	}
+	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
+	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
+	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
 
 	// build command options
-	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
-	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
-	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
-	walletFileFlag := fmt.Sprintf("--walletfile=%s", td.walletFile)
-	walletAddrFlag := fmt.Sprintf("--walletaddr=%s", td.walletAddr)
-	testGenesisFlag := fmt.Sprintf("--testgenesis=%t", td.walletFile != "")
-	genesisFileFlag := fmt.Sprintf("--genesisfile=%s", td.genesisFile)
-	mockMineFlag := ""
+	initopts := []string{
+		cmdAPIAddrFlag,
+		repoDirFlag,
+	}
 
-	if td.mockMine {
-		mockMineFlag = "--mock-mine"
+	if td.genesisFile != "" {
+		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
+	}
+	if td.walletFile != "" {
+		initopts = append(initopts, fmt.Sprintf("--walletfile=%s", td.walletFile))
+		initopts = append(initopts, "--testgenesis")
+	}
+	if td.walletAddr != "" {
+		initopts = append(initopts, fmt.Sprintf("--walletaddr=%s", td.walletAddr))
+	}
+	if td.withMiner != "" {
+		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
 	}
 
 	if td.init {
-		out, err := RunInit(repoDirFlag, cmdAPIAddrFlag, walletFileFlag, walletAddrFlag, testGenesisFlag, genesisFileFlag)
+		t.Logf("run: go-filecoin init %s", initopts)
+		out, err := RunInit(td, initopts...)
 		if err != nil {
 			t.Log(string(out))
 			t.Fatal(err)
 		}
 	}
 
+	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+
 	// define filecoin daemon process
-	td.process = exec.Command(filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, mockMineFlag, swarmListenFlag)
+	td.process = exec.Command(filecoinBin, finalArgs...)
+	// disable REUSEPORT, it creates problems in tests
+	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
 
 	// setup process pipes
 	td.Stdout, err = td.process.StdoutPipe()
@@ -718,17 +809,25 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 }
 
 // RunInit is the equivialent of executing `go-filecoin init`.
-func RunInit(opts ...string) ([]byte, error) {
-	return RunCommand("init", opts...)
-}
-
-// RunCommand executes the given cmd against `go-filecoin`.
-func RunCommand(cmd string, opts ...string) ([]byte, error) {
+func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin, err := GetFilecoinBinary()
 	if err != nil {
 		return nil, err
 	}
 
-	process := exec.Command(filecoinBin, append([]string{"init"}, opts...)...)
+	finalArgs := append([]string{"init"}, opts...)
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+
+	process := exec.Command(filecoinBin, finalArgs...)
 	return process.CombinedOutput()
+}
+
+// GenesisFilePath returns the path of the WalletFile
+func GenesisFilePath() string {
+	gopath, err := GetGoPath()
+	if err != nil {
+		panic(err)
+	}
+
+	return filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/genesis.car")
 }

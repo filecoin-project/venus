@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	pstore "gx/ipfs/QmZR2XWVVBCtbgBWnQhWk2xcQfaR3W8faQPriAiaaj7rsr/go-libp2p-peerstore"
-	peer "gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
+	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	pstore "gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +26,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	// that canceling the context causes it to stop being called. Do this
 	// by stubbing out Bootstrap to keep a count of the number of times it
 	// is called and to cancel its context after several calls.
-	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer)
+	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, 0, 200*time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -46,7 +46,6 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 		}
 	}
 
-	b.Period = 200 * time.Millisecond
 	b.Start(ctx)
 	time.Sleep(1000 * time.Millisecond)
 
@@ -61,8 +60,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		fakeHost := &fakeHost{ConnectImpl: panicConnect}
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
 
-		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer)
-		b.MinPeerThreshold = 1                          // Need 1
+		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, 1, time.Minute)
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
 		assert.NotPanics(func() { b.bootstrap(currentPeers) })
 	})
@@ -88,9 +86,8 @@ func TestBootstrapperBootstrap(t *testing.T) {
 			{ID: requireRandPeerID(t)},
 			{ID: requireRandPeerID(t)},
 		}
-		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer)
+		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, 3, time.Minute)
 		b.ctx = context.Background()
-		b.MinPeerThreshold = 3                          // Need 3
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
 		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)
@@ -112,9 +109,8 @@ func TestBootstrapperBootstrap(t *testing.T) {
 			{ID: connectedPeerID},
 		}
 
-		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer)
+		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, 2, time.Minute) // Need 2 bootstrap peers.
 		b.ctx = context.Background()
-		b.MinPeerThreshold = 2                     // Need 2
 		currentPeers := []peer.ID{connectedPeerID} // Have 1, which is the bootstrap peer.
 		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)

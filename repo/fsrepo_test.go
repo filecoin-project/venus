@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	ds "gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	ds "gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,26 +17,33 @@ import (
 
 const (
 	expectContent = `[api]
-  address = ":3453"
-  accessControlAllowOrigin = ["http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1"]
+  address = "/ip4/127.0.0.1/tcp/3453"
+  accessControlAllowOrigin = ["http://localhost:8080", "https://localhost:8080", "http://127.0.0.1:8080", "https://127.0.0.1:8080"]
   accessControlAllowCredentials = false
   accessControlAllowMethods = ["GET", "POST", "PUT"]
 
 [bootstrap]
   addresses = []
+  minPeerThreshold = 0
+  period = "1m"
 
 [datastore]
   type = "badgerds"
   path = "badger"
 
 [swarm]
-  address = "/ip4/127.0.0.1/tcp/6000"
+  address = "/ip4/0.0.0.0/tcp/6000"
 
 [mining]
-  minerAddresses = []
+  minerAddress = ""
+  performRealProofs = false
 
 [wallet]
   defaultAddress = ""
+
+[stats]
+  heartbeatPeriod = "3s"
+  nickname = ""
 `
 )
 
@@ -229,15 +236,15 @@ func TestRepoAPIFile(t *testing.T) {
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			addr := mustGetAPIAddr(t, r)
-			assert.Equal(":1234", addr)
+			assert.Equal("/ip4/127.0.0.1/tcp/1234", addr)
 
-			mustSetAPIAddr(t, r, ":4567")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/4567")
 
 			addr = mustGetAPIAddr(t, r)
-			assert.Equal(":4567", addr)
+			assert.Equal("/ip4/127.0.0.1/tcp/4567", addr)
 		})
 	})
 
@@ -246,18 +253,18 @@ func TestRepoAPIFile(t *testing.T) {
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			addr := mustGetAPIAddr(t, r)
-			assert.Equal(":1234", addr)
+			assert.Equal("/ip4/127.0.0.1/tcp/1234", addr)
 
-			mustSetAPIAddr(t, r, ":1234")
-			mustSetAPIAddr(t, r, ":1234")
-			mustSetAPIAddr(t, r, ":1234")
-			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			addr = mustGetAPIAddr(t, r)
-			assert.Equal(":1234", addr)
+			assert.Equal("/ip4/127.0.0.1/tcp/1234", addr)
 		})
 	})
 
@@ -277,7 +284,7 @@ func TestRepoAPIFile(t *testing.T) {
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			info, err := os.Stat(filepath.Join(r.path, APIFile))
 			assert.NoError(err)
@@ -295,7 +302,7 @@ func TestRepoAPIFile(t *testing.T) {
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
-			mustSetAPIAddr(t, r, ":1234")
+			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
 			err := os.Remove(filepath.Join(r.path, APIFile))
 			assert.NoError(err)
@@ -310,11 +317,11 @@ func TestRepoAPIFile(t *testing.T) {
 
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.path, APIFile), []byte(":9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.path, APIFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(err)
 
 			// try to os.Create to same path - will see a failure
-			err = r.SetAPIAddr(":1234")
+			err = r.SetAPIAddr("/ip4/127.0.0.1/tcp/1234")
 			assert.Error(err)
 		})
 	})

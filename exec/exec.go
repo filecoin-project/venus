@@ -1,11 +1,14 @@
 package exec
 
 import (
+	"context"
+
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -64,23 +67,33 @@ type FunctionSignature struct {
 type VMContext interface {
 	Message() *types.Message
 	Storage() Storage
-	Send(to types.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	AddressForNewActor() (types.Address, error)
+	Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 
-	CreateNewActor(addr types.Address, code *cid.Cid, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code *cid.Cid, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
-	WriteStorage(memory []byte) error
+	WriteStorage(interface{}) error
 }
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
-	Put([]byte) (*cid.Cid, error)
-	Get(*cid.Cid) ([]byte, bool, error)
+	Put(interface{}) (*cid.Cid, error)
+	Get(*cid.Cid) ([]byte, error)
 	Commit(*cid.Cid, *cid.Cid) error
 	Head() *cid.Cid
+}
+
+// Lookup defines an internal interface for actor storage.
+type Lookup interface {
+	Find(ctx context.Context, k string) (interface{}, error)
+	Set(ctx context.Context, k string, v interface{}) error
+	Commit(ctx context.Context) (*cid.Cid, error)
+	Delete(ctx context.Context, k string) error
+	IsEmpty() bool
+	Values(ctx context.Context) ([]*hamt.KV, error)
 }

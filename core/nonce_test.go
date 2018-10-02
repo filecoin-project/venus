@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 
 		_, err := NextNonce(ctx, st, mp, address)
 		assert.Error(err)
@@ -37,7 +38,7 @@ func TestNextNonce(t *testing.T) {
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
 
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 		actor, err := storagemarket.NewActor()
 		assert.NoError(err)
 		_ = state.MustSetActor(st, address, actor)
@@ -52,7 +53,7 @@ func TestNextNonce(t *testing.T) {
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
 		mp := NewMessagePool()
-		address := types.NewAddressForTestGetter()()
+		address := address.NewForTestGetter()()
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 42
@@ -79,7 +80,7 @@ func TestNextNonce(t *testing.T) {
 		assert.Equal(uint64(2), nonce)
 
 		msg := types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		smsg := MustSign(mockSigner, msg)
+		smsg := testhelpers.MustSign(mockSigner, msg)
 		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)
@@ -87,7 +88,7 @@ func TestNextNonce(t *testing.T) {
 		assert.Equal(uint64(3), nonce)
 
 		msg = types.NewMessage(addr, address.TestAddress, nonce, nil, "", []byte{})
-		smsg = MustSign(mockSigner, msg)
+		smsg = testhelpers.MustSign(mockSigner, msg)
 		MustAdd(mp, smsg...)
 
 		nonce, err = NextNonce(ctx, st, mp, addr)

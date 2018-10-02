@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -36,8 +37,10 @@ func TestChainHead(t *testing.T) {
 
 		blk := types.NewBlockForTest(nil, 1)
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		chainStore, ok := n.ChainReader.(chain.Store)
+		require.True(ok)
 
-		n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, blk))
+		chainStore.SetHead(ctx, consensus.RequireNewTipSet(require, blk))
 
 		api := New(n)
 		out, err := api.Chain().Head()
@@ -58,12 +61,19 @@ func TestChainLsRun(t *testing.T) {
 		ctx := context.Background()
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
-		err := n.ChainMgr.Genesis(ctx, core.InitGenesis)
+		chainStore, ok := n.ChainReader.(chain.Store)
+		require.True(ok)
+		genBlock, err := consensus.InitGenesis(n.CborStore, n.Blockstore)
 		require.NoError(err)
-		genBlock := core.RequireBestBlock(n.ChainMgr, t)
-		chlBlock := types.NewBlockForTest(genBlock, 1)
 
-		err = n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
+		chlBlock := types.NewBlockForTest(genBlock, 1)
+		chlTS := consensus.RequireNewTipSet(require, chlBlock)
+		err = chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+			TipSet:          chlTS,
+			TipSetStateRoot: chlBlock.StateRoot,
+		})
+		require.NoError(err)
+		err = chainStore.SetHead(ctx, chlTS)
 		require.NoError(err)
 
 		api := New(n)
@@ -71,7 +81,7 @@ func TestChainLsRun(t *testing.T) {
 		var bs [][]*types.Block
 		for raw := range api.Chain().Ls(ctx) {
 			switch v := raw.(type) {
-			case core.TipSet:
+			case consensus.TipSet:
 				bs = append(bs, v.ToSlice())
 			default:
 				assert.FailNow("invalid element in ls", v)
@@ -93,7 +103,15 @@ func TestChainLsRun(t *testing.T) {
 		parBlock := types.NewBlockForTest(nil, 0)
 		chlBlock := types.NewBlockForTest(parBlock, 1)
 
-		err := n.ChainMgr.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, chlBlock))
+		chainStore, ok := n.ChainReader.(chain.Store)
+		require.True(ok)
+		chlTS := consensus.RequireNewTipSet(require, chlBlock)
+		err := chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+			TipSet:          chlTS,
+			TipSetStateRoot: chlBlock.StateRoot,
+		})
+		require.NoError(err)
+		err = chainStore.SetHead(ctx, chlTS)
 		require.NoError(err)
 
 		api := New(n)
@@ -103,7 +121,7 @@ func TestChainLsRun(t *testing.T) {
 			switch v := raw.(type) {
 			case error:
 				innerErr = v
-			case core.TipSet:
+			case consensus.TipSet:
 				// ignore
 			default:
 				require.FailNow("invalid element in ls", v)
@@ -111,7 +129,7 @@ func TestChainLsRun(t *testing.T) {
 		}
 
 		require.NotNil(innerErr)
-		require.EqualError(innerErr, "error fetching block: context deadline exceeded")
+		require.Contains(innerErr.Error(), "failed to get block")
 	})
 
 	t.Run("JSON marshaling", func(t *testing.T) {

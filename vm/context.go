@@ -5,24 +5,22 @@ import (
 	"context"
 	"encoding/binary"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	logging "gx/ipfs/QmcVVHfdyv15GVPk7NrxdWjh2hLVccXnoD8j2tyQShiXJb/go-log"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
-	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
-
-var log = logging.Logger("vm")
 
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
 type Context struct {
-	from        *types.Actor
-	to          *types.Actor
+	from        *actor.Actor
+	to          *actor.Actor
 	message     *types.Message
 	state       *state.CachedTree
 	storageMap  StorageMap
@@ -31,8 +29,10 @@ type Context struct {
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
+var _ exec.VMContext = (*Context)(nil)
+
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *types.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
@@ -58,15 +58,14 @@ func (ctx *Context) Message() *types.Message {
 
 // ReadStorage reads the storage from the associated to actor.
 func (ctx *Context) ReadStorage() ([]byte, error) {
-	stage := ctx.Storage()
+	storage := ctx.Storage()
 
-	memory, ok, err := stage.Get(stage.Head())
+	memory, err := storage.Get(storage.Head())
 	if err != nil {
+		if err == ErrNotFound {
+			return nil, errors.NewRevertErrorf("Actor state not found at cid %s", storage.Head())
+		}
 		return nil, err
-	}
-
-	if !ok {
-		return nil, errors.NewRevertErrorf("Actor state not found at cid %s", stage.Head())
 	}
 
 	out := make([]byte, len(memory))
@@ -76,7 +75,7 @@ func (ctx *Context) ReadStorage() ([]byte, error) {
 }
 
 // WriteStorage writes to the storage of the associated to actor.
-func (ctx *Context) WriteStorage(memory []byte) error {
+func (ctx *Context) WriteStorage(memory interface{}) error {
 	stage := ctx.Storage()
 
 	cid, err := stage.Put(memory)
@@ -104,7 +103,7 @@ func (ctx *Context) IsFromAccountActor() bool {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+func (ctx *Context) Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -127,8 +126,8 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*types.Actor, error) {
-		return &types.Actor{}, nil
+	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
 	})
 	if err != nil {
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
@@ -147,32 +146,32 @@ func (ctx *Context) Send(to types.Address, method string, value *types.AttoFIL, 
 // way that ethereum does.  Note that this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *Context) AddressForNewActor() (types.Address, error) {
+func (ctx *Context) AddressForNewActor() (address.Address, error) {
 	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
 }
 
-func computeActorAddress(creator types.Address, nonce uint64) (types.Address, error) {
+func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
-	hash := types.AddressHash(buf.Bytes())
+	hash := address.Hash(buf.Bytes())
 
-	return types.NewMainnetAddress(hash), nil
+	return address.NewMainnet(hash), nil
 }
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initializerData interface{}) error {
+func (ctx *Context) CreateNewActor(addr address.Address, code *cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
-	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*types.Actor, error) {
-		return &types.Actor{}, nil
+	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
 	})
 
 	if err != nil {
@@ -203,20 +202,6 @@ func (ctx *Context) CreateNewActor(addr types.Address, code *cid.Cid, initialize
 	return nil
 }
 
-// VerifySignature cryptographically verifies that 'sig' is the signed hash of 'data' with
-// the public key belonging to `addr`.
-func (ctx *Context) VerifySignature(data []byte, addr types.Address, sig types.Signature) bool {
-	maybePk, err := wutil.Ecrecover(data, sig)
-	if err != nil {
-		// Any error returned from Ecrecover means this signature is not valid.
-		log.Infof("error in signature validation: %s", err)
-		return false
-	}
-	maybeAddrHash := types.AddressHash(maybePk)
-
-	return types.NewMainnetAddress(maybeAddrHash) == addr
-}
-
 // Dependency injection setup.
 
 // makeDeps returns a VMContext's external dependencies with their standard values set.
@@ -234,7 +219,7 @@ func makeDeps(st *state.CachedTree) *deps {
 
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
-	GetOrCreateActor func(context.Context, types.Address, func() (*types.Actor, error)) (*types.Actor, error)
+	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
 	Send             func(context.Context, *Context) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }

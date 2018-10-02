@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -16,11 +16,10 @@ func TestBlockDaemon(t *testing.T) {
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a Filecoin block", func(t *testing.T) {
 		require := require.New(t)
 
-		d := th.NewDaemon(t).Start()
+		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
 		defer d.ShutdownSuccess()
 
 		// mine a block and get its CID
-
 		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
 
 		// get the mined block by its CID
@@ -31,7 +30,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// ensure that we were returned the correct block
 
-		require.True(core.MustDecodeCid(minedBlockCidStr).Equals(blockGetBlock.Cid()))
+		require.Equal(minedBlockCidStr, blockGetBlock.Cid().String())
 
 		// ensure that the JSON we received from block get conforms to schema
 

@@ -4,38 +4,44 @@ import (
 	"context"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/address"
+
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 // PeerLookupService provides an interface through which callers look up a miner's libp2p identity by their Filecoin address.
 type PeerLookupService interface {
-	GetPeerIDByMinerAddress(context.Context, types.Address) (peer.ID, error)
+	GetPeerIDByMinerAddress(context.Context, address.Address) (peer.ID, error)
 }
 
 // ChainLookupService is a ChainManager-backed implementation of the PeerLookupService interface.
 type ChainLookupService struct {
-	chainManager           *core.ChainManager
-	queryMethodFromAddress func() (types.Address, error)
+	chainReader            chain.ReadStore
+	bstore                 blockstore.Blockstore
+	queryMethodFromAddress func() (address.Address, error)
 }
 
 var _ PeerLookupService = &ChainLookupService{}
 
-// NewChainLookupService creates a new ChainLookupService from a ChainManager and a Wallet.
-func NewChainLookupService(manager *core.ChainManager, queryMethodFromAddr func() (types.Address, error)) *ChainLookupService {
+// NewChainLookupService creates a new ChainLookupService from a ChainStore and a Wallet.
+func NewChainLookupService(chain chain.ReadStore, queryMethodFromAddr func() (address.Address, error), bstore blockstore.Blockstore) *ChainLookupService {
 	return &ChainLookupService{
-		chainManager:           manager,
+		chainReader:            chain,
+		bstore:                 bstore,
 		queryMethodFromAddress: queryMethodFromAddr,
 	}
 }
 
 // GetPeerIDByMinerAddress attempts to get a miner's libp2p identity by loading the actor from the state tree and sending
 // it a "getPeerID" message. The MinerActor is currently the only type of actor which has a peer ID.
-func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
-	st, err := c.chainManager.State(ctx, c.chainManager.GetHeaviestTipSet().ToSlice())
+func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
+	st, err := c.chainReader.LatestState(ctx)
 	if err != nil {
 		return peer.ID(""), errors.Wrap(err, "failed to load state tree")
 	}
@@ -44,8 +50,8 @@ func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerA
 		return peer.ID(""), errors.Wrap(err, "failed to obtain a default from-address")
 	}
 
-	vms := vm.NewStorageMap(c.chainManager.Blockstore)
-	retValue, retCode, err := core.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, addr, nil)
+	vms := vm.NewStorageMap(c.bstore)
+	retValue, retCode, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, addr, nil)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to query local state tree(from %s, miner %s)", addr.String(), minerAddr.String())
 	}

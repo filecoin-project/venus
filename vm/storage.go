@@ -1,17 +1,24 @@
 package vm
 
 import (
+	"errors"
+
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	blocks "gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
+	format "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
+	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	blocks "gx/ipfs/QmVzK524a2VWLqyvtBeiHKsUAWYgeAk4DBeZoY7vpNPNRx/go-block-format"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
-	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/go-filecoin/vm/errors"
+	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+// ErrNotFound is returned by storage when no chunk in storage matches a requested Cid
+var ErrNotFound = errors.New("chunk not found")
 
 // Content-addressed storage API.
 // The storage API has a few goals:
@@ -23,12 +30,12 @@ import (
 // storageMap implements StorageMap as a map of Storage structs keyed by actor address.
 type storageMap struct {
 	blockstore blockstore.Blockstore
-	storageMap map[types.Address]Storage
+	storageMap map[address.Address]Storage
 }
 
 // StorageMap manages Storages.
 type StorageMap interface {
-	NewStorage(addr types.Address, actor *types.Actor) Storage
+	NewStorage(addr address.Address, actor *actor.Actor) Storage
 	Flush() error
 }
 
@@ -38,7 +45,7 @@ var _ StorageMap = &storageMap{}
 func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 	return &storageMap{
 		blockstore: bs,
-		storageMap: map[types.Address]Storage{},
+		storageMap: map[address.Address]Storage{},
 	}
 }
 
@@ -46,7 +53,7 @@ func NewStorageMap(bs blockstore.Blockstore) StorageMap {
 // Storage updates the given actor's storage by updating its Head property.
 // The instance of actor passed into this method needs to be the instance ultimately
 // persisted.
-func (s *storageMap) NewStorage(addr types.Address, actor *types.Actor) Storage {
+func (s *storageMap) NewStorage(addr address.Address, actor *actor.Actor) Storage {
 	storage, ok := s.storageMap[addr]
 	if ok {
 		// Return a hybrid storage with the pre-existing chunks, but the given instance of the actor.
@@ -79,7 +86,7 @@ func (s *storageMap) Flush() error {
 
 // Storage is a place to hold chunks that are created while processing a block.
 type Storage struct {
-	actor      *types.Actor
+	actor      *actor.Actor
 	chunks     map[string]ipld.Node
 	blockstore blockstore.Blockstore
 }
@@ -87,7 +94,7 @@ type Storage struct {
 var _ exec.Storage = (*Storage)(nil)
 
 // NewStorage creates a datastore backed storage object for the given actor
-func NewStorage(bs blockstore.Blockstore, act *types.Actor) Storage {
+func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 	return Storage{
 		chunks:     map[string]ipld.Node{},
 		actor:      act,
@@ -95,37 +102,46 @@ func NewStorage(bs blockstore.Blockstore, act *types.Actor) Storage {
 	}
 }
 
-// Put adds a node to temporary storage by id
-func (s Storage) Put(chunk []byte) (*cid.Cid, error) {
-	n, err := cbor.Decode(chunk, types.DefaultHashFunction, -1)
+// Put adds a node to temporary storage by id.
+func (s Storage) Put(v interface{}) (*cid.Cid, error) {
+	var nd format.Node
+	var err error
+	if blk, ok := v.(blocks.Block); ok {
+		// optimize putting blocks
+		nd, err = cbor.DecodeBlock(blk)
+	} else if bytes, ok := v.([]byte); ok {
+		nd, err = cbor.Decode(bytes, types.DefaultHashFunction, -1)
+	} else {
+		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
+	}
 	if err != nil {
 		return nil, exec.Errors[exec.ErrDecode]
 	}
 
-	cid := n.Cid()
-	s.chunks[cid.KeyString()] = n
-	return cid, nil
+	c := nd.Cid()
+	s.chunks[c.KeyString()] = nd
+
+	return c, nil
 }
 
 // Get retrieves a chunk from either temporary storage or its backing store.
-// The returned bool indicates whether or not the object was found. The error
-// indicates and error fetching from storage.
-func (s Storage) Get(cid *cid.Cid) ([]byte, bool, error) {
+// If the chunk is not found in storage, a vm.ErrNotFound error is returned.
+func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
 	key := cid.KeyString()
 	n, ok := s.chunks[key]
 	if ok {
-		return n.RawData(), ok, nil
+		return n.RawData(), nil
 	}
 
 	blk, err := s.blockstore.Get(cid)
 	if err != nil {
 		if err == blockstore.ErrNotFound {
-			return []byte{}, false, nil
+			return []byte{}, ErrNotFound
 		}
-		return []byte{}, false, err
+		return []byte{}, err
 	}
 
-	return blk.RawData(), true, nil
+	return blk.RawData(), nil
 }
 
 // Commit updates the head of the current actor to the given cid.
@@ -194,11 +210,14 @@ func (s *Storage) Flush() error {
 // That is the given id , any links in the chunk referenced by the given id, or any links
 // referenced from those links.
 func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
+	if id == nil {
+		return make(map[string]*cid.Cid), nil
+	}
 	chunk, ok := s.chunks[id.KeyString()]
 	if !ok {
 		has, err := s.blockstore.Has(id)
 		if err != nil {
-			return nil, errors.FaultErrorWrapf(err, "linked node, %s, missing from stage during flush", id)
+			return nil, vmerrors.FaultErrorWrapf(err, "linked node, %s, missing from stage during flush", id)
 		}
 
 		// unstaged chunk that exists in datastore is valid, but halts recursion.
@@ -206,7 +225,7 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 			return map[string]*cid.Cid{}, nil
 		}
 
-		return nil, errors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
+		return nil, vmerrors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
 	ids := map[string]*cid.Cid{id.KeyString(): id}

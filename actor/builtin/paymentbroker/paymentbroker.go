@@ -1,10 +1,15 @@
 package paymentbroker
 
 import (
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"context"
+
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -50,22 +55,12 @@ var Errors = map[uint8]error{
 
 func init() {
 	cbor.RegisterCborType(PaymentChannel{})
-	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(PaymentVoucher{})
 }
 
-// Signature signs an update request.
-type Signature = []byte
-
-// allPaymentChannels are keyed by payer address.
-type allPaymentChannels map[string]accountPaymentChannels
-
-// accountPaymentChannels are keyed by ChannelID.
-type accountPaymentChannels map[string]*PaymentChannel
-
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
-	Target         types.Address      `json:"target"`
+	Target         address.Address    `json:"target"`
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
 	Eol            *types.BlockHeight `json:"eol"`
@@ -74,10 +69,10 @@ type PaymentChannel struct {
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
 	Channel   types.ChannelID `json:"channel"`
-	Payer     types.Address   `json:"payer"`
-	Target    types.Address   `json:"target"`
+	Payer     address.Address `json:"payer"`
+	Target    address.Address `json:"target"`
 	Amount    types.AttoFIL   `json:"amount"`
-	Signature Signature       `json:"signature"`
+	Signature types.Signature `json:"signature"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -86,28 +81,10 @@ type PaymentVoucher struct {
 // channel's creator.
 type Actor struct{}
 
-// State is the payment broker's state
-type State struct {
-	Channels allPaymentChannels
-}
-
 // InitializeState stores the actor's initial data structure.
 func (pb *Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
-	pbState := State{
-		Channels: allPaymentChannels{},
-	}
-
-	stateBytes, err := cbor.DumpObject(pbState)
-	if err != nil {
-		return err
-	}
-
-	id, err := storage.Put(stateBytes)
-	if err != nil {
-		return err
-	}
-
-	return storage.Commit(id, nil)
+	// pb's default state is an empty lookup, so this method is a no-op
+	return nil
 }
 
 // Exports returns the actor's exports.
@@ -138,7 +115,7 @@ var paymentBrokerExports = exec.Exports{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
 	},
-	"update": &exec.FunctionSignature{
+	"redeem": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
 		Return: nil,
 	},
@@ -151,45 +128,53 @@ var paymentBrokerExports = exec.Exports{
 // CreateChannel creates a new payment channel from the caller to the target.
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
-func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
-	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		// require that from account be an account actor to ensure nonce is a valid id
-		if !ctx.IsFromAccountActor() {
-			return nil, Errors[ErrNonAccountActor]
+func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
+	// require that from account be an account actor to ensure nonce is a valid id
+	if !vmctx.IsFromAccountActor() {
+		return nil, errors.CodeError(Errors[ErrNonAccountActor]), Errors[ErrNonAccountActor]
+	}
+
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+	channelID := types.NewChannelID(uint64(vmctx.Message().Nonce))
+
+	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		// check to see if payment channel is duplicate
+		_, err := byChannelID.Find(ctx, channelID.KeyString())
+		if err != hamt.ErrNotFound { // we expect to not find the payment channel
+			if err == nil {
+				return Errors[ErrDuplicateChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Error retrieving payment channel")
 		}
 
-		byPayer, found := state.Channels[ctx.Message().From.String()]
-		if !found {
-			byPayer = make(map[string]*PaymentChannel)
-			state.Channels[ctx.Message().From.String()] = byPayer
-		}
-
-		channelID := types.NewChannelID(uint64(ctx.Message().Nonce))
-
-		if _, found := byPayer[channelID.String()]; found {
-			return nil, Errors[ErrDuplicateChannel]
-		}
-
-		paymentChannel := &PaymentChannel{
+		// add payment channel and commit
+		err = byChannelID.Set(ctx, channelID.KeyString(), &PaymentChannel{
 			Target:         target,
-			Amount:         ctx.Message().Value,
+			Amount:         vmctx.Message().Value,
 			AmountRedeemed: types.NewAttoFILFromFIL(0),
 			Eol:            eol,
+		})
+		if err != nil {
+			return errors.FaultErrorWrap(err, "Could not set payment channel")
 		}
 
-		byPayer[channelID.String()] = paymentChannel
-
-		return channelID, nil
+		return nil
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return nil, 1, errors.FaultErrorWrap(err, "Error creating payment channel")
+		}
 		return nil, errors.CodeError(err), err
 	}
 
-	return ret.(*types.ChannelID), 0, nil
+	return channelID, 0, nil
 }
 
-// Update is called by the target account to withdraw funds with authorization from the payer.
+// Redeem is called by the target account to withdraw funds with authorization from the payer.
 // This method is exactly like Close except it doesn't close the channel.
 // This is useful when you want to checkpoint the value in a payment, but continue to use the
 // channel afterwards. The amt represents the total funds authorized so far, so that subsequent
@@ -197,27 +182,49 @@ func (pb *Actor) CreateChannel(ctx *vm.Context, target types.Address, eol *types
 // amt taken so far. A series of channel transactions might look like this:
 //                                Payer: 2000, Target: 0, Channel: 0
 // payer createChannel(1000)   -> Payer: 1000, Target: 0, Channel: 1000
-// target Update(100)          -> Payer: 1000, Target: 100, Channel: 900
-// target Update(200)          -> Payer: 1000, Target: 200, Channel: 800
+// target Redeem(100)          -> Payer: 1000, Target: 100, Channel: 900
+// target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
-	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		data := createVoucherSignatureData(chid, amt)
-		if !ctx.VerifySignature(data, payer, sig) {
-			return nil, Errors[ErrInvalidSignature]
-		}
+func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
+	data := createVoucherSignatureData(chid, amt)
+	if !types.VerifySignature(data, payer, sig) {
+		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
+	}
 
-		channel, err := findChannel(&state, payer, chid)
+	ctx := context.Background()
+	storage := vmctx.Storage()
+
+	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
+		var channel *PaymentChannel
+
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
-			return nil, err
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
 		}
 
-		err = updateChannel(ctx, ctx.Message().From, channel, amt)
-		return nil, err
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
+		}
+
+		// validate the amount can be sent to the target and send payment to that address.
+		err = updateChannel(vmctx, vmctx.Message().From, channel, amt)
+		if err != nil {
+			return err
+		}
+
+		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error redeeming payment channel")
+		}
 		return errors.CodeError(err), err
 	}
 
@@ -226,30 +233,49 @@ func (pb *Actor) Update(ctx *vm.Context, payer types.Address, chid *types.Channe
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.ChannelID, amt *types.AttoFIL, sig Signature) (uint8, error) {
-	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+func (pb *Actor) Close(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
+	data := createVoucherSignatureData(chid, amt)
+	if !types.VerifySignature(data, payer, sig) {
+		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
+	}
 
-		data := createVoucherSignatureData(chid, amt)
-		if !ctx.VerifySignature(data, payer, sig) {
-			return nil, Errors[ErrInvalidSignature]
+	ctx := context.Background()
+	storage := vmctx.Storage()
+
+	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
 		}
 
-		channel, err := findChannel(&state, payer, chid)
-		if err != nil {
-			return nil, err
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		err = updateChannel(ctx, ctx.Message().From, channel, amt)
+		// validate the amount can be sent to the target and send payment to that address.
+		err = updateChannel(vmctx, vmctx.Message().From, channel, amt)
 		if err != nil {
-			return nil, err
+			return err
+		}
+
+		err = byChannelID.Set(ctx, chid.KeyString(), channel)
+		if err != nil {
+			return err
 		}
 
 		// return funds to payer
-		err = reclaim(ctx, &state, payer, chid, channel)
-		return nil, err
+		return reclaim(ctx, vmctx, byChannelID, payer, chid, channel)
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error updating or reclaiming channel")
+		}
 		return errors.CodeError(err), err
 	}
 
@@ -258,29 +284,44 @@ func (pb *Actor) Close(ctx *vm.Context, payer types.Address, chid *types.Channel
 
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channels lifespan.
-func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
-	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		channel, err := findChannel(&state, ctx.Message().From, chid)
+func (pb *Actor) Extend(vmctx *vm.Context, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+
+	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
-			return nil, err
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
+		}
+
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// eol can only be increased
 		if channel.Eol.GreaterThan(eol) {
-			return nil, Errors[ErrEolTooLow]
+			return Errors[ErrEolTooLow]
 		}
 
 		// set new eol
 		channel.Eol = eol
 
 		// increment the value
-		channel.Amount = channel.Amount.Add(ctx.Message().Value)
+		channel.Amount = channel.Amount.Add(vmctx.Message().Value)
 
-		// return funds to payer
-		return nil, err
+		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error extending channel")
+		}
 		return errors.CodeError(err), err
 	}
 
@@ -289,24 +330,39 @@ func (pb *Actor) Extend(ctx *vm.Context, chid *types.ChannelID, eol *types.Block
 
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
-func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) {
-	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		channel, err := findChannel(&state, ctx.Message().From, chid)
+func (pb *Actor) Reclaim(vmctx *vm.Context, chid *types.ChannelID) (uint8, error) {
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+
+	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
-			return nil, err
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
+		}
+
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// reclaim may only be called at or after Eol
-		if ctx.BlockHeight().LessThan(channel.Eol) {
-			return nil, Errors[ErrReclaimBeforeEol]
+		if vmctx.BlockHeight().LessThan(channel.Eol) {
+			return Errors[ErrReclaimBeforeEol]
 		}
 
 		// return funds to payer
-		err = reclaim(ctx, &state, ctx.Message().From, chid, channel)
-		return nil, err
+		return reclaim(ctx, vmctx, byChannelID, payerAddress, chid, channel)
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error reclaiming channel")
+		}
 		return errors.CodeError(err), err
 	}
 
@@ -315,70 +371,101 @@ func (pb *Actor) Reclaim(ctx *vm.Context, chid *types.ChannelID) (uint8, error) 
 
 // Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
 // It errors if the channel doesn't exist or contains less than request amount.
-func (pb *Actor) Voucher(ctx *vm.Context, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
-	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		channel, err := findChannel(&state, ctx.Message().From, chid)
+func (pb *Actor) Voucher(vmctx *vm.Context, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+	var voucher PaymentVoucher
+
+	err := withPayerChannelsForReading(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		var channel *PaymentChannel
+
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
-			return nil, err
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
+		}
+
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// voucher must be for less than total amount in channel
 		if channel.Amount.LessThan(amount) {
-			return nil, Errors[ErrInsufficientChannelFunds]
+			return Errors[ErrInsufficientChannelFunds]
 		}
 
-		// return voucher
-		voucher := PaymentVoucher{
+		// set voucher
+		voucher = PaymentVoucher{
 			Channel: *chid,
-			Payer:   ctx.Message().From,
+			Payer:   vmctx.Message().From,
 			Target:  channel.Target,
 			Amount:  *amount,
 		}
 
-		return actor.MarshalStorage(voucher)
+		return nil
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return nil, 1, errors.FaultErrorWrap(err, "Error reclaiming channel")
+		}
 		return nil, errors.CodeError(err), err
 	}
 
-	return ret.([]byte), 0, nil
+	voucherBytes, err := actor.MarshalStorage(voucher)
+	if err != nil {
+		return nil, 1, errors.FaultErrorWrap(err, "Error marshalling voucher")
+	}
+
+	return voucherBytes, 0, nil
 }
 
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
-func (pb *Actor) Ls(ctx *vm.Context, payer types.Address) ([]byte, uint8, error) {
-	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		byPayer, found := state.Channels[payer.String()]
-		if !found {
-			byPayer = make(map[string]*PaymentChannel)
+func (pb *Actor) Ls(vmctx *vm.Context, payer address.Address) ([]byte, uint8, error) {
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	channels := map[string]*PaymentChannel{}
+
+	err := withPayerChannelsForReading(ctx, storage, payer, func(byChannelID exec.Lookup) error {
+		kvs, err := byChannelID.Values(ctx)
+		if err != nil {
+			return err
 		}
 
-		return cbor.DumpObject(byPayer)
+		for _, kv := range kvs {
+			pc, ok := kv.Value.(*PaymentChannel)
+			if !ok {
+				return errors.NewFaultError("Expected PaymentChannel from channel lookup")
+			}
+			channels[kv.Key] = pc
+		}
+
+		return nil
 	})
+
 	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return nil, 1, errors.FaultErrorWrap(err, "Error reclaiming channel")
+		}
 		return nil, errors.CodeError(err), err
 	}
 
-	return ret.([]byte), 0, nil
-}
-
-func findChannel(state *State, payer types.Address, chid *types.ChannelID) (*PaymentChannel, error) {
-	actorsChannels, found := state.Channels[payer.String()]
-	if !found {
-		return nil, Errors[ErrUnknownChannel]
+	channelsBytes, err := actor.MarshalStorage(channels)
+	if err != nil {
+		return nil, 1, errors.FaultErrorWrap(err, "Error marshalling voucher")
 	}
 
-	channel, found := actorsChannels[chid.String()]
-	if !found {
-		return nil, Errors[ErrUnknownChannel]
-	}
-
-	return channel, nil
+	return channelsBytes, 0, nil
 }
 
-func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
+func updateChannel(ctx *vm.Context, target address.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
@@ -408,25 +495,20 @@ func updateChannel(ctx *vm.Context, target types.Address, channel *PaymentChanne
 	return nil
 }
 
-func reclaim(ctx *vm.Context, state *State, payer types.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx context.Context, vmctx *vm.Context, byChannelID exec.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
 	}
 
 	// clean up
-	actorsChannels, found := state.Channels[payer.String()]
-	if !found {
-		return errors.NewRevertError("unexpected error closing channel")
-	}
-
-	delete(actorsChannels, chid.String())
-	if len(actorsChannels) == 0 {
-		delete(state.Channels, payer.String())
+	err := byChannelID.Delete(ctx, chid.KeyString())
+	if err != nil {
+		return err
 	}
 
 	// send funds
-	_, _, err := ctx.Send(payer, "", amt, nil)
+	_, _, err = vmctx.Send(payer, "", amt, nil)
 	if err != nil {
 		return errors.RevertErrorWrap(err, "could not send update funds")
 	}
@@ -441,7 +523,7 @@ const separator = 0x0
 // SignVoucher creates the signature for the given combination of
 // channel, amount and from address.
 // It does so by sign the following bytes: (channelID | 0x0 | amount)
-func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr types.Address, signer types.Signer) (types.Signature, error) {
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr address.Address, signer types.Signer) (types.Signature, error) {
 	data := createVoucherSignatureData(channelID, amount)
 	return signer.SignBytes(data, addr)
 }
@@ -449,4 +531,66 @@ func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr types.A
 func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL) []byte {
 	data := append(channelID.Bytes(), separator)
 	return append(data, amount.Bytes()...)
+}
+
+func withPayerChannels(ctx context.Context, storage exec.Storage, payer address.Address, f func(exec.Lookup) error) error {
+	stateCid, err := actor.WithLookup(ctx, storage, storage.Head(), func(byPayer exec.Lookup) error {
+		byChannelLookup, err := findByChannelLookup(ctx, storage, byPayer, payer)
+		if err != nil {
+			return err
+		}
+
+		// run inner function
+		err = f(byChannelLookup)
+		if err != nil {
+			return err
+		}
+
+		// commit channel lookup
+		commitedCID, err := byChannelLookup.Commit(ctx)
+		if err != nil {
+			return err
+		}
+
+		// if all payers channels are gone, delete the payer
+		if byChannelLookup.IsEmpty() {
+			return byPayer.Delete(ctx, payer.String())
+		}
+
+		// set payers channels into primary lookup
+		return byPayer.Set(ctx, payer.String(), commitedCID)
+	})
+	if err != nil {
+		return err
+	}
+
+	return storage.Commit(stateCid, storage.Head())
+}
+
+func withPayerChannelsForReading(ctx context.Context, storage exec.Storage, payer address.Address, f func(exec.Lookup) error) error {
+	return actor.WithLookupForReading(ctx, storage, storage.Head(), func(byPayer exec.Lookup) error {
+		byChannelLookup, err := findByChannelLookup(ctx, storage, byPayer, payer)
+		if err != nil {
+			return err
+		}
+
+		// run inner function
+		return f(byChannelLookup)
+	})
+}
+
+func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec.Lookup, payer address.Address) (exec.Lookup, error) {
+	byChannelID, err := byPayer.Find(ctx, payer.String())
+	if err != nil {
+		if err == hamt.ErrNotFound {
+			return actor.LoadLookup(ctx, storage, nil)
+		}
+		return nil, err
+	}
+	byChannelCID, ok := byChannelID.(cid.Cid)
+	if !ok {
+		return nil, errors.NewFaultError("Paymentbroker payer is not a Cid")
+	}
+
+	return actor.LoadTypedLookup(ctx, storage, &byChannelCID, &PaymentChannel{})
 }

@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 // Daemon is the interface that defines methods to change the state of the daemon.
@@ -26,6 +28,14 @@ type DaemonInitConfig struct {
 	UseCustomGenesis bool
 	// RepoDir, path to the repo of the node on disk.
 	RepoDir string
+	// PeerKeyFile is the path to a file containing a libp2p peer id key
+	PeerKeyFile string
+	// WithMiner, if set, sets the config value for the local miner to this address.
+	WithMiner address.Address
+	// PerformRealProofs, if true, will cause the node to exercise the real PoRep and PoSt operations
+	PerformRealProofs bool
+	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
+	LabWeekCluster bool
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -67,6 +77,38 @@ func GenesisFile(p string) DaemonInitOpt {
 func RepoDir(p string) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.RepoDir = p
+		return nil
+	}
+}
+
+// PeerKeyFile defines the file to load a libp2p peer key from
+func PeerKeyFile(p string) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.PeerKeyFile = p
+		return nil
+	}
+}
+
+// WithMiner sets the WithMiner option.
+func WithMiner(miner address.Address) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.WithMiner = miner
+		return nil
+	}
+}
+
+// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
+func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.PerformRealProofs = performRealProofs
+		return nil
+	}
+}
+
+// LabWeekCluster sets the LabWeekCluster option.
+func LabWeekCluster(doit bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.LabWeekCluster = doit
 		return nil
 	}
 }

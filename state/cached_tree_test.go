@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,15 +25,15 @@ func TestCachedStateGetCommit(t *testing.T) {
 	tree := NewCachedStateTree(underlying)
 
 	// create some actors
-	act1 := types.NewActor(types.AccountActorCodeCid, nil)
+	act1 := actor.NewActor(types.AccountActorCodeCid, nil)
 	act1Cid := requireCid(t, "hello")
 	act1.Head = act1Cid
 	act1.IncNonce()
-	act2 := types.NewActor(types.AccountActorCodeCid, nil)
+	act2 := actor.NewActor(types.AccountActorCodeCid, nil)
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
 
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	addr1, addr2 := addrGetter(), addrGetter()
 
 	// add actors to underlying cache
@@ -89,11 +91,11 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	underlying := NewEmptyStateTree(cst)
 	tree := NewCachedStateTree(underlying)
 
-	actorToCreate := types.NewActor(types.AccountActorCodeCid, nil)
+	actorToCreate := actor.NewActor(types.AccountActorCodeCid, nil)
 
 	// can create actor in cache
-	addr := types.NewAddressForTestGetter()()
-	actor, err := tree.GetOrCreateActor(ctx, addr, func() (*types.Actor, error) {
+	addr := address.NewForTestGetter()()
+	actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 		return actorToCreate, nil
 	})
 	require.NoError(err)

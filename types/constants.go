@@ -2,41 +2,13 @@ package types
 
 import (
 	mh "gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	"gx/ipfs/QmZo5avr9dhVVRzcpKnU9ZGQuPaU62pbufUHXBNB7GwLzQ/go-basex"
-	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
+	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 )
 
 // DefaultHashFunction represents the default hashing function to use
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
-
-// AddressHashLength is the length of an the hash part of the address in bytes.
-const AddressHashLength = 20
-
-// AddressLength is the lengh of a full address in bytes.
-const AddressLength = 1 + 1 + AddressHashLength
-
-// AddressVersion is the current version of the address format.
-const AddressVersion byte = 0
-
-// Base32Charset is the character set used for base32 encoding in addresses.
-const Base32Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
-
-// Base32CharsetReverse is the reverse character set. It maps ASCII byte -> Base32Charset index on [0,31].
-var Base32CharsetReverse = [128]int8{
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	15, -1, 10, 17, 21, 20, 26, 30, 7, 5, -1, -1, -1, -1, -1, -1,
-	-1, 29, -1, 24, 13, 25, 9, 8, 23, -1, 18, 22, 31, 27, 19, -1,
-	1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1, -1, -1, -1, -1,
-	-1, 29, -1, 24, 13, 25, 9, 8, 23, -1, 18, 22, 31, 27, 19, -1,
-	1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1, -1, -1, -1, -1,
-}
-
-// Base32 is a basex instance using the Base32Charset.
-var Base32 = basex.NewAlphabet(Base32Charset)
 
 // AccountActorCodeObj is the code representation of the builtin account actor.
 var AccountActorCodeObj ipld.Node

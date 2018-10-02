@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -18,9 +18,9 @@ import (
 )
 
 func TestTransfer(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
-	actor3 := types.NewActor(nil, nil)
+	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor3 := actor.NewActor(nil, nil)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
@@ -44,8 +44,8 @@ func TestTransfer(t *testing.T) {
 }
 
 func TestSendErrorHandling(t *testing.T) {
-	actor1 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
@@ -60,7 +60,7 @@ func TestSendErrorHandling(t *testing.T) {
 		msg.Value = types.NewAttoFILFromFIL(1) // exact value doesn't matter - needs to be non-nil
 
 		deps := sendDeps{
-			transfer: func(_ *types.Actor, _ *types.Actor, _ *types.AttoFIL) error {
+			transfer: func(_ *actor.Actor, _ *actor.Actor, _ *types.AttoFIL) error {
 				return transferErr
 			},
 		}

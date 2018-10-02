@@ -4,12 +4,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"strconv"
 
-	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -19,11 +21,13 @@ var clientCmd = &cmds.Command{
 		Tagline: "Manage client operations",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"add-bid":      clientAddBidCmd,
-		"cat":          clientCatCmd,
-		"import":       clientImportDataCmd,
-		"propose-deal": clientProposeDealCmd,
-		"query-deal":   clientQueryDealCmd,
+		"add-bid":              clientAddBidCmd,
+		"cat":                  clientCatCmd,
+		"import":               clientImportDataCmd,
+		"propose-deal":         clientProposeDealCmd,
+		"query-deal":           clientQueryDealCmd,
+		"propose-storage-deal": clientProposeStorageDealCmd,
+		"query-storage-deal":   clientQueryStorageDealCmd,
 	},
 }
 
@@ -40,10 +44,10 @@ var clientAddBidCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		o := req.Options["from"]
-		var fromAddr types.Address
+		var fromAddr address.Address
 		if o != nil {
 			var err error
-			fromAddr, err = types.NewAddressFromString(o.(string))
+			fromAddr, err = address.NewFromString(o.(string))
 			if err != nil {
 				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
 				return
@@ -110,6 +114,7 @@ var clientProposeDealCmd = &cmds.Command{
 		// TODO: use UintOption once its fixed, ref go-ipfs-cmdkit#15
 		cmdkit.UintOption("ask", "ID of ask to propose a deal for"),
 		cmdkit.UintOption("bid", "ID of bid to propose a deal for"),
+		cmdkit.StringOption("from", "address to send from"),
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("data", true, false, "cid of data to be referenced in deal"),
@@ -127,6 +132,12 @@ var clientProposeDealCmd = &cmds.Command{
 			return
 		}
 
+		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
 		// ensure arg is a valid cid
 		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
@@ -134,7 +145,7 @@ var clientProposeDealCmd = &cmds.Command{
 			return
 		}
 
-		resp, err := GetAPI(env).Client().ProposeDeal(req.Context, askID, bidID, c)
+		resp, err := GetAPI(env).Client().ProposeDeal(req.Context, fromAddr, askID, bidID, c)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -146,6 +157,7 @@ var clientProposeDealCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.DealResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			fmt.Fprintf(w, "ID: %x\n", resp.ID)                 // nolint: errcheck
 			return nil
 		}),
@@ -214,6 +226,99 @@ var clientImportDataCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
 			return PrintString(w, c)
+		}),
+	},
+}
+
+var clientProposeStorageDealCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "propose a storage deal with a storage miner",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "address of miner to propose to"),
+		cmdkit.StringArg("data", true, false, "cid of the data to be stored"),
+		cmdkit.StringArg("duration", true, false, "number of blocks to store the data for"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("price", "price per byte per block"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		miner, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		data, err := cid.Decode(req.Arguments[1])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		duration, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		price, ok := req.Options["price"].(string)
+		if !ok {
+			re.SetError("failed to get price option", cmdkit.ErrNormal)
+			return
+		}
+
+		af, ok := types.NewAttoFILFromString(price, 10)
+		if !ok {
+			re.SetError("failed to parse price", cmdkit.ErrNormal)
+			return
+		}
+
+		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, af, duration)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(resp) // nolint: errcheck
+	},
+	Type: node.StorageDealResponse{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.StorageDealResponse) error {
+			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
+			return nil
+		}),
+	},
+}
+
+var clientQueryStorageDealCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "query a storage deals status",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("id", true, false, "cid of deal to query"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		propcid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		resp, err := GetAPI(env).Client().QueryStorageDeal(req.Context, propcid)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		re.Emit(resp) // nolint: errcheck
+	},
+	Type: node.StorageDealResponse{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.StorageDealResponse) error {
+			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
+			return nil
 		}),
 	},
 }

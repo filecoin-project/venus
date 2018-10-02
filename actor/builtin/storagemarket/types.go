@@ -3,8 +3,10 @@ package storagemarket
 import (
 	"math/big"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -16,11 +18,11 @@ func init() {
 // Orderbook holds all the bids and asks
 type Orderbook struct {
 	// Asks is the set of live asks in the orderbook
-	StorageAsks AskSet
+	StorageAsks *cid.Cid
 	// NextSAskID is the ID that will be assigned to the next ask that is created
 	NextSAskID uint64
 
-	Bids      BidSet
+	Bids      *cid.Cid
 	NextBidID uint64
 }
 
@@ -28,20 +30,20 @@ type Orderbook struct {
 type Ask struct {
 	Price *types.AttoFIL     `json:"price":` // nolint vet
 	Size  *types.BytesAmount `json:"size"`
-	Owner types.Address      `json:"owner"`
+	Owner address.Address    `json:"owner"`
 	ID    uint64             `json:"id"`
 }
 
 // Bid is a storage market bid order.
 type Bid struct {
-	//Expiry *big.Int
+	// Expiry *big.Int
 	Price *types.AttoFIL     `json:"price"`
 	Size  *types.BytesAmount `json:"size"`
-	//Duration *big.Int
+	// Duration *big.Int
 	Collateral *types.AttoFIL `json:"collateral"`
-	//Coding ???
-	Owner types.Address `json:"owner"`
-	ID    uint64        `json:"id"`
+	// Coding ???
+	Owner address.Address `json:"owner"`
+	ID    uint64          `json:"id"`
 
 	// Used indicates whether or not this bid is in use by a deal
 	Used bool `json:"used"`
@@ -54,4 +56,9 @@ type Deal struct {
 
 	Ask uint64 `json:"ask"`
 	Bid uint64 `json:"bid"`
+}
+
+// Marshal serilizes the deal to cbor bytes
+func (d *Deal) Marshal() ([]byte, error) {
+	return cbor.DumpObject(d)
 }

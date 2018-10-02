@@ -5,6 +5,7 @@ import (
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -13,7 +14,7 @@ import (
 // Depending on the context, this may or may not be sufficient to select a
 // nonce for a message. See node.NextNonce if you want to select a nonce
 // based on the state of the node (not just on the state of the actor).
-func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address types.Address) (uint64, error) {
+func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address address.Address) (uint64, error) {
 	actor, err := st.GetActor(ctx, address)
 	if err != nil {
 		return 0, err

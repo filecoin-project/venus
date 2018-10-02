@@ -5,24 +5,24 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/lookup"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
 
 type mockLookupService struct {
-	peerIdsByMinerAddr map[types.Address]peer.ID
+	peerIdsByMinerAddr map[address.Address]peer.ID
 }
 
 var _ lookup.PeerLookupService = &mockLookupService{}
 
 // GetPeerIdByMinerAddress provides an interface to a map from miner address to libp2p identity.
-func (mls *mockLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr types.Address) (peer.ID, error) {
+func (mls *mockLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	return mls.peerIdsByMinerAddr[minerAddr], nil
 }
 
@@ -40,7 +40,7 @@ func TestDealProtocolClient(t *testing.T) {
 	assert.NoError(err)
 
 	mls := &mockLookupService{
-		peerIdsByMinerAddr: map[types.Address]peer.ID{
+		peerIdsByMinerAddr: map[address.Address]peer.ID{
 			minerAddr: nds[0].Host.ID(),
 		},
 	}
@@ -51,7 +51,7 @@ func TestDealProtocolClient(t *testing.T) {
 	clientAddr, err := nds[1].NewAddress()
 	assert.NoError(err)
 
-	sm := NewStorageMarket(nds[0])
+	sm := NewStorageBroker(nds[0])
 	client := NewStorageClient(nds[1])
 
 	msa := newMockMsp()
@@ -63,14 +63,14 @@ func TestDealProtocolClient(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
-	propose := &DealProposal{
-		Deal: &storagemarket.Deal{
-			Ask:     0,
-			Bid:     0,
-			DataRef: data.Cid().String(),
-		},
-		ClientSig: clientAddr.String(),
+	deal := &storagemarket.Deal{
+		Ask:     0,
+		Bid:     0,
+		DataRef: data.Cid().String(),
 	}
+
+	propose, err := NewDealProposal(deal, nds[1].Wallet, clientAddr)
+	assert.NoError(err)
 
 	resp, err := client.ProposeDeal(ctx, propose)
 	assert.NoError(err)

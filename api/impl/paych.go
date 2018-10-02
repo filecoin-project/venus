@@ -2,9 +2,9 @@ package impl
 
 import (
 	"context"
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	"gx/ipfs/QmexBtiTTEwwn42Yi6ouKt6VqzpA6wjJgiW1oh9VfaRrup/go-multibase"
+	"gx/ipfs/QmSbvata2WqNkqGtZNg8MR3SKwnB8iQ7vTPJgWqB8bC5kR/go-multibase"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -19,7 +19,7 @@ func newNodePaych(api *nodeAPI) *nodePaych {
 	return &nodePaych{api: api}
 }
 
-func (api *nodePaych) Create(ctx context.Context, fromAddr, target types.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Create(ctx context.Context, fromAddr, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -30,14 +30,14 @@ func (api *nodePaych) Create(ctx context.Context, fromAddr, target types.Address
 	)
 }
 
-func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address) (map[string]*paymentbroker.PaymentChannel, error) {
+func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
 		return nil, err
 	}
 
-	if payerAddr == (types.Address{}) {
+	if payerAddr == (address.Address{}) {
 		payerAddr = fromAddr
 	}
 
@@ -61,7 +61,7 @@ func (api *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr types.Address)
 	return channels, nil
 }
 
-func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, amount *types.AttoFIL) (string, error) {
+func (api *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, amount *types.AttoFIL) (string, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -98,7 +98,7 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr types.Address, chann
 	return multibase.Encode(multibase.Base58BTC, cborVoucher)
 }
 
-func (api *nodePaych) Redeem(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (*cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
 		return nil, err
@@ -109,12 +109,12 @@ func (api *nodePaych) Redeem(ctx context.Context, fromAddr types.Address, vouche
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
-		"update",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+		"redeem",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
-func (api *nodePaych) Reclaim(ctx context.Context, fromAddr types.Address, channel *types.ChannelID) (*cid.Cid, error) {
+func (api *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -125,7 +125,7 @@ func (api *nodePaych) Reclaim(ctx context.Context, fromAddr types.Address, chann
 	)
 }
 
-func (api *nodePaych) Close(ctx context.Context, fromAddr types.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Close(ctx context.Context, fromAddr address.Address, voucherRaw string) (*cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
 		return nil, err
@@ -137,11 +137,11 @@ func (api *nodePaych) Close(ctx context.Context, fromAddr types.Address, voucher
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
 		"close",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, voucher.Signature,
+		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
-func (api *nodePaych) Extend(ctx context.Context, fromAddr types.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Extend(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,

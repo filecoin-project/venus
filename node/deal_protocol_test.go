@@ -3,18 +3,22 @@ package node
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer/test"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockStorageMarketPeeker struct {
@@ -22,34 +26,34 @@ type mockStorageMarketPeeker struct {
 	bids []*storagemarket.Bid
 	//deals []*core.Deal
 
-	minerOwners map[types.Address]types.Address
+	minerOwners map[address.Address]address.Address
 }
 
 func newMockMsp() *mockStorageMarketPeeker {
 	return &mockStorageMarketPeeker{
-		minerOwners: make(map[types.Address]types.Address),
+		minerOwners: make(map[address.Address]address.Address),
 	}
 }
 
-func (msa *mockStorageMarketPeeker) GetStorageAsk(ask uint64) (*storagemarket.Ask, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAsk(ctx context.Context, ask uint64) (*storagemarket.Ask, error) {
 	if uint64(len(msa.asks)) <= ask {
 		return nil, fmt.Errorf("no such ask")
 	}
 	return msa.asks[ask], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBid(bid uint64) (*storagemarket.Bid, error) {
+func (msa *mockStorageMarketPeeker) GetBid(ctx context.Context, bid uint64) (*storagemarket.Bid, error) {
 	if uint64(len(msa.bids)) <= bid {
 		return nil, fmt.Errorf("no such bid")
 	}
 	return msa.bids[bid], nil
 }
 
-func (msa *mockStorageMarketPeeker) GetStorageAskSet() (storagemarket.AskSet, error) {
+func (msa *mockStorageMarketPeeker) GetStorageAskSet(ctx context.Context) (storagemarket.AskSet, error) {
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetBidSet() (storagemarket.BidSet, error) {
+func (msa *mockStorageMarketPeeker) GetBidSet(ctx context.Context) (storagemarket.BidSet, error) {
 	return nil, nil
 }
 
@@ -57,17 +61,17 @@ func (msa *mockStorageMarketPeeker) GetDealList() ([]*storagemarket.Deal, error)
 	return nil, nil
 }
 
-func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a types.Address) (types.Address, error) {
+func (msa *mockStorageMarketPeeker) GetMinerOwner(ctx context.Context, a address.Address) (address.Address, error) {
 	mo, ok := msa.minerOwners[a]
 	if !ok {
-		return types.Address{}, fmt.Errorf("no such miner")
+		return address.Address{}, fmt.Errorf("no such miner")
 	}
 
 	return mo, nil
 }
 
 // makes mocking existing asks easier
-func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint64) uint64 {
+func (msa *mockStorageMarketPeeker) addAsk(owner address.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.asks))
 	msa.asks = append(msa.asks, &storagemarket.Ask{
 		ID:    id,
@@ -79,7 +83,7 @@ func (msa *mockStorageMarketPeeker) addAsk(owner types.Address, price, size uint
 }
 
 // makes mocking existing bids easier
-func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint64) uint64 {
+func (msa *mockStorageMarketPeeker) addBid(owner address.Address, price, size uint64) uint64 {
 	id := uint64(len(msa.bids))
 	msa.bids = append(msa.bids, &storagemarket.Bid{
 		ID:    id,
@@ -90,9 +94,9 @@ func (msa *mockStorageMarketPeeker) addBid(owner types.Address, price, size uint
 	return id
 }
 
-func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Address, ask, bid uint64, sig string, data *cid.Cid) (*cid.Cid, error) {
+func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner address.Address, ask, bid uint64, sig types.Signature, data *cid.Cid) (*cid.Cid, error) {
 	// TODO: something useful
-	msg := types.NewMessage(types.Address{}, types.Address{}, 0, nil, "", nil)
+	msg := types.NewMessage(address.Address{}, address.Address{}, 0, nil, "", nil)
 	return msg.Cid()
 }
 
@@ -100,14 +104,16 @@ func (msa *mockStorageMarketPeeker) AddDeal(ctx context.Context, miner types.Add
 - test query for deal not found
 - test deal fails once posted on chain (maybe)
 */
+// TODO: does this test even work? I'm not sure the nodes its making get connected
 func TestDealProtocol(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
+	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
@@ -127,23 +133,22 @@ func TestDealProtocol(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
-	propose := &DealProposal{
-		Deal: &storagemarket.Deal{
-			Ask:     0,
-			Bid:     0,
-			DataRef: data.Cid().String(),
-		},
-		ClientSig: clientAddr.String(),
+	deal := &storagemarket.Deal{
+		Ask:     0,
+		Bid:     0,
+		DataRef: data.Cid().String(),
 	}
 
-	resp, err := sm.ProposeDeal(propose)
+	propose, err := NewDealProposal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
+	resp, err := sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Accepted, resp.State)
 	id := resp.ID
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = sm.QueryDeal(id)
+	resp, err = sm.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Started, resp.State)
@@ -153,7 +158,7 @@ func TestDealProtocol(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 50)
 
-	resp, err = sm.QueryDeal(id)
+	resp, err = sm.QueryDeal(ctx, id)
 	assert.NoError(err)
 
 	assert.Equal(Posted, resp.State)
@@ -165,8 +170,9 @@ func TestDealProtocolMissing(t *testing.T) {
 	nodes := MakeNodesUnstarted(t, 2, false, true)
 	miner := nodes[0]
 	client := nodes[1]
+	ctx := context.Background()
 
-	sm := NewStorageMarket(miner)
+	sm := NewStorageBroker(miner)
 
 	minerAddr, err := miner.NewAddress()
 	assert.NoError(err)
@@ -187,32 +193,41 @@ func TestDealProtocolMissing(t *testing.T) {
 
 	data := dag.NewRawNode([]byte("cats"))
 
+	deal := &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid().String()}
+	sig, err := storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose := &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 0, Bid: 3, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
-	resp, err := sm.ProposeDeal(propose)
+	resp, err := sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown bid: no such bid", resp.Message)
 
+	deal = &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid().String()}
+	sig, err = storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 3, Bid: 0, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
-	resp, err = sm.ProposeDeal(propose)
+	resp, err = sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("unknown ask: no such ask", resp.Message)
 
+	deal = &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid().String()}
+	sig, err = storagemarket.SignDeal(deal, client.Wallet, clientAddr)
+	assert.NoError(err)
 	propose = &DealProposal{
-		Deal:      &storagemarket.Deal{Ask: 1, Bid: 1, DataRef: data.Cid().String()},
-		ClientSig: clientAddr.String(),
+		Deal:      deal,
+		ClientSig: sig,
 	}
 
-	resp, err = sm.ProposeDeal(propose)
+	resp, err = sm.ProposeDeal(ctx, propose)
 	assert.NoError(err)
 	assert.Equal(Rejected, resp.State)
 	assert.Equal("ask does not have enough space for bid", resp.Message)
@@ -221,24 +236,149 @@ func TestDealProtocolMissing(t *testing.T) {
 func TestStateTreeMarketPeekerAddsDeal(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx := context.Background()
+
 	nd := MakeNodesUnstarted(t, 1, true, true)[0]
 	nodeAddr, err := nd.NewAddress()
 	assert.NoError(err)
-
-	tif := th.MakeGenesisFunc(
-		th.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+	tif := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 	)
-	nd.ChainMgr.Genesis(ctx, tif)
+	requireResetNodeGen(require, nd, tif)
+
 	assert.NoError(err)
-	assert.NoError(nd.Start())
+	assert.NoError(nd.Start(ctx))
 
 	msa := &stateTreeMarketPeeker{nd}
 
 	data := dag.NewRawNode([]byte("cats"))
-	dealCid, err := msa.AddDeal(ctx, nodeAddr, uint64(0), 0, string(address.TestAddress[:]), data.Cid())
+	dealCid, err := msa.AddDeal(ctx, nodeAddr, uint64(0), 0, address.TestAddress[:], data.Cid())
 
 	assert.NoError(err)
 	assert.NotNil(dealCid)
+}
+
+func TestStateTreeMarketPeeker(t *testing.T) {
+	require := require.New(t)
+
+	// setup miner power in genesis block
+	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+	sn := types.NewMockSigner(ki)
+	testAddress := sn.Addresses[0]
+	testGen := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
+	)
+
+	nd := MakeNodesStartedWithGif(t, 1, true, true, testGen)[0]
+	ctx := context.Background()
+
+	genTS := nd.ChainReader.Head()
+	genesisBlock := genTS.ToSlice()[0]
+	genCid := nd.ChainReader.GenesisCid()
+	require.True(genCid.Equals(genesisBlock.Cid())) // sanity check
+
+	// create miner
+	nonce := uint64(0)
+	pid, err := testutil.RandPeerID()
+	require.NoError(err)
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, 10000, pid, types.NewZeroAttoFIL())
+	require.NoError(err)
+
+	b := chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, genesisBlock, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
+	nonce++
+
+	minerAddr, err := address.NewFromBytes(b.MessageReceipts[0].Return[0])
+	require.NoError(err)
+
+	// add bid
+	bidPrice := types.NewAttoFIL(big.NewInt(23))
+	bidSize := types.NewBytesAmount(10000)
+	msg, err = th.AddBidMessage(sn.Addresses[0], nonce, bidPrice, bidSize)
+	require.NoError(err)
+	b = chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, b, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
+	nonce++
+
+	bidID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
+
+	// add ask
+	askSize := types.NewBytesAmount(1032300)
+	askPrice := types.NewAttoFIL(big.NewInt(96))
+	msg, err = th.AddAskMessage(minerAddr, sn.Addresses[0], nonce, askPrice, askSize)
+	require.NoError(err)
+	b = chain.RequireMineOnce(ctx, t, nd.Syncer, nd.CborStore, nd.Blockstore, b, sn.Addresses[0], chain.MustSign(sn, msg), genCid)
+	nonce++
+
+	askID := big.NewInt(0).SetBytes(b.MessageReceipts[0].Return[0]).Uint64()
+
+	mstmp := &stateTreeMarketPeeker{nd}
+
+	t.Run("retrieves ask from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		ask, err := mstmp.GetStorageAsk(ctx, askID)
+		require.NoError(err)
+
+		assert.Equal(askID, ask.ID)
+		assert.Equal(askPrice, ask.Price)
+		assert.Equal(minerAddr, ask.Owner)
+		assert.Equal(askSize, ask.Size)
+	})
+
+	t.Run("retrieves bid from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		bid, err := mstmp.GetBid(ctx, bidID)
+		require.NoError(err)
+
+		assert.Equal(bidID, bid.ID)
+		assert.Equal(bidPrice, bid.Price)
+		assert.Equal(sn.Addresses[0], bid.Owner)
+		assert.Equal(bidSize, bid.Size)
+	})
+
+	t.Run("retrieves all asks from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		asks, err := mstmp.GetStorageAskSet(ctx)
+		require.NoError(err)
+
+		assert.Equal(1, len(asks))
+		ask := asks[0]
+
+		assert.Equal(askID, ask.ID)
+		assert.Equal(askPrice, ask.Price)
+		assert.Equal(minerAddr, ask.Owner)
+		assert.Equal(askSize, ask.Size)
+	})
+
+	t.Run("retrieves all bids from storage market", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		bids, err := mstmp.GetBidSet(ctx)
+		require.NoError(err)
+
+		assert.Equal(1, len(bids))
+		bid := bids[0]
+
+		assert.Equal(bidID, bid.ID)
+		assert.Equal(bidPrice, bid.Price)
+		assert.Equal(sn.Addresses[0], bid.Owner)
+		assert.Equal(bidSize, bid.Size)
+	})
+
+	t.Run("retrieves owner from miner", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		addr, err := mstmp.GetMinerOwner(ctx, minerAddr)
+		require.NoError(err)
+
+		assert.Equal(sn.Addresses[0], addr)
+	})
 }

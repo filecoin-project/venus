@@ -1,21 +1,27 @@
 package storagemarket
 
 import (
+	"context"
+	"fmt"
 	"math/big"
+	"strconv"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MinimumPledge is the minimum amount of space a user can pledge.
-var MinimumPledge = types.NewBytesAmount(10000)
+// MinimumPledge is the minimum amount of sectors a user can pledge.
+var MinimumPledge = big.NewInt(10)
 
 const (
 	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
@@ -46,7 +52,7 @@ const (
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s bytes", MinimumPledge),
+	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
 	ErrUnknownMiner:         errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
 	ErrUnknownAsk:           errors.NewCodedRevertErrorf(ErrUnknownAsk, "ask id not found"),
 	ErrUnknownBid:           errors.NewCodedRevertErrorf(ErrUnknownBid, "bid id not found"),
@@ -70,30 +76,28 @@ func init() {
 // power table used to drive filecoin consensus.
 type Actor struct{}
 
-// State is the storage markets storage.
+// State is the storage market's storage.
 type State struct {
-	Miners types.AddrSet
+	Miners *cid.Cid
 
 	Orderbook *Orderbook
 
-	TotalCommittedStorage *types.BytesAmount
+	// TotalCommitedStorage is the number of sectors that are currently committed
+	// in the whole network.
+	TotalCommittedStorage *big.Int
 }
 
 // NewActor returns a new storage market actor.
-func NewActor() (*types.Actor, error) {
-	return types.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL()), nil
+func NewActor() (*actor.Actor, error) {
+	return actor.NewActor(types.StorageMarketActorCodeCid, types.NewZeroAttoFIL()), nil
 }
 
 // InitializeState stores the actor's initial data structure.
 func (sma *Actor) InitializeState(storage exec.Storage, _ interface{}) error {
 	initStorage := &State{
-		Miners: make(types.AddrSet),
-		Orderbook: &Orderbook{
-			StorageAsks: make(AskSet),
-			Bids:        make(BidSet),
-		},
+		Orderbook:             &Orderbook{},
+		TotalCommittedStorage: big.NewInt(0),
 	}
-
 	stateBytes, err := cbor.DumpObject(initStorage)
 	if err != nil {
 		return err
@@ -116,7 +120,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount, abi.Bytes, abi.PeerID},
+		Params: []abi.Type{abi.Integer, abi.Bytes, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"addAsk": &exec.FunctionSignature{
@@ -132,68 +136,106 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	"updatePower": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
+		Params: []abi.Type{abi.Integer},
 		Return: nil,
+	},
+	"getTotalStorage": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Integer},
+	},
+	"getAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getBid": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getAllAsks": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getAllBids": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Bytes},
 	},
 }
 
-// CreateMiner creates a new miner with the a pledge of the given size. The
+// CreateMiner creates a new miner with the a pledge of the given amount of sectors. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateMiner(ctx exec.VMContext, pledge *types.BytesAmount, publicKey []byte, pid peer.ID) (types.Address, uint8, error) {
+func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
 	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		if pledge.LessThan(MinimumPledge) {
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		if pledge.Cmp(MinimumPledge) < 0 {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, Errors[ErrPledgeTooLow]
 		}
 
-		addr, err := ctx.AddressForNewActor()
+		addr, err := vmctx.AddressForNewActor()
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerInitializationParams := miner.NewState(ctx.Message().From, publicKey, pledge, pid, ctx.Message().Value)
-		if err := ctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
+		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value)
+		if err := vmctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
 			return nil, err
 		}
 
-		_, _, err = ctx.Send(addr, "", ctx.Message().Value, nil)
+		_, _, err = vmctx.Send(addr, "", vmctx.Message().Value, nil)
 		if err != nil {
 			return nil, err
 		}
 
-		state.Miners[addr] = struct{}{}
+		ctx := context.Background()
+
+		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Miners, addr.String(), true)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not set miner key value for lookup with CID: %s", state.Miners)
+		}
+
 		return addr, nil
 	})
 	if err != nil {
-		return types.Address{}, errors.CodeError(err), err
+		return address.Address{}, errors.CodeError(err), err
 	}
 
-	return ret.(types.Address), 0, nil
+	return ret.(address.Address), 0, nil
 }
 
 // AddAsk adds an ask order to the orderbook. Must be called by a miner created
 // by this storage market actor.
-func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
-	error) {
-	var storage State
-	ret, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
+func (sma *Actor) AddAsk(vmctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		// method must be called by a miner that was created by this storage market actor.
-		miner := ctx.Message().From
+		miner := vmctx.Message().From
 
-		_, ok := storage.Miners[miner]
-		if !ok {
-			return nil, Errors[ErrUnknownMiner]
+		ctx := context.Background()
+
+		miners, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
 
-		askID := storage.Orderbook.NextSAskID
-		storage.Orderbook.NextSAskID++
+		_, err = miners.Find(ctx, miner.String())
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				return nil, Errors[ErrUnknownMiner]
+			}
+			return nil, errors.FaultErrorWrapf(err, "could lookup miner with address: %s", miner)
+		}
 
-		storage.Orderbook.StorageAsks[askID] = &Ask{
+		askID := state.Orderbook.NextSAskID
+		state.Orderbook.NextSAskID++
+
+		state.Orderbook.StorageAsks, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Orderbook.StorageAsks, keyFromID(askID), &Ask{
 			ID:    askID,
 			Price: price,
 			Size:  size,
 			Owner: miner,
+		})
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not set ask with askID, %d, into lookup", askID)
 		}
 
 		return big.NewInt(0).SetUint64(askID), nil
@@ -213,22 +255,28 @@ func (sma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 // AddBid adds a bid order to the orderbook. Can be called by anyone. The
 // message must contain the appropriate amount of funds to be locked up for the
 // bid.
-func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8, error) {
+func (sma *Actor) AddBid(vmctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8, error) {
 	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+
 		lockedFunds := price.CalculatePrice(size)
-		if ctx.Message().Value.LessThan(lockedFunds) {
+		if vmctx.Message().Value.LessThan(lockedFunds) {
 			return nil, Errors[ErrInsufficientBidFunds]
 		}
 
 		bidID := state.Orderbook.NextBidID
 		state.Orderbook.NextBidID++
 
-		state.Orderbook.Bids[bidID] = &Bid{
+		var err error
+		state.Orderbook.Bids, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Orderbook.Bids, keyFromID(bidID), &Bid{
 			ID:    bidID,
 			Price: price,
 			Size:  size,
-			Owner: ctx.Message().From,
+			Owner: vmctx.Message().From,
+		})
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not set bid with bidID, %d, into lookup", bidID)
 		}
 
 		return big.NewInt(0).SetUint64(bidID), nil
@@ -245,20 +293,50 @@ func (sma *Actor) AddBid(ctx exec.VMContext, price *types.AttoFIL, size *types.B
 	return bidID, 0, nil
 }
 
+// VerifyDealSignature checks if the given deal and signature match to the provided address.
+func VerifyDealSignature(deal *Deal, sig types.Signature, addr address.Address) bool {
+	dealBytes, err := deal.Marshal()
+	if err != nil {
+		return false
+	}
+
+	return types.VerifySignature(dealBytes, addr, sig)
+}
+
+// SignDeal signs the given deal using the provided address.
+func SignDeal(deal *Deal, signer types.Signer, addr address.Address) (types.Signature, error) {
+	dealBytes, err := deal.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	return signer.SignBytes(dealBytes, addr)
+}
+
 // UpdatePower is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
-// (via slashing or willful removal)
-func (sma *Actor) UpdatePower(ctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
+// (via slashing or willful removal). The delta is in number of sectors.
+func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, error) {
 	var state State
-	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		miner := ctx.Message().From
+	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		miner := vmctx.Message().From
+		ctx := context.Background()
 
-		_, ok := state.Miners[miner]
-		if !ok {
-			return nil, Errors[ErrUnknownMiner]
+		miners, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
 
-		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(delta)
+		_, err = miners.Find(ctx, miner.String())
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				return nil, Errors[ErrUnknownMiner]
+			}
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with address: %s", miner)
+		}
+
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(state.TotalCommittedStorage, delta)
+
 		return nil, nil
 	})
 	if err != nil {
@@ -266,4 +344,182 @@ func (sma *Actor) UpdatePower(ctx exec.VMContext, delta *types.BytesAmount) (uin
 	}
 
 	return 0, nil
+}
+
+// GetTotalStorage returns the total amount of proven storage in the system.
+func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		return state.TotalCommittedStorage, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	count, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
+	}
+
+	return count, 0, nil
+}
+
+// GetAsk returns the ask on the orderbook for the given askID.
+func (sma *Actor) GetAsk(vmctx exec.VMContext, askID *big.Int) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+
+		asks, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Orderbook.StorageAsks)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for asks with CID: %s", state.Orderbook.StorageAsks)
+		}
+		ask, err := asks.Find(ctx, strconv.FormatUint(askID.Uint64(), 36))
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not find ask with askID: %d", askID.Uint64())
+		}
+
+		return actor.MarshalStorage(ask)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	ask, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return ask, 0, nil
+}
+
+// GetBid returns the bid on the orderbook for the given bidID.
+func (sma *Actor) GetBid(vmctx exec.VMContext, bidID *big.Int) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+
+		bids, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Orderbook.Bids)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for bids with CID: %s", state.Orderbook.Bids)
+		}
+		bid, err := bids.Find(ctx, strconv.FormatUint(bidID.Uint64(), 36))
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not find bid with askID: %d", bidID.Uint64())
+		}
+
+		return actor.MarshalStorage(bid)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	bid, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return bid, 0, nil
+}
+
+// GetAllAsks returns all asks on the orderbook.
+// TODO limit number of results
+func (sma *Actor) GetAllAsks(vmctx exec.VMContext) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+
+		askLookup, err := actor.LoadTypedLookup(ctx, vmctx.Storage(), state.Orderbook.StorageAsks, &Ask{})
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for asks with CID: %s", state.Orderbook.StorageAsks)
+		}
+
+		askValues, err := askLookup.Values(ctx)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not retrieve ask values from storage market")
+		}
+
+		asks := AskSet{}
+
+		// translate kvs to AskSet.
+		for _, kv := range askValues {
+			id, err := idFromKey(kv.Key)
+			if err != nil {
+				return nil, errors.FaultErrorWrap(err, "Invalid key in orderbook.asks")
+			}
+
+			ask, ok := kv.Value.(*Ask)
+			if !ok {
+				return nil, errors.NewFaultError("Expected Ask from ask lookup")
+			}
+			asks[id] = ask
+		}
+
+		return actor.MarshalStorage(asks)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	asks, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return asks, 0, nil
+}
+
+// GetAllBids returns all bids on the orderbook.
+// TODO limit number of results
+func (sma *Actor) GetAllBids(vmctx exec.VMContext) ([]byte, uint8, error) {
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+
+		bidLookup, err := actor.LoadTypedLookup(ctx, vmctx.Storage(), state.Orderbook.Bids, &Bid{})
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not load lookup for bids with CID: %s", state.Orderbook.Bids)
+		}
+
+		bidValues, err := bidLookup.Values(ctx)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not retrieve bid values from storage market")
+		}
+
+		bids := BidSet{}
+
+		// translate kvs to BidSet.
+		for _, kv := range bidValues {
+			id, err := idFromKey(kv.Key)
+			if err != nil {
+				return nil, errors.FaultErrorWrap(err, "Invalid key in orderbook.bids")
+			}
+
+			bid, ok := kv.Value.(*Bid)
+			if !ok {
+				return nil, errors.NewFaultError("Expected Bid from bid lookup")
+			}
+			bids[id] = bid
+		}
+
+		return actor.MarshalStorage(bids)
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	bids, ok := ret.([]byte)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []bytes to be returned, but got %T instead", ret)
+	}
+
+	return bids, 0, nil
+}
+
+func keyFromID(askID uint64) string {
+	return strconv.FormatUint(askID, 36)
+}
+
+func idFromKey(key string) (uint64, error) {
+	return strconv.ParseUint(key, 36, 64)
 }

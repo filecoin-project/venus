@@ -2,103 +2,61 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
-	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
-	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
+	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	//	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/state"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
+	//	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// Tests given this flag MUST have issues created to address the changes need to fix the tests
-var nerfTests = flag.Bool("nerftests", false, "used to nerf tests that block CI") // nolint: deadcode
-
 func TestAddFakeChain(t *testing.T) {
-	if !*nerfTests {
-		t.SkipNow()
-	}
 	assert := assert.New(t)
 	require := require.New(t)
 
 	var length = 9
-	var gbbCount, pbCount int
 	ctx := context.Background()
+	r := repo.NewInMemoryRepo()
 
-	getHeaviestTipSet := func() core.TipSet {
-		gbbCount++
-		return core.RequireNewTipSet(require, new(types.Block))
-	}
-	processBlock := func(context context.Context, block *types.Block) (core.BlockProcessResult, error) {
-		pbCount++
-		return 0, nil
-	}
-	loadState := func(context context.Context, ts core.TipSet) (state.Tree, error) {
-		return state.NewEmptyStateTree(hamt.NewCborStore()), nil
-	}
-	fake(ctx, length, false, getHeaviestTipSet, processBlock, loadState)
-	assert.Equal(1, gbbCount)
-	assert.Equal(length, pbCount)
-}
-
-func TestAddActors(t *testing.T) {
-	if !*nerfTests {
-		t.SkipNow()
-	}
-	assert := assert.New(t)
-	require := require.New(t)
-
-	ctx := context.Background()
-
-	ds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(ds)
-	cm, _ := getChainManager(ds, bs)
-
-	err := cm.Genesis(ctx, core.InitGenesis)
+	bs := blockstore.NewBlockstore(r.Datastore())
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	genesis, err := consensus.InitGenesis(cst, bs)
+	require.NoError(err)
+	genCid := genesis.Cid()
+	genTS, err := consensus.NewTipSet(genesis)
 	require.NoError(err)
 
-	st, cst, cm, bts, err := getStateTree(ctx, ds, bs)
-	require.NoError(err)
+	chainStore := chain.NewDefaultStore(r.Datastore(), cst, genCid)
+	defer chainStore.Stop()
+	require.NoError(chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+		TipSet:          genTS,
+		TipSetStateRoot: genesis.StateRoot,
+	}))
+	require.NoError(chainStore.SetHead(ctx, genTS))
+	require.NoError(chainStore.Load(ctx))
 
-	_, allActors := state.GetAllActors(st)
-	initialActors := len(allActors)
-
-	err = fakeActors(ctx, cst, cm, bs, bts)
+	// binom == false
+	assert.NoError(fake(ctx, length, false, chainStore))
+	h, err := chainStore.Head().Height()
 	assert.NoError(err)
+	assert.Equal(uint64(9), h)
 
-	st, _, _, _, err = getStateTree(ctx, ds, bs)
-	require.NoError(err)
-
-	_, allActors = state.GetAllActors(st)
-	assert.Equal(initialActors+2, len(allActors), "add a account and miner actors")
-
-	sma, err := st.GetActor(ctx, address.StorageMarketAddress)
-	require.NoError(err)
-
-	var storageMkt storagemarket.State
-	chunk, err := ds.Get(datastore.NewKey(sma.Head.KeyString()))
-	require.NoError(err)
-	chunkBytes, ok := chunk.([]byte)
-	require.True(ok)
-	err = actor.UnmarshalStorage(chunkBytes, &storageMkt)
-	require.NoError(err)
-
-	assert.Equal(1, len(storageMkt.Miners))
-	assert.Equal(1, len(storageMkt.Orderbook.StorageAsks))
-	assert.Equal(1, len(storageMkt.Orderbook.Bids))
+	// binom == true
+	assert.NoError(fake(ctx, length, true, chainStore))
+	_, err = chainStore.Head().Height()
+	assert.NoError(err)
 }
 
 func GetFakecoinBinary() (string, error) {
@@ -118,31 +76,23 @@ func GetFakecoinBinary() (string, error) {
 var testRepoPath = filepath.FromSlash("/tmp/fakecoin/")
 
 func TestCommandsSucceed(t *testing.T) {
-	if !*nerfTests {
-		t.SkipNow()
-	}
-	assert := assert.New(t)
+	t.Skip("TODO: flaky test")
 	require := require.New(t)
-
-	fbin, err := th.GetFilecoinBinary()
-	require.NoError(err)
 
 	os.RemoveAll(testRepoPath)       // go-filecoin init will fail if repo exists.
 	defer os.RemoveAll(testRepoPath) // clean up when we're done.
 
-	exec.Command(fbin, "init", "--repodir", testRepoPath).Run()
-	require.NoError(err)
-
 	bin, err := GetFakecoinBinary()
 	require.NoError(err)
 
+	// 'go-fakecoin actors' completes without error. (runs init, so must be the first)
+	cmdActors := exec.Command(bin, "actors", "-repodir", testRepoPath)
+	out, err := cmdActors.CombinedOutput()
+	require.NoError(err, string(out))
+
 	// 'go-fakecoin fake' completes without error.
 	cmdFake := exec.Command(bin, "fake", "-repodir", testRepoPath)
-	err = cmdFake.Run()
-	assert.NoError(err)
+	out, err = cmdFake.CombinedOutput()
 
-	// 'go-fakecoin actors' completes without error.
-	cmdActors := exec.Command(bin, "actors", "-repodir", testRepoPath)
-	err = cmdActors.Run()
-	assert.NoError(err)
+	require.NoError(err, string(out))
 }

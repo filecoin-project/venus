@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit/files"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit/files"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -33,14 +34,10 @@ func (api *nodeAddress) Addrs() api.Addrs {
 	return api.addrs
 }
 
-func (api *nodeAddress) Balance(ctx context.Context, addr types.Address) (*types.AttoFIL, error) {
+func (api *nodeAddress) Balance(ctx context.Context, addr address.Address) (*types.AttoFIL, error) {
 	fcn := api.api.node
-	ts := fcn.ChainMgr.GetHeaviestTipSet()
-	if len(ts) == 0 {
-		return types.ZeroAttoFIL, ErrHeaviestTipSetNotFound
-	}
 
-	tree, err := fcn.ChainMgr.State(ctx, ts.ToSlice())
+	tree, err := fcn.ChainReader.LatestState(ctx)
 	if err != nil {
 		return types.ZeroAttoFIL, err
 	}
@@ -66,15 +63,15 @@ func newNodeAddrs(api *nodeAPI) *nodeAddrs {
 	return &nodeAddrs{api: api}
 }
 
-func (api *nodeAddrs) New(ctx context.Context) (types.Address, error) {
+func (api *nodeAddrs) New(ctx context.Context) (address.Address, error) {
 	return api.api.node.NewAddress()
 }
 
-func (api *nodeAddrs) Ls(ctx context.Context) ([]types.Address, error) {
+func (api *nodeAddrs) Ls(ctx context.Context) ([]address.Address, error) {
 	return api.api.node.Wallet.Addresses(), nil
 }
 
-func (api *nodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, error) {
+func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID, error) {
 	id, err := api.api.node.Lookup.GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to find miner with address %s", addr.String())
@@ -83,7 +80,7 @@ func (api *nodeAddrs) Lookup(ctx context.Context, addr types.Address) (peer.ID, 
 	return id, nil
 }
 
-func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]types.Address, error) {
+func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Address, error) {
 	nd := api.api.node
 
 	kinfos, err := parseKeyInfos(f)
@@ -101,7 +98,7 @@ func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]types.Addre
 		return nil, fmt.Errorf("datastore backend wallets should implement importer")
 	}
 
-	var out []types.Address
+	var out []address.Address
 	for _, ki := range kinfos {
 		if err := imp.ImportKey(ki); err != nil {
 			return nil, err
@@ -116,7 +113,7 @@ func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]types.Addre
 	return out, nil
 }
 
-func (api *nodeAddress) Export(ctx context.Context, addrs []types.Address) ([]*types.KeyInfo, error) {
+func (api *nodeAddress) Export(ctx context.Context, addrs []address.Address) ([]*types.KeyInfo, error) {
 	nd := api.api.node
 
 	out := make([]*types.KeyInfo, len(addrs))

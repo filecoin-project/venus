@@ -17,8 +17,11 @@ by providing storage to clients.
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
   - [Managing Submodules](#managing-submodules)
-  - [Testing](#testing)
-  - [Supported Commands](#supported-commands)
+  - [Running tests](#running-tests)
+  - [Build Commands](#build-commands)
+- [Running Filecoin](#running-filecoin)
+   - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
+   - [Sample Commands](#sample-commands)
 - [Contribute](#contribute)
 - [License](#license)
 
@@ -32,6 +35,15 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
   - Click the 'Artifacts' tab.
   - Click `Container 0 > filecoin.tar.gz` to download the release.
 
+
+## Installation
+
+You can prebuilt download binaries for linux and macOS from CircleCI.
+
+- Go to [the project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master).
+- Click on the top most successfull build, making sure that you use either `build_linux` or `build_macos` depending on the OS you want.
+- Click on the `Artifacts` tab.
+- Click on `Container 0 > filecoin.tar.gz` to download the release.
 
 ## Development
 
@@ -77,7 +89,7 @@ Later, when the head of the `rust-proofs` `master` branch changes, you may want 
 
 Note that updating the `rust-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
-### Testing
+### Running Tests
 
 The filecoin binary must be built prior to testing changes made during development. To do so, run:
 
@@ -97,7 +109,7 @@ Note: Build and test can be combined:
 > go run ./build/*.go best
 ```
 
-### Supported Commands
+### Build Commands
 
 ```sh
 # Build
@@ -126,6 +138,111 @@ Note: Build and test can be combined:
 ```
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
+
+## Running Filecoin
+
+```
+rm -fr ~/.filecoin      # <== optional, in case you have a pre-existing install
+go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-filecoin init --help`
+go-filecoin daemon      # Starts the daemon, you may now issue it commands in another terminal
+```
+
+To set up a single node capable of mining:
+```
+rm -fr ~/.filecoin
+go-filecoin init --genesisfile ./fixtures/genesis.car
+go-filecoin daemon
+# Switch terminals
+# The miner is present in the genesis block car file created from the 
+# json file, but the node is not yet configured to use it. Get the 
+# miner address from the json file fixtures/gen.json and replace X
+# in the command below with it:
+go-filecoin config mining.minerAddress \"X\"
+# The account that owns the miner is also not yet configured in the node
+# so note that owner key name in fixtures/gen.json (eg, "a") and 
+# import that key from the fixtures, assuming it was X:
+go-filecoin wallet import fixtures/X.key
+# The miner was not created with a pre-set peerid, so set it so that
+# clients can find it.
+go-filecoin miner update-peerid
+```
+
+To set up a node and connect into an existing cluster:
+```
+rm -fr ~/.filecoin
+# filecoin must be initialized in the right way to connect to the existing
+# cluster.  You must init with the same genesis.car file as the bootstrappers.
+# Finally you must configure your daemon with the proper bootstrap peers.
+# For lab week the easiest way to do this is by calling init with the
+# cluster-teamweek flag set.  Alternatively you can set the config's bootstrap
+# addrs manually after running init and before running daemon.
+go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
+go-filecoin daemon
+```
+#### Running multiple nodes with IPTB
+
+IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
+For example, it enables you to easily start up 10 mining nodes locally on your machine.
+Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
+
+#### Sample commands
+
+```
+# ----- List and ping a peer ----- 
+go-filecoin swarm peers
+go-filecoin ping <peerID>
+
+#  ----- View latest mined block ----- 
+go-filecoin chain head
+go-filecoin show block <blockID> | jq
+
+#  ----- Create a miner ----- 
+# Requires the node be a part of a cluster that already has miners and 
+# no miner configured for this node yet.
+go-filecoin miner create 10 10
+# Waits for the message to be included on chain, updates the minerAddress in the
+# node's config, and sets the peerid appropriately.
+# Get your miner address
+go-filecoin config mining.minerAddress
+# And the owner:
+go-filecoin miner owner <minerAddress>
+
+#  ----- As a miner, force a block to be mined immediately ----- 
+go-filecoin mine once
+
+#  ----- As a miner, make an ask ----- 
+# Get your miner address
+go-filecoin config mining.minerAddress
+# Get your miner owner address 
+go-filecoin miner owner <minerAddress>
+go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
+# Wait for the block to be mined (~30s) and view the ask:
+go-filecoin orderbook asks | jq
+
+#  ----- As a client, make a deal ----- 
+echo "Hi my name is $USER"> hello.txt
+go-filecoin client import ./hello.txt
+# Verify it was imported:
+go-filecoin client cat <data CID>
+# Get the file size:
+go-filecoin client cat <data CID> | wc -c
+# Find a miner by looking through the orderbook
+go-filecoin orderbook asks | jq
+# Propose a storage deal, using the <miner address> from the ask.
+go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
+# Check the status:
+go-filecoin client query-storage-deal <id returned above>
+# If you want to retreive the piece immediately you can bypass the retrieval market.
+# Note that this is kind of cheatsy but what works at the moment.
+go-filecoin client cat <data CID>
+
+# TDOO Retrieval Miner
+# If you want to fetch the piece from the miner's sealed sector, 
+# wait for the deal to be Sealed per query-storage-deal status above, and
+# then use the retrieval miner. Warning: this requires the sector be unsealed, 
+# which takes minutes to run:
+# go-filecoin retrieval-client retrieve-piece ... (exact command line TBD)
+```
 
 ## Contribute
 

@@ -6,9 +6,6 @@ import (
 )
 
 var (
-	// ErrAlreadyRunning is the error returned when trying to start the daemon, even though it is already running.
-	ErrAlreadyRunning = errors.New("daemon is already running")
-
 	// ErrInvalidSize indicates that the provided size was invalid.
 	ErrInvalidSize = fmt.Errorf("invalid size")
 

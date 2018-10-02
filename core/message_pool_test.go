@@ -6,11 +6,13 @@ import (
 	"sync"
 	"testing"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -122,7 +124,7 @@ func assertPoolEquals(assert *assert.Assertions, p *MessagePool, expMsgs ...*typ
 	}
 }
 
-func headOf(chain []TipSet) TipSet {
+func headOf(chain []consensus.TipSet) consensus.TipSet {
 	return chain[len(chain)-1]
 }
 
@@ -142,10 +144,10 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[1]}})
+		newChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[1]}})
 		newTipSet := headOf(newChain)
 
 		assert.NoError(UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet))
@@ -162,7 +164,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[2]}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
 		UpdateMessagePool(ctx, p, store, oldTipSet, oldTipSet) // sic
@@ -179,10 +181,10 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0], m[1]}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[0], m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, TipSet{},
+		newChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[0]}},
@@ -205,10 +207,10 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}, msgs{m[1]}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[0]}, msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, TipSet{},
+		newChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}, msgs{m[0]}, msgs{}, msgs{}},
 			msgsSet{msgs{}, msgs{m[5], m[6]}},
@@ -229,7 +231,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
 		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
@@ -249,7 +251,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
 
-		oldChain := NewChainWithMessages(store, TipSet{},
+		oldChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
@@ -278,7 +280,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
 
-		oldChain := NewChainWithMessages(store, TipSet{},
+		oldChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[0]}, msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
@@ -305,14 +307,14 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
 
-		oldChain := NewChainWithMessages(store, TipSet{},
+		oldChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, TipSet{},
+		newChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[0]}, msgs{m[1]}, msgs{m[2]}},
 		)
 		newTipSet := headOf(newChain)
@@ -329,7 +331,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		p := NewMessagePool()
 		m := types.NewSignedMsgs(4, mockSigner)
 
-		oldChain := NewChainWithMessages(store, TipSet{},
+		oldChain := NewChainWithMessages(store, consensus.TipSet{},
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
@@ -352,7 +354,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{}})
 		oldTipSet := headOf(oldChain)
 
 		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
@@ -372,7 +374,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
 
-		oldChain := NewChainWithMessages(store, TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
+		oldChain := NewChainWithMessages(store, consensus.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
 		newChain := NewChainWithMessages(store, oldChain[1],
@@ -431,7 +433,7 @@ func TestOrderMessagesByNonce(t *testing.T) {
 		ordered := OrderMessagesByNonce(p.Pending())
 		assert.Equal(len(p.Pending()), len(ordered))
 
-		lastSeen := make(map[types.Address]uint64)
+		lastSeen := make(map[address.Address]uint64)
 		for _, m := range ordered {
 			last, seen := lastSeen[m.From]
 			if seen {
@@ -452,7 +454,7 @@ func TestLargestNonce(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		_, found := LargestNonce(p, types.NewAddressForTestGetter()())
+		_, found := LargestNonce(p, address.NewForTestGetter()())
 		assert.False(found)
 	})
 

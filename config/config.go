@@ -10,7 +10,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -21,6 +21,7 @@ type Config struct {
 	Swarm     *SwarmConfig     `toml:"swarm"`
 	Mining    *MiningConfig    `toml:"mining"`
 	Wallet    *WalletConfig    `toml:"wallet"`
+	Stats     *StatsConfig     `toml:"stats"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -33,12 +34,12 @@ type APIConfig struct {
 
 func newDefaultAPIConfig() *APIConfig {
 	return &APIConfig{
-		Address: ":3453",
+		Address: "/ip4/127.0.0.1/tcp/3453",
 		AccessControlAllowOrigin: []string{
-			"http://localhost",
-			"https://localhost",
-			"http://127.0.0.1",
-			"https://127.0.0.1",
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://127.0.0.1:8080",
+			"https://127.0.0.1:8080",
 		},
 		AccessControlAllowMethods: []string{"GET", "POST", "PUT"},
 	}
@@ -65,41 +66,60 @@ type SwarmConfig struct {
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address: "/ip4/127.0.0.1/tcp/6000",
+		Address: "/ip4/0.0.0.0/tcp/6000",
 	}
 }
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Addresses []string `toml:"addresses"`
+	Addresses        []string `toml:"addresses"`
+	MinPeerThreshold int      `toml:"minPeerThreshold,omitempty"`
+	Period           string   `toml:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
-		Addresses: []string{},
+		Addresses:        []string{},
+		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
+		Period:           "1m",
 	}
 }
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddresses []types.Address `toml:"minerAddresses"`
+	MinerAddress      address.Address `toml:"minerAddress"`
+	PerformRealProofs bool            `toml:"performRealProofs"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
 	return &MiningConfig{
-		MinerAddresses: make([]types.Address, 0),
+		MinerAddress:      address.Address{},
+		PerformRealProofs: false,
 	}
 }
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress types.Address `toml:"defaultAddress,omitempty"`
+	DefaultAddress address.Address `toml:"defaultAddress,omitempty"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
 	return &WalletConfig{
-		DefaultAddress: types.Address{},
+		DefaultAddress: address.Address{},
+	}
+}
+
+// StatsConfig holds all configuration options related to node stats.
+type StatsConfig struct {
+	HeartbeatPeriod string `toml:"heartbeatPeriod,omitempty"`
+	Nickname        string `toml:"nickname"`
+}
+
+func newDefaultStatsConfig() *StatsConfig {
+	return &StatsConfig{
+		HeartbeatPeriod: "3s",
+		Nickname:        "",
 	}
 }
 
@@ -113,6 +133,7 @@ func NewDefaultConfig() *Config {
 		Swarm:     newDefaultSwarmConfig(),
 		Mining:    newDefaultMiningConfig(),
 		Wallet:    newDefaultWalletConfig(),
+		Stats:     newDefaultStatsConfig(),
 	}
 }
 

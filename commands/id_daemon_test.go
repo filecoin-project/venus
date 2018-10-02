@@ -65,5 +65,4 @@ func TestPersistId(t *testing.T) {
 	t.Logf("d1: %s", d1.ReadStdout())
 	t.Logf("d2: %s", d2.ReadStdout())
 	assert.Equal(id1, id2)
-
 }

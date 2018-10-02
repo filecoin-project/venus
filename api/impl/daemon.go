@@ -3,20 +3,23 @@ package impl
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
-	car "gx/ipfs/QmU9oYpqJsNWwAAJju8CzE7mv4NHAJUDWhoKHqgnhMCBy5/go-car"
+	crypto "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
+	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	blockstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	car "gx/ipfs/QmcQSyreJnxiZ1TCop3s5hjgsggpzCNjrbgqzUoQv4ywEW/go-car"
+	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -36,12 +39,12 @@ func newNodeDaemon(api *nodeAPI) *nodeDaemon {
 
 // Start, starts a new daemon process.
 func (nd *nodeDaemon) Start(ctx context.Context) error {
-	return nd.api.node.Start()
+	return nd.api.node.Start(ctx)
 }
 
 // Stop, shuts down the daemon and cleans up any resources.
 func (nd *nodeDaemon) Stop(ctx context.Context) error {
-	nd.api.node.Stop()
+	nd.api.node.Stop(ctx)
 
 	return nil
 }
@@ -75,16 +78,46 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		} // else err may be set and returned as normal
 	}()
 
-	tif := core.InitGenesis
+	tif := consensus.InitGenesis
 
 	if cfg.UseCustomGenesis && cfg.GenesisFile != "" {
 		return fmt.Errorf("cannot use testgenesis option and genesisfile together")
 	}
 
+	var initopts []node.InitOpt
+	if cfg.PeerKeyFile != "" {
+		peerKey, err := loadPeerKey(cfg.PeerKeyFile)
+		if err != nil {
+			return err
+		}
+		initopts = append(initopts, node.PeerKeyOpt(peerKey))
+	}
+
+	initopts = append(initopts, node.PerformRealProofsOpt(cfg.PerformRealProofs))
+
+	if cfg.WithMiner != (address.Address{}) {
+		newConfig := rep.Config()
+		newConfig.Mining.MinerAddress = cfg.WithMiner
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
+	// Setup labweek release specific config options.
+	if cfg.LabWeekCluster {
+		newConfig := rep.Config()
+		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
+		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.Period = "10s"
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
 	switch {
 	case cfg.GenesisFile != "":
 		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-		genCid, err := loadGenesis(ctx, rep, cfg.GenesisFile)
+		genCid, err := LoadGenesis(rep, cfg.GenesisFile)
 		if err != nil {
 			return err
 		}
@@ -109,9 +142,9 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 
 		// Generate a genesis function to allocate the address funds
-		var actorOps []testhelpers.GenOption
+		var actorOps []consensus.GenOption
 		for k, v := range addressKeys {
-			actorOps = append(actorOps, testhelpers.ActorAccount(k.Address, k.Balance))
+			actorOps = append(actorOps, consensus.ActorAccount(k.Address, k.Balance))
 
 			// load an address into nodes wallet backend
 			if k.Address.String() == cfg.WalletAddr {
@@ -125,11 +158,20 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 				rep.Config().Wallet.DefaultAddress = k.Address
 			}
 		}
-		tif = testhelpers.MakeGenesisFunc(actorOps...)
+		tif = consensus.MakeGenesisFunc(actorOps...)
 	}
 
 	// TODO: don't create the repo if this fails
-	return node.Init(ctx, rep, tif)
+	return node.Init(ctx, rep, tif, initopts...)
+}
+
+func loadPeerKey(fname string) (crypto.PrivKey, error) {
+	data, err := ioutil.ReadFile(fname)
+	if err != nil {
+		return nil, err
+	}
+
+	return crypto.UnmarshalPrivateKey(data)
 }
 
 func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
@@ -154,7 +196,8 @@ func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) erro
 	return nil
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, fname string) (*cid.Cid, error) {
+// LoadGenesis gets the genesis block from a filecoin repo and a car file
+func LoadGenesis(rep repo.Repo, fname string) (*cid.Cid, error) {
 	fi, err := os.Open(fname)
 	if err != nil {
 		return nil, err

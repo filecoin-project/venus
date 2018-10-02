@@ -10,13 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,7 +26,7 @@ import (
 
 func TestActorLs(t *testing.T) {
 	t.Parallel()
-	getActorsNoOp := func(st state.Tree) ([]string, []*types.Actor) {
+	getActorsNoOp := func(st state.Tree) ([]string, []*actor.Actor) {
 		return nil, nil
 	}
 
@@ -34,24 +36,6 @@ func TestActorLs(t *testing.T) {
 		ctx := context.Background()
 
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
-
-		tcm := (*core.ChainManagerForTest)(nd.ChainMgr)
-		nd.ChainMgr = tcm
-
-		_, err := ls(ctx, nd, getActorsNoOp)
-		require.Error(err)
-	})
-
-	t.Run("returns an error if heaviest tipset is nil", func(t *testing.T) {
-		t.Parallel()
-		require := require.New(t)
-		ctx := context.Background()
-
-		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
-		// TODO fix #543: Improve UX for multiblock tipset
-		nd.ChainMgr.GetHeaviestTipSet = func() core.TipSet {
-			return nil
-		}
 
 		_, err := ls(ctx, nd, getActorsNoOp)
 		require.Error(err)
@@ -68,22 +52,31 @@ func TestActorLs(t *testing.T) {
 		ctx := context.Background()
 
 		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
-		st := state.NewEmptyStateTree(nd.CborStore)
-		root, err := st.Flush(ctx)
+
+		genBlock, err := consensus.InitGenesis(nd.CborStore, nd.Blockstore)
 		require.NoError(err)
-		b1 := &types.Block{StateRoot: root}
-		var chainMgrForTest *core.ChainManagerForTest // nolint: gosimple, megacheck
-		chainMgrForTest = nd.ChainMgr
-		chainMgrForTest.SetHeaviestTipSetForTest(ctx, core.RequireNewTipSet(require, b1))
-		assert.NoError(nd.Start())
+		b1 := types.NewBlockForTest(genBlock, 1)
+		ts := consensus.RequireNewTipSet(require, b1)
+		chainStore, ok := nd.ChainReader.(chain.Store)
+		require.True(ok)
+
+		err = chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+			TipSet:          ts,
+			TipSetStateRoot: genBlock.StateRoot,
+		})
+		require.NoError(err)
+		err = chainStore.SetHead(ctx, consensus.RequireNewTipSet(require, b1))
+		require.NoError(err)
+
+		assert.NoError(nd.Start(ctx))
 		tokenAmount := types.NewAttoFILFromFIL(100)
 
-		getActors := func(state.Tree) ([]string, []*types.Actor) {
+		getActors := func(state.Tree) ([]string, []*actor.Actor) {
 			actor1, _ := account.NewActor(tokenAmount)
 			actor2, _ := storagemarket.NewActor()
 			actor3 := miner.NewActor()
-			actor4 := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21))
-			return []string{"address1", "address2", "address3", "address4"}, []*types.Actor{actor1, actor2, actor3, actor4}
+			actor4 := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(21))
+			return []string{"address1", "address2", "address3", "address4"}, []*actor.Actor{actor1, actor2, actor3, actor4}
 		}
 
 		actorViews, err := ls(ctx, nd, getActors)
@@ -138,7 +131,7 @@ func TestActorLs(t *testing.T) {
 
 		assertSchemaValid(t, a, schemaLoader)
 
-		//addr, _ := types.NewAddressFromString("minerAddress")
+		//addr, _ := types.NewFromString("minerAddress")
 		actor = miner.NewActor()
 		// addr, []byte{}, types.NewBytesAmount(50000), core.RequireRandomPeerID(), types.NewAttoFILFromFIL(200))
 		a = makeActorView(actor, "address", &miner.Actor{})

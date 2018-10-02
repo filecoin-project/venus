@@ -2,64 +2,143 @@ package node
 
 import (
 	"context"
+	"encoding/json"
 
-	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	ci "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	offline "gx/ipfs/QmWdao8WJqYU65ZbYQyQWMFqku6QFxkPiv8HSUAkXdHZoe/go-ipfs-exchange-offline"
-	bstore "gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	ci "gx/ipfs/Qme1knMqwt1hKZbc1BmQFmnm9f36nyQGwXxPGVpVJ9rMK5/go-libp2p-crypto"
+	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
+	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
-	bserv "gx/ipfs/QmUSuYd5Q1N291DH679AVvHwGLwtS1V9VPDWvnUN9nGJPT/go-blockservice"
+	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
+var genesisKey = datastore.NewKey("/consensus/genesisCid")
+
+// InitCfg contains configuration for initializing a node
+type InitCfg struct {
+	PeerKey              ci.PrivKey
+	DefaultWalletAddress address.Address
+	PerformRealProofs    bool
+}
+
+// InitOpt is an init option function
+type InitOpt func(*InitCfg)
+
+// PeerKeyOpt sets the private key for the nodes 'self' key
+// this is the key that is used for libp2p identity
+func PeerKeyOpt(k ci.PrivKey) InitOpt {
+	return func(c *InitCfg) {
+		c.PeerKey = k
+	}
+}
+
+// DefaultWalletAddressOpt returns a config option that sets the default wallet address to the given address.
+func DefaultWalletAddressOpt(addr address.Address) InitOpt {
+	return func(c *InitCfg) {
+		c.DefaultWalletAddress = addr
+	}
+}
+
+// PerformRealProofsOpt configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
+func PerformRealProofsOpt(performRealProofs bool) InitOpt {
+	return func(c *InitCfg) {
+		c.PerformRealProofs = performRealProofs
+	}
+}
 
 // Init initializes a filecoin node in the given repo
 // TODO: accept options?
 //  - configurable genesis block
-func Init(ctx context.Context, r repo.Repo, gen core.GenesisInitFunc) error {
+func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts ...InitOpt) error {
+	cfg := new(InitCfg)
+	for _, o := range opts {
+		o(cfg)
+	}
+
 	// TODO(ipfs): make the blockstore and blockservice have the same interfaces
 	// so that this becomes less painful
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
-	cm := core.NewChainManager(r.Datastore(), bs, cst)
-	if err := cm.Genesis(ctx, gen); err != nil {
-		return errors.Wrap(err, "failed to initialize genesis")
-	}
-
-	// TODO: make size configurable
-	sk, err := makePrivateKey(2048)
+	// TODO the following should be wrapped in the chain.Store or a sub
+	// interface.
+	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, nil)
+	// Generate the genesis tipset.
+	genesis, err := gen(cst, bs)
 	if err != nil {
-		return errors.Wrap(err, "failed to create nodes private key")
+		return err
+	}
+	genTipSet, err := consensus.NewTipSet(genesis)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate genesis block")
+	}
+	// Persist the genesis tipset to the repo.
+	genTsas := &chain.TipSetAndState{
+		TipSet:          genTipSet,
+		TipSetStateRoot: genesis.StateRoot,
+	}
+	if err = chainStore.PutTipSetAndState(ctx, genTsas); err != nil {
+		return errors.Wrap(err, "failed to put genesis block in chain store")
+	}
+	if err = chainStore.SetHead(ctx, genTipSet); err != nil {
+		return errors.Wrap(err, "failed to persist genesis block in chain store")
+	}
+	// Persist the genesis cid to the repo.
+	val, err := json.Marshal(genesis.Cid())
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal genesis cid")
+	}
+	if err = r.Datastore().Put(genesisKey, val); err != nil {
+		return errors.Wrap(err, "failed to persist genesis cid")
 	}
 
-	if err := r.Keystore().Put("self", sk); err != nil {
+	if cfg.PeerKey == nil {
+		// TODO: make size configurable
+		peerKey, err := makePrivateKey(2048)
+		if err != nil {
+			return errors.Wrap(err, "failed to create nodes private key")
+		}
+
+		cfg.PeerKey = peerKey
+	}
+
+	if err := r.Keystore().Put("self", cfg.PeerKey); err != nil {
 		return errors.Wrap(err, "failed to store private key")
 	}
 
-	// TODO: do we want this?
-	// TODO: but behind a config option if this should be generated
-	if r.Config().Wallet.DefaultAddress == (types.Address{}) {
+	newConfig := r.Config()
+
+	newConfig.Mining.PerformRealProofs = cfg.PerformRealProofs
+
+	if cfg.DefaultWalletAddress != (address.Address{}) {
+		newConfig.Wallet.DefaultAddress = cfg.DefaultWalletAddress
+	} else if r.Config().Wallet.DefaultAddress == (address.Address{}) {
+		// TODO: but behind a config option if this should be generated
 		addr, err := newAddress(r)
 		if err != nil {
 			return errors.Wrap(err, "failed to generate default address")
 		}
 
-		newConfig := r.Config()
 		newConfig.Wallet.DefaultAddress = addr
-		if err := r.ReplaceConfig(newConfig); err != nil {
-			return errors.Wrap(err, "failed to update config")
-		}
 	}
+
+	if err := r.ReplaceConfig(newConfig); err != nil {
+		return errors.Wrap(err, "failed to update config with new values")
+	}
+
 	return nil
 }
 
+// makePrivateKey generates a new private key, which is the basis for a libp2p identity.
 // borrowed from go-ipfs: `repo/config/init.go`
 func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	if nbits < 1024 {
@@ -75,11 +154,18 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 	return sk, nil
 }
 
-func newAddress(r repo.Repo) (types.Address, error) {
+// newAddress creates a new private-public keypair in the default wallet
+// and returns the address for it.
+func newAddress(r repo.Repo) (address.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
-		return types.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+		return address.Address{}, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
-	return backend.NewAddress()
+	addr, err := backend.NewAddress()
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to create address")
+	}
+
+	return addr, err
 }

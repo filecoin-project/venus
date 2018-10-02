@@ -2,13 +2,15 @@ package commands
 
 import (
 	"io"
+	"strconv"
 
-	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
+	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -19,6 +21,7 @@ var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
 		"add-ask":       minerAddAskCmd,
+		"owner":         minerOwnerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
@@ -30,7 +33,7 @@ var minerCreateCmd = &cmds.Command{
 message to be mined as this is required to return the address of the new miner.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "the size of the pledge for the miner"),
+		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in sector count) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "the amount of collateral to be sent"),
 	},
 	Options: []cmdkit.Option{
@@ -56,8 +59,8 @@ message to be mined as this is required to return the address of the new miner.`
 			}
 		}
 
-		pledge, ok := types.NewBytesAmountFromString(req.Arguments[0], 10)
-		if !ok {
+		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
+		if err != nil {
 			re.SetError(ErrInvalidPledge, cmdkit.ErrNormal)
 			return
 		}
@@ -76,9 +79,9 @@ message to be mined as this is required to return the address of the new miner.`
 
 		re.Emit(&addr) // nolint: errcheck
 	},
-	Type: types.Address{},
+	Type: address.Address{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *types.Address) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
 			return PrintString(w, a)
 		}),
 	},
@@ -97,7 +100,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
+		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -150,7 +153,7 @@ var minerAddAskCmd = &cmds.Command{
 			return
 		}
 
-		minerAddr, err := types.NewAddressFromString(req.Arguments[0])
+		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			err = errors.Wrap(err, "invalid miner address")
 			re.SetError(err, cmdkit.ErrNormal)
@@ -181,6 +184,32 @@ var minerAddAskCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
 			return PrintString(w, c)
+		}),
+	},
+}
+
+var minerOwnerCmd = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		ownerAddr, err := GetAPI(env).Miner().GetOwner(req.Context, minerAddr)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
+			return
+		}
+
+		re.Emit(&ownerAddr) // nolint: errcheck
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "the address of the miner"),
+	},
+	Type: address.Address{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
+			return PrintString(w, a)
 		}),
 	},
 }

@@ -3,9 +3,9 @@ package commands
 import (
 	"testing"
 
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/address"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,9 +21,9 @@ func TestOptionalAddr(t *testing.T) {
 
 		opts := make(cmdkit.OptMap)
 
-		hash := types.AddressHash([]byte("a new test address"))
+		hash := address.Hash([]byte("a new test address"))
 
-		specifiedAddr := types.NewMainnetAddress(hash)
+		specifiedAddr := address.NewMainnet(hash)
 		opts["from"] = specifiedAddr.String()
 
 		addr, err := optionalAddr(opts["from"])
@@ -38,6 +38,6 @@ func TestOptionalAddr(t *testing.T) {
 
 		addr, err := optionalAddr(opts["from"])
 		require.NoError(err)
-		assert.Equal(types.Address{}, addr)
+		assert.Equal(address.Address{}, addr)
 	})
 }

@@ -2,25 +2,43 @@ package miner
 
 import (
 	"math/big"
+	"strconv"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func init() {
 	cbor.RegisterCborType(State{})
+	cbor.RegisterCborType(Commitments{})
 }
 
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
+
+// CommitmentLength is the length of a single commitment (in bytes).
+const CommitmentLength = 32
+
+// ProofLength is the length of a single proof (in bytes).
+const ProofLength = 192
+
+// ProvingPeriodBlocks defines how long a proving period is for.
+// TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
+// https://github.com/filecoin-project/go-filecoin/issues/966
+var ProvingPeriodBlocks = types.NewBlockHeight(20000)
+
+// SectorSize is the amount of bytes, in a single sector.
+// TODO: derive from config and/or from sector_builder
+var SectorSize = types.NewBytesAmount(128)
 
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
@@ -35,6 +53,8 @@ const (
 	ErrCallerUnauthorized = 37
 	// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
 	ErrInsufficientPledge = 38
+	// ErrInvalidPoSt signals that the passed in PoSt was invalid.
+	ErrInvalidPoSt = 39
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -45,6 +65,7 @@ var Errors = map[uint8]error{
 	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
 	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
+	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
 }
 
 // Actor is the miner actor.
@@ -52,7 +73,7 @@ type Actor struct{}
 
 // State is the miner actors storage.
 type State struct {
-	Owner types.Address
+	Owner address.Address
 
 	// PeerID references the libp2p identity that the miner is operating.
 	PeerID peer.ID
@@ -61,34 +82,45 @@ type State struct {
 	PublicKey []byte
 
 	// Pledge is amount the space being offered up by this miner.
-	// TODO: maybe minimum granularity is more than 1 byte?
-	PledgeBytes *types.BytesAmount
+	PledgeSectors *big.Int
 
 	// Collateral is the total amount of filecoin being held as collateral for
 	// the miners pledge.
 	Collateral *types.AttoFIL
 
-	Sectors map[string]*types.BytesAmount
+	// Sectors maps sectorID to commR and commD, for all sectors this miner has committed.
+	LastUsedSectorID uint64
+	Sectors          map[string]*Commitments
+
+	ProvingPeriodStart *types.BlockHeight
+	LastPoSt           *types.BlockHeight
 
 	LockedStorage *types.BytesAmount // LockedStorage is the amount of the miner's storage that is used.
-	Power         *types.BytesAmount
+	Power         *big.Int
+}
+
+// Commitments are the details we need to store about a sector we are proving.
+type Commitments struct {
+	CommR [CommitmentLength]byte
+	CommD [CommitmentLength]byte
 }
 
 // NewActor returns a new miner actor
-func NewActor() *types.Actor {
-	return types.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 }
 
 // NewState creates a miner state struct
-func NewState(owner types.Address, key []byte, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) *State {
+func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL) *State {
 	return &State{
 		Owner:         owner,
 		PeerID:        pid,
 		PublicKey:     key,
-		PledgeBytes:   pledge,
+		PledgeSectors: pledge,
 		Collateral:    collateral,
 		LockedStorage: types.NewBytesAmount(0),
-		Sectors:       make(map[string]*types.BytesAmount),
+		Sectors:       make(map[string]*Commitments),
+		Power:         big.NewInt(0),
 	}
 }
 
@@ -129,9 +161,13 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
+	"getLastUsedSectorID": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
+	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
-		Return: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes},
+		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -144,6 +180,18 @@ var minerExports = exec.Exports{
 	"updatePeerID": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
+	},
+	"getPower": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Integer},
+	},
+	"submitPoSt": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Bytes},
+		Return: []abi.Type{},
+	},
+	"getProvingPeriodStart": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.BlockHeight},
 	},
 }
 
@@ -164,7 +212,7 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.By
 		// compute locked storage + new ask
 		total := state.LockedStorage.Add(size)
 
-		if total.GreaterThan(state.PledgeBytes) {
+		if total.GreaterThan(SectorSize.Mul(types.NewBytesAmount(state.PledgeSectors.Uint64()))) {
 			return nil, Errors[ErrInsufficientPledge]
 		}
 
@@ -200,18 +248,36 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.By
 }
 
 // GetOwner returns the miners owner.
-func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
+func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.Owner, nil
 	})
 	if err != nil {
-		return types.Address{}, errors.CodeError(err), err
+		return address.Address{}, errors.CodeError(err), err
 	}
 
-	a, ok := out.(types.Address)
+	a, ok := out.(address.Address)
 	if !ok {
-		return types.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
+		return address.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
+	}
+
+	return a, 0, nil
+}
+
+// GetLastUsedSectorID returns the last used sector id.
+func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.LastUsedSectorID, nil
+	})
+	if err != nil {
+		return 0, errors.CodeError(err), err
+	}
+
+	a, ok := out.(uint64)
+	if !ok {
+		return 0, 1, errors.NewFaultErrorf("expected a uint64 sector id, but got %T instead", out)
 	}
 
 	return a, 0, nil
@@ -220,29 +286,49 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (types.Address, uint8, error) {
 // CommitSector adds a commitment to the specified sector
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, commR []byte, size *types.BytesAmount) (uint8, error) {
-	var state State
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commR, commD []byte) (uint8, error) {
+	if len(commR) != CommitmentLength {
+		return 0, errors.NewRevertError("invalid sized commR")
+	}
+	if len(commD) != CommitmentLength {
+		return 0, errors.NewRevertError("invalid sized commR")
+	}
+	// TODO: use uint64 instead of this abomination, once refmt is fixed
+	// https://github.com/polydawn/refmt/issues/35
+	sectorIDstr := strconv.FormatUint(sectorID, 10)
 
+	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		commRstr := string(commR) // proper fixed length array encoding in cbor is apparently 'hard'.
-		_, ok := state.Sectors[commRstr]
+		// verify that the caller is authorized to perform update
+		if ctx.Message().From != state.Owner {
+			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		_, ok := state.Sectors[sectorIDstr]
 		if ok {
 			return nil, Errors[ErrSectorCommitted]
 		}
 
-		// TODO: Validate 'size'
-
-		state.Power = state.Power.Add(size)
-		state.Sectors[commRstr] = size
-
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", nil, []interface{}{size})
+		if state.Power.Cmp(big.NewInt(0)) == 0 {
+			state.ProvingPeriodStart = ctx.BlockHeight()
+		}
+		inc := big.NewInt(1)
+		state.Power = state.Power.Add(state.Power, inc)
+		comms := &Commitments{
+			CommR: [CommitmentLength]byte{},
+			CommD: [CommitmentLength]byte{},
+		}
+		copy(comms.CommR[:], commR)
+		copy(comms.CommD[:], commD)
+		state.LastUsedSectorID = sectorID
+		state.Sectors[sectorIDstr] = comms
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", nil, []interface{}{inc})
 		if err != nil {
 			return nil, err
 		}
 		if ret != 0 {
 			return nil, Errors[ErrStoragemarketCallFailed]
 		}
-
 		return nil, nil
 	})
 	if err != nil {
@@ -304,4 +390,83 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 	}
 
 	return 0, nil
+}
+
+// GetPower returns the amount of proven sectors for this miner.
+func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.Power, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	power, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, errors.NewFaultErrorf("expected *big.Int to be returned, but got %T instead", ret)
+	}
+
+	return power, 0, nil
+}
+
+// SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
+// that you have been actually storing the files you claim to be.
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
+	if len(proof) != ProofLength {
+		return 0, errors.NewRevertError("invalid sized proof")
+	}
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		// verify that the caller is authorized to perform update
+		if ctx.Message().From != state.Owner {
+			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		req := proofs.VerifyPoSTRequest{
+			Proof: [ProofLength]byte{},
+		}
+		copy(req.Proof[:], proof)
+		res, err := (&proofs.RustProver{}).VerifyPoST(req)
+		if err != nil {
+			return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
+		}
+		if !res.IsValid {
+			return nil, Errors[ErrInvalidPoSt]
+		}
+
+		// Check if we submitted it in time
+		provingPeriodEnd := state.ProvingPeriodStart.Add(ProvingPeriodBlocks)
+
+		if ctx.BlockHeight().LessEqual(provingPeriodEnd) {
+			state.ProvingPeriodStart = provingPeriodEnd
+			state.LastPoSt = ctx.BlockHeight()
+		} else {
+			// Not great.
+			// TODO: charge penalty
+			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
+		}
+
+		return nil, nil
+	})
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
+// GetProvingPeriodStart returns the current ProvingPeriodStart value.
+func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	var state State
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	return state.ProvingPeriodStart, 0, nil
 }

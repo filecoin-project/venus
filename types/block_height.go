@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
@@ -52,7 +52,10 @@ func NewBlockHeight(x uint64) *BlockHeight {
 // to the value of buf as the bytes of a big-endian unsigned integer.
 func NewBlockHeightFromBytes(buf []byte) *BlockHeight {
 	bh := NewBlockHeight(0)
-	bh.val = leb128.ToBigInt(buf)
+	// TODO: fix leb128 https://github.com/filecoin-project/go-leb128/issues/7
+	if len(buf) > 0 {
+		bh.val = leb128.ToBigInt(buf)
+	}
 	return bh
 }
 
@@ -98,4 +101,11 @@ func (z *BlockHeight) LessEqual(y *BlockHeight) bool {
 // GreaterEqual returns true if z >= y
 func (z *BlockHeight) GreaterEqual(y *BlockHeight) bool {
 	return z.val.Cmp(y.val) >= 0
+}
+
+// Add adds the given value to the current value and returns a copy
+func (z *BlockHeight) Add(y *BlockHeight) *BlockHeight {
+	a := big.NewInt(0).Set(z.val)
+	a = a.Add(a, y.val)
+	return &BlockHeight{val: a}
 }

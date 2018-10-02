@@ -5,9 +5,10 @@ import (
 	"io"
 	"os"
 
-	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 )
 
@@ -20,6 +21,10 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 		cmdkit.StringOption("genesisfile", "path of file containing archive of genesis block DAG data"),
 		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
+		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
+		cmdkit.StringOption("with-miner", "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
+		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
+		cmdkit.BoolOption("cluster-teamweek", "when set, populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -29,6 +34,19 @@ var initCmd = &cmds.Command{
 		walletAddr, _ := req.Options["walletaddr"].(string)
 		genesisFile, _ := req.Options["genesisfile"].(string)
 		customGenesis, _ := req.Options["testgenesis"].(bool)
+		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
+		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
+		teamWeek, _ := req.Options["cluster-teamweek"].(bool)
+
+		var withMiner address.Address
+		if m, ok := req.Options["with-miner"].(string); ok {
+			var err error
+			withMiner, err = address.NewFromString(m)
+			if err != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+		}
 
 		err := GetAPI(env).Daemon().Init(
 			req.Context,
@@ -37,6 +55,10 @@ var initCmd = &cmds.Command{
 			api.WalletAddr(walletAddr),
 			api.GenesisFile(genesisFile),
 			api.UseCustomGenesis(customGenesis),
+			api.PeerKeyFile(peerKeyFile),
+			api.WithMiner(withMiner),
+			api.PerformRealProofs(performRealProofs),
+			api.LabWeekCluster(teamWeek),
 		)
 
 		if err != nil {

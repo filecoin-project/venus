@@ -3,10 +3,11 @@ package vm
 import (
 	"testing"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +21,7 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
-	testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+	testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 	t.Run("Put adds to storage", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
@@ -50,14 +51,12 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		require.NoError(err)
 
 		// get both objects from storage
-		chunk1, ok, err := as.Get(id1)
+		chunk1, err := as.Get(id1)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk1)
 
-		chunk2, ok, err := as.Get(id2)
+		chunk2, err := as.Get(id2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data2, chunk2)
 	})
 
@@ -74,9 +73,9 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		as2 := vms.NewStorage(address.TestAddress2, testActor)
 
 		// attempt to get from storage
-		_, ok, err := as2.Get(id)
-		require.NoError(err)
-		assert.False(ok)
+		_, err = as2.Get(id)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 	})
 
 	t.Run("Storage is consistent when using the same address", func(t *testing.T) {
@@ -92,9 +91,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 		as2 := vms.NewStorage(address.TestAddress, testActor)
 
 		// attempt to get from storage
-		chunk, ok, err := as2.Get(id)
+		chunk, err := as2.Get(id)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk)
 	})
 }
@@ -103,7 +101,7 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+	testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
@@ -125,14 +123,12 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
 
 		// get both objects from storage
-		chunk1, ok, err := as.Get(id1)
+		chunk1, err := as.Get(id1)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data1, chunk1)
 
-		chunk2, ok, err := as.Get(id2)
+		chunk2, err := as.Get(id2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(data2, chunk2)
 	})
 
@@ -140,9 +136,9 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress2, testActor) // different address
 
 		// attempt to get from storage
-		_, ok, err := as.Get(id1)
-		require.NoError(err)
-		assert.False(ok)
+		_, err := as.Get(id1)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 	})
 }
 
@@ -153,7 +149,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
 	t.Run("Committing changes head", func(t *testing.T) {
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -172,7 +168,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	})
 
 	t.Run("Committing a non existent chunk is an error", func(t *testing.T) {
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -184,7 +180,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	})
 
 	t.Run("Committing out of sequence is an error", func(t *testing.T) {
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -221,19 +217,18 @@ func TestDatastoreBacking(t *testing.T) {
 		// add a value to underlying datastore
 		require.NoError(bs.Put(memory2))
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
-		chunk, ok, err := stage.Get(memory2.Cid())
+		chunk, err := stage.Get(memory2.Cid())
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(memory2.RawData(), chunk)
 	})
 
 	t.Run("Flush adds chunks to underlying store", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -257,7 +252,7 @@ func TestDatastoreBacking(t *testing.T) {
 	t.Run("Flush ignores chunks not referenced through head", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -287,7 +282,7 @@ func TestDatastoreBacking(t *testing.T) {
 	t.Run("Flush includes non-head chunks that are referenced in node", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -326,7 +321,7 @@ func TestValidationAndPruning(t *testing.T) {
 	t.Run("Linking to a non-existent cid fails in Commit", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -346,7 +341,7 @@ func TestValidationAndPruning(t *testing.T) {
 	t.Run("Prune removes unlinked chunks from stage", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := types.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -368,13 +363,12 @@ func TestValidationAndPruning(t *testing.T) {
 		require.NoError(err)
 
 		// retrieve cid from stage
-		_, ok, err := stage.Get(cid1)
-		require.NoError(err)
-		assert.False(ok)
+		_, err = stage.Get(cid1)
+		require.Error(err)
+		assert.Equal(ErrNotFound, err)
 
-		chunk, ok, err := stage.Get(cid2)
+		chunk, err := stage.Get(cid2)
 		require.NoError(err)
-		assert.True(ok)
 		assert.Equal(memory3.RawData(), chunk)
 	})
 }

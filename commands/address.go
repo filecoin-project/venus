@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	"gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -81,7 +82,7 @@ var addrsLookupCmd = &cmds.Command{
 		cmdkit.StringArg("address", true, false, "miner address to find peerId for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		addr, err := types.NewAddressFromString(req.Arguments[0])
+		addr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -108,7 +109,7 @@ var balanceCmd = &cmds.Command{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		addr, err := types.NewAddressFromString(req.Arguments[0])
+		addr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -144,7 +145,7 @@ var walletImportCmd = &cmds.Command{
 			re.Emit(a) // nolint: errcheck
 		}
 	},
-	Type: types.Address{},
+	Type: address.Address{},
 }
 
 var walletExportCmd = &cmds.Command{
@@ -152,9 +153,9 @@ var walletExportCmd = &cmds.Command{
 		cmdkit.StringArg("addresses", true, true, "addresses of keys to export").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		addrs := make([]types.Address, len(req.Arguments))
+		addrs := make([]address.Address, len(req.Arguments))
 		for i, arg := range req.Arguments {
-			addr, err := types.NewAddressFromString(arg)
+			addr, err := address.NewFromString(arg)
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
 				return

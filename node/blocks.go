@@ -3,8 +3,9 @@ package node
 import (
 	"context"
 
+	"gx/ipfs/QmT5K5mHn2KUyCDBntKoojQJAJftNzutxzpYR33w8JdN6M/go-libp2p-floodsub"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXScvRbYh9X9okLuX9YMnz1HR4WgRTU2hocjBs15nmCNG/go-libp2p-floodsub"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -23,10 +24,19 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 		log.FinishWithErr(ctx, err)
 	}()
 
-	if _, err := node.ChainMgr.ProcessNewBlock(ctx, b); err != nil {
+	// Put block in storage wired to an exchange so this node and other
+	// nodes can fetch it.
+	blkCid, err := node.OnlineStore.Put(ctx, b)
+	if err != nil {
+		return errors.Wrap(err, "could not add new block to online storage")
+	}
+
+	if err := node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blkCid}); err != nil {
 		return err
 	}
 
+	// TODO: should this just be a cid? Right now receivers ask to fetch
+	// the block over bitswap anyway.
 	return node.PubSub.Publish(BlocksTopic, b.ToNode().RawData())
 }
 
@@ -63,12 +73,10 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message)
 	}
 	log.SetTag(ctx, "block", blk)
 
-	res, err := node.ChainMgr.ProcessNewBlock(ctx, blk)
+	err = node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blk.Cid()})
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")
 	}
-
-	log.Infof("message processed: %s", res)
 	return nil
 }
 
@@ -98,12 +106,12 @@ func (node *Node) AddNewMessage(ctx context.Context, msg *types.SignedMessage) (
 	}()
 
 	if _, err := node.MsgPool.Add(msg); err != nil {
-		return err
+		return errors.Wrap(err, "failed to add message to the message pool")
 	}
 
 	msgdata, err := msg.Marshal()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to marshal message")
 	}
 
 	return node.PubSub.Publish(MessageTopic, msgdata)

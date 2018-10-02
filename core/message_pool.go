@@ -5,10 +5,12 @@ import (
 	"sort"
 	"sync"
 
-	hamt "gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -67,8 +69,9 @@ func NewMessagePool() *MessagePool {
 }
 
 // getParentTips returns the parent tipset of the provided tipset
-func getParentTipSet(store *hamt.CborIpldStore, ts TipSet) (TipSet, error) {
-	newTipSet := TipSet{}
+// TODO msgPool should have access to a chain store that can just look this up...
+func getParentTipSet(store *hamt.CborIpldStore, ts consensus.TipSet) (consensus.TipSet, error) {
+	newTipSet := consensus.TipSet{}
 	parents, err := ts.Parents()
 	if err != nil {
 		return nil, err
@@ -90,7 +93,7 @@ func getParentTipSet(store *hamt.CborIpldStore, ts TipSet) (TipSet, error) {
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, height uint64) ([]*types.SignedMessage, TipSet, error) {
+func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet consensus.TipSet, height uint64) ([]*types.SignedMessage, consensus.TipSet, error) {
 	var msgs []*types.SignedMessage
 	h, err := curTipSet.Height()
 	if err != nil {
@@ -110,7 +113,7 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, 
 		default:
 			nextTipSet, err := getParentTipSet(store, curTipSet)
 			if err != nil {
-				return []*types.SignedMessage{}, TipSet{}, err
+				return []*types.SignedMessage{}, consensus.TipSet{}, err
 			}
 			curTipSet = nextTipSet
 			h, err = curTipSet.Height()
@@ -132,7 +135,7 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet TipSet, 
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new TipSet) error {
+func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new consensus.TipSet) error {
 	// Strategy: walk head-of-chain pointers old and new back until they are at the same
 	// height, then walk back in lockstep to find the common ancesetor.
 
@@ -221,7 +224,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 // TODO order by time of receipt
 func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessage {
 	// TODO this could all be more efficient.
-	byAddress := make(map[types.Address][]*types.SignedMessage)
+	byAddress := make(map[address.Address][]*types.SignedMessage)
 	for _, m := range messages {
 		byAddress[m.From] = append(byAddress[m.From], m)
 	}
@@ -235,7 +238,7 @@ func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessag
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
 // If no messages from address are found, found will be false.
-func LargestNonce(pool *MessagePool, address types.Address) (largest uint64, found bool) {
+func LargestNonce(pool *MessagePool, address address.Address) (largest uint64, found bool) {
 	for _, m := range pool.Pending() {
 		if m.From == address {
 			found = true

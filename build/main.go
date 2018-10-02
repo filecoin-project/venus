@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	gobuild "go/build"
 	"io"
 	"log"
 	"os"
@@ -94,7 +95,13 @@ func deps() {
 		"gometalinter --install",
 		"go get github.com/stretchr/testify",
 		"go get github.com/xeipuuv/gojsonschema",
-		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
+		"go get github.com/ipfs/iptb",
+		"go get github.com/docker/docker/api/types",
+		"go get github.com/docker/docker/api/types/container",
+		"go get github.com/docker/docker/client",
+		"go get github.com/docker/docker/pkg/stdcopy",
+		"go get github.com/ipsn/go-secp256k1",
+		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
 	for _, name := range list {
@@ -112,18 +119,42 @@ func smartdeps() {
 		"gx install",
 		"gx-go rewrite",
 		"gometalinter --install",
-		"cargo build --release --manifest-path proofs/rust-proofs/Cargo.toml",
+		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",
+		"github.com/docker/docker/api/types",
+		"github.com/docker/docker/api/types/container",
+		"github.com/docker/docker/client",
+		"github.com/docker/docker/pkg/stdcopy",
+		"github.com/ipfs/iptb",
 		"github.com/stretchr/testify",
 		"github.com/whyrusleeping/gx",
 		"github.com/whyrusleeping/gx-go",
 		"github.com/xeipuuv/gojsonschema",
+		"github.com/ipsn/go-secp256k1",
 	}
 
 	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = gobuild.Default.GOPATH
+	}
+
+	gpbin := filepath.Join(gopath, "bin")
+	var gopathBinFound bool
+	for _, s := range strings.Split(os.Getenv("PATH"), ":") {
+		if s == gpbin {
+			gopathBinFound = true
+		}
+	}
+
+	if !gopathBinFound {
+		fmt.Println("'$GOPATH/bin' is not in your $PATH.")
+		fmt.Println("See https://golang.org/doc/code.html#GOPATH for more information.")
+		return
+	}
+
 	// if the package exists locally install it, else fetch it
 	for _, pkg := range pkgs {
 		pkgpath := filepath.Join(gopath, "src", pkg)
@@ -182,9 +213,20 @@ func lint(packages ...string) {
 
 func build() {
 	buildFilecoin()
-	// TODO add back when fixed, removed during:
-	// https://github.com/filecoin-project/go-filecoin/pull/659
-	// buildFakecoin()
+	buildFakecoin()
+	buildGengen()
+	generateGenesis()
+}
+
+func generateGenesis() {
+	log.Println("Generating genesis...")
+	runParts(
+		"./gengen/gengen",
+		"--keypath", "fixtures",
+		"--out-car", "fixtures/genesis.car",
+		"--out-json", "fixtures/gen.json",
+		"--config", "./fixtures/setup.json",
+	)
 }
 
 func buildFakecoin() {
@@ -207,6 +249,13 @@ func buildFilecoin() {
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
 	)
+}
+
+func buildGengen() {
+	log.Println("Building gengen utils...")
+
+	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
+	runParts("go", "build", "-o", "./gengen/gensetup", "./gengen/setupgen")
 }
 
 func install() {
@@ -242,6 +291,10 @@ func main() {
 		buildFakecoin()
 	case "build-filecoin":
 		buildFilecoin()
+	case "build-gengen":
+		buildGengen()
+	case "generate-genesis":
+		generateGenesis()
 	case "build":
 		build()
 	case "test":

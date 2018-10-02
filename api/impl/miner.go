@@ -3,9 +3,11 @@ package impl
 import (
 	"context"
 
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	"gx/ipfs/QmdVrMn1LhB4ybb8hMVaMLXnA8XRSewMnK6YqXKXoTcRvN/go-libp2p-peer"
+	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -17,26 +19,26 @@ func newNodeMiner(api *nodeAPI) *nodeMiner {
 	return &nodeMiner{api: api}
 }
 
-func (api *nodeMiner) Create(ctx context.Context, fromAddr types.Address, pledge *types.BytesAmount, pid peer.ID, collateral *types.AttoFIL) (types.Address, error) {
+func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return types.Address{}, err
+		return address.Address{}, err
 	}
 
 	if pid == "" {
 		pid = nd.Host.ID()
 	}
 
-	res, err := nd.CreateMiner(ctx, fromAddr, *pledge, pid, *collateral)
+	res, err := nd.CreateMiner(ctx, fromAddr, pledge, pid, collateral)
 	if err != nil {
-		return types.Address{}, err
+		return address.Address{}, errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}
 
 	return *res, nil
 }
 
-func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr types.Address, newPid peer.ID) (*cid.Cid, error) {
+func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -47,7 +49,7 @@ func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr type
 	)
 }
 
-func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -56,4 +58,18 @@ func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr types.Addr
 		"addAsk",
 		price, size,
 	)
+}
+
+func (api *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	bytes, _, err := api.api.Message().Query(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getOwner",
+	)
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return address.NewFromBytes(bytes[0])
 }

@@ -3,7 +3,7 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -17,5 +17,5 @@ func newNodeBlock(api *nodeAPI) *nodeBlock {
 }
 
 func (api *nodeBlock) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
-	return api.api.node.ChainMgr.FetchBlock(ctx, id)
+	return api.api.node.ChainReader.GetBlock(ctx, id)
 }

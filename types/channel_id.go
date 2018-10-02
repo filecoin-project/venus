@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
 )
 
@@ -77,6 +77,11 @@ func (z *ChannelID) Equal(y *ChannelID) bool {
 
 // String returns a string version of the ID
 func (z *ChannelID) String() string {
+	return z.val.String()
+}
+
+// KeyString returns a compact string version of the ID
+func (z *ChannelID) KeyString() string {
 	return z.val.String()
 }
 

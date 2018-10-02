@@ -2,18 +2,66 @@ package actor_test
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
+
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestActorCid(t *testing.T) {
+	assert := assert.New(t)
+
+	actor1 := NewActor(types.AccountActorCodeCid, nil)
+	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+	actor2.Head = requireCid(t, "Actor 2 State")
+	actor1.IncNonce()
+
+	c1, err := actor1.Cid()
+	assert.NoError(err)
+	c2, err := actor2.Cid()
+	assert.NoError(err)
+
+	assert.NotEqual(c1.String(), c2.String())
+}
+
+func TestActorFormat(t *testing.T) {
+	assert := assert.New(t)
+	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
+
+	formatted := fmt.Sprintf("%v", accountActor)
+	assert.Contains(formatted, "AccountActor")
+	assert.Contains(formatted, "balance: 5")
+	assert.Contains(formatted, "nonce: 0")
+
+	minerActor := NewActor(types.MinerActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", minerActor)
+	assert.Contains(formatted, "MinerActor")
+
+	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", storageMarketActor)
+	assert.Contains(formatted, "StorageMarketActor")
+
+	paymentBrokerActor := NewActor(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(5))
+	formatted = fmt.Sprintf("%v", paymentBrokerActor)
+	assert.Contains(formatted, "PaymentBrokerActor")
+}
+
+func requireCid(t *testing.T, data string) *cid.Cid {
+	prefix := cid.NewPrefixV1(cid.Raw, types.DefaultHashFunction)
+	cid, err := prefix.Sum([]byte(data))
+	require.NoError(t, err)
+	return cid
+}
 
 type MockActor struct {
 	exports exec.Exports
@@ -58,7 +106,7 @@ func NewMockActor(list exec.Exports) *MockActor {
 }
 
 func makeCtx(method string) exec.VMContext {
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	return vm.NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil, nil, types.NewBlockHeight(0))
 }
 
@@ -217,33 +265,4 @@ func TestMakeTypedExportFail(t *testing.T) {
 			})
 		})
 	}
-}
-
-func TestMarshalValue(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
-
-		testCases := []struct {
-			In  interface{}
-			Out []byte
-		}{
-			{In: []byte("hello"), Out: []byte("hello")},
-			{In: big.NewInt(100), Out: big.NewInt(100).Bytes()},
-			{In: "hello", Out: []byte("hello")},
-		}
-
-		for _, tc := range testCases {
-			out, err := MarshalValue(tc.In)
-			assert.NoError(err)
-			assert.Equal(out, tc.Out)
-		}
-	})
-
-	t.Run("failure", func(t *testing.T) {
-		assert := assert.New(t)
-
-		out, err := MarshalValue(big.NewRat(1, 2))
-		assert.Equal(err.Error(), "unknown type: *big.Rat")
-		assert.Nil(out)
-	})
 }

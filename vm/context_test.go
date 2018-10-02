@@ -4,17 +4,18 @@ import (
 	"context"
 	"testing"
 
-	cbor "gx/ipfs/QmPbqRavwDZLfmpeW6eoyAoQ5rT2LoCW98JhvRc22CqkZS/go-ipld-cbor"
-	"gx/ipfs/QmSkuaNgyGmV8c1L3cZNWcUxRJV6J3nsD96JVQPcWcwtyW/go-hamt-ipld"
+	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcD7SqfyQyA91TZUQ7VPRYbGarxmY7EsQewVYMuN5LNSv/go-ipfs-blockstore"
-	"gx/ipfs/QmeiCcJfDW1GJnWUArudsv5rQsihpi4oyddPhdqo3CfX6i/go-datastore"
+	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,7 +25,7 @@ import (
 
 func TestVMContextStorage(t *testing.T) {
 	assert := assert.New(t)
-	addrGetter := types.NewAddressForTestGetter()
+	addrGetter := address.NewForTestGetter()
 	ctx := context.Background()
 
 	cst := hamt.NewCborStore()
@@ -61,10 +62,10 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
-	actor1 := types.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := types.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
-	newAddress := types.NewAddressForTestGetter()
+	newAddress := address.NewForTestGetter()
 
 	mockStateTree := state.MockStateTree{
 		BuiltinActors: map[string]exec.ExecutableActor{},
@@ -163,7 +164,8 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, _ func() (*types.Actor, error)) (*types.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, _ func() (*actor.Actor, error)) (*actor.Actor, error) {
+
 				calls = append(calls, "GetOrCreateActor")
 				return nil, xerrors.New("error")
 			},
@@ -195,7 +197,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "EncodeValues")
 				return nil, nil
 			},
-			GetOrCreateActor: func(_ context.Context, _ types.Address, f func() (*types.Actor, error)) (*types.Actor, error) {
+			GetOrCreateActor: func(_ context.Context, _ address.Address, f func() (*actor.Actor, error)) (*actor.Actor, error) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
@@ -239,9 +241,8 @@ func TestVMContextSendFailures(t *testing.T) {
 
 		assert.Equal(fakeActorCid, act.Code)
 		actorStorage := vms.NewStorage(addr, act)
-		chunk, ok, err := actorStorage.Get(act.Head)
+		chunk, err := actorStorage.Get(act.Head)
 		require.NoError(err)
-		require.True(ok)
 
 		assert.True(len(chunk) > 0)
 	})
@@ -260,7 +261,7 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	ctx := NewVMContext(accountActor, nil, nil, nil, vms, nil)
 	assert.True(ctx.IsFromAccountActor())
 
-	nonAccountActor := types.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
+	nonAccountActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
 	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, nil)
 	assert.False(ctx.IsFromAccountActor())
 }

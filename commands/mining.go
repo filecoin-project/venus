@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	"gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 )
 
 var miningCmd = &cmds.Command{
@@ -40,7 +40,7 @@ var miningOnceCmd = &cmds.Command{
 
 var miningStartCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := GetAPI(env).Mining().Start(); err != nil {
+		if err := GetAPI(env).Mining().Start(req.Context); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -52,7 +52,7 @@ var miningStartCmd = &cmds.Command{
 
 var miningStopCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := GetAPI(env).Mining().Stop(); err != nil {
+		if err := GetAPI(env).Mining().Stop(req.Context); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}

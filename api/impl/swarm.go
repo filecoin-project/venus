@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	swarm "gx/ipfs/QmemVjhp1UuWPQqrWSvPcaqH3QJRMjMqNm4T2RULMkDDQe/go-libp2p-swarm"
+	swarm "gx/ipfs/QmYSM6PKnCe9YVPNMisfpoBmczzHkA7h5Wrnc36DtdJhGo/go-libp2p-swarm"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/filnet"

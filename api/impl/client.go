@@ -4,13 +4,13 @@ import (
 	"context"
 	"io"
 
-	chunk "gx/ipfs/QmVDjhUMtkRskBFAVNwyXuLSKbeAya7JKPnzAxMKDaK4x4/go-ipfs-chunker"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	imp "gx/ipfs/QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE/go-unixfs/importer"
-	uio "gx/ipfs/QmXBooHftCHoCUmwuxSibWCgLzmRw2gd2FBTJowsWKy9vE/go-unixfs/io"
-	cid "gx/ipfs/QmYVNvtQkeZ6AKSwDrjQTs432QtL6umrrK41EBq3cu7iSP/go-cid"
-	ipld "gx/ipfs/QmZtNq8dArGfnpCZfx2pUNY7UcjGhVp5qqwQ4hH6mpTMRQ/go-ipld-format"
-	dag "gx/ipfs/QmeCaeBmCCEJrZahwXY4G2G8zRaNBWskrfKWoQ6Xv6c1DR/go-merkledag"
+	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
+	chunk "gx/ipfs/QmXzBbJo2sLf3uwjNTeoWYiJV7CjAhkiA4twtLvwJSSNdK/go-ipfs-chunker"
+	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	imp "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs/importer"
+	uio "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs/io"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -26,7 +26,7 @@ func newNodeClient(api *nodeAPI) *nodeClient {
 	return &nodeClient{api: api}
 }
 
-func (api *nodeClient) AddBid(ctx context.Context, fromAddr types.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodeClient) AddBid(ctx context.Context, fromAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error) {
 	funds := price.CalculatePrice(size)
 
 	return api.api.Message().Send(
@@ -54,20 +54,21 @@ func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 	return uio.NewDagReader(ctx, data, ds)
 }
 
-func (api *nodeClient) ProposeDeal(ctx context.Context, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
+func (api *nodeClient) ProposeDeal(ctx context.Context, fromAddr address.Address, askID, bidID uint, c *cid.Cid) (*node.DealResponse, error) {
 	nd := api.api.node
-	defaddr, err := nd.DefaultSenderAddress()
-	if err != nil {
+	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
 		return nil, err
 	}
 
-	propose := &node.DealProposal{
-		ClientSig: string(defaddr[:]), // TODO: actual crypto
-		Deal: &storagemarket.Deal{
-			Ask:     uint64(askID),
-			Bid:     uint64(bidID),
-			DataRef: c.String(),
-		},
+	deal := &storagemarket.Deal{
+		Ask:     uint64(askID),
+		Bid:     uint64(bidID),
+		DataRef: c.String(),
+	}
+
+	propose, err := node.NewDealProposal(deal, nd.Wallet, fromAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	return nd.StorageClient.ProposeDeal(ctx, propose)
@@ -89,4 +90,12 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 	spl := chunk.DefaultSplitter(data)
 
 	return imp.BuildDagFromReader(ds, spl)
+}
+
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, price *types.AttoFIL, duration uint64) (*node.StorageDealResponse, error) {
+	return api.api.node.StorageMinerClient.TryToStoreData(ctx, miner, data, duration, price)
+}
+
+func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*node.StorageDealResponse, error) {
+	return api.api.node.StorageMinerClient.Query(ctx, prop)
 }

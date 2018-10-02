@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,21 +18,21 @@ func parseInt(assert *assert.Assertions, s string) *big.Int {
 }
 
 func TestMiningGenBlock(t *testing.T) {
-	t.Skip("FIXME: need to set up a miner before we can mine")
 	t.Parallel()
 	assert := assert.New(t)
-	d := th.NewDaemon(t).Start()
+	d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 	defer d.ShutdownSuccess()
 
-	t.Log("[success] address in local wallet")
-	// TODO: use `config` cmd once it exists
-	addr := th.TestAddress1
+	addr := fixtures.TestMiners[0]
 
 	s := d.RunSuccess("wallet", "balance", addr)
 	beforeBalance := parseInt(assert, s.ReadStdout())
+
 	d.RunSuccess("mining", "once")
+
 	s = d.RunSuccess("wallet", "balance", addr)
 	afterBalance := parseInt(assert, s.ReadStdout())
 	sum := new(big.Int)
+
 	assert.True(sum.Add(beforeBalance, big.NewInt(1000)).Cmp(afterBalance) == 0)
 }

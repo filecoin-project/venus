@@ -1,6 +1,7 @@
 package account
 
 import (
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -17,12 +18,12 @@ type Actor struct{}
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 // NewActor creates a new account actor.
-func NewActor(balance *types.AttoFIL) (*types.Actor, error) {
-	return types.NewActor(types.AccountActorCodeCid, balance), nil
+func NewActor(balance *types.AttoFIL) (*actor.Actor, error) {
+	return actor.NewActor(types.AccountActorCodeCid, balance), nil
 }
 
 // UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
-func UpgradeActor(act *types.Actor) error {
+func UpgradeActor(act *actor.Actor) error {
 	act.Code = types.AccountActorCodeCid
 	return nil
 }

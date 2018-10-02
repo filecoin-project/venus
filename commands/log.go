@@ -1,8 +1,9 @@
 package commands
 
 import (
-	cmds "gx/ipfs/QmVTmXZC2yE38SDKRihn96LXX6KwBWgzAg8aCDZaMirCHm/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmdE4gMduCKCGAcczM2F5ioYDfdeKuPix138wrES1YSr7f/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
 var logCmd = &cmds.Command{
@@ -15,7 +16,8 @@ output of a running daemon.
 	},
 
 	Subcommands: map[string]*cmds.Command{
-		"tail": logTailCmd,
+		"tail":     logTailCmd,
+		"streamto": logStreamToCmd,
 	},
 }
 
@@ -30,5 +32,30 @@ Outputs event log messages (not other log messages) as they are generated.
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		r := GetAPI(env).Log().Tail(req.Context)
 		re.Emit(r) // nolint: errcheck
+	},
+}
+
+var logStreamToCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Stream the json encoded log events to a multiaddress.",
+		ShortDescription: `
+Sends all json-encoded log messages to the multiaddr, for example node heartbeats and event logs.
+Heartbeats may be configured via the config stats.heartbeatPeriod options.
+This command will run until its killed.
+`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("addr", true, false, "multiaddress logs will stream to"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		maddr, err := ma.NewMultiaddr(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		if err := GetAPI(env).Log().StreamTo(req.Context, maddr); err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 	},
 }

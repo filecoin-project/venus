@@ -1,10 +1,11 @@
-package gengen
+package gengen_test
 
 import (
 	"io/ioutil"
 	"strings"
 	"testing"
 
+	. "github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
@@ -17,11 +18,11 @@ var testConfig = &GenesisCfg{
 	Miners: []Miner{
 		{
 			Owner: "bob",
-			Power: 5000,
+			Power: 50,
 		},
 		{
 			Owner: "laura",
-			Power: 1000,
+			Power: 10,
 		},
 	},
 }
@@ -44,6 +45,6 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	strings.Contains(stdout, `"Power":"5000"`)
-	strings.Contains(stdout, `"Power":"1000"`)
+	strings.Contains(stdout, `"Power":"50"`)
+	strings.Contains(stdout, `"Power":"10"`)
 }
