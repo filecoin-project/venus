@@ -200,6 +200,11 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 
 // CloseBin implements binpack.Binner.
 func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
+	if err := sb.checkpoint(bin.(*UnsealedSector)); err != nil {
+		log.Errorf("failed to create checkpoint: %s", err.Error())
+		return
+	}
+
 	// TODO: This should be rewritten to allow the caller to control
 	// concurrency (either by creating the goroutine or providing a callback
 	// function).
@@ -479,7 +484,7 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID 
 		log.FinishWithErr(ctx, err)
 	}()
 
-	bin, err := sb.Packer.AddItem(ctx, pi)
+	result, err := sb.Packer.PackItemIntoBin(ctx, pi, sb.curUnsealedSector)
 	if err == binpack.ErrItemTooLarge {
 		return 0, ErrPieceTooLarge
 	}
@@ -497,7 +502,7 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID 
 		return 0, err
 	}
 
-	sb.curUnsealedSector = bin.NextBin.(*UnsealedSector)
+	sb.curUnsealedSector = result.NextBin.(*UnsealedSector)
 
 	// checkpoint after we've added the piece and updated the sector builder's
 	// "current sector"
@@ -505,7 +510,7 @@ func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID 
 		return 0, err
 	}
 
-	return bin.AddedToBin.GetID(), err
+	return result.AddedToBin.GetID(), err
 }
 
 // SyncFile synchronizes the sector object and backing unsealed sector-file. SyncFile may mutate both the file and the
@@ -643,6 +648,9 @@ func (sb *SectorBuilder) WritePiece(ctx context.Context, s *UnsealedSector, pi *
 		return errors.Wrapf(err, "failed to write bytes to unsealed sector %s", s.unsealedSectorAccess)
 	}
 
+	s.numBytesUsed += pi.Size
+	s.pieces = append(s.pieces, pi)
+
 	// NumBytesWritten can be larger, due to padding
 	if res.NumBytesWritten < pi.Size {
 		err := fmt.Errorf("did not write all piece-bytes to file (pi.size=%d, wrote=%d)", pi.Size, res.NumBytesWritten)
@@ -653,9 +661,6 @@ func (sb *SectorBuilder) WritePiece(ctx context.Context, s *UnsealedSector, pi *
 
 		return err
 	}
-
-	s.numBytesUsed += pi.Size
-	s.pieces = append(s.pieces, pi)
 
 	return nil
 }

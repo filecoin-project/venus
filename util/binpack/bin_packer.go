@@ -2,6 +2,7 @@ package binpack
 
 import (
 	"context"
+
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
@@ -28,7 +29,6 @@ func (Space) GetID() uint64 {
 
 // NaivePacker implements a single-bin packing strategy.
 type NaivePacker struct {
-	bin    Bin
 	binner Binner
 }
 
@@ -40,7 +40,7 @@ var _ Packer = &NaivePacker{}
 type Packer interface {
 	InitWithNewBin(Binner) (Bin, error)
 	InitWithCurrentBin(Binner)
-	AddItem(context.Context, Item) (AddItemResult, error)
+	PackItemIntoBin(context.Context, Item, Bin) (AddItemResult, error)
 }
 
 // Binner is implemented by types which handle concrete binning of items.
@@ -61,14 +61,12 @@ func (np *NaivePacker) InitWithNewBin(binner Binner) (Bin, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create new bin")
 	}
-	np.bin = bin
 	return bin, nil
 }
 
 // InitWithCurrentBin implements Packer, associating it with a concrete Binner which has been previously initialized.
 func (np *NaivePacker) InitWithCurrentBin(binner Binner) {
 	np.binner = binner
-	np.bin = binner.GetCurrentBin()
 }
 
 // NewNaivePacker allocates and initializes a NaivePacker and an initial Binner, returning them along with any error.
@@ -84,12 +82,11 @@ type AddItemResult struct {
 	NextBin    Bin
 }
 
-// AddItem takes a context and an item, and adds the item according to the naive packing strategy.
-// Returns the bin to which the item was added and the bin to which the next item should be added,
-// and any error.
-func (np *NaivePacker) AddItem(ctx context.Context, item Item) (AddItemResult, error) {
+// PackItemIntoBin takes a context and an item, and adds the item according to
+// the naive packing strategy. Returns the bin to which the item was added and
+// the bin to which the next item should be added, and any error.
+func (np *NaivePacker) PackItemIntoBin(ctx context.Context, item Item, bin Bin) (AddItemResult, error) {
 	binner := np.binner
-	bin := np.bin
 	size := binner.ItemSize(item)
 
 	if size > binner.BinSize() {
@@ -103,16 +100,17 @@ func (np *NaivePacker) AddItem(ctx context.Context, item Item) (AddItemResult, e
 			return AddItemResult{}, err
 		}
 
-		if err := np.addItemToBin(ctx, item, newBin); err != nil {
+		// The recursive call handles the simple case (where we need to close
+		// the existing bin and add the piece to the new one) and also the
+		// scenario in which the existing bin is not empty and the new piece
+		// is exactly the same size as an empty bin (which will trigger two
+		// CloseBin calls).
+		result, err = np.PackItemIntoBin(ctx, item, newBin)
+		if err != nil {
 			return AddItemResult{}, err
 		}
-
-		result = AddItemResult{
-			AddedToBin: newBin,
-			NextBin:    newBin,
-		}
 	} else if size == binner.SpaceAvailable(bin) {
-		if err := np.addItemToBin(ctx, item, bin); err != nil {
+		if err := np.packItemIntoBin(ctx, item, bin); err != nil {
 			return AddItemResult{}, err
 		}
 
@@ -126,7 +124,7 @@ func (np *NaivePacker) AddItem(ctx context.Context, item Item) (AddItemResult, e
 			NextBin:    newBin,
 		}
 	} else {
-		if err := np.addItemToBin(ctx, item, bin); err != nil {
+		if err := np.packItemIntoBin(ctx, item, bin); err != nil {
 			return AddItemResult{}, err
 		}
 
@@ -139,7 +137,7 @@ func (np *NaivePacker) AddItem(ctx context.Context, item Item) (AddItemResult, e
 	return result, nil
 }
 
-func (np *NaivePacker) addItemToBin(ctx context.Context, item Item, bin Bin) error {
+func (np *NaivePacker) packItemIntoBin(ctx context.Context, item Item, bin Bin) error {
 	if err := np.binner.AddItem(ctx, item, bin); err != nil {
 		return errors.Wrap(err, "failed to add item to bin")
 	}

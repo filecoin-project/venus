@@ -11,33 +11,33 @@ func TestNaivePacker(t *testing.T) {
 	assert := assert.New(t)
 
 	binner := &testBinner{binSize: 20}
-	packer, _, _ := NewNaivePacker(binner)
+	packer, bin, _ := NewNaivePacker(binner)
 
 	newItem := func(size Space) testItem {
 		return testItem{size: size}
 	}
 
-	_, err := packer.AddItem(context.Background(), newItem(10))
+	_, err := packer.PackItemIntoBin(context.Background(), newItem(10), bin)
 	assert.NoError(err)
 	assert.Equal(Space(10), binner.currentBinUsed)
 	assert.Equal(0, binner.closeCount)
 
-	_, err = packer.AddItem(context.Background(), newItem(8))
+	_, err = packer.PackItemIntoBin(context.Background(), newItem(8), bin)
 	assert.NoError(err)
 	assert.Equal(Space(18), binner.currentBinUsed)
 	assert.Equal(0, binner.closeCount)
 
-	_, err = packer.AddItem(context.Background(), newItem(2))
+	_, err = packer.PackItemIntoBin(context.Background(), newItem(2), bin)
 	assert.NoError(err)
 	assert.Equal(Space(0), binner.currentBinUsed)
 	assert.Equal(1, binner.closeCount)
 
-	_, err = packer.AddItem(context.Background(), newItem(5))
+	_, err = packer.PackItemIntoBin(context.Background(), newItem(5), bin)
 	assert.NoError(err)
 	assert.Equal(Space(5), binner.currentBinUsed)
 	assert.Equal(1, binner.closeCount)
 
-	_, err = packer.AddItem(context.Background(), newItem(25))
+	_, err = packer.PackItemIntoBin(context.Background(), newItem(25), bin)
 	assert.EqualError(err, "item too large for bin")
 	assert.Equal(Space(5), binner.currentBinUsed)
 	assert.Equal(1, binner.closeCount)

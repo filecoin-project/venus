@@ -12,13 +12,15 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	repo2 "github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -81,12 +83,76 @@ func randTempDir() string {
 	return path
 }
 
+func TestSectorBuilderConcurrentWrites(t *testing.T) {
+	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		nd, sb, _, max := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
+
+		// CIDs will be added to this map when given to the SectorBuilder and
+		// removed when the CID has been sealed into a sector.
+		pieceCidSet := sync.Map{}
+
+		done := make(chan *cid.Cid)
+		errs := make(chan error)
+
+		// this function is called is called in a separate goroutine, kicked
+		// off by the SectorBuilder#CloseBin method
+		sb.OnCommitmentAddedToMempool = func(sealedSector *SealedSector, msgCid *cid.Cid, sectorId uint64, err error) {
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			for _, pieceInfo := range sealedSector.pieces {
+				done <- pieceInfo.Ref
+			}
+		}
+
+		piecesToSeal := 10
+		for i := 0; i < piecesToSeal; i++ {
+			go func() {
+				pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, max))
+				pieceCidSet.Store(pieceCid, true)
+			}()
+		}
+
+		// realistically, this should take 15-20 seconds
+		timeout := time.After(60 * time.Second)
+		for {
+			if piecesToSeal == 0 {
+				break
+			}
+			select {
+			case err := <-errs:
+				require.NoError(t, err)
+			case sealed := <-done:
+				pieceCidSet.Delete(sealed)
+				piecesToSeal--
+			case <-timeout:
+				// rust-proofs lazily generates and caches sealing parameters
+				// in to a global cache. It is possible that the cache was
+				// empty, which could cause this test to time out.
+				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
+			}
+		}
+
+		pieceCidSet.Range(func(key, value interface{}) bool {
+			t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
+			return false
+		})
+	})
+}
+
 func TestSectorBuilderSimple(t *testing.T) {
 	t.Parallel()
 
 	require := require.New(t)
-	dirs, _, sb, _, _ := nodeWithSectorBuilder(t)
-	defer dirs.remove()
+	nd, sb, _, _ := nodeWithSectorBuilder(t)
+	defer nd.Stop(context.Background())
 
 	sector, err := sb.NewSector()
 	require.NoError(err)
@@ -108,7 +174,7 @@ func TestSectorBuilderSimple(t *testing.T) {
 	}
 }
 
-func nodeWithSectorBuilder(t *testing.T) (*tempSectorDirs, *Node, *SectorBuilder, address.Address, uint64) {
+func nodeWithSectorBuilder(t *testing.T) (*Node, *SectorBuilder, address.Address, uint64) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -146,139 +212,210 @@ func nodeWithSectorBuilder(t *testing.T) (*tempSectorDirs, *Node, *SectorBuilder
 	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sstore, 0)
 	require.NoError(err)
 
-	return dirs, nd, sb, *result.MinerAddress, res.NumBytes
+	return nd, sb, *result.MinerAddress, res.NumBytes
 }
 
-func requirePieceInfo(require *require.Assertions, nd *Node, sb *SectorBuilder, bytes []byte) *PieceInfo {
+func requireAddPiece(ctx context.Context, t *testing.T, nd *Node, sb *SectorBuilder, pieceData []byte) *cid.Cid {
+	pieceInfo := requirePieceInfo(t, nd, sb, pieceData)
+	_, err := sb.AddPiece(ctx, pieceInfo)
+	require.NoError(t, err)
+	return pieceInfo.Ref
+}
+
+func createPieceInfo(nd *Node, sb *SectorBuilder, bytes []byte) (*PieceInfo, error) {
 	data := dag.NewRawNode(bytes)
-	info, err := sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
-	require.NoError(err)
-	require.NoError(nd.Blockservice.AddBlock(data))
+
+	if err := nd.Blockservice.AddBlock(data); err != nil {
+		return nil, err
+	}
+
+	return sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
+}
+
+func requirePieceInfo(t *testing.T, nd *Node, sb *SectorBuilder, bytes []byte) *PieceInfo {
+	info, err := createPieceInfo(nd, sb, bytes)
+	require.NoError(t, err)
 	return info
 }
 
 func TestSectorBuilder(t *testing.T) {
-	t.Parallel()
+	t.Run("adding one piece causes two sectors to be sealed", func(t *testing.T) {
+		t.Parallel()
 
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
+		ctx := context.Background()
 
-	dirs, nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-	defer dirs.remove()
+		nd, sb, _, max := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
-	var sealingWg sync.WaitGroup
-	var sealingErr error
-	sealingWg.Add(1)
+		// sector ids will be added to this map as we add pieces
+		sectorIDSet := sync.Map{}
 
-	sector := sb.curUnsealedSector
+		// receives ids of sealed sectors
+		done := make(chan uint64)
+		errs := make(chan error)
 
-	sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
-		if err != nil {
-			sealingErr = err
-			sealingWg.Done()
-		} else if ss != nil && ss.unsealedSectorAccess == sector.unsealedSectorAccess {
-			sealingWg.Done()
+		// this function is called is called in a separate goroutine, kicked
+		// off by the SectorBuilder#CloseBin method
+		sb.OnCommitmentAddedToMempool = func(sealedSector *SealedSector, msgCid *cid.Cid, sectorId uint64, err error) {
+			if err != nil {
+				errs <- err
+				return
+			}
+
+			done <- sectorId
 		}
-	}
 
-	requireAddPiece := func(s string) *cid.Cid {
-		pieceInfo := requirePieceInfo(require, nd, sb, []byte(s))
-		_, err := sb.AddPiece(ctx, pieceInfo)
-		assert.NoError(err)
-		return pieceInfo.Ref
-	}
+		// Add a piece with size(piece) < max. Then, add a piece with
+		// size(piece) == max. The SectorBuilder should seal the first piece
+		// into an unsealed sector (because the second one won't fit) and the
+		// second piece too (because it completely fills the newly-provisioned
+		// unsealed sector).
 
-	metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
+		// add a piece and grab the id of the sector to which it was added
+		pieceInfoA := requirePieceInfo(t, nd, sb, requireRandomBytes(t, max-10))
+		sectorIDA, err := sb.AddPiece(ctx, pieceInfoA)
+		require.NoError(t, err)
+		sectorIDSet.Store(sectorIDA, true)
 
-	// New unsealedSectorAccess is in the right places.
-	stagingRes1, err := sb.sectorStore.NewStagingSectorAccess()
-	require.NoError(err)
+		// same thing with the second one
+		pieceInfoB := requirePieceInfo(t, nd, sb, requireRandomBytes(t, max))
+		sectorIDB, err := sb.AddPiece(ctx, pieceInfoB)
+		require.NoError(t, err)
+		sectorIDSet.Store(sectorIDB, true)
 
-	sealedRes1, err := sb.sectorStore.NewSealedSectorAccess()
-	require.NoError(err)
+		numSectorsToSeal := 2
 
-	// New unsealedSectorAccess is generated each time.
-	stagingRes2, err := sb.sectorStore.NewStagingSectorAccess()
-	require.NoError(err)
+		timeout := time.After(60 * time.Second)
+		for {
+			if numSectorsToSeal == 0 {
+				break
+			}
+			select {
+			case err := <-errs:
+				require.NoError(t, err)
+			case sealed := <-done:
+				sectorIDSet.Delete(sealed)
+				numSectorsToSeal--
+			case <-timeout:
+				// rust-proofs lazily generates and caches sealing parameters
+				// in to a global cache. It is possible that the cache was
+				// empty, which could cause this test to time out.
+				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", numSectorsToSeal)
+			}
+		}
 
-	sealedRes2, err := sb.sectorStore.NewSealedSectorAccess()
-	require.NoError(err)
+		sectorIDSet.Range(func(key, value interface{}) bool {
+			t.Fatalf("should have removed each sector id from set as they were sealed (found %s)", key)
+			return false
+		})
+	})
 
-	assert.NotEqual(stagingRes1.SectorAccess, stagingRes2.SectorAccess)
-	assert.NotEqual(sealedRes1.SectorAccess, sealedRes2.SectorAccess)
+	t.Run("basic flow", func(t *testing.T) {
+		t.Parallel()
 
-	metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
-	text1 := "Lorem ipsum dolor sit amet, consectetur turpis duis." // len(text) = 52
-	cid1 := requireAddPiece(text1)
-	assert.Equal(sector, sb.curUnsealedSector)
-	all := text1
+		assert := assert.New(t)
+		require := require.New(t)
+		ctx := context.Background()
 
-	metadataMustMatch(require, sb, sector, 1)
-	assert.Nil(sector.sealed)
+		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
-	text2 := "In gravida quis nisl sit amet interdum. Phasellus metus." // len(text2) = 56
-	cid2 := requireAddPiece(text2)
-	assert.Equal(sector, sb.curUnsealedSector)
-	all += text2
-	assert.Nil(sector.sealed)
+		var sealingWg sync.WaitGroup
+		var sealingErr error
+		sealingWg.Add(1)
 
-	// persisted and calculated metadata match.
-	metadataMustMatch(require, sb, sector, 2)
+		sector := sb.curUnsealedSector
 
-	text3 := "Ut sit amet mi eget enim scelerisque egestas. Ut volutpat." // len(text3) = 58
-	requireAddPiece(text3)                                                // triggers seal, as piece won't fit
+		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
+			if err != nil {
+				sealingErr = err
+				sealingWg.Done()
+			} else if ss != nil && ss.unsealedSectorAccess == sector.unsealedSectorAccess {
+				sealingWg.Done()
+			}
+		}
 
-	// wait for sector sealing to complete
-	sealingWg.Wait()
-	require.NoError(sealingErr)
+		metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
 
-	assert.NotEqual(sector, sb.curUnsealedSector)
+		// New unsealedSectorAccess is in the right places.
+		stagingRes1, err := sb.sectorStore.NewStagingSectorAccess()
+		require.NoError(err)
 
-	// unseal first piece and confirm its bytes
-	reader1, err := sb.ReadPieceFromSealedSector(cid1)
-	require.NoError(err)
-	cid1Bytes, err := ioutil.ReadAll(reader1)
-	require.NoError(err)
-	assert.Equal(text1, string(cid1Bytes))
+		sealedRes1, err := sb.sectorStore.NewSealedSectorAccess()
+		require.NoError(err)
 
-	// unseal second piece and confirm its bytes, too
-	reader2, err := sb.ReadPieceFromSealedSector(cid2)
-	require.NoError(err)
-	cid2Bytes, err := ioutil.ReadAll(reader2)
-	require.NoError(err)
-	assert.Equal(text2, string(cid2Bytes))
+		// New unsealedSectorAccess is generated each time.
+		stagingRes2, err := sb.sectorStore.NewStagingSectorAccess()
+		require.NoError(err)
 
-	// persisted and calculated metadata match after a sector is sealed.
-	metadataMustMatch(require, sb, sector, 2)
+		sealedRes2, err := sb.sectorStore.NewSealedSectorAccess()
+		require.NoError(err)
 
-	newSector := sb.curUnsealedSector
-	metadataMustMatch(require, sb, newSector, 1)
+		assert.NotEqual(stagingRes1.SectorAccess, stagingRes2.SectorAccess)
+		assert.NotEqual(sealedRes1.SectorAccess, sealedRes2.SectorAccess)
 
-	sealed := sector.sealed
-	assert.NotNil(sealed)
-	assert.Nil(newSector.sealed)
+		metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
+		bytes1 := requireRandomBytes(t, 52) // len(text) = 52
+		cid1 := requireAddPiece(ctx, t, nd, sb, bytes1)
+		assert.Equal(sector, sb.curUnsealedSector)
 
-	assert.Equal(sealed.unsealedSectorAccess, sector.unsealedSectorAccess)
-	assert.Equal(sealed.pieces, sector.pieces)
-	assert.Equal(sealed.numBytes, sector.numBytesUsed)
-	_, err = ioutil.ReadFile(sealed.sealedSectorAccess)
+		metadataMustMatch(require, sb, sector, 1)
+		assert.Nil(sector.sealed)
 
-	assert.NoError(err)
+		bytes2 := requireRandomBytes(t, 56)
+		cid2 := requireAddPiece(ctx, t, nd, sb, bytes2)
+		assert.Equal(sector, sb.curUnsealedSector)
+		assert.Nil(sector.sealed)
 
-	meta := sb.curUnsealedSector.SectorMetadata()
-	assert.Len(meta.Pieces, 1)
-	assert.Equal(int(testSectorSize), int(meta.MaxBytes))
-	assert.Equal(len(text3), int(meta.NumBytesUsed))
+		// persisted and calculated metadata match.
+		metadataMustMatch(require, sb, sector, 2)
 
-	text4 := "Aliquam molestie porttitor massa at sodales. Vestibulum euismod elit et justo ultrices, ut feugiat justo sodales. Duis ut nullam."
-	require.True(len(text4) > int(testSectorSize))
+		// triggers seal, as piece won't fit
+		bytes3 := requireRandomBytes(t, 58)
+		requireAddPiece(ctx, t, nd, sb, bytes3)
 
-	bytes := []byte(text4)
-	data := dag.NewRawNode(bytes)
-	require.NoError(nd.Blockservice.AddBlock(data))
-	_, err = sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
-	assert.EqualError(err, ErrPieceTooLarge.Error())
+		// wait for sector sealing to complete
+		sealingWg.Wait()
+		require.NoError(sealingErr)
+
+		assert.NotEqual(sector, sb.curUnsealedSector)
+
+		// unseal first piece and confirm its bytes
+		reader1, err := sb.ReadPieceFromSealedSector(cid1)
+		require.NoError(err)
+		cid1Bytes, err := ioutil.ReadAll(reader1)
+		require.NoError(err)
+		assert.True(bytes.Equal(bytes1, cid1Bytes))
+
+		// unseal second piece and confirm its bytes, too
+		reader2, err := sb.ReadPieceFromSealedSector(cid2)
+		require.NoError(err)
+		cid2Bytes, err := ioutil.ReadAll(reader2)
+		require.NoError(err)
+		assert.True(bytes.Equal(bytes2, cid2Bytes))
+
+		// persisted and calculated metadata match after a sector is sealed.
+		metadataMustMatch(require, sb, sector, 2)
+
+		newSector := sb.curUnsealedSector
+		metadataMustMatch(require, sb, newSector, 1)
+
+		sealed := sector.sealed
+		assert.NotNil(sealed)
+		assert.Nil(newSector.sealed)
+
+		assert.Equal(sealed.unsealedSectorAccess, sector.unsealedSectorAccess)
+		assert.Equal(sealed.pieces, sector.pieces)
+		assert.Equal(sealed.numBytes, sector.numBytesUsed)
+
+		meta := sb.curUnsealedSector.SectorMetadata()
+		assert.Len(meta.Pieces, 1)
+		assert.Equal(int(testSectorSize), int(meta.MaxBytes))
+		assert.Equal(len(bytes3), int(meta.NumBytesUsed))
+
+		_, err = createPieceInfo(nd, sb, requireRandomBytes(t, testSectorSize+10))
+		assert.EqualError(err, ErrPieceTooLarge.Error())
+	})
 }
 
 func TestSectorBuilderMetadata(t *testing.T) {
@@ -312,8 +449,8 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 		ctx := context.Background()
 
-		dirs, nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer dirs.remove()
+		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
 		var sealingWg sync.WaitGroup
 		var sealingErr error
@@ -340,12 +477,13 @@ func TestSectorBuilderMetadata(t *testing.T) {
 			}
 		}
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
+		requireAddPiece(ctx, t, nd, sb, bytesA)
+		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
 		sectormeta, err := sb.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
 		require.NoError(err)
 		require.NotNil(sectormeta)
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesB))
+		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesB))
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
@@ -375,14 +513,14 @@ func TestSectorStore(t *testing.T) {
 
 		ctx := context.Background()
 
-		dirs, nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer dirs.remove()
+		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
 		sector := sb.curUnsealedSector
 
 		bytesA := make([]byte, 10+(testSectorSize/2))
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
 
 		loaded, err := sb.metadataStore.getSector(sector.unsealedSectorAccess)
 		require.NoError(err)
@@ -404,8 +542,8 @@ func TestSectorStore(t *testing.T) {
 		var sealingErr error
 		sealingWg.Add(1)
 
-		dirs, nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer dirs.remove()
+		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
 		a := testSectorSize / 2
 		b := testSectorSize - a
@@ -422,8 +560,8 @@ func TestSectorStore(t *testing.T) {
 			}
 		}
 
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesA))
-		sb.AddPiece(ctx, requirePieceInfo(require, nd, sb, bytesB))
+		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
+		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesB))
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
@@ -449,8 +587,8 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	var sealingErr error
 	sealingWg.Add(1)
 
-	dirs, nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
-	defer dirs.remove()
+	nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
+	defer nd.Stop(context.Background())
 
 	a := testSectorSize / 2
 	b := testSectorSize - a
@@ -467,10 +605,12 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 		}
 	}
 
-	sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, bytesA))
+	sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesA))
+
+	repo := nd.Repo.(*repo2.MemRepo)
 
 	// sector builder B should have the same state as sector builder A
-	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
+	sstore := proofs.NewProofTestSectorStore(repo.StagingDir(), repo.SealedDir())
 
 	sbB, err := InitSectorBuilder(nd, minerAddr, sstore, 0)
 	require.NoError(err)
@@ -479,7 +619,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sectorBuildersMustEqual(t, sbA, sbB)
 
 	// trigger sealing by adding a second piece
-	sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, bytesB))
+	sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesB))
 
 	// wait for sealing to complete
 	sealingWg.Wait()
@@ -492,7 +632,7 @@ func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
 	sectorBuildersMustEqual(t, sbA, sbC)
 
 	// can't swap sector stores if their sector sizes differ
-	sstore2 := proofs.NewDiskBackedSectorStore(dirs.StagingDir(), dirs.SealedDir())
+	sstore2 := proofs.NewDiskBackedSectorStore(repo.StagingDir(), repo.SealedDir())
 	_, err = InitSectorBuilder(nd, minerAddr, sstore2, 0)
 	require.Error(err)
 }
@@ -519,9 +659,9 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 50)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 50)))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -569,13 +709,12 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 
 		sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
 
-		// Wait a sec, theres no miner here... how can we init a sector builder?
 		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
 		require.NoError(err)
 
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(require, nd, sbA, make([]byte, 50)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 20)))
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 50)))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -694,4 +833,13 @@ func sectorsMustEqual(t *testing.T, s1 *UnsealedSector, s2 *UnsealedSector) {
 	for i := 0; i < len(s1.pieces); i++ {
 		pieceInfoMustEqual(t, s1.pieces[i], s2.pieces[i])
 	}
+}
+
+func requireRandomBytes(t *testing.T, n uint64) []byte {
+	slice := make([]byte, n)
+
+	_, err := io.ReadFull(rand.Reader, slice)
+	require.NoError(t, err)
+
+	return slice
 }
