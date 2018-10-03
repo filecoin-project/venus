@@ -32,7 +32,23 @@ resource "aws_security_group" "filecoin" {
     from_port   = 8000
     to_port     = 8000
     cidr_blocks = ["0.0.0.0/0"]
-    description = "block explorer"
+    description = "block explorer UI"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 8010
+    to_port     = 8010
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "dashboard UI"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 9080
+    to_port     = 9080
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "dashboard aggregator Websocket"
   }
 
   ingress {
