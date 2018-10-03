@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/base32"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -20,159 +18,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	repo2 "github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type tempSectorDirs struct {
-	stagingPath string
-	sealedPath  string
-}
-
-var _ SectorDirs = &tempSectorDirs{}
-
-func newTempSectorDirs() *tempSectorDirs {
-	return &tempSectorDirs{
-		stagingPath: randTempDir(),
-		sealedPath:  randTempDir(),
-	}
-}
-
-func (f *tempSectorDirs) StagingDir() string {
-	return f.stagingPath
-}
-
-func (f *tempSectorDirs) SealedDir() string {
-	return f.sealedPath
-}
-
-func (f *tempSectorDirs) remove() {
-	if err := os.RemoveAll(f.sealedPath); err != nil {
-		panic(err)
-	}
-
-	if err := os.RemoveAll(f.stagingPath); err != nil {
-		panic(err)
-	}
-}
-
-// randTempDir creates a subdirectory of os.TempDir() with a
-// randomized name and returns the directory's path
-func randTempDir() string {
-	// create a random string
-	b := make([]byte, 20)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic("couldn't read")
-	}
-	encoded := base32.StdEncoding.EncodeToString(b)
-
-	// append string to temp dir path
-	path := filepath.Join(os.TempDir(), encoded)
-
-	// create the directory
-	err = os.MkdirAll(path, os.ModePerm)
-	if err != nil {
-		panic(fmt.Sprintf("couldn't create temp dir %s", path))
-	}
-
-	return path
-}
-
-func TestSectorBuilderConcurrentWrites(t *testing.T) {
-	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
-		t.Parallel()
-
-		ctx := context.Background()
-
-		nd, sb, _, max := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
-
-		// CIDs will be added to this map when given to the SectorBuilder and
-		// removed when the CID has been sealed into a sector.
-		pieceCidSet := sync.Map{}
-
-		done := make(chan *cid.Cid)
-		errs := make(chan error)
-
-		// this function is called is called in a separate goroutine, kicked
-		// off by the SectorBuilder#CloseBin method
-		sb.OnCommitmentAddedToMempool = func(sealedSector *SealedSector, msgCid *cid.Cid, sectorId uint64, err error) {
-			if err != nil {
-				errs <- err
-				return
-			}
-
-			for _, pieceInfo := range sealedSector.pieces {
-				done <- pieceInfo.Ref
-			}
-		}
-
-		piecesToSeal := 10
-		for i := 0; i < piecesToSeal; i++ {
-			go func() {
-				pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, max))
-				pieceCidSet.Store(pieceCid, true)
-			}()
-		}
-
-		// realistically, this should take 15-20 seconds
-		timeout := time.After(60 * time.Second)
-		for {
-			if piecesToSeal == 0 {
-				break
-			}
-			select {
-			case err := <-errs:
-				require.NoError(t, err)
-			case sealed := <-done:
-				pieceCidSet.Delete(sealed)
-				piecesToSeal--
-			case <-timeout:
-				// rust-proofs lazily generates and caches sealing parameters
-				// in to a global cache. It is possible that the cache was
-				// empty, which could cause this test to time out.
-				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
-			}
-		}
-
-		pieceCidSet.Range(func(key, value interface{}) bool {
-			t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
-			return false
-		})
-	})
-}
-
-func TestSectorBuilderSimple(t *testing.T) {
-	t.Parallel()
-
-	require := require.New(t)
-	nd, sb, _, _ := nodeWithSectorBuilder(t)
-	defer nd.Stop(context.Background())
-
-	sector, err := sb.NewSector()
-	require.NoError(err)
-	ctx := context.Background()
-
-	d1Data := []byte("hello world")
-	d1 := &PieceInfo{
-		Size: uint64(len(d1Data)),
-	}
-
-	if err := sb.WritePiece(ctx, sector, d1, bytes.NewReader(d1Data)); err != nil {
-		t.Fatal(err)
-	}
-
-	ag := address.NewForTestGetter()
-	_, err = sb.Seal(ctx, sector, ag())
-	if err != nil {
-		t.Fatal(err)
-	}
-}
 
 func nodeWithSectorBuilder(t *testing.T) (*Node, *SectorBuilder, address.Address, uint64) {
 	t.Helper()
@@ -202,14 +54,12 @@ func nodeWithSectorBuilder(t *testing.T) (*Node, *SectorBuilder, address.Address
 	require.NoError(result.Err)
 	require.NotNil(result.MinerAddress)
 
-	dirs := newTempSectorDirs()
-
-	sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
+	sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
 
 	res, err := sstore.GetMaxUnsealedBytesPerSector()
 	require.NoError(err)
 
-	sb, err := InitSectorBuilder(nd, *result.MinerAddress, sstore, 0)
+	sb, err := InitSectorBuilder(context.Background(), nd.Repo.Datastore(), nd.Blockservice, *result.MinerAddress, sstore, 0)
 	require.NoError(err)
 
 	return nd, sb, *result.MinerAddress, res.NumBytes
@@ -239,6 +89,152 @@ func requirePieceInfo(t *testing.T, nd *Node, sb *SectorBuilder, bytes []byte) *
 }
 
 func TestSectorBuilder(t *testing.T) {
+	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
+		t.Parallel()
+
+		nd, sb, _, max := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
+
+		// stringify the content identifiers to make them easily sortable later
+		sealedPieceCidCh := make(chan string)
+		addedPieceCidCh := make(chan string)
+		errs := make(chan error)
+
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					errs <- val
+				case *SealedSector:
+					for _, pieceInfo := range val.pieces {
+						sealedPieceCidCh <- pieceInfo.Ref.String()
+					}
+				}
+			}
+		}()
+
+		autoSealsToSchedule := 5
+		for i := 0; i < autoSealsToSchedule; i++ {
+			go func(n int) {
+				time.Sleep(time.Second * time.Duration(n))
+				sb.SealAllStagedSectors(context.Background())
+			}(i)
+		}
+
+		piecesToSeal := 10
+		for i := 0; i < piecesToSeal; i++ {
+			go func() {
+				pieceCid := requireAddPiece(context.Background(), t, nd, sb, requireRandomBytes(t, max/3))
+				addedPieceCidCh <- pieceCid.String()
+			}()
+		}
+
+		var addedPieceCids []string
+		var sealedPieceCids []string
+
+		// wait for a bit of time for the various seal() ops to complete and
+		// capture the CIDs of added pieces for comparison with the CIDS of
+		// sealed pieces
+		timeout := time.After(120 * time.Second)
+		for {
+			if piecesToSeal == 0 {
+				break
+			}
+			select {
+			case err := <-errs:
+				require.NoError(t, err)
+			case pieceCid := <-addedPieceCidCh:
+				addedPieceCids = append(addedPieceCids, pieceCid)
+			case pieceCid := <-sealedPieceCidCh:
+				sealedPieceCids = append(sealedPieceCids, pieceCid)
+				piecesToSeal--
+			case <-timeout:
+				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
+			}
+		}
+
+		// wait around for a few more seconds to ensure that there weren't any
+		// superfluous seal() calls lingering
+		timeout = time.After(5 * time.Second)
+	Loop:
+		for {
+			select {
+			case err := <-errs:
+				require.NoError(t, err)
+			case <-addedPieceCidCh:
+				t.Fatal("should not have added any more pieces")
+			case <-sealedPieceCidCh:
+				t.Fatal("should not have sealed any more pieces")
+			case <-timeout:
+				break Loop // I've always dreamt of using GOTO
+			}
+		}
+
+		sort.Strings(addedPieceCids)
+		sort.Strings(sealedPieceCids)
+
+		require.Equal(t, addedPieceCids, sealedPieceCids)
+	})
+
+	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+
+		nd, sb, _, max := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
+
+		// CIDs will be added to this map when given to the SectorBuilder and
+		// removed when the CID has been sealed into a sector.
+		pieceCidSet := sync.Map{}
+
+		done := make(chan *cid.Cid)
+		errs := make(chan error)
+
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					errs <- val
+				case *SealedSector:
+					for _, pieceInfo := range val.pieces {
+						done <- pieceInfo.Ref
+					}
+				}
+			}
+		}()
+
+		piecesToSeal := 10
+		for i := 0; i < piecesToSeal; i++ {
+			go func() {
+				pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, max))
+				pieceCidSet.Store(pieceCid, true)
+			}()
+		}
+
+		// realistically, this should take 15-20 seconds
+		timeout := time.After(120 * time.Second)
+		for {
+			if piecesToSeal == 0 {
+				break
+			}
+			select {
+			case err := <-errs:
+				require.NoError(t, err)
+			case sealed := <-done:
+				pieceCidSet.Delete(sealed)
+				piecesToSeal--
+			case <-timeout:
+				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
+			}
+		}
+
+		pieceCidSet.Range(func(key, value interface{}) bool {
+			t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
+			return false
+		})
+	})
+
 	t.Run("adding one piece causes two sectors to be sealed", func(t *testing.T) {
 		t.Parallel()
 
@@ -254,16 +250,16 @@ func TestSectorBuilder(t *testing.T) {
 		done := make(chan uint64)
 		errs := make(chan error)
 
-		// this function is called is called in a separate goroutine, kicked
-		// off by the SectorBuilder#CloseBin method
-		sb.OnCommitmentAddedToMempool = func(sealedSector *SealedSector, msgCid *cid.Cid, sectorId uint64, err error) {
-			if err != nil {
-				errs <- err
-				return
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					errs <- val
+				case *SealedSector:
+					done <- val.sectorID
+				}
 			}
-
-			done <- sectorId
-		}
+		}()
 
 		// Add a piece with size(piece) < max. Then, add a piece with
 		// size(piece) == max. The SectorBuilder should seal the first piece
@@ -285,7 +281,7 @@ func TestSectorBuilder(t *testing.T) {
 
 		numSectorsToSeal := 2
 
-		timeout := time.After(60 * time.Second)
+		timeout := time.After(120 * time.Second)
 		for {
 			if numSectorsToSeal == 0 {
 				break
@@ -297,9 +293,6 @@ func TestSectorBuilder(t *testing.T) {
 				sectorIDSet.Delete(sealed)
 				numSectorsToSeal--
 			case <-timeout:
-				// rust-proofs lazily generates and caches sealing parameters
-				// in to a global cache. It is possible that the cache was
-				// empty, which could cause this test to time out.
 				t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", numSectorsToSeal)
 			}
 		}
@@ -326,14 +319,21 @@ func TestSectorBuilder(t *testing.T) {
 
 		sector := sb.curUnsealedSector
 
-		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
-			if err != nil {
-				sealingErr = err
-				sealingWg.Done()
-			} else if ss != nil && ss.unsealedSectorAccess == sector.unsealedSectorAccess {
-				sealingWg.Done()
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					sealingErr = val
+					sealingWg.Done()
+				case *SealedSector:
+					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealingWg.Done()
+					}
+				}
+
+				return
 			}
-		}
+		}()
 
 		metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
 
@@ -416,9 +416,7 @@ func TestSectorBuilder(t *testing.T) {
 		_, err = createPieceInfo(nd, sb, requireRandomBytes(t, testSectorSize+10))
 		assert.EqualError(err, ErrPieceTooLarge.Error())
 	})
-}
 
-func TestSectorBuilderMetadata(t *testing.T) {
 	t.Run("creating datastore keys", func(t *testing.T) {
 		t.Parallel()
 
@@ -440,6 +438,57 @@ func TestSectorBuilderMetadata(t *testing.T) {
 		assert.Contains(k2, "sealedSectors")
 		assert.Contains(k2, "metadata")
 		assert.Contains(k2, commRString(merkleRoot))
+	})
+
+	t.Run("can seal manually", func(t *testing.T) {
+		t.Parallel()
+
+		require := require.New(t)
+
+		ctx := context.Background()
+
+		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
+
+		firstSectorID := sb.curUnsealedSector.sectorID
+
+		require.Equal(0, len(sb.curUnsealedSector.pieces))
+		require.Equal(0, len(sb.sealedSectors))
+
+		pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, testSectorSize-10))
+
+		require.Equal(1, len(sb.curUnsealedSector.pieces))
+		require.True(pieceCid.Equals(sb.curUnsealedSector.pieces[0].Ref))
+
+		var sealingErr error
+		sealingWg := sync.WaitGroup{}
+		sealingWg.Add(1)
+
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					sealingErr = val
+					sealingWg.Done()
+				case *SealedSector:
+					if val != nil && val.sectorID == firstSectorID {
+						sealingWg.Done()
+					}
+				}
+
+				return
+			}
+		}()
+
+		sb.SealAllStagedSectors(ctx)
+
+		// wait for sector sealing to complete
+		sealingWg.Wait()
+		require.NoError(sealingErr)
+
+		require.Equal(0, len(sb.curUnsealedSector.pieces))
+		require.Equal(1, len(sb.sealedSectors))
+		require.Equal(firstSectorID, sb.sealedSectors[0].sectorID)
 	})
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
@@ -470,12 +519,21 @@ func TestSectorBuilderMetadata(t *testing.T) {
 
 		sector := sb.curUnsealedSector
 
-		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
-			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
-				sealingErr = err
-				sealingWg.Done()
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					sealingErr = val
+					sealingWg.Done()
+				case *SealedSector:
+					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealingWg.Done()
+					}
+				}
+
+				return
 			}
-		}
+		}()
 
 		requireAddPiece(ctx, t, nd, sb, bytesA)
 		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
@@ -503,9 +561,7 @@ func TestSectorBuilderMetadata(t *testing.T) {
 			pieceInfoMustEqual(t, sector.pieces[i], sealedmeta.Pieces[i])
 		}
 	})
-}
 
-func TestSectorStore(t *testing.T) {
 	t.Run("it loads a persisted sector", func(t *testing.T) {
 		t.Parallel()
 
@@ -529,10 +585,7 @@ func TestSectorStore(t *testing.T) {
 	})
 
 	t.Run("it loads a persisted, sealed sector", func(t *testing.T) {
-		// t.Parallel()
-		//
-		// TODO: no test which uses the FPS seal operation can safely be
-		// parallelized until rust-proofs #209 is complete
+		t.Parallel()
 
 		require := require.New(t)
 
@@ -553,12 +606,21 @@ func TestSectorStore(t *testing.T) {
 
 		sector := sb.curUnsealedSector
 
-		sb.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
-			if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
-				sealingErr = err
-				sealingWg.Done()
+		go func() {
+			for raw := range sb.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					sealingErr = val
+					sealingWg.Done()
+				case *SealedSector:
+					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealingWg.Done()
+					}
+				}
+
+				return
 			}
-		}
+		}()
 
 		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
 		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesB))
@@ -574,70 +636,77 @@ func TestSectorStore(t *testing.T) {
 		require.NoError(err)
 		sealedSectorsMustEqual(t, sealedSector, loaded)
 	})
-}
 
-func TestInitializesSectorBuilderFromPersistedState(t *testing.T) {
-	t.Parallel()
+	//////
 
-	require := require.New(t)
+	t.Run("it initializes a SectorBuilder from persisted metadata", func(t *testing.T) {
+		t.Parallel()
 
-	ctx := context.Background()
+		require := require.New(t)
 
-	var sealingWg sync.WaitGroup
-	var sealingErr error
-	sealingWg.Add(1)
+		ctx := context.Background()
 
-	nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
-	defer nd.Stop(context.Background())
+		var sealingWg sync.WaitGroup
+		var sealingErr error
+		sealingWg.Add(1)
 
-	a := testSectorSize / 2
-	b := testSectorSize - a
+		nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
+		defer nd.Stop(context.Background())
 
-	bytesA := make([]byte, a)
-	bytesB := make([]byte, b)
+		a := testSectorSize / 2
+		b := testSectorSize - a
 
-	sector := sbA.curUnsealedSector
+		bytesA := make([]byte, a)
+		bytesB := make([]byte, b)
 
-	sbA.OnCommitmentAddedToMempool = func(ss *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
-		if err != nil || ss.unsealedSectorAccess == sector.unsealedSectorAccess {
-			sealingErr = err
-			sealingWg.Done()
-		}
-	}
+		sector := sbA.curUnsealedSector
 
-	sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesA))
+		go func() {
+			for raw := range sbA.SectorSealResults {
+				switch val := raw.(type) {
+				case error:
+					sealingErr = val
+					sealingWg.Done()
+				case *SealedSector:
+					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealingWg.Done()
+					}
+				}
 
-	repo := nd.Repo.(*repo2.MemRepo)
+				return
+			}
+		}()
 
-	// sector builder B should have the same state as sector builder A
-	sstore := proofs.NewProofTestSectorStore(repo.StagingDir(), repo.SealedDir())
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesA))
 
-	sbB, err := InitSectorBuilder(nd, minerAddr, sstore, 0)
-	require.NoError(err)
+		// sector builder B should have the same state as sector builder A
+		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
 
-	// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
-	sectorBuildersMustEqual(t, sbA, sbB)
+		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore, 0)
+		require.NoError(err)
 
-	// trigger sealing by adding a second piece
-	sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesB))
+		// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
+		sectorBuildersMustEqual(t, sbA, sbB)
 
-	// wait for sealing to complete
-	sealingWg.Wait()
-	require.NoError(sealingErr)
+		// trigger sealing by adding a second piece
+		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesB))
 
-	// sector builder C should have the same state as sector builder A
-	sbC, err := InitSectorBuilder(nd, minerAddr, sstore, 0)
-	require.NoError(err)
+		// wait for sealing to complete
+		sealingWg.Wait()
+		require.NoError(sealingErr)
 
-	sectorBuildersMustEqual(t, sbA, sbC)
+		// sector builder C should have the same state as sector builder A
+		sbC, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore, 0)
+		require.NoError(err)
 
-	// can't swap sector stores if their sector sizes differ
-	sstore2 := proofs.NewDiskBackedSectorStore(repo.StagingDir(), repo.SealedDir())
-	_, err = InitSectorBuilder(nd, minerAddr, sstore2, 0)
-	require.Error(err)
-}
+		sectorBuildersMustEqual(t, sbA, sbC)
 
-func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
+		// can't swap sector stores if their sector sizes differ
+		sstore2 := proofs.NewDiskBackedSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
+		_, err = InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore2, 0)
+		require.Error(err)
+	})
+
 	t.Run("it truncates the file if file size > metadata size", func(t *testing.T) {
 		t.Parallel()
 
@@ -646,17 +715,15 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ctx := context.Background()
 
 		nd := MakeNodesStarted(t, 1, false, true)[0]
+		defer nd.Stop(context.Background())
 
 		nd.NewAddress() // TODO: default init make an address
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
 
-		dirs := newTempSectorDirs()
-		defer dirs.remove()
+		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
 
-		sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
-
-		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
+		sbA, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
@@ -677,7 +744,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ioutil.WriteFile(metaA.UnsealedSectorAccess, make([]byte, 90), 0600)
 
 		// initialize a new sector builder (simulates the node restarting)
-		sbB, err := InitSectorBuilder(nd, addr, sstore, 0)
+		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbB.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
@@ -699,17 +766,15 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		ctx := context.Background()
 
 		nd := MakeNodesStarted(t, 1, false, true)[0]
+		defer nd.Stop(context.Background())
 
 		nd.NewAddress() // TODO: default init make an address
 		addr, err := nd.DefaultSenderAddress()
 		require.NoError(err)
 
-		dirs := newTempSectorDirs()
-		defer dirs.remove()
+		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
 
-		sstore := proofs.NewProofTestSectorStore(dirs.SealedDir(), dirs.SealedDir())
-
-		sbA, err := InitSectorBuilder(nd, addr, sstore, 0)
+		sbA, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
 		require.NoError(err)
 
 		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
@@ -723,7 +788,7 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		require.NoError(os.Truncate(metaA.UnsealedSectorAccess, int64(40)))
 
 		// initialize final sector builder
-		sbB, err := InitSectorBuilder(nd, addr, sstore, 0)
+		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbA.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
@@ -741,18 +806,18 @@ func TestTruncatesUnsealedSectorOnDiskIfMismatch(t *testing.T) {
 		// ensure that the file was truncated to match metadata
 		require.Equal(int(metaB.NumBytesUsed), int(resB.NumBytes))
 	})
-}
 
-func TestProverIdCreation(t *testing.T) {
-	t.Parallel()
-	require := require.New(t)
+	t.Run("prover id creation", func(t *testing.T) {
+		t.Parallel()
+		require := require.New(t)
 
-	hash := address.Hash([]byte("satoshi"))
-	addr := address.NewMainnet(hash)
+		hash := address.Hash([]byte("satoshi"))
+		addr := address.NewMainnet(hash)
 
-	id := addressToProverID(addr)
+		id := addressToProverID(addr)
 
-	require.Equal(31, len(id))
+		require.Equal(31, len(id))
+	})
 }
 
 func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *UnsealedSector, pieces int) {
@@ -773,7 +838,7 @@ func metadataMustMatch(require *require.Assertions, sb *SectorBuilder, sector *U
 	}
 
 	builderMeta := sb.dumpCurrentState()
-	builderMetaPersisted, err := sb.metadataStore.getSectorBuilderMetadata(sb.MinerAddr)
+	builderMetaPersisted, err := sb.metadataStore.getSectorBuilderMetadata(sb.minerAddr)
 	require.NoError(err)
 	require.Equal(builderMeta, builderMetaPersisted)
 }
@@ -791,7 +856,7 @@ func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
 func sectorBuildersMustEqual(t *testing.T, sb1 *SectorBuilder, sb2 *SectorBuilder) {
 	require := require.New(t)
 
-	require.Equal(sb1.MinerAddr, sb2.MinerAddr)
+	require.Equal(sb1.minerAddr, sb2.minerAddr)
 	require.Equal(sb1.sectorSize, sb2.sectorSize)
 
 	sectorsMustEqual(t, sb1.curUnsealedSector, sb2.curUnsealedSector)

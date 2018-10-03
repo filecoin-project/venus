@@ -553,10 +553,16 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
-	miningAddress, err := node.MiningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get mining address")
 	}
+
+	minerOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
+	}
+
 	blockTime, mineDelay := node.MiningTimes()
 
 	if node.MiningScheduler == nil {
@@ -585,7 +591,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 			}
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, miningAddress, blockTime)
+		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
 		inCh, outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
@@ -596,8 +602,62 @@ func (node *Node) StartMining(ctx context.Context) error {
 		go node.handleNewMiningOutput(outCh)
 	}
 
-	if err := node.initSectorBuilder(ctx); err != nil {
+	// initialize a sector builder
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
+	if err != nil {
 		return errors.Wrap(err, "failed to initialize sector builder")
+	}
+	node.SectorBuilder = sectorBuilder
+
+	// initialize a storage miner
+	storageMiner, err := initStorageMinerForNode(ctx, node)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize storage miner")
+	}
+	node.StorageMiner = storageMiner
+
+	// loop, turning sealing-results into commitSector messages to be included
+	// in the chain
+	go func() {
+		for {
+			select {
+			case result := <-node.SectorBuilder.SectorSealResults:
+				switch val := result.(type) {
+				case error:
+					log.Errorf("failed to seal piece: %s", val.Error())
+				case *SealedSector:
+					msg, err := node.SendMessage(ctx, minerOwnerAddr, minerAddr, nil, "commitSector", val.sectorID, val.commR[:], val.commD[:])
+					if err != nil {
+						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d", minerOwnerAddr, minerAddr, val.sectorID)
+						continue
+					}
+
+					node.StorageMiner.OnCommitmentAddedToMempool(val, msg, val.sectorID, nil)
+				}
+			case <-node.miningCtx.Done():
+				return
+			}
+		}
+	}()
+
+	// schedules sealing of staged piece-data
+	if node.Repo.Config().Mining.AutoSealIntervalSeconds > 0 {
+		go func() {
+			for {
+				select {
+				case <-node.miningCtx.Done():
+					return
+				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
+					log.Info("auto-seal has been triggered")
+					if err := node.SectorBuilder.SealAllStagedSectors(ctx); err != nil {
+						log.Errorf("scheduler received error from node.SectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
+						return
+					}
+				}
+			}
+		}()
+	} else {
+		log.Debug("auto-seal is disabled")
 	}
 
 	node.setIsMining(true)
@@ -641,10 +701,10 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func (node *Node) initSectorBuilder(ctx context.Context) error {
+func initSectorBuilderForNode(ctx context.Context, node *Node) (*SectorBuilder, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
-		return errors.Wrap(err, "failed to get node's mining address")
+		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
 
 	dirs := node.Repo.(SectorDirs)
@@ -656,27 +716,34 @@ func (node *Node) initSectorBuilder(ctx context.Context) error {
 
 	lastUsedSectorID, err := node.getLastUsedSectorID(ctx, minerAddr)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
+		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
-	sb, err := InitSectorBuilder(node, minerAddr, sstore, lastUsedSectorID)
+	sb, err := InitSectorBuilder(node.miningCtx, node.Repo.Datastore(), node.Blockservice, minerAddr, sstore, lastUsedSectorID)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}
 
-	node.SectorBuilder = sb
+	return sb, nil
+}
+
+func initStorageMinerForNode(ctx context.Context, node *Node) (*StorageMiner, error) {
+	minerAddr, err := node.MiningAddress()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get node's mining address")
+	}
 
 	miningOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		log.Warningf("no mining owner available, skipping storage miner setup: %s", err)
-	} else {
-		node.StorageMiner, err = NewStorageMiner(ctx, node, minerAddr, miningOwnerAddr)
-		if err != nil {
-			return errors.Wrap(err, "failed to instantiate storage miner")
-		}
+		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	return nil
+	miner, err := NewStorageMiner(ctx, node, minerAddr, miningOwnerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to instantiate storage miner")
+	}
+
+	return miner, nil
 }
 
 // StopMining stops mining on new blocks.

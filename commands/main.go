@@ -20,22 +20,53 @@ import (
 const (
 	// OptionAPI is the name of the option for specifying the api port.
 	OptionAPI = "cmdapiaddr"
+
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
+
 	// OfflineMode tells us if we should try to connect this Filecoin node to the network
 	OfflineMode = "offline"
+
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
+
 	// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
 	PerformRealProofs = "perform-real-proofs"
+
+	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
+	AutoSealIntervalSeconds = "auto-seal-interval-seconds"
+
 	// SwarmListen is the multiaddr for this Filecoin node
 	SwarmListen = "swarmlisten"
+
 	// BlockTime is the duration string of the block time the daemon will
 	// run with.  TODO: this should eventually be more explicitly grouped
 	// with testing as we won't be able to set blocktime in production.
 	BlockTime = "block-time"
+
+	// PeerKeyFile is the path of file containing key to use for new nodes libp2p identity
+	PeerKeyFile = "peerkeyfile"
+
+	// WithMiner when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)
+	WithMiner = "with-miner"
+
+	// TestGenesis when set, creates a custom genesis block with pre-mined funds
+	TestGenesis = "testgenesis"
+
+	// GenesisFile is the path of file containing archive of genesis block DAG data
+	GenesisFile = "genesisfile"
+
+	// WalletAddr is the address to store in nodes backend when '--walletfile' option is passed to init
+	WalletAddr = "walletaddr"
+
+	// WalletFile is the wallet data file; it contains addresses and private keys
+	WalletFile = "walletfile"
+
+	// ClusterTeamWeek populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters
+	ClusterTeamWeek = "cluster-teamweek"
 )
 
 var rootCmd = &cmds.Command{

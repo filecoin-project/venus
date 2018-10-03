@@ -77,7 +77,7 @@ func (ss *SealedSector) SealedSectorMetadata() *SealedSectorMetadata {
 func (sb *SectorBuilder) dumpCurrentState() *SectorBuilderMetadata {
 	meta := SectorBuilderMetadata{
 		CurUnsealedSectorAccess: sb.curUnsealedSector.unsealedSectorAccess,
-		MinerAddr:               sb.MinerAddr,
+		MinerAddr:               sb.minerAddr,
 		SealedSectorCommitments: make([][32]byte, len(sb.sealedSectors)),
 	}
 	for i, sealed := range sb.sealedSectors {
@@ -265,7 +265,7 @@ func (st *sectorMetadataStore) setSectorBuilderMetadata(minerAddress address.Add
 // doing. As the SectorBuilder evolves, we will introduce some checks which
 // will optimize away redundant writes to the datastore.
 func (sb *SectorBuilder) checkpoint(s *UnsealedSector) error {
-	if err := sb.metadataStore.setSectorBuilderMetadata(sb.MinerAddr, sb.dumpCurrentState()); err != nil {
+	if err := sb.metadataStore.setSectorBuilderMetadata(sb.minerAddr, sb.dumpCurrentState()); err != nil {
 		return errors.Wrap(err, "failed to save builder metadata")
 	}
 

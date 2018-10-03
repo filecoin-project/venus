@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/util/binpack"
 )
 
@@ -63,7 +65,7 @@ type PieceInfo struct {
 // SectorBuilder manages packing deals into sectors
 // maybe this belongs somewhere else as part of a different thing?
 type SectorBuilder struct {
-	MinerAddr address.Address
+	minerAddr address.Address
 
 	curUnsealedSectorLk sync.RWMutex // curUnsealedSectorLk protects curUnsealedSector
 	curUnsealedSector   *UnsealedSector
@@ -74,12 +76,9 @@ type SectorBuilder struct {
 	// (sealing) sectors
 	Packer binpack.Packer
 
-	// OnCommitmentAddedToMempool is called when a sector has been sealed
-	// and its commitment added to the message pool.
-	OnCommitmentAddedToMempool func(*SealedSector, *cid.Cid, uint64, error)
-
-	// yada yada don't hold a reference to this here, just take what you need
-	nd *Node
+	// SectorSealResults is sent a value whenever sealing completes. The value
+	// will be either a *SealedSector or an error.
+	SectorSealResults chan interface{}
 
 	// dispenses SectorAccess, used by FPS to determine where to read/write
 	// sector and unsealed sector file-bytes
@@ -95,6 +94,9 @@ type SectorBuilder struct {
 
 	sectorIDNonceLk sync.Mutex // sectorIDNonceLk protects sectorIDNonce
 	sectorIDNonce   uint64
+
+	// propagated to the sector sealer
+	miningCtx context.Context
 }
 
 var _ binpack.Binner = &SectorBuilder{}
@@ -205,20 +207,20 @@ func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
 		return
 	}
 
-	// TODO: This should be rewritten to allow the caller to control
-	// concurrency (either by creating the goroutine or providing a callback
-	// function).
 	go func() {
-		sector := bin.(*UnsealedSector)
-		msgCid, err := sb.SealAndAddCommitmentToMempool(context.Background(), sector)
+		stagedSector := bin.(*UnsealedSector)
+		sealedSector, err := sb.Seal(sb.miningCtx, stagedSector, sb.minerAddr)
 		if err != nil {
-			sb.OnCommitmentAddedToMempool(nil, nil, sector.GetID(), errors.Wrap(err, "failed to seal and commit sector"))
+			sb.SectorSealResults <- err
 			return
 		}
 
-		// TODO: maybe send these values to a channel instead of calling the
-		// callback directly
-		sb.OnCommitmentAddedToMempool(sector.sealed, msgCid, sector.GetID(), nil)
+		stagedSector.sealed = sealedSector
+		if err := sb.checkpoint(stagedSector); err != nil {
+			log.Errorf("failed to checkpoint the recently-sealed, staged sector with id %d: %s", stagedSector.sectorID, err.Error())
+		}
+
+		sb.SectorSealResults <- sealedSector
 	}()
 }
 
@@ -295,9 +297,9 @@ func (sb *SectorBuilder) SealedSectors() []*SealedSector {
 // InitSectorBuilder creates a new sector builder for the given miner. If a SectorBuilder had previously been created
 // for the given miner, we reconstruct it using metadata from the datastore so that the miner can resume its work where
 // it left off.
-func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.SectorStore, lastUsedSectorID uint64) (*SectorBuilder, error) {
+func InitSectorBuilder(miningCtx context.Context, dataStore repo.Datastore, blockService bserv.BlockService, minerAddr address.Address, sstore proofs.SectorStore, lastUsedSectorID uint64) (*SectorBuilder, error) {
 	mstore := &sectorMetadataStore{
-		store: nd.Repo.Datastore(),
+		store: dataStore,
 	}
 
 	res, err := sstore.GetMaxUnsealedBytesPerSector()
@@ -306,16 +308,16 @@ func InitSectorBuilder(nd *Node, minerAddr address.Address, sstore proofs.Sector
 	}
 
 	sb := &SectorBuilder{
-		dserv:         dag.NewDAGService(nd.Blockservice),
-		MinerAddr:     minerAddr,
-		nd:            nd,
-		sectorSize:    res.NumBytes,
-		metadataStore: mstore,
-		sectorStore:   sstore,
-		sectorIDNonce: lastUsedSectorID,
+		dserv:             dag.NewDAGService(blockService),
+		minerAddr:         minerAddr,
+		miningCtx:         miningCtx,
+		sectorSize:        res.NumBytes,
+		metadataStore:     mstore,
+		sectorStore:       sstore,
+		sectorIDNonce:     lastUsedSectorID,
+		SectorSealResults: make(chan interface{}),
 	}
 
-	sb.OnCommitmentAddedToMempool = sb.onCommitmentAddedToMempool
 	metadata, err := mstore.getSectorBuilderMetadata(minerAddr)
 	if err == nil {
 		if err1 := configureSectorBuilderFromMetadata(mstore, sb, metadata); err1 != nil {
@@ -400,15 +402,9 @@ func configureFreshSectorBuilder(sb *SectorBuilder) error {
 	return nil
 }
 
-func (sb *SectorBuilder) onCommitmentAddedToMempool(sector *SealedSector, msg *cid.Cid, sectorID uint64, err error) {
-	if sb.nd.StorageMiner != nil {
-		sb.nd.StorageMiner.OnCommitmentAddedToMempool(sector, msg, sectorID, err)
-	}
-}
-
 // ReadPieceFromSealedSector produces a Reader used to get original piece-bytes from a sealed sector.
 func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
-	unsealArgs, err := sb.metadataStore.getUnsealArgsForPiece(sb.MinerAddr, pieceCid)
+	unsealArgs, err := sb.metadataStore.getUnsealArgsForPiece(sb.minerAddr, pieceCid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no piece with cid %s has yet been sealed into a sector", pieceCid.String())
 	}
@@ -425,7 +421,7 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader
 	res2, err2 := (&proofs.RustProver{}).Unseal(proofs.UnsealRequest{
 		NumBytes:    unsealArgs.numBytes,
 		OutputPath:  res.SectorAccess,
-		ProverID:    addressToProverID(sb.MinerAddr),
+		ProverID:    addressToProverID(sb.minerAddr),
 		SealedPath:  unsealArgs.sealedSectorAccess,
 		SectorID:    sectorIDToBytes(unsealArgs.sectorID),
 		StartOffset: unsealArgs.startOffset,
@@ -468,15 +464,44 @@ func (sb *SectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader
 	return bytes.NewReader(res3.Data), nil
 }
 
-// AddPiece writes the given piece into an unsealed sector and returns the id of that unsealed sector.
-func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error) {
-	log.Infof("SectorBuilder.AddPiece wants sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
+// SealAllStagedSectors seals an non-empty staged sectors.
+func (sb *SectorBuilder) SealAllStagedSectors(ctx context.Context) error {
+	log.Debug("SectorBuilder.SealAllStagedSectors wants sb.curUnsealedSectorLk")
 	sb.curUnsealedSectorLk.Lock()
+
 	defer func() {
-		log.Infof("SectorBuilder.AddPiece relinquishes sb.curUnsealedSectorLk for piece %s", pi.Ref.String())
+		log.Debug("SectorBuilder.SealAllStagedSectors relinquishes sb.curUnsealedSectorLk")
 		sb.curUnsealedSectorLk.Unlock()
 	}()
-	log.Infof("SectorBuilder.AddPiece got sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
+	log.Debug("SectorBuilder.SealAllStagedSectors got sb.curUnsealedSectorLk")
+
+	if sb.curUnsealedSector.numBytesUsed != 0 {
+		sb.CloseBin(sb.curUnsealedSector)
+
+		bin, err := sb.NewBin()
+		if err != nil {
+			return errors.Wrap(err, "failed to create new bin during autoseal")
+		}
+
+		sb.curUnsealedSector = bin.(*UnsealedSector)
+
+		if err := sb.checkpoint(sb.curUnsealedSector); err != nil {
+			return errors.Wrap(err, "failed to checkpoint during autoseal")
+		}
+	}
+
+	return nil
+}
+
+// AddPiece writes the given piece into an unsealed sector and returns the id of that unsealed sector.
+func (sb *SectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error) {
+	log.Debugf("SectorBuilder.AddPiece wants sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
+	sb.curUnsealedSectorLk.Lock()
+	defer func() {
+		log.Debugf("SectorBuilder.AddPiece relinquishes sb.curUnsealedSectorLk for piece %s", pi.Ref.String())
+		sb.curUnsealedSectorLk.Unlock()
+	}()
+	log.Debugf("SectorBuilder.AddPiece got sb.curUnsealedSectorLk to add piece %s", pi.Ref.String())
 
 	ctx = log.Start(ctx, "SectorBuilder.AddPiece")
 	log.SetTag(ctx, "piece", pi)
@@ -558,67 +583,6 @@ func (sb *SectorBuilder) SyncFile(s *UnsealedSector) error {
 	}
 
 	return nil
-}
-
-// SealAndAddCommitmentToMempool seals the given sector, adds the sealed sector's commitment to the message pool, and
-// then returns the CID of the commitment message.
-func (sb *SectorBuilder) SealAndAddCommitmentToMempool(ctx context.Context, s *UnsealedSector) (c *cid.Cid, err error) {
-	ctx = log.Start(ctx, "SectorBuilder.SealAndAddCommitmentToMempool")
-	log.SetTags(ctx, map[string]interface{}{
-		"unsealedSectorAccess": s.unsealedSectorAccess,
-	})
-	defer func() {
-		if c != nil {
-			log.SetTag(ctx, "sectorCid", c.String())
-		}
-		log.FinishWithErr(ctx, err)
-	}()
-
-	ss, err := sb.Seal(ctx, s, sb.MinerAddr)
-	if err != nil {
-		// Hard to say what to do in this case.
-		// Depending on the error, it could be "try again"
-		// or 'verify data integrity and try again'
-		return nil, errors.Wrap(err, "failed to seal sector")
-	}
-
-	s.sealed = ss
-	if err := sb.checkpoint(s); err != nil {
-		return nil, errors.Wrap(err, "failed to create checkpoint")
-	}
-
-	msgCid, err := sb.AddCommitmentToMempool(ctx, ss)
-	if err != nil {
-		// 'try again'
-		// This can fail if the miners owner doesnt have enough funds to pay gas.
-		// It can also happen if the miner included a deal in this sector that
-		// is already sealed in a different sector.
-		return nil, errors.Wrap(err, "failed to seal and add sector commitment")
-	}
-
-	return msgCid, nil
-}
-
-// AddCommitmentToMempool adds the sealed sector's commitment to the message pool and returns the CID of the commitment
-// message.
-func (sb *SectorBuilder) AddCommitmentToMempool(ctx context.Context, ss *SealedSector) (c *cid.Cid, err error) {
-	ctx = log.Start(ctx, "SectorBuilder.AddCommitmentToMempool")
-	log.SetTags(ctx, map[string]interface{}{
-		"sealedSectorAccess": ss.sealedSectorAccess,
-	})
-	defer func() {
-		if c != nil {
-			log.SetTag(ctx, "sectorCid", c.String())
-		}
-		log.FinishWithErr(ctx, err)
-	}()
-
-	minerOwnerAddr, err := sb.nd.MiningOwnerAddress(ctx, sb.MinerAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	return sb.nd.SendMessage(ctx, minerOwnerAddr, sb.MinerAddr, nil, "commitSector", ss.GetID(), ss.commR[:], ss.commD[:])
 }
 
 // WritePiece writes data from the given reader to the sectors underlying storage

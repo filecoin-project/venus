@@ -69,13 +69,13 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 
 	select {
 	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, done):
-	case <-time.After(60 * time.Second):
+	case <-time.After(120 * time.Second):
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in miner node's chain", testSectorSize, minerOwnerAddr)
 	}
 
 	select {
 	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, done):
-	case <-time.After(60 * time.Second):
+	case <-time.After(120 * time.Second):
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in client node's chain", testSectorSize, minerOwnerAddr)
 	}
 

@@ -94,6 +94,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	}
 
 	initopts = append(initopts, node.PerformRealProofsOpt(cfg.PerformRealProofs))
+	initopts = append(initopts, node.AutoSealIntervalSecondsOpt(cfg.AutoSealIntervalSeconds))
 
 	if cfg.WithMiner != (address.Address{}) {
 		newConfig := rep.Config()

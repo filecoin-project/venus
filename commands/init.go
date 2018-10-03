@@ -17,26 +17,28 @@ var initCmd = &cmds.Command{
 		Tagline: "Initialize a filecoin repo",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("walletfile", "wallet data file: contains addresses and private keys").WithDefault(""),
-		cmdkit.StringOption("walletaddr", "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
-		cmdkit.StringOption("genesisfile", "path of file containing archive of genesis block DAG data"),
-		cmdkit.BoolOption("testgenesis", "when set, creates a custom genesis block with pre-mined funds"),
-		cmdkit.StringOption("peerkeyfile", "path of file containing key to use for new nodes libp2p identity"),
-		cmdkit.StringOption("with-miner", "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
+		cmdkit.StringOption(WalletFile, "wallet data file: contains addresses and private keys").WithDefault(""),
+		cmdkit.StringOption(WalletAddr, "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
+		cmdkit.StringOption(GenesisFile, "path of file containing archive of genesis block DAG data"),
+		cmdkit.BoolOption(TestGenesis, "when set, creates a custom genesis block with pre-mined funds"),
+		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new nodes libp2p identity"),
+		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
 		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
-		cmdkit.BoolOption("cluster-teamweek", "when set, populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters"),
+		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
+		cmdkit.BoolOption(ClusterTeamWeek, "when set, populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
 		re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
-		walletFile, _ := req.Options["walletfile"].(string)
-		walletAddr, _ := req.Options["walletaddr"].(string)
-		genesisFile, _ := req.Options["genesisfile"].(string)
-		customGenesis, _ := req.Options["testgenesis"].(bool)
-		peerKeyFile, _ := req.Options["peerkeyfile"].(string)
+		walletFile, _ := req.Options[WalletFile].(string)
+		walletAddr, _ := req.Options[WalletAddr].(string)
+		genesisFile, _ := req.Options[GenesisFile].(string)
+		customGenesis, _ := req.Options[TestGenesis].(bool)
+		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
-		teamWeek, _ := req.Options["cluster-teamweek"].(bool)
+		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
+		teamWeek, _ := req.Options[ClusterTeamWeek].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options["with-miner"].(string); ok {
@@ -59,6 +61,7 @@ var initCmd = &cmds.Command{
 			api.WithMiner(withMiner),
 			api.PerformRealProofs(performRealProofs),
 			api.LabWeekCluster(teamWeek),
+			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 		)
 
 		if err != nil {

@@ -25,9 +25,10 @@ var genesisKey = datastore.NewKey("/consensus/genesisCid")
 
 // InitCfg contains configuration for initializing a node
 type InitCfg struct {
-	PeerKey              ci.PrivKey
-	DefaultWalletAddress address.Address
-	PerformRealProofs    bool
+	PeerKey                 ci.PrivKey
+	DefaultWalletAddress    address.Address
+	PerformRealProofs       bool
+	AutoSealIntervalSeconds uint
 }
 
 // InitOpt is an init option function
@@ -52,6 +53,13 @@ func DefaultWalletAddressOpt(addr address.Address) InitOpt {
 func PerformRealProofsOpt(performRealProofs bool) InitOpt {
 	return func(c *InitCfg) {
 		c.PerformRealProofs = performRealProofs
+	}
+}
+
+// AutoSealIntervalSecondsOpt configures the daemon to check for and seal any staged sectors on an interval.
+func AutoSealIntervalSecondsOpt(autoSealIntervalSeconds uint) InitOpt {
+	return func(c *InitCfg) {
+		c.AutoSealIntervalSeconds = autoSealIntervalSeconds
 	}
 }
 
@@ -118,6 +126,7 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 	newConfig := r.Config()
 
 	newConfig.Mining.PerformRealProofs = cfg.PerformRealProofs
+	newConfig.Mining.AutoSealIntervalSeconds = cfg.AutoSealIntervalSeconds
 
 	if cfg.DefaultWalletAddress != (address.Address{}) {
 		newConfig.Wallet.DefaultAddress = cfg.DefaultWalletAddress

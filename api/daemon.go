@@ -36,6 +36,8 @@ type DaemonInitConfig struct {
 	PerformRealProofs bool
 	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
 	LabWeekCluster bool
+	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
+	AutoSealIntervalSeconds uint
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -109,6 +111,14 @@ func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
 func LabWeekCluster(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.LabWeekCluster = doit
+		return nil
+	}
+}
+
+// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
+func AutoSealIntervalSeconds(autoSealIntervalSeconds uint) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.AutoSealIntervalSeconds = autoSealIntervalSeconds
 		return nil
 	}
 }
