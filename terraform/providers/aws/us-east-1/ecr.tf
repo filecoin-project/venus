@@ -22,6 +22,14 @@ resource "aws_ecr_repository" "blockexplorer" {
   name = "blockexplorer"
 }
 
+resource "aws_ecr_repository" "dashboard-aggregator" {
+  name = "dashboard-aggregator"
+}
+
+resource "aws_ecr_repository" "dashboard-visualizer" {
+  name = "dashboard-visualizer"
+}
+
 output "ecr-filecoin-url" {
   value = "${aws_ecr_repository.filecoin.repository_url}"
 }
@@ -44,4 +52,11 @@ output "ecr-alertmanager-url" {
 
 output "ecr-blockexplorer-url" {
   value = "${aws_ecr_repository.blockexplorer.repository_url}"
+}
+
+output "ecr-dashboard-aggregator-url" {
+  value = "${aws_ecr_repository.dashboard-aggregator.repository_url}"
+}
+output "ecr-dashboard-visualizer-url" {
+  value = "${aws_ecr_repository.dashboard-visualizer.repository_url}"
 }
