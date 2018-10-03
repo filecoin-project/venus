@@ -30,27 +30,17 @@ by providing storage to clients.
 
 You can download prebuilt binaries for Linux and MacOS from CircleCI.
 
-  - Go to the [filecoin project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). You may need to authenticate with GitHub.
+  - Go to the [filecoin project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). (You may need to authenticate with GitHub first.)
   - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
   - Click the 'Artifacts' tab.
   - Click `Container 0 > filecoin.tar.gz` to download the release.
-
-
-## Installation
-
-You can prebuilt download binaries for linux and macOS from CircleCI.
-
-- Go to [the project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master).
-- Click on the top most successfull build, making sure that you use either `build_linux` or `build_macos` depending on the OS you want.
-- Click on the `Artifacts` tab.
-- Click on `Container 0 > filecoin.tar.gz` to download the release.
 
 ## Development
 
 ### Install Go and Rust
 
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
-  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule, which you can download [here](https://www.rust-lang.org/).
+  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
 
 ### Clone
 
