@@ -237,6 +237,13 @@ related platforms.
   * Daemon tests should validate that their responses conform to a JSON schema
   * Daemon tests for foo go into `foo_daemon_test.go` (so `foo.go` should have *both* `foo_test.go` and `foo_daemon_test.go`)
 
+## Test Ranger
+
+From time to time we will integrate tests that fail sporadically. Allowing these tests to remain in the codebase is not acceptable.
+The Test Ranger will take responsibility for all tests merged into master that fail in continuous integration. While the
+Test Ranger is responsible for keeping flaky tests out of the code base, all Filecoin developers are expected to give
+priority to helping the ranger over current tasks when asked. The test ranger will also works toward better testing strategy and
+serve as a respository of testing knowledge.
 
 ## What is the bar for inclusion in master?
 
