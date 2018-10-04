@@ -169,6 +169,27 @@ rm -fr ~/.filecoin
 go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
 go-filecoin daemon
 ```
+
+To configure a node's auto-sealing scheduler:
+```
+# The auto-sealer is used to automatically seal the data that a miner received
+# from a client into a sector. Without this feature, miners would wait until
+# they had accumulated $SECTORSIZE worth of client data before initiating the
+# sealing process so that they didn't waste precious hard drive space. With
+# auto-sealing enabled, the miner will use $SECTORSIZE bytes of storage each
+# period unless there are no data to store that period.
+#
+# To control how frequently the auto-sealer runs, provide a positive integer
+# value for the --auto-seal-interval-seconds option. To disable this feature,
+# provide a 0.
+#
+# If the option is omitted, a default of 120 seconds will be used.
+#
+rm -fr ~/.filecoin
+go-filecoin init --auto-seal-interval-seconds=0 --genesisfile ./fixtures/genesis.car
+go-filecoin daemon
+```
+
 #### Running multiple nodes with IPTB
 
 IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
