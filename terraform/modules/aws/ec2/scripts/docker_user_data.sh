@@ -99,6 +99,19 @@ docker run -d -v /var/lib/docker/containers:/usr/share/dockerlogs:ro -v /var/run
 ${cadvisor_install}
 ${node_exporter_install}
 
+docker network create --subnet 172.19.0.0/16 filecoin
+# DASHBOARD
+docker run -d --name=dashboard-aggregator \
+       --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 --ip 172.19.0.250 \
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-aggregator:latest
+
+docker run -d --name=dashboard-visualizer \
+       -p 8010:3000 \
+       -e DANGEROUSLY_DISABLE_HOST_CHECK=true \
+       -e REACT_APP_FEED_URL="ws://${instance_name}.kittyhawk.wtf:9080" \
+       -e REACT_APP_EXPLORER_URL="http://${instance_name}.kittyhawk.wtf:8000" \
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-visualizer:latest
+
 # generate genesis files
 CAR_DIR=/home/ubuntu/car
 mkdir -p $$CAR_DIR
@@ -136,7 +149,6 @@ do
 done
 chmod -R 0777 "$${FILECOIN_STORAGE}"
 
-docker network create filecoin
 for i in {0..9}
 do
   echo "Starting filecoin-$$i"
@@ -190,6 +202,8 @@ done
 
 for i in {0..9}
 do
+  docker exec -d "filecoin-$i" $filcoin_exec \
+         log streamto /ip4/172.19.0.250/tcp/9000
   docker exec "filecoin-$$i" $$filcoin_exec \
          mining start
 done

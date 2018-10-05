@@ -32,7 +32,23 @@ resource "aws_security_group" "filecoin" {
     from_port   = 8000
     to_port     = 8000
     cidr_blocks = ["0.0.0.0/0"]
-    description = "block explorer"
+    description = "block explorer UI"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 8010
+    to_port     = 8010
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "dashboard UI"
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 9080
+    to_port     = 9080
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "dashboard aggregator Websocket"
   }
 
   ingress {
@@ -84,12 +100,12 @@ output "filecoin-cluster-dns" {
 module "kh-test" {
   source = "../../../modules/aws/ec2/"
 
-  docker_tag      = "211e55"
+  docker_tag      = "982ddb"
   instance_type   = "c5d.4xlarge"
   instance_name   = "test"
   public_key_name = "${aws_key_pair.filecoin.key_name}"
   vpc_id          = "${module.vpc.vpc_id}"
-  subnet_id       = "${element(module.vpc.public_subnets, 0)}"
+  subnet_id       = "${element(module.vpc.public_subnets, 1)}"
 
   vpc_security_group_ids = [
     "${aws_security_group.filecoin.id}",
