@@ -12,88 +12,87 @@ import (
 	"testing"
 	"time"
 
+	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
+	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func nodeWithSectorBuilder(t *testing.T) (*Node, *SectorBuilder, address.Address, uint64) {
-	t.Helper()
-	require := require.New(t)
-	ctx := context.Background()
-
-	nd := MakeOfflineNode(t)
-
-	owner, err := nd.NewAddress()
-	require.NoError(err)
-
-	defaultAddr, err := nd.DefaultSenderAddress()
-	require.NoError(err)
-
-	tif := consensus.MakeGenesisFunc(
-		consensus.ActorAccount(owner, types.NewAttoFILFromFIL(1000000)),
-		consensus.ActorAccount(defaultAddr, types.NewAttoFILFromFIL(1000000)),
-	)
-
-	requireResetNodeGen(require, nd, tif)
-
-	require.NoError(nd.Start(ctx))
-
-	pledge := uint64(100)
-	coll := *types.NewAttoFILFromFIL(100)
-	result := <-RunCreateMiner(t, nd, owner, pledge, th.RequireRandomPeerID(), coll)
-	require.NoError(result.Err)
-	require.NotNil(result.MinerAddress)
-
-	sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
-
-	res, err := sstore.GetMaxUnsealedBytesPerSector()
-	require.NoError(err)
-
-	sb, err := InitSectorBuilder(context.Background(), nd.Repo.Datastore(), nd.Blockservice, *result.MinerAddress, sstore, 0)
-	require.NoError(err)
-
-	return nd, sb, *result.MinerAddress, res.NumBytes
+type sectorBuilderTestHarness struct {
+	blockService  bserv.BlockService
+	ctx           context.Context
+	minerAddr     address.Address
+	repo          repo.Repo
+	sectorBuilder *SectorBuilder
+	t             *testing.T
 }
 
-func requireAddPiece(ctx context.Context, t *testing.T, nd *Node, sb *SectorBuilder, pieceData []byte) *cid.Cid {
-	pieceInfo := requirePieceInfo(t, nd, sb, pieceData)
-	_, err := sb.AddPiece(ctx, pieceInfo)
+func newSectorBuilderTestHarness(ctx context.Context, t *testing.T) sectorBuilderTestHarness {
+	memRepo := repo.NewInMemoryRepo()
+	blockStore := bstore.NewBlockstore(memRepo.Datastore())
+	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
+	sectorStore := proofs.NewProofTestSectorStore(memRepo.StagingDir(), memRepo.SealedDir())
+	minerAddr := address.MakeTestAddress("wombat")
+
+	sectorBuilder, err := InitSectorBuilder(ctx, memRepo.Datastore(), blockService, minerAddr, sectorStore, 0)
 	require.NoError(t, err)
+
+	return sectorBuilderTestHarness{
+		ctx:           ctx,
+		t:             t,
+		repo:          memRepo,
+		blockService:  blockService,
+		sectorBuilder: sectorBuilder,
+		minerAddr:     minerAddr,
+	}
+}
+
+func (h sectorBuilderTestHarness) close() error {
+	close(h.sectorBuilder.SectorSealResults)
+	return h.repo.Close()
+}
+
+func (h sectorBuilderTestHarness) requirePieceInfo(pieceData []byte) *PieceInfo {
+	pieceInfo, err := h.createPieceInfo(pieceData)
+	require.NoError(h.t, err)
+
+	return pieceInfo
+}
+
+func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
+	pieceInfo, err := h.createPieceInfo(pieceData)
+	require.NoError(h.t, err)
+
+	_, err = h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
+	require.NoError(h.t, err)
+
 	return pieceInfo.Ref
 }
 
-func createPieceInfo(nd *Node, sb *SectorBuilder, bytes []byte) (*PieceInfo, error) {
-	data := dag.NewRawNode(bytes)
+func (h sectorBuilderTestHarness) createPieceInfo(pieceData []byte) (*PieceInfo, error) {
+	data := dag.NewRawNode(pieceData)
 
-	if err := nd.Blockservice.AddBlock(data); err != nil {
+	if err := h.blockService.AddBlock(data); err != nil {
 		return nil, err
 	}
 
-	return sb.NewPieceInfo(data.Cid(), uint64(len(bytes)))
-}
-
-func requirePieceInfo(t *testing.T, nd *Node, sb *SectorBuilder, bytes []byte) *PieceInfo {
-	info, err := createPieceInfo(nd, sb, bytes)
-	require.NoError(t, err)
-	return info
+	return h.sectorBuilder.NewPieceInfo(data.Cid(), uint64(len(pieceData)))
 }
 
 func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		t.Parallel()
 
-		nd, sb, _, max := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
 		// stringify the content identifiers to make them easily sortable later
 		sealedPieceCidCh := make(chan string)
@@ -101,7 +100,7 @@ func TestSectorBuilder(t *testing.T) {
 		errs := make(chan error)
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					errs <- val
@@ -117,14 +116,14 @@ func TestSectorBuilder(t *testing.T) {
 		for i := 0; i < autoSealsToSchedule; i++ {
 			go func(n int) {
 				time.Sleep(time.Second * time.Duration(n))
-				sb.SealAllStagedSectors(context.Background())
+				h.sectorBuilder.SealAllStagedSectors(context.Background())
 			}(i)
 		}
 
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid := requireAddPiece(context.Background(), t, nd, sb, requireRandomBytes(t, max/3))
+				pieceCid := h.requireAddPiece(requireRandomBytes(t, h.sectorBuilder.sectorSize/3))
 				addedPieceCidCh <- pieceCid.String()
 			}()
 		}
@@ -179,10 +178,8 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
-		nd, sb, _, max := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
 		// CIDs will be added to this map when given to the SectorBuilder and
 		// removed when the CID has been sealed into a sector.
@@ -192,7 +189,7 @@ func TestSectorBuilder(t *testing.T) {
 		errs := make(chan error)
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					errs <- val
@@ -207,7 +204,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, max))
+				pieceCid := h.requireAddPiece(requireRandomBytes(t, h.sectorBuilder.sectorSize))
 				pieceCidSet.Store(pieceCid, true)
 			}()
 		}
@@ -238,10 +235,8 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("adding one piece causes two sectors to be sealed", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
-
-		nd, sb, _, max := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
 		// sector ids will be added to this map as we add pieces
 		sectorIDSet := sync.Map{}
@@ -251,7 +246,7 @@ func TestSectorBuilder(t *testing.T) {
 		errs := make(chan error)
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					errs <- val
@@ -268,14 +263,14 @@ func TestSectorBuilder(t *testing.T) {
 		// unsealed sector).
 
 		// add a piece and grab the id of the sector to which it was added
-		pieceInfoA := requirePieceInfo(t, nd, sb, requireRandomBytes(t, max-10))
-		sectorIDA, err := sb.AddPiece(ctx, pieceInfoA)
+		pieceInfoA := h.requirePieceInfo(requireRandomBytes(t, h.sectorBuilder.sectorSize-10))
+		sectorIDA, err := h.sectorBuilder.AddPiece(h.ctx, pieceInfoA)
 		require.NoError(t, err)
 		sectorIDSet.Store(sectorIDA, true)
 
 		// same thing with the second one
-		pieceInfoB := requirePieceInfo(t, nd, sb, requireRandomBytes(t, max))
-		sectorIDB, err := sb.AddPiece(ctx, pieceInfoB)
+		pieceInfoB := h.requirePieceInfo(requireRandomBytes(t, h.sectorBuilder.sectorSize))
+		sectorIDB, err := h.sectorBuilder.AddPiece(h.ctx, pieceInfoB)
 		require.NoError(t, err)
 		sectorIDSet.Store(sectorIDB, true)
 
@@ -308,19 +303,18 @@ func TestSectorBuilder(t *testing.T) {
 
 		assert := assert.New(t)
 		require := require.New(t)
-		ctx := context.Background()
 
-		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
 		var sealingWg sync.WaitGroup
 		var sealingErr error
 		sealingWg.Add(1)
 
-		sector := sb.curUnsealedSector
+		sector := h.sectorBuilder.curUnsealedSector
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					sealingErr = val
@@ -335,70 +329,70 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}()
 
-		metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
+		metadataMustMatch(require, h.sectorBuilder, h.sectorBuilder.curUnsealedSector, 0)
 
 		// New unsealedSectorAccess is in the right places.
-		stagingRes1, err := sb.sectorStore.NewStagingSectorAccess()
+		stagingRes1, err := h.sectorBuilder.sectorStore.NewStagingSectorAccess()
 		require.NoError(err)
 
-		sealedRes1, err := sb.sectorStore.NewSealedSectorAccess()
+		sealedRes1, err := h.sectorBuilder.sectorStore.NewSealedSectorAccess()
 		require.NoError(err)
 
 		// New unsealedSectorAccess is generated each time.
-		stagingRes2, err := sb.sectorStore.NewStagingSectorAccess()
+		stagingRes2, err := h.sectorBuilder.sectorStore.NewStagingSectorAccess()
 		require.NoError(err)
 
-		sealedRes2, err := sb.sectorStore.NewSealedSectorAccess()
+		sealedRes2, err := h.sectorBuilder.sectorStore.NewSealedSectorAccess()
 		require.NoError(err)
 
 		assert.NotEqual(stagingRes1.SectorAccess, stagingRes2.SectorAccess)
 		assert.NotEqual(sealedRes1.SectorAccess, sealedRes2.SectorAccess)
 
-		metadataMustMatch(require, sb, sb.curUnsealedSector, 0)
+		metadataMustMatch(require, h.sectorBuilder, h.sectorBuilder.curUnsealedSector, 0)
 		bytes1 := requireRandomBytes(t, 52) // len(text) = 52
-		cid1 := requireAddPiece(ctx, t, nd, sb, bytes1)
-		assert.Equal(sector, sb.curUnsealedSector)
+		cid1 := h.requireAddPiece(bytes1)
+		assert.Equal(sector, h.sectorBuilder.curUnsealedSector)
 
-		metadataMustMatch(require, sb, sector, 1)
+		metadataMustMatch(require, h.sectorBuilder, sector, 1)
 		assert.Nil(sector.sealed)
 
 		bytes2 := requireRandomBytes(t, 56)
-		cid2 := requireAddPiece(ctx, t, nd, sb, bytes2)
-		assert.Equal(sector, sb.curUnsealedSector)
+		cid2 := h.requireAddPiece(bytes2)
+		assert.Equal(sector, h.sectorBuilder.curUnsealedSector)
 		assert.Nil(sector.sealed)
 
 		// persisted and calculated metadata match.
-		metadataMustMatch(require, sb, sector, 2)
+		metadataMustMatch(require, h.sectorBuilder, sector, 2)
 
 		// triggers seal, as piece won't fit
 		bytes3 := requireRandomBytes(t, 58)
-		requireAddPiece(ctx, t, nd, sb, bytes3)
+		h.requireAddPiece(bytes3)
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
-		assert.NotEqual(sector, sb.curUnsealedSector)
+		assert.NotEqual(sector, h.sectorBuilder.curUnsealedSector)
 
 		// unseal first piece and confirm its bytes
-		reader1, err := sb.ReadPieceFromSealedSector(cid1)
+		reader1, err := h.sectorBuilder.ReadPieceFromSealedSector(cid1)
 		require.NoError(err)
 		cid1Bytes, err := ioutil.ReadAll(reader1)
 		require.NoError(err)
 		assert.True(bytes.Equal(bytes1, cid1Bytes))
 
 		// unseal second piece and confirm its bytes, too
-		reader2, err := sb.ReadPieceFromSealedSector(cid2)
+		reader2, err := h.sectorBuilder.ReadPieceFromSealedSector(cid2)
 		require.NoError(err)
 		cid2Bytes, err := ioutil.ReadAll(reader2)
 		require.NoError(err)
 		assert.True(bytes.Equal(bytes2, cid2Bytes))
 
 		// persisted and calculated metadata match after a sector is sealed.
-		metadataMustMatch(require, sb, sector, 2)
+		metadataMustMatch(require, h.sectorBuilder, sector, 2)
 
-		newSector := sb.curUnsealedSector
-		metadataMustMatch(require, sb, newSector, 1)
+		newSector := h.sectorBuilder.curUnsealedSector
+		metadataMustMatch(require, h.sectorBuilder, newSector, 1)
 
 		sealed := sector.sealed
 		assert.NotNil(sealed)
@@ -408,12 +402,12 @@ func TestSectorBuilder(t *testing.T) {
 		assert.Equal(sealed.pieces, sector.pieces)
 		assert.Equal(sealed.numBytes, sector.numBytesUsed)
 
-		meta := sb.curUnsealedSector.SectorMetadata()
+		meta := h.sectorBuilder.curUnsealedSector.SectorMetadata()
 		assert.Len(meta.Pieces, 1)
-		assert.Equal(int(testSectorSize), int(meta.MaxBytes))
+		assert.Equal(int(h.sectorBuilder.sectorSize), int(meta.MaxBytes))
 		assert.Equal(len(bytes3), int(meta.NumBytesUsed))
 
-		_, err = createPieceInfo(nd, sb, requireRandomBytes(t, testSectorSize+10))
+		_, err = h.createPieceInfo(requireRandomBytes(t, h.sectorBuilder.sectorSize+10))
 		assert.EqualError(err, ErrPieceTooLarge.Error())
 	})
 
@@ -445,27 +439,25 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
-		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		firstSectorID := h.sectorBuilder.curUnsealedSector.sectorID
 
-		firstSectorID := sb.curUnsealedSector.sectorID
+		require.Equal(0, len(h.sectorBuilder.curUnsealedSector.pieces))
+		require.Equal(0, len(h.sectorBuilder.sealedSectors))
 
-		require.Equal(0, len(sb.curUnsealedSector.pieces))
-		require.Equal(0, len(sb.sealedSectors))
+		pieceCid := h.requireAddPiece(requireRandomBytes(t, h.sectorBuilder.sectorSize-10))
 
-		pieceCid := requireAddPiece(ctx, t, nd, sb, requireRandomBytes(t, testSectorSize-10))
-
-		require.Equal(1, len(sb.curUnsealedSector.pieces))
-		require.True(pieceCid.Equals(sb.curUnsealedSector.pieces[0].Ref))
+		require.Equal(1, len(h.sectorBuilder.curUnsealedSector.pieces))
+		require.True(pieceCid.Equals(h.sectorBuilder.curUnsealedSector.pieces[0].Ref))
 
 		var sealingErr error
 		sealingWg := sync.WaitGroup{}
 		sealingWg.Add(1)
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					sealingErr = val
@@ -480,15 +472,15 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}()
 
-		sb.SealAllStagedSectors(ctx)
+		h.sectorBuilder.SealAllStagedSectors(h.ctx)
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
-		require.Equal(0, len(sb.curUnsealedSector.pieces))
-		require.Equal(1, len(sb.sealedSectors))
-		require.Equal(firstSectorID, sb.sealedSectors[0].sectorID)
+		require.Equal(0, len(h.sectorBuilder.curUnsealedSector.pieces))
+		require.Equal(1, len(h.sectorBuilder.sealedSectors))
+		require.Equal(firstSectorID, h.sectorBuilder.sealedSectors[0].sectorID)
 	})
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
@@ -496,17 +488,15 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
-
-		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
 		var sealingWg sync.WaitGroup
 		var sealingErr error
 		sealingWg.Add(1)
 
-		a := testSectorSize / 2
-		b := testSectorSize - a
+		a := h.sectorBuilder.sectorSize / 2
+		b := h.sectorBuilder.sectorSize - a
 
 		bytesA := make([]byte, a)
 		bytesB := make([]byte, b)
@@ -517,10 +507,10 @@ func TestSectorBuilder(t *testing.T) {
 		_, err = io.ReadFull(rand.Reader, bytesB)
 		require.NoError(err)
 
-		sector := sb.curUnsealedSector
+		sector := h.sectorBuilder.curUnsealedSector
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					sealingErr = val
@@ -535,23 +525,23 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}()
 
-		requireAddPiece(ctx, t, nd, sb, bytesA)
-		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
-		sectormeta, err := sb.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
+		h.requireAddPiece(bytesA)
+		h.requireAddPiece(bytesA)
+		sectormeta, err := h.sectorBuilder.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
 		require.NoError(err)
 		require.NotNil(sectormeta)
 
-		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesB))
+		h.requireAddPiece(bytesB)
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
-		_, err = sb.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
+		_, err = h.sectorBuilder.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
 		require.Error(err)
 		require.Contains(err.Error(), "not found")
 
-		sealedmeta, err := sb.metadataStore.getSealedSectorMetadata(sector.sealed.commR)
+		sealedmeta, err := h.sectorBuilder.metadataStore.getSealedSectorMetadata(sector.sealed.commR)
 		require.NoError(err)
 		require.NotNil(sealedmeta)
 
@@ -567,18 +557,16 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
-		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		sector := h.sectorBuilder.curUnsealedSector
 
-		sector := sb.curUnsealedSector
+		bytesA := make([]byte, 10+(h.sectorBuilder.sectorSize/2))
 
-		bytesA := make([]byte, 10+(testSectorSize/2))
+		h.requireAddPiece(bytesA)
 
-		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
-
-		loaded, err := sb.metadataStore.getSector(sector.unsealedSectorAccess)
+		loaded, err := h.sectorBuilder.metadataStore.getSector(sector.unsealedSectorAccess)
 		require.NoError(err)
 
 		sectorsMustEqual(t, sector, loaded)
@@ -589,25 +577,22 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
-
 		var sealingWg sync.WaitGroup
 		var sealingErr error
 		sealingWg.Add(1)
 
-		nd, sb, _, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
 
-		a := testSectorSize / 2
-		b := testSectorSize - a
+		a := h.sectorBuilder.sectorSize / 2
+		b := h.sectorBuilder.sectorSize - a
 
 		bytesA := make([]byte, a)
 		bytesB := make([]byte, b)
 
-		sector := sb.curUnsealedSector
+		sector := h.sectorBuilder.curUnsealedSector
 
 		go func() {
-			for raw := range sb.SectorSealResults {
+			for raw := range h.sectorBuilder.SectorSealResults {
 				switch val := raw.(type) {
 				case error:
 					sealingErr = val
@@ -622,17 +607,17 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}()
 
-		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesA))
-		sb.AddPiece(ctx, requirePieceInfo(t, nd, sb, bytesB))
+		h.requireAddPiece(bytesA)
+		h.requireAddPiece(bytesB)
 
 		// wait for sector sealing to complete
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
-		require.Equal(1, len(sb.sealedSectors))
-		sealedSector := sb.sealedSectors[0]
+		require.Equal(1, len(h.sectorBuilder.sealedSectors))
+		sealedSector := h.sectorBuilder.sealedSectors[0]
 
-		loaded, err := sb.metadataStore.getSealedSector(sealedSector.commR)
+		loaded, err := h.sectorBuilder.metadataStore.getSealedSector(sealedSector.commR)
 		require.NoError(err)
 		sealedSectorsMustEqual(t, sealedSector, loaded)
 	})
@@ -644,20 +629,20 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
-
 		var sealingWg sync.WaitGroup
 		var sealingErr error
 		sealingWg.Add(1)
 
-		nd, sbA, minerAddr, testSectorSize := nodeWithSectorBuilder(t)
-		defer nd.Stop(context.Background())
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
-		a := testSectorSize / 2
-		b := testSectorSize - a
+		a := h.sectorBuilder.sectorSize / 2
+		b := h.sectorBuilder.sectorSize - a
 
 		bytesA := make([]byte, a)
 		bytesB := make([]byte, b)
+
+		sbA := h.sectorBuilder
 
 		sector := sbA.curUnsealedSector
 
@@ -677,33 +662,33 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}()
 
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesA))
+		h.requireAddPiece(bytesA)
 
 		// sector builder B should have the same state as sector builder A
-		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
+		sstore := proofs.NewProofTestSectorStore(h.repo.(*repo.MemRepo).StagingDir(), h.repo.(*repo.MemRepo).SealedDir())
 
-		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore, 0)
+		sbB, err := InitSectorBuilder(h.ctx, h.repo.Datastore(), h.blockService, h.minerAddr, sstore, 0)
 		require.NoError(err)
 
 		// can't compare sectors with Equal(s1, s2) because their "file" fields will differ
 		sectorBuildersMustEqual(t, sbA, sbB)
 
 		// trigger sealing by adding a second piece
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, bytesB))
+		h.requireAddPiece(bytesB)
 
 		// wait for sealing to complete
 		sealingWg.Wait()
 		require.NoError(sealingErr)
 
 		// sector builder C should have the same state as sector builder A
-		sbC, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore, 0)
+		sbC, err := InitSectorBuilder(h.ctx, h.repo.Datastore(), h.blockService, h.minerAddr, sstore, 0)
 		require.NoError(err)
 
 		sectorBuildersMustEqual(t, sbA, sbC)
 
 		// can't swap sector stores if their sector sizes differ
-		sstore2 := proofs.NewDiskBackedSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
-		_, err = InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, minerAddr, sstore2, 0)
+		sstore2 := proofs.NewDiskBackedSectorStore(h.repo.(*repo.MemRepo).StagingDir(), h.repo.(*repo.MemRepo).SealedDir())
+		_, err = InitSectorBuilder(h.ctx, h.repo.Datastore(), h.blockService, h.minerAddr, sstore2, 0)
 		require.Error(err)
 	})
 
@@ -712,23 +697,14 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
-		nd := MakeNodesStarted(t, 1, false, true)[0]
-		defer nd.Stop(context.Background())
+		sbA := h.sectorBuilder
 
-		nd.NewAddress() // TODO: default init make an address
-		addr, err := nd.DefaultSenderAddress()
-		require.NoError(err)
-
-		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
-
-		sbA, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
-		require.NoError(err)
-
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 50)))
+		h.requireAddPiece(requireRandomBytes(t, 10))
+		h.requireAddPiece(requireRandomBytes(t, 20))
+		h.requireAddPiece(requireRandomBytes(t, 50))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -744,7 +720,8 @@ func TestSectorBuilder(t *testing.T) {
 		ioutil.WriteFile(metaA.UnsealedSectorAccess, make([]byte, 90), 0600)
 
 		// initialize a new sector builder (simulates the node restarting)
-		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
+		sstore := proofs.NewProofTestSectorStore(h.repo.(*repo.MemRepo).StagingDir(), h.repo.(*repo.MemRepo).SealedDir())
+		sbB, err := InitSectorBuilder(h.ctx, h.repo.Datastore(), h.blockService, h.minerAddr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbB.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)
@@ -763,23 +740,14 @@ func TestSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		ctx := context.Background()
+		h := newSectorBuilderTestHarness(context.Background(), t)
+		defer h.close()
 
-		nd := MakeNodesStarted(t, 1, false, true)[0]
-		defer nd.Stop(context.Background())
+		sbA := h.sectorBuilder
 
-		nd.NewAddress() // TODO: default init make an address
-		addr, err := nd.DefaultSenderAddress()
-		require.NoError(err)
-
-		sstore := proofs.NewProofTestSectorStore(nd.Repo.(*repo.MemRepo).StagingDir(), nd.Repo.(*repo.MemRepo).SealedDir())
-
-		sbA, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
-		require.NoError(err)
-
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 10)))
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 20)))
-		sbA.AddPiece(ctx, requirePieceInfo(t, nd, sbA, make([]byte, 50)))
+		h.requireAddPiece(requireRandomBytes(t, 10))
+		h.requireAddPiece(requireRandomBytes(t, 20))
+		h.requireAddPiece(requireRandomBytes(t, 50))
 
 		metaA, err := sbA.metadataStore.getSectorMetadata(sbA.curUnsealedSector.unsealedSectorAccess)
 		require.NoError(err)
@@ -788,7 +756,8 @@ func TestSectorBuilder(t *testing.T) {
 		require.NoError(os.Truncate(metaA.UnsealedSectorAccess, int64(40)))
 
 		// initialize final sector builder
-		sbB, err := InitSectorBuilder(nd.miningCtx, nd.Repo.Datastore(), nd.Blockservice, addr, sstore, 0)
+		sstore := proofs.NewProofTestSectorStore(h.repo.(*repo.MemRepo).StagingDir(), h.repo.(*repo.MemRepo).SealedDir())
+		sbB, err := InitSectorBuilder(h.ctx, h.repo.Datastore(), h.blockService, h.minerAddr, sstore, 0)
 		require.NoError(err)
 
 		metaB, err := sbA.metadataStore.getSectorMetadata(sbB.curUnsealedSector.unsealedSectorAccess)

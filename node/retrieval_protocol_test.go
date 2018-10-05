@@ -64,18 +64,22 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	minerNode.SectorBuilder.AddPiece(ctx, pieceB) // triggers seal
 
 	// wait for commitSector to make it into the chain
-	done := make(chan struct{})
-	defer close(done)
+	cancelA := make(chan struct{})
+	cancelB := make(chan struct{})
+	defer close(cancelA)
+	defer close(cancelB)
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, done):
+	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA):
 	case <-time.After(120 * time.Second):
+		cancelA <- struct{}{}
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in miner node's chain", testSectorSize, minerOwnerAddr)
 	}
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, done):
+	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB):
 	case <-time.After(120 * time.Second):
+		cancelB <- struct{}{}
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in client node's chain", testSectorSize, minerOwnerAddr)
 	}
 
@@ -116,14 +120,20 @@ func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager cha
 		defer close(out)
 
 		for {
-			select {
-			case <-cancelCh:
-				return
-			default:
-				history := chainManager.BlockHistory(ctx)
-				for event := range history {
+			history := chainManager.BlockHistory(ctx)
+
+		Loop:
+			for {
+				select {
+				case <-cancelCh:
+					return
+				case event, ok := <-history:
+					if !ok {
+						break Loop
+					}
+
 					ts, ok := event.(consensus.TipSet)
-					require.True(t, ok)
+					require.True(t, ok, "expected a TipSet")
 
 					for _, block := range ts.ToSlice() {
 						for _, message := range block.Messages {
@@ -134,9 +144,9 @@ func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager cha
 						}
 					}
 				}
-
-				time.Sleep(100 * time.Millisecond)
 			}
+
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 
@@ -172,7 +182,7 @@ func configureMinerAndClient(t *testing.T) (minerNode *Node, clientNode *Node, m
 	seed := MakeChainSeed(t, TestGenCfg)
 
 	// make two nodes, one of which is the minerNode (and gets the miner peer key)
-	minerNode = NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]))
+	minerNode = NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(0))
 	clientNode = NodeWithChainSeed(t, seed)
 
 	// give the minerNode node a key and the miner associated with that key
