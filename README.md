@@ -22,7 +22,7 @@ by providing storage to clients.
 - [Running Filecoin](#running-filecoin)
    - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
-- [Contribute](#contribute)
+- [Community](#community)
 - [License](#license)
 
 
@@ -255,11 +255,14 @@ go-filecoin client cat <data CID>
 # go-filecoin retrieval-client retrieve-piece ... (exact command line TBD)
 ```
 
-## Contribute
+## Community
 
-See [the contribute file](CONTRIBUTING.md).
+Here are a few places to get help and hang out with the Filecoin community:
 
-If editing the readme, please conform to the [standard-readme][3] specification.
+- [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
+- [#filecoin-chat on Slack](https://protocollabs.slack.com/messages/CD4RLHMU0/convo/CCYS39YKZ-1538593031.000100/) — for live support and hacking with others
+- [Discussion forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
+- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
 ## License
 
