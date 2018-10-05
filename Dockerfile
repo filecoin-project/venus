@@ -19,7 +19,7 @@ RUN cd $SRC_DIR \
   && go build -o ./gengen/gengen ./gengen
 
 # Build gengen
-RUN cd 
+RUN cd
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -50,6 +50,7 @@ COPY --from=0 $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
 COPY --from=0 $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
 COPY --from=0 $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=0 $SRC_DIR/gengen/gensetup /usr/local/bin/gensetup
+COPY --from=0 $SRC_DIR/fixtures/* /data/
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /tmp/jq /usr/local/bin/jq
@@ -72,14 +73,10 @@ RUN mkdir -p $FILECOIN_PATH \
   && adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
   && chown filecoin:users $FILECOIN_PATH
 
-# This is basically the number of nodes we are going to want setup
-ENV GENSETUP_COUNT 25
-# create a setup.json file with GENSETUP_COUNT entries
-RUN /usr/local/bin/gensetup -count $GENSETUP_COUNT > /data/setup.json
-# pass the setup.json file to gengen to generate address and key pairs
-RUN cat /data/setup.json | /usr/local/bin/gengen --json > /data/genesis.car 2> /data/gen.json
-RUN for i in $(seq 0 $GENSETUP_COUNT); do cat /data/gen.json | jq ".Miners[$i].Address" > /data/minerAddr$i; done \
-  && for i in $(seq 0 $GENSETUP_COUNT); do cat /data/gen.json | jq ".Keys[\"$i\"]" > /data/walletKey$i; done
+
+# There is only one bootstrapped miner
+RUN cat /data/gen.json | jq ".Miners[0].Address" > /data/minerAddr0 \
+cat /data/gen.json | jq ".Keys[\"a\"]" > /data/walletKey0
 
 # Expose the fs-repo as a volume.
 # start_filecoin initializes an fs-repo if none is mounted.

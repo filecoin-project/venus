@@ -1,67 +1,6 @@
 #!/bin/bash
 
 set -ex
-SETUPFILE=$$(cat <<-END
-{
-  "keys": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  "preAlloc": {
-    "0": "10000",
-    "1": "10000",
-    "2": "10000",
-    "3": "10000",
-    "4": "10000",
-    "5": "10000",
-    "6": "10000",
-    "7": "10000",
-    "8": "10000",
-    "9": "10000"
-  },
-  "miners": [
-    {
-      "owner":"0",
-      "power": 100
-    },
-    {
-      "owner":"1",
-      "power": 100
-    },
-    {
-      "owner":"2",
-      "power": 100
-    },
-    {
-      "owner":"3",
-      "power": 100
-    },
-    {
-      "owner":"4",
-      "power": 100
-    },
-    {
-      "owner":"5",
-      "power": 100
-    },
-    {
-      "owner":"6",
-      "power": 100
-    },
-    {
-      "owner":"7",
-      "power": 100
-    },
-    {
-      "owner":"8",
-      "power": 100
-    },
-    {
-      "owner": "9",
-      "power": 100
-    }
-  ]
-}
-END
-         )
-
 FILECOIN_CONFIG=$$(cat  <<-END
 [api]
   address = "/ip4/0.0.0.0/tcp/3453"
@@ -115,13 +54,12 @@ docker run -d --name=dashboard-visualizer \
 # generate genesis files
 CAR_DIR=/home/ubuntu/car
 mkdir -p $$CAR_DIR
-echo $$SETUPFILE > "$$CAR_DIR/"setup.json
 docker run \
        -v "$$CAR_DIR":/var/filecoin/car \
        --entrypoint='/bin/sh'\
        --workdir=/var/filecoin/car/ \
        $${FILECOIN_DOCKER_IMAGE} \
-       -c 'cat setup.json | /usr/local/bin/gengen --json > genesis.car 2> gen.json'
+       -c 'cp /data/*.key . && cp /data/gen.json . && cp /data/setup.json .'
 
 FILECOIN_STORAGE=/mnt/storage/filecoins
 # initialize filecoin nodes
@@ -163,26 +101,26 @@ do
          --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="5s"
 done
 
-# Here we add the miner address to the nodes config
-# so Miner[0] is imported by node 0, Miner[1] -> impprted to node1 etc.
 filcoin_exec="go-filecoin --repodir=/var/local/filecoin"
-for i in {0..9}
-do
-  # how we get the miner address
-  miner=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[$${i}].Address")
-  echo "Adding miner $${miner} to filecoin-$$i"
-  docker exec "filecoin-$$i" $$filcoin_exec \
-         config mining.minerAddress $${miner}
-done
 
-# next we need to import the coresponding keys used to generate the minerAddress, do this like:
-for i in {0..9}
-do
-  # this code has no honor
-  cat "$$CAR_DIR/gen.json" | jq -r ".Keys[\"$${i}\"]" > "$$CAR_DIR/wallet$$i"
-  docker exec "filecoin-$$i" sh -c "cat /var/filecoin/car/wallet$$i | /usr/local/bin/go-filecoin --repodir=/var/local/filecoin wallet import"
-done
+# configure mining on node 0
+minerAddr=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[0].Address" -r)
 
+docker exec "filecoin-0" $$filecoin_exec \
+       config mining.minerAddress "\"$${minerAddr}\""
+
+# import miner owner
+ownerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "$FIXDIR/a.key")
+
+# update the peerID of the miner to the correct value
+peerID=$$(docker exec "filecoin-0" $$filecoin_exec id | tail -n +3 | jq ".ID" -r)
+docker exec "filecoin-0" $$filecoin_exec \
+       miner update-peerid --from="$minerOwner" "$minerAddr" "$peerID"
+# start mining
+docker exec "filecoin-0" $$filecoin_exec \
+       mining start
+
+# connect nodes
 for i in {0..9}
 do
   for node_addr in $$(docker exec "filecoin-$$i" $$filcoin_exec id --format=\<addrs\>)
@@ -200,12 +138,37 @@ do
   done
 done
 
-for i in {0..9}
+# configure mining addresses on all the nodes
+for i in {1..9}
 do
   docker exec -d "filecoin-$i" $filcoin_exec \
          log streamto /ip4/172.19.0.250/tcp/9000
+  # send some tokens
+  nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls | tail -n +3)
+  msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$minerOwner" --value 100 "$nodeAddr")
+  msgCid=$$(echo $msgCidRaw | sed -e 's/^node\[0\] exit 0 //')
+  docker exec "filecoin-$$i" $$filecoin_exec \
+         message wait "$msgCid"
+
+  # create the actual miner
+  newMinerAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec miner create 10 10 | tail -n +3)
+
+  # start mining
   docker exec "filecoin-$$i" $$filcoin_exec \
          mining start
+
+  # add an ask
+  # 1024*1024*1024*3
+  docker exec "filecoin-$$i" $$filecoin_exec \
+         miner add-ask "$newMinerAddr" 3221225472 1
+
+  # make a deal
+  dd if=/dev/random of="$FIXDIR/fake.dat"  bs=1m  count=1 # small data file will be autosealed
+  dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "$FIXDIR/fake.dat")
+  rm "$FIXDIR/fake.dat"
+
+  docker exec "filecoin-0" $$filecoin_exec \
+         client propose-storage-deal --price 1 "$newMinerAddr" "$dataCid" 10000
 done
 
 # start block explorer
