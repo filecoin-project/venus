@@ -28,7 +28,7 @@ ${docker_install}
 # pull images
 FILECOIN_DOCKER_IMAGE=${docker_uri}:${docker_tag}
 FILEBEAT_DOCKER_IMAGE=${filebeat_docker_uri}:${filebeat_docker_tag}
-eval $(aws --region us-east-1 ecr --no-include-email get-login)
+eval $$(aws --region us-east-1 ecr --no-include-email get-login)
 docker pull $${FILECOIN_DOCKER_IMAGE}
 docker pull $${FILEBEAT_DOCKER_IMAGE}
 
@@ -38,10 +38,17 @@ docker run -d -v /var/lib/docker/containers:/usr/share/dockerlogs:ro -v /var/run
 ${cadvisor_install}
 ${node_exporter_install}
 
+# start block explorer
+docker run -d \
+       --name block-exporter -p 8000:8000 -e PORT=8000 \
+       -e REACT_APP_API_PORT=34530 -e REACT_APP_API_URL="${instance_name}.kittyhawk.wtf" \
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer
+
 docker network create --subnet 172.19.0.0/16 filecoin
 # DASHBOARD
 docker run -d --name=dashboard-aggregator \
-       --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 --ip 172.19.0.250 \
+       --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 -p 19000:9000 \
+       --ip 172.19.0.250 \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-aggregator:latest
 
 docker run -d --name=dashboard-visualizer \
@@ -51,7 +58,7 @@ docker run -d --name=dashboard-visualizer \
        -e REACT_APP_EXPLORER_URL="http://${instance_name}.kittyhawk.wtf:8000" \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-visualizer:latest
 
-# generate genesis files
+# copy genesis files
 CAR_DIR=/home/ubuntu/car
 mkdir -p $$CAR_DIR
 docker run \
@@ -59,20 +66,15 @@ docker run \
        --entrypoint='/bin/sh'\
        --workdir=/var/filecoin/car/ \
        $${FILECOIN_DOCKER_IMAGE} \
-       -c 'cp /data/*.key . && cp /data/gen.json . && cp /data/setup.json .'
+       -c 'cp /data/genesis.car . && cp /data/*.key . && cp /data/gen.json . && cp /data/setup.json .'
 
 FILECOIN_STORAGE=/mnt/storage/filecoins
 # initialize filecoin nodes
 for i in {0..9}; do mkdir -p "$${FILECOIN_STORAGE}"/$$i; done
 
-GOPATH=/home/ubuntu/go
-mkdir -p $GOPATH
-GOPATH=/home/ubuntu/go go get -u github.com/whyrusleeping/ipfs-key
-for i in {0..9}
-do
-  # yes this one liner works
-  /home/ubuntu/go/bin/ipfs-key 2>&1 >"$$CAR_DIR/keyFile$$i" | tail -n1 | awk '{ print $$NF }' > "$$CAR_DIR/ID$$i"
-done
+# unzip keys
+apt install -y unzip
+unzip -q /home/ubuntu/node_keys.zip -d /home/ubuntu/car/
 
 # so here we need to pass the keyFile$i to the node to get a known peerID
 for i in {0..9}
@@ -83,7 +85,7 @@ do
          --entrypoint=/usr/local/bin/go-filecoin \
          $${FILECOIN_DOCKER_IMAGE} \
          init --genesisfile=/var/filecoin/car/genesis.car --repodir="/var/local/filecoins/$$i" --peerkeyfile="/var/filecoin/car/keyFile$$i"
-  echo "$$FILECOIN_CONFIG" > "/mnt/storage/filecoins/$i/config.toml"
+  echo "$$FILECOIN_CONFIG" > "/mnt/storage/filecoins/$$i/config.toml"
 done
 chmod -R 0777 "$${FILECOIN_STORAGE}"
 
@@ -101,21 +103,21 @@ do
          --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="5s"
 done
 
-filcoin_exec="go-filecoin --repodir=/var/local/filecoin"
+filecoin_exec="go-filecoin --repodir=/var/local/filecoin"
 
 # configure mining on node 0
-minerAddr=$$(cat $${CAR_DIR}/gen.json | jq ".Miners[0].Address" -r)
+minerAddr=$$(cat $${CAR_DIR}/gen.json | grep -v Fixture | jq ".Miners[0].Address" -r)
 
 docker exec "filecoin-0" $$filecoin_exec \
        config mining.minerAddress "\"$${minerAddr}\""
 
 # import miner owner
-ownerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "$FIXDIR/a.key")
+minerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "/var/filecoin/car/a.key" | tail -n +2 | sed -e 's/^"//' -e 's/"$$//')
 
 # update the peerID of the miner to the correct value
-peerID=$$(docker exec "filecoin-0" $$filecoin_exec id | tail -n +3 | jq ".ID" -r)
+peerID=$$(docker exec "filecoin-0" $$filecoin_exec id | grep -v Fixture | jq ".ID" -r)
 docker exec "filecoin-0" $$filecoin_exec \
-       miner update-peerid --from="$minerOwner" "$minerAddr" "$peerID"
+       miner update-peerid --from=$$minerOwner "$$minerAddr" "$$peerID"
 # start mining
 docker exec "filecoin-0" $$filecoin_exec \
        mining start
@@ -123,7 +125,7 @@ docker exec "filecoin-0" $$filecoin_exec \
 # connect nodes
 for i in {0..9}
 do
-  for node_addr in $$(docker exec "filecoin-$$i" $$filcoin_exec id --format=\<addrs\>)
+  for node_addr in $$(docker exec "filecoin-$$i" $$filecoin_exec id --format=\<addrs\>)
   do
     if [[ $$node_addr = *"ip4/172"* ]]; then
       node_docker_addr=$$node_addr
@@ -134,45 +136,50 @@ do
   for j in {0..9}
   do
     echo "joining $${j} with peer at: $${node_docker_addr}"
-    docker exec "filecoin-$$j" $$filcoin_exec swarm connect "$${node_docker_addr}" || true
+    docker exec "filecoin-$$j" $$filecoin_exec swarm connect "$${node_docker_addr}" || true
   done
 done
 
-# configure mining addresses on all the nodes
+# start streaming events to aggregator
+for i in {0..9}
+do
+  docker exec -d "filecoin-$$i" $$filecoin_exec \
+         log streamto /ip4/172.19.0.250/tcp/9000
+done
+
+  # send some tokens
 for i in {1..9}
 do
-  docker exec -d "filecoin-$i" $filcoin_exec \
-         log streamto /ip4/172.19.0.250/tcp/9000
-  # send some tokens
-  nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls | tail -n +3)
-  msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$minerOwner" --value 100 "$nodeAddr")
-  msgCid=$$(echo $msgCidRaw | sed -e 's/^node\[0\] exit 0 //')
+  nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls | tail -n +2)
+  msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$$minerOwner" --value 100 "$$nodeAddr" | tail -n +2)
+  msgCid=$$(echo $$msgCidRaw | sed -e 's/^node\[0\] exit 0 //')
   docker exec "filecoin-$$i" $$filecoin_exec \
-         message wait "$msgCid"
+         message wait "$$msgCid"
 
   # create the actual miner
-  newMinerAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec miner create 10 10 | tail -n +3)
+  newMinerAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec miner create 10 10 | tail -n +2)
 
   # start mining
-  docker exec "filecoin-$$i" $$filcoin_exec \
+  docker exec "filecoin-$$i" $$filecoin_exec \
          mining start
 
   # add an ask
   # 1024*1024*1024*3
   docker exec "filecoin-$$i" $$filecoin_exec \
-         miner add-ask "$newMinerAddr" 3221225472 1
+         miner add-ask "$$newMinerAddr" 3221225472 1
 
   # make a deal
-  dd if=/dev/random of="$FIXDIR/fake.dat"  bs=1m  count=1 # small data file will be autosealed
-  dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "$FIXDIR/fake.dat")
-  rm "$FIXDIR/fake.dat"
+  dd if=/dev/random of="$$CAR_DIR/fake.dat"  bs=1M  count=1 # small data file will be autosealed
+  dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "/var/filecoin/car/fake.dat" | tail -n +2)
+  rm "$$CAR_DIR/fake.dat"
 
   docker exec "filecoin-0" $$filecoin_exec \
-         client propose-storage-deal --price 1 "$newMinerAddr" "$dataCid" 10000
+         client propose-storage-deal --price 1 "$$newMinerAddr" "$$dataCid" 10000
 done
 
-# start block explorer
-docker run -d \
-       --name block-exporter -p 8000:8000 -e PORT=8000 \
-       -e REACT_APP_API_PORT=34530 -e REACT_APP_API_URL="${instance_name}.kittyhawk.wtf" \
-       657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer
+# start faucet
+MONEY_BAGS_ADDR=$$(docker exec "filecoin-0" $$filecoin_exec wallet addrs ls | tail -n1)
+docker run -d --name faucet \
+       --network=filecoin -p 9797:9797 \
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:76b219 \
+       -fil-api filecoin-0:3453 -fil-wallet $${MONEY_BAGS_ADDR} -faucet-val 1000
