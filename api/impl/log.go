@@ -103,6 +103,11 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 				log.Warningf("error decoding event: %v", err)
 				continue
 			}
+			// logs that have the field "event" are from a deprecated log method
+			// and will be ignored here as they cause a lot of back pressure.
+			if event["event"] != nil {
+				continue
+			}
 			// "filter"
 			// add things to the event log here
 			event["peerName"] = nickname
