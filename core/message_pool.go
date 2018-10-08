@@ -101,7 +101,15 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet consensu
 	}
 	for h > height {
 		for _, blk := range curTipSet {
-			msgs = append(msgs, blk.Messages...)
+			blkmsgs := blk.Messages
+			if len(blkmsgs) > 0 {
+				if blkmsgs[0].From != address.NetworkAddress {
+					log.Error("Invalid TipSet: Missing reward message!")
+				} else {
+					blkmsgs = blkmsgs[1:]
+				}
+			}
+			msgs = append(msgs, blkmsgs...)
 		}
 		parents, err := curTipSet.Parents()
 		if err != nil {
@@ -167,7 +175,21 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	// TODO probably should limit depth here.
 	for !old.Equals(new) {
 		for _, blk := range old {
-			addToPool = append(addToPool, blk.Messages...)
+			// skip genesis block
+			if blk.Height > 0 {
+				blkmsgs := blk.Messages
+
+				// If the block height is not empty, and there is no reward message, something went really wrong
+				if len(blkmsgs) > 0 {
+					if blkmsgs[0].From != address.NetworkAddress {
+						log.Error("Invalid Tipset: Missing reward message")
+					} else {
+						blkmsgs = blkmsgs[1:]
+					}
+				}
+
+				addToPool = append(addToPool, blkmsgs...)
+			}
 		}
 		for _, blk := range new {
 			removeFromPool = append(removeFromPool, blk.Messages...)

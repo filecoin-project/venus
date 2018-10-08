@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -16,13 +15,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/repo"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,6 +138,8 @@ func TestNodeInit(t *testing.T) {
 	nd.Stop(ctx)
 }
 
+// skipped anyway, now commented out.  With new mining we really need something here though.
+/*
 func TestNodeMining(t *testing.T) {
 	t.Skip("Bad Test, stop messing with __all__ internals of the node, write a better test!")
 	t.Parallel()
@@ -153,17 +151,15 @@ func TestNodeMining(t *testing.T) {
 	node := MakeNodeUnstartedSeed(t, true, true)
 
 	mockScheduler := &mining.MockScheduler{}
-	inCh, outCh, doneWg := make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
+	outCh, doneWg := make(chan mining.Output), new(sync.WaitGroup)
 	// Apparently you have to have exact types for testify.mock, so
 	// we use iCh and oCh for the specific return type of Start().
-	var iCh chan<- mining.Input = inCh
 	var oCh <-chan mining.Output = outCh
 
-	mockScheduler.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
+	mockScheduler.On("Start", mock.Anything).Return(oCh, doneWg)
 	node.MiningScheduler = mockScheduler
 	// TODO: this is horrible, this setup needs to be a lot less dependent of the inner workings of the node!!
 	node.miningCtx, node.cancelMining = context.WithCancel(ctx)
-	node.miningInCh = inCh
 	node.miningDoneWg = doneWg
 	go node.handleNewMiningOutput(oCh)
 
@@ -174,19 +170,10 @@ func TestNodeMining(t *testing.T) {
 	genTS := chainForTest.Head()
 	b1 := genTS.ToSlice()[0]
 	require.NoError(node.StartMining(ctx))
-	gotInput := <-inCh
-	require.Equal(1, len(gotInput.TipSet))
-	assert.True(b1.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
 
 	// Ensure that the successive inputs (new best tipsets) are wired up properly.
 	b2 := chain.RequireMkFakeChild(require, genTS, node.ChainReader.GenesisCid(), newCid(), uint64(0), uint64(0))
 	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
-	gotInput = <-inCh
-	require.Equal(1, len(gotInput.TipSet))
-	assert.True(b2.Cid().Equals(gotInput.TipSet.ToSlice()[0].Cid()))
-
-	// Ensure we don't mine when stopped.
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
 
 	node.StopMining(ctx)
 	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
@@ -237,7 +224,7 @@ func TestNodeMining(t *testing.T) {
 	go func() { outCh <- mining.NewOutput(b1, nil) }()
 	<-gotBlockCh
 	assert.True(b1.Cid().Equals(gotBlock.Cid()))
-}
+}*/
 
 func TestUpdateMessagePool(t *testing.T) {
 	t.Parallel()
@@ -643,123 +630,6 @@ func TestQueryMessage(t *testing.T) {
 		require.Equal(uint8(0), exitCode)
 
 		assert.NotNil(returnValue)
-	})
-}
-
-func TestCreateMiner(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-
-	t.Run("success", func(t *testing.T) {
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(1000000)),
-		)
-
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		assert.Nil(node.SectorBuilder)
-
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(100), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(100))
-		require.NoError(result.Err)
-		assert.NotNil(result.MinerAddress)
-
-		assert.Equal(*result.MinerAddress, node.Repo.Config().Mining.MinerAddress)
-	})
-
-	t.Run("fail with pledge too low", func(t *testing.T) {
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		assert.Nil(node.SectorBuilder)
-
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(1), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(10))
-		assert.Error(result.Err)
-		assert.Contains(result.Err.Error(), "pledge must be at least")
-	})
-
-	t.Run("fail with insufficient funds", func(t *testing.T) {
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		assert.Nil(node.SectorBuilder)
-
-		result := <-RunCreateMiner(t, node, nodeAddr, uint64(20), th.RequireRandomPeerID(), *types.NewAttoFILFromFIL(1000000))
-
-		assert.Error(result.Err)
-		assert.Contains(result.Err.Error(), "not enough balance")
-	})
-}
-
-func TestLookupMinerAddress(t *testing.T) {
-	t.Parallel()
-
-	t.Run("lookup fails if provided address of non-miner actor", func(t *testing.T) {
-		t.Parallel()
-
-		require := require.New(t)
-		ctx := context.Background()
-
-		nd := MakeNodesStarted(t, 1, true, true)[0]
-		addr := address.NewForTestGetter()()
-		_, err := nd.Lookup.GetPeerIDByMinerAddress(ctx, addr)
-		require.Error(err)
-	})
-
-	t.Run("lookup succeeds if provided address of a miner actor", func(t *testing.T) {
-		t.Parallel()
-
-		require := require.New(t)
-		ctx := context.Background()
-
-		// Note: we should probably just have nodes make an address for themselves during init
-		nd := MakeNodesUnstarted(t, 1, true, true)[0]
-		minerOwnerAddr, err := nd.NewAddress()
-		require.NoError(err)
-
-		// initialize genesis block
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(minerOwnerAddr, types.NewAttoFILFromFIL(10000)),
-		)
-
-		requireResetNodeGen(require, nd, tif)
-
-		newMinerPid := th.RequireRandomPeerID()
-
-		require.NoError(nd.Start(ctx))
-
-		// create a miner, owned by the account actor
-		result := <-RunCreateMiner(t, nd, minerOwnerAddr, uint64(100), newMinerPid, *types.NewAttoFILFromFIL(100))
-		require.NoError(result.Err)
-
-		// retrieve the libp2p identity of the newly-created miner
-		retPid, err := nd.Lookup.GetPeerIDByMinerAddress(ctx, *result.MinerAddress)
-		require.NoError(err)
-		require.Equal(peer.IDB58Encode(newMinerPid), peer.IDB58Encode(retPid))
 	})
 }
 

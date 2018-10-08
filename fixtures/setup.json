@@ -9,6 +9,6 @@
   },
   "miners": [{
     "owner": "a",
-    "power": 10
+    "power": 1
   }]
 }

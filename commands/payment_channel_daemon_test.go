@@ -183,16 +183,16 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 
-	// Initial Balance 10,000,000
+	// Initial Balance 10,000
 	payer, err := address.NewFromString(fixtures.TestAddresses[0])
 	require.NoError(err)
-	// Initial Balance 10,000,000
+	// Initial Balance 50,000
 	target, err := address.NewFromString(fixtures.TestAddresses[1])
 	require.NoError(err)
 
 	// Not used in logic
-	eol := types.NewBlockHeight(20)
-	amt := types.NewAttoFILFromFIL(10000)
+	eol := types.NewBlockHeight(5)
+	amt := types.NewAttoFILFromFIL(1000)
 
 	targetDaemon := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[1]), th.WithMiner(fixtures.TestMiners[0])).Start()
 	defer targetDaemon.ShutdownSuccess()
@@ -209,7 +209,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
 
 		lsStr := listChannelsAsStrs(d, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 10, eol: %s", channelID, target.String(), eol.String()), lsStr)
+		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 1000, amt redeemed: 10, eol: %s", channelID, target.String(), eol.String()), lsStr)
 
 		d.RunSuccess("mining once")
 		d.RunSuccess("mining once")
@@ -478,10 +478,9 @@ func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.Channel
 		_ = d.RunSuccess("message", "wait",
 			"--return=false",
 			"--message=false",
-			"--receipt=false",
+			"--receipt=true",
 			messageCid.String(),
 		)
-
 		wg.Done()
 	}()
 

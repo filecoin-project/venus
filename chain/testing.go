@@ -213,8 +213,6 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 
 	// Update block with new state root and message receipts.
 	for _, r := range results {
-		fmt.Printf("receipt: %v\n", r.Receipt)
-		fmt.Printf("error: %v\n", r.ExecutionError)
 		b.MessageReceipts = append(b.MessageReceipts, r.Receipt)
 	}
 	b.StateRoot = newStateRoot

@@ -108,7 +108,7 @@ func TestMinerCreate(t *testing.T) {
 		)
 	})
 
-	t.Run("creation failure", func(t *testing.T) {
+	t.Run("insufficient pledge", func(t *testing.T) {
 		t.Parallel()
 		d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 		defer d1.ShutdownSuccess()
@@ -125,6 +125,32 @@ func TestMinerCreate(t *testing.T) {
 			d.RunFail("pledge must be at least",
 				"miner", "create",
 				"--from", testAddr.String(), "1", "10",
+			)
+			wg.Done()
+		}()
+
+		// ensure mining runs after the command in our goroutine
+		d1.MineAndPropagate(time.Second, d)
+		wg.Wait()
+	})
+
+	t.Run("insufficient funds", func(t *testing.T) {
+		t.Parallel()
+		d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+		defer d1.ShutdownSuccess()
+
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+		defer d.ShutdownSuccess()
+
+		d1.ConnectSuccess(d)
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			d.RunFail("not enough balance",
+				"miner", "create",
+				"--from", testAddr.String(), "10", "10000000000000000",
 			)
 			wg.Done()
 		}()

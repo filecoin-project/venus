@@ -32,10 +32,11 @@ var msgSendCmd = &cmds.Command{
 		Tagline: "Send a message", // This feels too generic...
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("target", true, false, "address to send message to"),
+		cmdkit.StringArg("target", true, false, "address of the actor to send the message to"),
+		cmdkit.StringArg("method", false, false, "the method to invoke on the target actor"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.IntOption("value", "value to send with message"),
+		cmdkit.IntOption("value", "value to send with message, in AttoFIL"),
 		cmdkit.StringOption("from", "address to send message from"),
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
@@ -62,7 +63,12 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
-		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), "")
+		method, ok := req.Options["method"].(string)
+		if !ok {
+			method = ""
+		}
+
+		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

@@ -122,7 +122,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	ts := TipSet{}
 	RequireTipSetAdd(require, b1, ts)
 	err := ts.AddBlock(b2)
-	assert.EqualError(err, ErrBadTipSetAdd.Error())
+	assert.Error(err)
 	b2.Height = b1.Height
 
 	// Invalid parent set
@@ -130,7 +130,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	ts = TipSet{}
 	RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
-	assert.EqualError(err, ErrBadTipSetAdd.Error())
+	assert.Error(err)
 	b2.Parents = b1.Parents
 
 	// Invalid weight
@@ -138,7 +138,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	ts = TipSet{}
 	RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
-	assert.EqualError(err, ErrBadTipSetAdd.Error())
+	assert.Error(err)
 }
 
 func TestNewTipSet(t *testing.T) {
@@ -156,21 +156,21 @@ func TestNewTipSet(t *testing.T) {
 	// Invalid heights
 	b1.Height = 3
 	ts, err = NewTipSet(b1, b2, b3)
-	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Error(err)
 	assert.Nil(ts)
 	b1.Height = b2.Height
 
 	// Invalid parent sets
 	b1.Parents = types.NewSortedCidSet(cid1, cid2)
 	ts, err = NewTipSet(b1, b2, b3)
-	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Error(err)
 	assert.Nil(ts)
 	b1.Parents = b2.Parents
 
 	// Invalid parent weights
 	b1.ParentWeightNum = types.Uint64(3)
 	ts, err = NewTipSet(b1, b2, b3)
-	assert.EqualError(err, ErrBadTipSetCreate.Error())
+	assert.Error(err)
 	assert.Nil(ts)
 }
 
@@ -241,6 +241,8 @@ func TestTipSetToSlice(t *testing.T) {
 		return blks[i].Cid().String() < blks[j].Cid().String()
 	})
 	assert.Equal(tips, blks)
+
+	assert.Equal(ts.ToSlice(), ts.ToSlice())
 
 	tsEmpty := TipSet{}
 	slEmpty := tsEmpty.ToSlice()

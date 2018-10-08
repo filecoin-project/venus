@@ -3,10 +3,13 @@ package binpack
 import (
 	"context"
 
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 // Bin-packing problem: https://en.wikipedia.org/wiki/Bin_packing_problem
+
+var log = logging.Logger("binpack")
 
 // ErrItemTooLarge signals that an item was larger than the bin size so will never fit any bin.
 var ErrItemTooLarge = errors.New("item too large for bin")
@@ -89,12 +92,15 @@ func (np *NaivePacker) PackItemIntoBin(ctx context.Context, item Item, bin Bin) 
 	binner := np.binner
 	size := binner.ItemSize(item)
 
+	log.Debugf("NaivePacker.PackItemIntoBin %d - %d - %d", size, binner.BinSize(), binner.SpaceAvailable(bin))
+
 	if size > binner.BinSize() {
 		return AddItemResult{}, ErrItemTooLarge
 	}
 
 	var result AddItemResult
 	if size > binner.SpaceAvailable(bin) {
+		log.Debugf("Packing binner: not yet filled")
 		newBin, err := np.closeBinAndOpenNew(ctx, bin)
 		if err != nil {
 			return AddItemResult{}, err
@@ -110,6 +116,7 @@ func (np *NaivePacker) PackItemIntoBin(ctx context.Context, item Item, bin Bin) 
 			return AddItemResult{}, err
 		}
 	} else if size == binner.SpaceAvailable(bin) {
+		log.Debugf("Packing binner: filled up!")
 		if err := np.packItemIntoBin(ctx, item, bin); err != nil {
 			return AddItemResult{}, err
 		}

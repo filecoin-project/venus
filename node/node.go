@@ -68,7 +68,8 @@ var (
 
 // Node represents a full Filecoin node.
 type Node struct {
-	Host host.Host
+	Host     host.Host
+	PeerHost host.Host
 
 	Consensus   consensus.Protocol
 	ChainReader chain.ReadStore
@@ -92,7 +93,6 @@ type Node struct {
 		sync.Mutex
 		isMining bool
 	}
-	miningInCh         chan<- mining.Input
 	miningCtx          context.Context
 	cancelMining       context.CancelFunc
 	miningDoneWg       *sync.WaitGroup
@@ -231,7 +231,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	validator := blankValidator{}
 
-	var host host.Host
+	var innerHost host.Host
 	var router routing.IpfsRouting
 
 	if !nc.OfflineMode {
@@ -249,21 +249,22 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 			return nil, errors.Wrap(err, "failed to setup routing")
 		}
 
-		host = h
+		innerHost = h
 		router = r
 	} else {
-		host = noopLibP2PHost{}
+		innerHost = noopLibP2PHost{}
 		router = offroute.NewOfflineRouter(nc.Repo.Datastore(), validator)
 	}
 
 	// set up pinger
-	pinger := ping.NewPingService(host)
+	pinger := ping.NewPingService(innerHost)
 
 	// use the DHT for routing information
-	peerHost := rhost.Wrap(host, router)
+	peerHost := rhost.Wrap(innerHost, router)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
+	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
 
@@ -288,7 +289,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
-	fsub, err := floodsub.NewFloodSub(ctx, host)
+	fsub, err := floodsub.NewFloodSub(ctx, peerHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up floodsub")
 	}
@@ -309,9 +310,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PowerTable:    powerTable,
 		MessageWaiter: messageWaiter,
 		Exchange:      bswap,
-		Host:          host,
+		Host:          peerHost,
 		MsgPool:       msgPool,
 		OfflineMode:   nc.OfflineMode,
+		PeerHost:      peerHost,
 		Ping:          pinger,
 		PubSub:        fsub,
 		Repo:          nc.Repo,
@@ -435,9 +437,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 }
 
 func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.TipSet) {
-	currentBestCancel := func() {}
 	for ts := range node.HeaviestTipSetCh {
-		var currentBestCtx context.Context
 		newHead := ts.(consensus.TipSet)
 		if len(newHead) == 0 {
 			log.Error("TipSet of size 0 published on HeaviestTipSetCh:")
@@ -450,30 +450,12 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.Ti
 			panic(err)
 		}
 		head = newHead
-		if node.isMining() {
-			// The miningInCh should accept tipsets with strictly increasing
-			// weight, so cancel the previous input.
-			currentBestCancel()
-			currentBestCtx, currentBestCancel = context.WithCancel(context.Background())
-			node.miningDoneWg.Add(1)
-			go func() {
-				defer func() { node.miningDoneWg.Done() }()
-				select {
-				case <-node.miningCtx.Done(): // mining is done
-					return
-				case <-currentBestCtx.Done(): // this input is no longer the heaviest
-					return
-				case node.miningInCh <- mining.NewInput(head):
-				}
-			}()
-		}
 
 		if node.StorageMiner != nil {
 			node.StorageMiner.OnNewHeaviestTipSet(newHead)
 		}
 		node.HeaviestTipSetHandled()
 	}
-	currentBestCancel() // keep the linter happy
 }
 
 func (node *Node) cancelSubscriptions() {
@@ -501,9 +483,6 @@ func (node *Node) Stop(ctx context.Context) {
 	if node.miningDoneWg != nil {
 		node.miningDoneWg.Wait()
 	}
-	if node.miningInCh != nil {
-		close(node.miningInCh)
-	}
 	node.cancelSubscriptions()
 	node.ChainReader.Stop()
 
@@ -524,9 +503,7 @@ type newBlockFunc func(context.Context, *types.Block)
 
 func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	if err := node.AddNewBlock(ctx, b); err != nil {
-		// Not really an error; a better block could have
-		// arrived while mining.
-		log.Warningf("Error adding new mined block: %s", err.Error())
+		log.Warningf("Error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
 	}
 }
 
@@ -592,10 +569,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, minerAddr, blockTime)
-		node.MiningScheduler = mining.NewScheduler(worker, mineDelay)
+		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
-		inCh, outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
-		node.miningInCh = inCh
+		outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
 		node.miningDoneWg = doneWg
 		node.AddNewlyMinedBlock = node.addNewlyMinedBlock
 		node.miningDoneWg.Add(1)
@@ -659,18 +635,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	} else {
 		log.Debug("auto-seal is disabled")
 	}
-
 	node.setIsMining(true)
-	node.miningDoneWg.Add(1)
-	go func() {
-		defer func() { node.miningDoneWg.Done() }()
-		hts := node.ChainReader.Head()
-		select {
-		case <-node.miningCtx.Done():
-			return
-		case node.miningInCh <- mining.NewInput(hts):
-		}
-	}()
 
 	return nil
 }

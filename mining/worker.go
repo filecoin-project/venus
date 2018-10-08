@@ -37,19 +37,7 @@ func init() {
 
 // DefaultBlockTime is the estimated proving period time.
 // We define this so that we can fake mining in the current incomplete system.
-const DefaultBlockTime = time.Millisecond * 200
-
-// Input is the TipSets the worker should mine on, the address
-// to accrue rewards to, and a context that the caller can use
-// to cancel this mining run.
-type Input struct {
-	TipSet consensus.TipSet
-}
-
-// NewInput instantiates a new Input.
-func NewInput(ts consensus.TipSet) Input {
-	return Input{TipSet: ts}
-}
+const DefaultBlockTime = 30 * time.Second
 
 // Output is the result of a single mining run. It has either a new
 // block or an error, mimicing the golang (retVal, error) pattern.
@@ -67,7 +55,7 @@ func NewOutput(b *types.Block, e error) Output {
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, input Input, outCh chan<- Output)
+	Mine(runCtx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -127,57 +115,71 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetSta
 type DoSomeWorkFunc func()
 
 // Mine implements the DefaultWorkers main mining function..
-func (w *DefaultWorker) Mine(ctx context.Context, input Input, outCh chan<- Output) {
+func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) {
+	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
-	if len(input.TipSet) == 0 {
+	if len(base) == 0 {
+		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
 		return
 	}
-	// TODO: derive these from actual storage power.
-	// This should now be pretty easy because the worker has getState and
-	// powertable view.
-	// To fix this and keep mock-mine mode actually generating blocks we'll
-	// need to update the view to give every miner a little power in the
-	// network.
-	const myPower = 1
-	const totalPower = 5
 
-	for nullBlkCount := uint64(0); ; nullBlkCount++ {
-		log.Infof("Mining on tipset: %s, with %d null blocks.", input.TipSet.String(), nullBlkCount)
-		start := time.Now()
-		if ctx.Err() != nil {
-			return
-		}
+	st, err := w.getStateTree(ctx, base)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get state tree for tipset: %s", err.Error())
+		outCh <- Output{Err: err}
+		return
+	}
+	totalPower, err := w.powerTable.Total(ctx, st, w.blockstore)
+	if err != nil {
+		log.Errorf("Worker.Mine couldn't get total power from power table: %s", err.Error())
+		outCh <- Output{Err: err}
+		return
+	}
+	myPower, err := w.powerTable.Miner(ctx, st, w.blockstore, w.minerAddr)
+	if err != nil {
+		log.Errorf("Worker.Mine returning because couldn't get miner power from power table: %s", err.Error())
+		outCh <- Output{Err: err}
+		return
+	}
 
-		challenge, err := createChallenge(input.TipSet, nullBlkCount)
-		if err != nil {
-			outCh <- Output{Err: err}
-			return
-		}
-		prCh := createProof(challenge, w.createPoST)
-		var ticket []byte
-		select {
-		case <-ctx.Done():
-			mineTime := time.Since(start)
-			log.Infof("Mining run on base %s with %d null blocks canceled.", input.TipSet.String(), nullBlkCount)
-			if mineTime < (w.blockTime / 2) {
-				log.Warningf("Abandoning mining after %f seconds.  Wasting lots of work...", mineTime.Seconds())
-			}
-			return
-		case proof := <-prCh:
-			ticket = createTicket(proof)
-		}
+	log.Debugf("Worker.Mine myPower: %d - totalPower: %d", myPower, totalPower)
+	if myPower == 0 {
+		// we don't have any power, it doesn't make sense to mine quite yet
+		return
+	}
 
-		// TODO: Test the interplay of isWinningTicket() and createPoST()
-		if isWinningTicket(ticket, myPower, totalPower) {
-			next, err := w.Generate(ctx, input.TipSet, ticket, nullBlkCount)
-			if err == nil {
-				log.SetTag(ctx, "block", next)
-			}
-			outCh <- NewOutput(next, err)
-			return
+	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), nullBlkCount)
+	if ctx.Err() != nil {
+		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
+		return
+	}
+
+	challenge, err := createChallenge(base, uint64(nullBlkCount))
+	if err != nil {
+		outCh <- Output{Err: err}
+		return
+	}
+	prCh := createProof(challenge, w.createPoST)
+	var ticket []byte
+	select {
+	case <-ctx.Done():
+		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
+		return
+	case proof := <-prCh:
+		ticket = createTicket(proof, w.minerAddr)
+	}
+
+	// TODO: Test the interplay of isWinningTicket() and createPoST()
+	if isWinningTicket(ticket, int64(myPower), int64(totalPower)) {
+		next, err := w.Generate(ctx, base, ticket, uint64(nullBlkCount))
+		if err == nil {
+			log.SetTag(ctx, "block", next)
 		}
+		log.Infof("Worker.Mine generates new winning block! %s", next.Cid().String())
+		outCh <- NewOutput(next, err)
+		return
 	}
 }
 
@@ -209,9 +211,13 @@ func createProof(challenge []byte, createPoST DoSomeWorkFunc) <-chan []byte {
 	return c
 }
 
-func createTicket(proof []byte) []byte {
-	h := sha256.Sum256(proof)
-	// TODO: sign h once we have keys.
+func createTicket(proof []byte, minerAddr address.Address) []byte {
+	// TODO: the ticket is supposed to be a signature, per the spec.
+	// For now to ensure that the ticket is unique to each miner mix in
+	// the miner address.
+	// https://github.com/filecoin-project/go-filecoin/issues/1054
+	buf := append(proof, minerAddr.Bytes()...)
+	h := sha256.Sum256(buf)
 	return h[:]
 }
 

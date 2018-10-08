@@ -165,13 +165,15 @@ func containsTipSet(tsasSlice []*TipSetAndState, ts consensus.TipSet) bool {
 
 func requireTsAdded(require *require.Assertions, chain Store, ts consensus.TipSet) {
 	ctx := context.Background()
+	h, err := ts.Height()
+	require.NoError(err)
 	// Tip Index correctly updated
 	gotTsas, err := chain.GetTipSetAndState(ctx, ts.String())
 	require.NoError(err)
 	require.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
 	require.NoError(err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParents(ctx, parent.String())
+	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(ctx, parent.String(), h)
 	require.NoError(err)
 	require.True(containsTipSet(childTsasSlice, ts))
 
@@ -183,13 +185,15 @@ func requireTsAdded(require *require.Assertions, chain Store, ts consensus.TipSe
 
 func assertTsAdded(assert *assert.Assertions, chain Store, ts consensus.TipSet) {
 	ctx := context.Background()
+	h, err := ts.Height()
+	assert.NoError(err)
 	// Tip Index correctly updated
 	gotTsas, err := chain.GetTipSetAndState(ctx, ts.String())
 	assert.NoError(err)
 	assert.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
 	assert.NoError(err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParents(ctx, parent.String())
+	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(ctx, parent.String(), h)
 	assert.NoError(err)
 	assert.True(containsTipSet(childTsasSlice, ts))
 

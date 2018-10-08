@@ -146,7 +146,9 @@ func (s *SealedSector) CommR() [32]byte {
 
 // NewPieceInfo constructs a piece info, ensuring all parameters are valid.
 func (sb *SectorBuilder) NewPieceInfo(ref *cid.Cid, size uint64) (*PieceInfo, error) {
+	log.Infof("SectorBuilder.NewPieceInfo (%d - %d)", size, sb.BinSize())
 	if binpack.Space(size) > sb.BinSize() {
+		log.Infof("binpack.Space(size) %d, sb.BinSize(): %d", binpack.Space(size), sb.BinSize())
 		return nil, ErrPieceTooLarge
 	}
 
@@ -202,6 +204,7 @@ func (sb *SectorBuilder) AddItem(ctx context.Context, item binpack.Item, bin bin
 
 // CloseBin implements binpack.Binner.
 func (sb *SectorBuilder) CloseBin(bin binpack.Bin) {
+	log.Info("SectorBuilder.CloseBin")
 	if err := sb.checkpoint(bin.(*UnsealedSector)); err != nil {
 		log.Errorf("failed to create checkpoint: %s", err.Error())
 		return
@@ -306,6 +309,7 @@ func InitSectorBuilder(miningCtx context.Context, dataStore repo.Datastore, bloc
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get number of bytes per sector from store")
 	}
+	log.Infof("sector size: %d", res.NumBytes)
 
 	sb := &SectorBuilder{
 		dserv:             dag.NewDAGService(blockService),

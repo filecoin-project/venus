@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
@@ -29,6 +30,8 @@ var (
 	// ErrUnexpectedStoreState indicates that the syncer's chain store is violating expected invariants.
 	ErrUnexpectedStoreState = errors.New("the chain store is in an unexpected state")
 )
+
+var logSyncer = logging.Logger("chain.syncer")
 
 // DefaultSyncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
@@ -128,6 +131,9 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Ci
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := types.NewSortedCidSet(blkCids...).String()
+
+		logSyncer.Debugf("collectChain next link: %s", tsKey)
+
 		if syncer.badTipSets.Has(tsKey) {
 			return nil, nil, ErrChainHasBadTipSet
 		}
@@ -260,6 +266,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 	if err != nil {
 		return err
 	}
+	logSyncer.Debugf("successfully updated store with %s", next.String())
 
 	// TipSet is validated and added to store, now check if it is the heaviest.
 	nextParent, err := next.Parents()
@@ -286,11 +293,24 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 	if err != nil {
 		return err
 	}
+	nextH, err := next.Height()
+	if err != nil {
+		return err
+	}
+	headH, err := syncer.chainStore.Head().Height()
+	if err != nil {
+		return err
+	}
+
 	if cmp > 0 {
+		logSyncer.Debugf("new TS %s (h=%d) is new heaviest over %s (h=%d), update head", next.String(), nextH, syncer.chainStore.Head(), headH)
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
 		}
+	} else {
+		logSyncer.Debugf("new TS %s (h=%d) is not heavier than %s (h=%d), no head update", next.String(), nextH, syncer.chainStore.Head().String(), headH)
 	}
+
 	return nil
 }
 
@@ -305,10 +325,14 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts consensus.TipSet) (co
 	if err != nil {
 		return nil, err
 	}
-	if !syncer.chainStore.HasTipSetAndStatesWithParents(ctx, parentSet.String()) {
+	height, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(ctx, parentSet.String(), height) {
 		return nil, nil
 	}
-	candidates, err := syncer.chainStore.GetTipSetAndStatesByParents(ctx, parentSet.String())
+	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(ctx, parentSet.String(), height)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +377,8 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []*cid
 	// FYI the two biggest concurrency concerns at present would be addressed
 	// by locking after collectChain completes, so my hunch is this can be
 	// fixed by simply moving the lock call below collectChain.
+	logSyncer.Debugf("HandleNewBlocks: %s", types.NewSortedCidSet(blkCids...).String())
+
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
 	// If the store already has all these blocks the syncer is finished.
@@ -379,6 +405,7 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []*cid
 				return err
 			}
 			if wts != nil {
+				logSyncer.Debug("attempt to sync after widen")
 				err = syncer.syncOne(ctx, parent, wts)
 				if err != nil {
 					return err

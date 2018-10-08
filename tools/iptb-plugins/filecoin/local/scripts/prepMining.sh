@@ -17,49 +17,81 @@ then
   exit 1
 fi
 
+if test -z "$GOPATH"; then
+	GOPATH=$(go env GOPATH)
+fi
+
 # create a testbed for the iptb nodes
 iptb testbed create --count "$1" --type localfilecoin --force
 
-# set common paths to find bins and confi files
+# set common paths to find bins and config files
 GENDIR=$GOPATH/src/github.com/filecoin-project/go-filecoin/gengen
-GENGEN=$GOPATH/src/github.com/filecoin-project/go-filecoin/gengen/gengen
-GENSET=$GOPATH/src/github.com/filecoin-project/go-filecoin/gengen/gensetup
+FIXDIR=$GOPATH/src/github.com/filecoin-project/go-filecoin/fixtures
 
-# generate N values in setup file where N is the passed value
-$GENSET -count "$1" > $GENDIR/setup.json
-# now generate a genesis car file from said setup script
-cat $GENDIR/setup.json | $GENGEN --json > $GENDIR/genesis.car 2> $GENDIR/gen.json
+printf "Setting up initial boostrap node (0)\n"
+# configure mining on node 0
+minerAddr=$(cat $FIXDIR/gen.json | jq ".Miners[0].Address" -r)
 
-# configure mining addresses on all the nodes
-for i in $(eval echo {0..$1})
+iptb init 0 -- --genesisfile=$FIXDIR/genesis.car
+iptb start 0 -- --block-time=5s
+iptb run 0 -- go-filecoin config mining.minerAddress "\"$minerAddr\""
+
+# import miner owner
+ownerRaw=$(iptb run 0 -- go-filecoin wallet import "$FIXDIR/a.key")
+# sad face, iptb makes me do all the jumps
+minerOwner=$(echo $ownerRaw | sed -e 's/^node\[0\] exit 0 //' | jq -r ".")
+# update the peerID to the correct value
+peerID=$(iptb run 0 -- go-filecoin id | tail -n +3 | jq ".ID" -r)
+iptb run 0 -- go-filecoin miner update-peerid --from="$minerOwner" "$minerAddr" "$peerID"
+# start mining
+iptb run 0 -- go-filecoin mining start
+
+# ranges are inclusive in bash, so subtract one
+J=$(($1 - 1))
+
+# init all other nodes
+for i in `seq 1 $J`
 do
-  cat $GENDIR/gen.json | jq ".Miners[$i].Address" > $GENDIR/minerAddr$i
+    iptb init "$i" -- --genesisfile=$FIXDIR/genesis.car --auto-seal-interval-seconds 1 # autosealing every second
+    iptb start "$i"
 done
 
-# import the corresponding keys into the nodes wallet, this allows them
-# to "own" the miner addresses from above
-for i in $(eval echo {0..$1})
-do
-  cat $GENDIR/gen.json | jq ".Keys[\"$i\"]" > $GENDIR/walletKey$i
-done
-
-printf "Initializing %d nodes\n" "$1"
-# init all the nodes using the generated genesis file
-iptb init -- --genesisfile=$GENDIR/genesis.car
-
-printf "Starting %d nodes\n" "$1"
-# start their daemons with a block time of 5 seconds
-iptb start -- --block-time=5s
-
-printf "Configuring %d nodes\n" "$1"
-for i in $(eval echo {0..$1})
-do
-  minerAddr=$(iptb run "$i" cat $GENDIR/minerAddr$i | tail -n 2 | head -n 1)
-  iptb run "$i" -- go-filecoin config mining.minerAddress "$minerAddr"
-  iptb run "$i" -- go-filecoin wallet import $GENDIR/walletKey$i
-done
-
+# connect nodes
 printf "Connecting %d nodes\n" "$1"
 iptb connect
+
+printf "Creating miners\n"
+
+# configure mining addresses on all the nodes
+for i in `seq 1 $J`
+do
+    # send some tokens
+    nodeAddr=$(iptb run "$i" -- go-filecoin wallet addrs ls | tail -n +3)
+    msgCidRaw=$(iptb run 0 -- go-filecoin message send --from "$minerOwner" --value 100 "$nodeAddr")
+    msgCid=$(echo $msgCidRaw | sed -e 's/^node\[0\] exit 0 //')
+    echo "Waiting for $msgCid"
+    iptb run "$i" -- go-filecoin message wait "$msgCid"
+
+    # create the actual miner
+    newMinerAddr=$(iptb run "$i" -- go-filecoin miner create 10 10 | tail -n +3)
+
+    # start mining
+    iptb run "$i" -- go-filecoin mining start  # I don't think these guys need to mine yet, wait until the deal is processed
+
+    # add an ask
+    printf "adding ask"
+    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 3221225472 1 # 1024*1024*1024*3
+
+    # make a deal
+    dd if=/dev/random of="$FIXDIR/fake.dat"  bs=1m  count=1 # small data file will be autosealed
+    dataCidRaw=$(iptb run 0 -- go-filecoin client import "$FIXDIR/fake.dat")
+    rm "$FIXDIR/fake.dat"
+    dataCid=$(echo $dataCidRaw | sed -e 's/^node\[0\] exit 0 //')
+    printf "making deal"
+
+    echo $newMinerAddr
+    echo $dataCid
+    iptb run 0 -- go-filecoin client propose-storage-deal --price 1 "$newMinerAddr" "$dataCid" 10000  # I think this is where stuff fails right now??
+done
 
 printf "Complete! %d nodes connected and ready to mine >.>" "$1"

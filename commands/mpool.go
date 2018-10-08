@@ -28,9 +28,9 @@ var mpoolCmd = &cmds.Command{
 
 		re.Emit(pending) // nolint: errcheck
 	},
-	Type: []*types.Message{},
+	Type: []*types.SignedMessage{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, msgs *[]*types.Message) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, msgs *[]*types.SignedMessage) error {
 			for _, msg := range *msgs {
 				c, err := msg.Cid()
 				if err != nil {

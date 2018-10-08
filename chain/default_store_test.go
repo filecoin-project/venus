@@ -69,8 +69,8 @@ func requireGetTsas(ctx context.Context, require *require.Assertions, chain Stor
 	return tsas
 }
 
-func requireGetTsasByParent(ctx context.Context, require *require.Assertions, chain Store, pKey string) []*TipSetAndState {
-	tsasSlice, err := chain.GetTipSetAndStatesByParents(ctx, pKey)
+func requireGetTsasByParentAndHeight(ctx context.Context, require *require.Assertions, chain Store, pKey string, h uint64) []*TipSetAndState {
+	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(ctx, pKey, h)
 	require.NoError(err)
 	return tsasSlice
 }
@@ -140,11 +140,11 @@ func TestGetByParent(t *testing.T) {
 	pk3 := link2.String()
 	pk4 := link3.String()
 
-	gotG := requireGetTsasByParent(ctx, require, chain, pkg)
-	got1 := requireGetTsasByParent(ctx, require, chain, pk1)
-	got2 := requireGetTsasByParent(ctx, require, chain, pk2)
-	got3 := requireGetTsasByParent(ctx, require, chain, pk3)
-	got4 := requireGetTsasByParent(ctx, require, chain, pk4)
+	gotG := requireGetTsasByParentAndHeight(ctx, require, chain, pkg, uint64(0))
+	got1 := requireGetTsasByParentAndHeight(ctx, require, chain, pk1, uint64(1))
+	got2 := requireGetTsasByParentAndHeight(ctx, require, chain, pk2, uint64(2))
+	got3 := requireGetTsasByParentAndHeight(ctx, require, chain, pk3, uint64(3))
+	got4 := requireGetTsasByParentAndHeight(ctx, require, chain, pk4, uint64(6)) // two null blocks in between 3 and 4!
 
 	assert.Equal(genTS, gotG[0].TipSet)
 	assert.Equal(link1, got1[0].TipSet)
@@ -177,7 +177,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		TipSetStateRoot: newRoot,
 	}
 	RequirePutTsas(ctx, require, chain, newChildTsas)
-	gotNew1 := requireGetTsasByParent(ctx, require, chain, pk1)
+	gotNew1 := requireGetTsasByParentAndHeight(ctx, require, chain, pk1, uint64(1))
 	require.Equal(2, len(gotNew1))
 	for _, tsas := range gotNew1 {
 		if len(tsas.TipSet) == 1 {
@@ -434,7 +434,7 @@ func TestLoadAndReboot(t *testing.T) {
 	assert.Equal(link2, got2.TipSet)
 
 	// Get another by parent key
-	got4 := requireGetTsasByParent(ctx, require, rebootChain, link3.String())
+	got4 := requireGetTsasByParentAndHeight(ctx, require, rebootChain, link3.String(), uint64(6))
 	assert.Equal(1, len(got4))
 	assert.Equal(link4, got4[0].TipSet)
 

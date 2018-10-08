@@ -42,6 +42,7 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 }
 
 func TestRetrievalProtocolHappyPath(t *testing.T) {
+	t.Skip("FIXME: this need #1075 to work again")
 	t.Parallel()
 
 	require := require.New(t)

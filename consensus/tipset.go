@@ -21,10 +21,6 @@ type Tip = types.Block
 type TipSet map[string]*Tip
 
 var (
-	// ErrBadTipSetCreate is returned when there is an error creating a new tipset
-	ErrBadTipSetCreate = errors.New("tipset contains blocks of different heights, or different parent sets or weights")
-	// ErrBadTipSetAdd is returned when there is an error adding a block to a tipset
-	ErrBadTipSetAdd = errors.New("block has invalid height, parent set or parent weight to be a member of tipset")
 	// ErrEmptyTipSet is returned when a method requiring a non-empty tipset is called on an empty tipset
 	ErrEmptyTipSet = errors.New("empty tipset calling unallowed method")
 )
@@ -33,12 +29,12 @@ var (
 // PRECONDITION: all blocks are the same height and have the same parent set.
 func NewTipSet(blks ...*types.Block) (TipSet, error) {
 	if len(blks) == 0 {
-		return nil, ErrBadTipSetCreate
+		return nil, errors.New("Cannot create tipset: no blocks")
 	}
 	ts := TipSet{}
 	for _, b := range blks {
 		if err := ts.AddBlock(b); err != nil {
-			return nil, ErrBadTipSetCreate
+			return nil, errors.Wrapf(err, "Cannot create tipset")
 		}
 	}
 	return ts, nil
@@ -65,11 +61,16 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 	if err != nil {
 		return err
 	}
-	if uint64(b.Height) != h || !b.Parents.Equals(p) ||
-		uint64(b.ParentWeightNum) != wNum ||
-		uint64(b.ParentWeightDenom) != wDenom {
-		return ErrBadTipSetAdd
+	if uint64(b.Height) != h {
+		return errors.Errorf("Block height %d doesn't match existing tipset height %d", uint64(b.Height), h)
 	}
+	if !b.Parents.Equals(p) {
+		return errors.Errorf("Block parents %s don't match tipset parents %s", b.Parents.String(), p.String())
+	}
+	if uint64(b.ParentWeightNum) != wNum || uint64(b.ParentWeightDenom) != wDenom {
+		return errors.Errorf("Block parent weight num:%d denom:%d doesn't match existing tipset parent weight num:%d denom:%d", uint64(b.ParentWeightNum), uint64(b.ParentWeightDenom), wNum, wDenom)
+	}
+
 	id := b.Cid()
 	ts[id.String()] = b
 	return nil
@@ -109,11 +110,12 @@ func (ts TipSet) ToSortedCidSet() types.SortedCidSet {
 }
 
 // ToSlice returns the slice of *Block containing the tipset's blocks.
+// Sorted.
 func (ts TipSet) ToSlice() []*types.Block {
 	sl := make([]*types.Block, len(ts))
 	var i int
-	for _, b := range ts {
-		sl[i] = b
+	for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
+		sl[i] = ts[it.Value().String()]
 		i++
 	}
 	return sl

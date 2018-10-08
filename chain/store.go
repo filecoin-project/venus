@@ -57,10 +57,10 @@ type Store interface {
 	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
 	// HasTipSet indicates whether the tipset is in the store.
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
-	// GetTipSetsByParents returns all tipsets with the given parent set.
-	GetTipSetAndStatesByParents(ctx context.Context, pTsKey string) ([]*TipSetAndState, error)
-	// HasTipSetsWithParents indicates whether tipsets with these parents are in the store.
-	HasTipSetAndStatesWithParents(ctx context.Context, pTsKey string) bool
+	// GetTipSetsByParentsAndHeight returns all tipsets with the given parent set and the given height
+	GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error)
+	// HasTipSetsWithParentsAndHeight indicates whether tipsets with these parents and this height are in the store.
+	HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool
 
 	// GetBlocks gets several blocks by cid. In the future there is caching here
 	GetBlocks(ctx context.Context, ids types.SortedCidSet) ([]*types.Block, error)

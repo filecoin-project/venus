@@ -9,3 +9,4 @@ gengen/gensetup
 fixtures/*.key
 fixtures/gen.json
 fixtures/genesis.car
+tools/faucet/faucet

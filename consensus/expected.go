@@ -122,8 +122,7 @@ func (c *Expected) weight(ctx context.Context, ts TipSet, pSt state.Tree) (*big.
 		return nil, err
 	}
 	ratECV := big.NewRat(int64(ECV), int64(1))
-	for _, blk := range ts {
-
+	for _, blk := range ts.ToSlice() {
 		minerBytes, err := c.PwrTableView.Miner(ctx, pSt, c.bstore, blk.Miner)
 		if err != nil {
 			return nil, err
@@ -212,6 +211,20 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, pSt state.
 	if err != nil {
 		return nil, err
 	}
+
+	sl := ts.ToSlice()
+	one := sl[0]
+	for _, blk := range sl[1:] {
+		if blk.Parents.String() != one.Parents.String() {
+			log.Error("invalid parents", blk.Parents.String(), one.Parents.String(), blk)
+			panic("invalid parents")
+		}
+		if blk.Height != one.Height {
+			log.Error("invalid height", blk.Height, one.Height, blk)
+			panic("invalid height")
+		}
+	}
+
 	vms := vm.NewStorageMap(c.bstore)
 	st, err := c.runMessages(ctx, pSt, vms, ts)
 	if err != nil {
@@ -227,7 +240,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, pSt state.
 // validateMining throws an error if any tipset's block was mined by an invalid
 // miner address.
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet) error {
-	for _, blk := range ts {
+	for _, blk := range ts.ToSlice() {
 		if !c.PwrTableView.HasPower(ctx, st, c.bstore, blk.Miner) {
 			return errors.New("invalid miner address without network power")
 		}
@@ -246,7 +259,10 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet)
 // faults while running aggregate state computation.
 func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (state.Tree, error) {
 	var cpySt state.Tree
-	for _, blk := range ts {
+
+	// TODO: order blocks in the tipset by ticket
+	// TODO: don't process messages twice
+	for _, blk := range ts.ToSlice() {
 		cpyCid, err := st.Flush(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")

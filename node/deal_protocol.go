@@ -155,6 +155,8 @@ func (s DealState) String() string {
 		return "posted"
 	case Complete:
 		return "complete"
+	case Staged:
+		return "staged"
 	default:
 		return fmt.Sprintf("<unrecognized %d>", s)
 	}

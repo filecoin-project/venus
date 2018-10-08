@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var log = logging.Logger("chain")
+var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
@@ -172,7 +172,11 @@ func (store *DefaultStore) loadHead() (types.SortedCidSet, error) {
 }
 
 func (store *DefaultStore) loadStateRoot(ts consensus.TipSet) (*cid.Cid, error) {
-	key := datastore.NewKey(ts.String())
+	h, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	key := datastore.NewKey(makeKey(ts.String(), h))
 	bb, err := store.ds.Get(key)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
@@ -228,17 +232,17 @@ func (store *DefaultStore) HasTipSetAndState(ctx context.Context, tsKey string) 
 	return store.tipIndex.Has(tsKey)
 }
 
-// GetTipSetAndStatesByParents returns the the tipsets and states tracked by
+// GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have the parent set corresponding to the
 // input key.
-func (store *DefaultStore) GetTipSetAndStatesByParents(ctx context.Context, pTsKey string) ([]*TipSetAndState, error) {
-	return store.tipIndex.GetByParents(pTsKey)
+func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error) {
+	return store.tipIndex.GetByParentsAndHeight(pTsKey, h)
 }
 
-// HasTipSetAndStatesWithParents returns true if the default store's tipindex
+// HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset indexed by the provided parent ID.
-func (store *DefaultStore) HasTipSetAndStatesWithParents(ctx context.Context, pTsKey string) bool {
-	return store.tipIndex.HasByParents(pTsKey)
+func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool {
+	return store.tipIndex.HasByParentsAndHeight(pTsKey, h)
 }
 
 // GetBlocks retrieves the blocks referenced in the input cid set.
@@ -292,7 +296,7 @@ func (store *DefaultStore) HeadEvents() *pubsub.PubSub {
 
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) error {
-	log.Infof("SetHead %s", ts.String())
+	logStore.Debugf("SetHead %s", ts.String())
 
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -312,7 +316,7 @@ func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) err
 
 // writeHead writes the given cid set as head to disk.
 func (store *DefaultStore) writeHead(ctx context.Context, cids types.SortedCidSet) error {
-	log.Infof("writeHead %s", cids.String())
+	logStore.Debugf("writeHead %s", cids.String())
 	val, err := json.Marshal(cids)
 	if err != nil {
 		return err
@@ -330,7 +334,11 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 	}
 
 	// datastore keeps tsKey:stateRoot (k,v) pairs.
-	key := datastore.NewKey(tsas.TipSet.String())
+	h, err := tsas.TipSet.Height()
+	if err != nil {
+		return err
+	}
+	key := datastore.NewKey(makeKey(tsas.TipSet.String(), h))
 	return store.ds.Put(key, val)
 }
 
@@ -359,13 +367,13 @@ func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) 
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
 func (store *DefaultStore) BlockHistory(ctx context.Context) <-chan interface{} {
-	ctx = log.Start(ctx, "Chain.Store.BlockHistory")
+	ctx = logStore.Start(ctx, "BlockHistory")
 	out := make(chan interface{})
 	tips := store.Head().ToSlice()
 
 	go func() {
 		defer close(out)
-		defer log.Finish(ctx)
+		defer logStore.Finish(ctx)
 		err := store.walkChain(ctx, tips, func(tips []*types.Block) (cont bool, err error) {
 			var raw interface{}
 			raw, err = consensus.NewTipSet(tips...)

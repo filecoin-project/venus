@@ -357,7 +357,15 @@ func (td *TestDaemon) ReadStderr() string {
 // Start starts up the daemon.
 func (td *TestDaemon) Start() *TestDaemon {
 	require.NoError(td.test, td.process.Start())
-	require.NoError(td.test, td.WaitForAPI(), "Daemon failed to start")
+
+	err := td.WaitForAPI()
+	if err != nil {
+		stdErr, _ := ioutil.ReadAll(td.Stderr)
+		stdOut, _ := ioutil.ReadAll(td.Stdout)
+		td.test.Errorf("%s\n%s", stdErr, stdOut)
+	}
+
+	require.NoError(td.test, err, "Daemon failed to start")
 
 	// on first startup import key pairs, if defined
 	if td.firstRun {
@@ -405,14 +413,15 @@ func (td *TestDaemon) ShutdownEasy() {
 // WaitForAPI polls if the API on the daemon is available, and blocks until
 // it is.
 func (td *TestDaemon) WaitForAPI() error {
+	var err error
 	for i := 0; i < 100; i++ {
-		err := tryAPICheck(td)
+		err = tryAPICheck(td)
 		if err == nil {
 			return nil
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
-	return fmt.Errorf("filecoin node failed to come online in given time period (20 seconds)")
+	return fmt.Errorf("filecoin node failed to come online in given time period (10 seconds); last err = %s", err)
 }
 
 // CreateMinerAddr issues a new message to the network, mines the message

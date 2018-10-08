@@ -32,18 +32,13 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSe
 		return nil, errors.Wrap(err, "get weight")
 	}
 
-	nonce, err := core.NextNonce(ctx, stateTree, w.messagePool, address.NetworkAddress)
-	if err != nil {
-		return nil, errors.Wrap(err, "next nonce")
-	}
-
 	baseHeight, err := baseTipSet.Height()
 	if err != nil {
 		return nil, errors.Wrap(err, "get base tip set height")
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
-	rewardMsg := types.NewMessage(address.NetworkAddress, w.minerAddr, nonce, types.NewAttoFILFromFIL(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, w.minerAddr, 0, types.NewAttoFILFromFIL(1000), "", nil)
 	srewardMsg := &types.SignedMessage{
 		Message:   *rewardMsg,
 		Signature: nil,
@@ -51,12 +46,12 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSe
 
 	pending := w.messagePool.Pending()
 	messages := make([]*types.SignedMessage, len(pending)+1)
-	messages[0] = srewardMsg // Reward message must come first since this is a part of the consensus rules.
-	copy(messages[1:], core.OrderMessagesByNonce(w.messagePool.Pending()))
+	messages[0] = srewardMsg // Reward message must come first since this is a part of the consensus rules
+
+	copy(messages[1:], core.OrderMessagesByNonce(pending))
 
 	vms := vm.NewStorageMap(w.blockstore)
 	res, err := w.applyMessages(ctx, messages, stateTree, vms, types.NewBlockHeight(blockHeight))
-
 	if err != nil {
 		return nil, errors.Wrap(err, "generate apply messages")
 	}
@@ -94,10 +89,16 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSe
 		}
 	}
 	if !rewardSuccessful {
+		for _, e := range res.PermanentErrors {
+			log.Errorf("reward message debug, permanent error: ", e)
+		}
+		for _, e := range res.TemporaryErrors {
+			log.Errorf("reward message debug, permanent error: ", e)
+		}
 		return nil, errors.New("mining reward message failed")
 	}
-	// Mining reward message succeeded -- side effects okay below this point.
 
+	// Mining reward message succeeded -- side effects okay below this point.
 	for _, msg := range res.SuccessfulMessages {
 		mc, err := msg.Cid()
 		if err == nil {
@@ -106,22 +107,22 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSe
 	}
 
 	// TODO: Should we really be pruning the message pool here at all? Maybe this should happen elsewhere.
-	for _, msg := range res.PermanentFailures {
+	for i, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.
 		// Therefore, we will remove it from the MessagePool now.
 		mc, err := msg.Cid()
-		log.Infof("permanent ApplyMessage failure, [%S]", mc.String())
+		log.Infof("permanent ApplyMessage failure, [%s] (%s)", mc.String(), res.PermanentErrors[i])
 		// Intentionally not handling error case, since it just means we won't be able to remove from pool.
 		if err == nil {
 			w.messagePool.Remove(mc)
 		}
 	}
 
-	for _, msg := range res.TemporaryFailures {
+	for i, msg := range res.TemporaryFailures {
 		// We might be able to apply this message in the future because the error was temporary.
 		// Therefore, we will leave it in the MessagePool for now.
 		mc, _ := msg.Cid()
-		log.Infof("temporary ApplyMessage failure, [%S]", mc.String())
+		log.Infof("temporary ApplyMessage failure, [%s] (%s)", mc.String(), res.TemporaryErrors[i])
 	}
 
 	return next, nil

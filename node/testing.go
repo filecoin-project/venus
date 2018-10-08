@@ -154,7 +154,7 @@ func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
 // NodeWithChainSeed makes a single node with the given chain seed, and some init options
 func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
-	return genNode(t, false, true, seed.GenesisInitFunc, initopts, nil)
+	return genNode(t, false, false, seed.GenesisInitFunc, initopts, nil)
 }
 
 // ConnectNodes connects two nodes together
@@ -369,7 +369,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 
 	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, address.TestAddress, mining.BlockTimeTest)
 	cur := node.ChainReader.Head()
-	out := mining.MineOnce(ctx, mining.NewScheduler(w, mining.MineDelayTest), cur)
+	out := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(out.Err)
 	outTS := consensus.RequireNewTipSet(require, out.NewBlock)
 	chainStore, ok := node.ChainReader.(chain.Store)

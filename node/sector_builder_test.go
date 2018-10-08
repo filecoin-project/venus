@@ -485,7 +485,6 @@ func TestSectorBuilder(t *testing.T) {
 
 	t.Run("sealing sector moves metadata", func(t *testing.T) {
 		t.Parallel()
-
 		require := require.New(t)
 
 		h := newSectorBuilderTestHarness(context.Background(), t)
@@ -554,7 +553,6 @@ func TestSectorBuilder(t *testing.T) {
 
 	t.Run("it loads a persisted sector", func(t *testing.T) {
 		t.Parallel()
-
 		require := require.New(t)
 
 		h := newSectorBuilderTestHarness(context.Background(), t)
@@ -621,8 +619,6 @@ func TestSectorBuilder(t *testing.T) {
 		require.NoError(err)
 		sealedSectorsMustEqual(t, sealedSector, loaded)
 	})
-
-	//////
 
 	t.Run("it initializes a SectorBuilder from persisted metadata", func(t *testing.T) {
 		t.Parallel()

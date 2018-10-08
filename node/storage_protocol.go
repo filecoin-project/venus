@@ -200,9 +200,11 @@ func (sm *StorageMiner) updateDealState(c *cid.Cid, f func(*StorageDealResponse)
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
 	f(sm.deals[c.KeyString()].state)
+	log.Debugf("StorageMiner.updateDealState(%s) - %d", c.String(), sm.deals[c.KeyString()].state)
 }
 
 func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
+	log.Debugf("StorageMiner.processStorageDeal(%s)", c.String())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -216,6 +218,7 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 	// 'Receive' the data, this could also be a truck full of hard drives. (TODO: proper abstraction)
 	// TODO: this is not a great way to do this. At least use a session
 	// Also, this needs to be fetched into a staging area for miners to prepare and seal in data
+	log.Debug("StorageMiner.processStorageDeal - FetchGraph")
 	if err := dag.FetchGraph(ctx, d.proposal.PieceRef, dag.NewDAGService(sm.nd.Blockservice)); err != nil {
 		log.Errorf("failed to fetch data: %s", err)
 		sm.updateDealState(c, func(resp *StorageDealResponse) {
@@ -265,6 +268,7 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 
 // OnCommitmentAddedToMempool is a callback, called when a sector seal message was sent to the mempool.
 func (sm *StorageMiner) OnCommitmentAddedToMempool(sector *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
+	log.Debug("StorageMiner.OnCommitmentAddedToMempool")
 	sm.dealsAwaitingSealLk.Lock()
 	defer sm.dealsAwaitingSealLk.Unlock()
 	deals, ok := sm.dealsAwaitingSeal[sectorID]
@@ -448,7 +452,7 @@ func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*Sea
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 		}
-		log.Infof("submitted PoSt")
+		log.Debug("submitted PoSt")
 		return nil
 	})
 
@@ -538,7 +542,7 @@ func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64
 func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address.Address, data *cid.Cid, duration uint64, price *types.AttoFIL) (*StorageDealResponse, error) {
 	size, err := getFileSize(ctx, data, dag.NewDAGService(smc.nd.Blockservice))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
 
 	proposal := &StorageDealProposal{
@@ -557,26 +561,26 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address
 
 	s, err := smc.nd.Host.NewStream(ctx, pid, StorageDealProtocolID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to establish connection with the peer")
 	}
 
 	if err := cbu.NewMsgWriter(s).WriteMsg(proposal); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to write proposal")
 	}
 
 	var response StorageDealResponse
 	if err := cbu.NewMsgReader(s).ReadMsg(&response); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read response")
 	}
 
 	if err := smc.checkDealResponse(ctx, &response); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to check response")
 	}
 
 	// TODO: send the miner the data (currently it gets requested by the miner, out of band)
 
 	if err := smc.addResponseToTracker(&response, miner, proposal); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to track response")
 	}
 
 	return &response, nil

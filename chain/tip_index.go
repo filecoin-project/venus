@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"fmt"
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -31,7 +32,7 @@ type tsasByTipSetID map[string]*TipSetAndState
 type TipIndex struct {
 	mu sync.Mutex
 	// tsasByParents allows lookup of all TipSetAndStates with the same parent IDs.
-	tsasByParents map[string]tsasByTipSetID
+	tsasByParentsAndHeight map[string]tsasByTipSetID
 	// tsasByID allows lookup of recorded TipSetAndStates by TipSet ID.
 	tsasByID tsasByTipSetID
 }
@@ -39,8 +40,8 @@ type TipIndex struct {
 // NewTipIndex is the TipIndex constructor.
 func NewTipIndex() *TipIndex {
 	return &TipIndex{
-		tsasByParents: make(map[string]tsasByTipSetID),
-		tsasByID:      make(map[string]*TipSetAndState),
+		tsasByParentsAndHeight: make(map[string]tsasByTipSetID),
+		tsasByID:               make(map[string]*TipSetAndState),
 	}
 }
 
@@ -60,10 +61,15 @@ func (ti *TipIndex) Put(tsas *TipSetAndState) error {
 		return err
 	}
 	pKey := pSet.String()
-	tsasByID, ok := ti.tsasByParents[pKey]
+	h, err := tsas.TipSet.Height()
+	if err != nil {
+		return err
+	}
+	key := makeKey(pKey, h)
+	tsasByID, ok := ti.tsasByParentsAndHeight[key]
 	if !ok {
 		tsasByID = make(map[string]*TipSetAndState)
-		ti.tsasByParents[pKey] = tsasByID
+		ti.tsasByParentsAndHeight[key] = tsasByID
 	}
 	tsasByID[tsKey] = tsas
 	return nil
@@ -89,12 +95,13 @@ func (ti *TipIndex) Has(tsKey string) bool {
 	return ok
 }
 
-// GetByParents returns the all tipsets and states stored in the TipIndex
+// GetByParentsAndHeight returns the all tipsets and states stored in the TipIndex
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipIndex) GetByParents(pKey string) ([]*TipSetAndState, error) {
+func (ti *TipIndex) GetByParentsAndHeight(pKey string, h uint64) ([]*TipSetAndState, error) {
+	key := makeKey(pKey, h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
-	tsasByID, ok := ti.tsasByParents[pKey]
+	tsasByID, ok := ti.tsasByParentsAndHeight[key]
 	if !ok {
 		return nil, ErrNotFound
 	}
@@ -105,12 +112,18 @@ func (ti *TipIndex) GetByParents(pKey string) ([]*TipSetAndState, error) {
 	return ret, nil
 }
 
-// HasByParents returns true iff there exist tipsets, and states,
+// HasByParentsAndHeight returns true iff there exist tipsets, and states,
 // tracked in the TipIndex such that the parent ID of these tipsets equals the
 // input.
-func (ti *TipIndex) HasByParents(pKey string) bool {
+func (ti *TipIndex) HasByParentsAndHeight(pKey string, h uint64) bool {
+	key := makeKey(pKey, h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
-	_, ok := ti.tsasByParents[pKey]
+	_, ok := ti.tsasByParentsAndHeight[key]
 	return ok
+}
+
+// makeKey returns a unique string for every parent set key and height input
+func makeKey(pKey string, h uint64) string {
+	return fmt.Sprintf("p-%s h-%d", pKey, h)
 }

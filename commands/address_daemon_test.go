@@ -69,6 +69,9 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
 
+	// Not a miner address, should fail.
+	d.RunFail("failed to find", "address", "lookup", addr)
+
 	// update the miner's peer ID
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",

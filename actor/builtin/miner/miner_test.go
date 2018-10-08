@@ -100,7 +100,7 @@ func TestAddAsk(t *testing.T) {
 	assert.Equal(types.NewBytesAmount(350), minerStorage2.LockedStorage)
 
 	// now try to create an ask larger than our pledge
-	pdata = actor.MustConvertParams(types.NewAttoFIL(big.NewInt(55000)), types.NewBytesAmount(9900000))
+	pdata = actor.MustConvertParams(types.NewAttoFIL(big.NewInt(55000)), types.NewBytesAmount(990000000000))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 5, nil, "addAsk", pdata)
 
 	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))

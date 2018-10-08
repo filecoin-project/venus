@@ -358,7 +358,7 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error)
 
 	count, ok := ret.(*big.Int)
 	if !ok {
-		return nil, 1, fmt.Errorf("expected *BytesAmount to be returned, but got %T instead", ret)
+		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
 	return count, 0, nil
