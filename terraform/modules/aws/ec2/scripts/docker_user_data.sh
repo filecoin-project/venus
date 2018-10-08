@@ -70,14 +70,14 @@ docker run \
 
 FILECOIN_STORAGE=/mnt/storage/filecoins
 # initialize filecoin nodes
-for i in {0..9}; do mkdir -p "$${FILECOIN_STORAGE}"/$$i; done
+for i in {0..4}; do mkdir -p "$${FILECOIN_STORAGE}"/$$i; done
 
 # unzip keys
 apt install -y unzip
 unzip -q /home/ubuntu/node_keys.zip -d /home/ubuntu/car/
 
 # so here we need to pass the keyFile$i to the node to get a known peerID
-for i in {0..9}
+for i in {0..4}
 do
   docker run \
          -v /home/ubuntu/car:/var/filecoin/car \
@@ -89,7 +89,7 @@ do
 done
 chmod -R 0777 "$${FILECOIN_STORAGE}"
 
-for i in {0..9}
+for i in {0..4}
 do
   echo "Starting filecoin-$$i"
   docker run -d \
@@ -123,7 +123,7 @@ docker exec "filecoin-0" $$filecoin_exec \
        mining start
 
 # connect nodes
-for i in {0..9}
+for i in {0..4}
 do
   for node_addr in $$(docker exec "filecoin-$$i" $$filecoin_exec id --format=\<addrs\>)
   do
@@ -133,7 +133,7 @@ do
   done
 
   echo "$$i: $$node_docker_addr"
-  for j in {0..9}
+  for j in {0..4}
   do
     echo "joining $${j} with peer at: $${node_docker_addr}"
     docker exec "filecoin-$$j" $$filecoin_exec swarm connect "$${node_docker_addr}" || true
@@ -141,14 +141,14 @@ do
 done
 
 # start streaming events to aggregator
-for i in {0..9}
+for i in {0..4}
 do
   docker exec -d "filecoin-$$i" $$filecoin_exec \
          log streamto /ip4/172.19.0.250/tcp/9000
 done
 
   # send some tokens
-for i in {1..9}
+for i in {1..4}
 do
   nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls | tail -n +2)
   msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$$minerOwner" --value 100 "$$nodeAddr" | tail -n +2)
