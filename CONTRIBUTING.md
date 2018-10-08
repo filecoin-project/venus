@@ -22,6 +22,7 @@ Filecoin, including go-filecoin and all related modules, follows the
 * [The Spec](#the-spec)
 * [Platform Considerations](#platform-considerations)
 * [Testing](#testing)
+* [Profiling](#profiling)
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
 * [Gotchas](#gotchas)
@@ -236,6 +237,24 @@ related platforms.
   * Daemon tests should test integration, not comprehensive functionality
   * Daemon tests should validate that their responses conform to a JSON schema
   * Daemon tests for foo go into `foo_daemon_test.go` (so `foo.go` should have *both* `foo_test.go` and `foo_daemon_test.go`)
+
+## Profiling
+
+We use [pprof](https://golang.org/pkg/runtime/pprof/) to capture and visualize
+performance metrics.
+
+To capture (for example) a CPU profile, launch the daemon and then make an HTTP
+request of the following form:
+
+```shell
+curl 'http://localhost:${CMDAPI_PORT}/debug/pprof/profile?seconds=15' > /tmp/profile.dump
+```
+
+Then, use pprof to view the dump:
+
+```shell
+go tool pprof /tmp/profile.dump
+```
 
 ## Test Ranger
 

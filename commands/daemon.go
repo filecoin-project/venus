@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof" // nolint: golint
 	"os"
 	"os/signal"
 	"time"
@@ -13,7 +14,7 @@ import (
 	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	writer "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log/writer"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	"gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 
@@ -153,8 +154,12 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	}
 	config.API.Address = apiLis.Multiaddr().String()
 
+	handler := http.NewServeMux()
+	handler.Handle("/debug/pprof/", http.DefaultServeMux)
+	handler.Handle(APIPrefix+"/", cmdhttp.NewHandler(servenv, rootCmd, cfg))
+
 	apiserv := http.Server{
-		Handler: cmdhttp.NewHandler(servenv, rootCmd, cfg),
+		Handler: handler,
 	}
 
 	go func() {
