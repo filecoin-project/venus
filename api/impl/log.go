@@ -96,7 +96,8 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 			}
 			var event map[string]interface{}
 			if err := filterDecoder.Decode(&event); err != nil {
-				log.Warningf("failed to decode event: %v", err)
+				// This is fine, it just means we don' care about it.
+				// DO NOT LOG THIS!
 				continue
 			}
 			// "filter"
