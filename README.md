@@ -142,35 +142,26 @@ To set up a single node capable of mining:
 rm -fr ~/.filecoin
 go-filecoin init --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
+# Note the output of the daemon, it should say "My peer ID is <W>", where <W>
+# is a long cid string starting with "Qm".  <W> is used in a later command.
 # Switch terminals
 # The miner is present in the genesis block car file created from the 
 # json file, but the node is not yet configured to use it. Get the 
-# miner address from the json file fixtures/gen.json and replace X
+# miner address from the json file fixtures/gen.json and replace <X>
 # in the command below with it:
-go-filecoin config mining.minerAddress \"X\"
+go-filecoin config mining.minerAddress '"<X>"'
 # The account that owns the miner is also not yet configured in the node
-# so note that owner key name in fixtures/gen.json (eg, "a") and 
-# import that key from the fixtures, assuming it was X:
-go-filecoin wallet import fixtures/X.key
+# so note that owner key name in fixtures/gen.json, we'll call it <Y> for short,
+# and import that key from the fixtures:
+go-filecoin wallet import fixtures/<Y>.key
+# Note the output of this command, call it <Z>. This output is the address of 
+# the account that owns the miner.
 # The miner was not created with a pre-set peerid, so set it so that
 # clients can find it.
-go-filecoin miner update-peerid
-```
-
-To set up a node and connect into an existing cluster:
-```
-rm -fr ~/.filecoin
-# filecoin must be initialized in the right way to connect to the existing
-# cluster.  You must init with the same genesis.car file as the bootstrappers.
-# Finally you must configure your daemon with the proper bootstrap peers.
-# For lab week the easiest way to do this is by calling init with the
-# cluster-teamweek flag set.  Alternatively you can set the config's bootstrap
-# addrs manually after running init and before running daemon.
-go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
-go-filecoin daemon
-# In a new terminal, tell your local node to stream logs to the aggregator:
-go-filecoin log streamto <aggregator multiaddr>
-# Ex: go-filecoin log streamto /dns4/cluster.kittyhawk.wtf/tcp/19000
+go-filecoin miner update-peerid --from=<Z> <X> <W>
+# Now you can run a lookup
+go-filecoin address lookup <X>
+# the output should now be <W>
 ```
 
 To configure a node's auto-sealing scheduler:
