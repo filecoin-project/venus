@@ -168,6 +168,9 @@ rm -fr ~/.filecoin
 # addrs manually after running init and before running daemon.
 go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
 go-filecoin daemon
+# In a new terminal, tell your local node to stream logs to the aggregator:
+go-filecoin log streamto <aggregator multiaddr>
+# Ex: go-filecoin log streamto /dns4/cluster.kittyhawk.wtf/tcp/19000
 ```
 
 To configure a node's auto-sealing scheduler:
