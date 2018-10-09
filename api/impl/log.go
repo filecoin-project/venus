@@ -89,7 +89,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	filterDecoder := json.NewDecoder(r)
 	filterEncoder := json.NewEncoder(filterW)
 	go func() {
-		defer filterW.Close()
+		defer filterW.Close() // nolint: errcheck
 		for {
 			if ctx.Err() != nil {
 				log.Warningf("filter context error, closing: %v", ctx.Err())
