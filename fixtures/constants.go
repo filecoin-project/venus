@@ -113,11 +113,18 @@ const (
 	filecoinBootstrap2 string = "/dns4/cluster.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
 	filecoinBootstrap3 string = "/dns4/cluster.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
 	filecoinBootstrap4 string = "/dns4/cluster.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
+	filecoinBootstrap5 string = "/dns4/cluster.kittyhawk.wtf/tcp/9005/ipfs/QmQ8UoqmUUNQnCcYXNJPLbqT9aKpvfcoCWgxnV1aDGR3Ui"
+	filecoinBootstrap6 string = "/dns4/cluster.kittyhawk.wtf/tcp/9006/ipfs/QmY7dK81dyant42kteuiKQNrtnZ5hRjEzdYn3NWwpBunXC"
+	filecoinBootstrap7 string = "/dns4/cluster.kittyhawk.wtf/tcp/9007/ipfs/QmT3X2Z2ptrD3zpQc7wJe53ayAVr7sHA1wWMdT4T1d1u9J"
+	filecoinBootstrap8 string = "/dns4/cluster.kittyhawk.wtf/tcp/9008/ipfs/QmVbkRxWyuEcWWtEiTj2NHWRt5NyFHB5KqL45agnHAXGNY"
+	filecoinBootstrap9 string = "/dns4/cluster.kittyhawk.wtf/tcp/9009/ipfs/QmS5YAS5YsKSPvk63DkXjmhJMXXt7aSvtRfEtZEbhunLH2"
 )
 
 // LabWeekBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
 // cluster running at lab week.
 var LabWeekBootstrapAddrs = []string{
 	filecoinBootstrap0, filecoinBootstrap1, filecoinBootstrap2,
-	filecoinBootstrap3, filecoinBootstrap4,
+	filecoinBootstrap3, filecoinBootstrap4, filecoinBootstrap5,
+	filecoinBootstrap6, filecoinBootstrap7, filecoinBootstrap8,
+	filecoinBootstrap9,
 }
