@@ -88,6 +88,8 @@ type RenderedMinerInfo struct {
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
+//
+// WARNING: Do not use maps in this code, they will make this code non deterministic.
 func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
