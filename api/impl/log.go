@@ -97,7 +97,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 			}
 			var event map[string]interface{}
 			if err := filterDecoder.Decode(&event); err != nil {
-				// We break on error because we don't trust the connection and expect to be restarted.
+				// We break on error because we don't trust the log writer is still available and expect to be restarted.
 				log.Warningf("error decoding event: %v", err)
 				break
 			}
