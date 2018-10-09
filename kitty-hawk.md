@@ -12,4 +12,9 @@ go-filecoin daemon
 # In a new terminal, tell your local node to stream logs to the aggregator:
 go-filecoin log streamto <aggregator multiaddr>
 # Ex: go-filecoin log streamto /dns4/cluster.kittyhawk.wtf/tcp/19000
+
+# Dashboard: http://test.kittyhawk.wtf:8010
+# Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000 
+# Block explorer: http://test.kittyhawk.wtf:8000
+# Faucet: http://test.kittyhawk.wtf:9797
 ```
