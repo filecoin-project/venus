@@ -15,7 +15,6 @@ import (
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	unixfs "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs"
-
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -23,6 +22,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -237,10 +238,9 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 		})
 	}
 
-	pi, err := sm.sectorBuilder().NewPieceInfo(d.proposal.PieceRef, d.proposal.Size.Uint64())
-	if err != nil {
-		fail("Failed to submit seal proof", fmt.Sprintf("failed to create piece info: %s", err))
-		return
+	pi := &sectorbuilder.PieceInfo{
+		Ref:  d.proposal.PieceRef,
+		Size: d.proposal.Size.Uint64(),
 	}
 
 	sectorID, err := sm.sectorBuilder().AddPiece(ctx, pi)
@@ -267,7 +267,7 @@ func (sm *StorageMiner) processStorageDeal(c *cid.Cid) {
 }
 
 // OnCommitmentAddedToMempool is a callback, called when a sector seal message was sent to the mempool.
-func (sm *StorageMiner) OnCommitmentAddedToMempool(sector *SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
+func (sm *StorageMiner) OnCommitmentAddedToMempool(sector *sectorbuilder.SealedSector, msgCid *cid.Cid, sectorID uint64, err error) {
 	log.Debug("StorageMiner.OnCommitmentAddedToMempool")
 	sm.dealsAwaitingSealLk.Lock()
 	defer sm.dealsAwaitingSealLk.Unlock()
@@ -398,7 +398,23 @@ func (sm *StorageMiner) getProvingPeriodStart() (*types.BlockHeight, error) {
 	return types.NewBlockHeightFromBytes(res[0]), nil
 }
 
-func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*SealedSector) {
+// generatePoSt creates the required PoSt, given a list of sector ids and
+// matching seeds. It returns the Snark Proof for the PoSt, and a list of
+// sectors that faulted, if there were any faults.
+func generatePoSt(commRs [][32]byte, seed [32]byte) ([192]byte, []uint8, error) {
+	req := proofs.GeneratePoSTRequest{
+		CommRs:        commRs,
+		ChallengeSeed: seed,
+	}
+	res, err := (&proofs.RustProver{}).GeneratePoST(req)
+	if err != nil {
+		return [192]byte{}, nil, errors.Wrap(err, "failed to generate PoSt")
+	}
+
+	return res.Proof, res.Faults, nil
+}
+
+func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuilder.SealedSector) {
 	// TODO: real seed generation
 	seed := [32]byte{}
 	if _, err := rand.Read(seed[:]); err != nil {
@@ -407,10 +423,10 @@ func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*Sea
 
 	commRs := make([][32]byte, len(sectors))
 	for i, sector := range sectors {
-		commRs[i] = sector.CommR()
+		commRs[i] = sector.CommR
 	}
 
-	proof, faults, err := sm.sectorBuilder().GeneratePoSt(commRs, seed)
+	proof, faults, err := generatePoSt(commRs, seed)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return
@@ -461,7 +477,7 @@ func (sm *StorageMiner) submitPoSt(start, end *types.BlockHeight, sectors []*Sea
 	}
 }
 
-func (sm *StorageMiner) sectorBuilder() *SectorBuilder {
+func (sm *StorageMiner) sectorBuilder() sectorbuilder.SectorBuilder {
 	return sm.nd.SectorBuilder
 }
 

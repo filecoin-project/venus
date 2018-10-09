@@ -46,7 +46,6 @@ type VerifySealRequest struct {
 
 // GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoSTRequest struct {
-	Storage       SectorStore
 	CommRs        [][32]byte
 	ChallengeSeed [32]byte
 }

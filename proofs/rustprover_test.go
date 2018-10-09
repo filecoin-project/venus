@@ -189,7 +189,6 @@ func TestPoSTCycle(t *testing.T) {
 	gres, gerr := rp.GeneratePoST(GeneratePoSTRequest{
 		CommRs:        [][32]byte{createDummyCommR(), createDummyCommR()},
 		ChallengeSeed: [32]byte{},
-		Storage:       sm,
 	})
 	require.NoError(gerr)
 

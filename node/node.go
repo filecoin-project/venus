@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -125,7 +126,10 @@ type Node struct {
 	Repo repo.Repo
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
-	SectorBuilder *SectorBuilder
+	SectorBuilder sectorbuilder.SectorBuilder
+
+	// SectorStore is used to manage staging and sealed sectors.
+	SectorStore proofs.SectorStore
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -486,6 +490,12 @@ func (node *Node) Stop(ctx context.Context) {
 	node.cancelSubscriptions()
 	node.ChainReader.Stop()
 
+	if node.SectorBuilder != nil {
+		if err := node.SectorBuilder.Close(); err != nil {
+			fmt.Printf("error closing sector builder: %s\n", err)
+		}
+	}
+
 	if err := node.Host.Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
 	}
@@ -578,6 +588,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 		go node.handleNewMiningOutput(outCh)
 	}
 
+	// initialize a sector store
+	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	if node.Repo.Config().Mining.PerformRealProofs {
+		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	}
+	node.SectorStore = sstore
+
 	// initialize a sector builder
 	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
 	if err != nil {
@@ -597,18 +614,18 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go func() {
 		for {
 			select {
-			case result := <-node.SectorBuilder.SectorSealResults:
+			case result := <-node.SectorBuilder.SectorSealResults():
 				switch val := result.(type) {
 				case error:
 					log.Errorf("failed to seal piece: %s", val.Error())
-				case *SealedSector:
-					msg, err := node.SendMessage(ctx, minerOwnerAddr, minerAddr, nil, "commitSector", val.sectorID, val.commR[:], val.commD[:])
+				case *sectorbuilder.SealedSector:
+					msg, err := node.SendMessage(ctx, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
 					if err != nil {
-						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d", minerOwnerAddr, minerAddr, val.sectorID)
+						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d", minerOwnerAddr, minerAddr, val.SectorID)
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentAddedToMempool(val, msg, val.sectorID, nil)
+					node.StorageMiner.OnCommitmentAddedToMempool(val, msg, val.SectorID, nil)
 				}
 			case <-node.miningCtx.Done():
 				return
@@ -666,17 +683,10 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func initSectorBuilderForNode(ctx context.Context, node *Node) (*SectorBuilder, error) {
+func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
-	}
-
-	dirs := node.Repo.(SectorDirs)
-
-	sstore := proofs.NewDiskBackedSectorStore(dirs.StagingDir(), dirs.SealedDir())
-	if node.Repo.Config().Mining.PerformRealProofs {
-		sstore = proofs.NewProofTestSectorStore(dirs.StagingDir(), dirs.SealedDir())
 	}
 
 	lastUsedSectorID, err := node.getLastUsedSectorID(ctx, minerAddr)
@@ -684,7 +694,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (*SectorBuilder, 
 		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
-	sb, err := InitSectorBuilder(node.miningCtx, node.Repo.Datastore(), node.Blockservice, minerAddr, sstore, lastUsedSectorID)
+	sb, err := sectorbuilder.Init(node.miningCtx, node.Repo.Datastore(), node.Blockservice, minerAddr, node.SectorStore, lastUsedSectorID)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}

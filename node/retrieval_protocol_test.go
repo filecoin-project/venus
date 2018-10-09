@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	. "github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,9 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	require.NoError(minerNode.StartMining(ctx))
 	defer minerNode.StopMining(ctx)
 
-	testSectorSize := uint64(minerNode.SectorBuilder.BinSize())
+	response, err := minerNode.SectorStore.GetMaxUnsealedBytesPerSector()
+	require.NoError(err)
+	testSectorSize := uint64(response.NumBytes)
 
 	// pretend like we've run through the storage protocol and saved user's
 	// data to the miner's block store and sector builder
@@ -154,7 +157,7 @@ func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager cha
 	return out
 }
 
-func createRandomPieceInfo(t *testing.T, blockService blockservice.BlockService, n uint64) (*PieceInfo, []byte) {
+func createRandomPieceInfo(t *testing.T, blockService blockservice.BlockService, n uint64) (*sectorbuilder.PieceInfo, []byte) {
 	randomBytes := createRandomBytes(t, n)
 	node := merkledag.NewRawNode(randomBytes)
 	blockService.AddBlock(node)
@@ -162,7 +165,7 @@ func createRandomPieceInfo(t *testing.T, blockService blockservice.BlockService,
 	size, err := node.Size()
 	require.NoError(t, err)
 
-	return &PieceInfo{
+	return &sectorbuilder.PieceInfo{
 		Ref:  node.Cid(),
 		Size: size,
 	}, randomBytes

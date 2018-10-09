@@ -187,7 +187,7 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 
 	// a mutable pointer to a GeneratePoSTResponse C-struct
 	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post(
-		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
+		(*C.Box_SectorStore)(nil), // TODO: remove this now-unused parameter from rust-proofs
 		(*C.uint8_t)(cflattened),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])))))
