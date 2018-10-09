@@ -89,6 +89,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	filterDecoder := json.NewDecoder(r)
 	filterEncoder := json.NewEncoder(filterW)
 	go func() {
+		defer filterW.Close()
 		for {
 			if ctx.Err() != nil {
 				log.Warningf("filter context error, closing: %v", ctx.Err())
@@ -96,12 +97,9 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 			}
 			var event map[string]interface{}
 			if err := filterDecoder.Decode(&event); err != nil {
-				if err == io.EOF {
-					log.Errorf("EOF decoding event stream: %v", err)
-					break
-				}
+				// We break on error because we don't trust the connection and expect to be restarted.
 				log.Warningf("error decoding event: %v", err)
-				continue
+				break
 			}
 			// logs that have the field "event" are from a deprecated log method
 			// and will be ignored here as they cause a lot of back pressure.
@@ -114,7 +112,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 			event["peerID"] = peerID
 			if err := filterEncoder.Encode(event); err != nil {
 				log.Warningf("failed to encode event: %v", err)
-				continue
+				break
 			}
 		}
 	}()
