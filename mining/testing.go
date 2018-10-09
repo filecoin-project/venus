@@ -15,9 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// BlockTimeTest is the block time used by workers during testing
-const BlockTimeTest = time.Second
-
 // MineDelayTest is the mining delay used by schedulers during testing
 const MineDelayTest = time.Millisecond * 500
 

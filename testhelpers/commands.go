@@ -762,6 +762,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
+	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	// build command options
 	initopts := []string{
@@ -792,7 +793,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		}
 	}
 
-	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag}
+	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
 	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
 
 	// define filecoin daemon process

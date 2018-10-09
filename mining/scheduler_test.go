@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -186,7 +187,7 @@ func TestCannotInterruptMiner(t *testing.T) {
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 0}
 	ts2 := consensus.RequireNewTipSet(require, blk2)
 	blockingMine := func(c context.Context, ts consensus.TipSet, nBC int, outCh chan<- Output) {
-		time.Sleep(BlockTimeTest)
+		time.Sleep(th.BlockTimeTest)
 		assert.Equal(ts, ts1)
 		outCh <- Output{NewBlock: blk1}
 	}
@@ -216,7 +217,7 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 		return head
 	}
 	shouldCancelMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
-		mineTimer := time.NewTimer(BlockTimeTest)
+		mineTimer := time.NewTimer(th.BlockTimeTest)
 		select {
 		case <-mineTimer.C:
 			t.Fatal("should not take whole time")
