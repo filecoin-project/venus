@@ -10,18 +10,15 @@ import (
 )
 
 var testConfig = &GenesisCfg{
-	Keys: []string{"bob", "hank", "steve", "laura"},
-	PreAlloc: map[string]string{
-		"bob":  "10",
-		"hank": "50",
-	},
+	Keys:     4,
+	PreAlloc: []string{"10", "50"},
 	Miners: []Miner{
 		{
-			Owner: "bob",
+			Owner: 0,
 			Power: 50,
 		},
 		{
-			Owner: "laura",
+			Owner: 1,
 			Power: 10,
 		},
 	},

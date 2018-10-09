@@ -37,7 +37,7 @@ iptb start 0 -- --block-time=5s
 iptb run 0 -- go-filecoin config mining.minerAddress "\"$minerAddr\""
 
 # import miner owner
-ownerRaw=$(iptb run 0 -- go-filecoin wallet import "$FIXDIR/a.key")
+ownerRaw=$(iptb run 0 -- go-filecoin wallet import "$FIXDIR/0.key")
 # sad face, iptb makes me do all the jumps
 minerOwner=$(echo $ownerRaw | sed -e 's/^node\[0\] exit 0 //' | jq -r ".")
 # update the peerID to the correct value

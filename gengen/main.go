@@ -33,19 +33,19 @@ It outputs a 'car' encoded genesis dag.
 For example:
 $ cat setup.json
 {
-	"keys": ["bob", "hank", "steve", "laura"],
-	"preAlloc": {
-		"bob": "10",
-		"hank": "50"
-	},
+	"keys": 4,
+	"preAlloc": [
+		"10",
+		"50"
+	],
 	"miners": [
 		{
-			"owner":"bob",
+			"owner": 0,
 			"power": 5000
 		},
 		{
-			"owner": "laura",
-			"power": 1000
+			"owner": 1,
+      power": 1000
 		}
 	]
 }
@@ -85,7 +85,7 @@ func main() {
 	}
 
 	for name, k := range info.Keys {
-		n := fmt.Sprintf("%s/%s", *keypath, name)
+		n := fmt.Sprintf("%s/%d", *keypath, name)
 		if err := writeKey(k, n, jsonEnabled); err != nil {
 			panic(err)
 		}
@@ -113,7 +113,7 @@ func main() {
 	}
 
 	for _, m := range info.Miners {
-		fmt.Fprintf(os.Stderr, "created miner %s, owned by %s, power = %d\n", m.Address, m.Owner, m.Power) // nolint: errcheck
+		fmt.Fprintf(os.Stderr, "created miner %s, owned by %d, power = %d\n", m.Address, m.Owner, m.Power) // nolint: errcheck
 	}
 }
 

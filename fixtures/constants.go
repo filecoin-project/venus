@@ -33,9 +33,9 @@ var testKeys []string
 var TestMiners []string
 
 type detailsStruct struct {
-	Keys   map[string]*types.KeyInfo
+	Keys   []*types.KeyInfo
 	Miners []struct {
-		Owner   string
+		Owner   int
 		Address string
 		Power   uint64
 	}
@@ -68,11 +68,11 @@ func init() {
 		panic(err)
 	}
 
-	var keys []string
+	var keys []int
 	for key := range details.Keys {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	sort.Ints(keys)
 	miners := details.Miners
 
 	for _, key := range keys {
@@ -82,7 +82,7 @@ func init() {
 			panic(err)
 		}
 		TestAddresses = append(TestAddresses, addr.String())
-		testKeys = append(testKeys, fmt.Sprintf("%s.key", key))
+		testKeys = append(testKeys, fmt.Sprintf("%d.key", key))
 	}
 
 	for _, miner := range miners {

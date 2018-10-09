@@ -90,16 +90,13 @@ func (cs *ChainSeed) GenesisInitFunc(cst *hamt.CborIpldStore, bs blockstore.Bloc
 }
 
 // GiveKey gives the given key to the given node
-func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key string) address.Address {
+func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
 	t.Helper()
 	bcks := nd.Wallet.Backends(wallet.DSBackendType)
 	require.Len(t, bcks, 1, "expected to get exactly one datastore backend")
 
 	dsb := bcks[0].(*wallet.DSBackend)
-	kinfo, ok := cs.info.Keys[key]
-	if !ok {
-		t.Fatalf("Key %q does not exist in chain seed", key)
-	}
+	kinfo := cs.info.Keys[key]
 	require.NoError(t, dsb.ImportKey(kinfo))
 
 	addr, err := kinfo.Address()
@@ -124,12 +121,9 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Addre
 }
 
 // Addr returns the address for the given key
-func (cs *ChainSeed) Addr(t *testing.T, key string) address.Address {
+func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	t.Helper()
-	k, ok := cs.info.Keys[key]
-	if !ok {
-		t.Fatal("no such key: ", key)
-	}
+	k := cs.info.Keys[key]
 
 	a, err := k.Address()
 	if err != nil {
@@ -188,7 +182,7 @@ func MakeNodesUnstartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMo
 func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) *Node {
 	seed := MakeChainSeed(t, TestGenCfg)
 	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
-	seed.GiveKey(t, node, "foo")
+	seed.GiveKey(t, node, 0)
 	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
 	_, err := NewStorageMiner(context.Background(), node, minerAddr, minerOwnerAddr)
 	assert.NoError(t, err)
@@ -443,17 +437,17 @@ var PeerKeys = []crypto.PrivKey{
 
 // TestGenCfg is a genesis configuration used for tests.
 var TestGenCfg = &gengen.GenesisCfg{
-	Keys: []string{"foo", "bar"},
+	Keys: 2,
 	Miners: []gengen.Miner{
 		{
-			Owner:  "foo",
+			Owner:  0,
 			Power:  100,
 			PeerID: mustPeerID(PeerKeys[0]).Pretty(),
 		},
 	},
-	PreAlloc: map[string]string{
-		"foo": "10000",
-		"bar": "10000",
+	PreAlloc: []string{
+		"10000",
+		"10000",
 	},
 }
 

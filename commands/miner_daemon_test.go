@@ -300,18 +300,18 @@ func TestMinerOwner(t *testing.T) {
 }
 
 var testConfig = &gengen.GenesisCfg{
-	Keys: []string{"bob", "hank", "steve", "laura"},
-	PreAlloc: map[string]string{
-		"bob":  "10",
-		"hank": "50",
+	Keys: 4,
+	PreAlloc: []string{
+		"10",
+		"50",
 	},
 	Miners: []gengen.Miner{
 		{
-			Owner: "bob",
+			Owner: 0,
 			Power: 5000,
 		},
 		{
-			Owner: "laura",
+			Owner: 1,
 			Power: 1000,
 		},
 	},
