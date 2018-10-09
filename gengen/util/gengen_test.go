@@ -8,7 +8,6 @@ import (
 	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	. "github.com/filecoin-project/go-filecoin/gengen/util"
@@ -32,16 +31,13 @@ var testConfig = &GenesisCfg{
 }
 
 func TestGenGenLoading(t *testing.T) {
+	assert := assert.New(t)
 	fi, err := ioutil.TempFile("", "gengentest")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(err)
 
-	if _, err = GenGenesisCar(testConfig, fi); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = fi.Close()
+	_, err = GenGenesisCar(testConfig, fi)
+	assert.NoError(err)
+	assert.NoError(fi.Close())
 
 	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer td.Shutdown()
@@ -49,8 +45,8 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	strings.Contains(stdout, `"Power":"50"`)
-	strings.Contains(stdout, `"Power":"10"`)
+	assert.Contains(stdout, `"MinerActor"`)
+	assert.Contains(stdout, `"StoragemarketActor"`)
 }
 
 func TestGenGenDeterministic(t *testing.T) {
