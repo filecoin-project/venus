@@ -101,7 +101,7 @@ do
          -e IPFS_LOGGING_FMT=nocolor -e FILECOIN_PATH="/var/local/filecoin" \
          --log-driver json-file --log-opt max-size=10m \
          $${FILECOIN_DOCKER_IMAGE} daemon --elstdout \
-         --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="5s"
+         --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="30s"
 done
 
 filecoin_exec="go-filecoin --repodir=/var/local/filecoin"
