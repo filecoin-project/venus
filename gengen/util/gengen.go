@@ -2,10 +2,10 @@ package gengen
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"io"
 	"math/big"
+	mrand "math/rand"
 	"strconv"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/state"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
+	mh "gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
@@ -28,6 +28,9 @@ import (
 	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 )
+
+// seed is used to make all randomness (keys and fake commitments) deterministic.
+var seed int64 = 123
 
 // Miner is
 type Miner struct {
@@ -86,7 +89,8 @@ type RenderedMinerInfo struct {
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
 func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
-	keys, err := genKeys(cfg.Keys)
+	pnrg := mrand.New(mrand.NewSource(seed))
+	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +106,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners)
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
 	if err != nil {
 		return nil, err
 	}
@@ -146,13 +150,13 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	}, nil
 }
 
-func genKeys(cfgkeys []string) (map[string]*types.KeyInfo, error) {
+func genKeys(cfgkeys []string, pnrg io.Reader) (map[string]*types.KeyInfo, error) {
 	keys := make(map[string]*types.KeyInfo)
 	for _, k := range cfgkeys {
 		if _, ok := keys[k]; ok {
 			return nil, fmt.Errorf("duplicate key with name: %q", k)
 		}
-		sk, err := crypto.GenerateKey() // TODO: GenerateKey should return a KeyInfo
+		sk, err := crypto.GenerateKeyFromSeed(pnrg) // TODO: GenerateKey should return a KeyInfo
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +207,7 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -221,7 +225,12 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 			}
 			pid = p
 		} else {
-			pid = th.RequireRandomPeerID()
+			// this is just deterministically deriving from the owner
+			h, err := mh.Sum(addr.Bytes(), mh.SHA2_256, -1)
+			if err != nil {
+				return nil, err
+			}
+			pid = peer.ID(h)
 		}
 
 		// give collateral to account actor
@@ -263,10 +272,10 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo
 
 			commR := make([]byte, 32)
 			commD := make([]byte, 32)
-			if _, err := rand.Read(commR[:]); err != nil {
+			if _, err := pnrg.Read(commR[:]); err != nil {
 				return nil, err
 			}
-			if _, err := rand.Read(commD[:]); err != nil {
+			if _, err := pnrg.Read(commD[:]); err != nil {
 				return nil, err
 			}
 			resp, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
