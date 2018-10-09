@@ -10,6 +10,7 @@ FILECOIN_CONFIG=$$(cat  <<-END
 END
                )
 
+hostnamectl --static set-hostname ${instance_name}.kittyhawk.wtf
 ${setup_instance_storage}
 
 # expose Docker daemon on TCP 2376
