@@ -113,7 +113,7 @@ docker exec "filecoin-0" $$filecoin_exec \
        config mining.minerAddress "\"$${minerAddr}\""
 
 # import miner owner
-minerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "/var/filecoin/car/a.key" | tail -n +2 | sed -e 's/^"//' -e 's/"$$//')
+minerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "/var/filecoin/car/0.key" | tail -n +2 | sed -e 's/^"//' -e 's/"$$//')
 
 # update the peerID of the miner to the correct value
 peerID=$$(docker exec "filecoin-0" $$filecoin_exec id | grep -v Fixture | jq ".ID" -r)
