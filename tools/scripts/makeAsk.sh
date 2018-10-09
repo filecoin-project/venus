@@ -10,7 +10,7 @@
 function Usage() {
   echo "USAGE:"
   echo
-  echo "makeAsk <CMD_API> <MINER_ADDRESS> [ASK_SIZE] [ASK_PRICE] [MSG_TIMEOUT]"
+  echo "makeAsk <CMD_API> <MINER_ADDRESS> [ASK_SIZE] [ASK_PRICE] [MSG_TIMEOUT_SEC]"
 }
 
 # Sanity check things are installed
@@ -37,11 +37,11 @@ MINER_ADDRESS="$2"
 ASK_SIZE="$3"
 ASK_PRICE="$4"
 # ask message propogation timeout in seconds
-MSG_TIMEOUT="$5"
+MSG_TIMEOUT_SEC="$5"
 
 if test -z "$CMD_API"
 then
-  echo "ERROR Missing Arg 1: you must specify a command api multiaddress"
+  echo "ERROR Missing Arg 1: you must specify a command api multiaddress" >&2
   Usage
   echo
   exit 1
@@ -49,7 +49,7 @@ fi
 
 if test -z "$MINER_ADDRESS"
 then
-  echo "ERROR Missing Arg 2: you must specify a miner address to create ask from"
+  echo "ERROR Missing Arg 2: you must specify a miner address to create ask from" >&2
   Usage
   echo
   exit 1
@@ -58,13 +58,13 @@ fi
 MINER_OWNER=$(go-filecoin --cmdapiaddr="$CMD_API" miner owner "$MINER_ADDRESS")
 if test -z "$MINER_OWNER"
 then
-  echo "ERROR failed to determine miner owner"
+  echo "ERROR failed to determine miner owner" >&2
   exit 1
 fi
 
 if test -z "$ASK_SIZE"
 then
-  echo "No ask price given, will default to 1GB"
+  echo "No ask price given, will default to 1GB" >&2
   echo
   ASK_SIZE="1000000000"
 fi
@@ -76,10 +76,10 @@ then
   echo
 fi
 
-if test -z "$MSG_TIMEOUT"
+if test -z "$MSG_TIMEOUT_SEC"
 then
-  MSG_TIMEOUT=60
-  printf "No timout given, will use default value: %s second\n" "$MSG_TIMEOUT"
+  MSG_TIMEOUT_SEC=60
+  printf "No timout given, will use default value: %s second\n" "$MSG_TIMEOUT_SEC"
   echo
 fi
 
@@ -88,13 +88,13 @@ echo
 
 MSG_CID=$(go-filecoin --cmdapiaddr="$CMD_API" miner add-ask "$MINER_ADDRESS" "$ASK_SIZE" "$ASK_PRICE" --from="$MINER_OWNER")
 
-MSG_RESULT=$(timeout $MSG_TIMEOUT go-filecoin --cmdapiaddr="$CMD_API" message wait $MSG_CID)
+MSG_RESULT=$(timeout $MSG_TIMEOUT_SEC go-filecoin --cmdapiaddr="$CMD_API" message wait $MSG_CID)
 
 EXIT_CODE=$(echo $MSG_RESULT | jq ".exitCode" | grep -v "null")
 
 if [ "$EXIT_CODE" -eq "0" ]; then
    ASK_BOOK=$(go-filecoin --cmdapiaddr="$CMD_API" orderbook asks | jq '.')
-   printf "Ask create success. Orderbook Asks:\n%s" "$ASK_BOOK"
+   printf "Ask create success. Orderbook asks:\n%s" "$ASK_BOOK"
    exit 0
 else
   printf "Ask create failed. Message:\n%s" "$MSG_RESULT"
