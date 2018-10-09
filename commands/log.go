@@ -1,8 +1,10 @@
 package commands
 
 import (
-	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	"time"
+
+	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
@@ -53,9 +55,14 @@ This command will run until its killed.
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
-		if err := GetAPI(env).Log().StreamTo(req.Context, maddr); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+		for {
+			if req.Context.Err() != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+			err := GetAPI(env).Log().StreamTo(req.Context, maddr)
+			log.Warningf("StreamTo closed, re-starting... %v", err)
+			time.Sleep(1 * time.Second)
 		}
 	},
 }
