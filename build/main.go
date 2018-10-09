@@ -256,7 +256,6 @@ func buildGengen() {
 	log.Println("Building gengen utils...")
 
 	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
-	runParts("go", "build", "-o", "./gengen/gensetup", "./gengen/setupgen")
 }
 
 func buildFaucet() {

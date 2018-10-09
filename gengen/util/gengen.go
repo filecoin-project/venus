@@ -36,7 +36,7 @@ var seed int64 = 123
 type Miner struct {
 	// Owner is the name of the key that owns this miner
 	// It must be a name of a key from the configs 'Keys' list
-	Owner string
+	Owner int
 
 	// PeerID is the peer ID to set as the miners owner
 	PeerID string
@@ -51,11 +51,11 @@ type Miner struct {
 type GenesisCfg struct {
 	// Keys is an array of names of keys. A random key will be generated
 	// for each name here.
-	Keys []string
+	Keys int
 
 	// PreAlloc is a mapping from key names to string values of whole filecoin
 	// that will be preallocated to each account
-	PreAlloc map[string]string
+	PreAlloc []string
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []Miner
@@ -64,7 +64,7 @@ type GenesisCfg struct {
 // RenderedGenInfo contains information about a genesis block creation
 type RenderedGenInfo struct {
 	// Keys is the set of keys generated
-	Keys map[string]*types.KeyInfo
+	Keys []*types.KeyInfo
 
 	// Miners is the list of addresses of miners created
 	Miners []RenderedMinerInfo
@@ -76,7 +76,7 @@ type RenderedGenInfo struct {
 // RenderedMinerInfo contains info about a created miner
 type RenderedMinerInfo struct {
 	// Owner is the key name of the owner of this miner
-	Owner string
+	Owner int
 
 	// Address is the address generated on-chain for the miner
 	Address address.Address
@@ -88,6 +88,8 @@ type RenderedMinerInfo struct {
 // GenGen takes the genesis configuration and creates a genesis block that
 // matches the description. It writes all chunks to the dagservice, and returns
 // the final genesis block.
+//
+// WARNING: Do not use maps in this code, they will make this code non deterministic.
 func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
@@ -150,12 +152,9 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	}, nil
 }
 
-func genKeys(cfgkeys []string, pnrg io.Reader) (map[string]*types.KeyInfo, error) {
-	keys := make(map[string]*types.KeyInfo)
-	for _, k := range cfgkeys {
-		if _, ok := keys[k]; ok {
-			return nil, fmt.Errorf("duplicate key with name: %q", k)
-		}
+func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
+	keys := make([]*types.KeyInfo, cfgkeys)
+	for i := 0; i < cfgkeys; i++ {
 		sk, err := crypto.GenerateKeyFromSeed(pnrg) // TODO: GenerateKey should return a KeyInfo
 		if err != nil {
 			return nil, err
@@ -166,19 +165,19 @@ func genKeys(cfgkeys []string, pnrg io.Reader) (map[string]*types.KeyInfo, error
 			Curve:      types.SECP256K1,
 		}
 
-		keys[k] = ki
+		keys[i] = ki
 	}
 
 	return keys, nil
 }
 
-func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[string]string) error {
+func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) error {
 
-	for k, v := range prealloc {
-		ki, ok := keys[k]
-		if !ok {
-			return fmt.Errorf("no such key: %q", k)
-		}
+	if len(keys) < len(prealloc) {
+		return fmt.Errorf("keys do not match prealloc")
+	}
+	for i, v := range prealloc {
+		ki := keys[i]
 
 		addr, err := ki.Address()
 		if err != nil {
@@ -207,7 +206,7 @@ func setupPrealloc(st state.Tree, keys map[string]*types.KeyInfo, prealloc map[s
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys map[string]*types.KeyInfo, miners []Miner, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 

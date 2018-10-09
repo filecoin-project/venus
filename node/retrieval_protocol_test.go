@@ -187,11 +187,11 @@ func configureMinerAndClient(t *testing.T) (minerNode *Node, clientNode *Node, m
 	clientNode = NodeWithChainSeed(t, seed)
 
 	// give the minerNode node a key and the miner associated with that key
-	seed.GiveKey(t, minerNode, "foo")
+	seed.GiveKey(t, minerNode, 0)
 	minerAddr, minerOwnerAddr = seed.GiveMiner(t, minerNode, 0)
 
 	// give the clientNode node a private key, too
-	seed.GiveKey(t, clientNode, "bar")
+	seed.GiveKey(t, clientNode, 1)
 
 	// start 'em up
 	require.NoError(t, minerNode.Start(ctx))
