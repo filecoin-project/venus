@@ -367,7 +367,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		return node.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, address.TestAddress, mining.BlockTimeTest)
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, address.TestAddress, th.BlockTimeTest)
 	cur := node.ChainReader.Head()
 	out := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(out.Err)

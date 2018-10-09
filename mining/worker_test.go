@@ -41,7 +41,7 @@ func Test_Mine(t *testing.T) {
 
 	// Success case. TODO: this case isn't testing much.  Testing w.Mine
 	// further needs a lot more attention.
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	outCh := make(chan Output)
 	doSomeWorkCalled := false
@@ -56,7 +56,7 @@ func Test_Mine(t *testing.T) {
 	fmt.Printf("finished first \n")
 	// Block generation fails.
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
@@ -68,7 +68,7 @@ func Test_Mine(t *testing.T) {
 
 	// Sent empty tipset
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &FifthTestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
@@ -256,7 +256,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -293,7 +293,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -349,7 +349,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	h := types.Uint64(100)
 	wNum := types.Uint64(1000)
@@ -387,7 +387,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -412,7 +412,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], BlockTimeTest)
+	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
