@@ -165,6 +165,12 @@
       "hash": "QmS4niovD1U6pRjUBXivr1zvvLBqiTKbERjFo994JU7oQS",
       "name": "go-libp2p-routing",
       "version": "2.4.9"
+    },
+    {
+      "author": "lgierth",
+      "hash": "QmfXU2MhWoegxHoeMd3A2ytL2P6CY4FfqGWc23LTNWBwZt",
+      "name": "go-multiaddr-dns",
+      "version": "0.2.4"
     }
   ],
   "gxVersion": "0.12.1",
