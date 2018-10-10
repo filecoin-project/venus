@@ -408,7 +408,9 @@ func (node *Node) Start(ctx context.Context) error {
 	if !node.OfflineMode {
 		node.RelayBootstrapper.Start(ctx)
 		node.Bootstrapper.Start(ctx)
-		node.Routing.Bootstrap(ctx)
+		if err := node.Routing.Bootstrap(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
