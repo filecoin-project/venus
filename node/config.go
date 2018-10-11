@@ -38,7 +38,7 @@ func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 			if len(cfg.Bootstrap.Relays) == 0 {
 				return nil, errors.New("can't configure relay without relay addresses; we use the first by default")
 			}
-			myRelayAddrStr := fmt.Sprintf("%s/p2p-circuit/%s", cfg.Bootstrap.Relays[0], myPeerID.Pretty())
+			myRelayAddrStr := fmt.Sprintf("%s/p2p-circuit/ipfs/%s", cfg.Bootstrap.Relays[0], myPeerID.Pretty())
 			fmt.Printf("\n\nUsing relay address %s\n\n", myRelayAddrStr)
 			myRelayAddr, err := ma.NewMultiaddr(myRelayAddrStr)
 			if err != nil {
