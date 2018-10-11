@@ -109,7 +109,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		newConfig := rep.Config()
 		newConfig.Bootstrap.Relays = fixtures.LabWeekRelayAddrs
 		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
-		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.MinPeerThreshold = 3
 		newConfig.Bootstrap.Period = "10s"
 		newConfig.Swarm.Relay = true
 		if err := rep.ReplaceConfig(newConfig); err != nil {

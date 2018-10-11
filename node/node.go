@@ -71,6 +71,7 @@ var (
 type Node struct {
 	Host     host.Host
 	PeerHost host.Host
+	Routing  routing.IpfsRouting
 
 	Consensus   consensus.Protocol
 	ChainReader chain.ReadStore
@@ -269,7 +270,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
-	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
 
@@ -319,6 +319,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgPool:       msgPool,
 		OfflineMode:   nc.OfflineMode,
 		PeerHost:      peerHost,
+		Routing:       router,
 		Ping:          pinger,
 		PubSub:        fsub,
 		Repo:          nc.Repo,
@@ -405,8 +406,11 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head())
 
 	if !node.OfflineMode {
-		node.RelayBootstrapper.Start(context.Background())
-		node.Bootstrapper.Start(context.Background())
+		node.RelayBootstrapper.Start(ctx)
+		node.Bootstrapper.Start(ctx)
+		if err := node.Routing.Bootstrap(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
