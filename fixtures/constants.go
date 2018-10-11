@@ -115,7 +115,7 @@ const (
 	filecoinBootstrap4 string = "/dns4/test.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
-// LabWeekBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// LabWeekRelayAddrs are the dns multiaddrs for the nodes of the filecoin
 // cluster that run relays
 var LabWeekRelayAddrs = []string{
 	filecoinBootstrap0,
