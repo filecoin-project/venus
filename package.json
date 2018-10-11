@@ -171,6 +171,12 @@
       "hash": "QmfXU2MhWoegxHoeMd3A2ytL2P6CY4FfqGWc23LTNWBwZt",
       "name": "go-multiaddr-dns",
       "version": "0.2.4"
+    },
+    {
+      "author": "vyzo",
+      "hash": "QmVYqPFBGi5wiuxpKxf4mUePEDdfXh8H7HKtq4mH8SeqML",
+      "name": "go-libp2p-circuit",
+      "version": "2.1.10"
     }
   ],
   "gxVersion": "0.12.1",
