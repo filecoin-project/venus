@@ -65,8 +65,8 @@ const (
 	// WalletFile is the wallet data file; it contains addresses and private keys
 	WalletFile = "walletfile"
 
-	// ClusterTeamWeek populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters
-	ClusterTeamWeek = "cluster-teamweek"
+	// ClusterLabWeek populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters
+	ClusterLabWeek = "cluster-labweek"
 )
 
 var rootCmd = &cmds.Command{
