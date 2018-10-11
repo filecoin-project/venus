@@ -36,6 +36,8 @@ type DaemonInitConfig struct {
 	PerformRealProofs bool
 	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
 	LabWeekCluster bool
+	// EnableRelayHop, if set, sets the config to allow this node to relay between nodes.
+	EnableRelayHop bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
 	AutoSealIntervalSeconds uint
 }
@@ -111,6 +113,14 @@ func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
 func LabWeekCluster(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.LabWeekCluster = doit
+		return nil
+	}
+}
+
+// EnableRelayHop sets the EnableRelayHop option.
+func EnableRelayHop(doit bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) error {
+		dc.EnableRelayHop = doit
 		return nil
 	}
 }

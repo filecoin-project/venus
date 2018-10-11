@@ -111,6 +111,16 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
+		newConfig.Swarm.Relay = true
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
+	// Setup enableRelayHop specific config options.
+	if cfg.EnableRelayHop {
+		newConfig := rep.Config()
+		newConfig.Swarm.RelayHop = true
 		if err := rep.ReplaceConfig(newConfig); err != nil {
 			return err
 		}

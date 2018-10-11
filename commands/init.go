@@ -26,6 +26,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(ClusterLabWeek, "when set, populates config bootstrap addrs with the dns multiaddrs of the lab week cluster and other team week specific bootstrap parameters"),
+		cmdkit.BoolOption(EnableRelayHop, "when set, allow this node to relay between nodes"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -39,6 +40,7 @@ var initCmd = &cmds.Command{
 		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		teamWeek, _ := req.Options[ClusterLabWeek].(bool)
+		enableRelayHop, _ := req.Options[EnableRelayHop].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options["with-miner"].(string); ok {
@@ -61,6 +63,7 @@ var initCmd = &cmds.Command{
 			api.WithMiner(withMiner),
 			api.PerformRealProofs(performRealProofs),
 			api.LabWeekCluster(teamWeek),
+			api.EnableRelayHop(enableRelayHop),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 		)
 

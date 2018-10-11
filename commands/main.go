@@ -67,6 +67,9 @@ const (
 
 	// ClusterLabWeek populates config bootstrap addrs with the dns multiaddrs of the team week cluster and other team week specific bootstrap parameters
 	ClusterLabWeek = "cluster-labweek"
+
+	// EnableRelayHop allows this node to relay between nodes
+	EnableRelayHop = "enable-relay-hop"
 )
 
 var rootCmd = &cmds.Command{
