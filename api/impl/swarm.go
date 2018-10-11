@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"sort"
 
+	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	swarm "gx/ipfs/QmYSM6PKnCe9YVPNMisfpoBmczzHkA7h5Wrnc36DtdJhGo/go-libp2p-swarm"
+	"gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/filnet"
@@ -97,4 +99,8 @@ func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmCo
 	}
 
 	return output, nil
+}
+
+func (ns *nodeSwarm) FindPeer(ctx context.Context, peerID peer.ID) (peerstore.PeerInfo, error) {
+	return ns.api.node.Router.FindPeer(ctx, peerID)
 }
