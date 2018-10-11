@@ -72,6 +72,7 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
+	Relays           []string `toml:"relays"`
 	Addresses        []string `toml:"addresses"`
 	MinPeerThreshold int      `toml:"minPeerThreshold,omitempty"`
 	Period           string   `toml:"period,omitempty"`

@@ -116,8 +116,16 @@ const (
 )
 
 // LabWeekBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// cluster that run relays
+var LabWeekRelayAddrs = []string{
+	filecoinBootstrap0,
+}
+
+// LabWeekBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
 // cluster running at lab week.
 var LabWeekBootstrapAddrs = []string{
-	filecoinBootstrap0, filecoinBootstrap1, filecoinBootstrap2,
-	filecoinBootstrap3, filecoinBootstrap4,
+	filecoinBootstrap1,
+	filecoinBootstrap2,
+	filecoinBootstrap3,
+	filecoinBootstrap4,
 }

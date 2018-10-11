@@ -107,6 +107,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	// Setup labweek release specific config options.
 	if cfg.LabWeekCluster {
 		newConfig := rep.Config()
+		newConfig.Bootstrap.Relays = fixtures.LabWeekRelayAddrs
 		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"

@@ -111,13 +111,14 @@ type Node struct {
 	RetrievalMiner  *RetrievalMiner
 
 	// Network Fields
-	PubSub       *floodsub.PubSub
-	BlockSub     *floodsub.Subscription
-	MessageSub   *floodsub.Subscription
-	Ping         *ping.PingService
-	HelloSvc     *core.Hello
-	Bootstrapper *filnet.Bootstrapper
-	OnlineStore  *hamt.CborIpldStore
+	PubSub            *floodsub.PubSub
+	BlockSub          *floodsub.Subscription
+	MessageSub        *floodsub.Subscription
+	Ping              *ping.PingService
+	HelloSvc          *core.Hello
+	RelayBootstrapper *filnet.Bootstrapper
+	Bootstrapper      *filnet.Bootstrapper
+	OnlineStore       *hamt.CborIpldStore
 
 	// Data Storage Fields
 
@@ -326,15 +327,25 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// Bootstrapping network peers.
-	ba := nd.Repo.Config().Bootstrap.Addresses
-	bpi, err := filnet.PeerAddrsToPeerInfos(ba)
-	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
-	}
 	periodStr := nd.Repo.Config().Bootstrap.Period
 	period, err := time.ParseDuration(periodStr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
+	}
+
+	// Relay bootstrapper connects to relays that are always required to be connected
+	ra := nd.Repo.Config().Bootstrap.Relays
+	rpi, err := filnet.PeerAddrsToPeerInfos(ra)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't parse relay addresses [%s]", ra)
+	}
+	nd.RelayBootstrapper = filnet.NewBootstrapper(rpi, nd.Host, nd.Host.Network(), len(ra), period)
+
+	// Bootstrapper maintains connections to some subset of addresses
+	ba := nd.Repo.Config().Bootstrap.Addresses
+	bpi, err := filnet.PeerAddrsToPeerInfos(ba)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
 	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network(), minPeerThreshold, period)
@@ -394,6 +405,7 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head())
 
 	if !node.OfflineMode {
+		node.RelayBootstrapper.Start(context.Background())
 		node.Bootstrapper.Start(context.Background())
 	}
 
@@ -504,6 +516,7 @@ func (node *Node) Stop(ctx context.Context) {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 
+	node.RelayBootstrapper.Stop()
 	node.Bootstrapper.Stop()
 
 	fmt.Println("stopping filecoin :(")
