@@ -1,13 +1,12 @@
 # Filecoin (go-filecoin)
 
-[![codecov](https://codecov.io/gh/filecoin-project/go-filecoin/branch/master/graph/badge.svg?token=J5QWYWkgHT)](https://codecov.io/gh/filecoin-project/go-filecoin)
-[![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg&circle-token=5a9d1cb48788b41d98bdfbc8b15298816ec71fea)](https://circleci.com/gh/filecoin-project/go-filecoin)
-
 > Filecoin implementation in Go
 
 Filecoin is a decentralized storage network that turns cloud storage into an algorithmic market. The
 market runs on a blockchain with a native protocol token (also called "filecoin" or FIL), which miners earn
 by providing storage to clients.
+
+👋Trying out the project for the first time? We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
 
 ## Table of Contents
 
@@ -24,7 +23,6 @@ by providing storage to clients.
    - [Sample Commands](#sample-commands)
 - [Community](#community)
 - [License](#license)
-
 
 ## Installation
 
