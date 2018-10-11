@@ -83,35 +83,6 @@ resource "aws_security_group" "filecoin" {
   }
 }
 
-# instance
-module "filecoin-cluster" {
-  source = "../../../modules/aws/ec2/"
-
-  instance_name   = "cluster"
-  public_key_name = "${aws_key_pair.filecoin.key_name}"
-  vpc_id          = "${module.vpc.vpc_id}"
-  subnet_id       = "${element(module.vpc.public_subnets, 0)}"
-
-  vpc_security_group_ids = [
-    "${aws_security_group.filecoin.id}",
-    "${aws_security_group.cadvisor.id}",
-    "${aws_security_group.node_exporter.id}",
-  ]
-
-  iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
-  route53_zone_name         = "${aws_route53_zone.kittyhawk.name}"
-  route53_zone_id           = "${aws_route53_zone.kittyhawk.zone_id}"
-  logstash_hosts            = "${aws_route53_record.logstash_nlb.fqdn}"
-}
-
-output "filecoin-cluster-public_ip" {
-  value = "${module.filecoin-cluster.instance_public_ip}"
-}
-
-output "filecoin-cluster-dns" {
-  value = "${module.filecoin-cluster.instance_dns}"
-}
-
 # kh test instance
 module "kh-test" {
   source = "../../../modules/aws/ec2/"
@@ -134,31 +105,6 @@ module "kh-test" {
   route53_zone_id           = "${aws_route53_zone.kittyhawk.zone_id}"
   logstash_hosts            = "${aws_route53_record.logstash_nlb.fqdn}"
 }
-
-
-# kh2 test instance
-module "kh-test-2" {
-  source = "../../../modules/aws/ec2/"
-
-  docker_tag      = "${var.docker_tag}"
-  instance_type   = "c5d.4xlarge"
-  instance_name   = "test2"
-  public_key_name = "${aws_key_pair.filecoin.key_name}"
-  vpc_id          = "${module.vpc.vpc_id}"
-  subnet_id       = "${element(module.vpc.public_subnets, 1)}"
-
-  vpc_security_group_ids = [
-    "${aws_security_group.filecoin.id}",
-    "${aws_security_group.cadvisor.id}",
-    "${aws_security_group.node_exporter.id}",
-  ]
-
-  iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
-  route53_zone_name         = "${aws_route53_zone.kittyhawk.name}"
-  route53_zone_id           = "${aws_route53_zone.kittyhawk.zone_id}"
-  logstash_hosts            = "${aws_route53_record.logstash_nlb.fqdn}"
-}
-
 
 
 output "kh-test-public_ip" {
