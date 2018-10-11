@@ -6,7 +6,7 @@ rm -fr ~/.filecoin
 # The easiest way to connect into the labweek cluster is using the
 # following flags (you could of course address update the config directly
 # if you wanted instead):
-go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-teamweek
+go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-labweek
 go-filecoin config stats.nickname '"<yournodename>"'
 go-filecoin daemon
 # In a new terminal, tell your local node to stream logs to the aggregator:
