@@ -61,16 +61,12 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address  string `toml:"address"`
-	Relay    bool   `toml:"relay"`
-	RelayHop bool   `toml:"relayHop"`
+	Address string `toml:"address"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
 	return &SwarmConfig{
-		Address:  "/ip4/0.0.0.0/tcp/6000",
-		Relay:    false,
-		RelayHop: false,
+		Address: "/ip4/0.0.0.0/tcp/6000",
 	}
 }
 

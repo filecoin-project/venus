@@ -33,8 +33,6 @@ const (
 
 [swarm]
   address = "/ip4/0.0.0.0/tcp/6000"
-  relay = false
-  relayHop = false
 
 [mining]
   minerAddress = ""

@@ -79,9 +79,7 @@ func TestConfigSet(t *testing.T) {
 		assert.Equal(defaultCfg.Datastore, cfg.Datastore)
 		assert.Equal(defaultCfg.Mining, cfg.Mining)
 		assert.Equal(&config.SwarmConfig{
-			Address:  "/ip4/0.0.0.0/tcp/0",
-			Relay:    false,
-			RelayHop: false,
+			Address: "/ip4/0.0.0.0/tcp/0",
 		}, cfg.Swarm) // default overwritten in node.MakeNodesUnstarted()
 	})
 
