@@ -1,7 +1,3 @@
-[submodule "vendor/github.com/filecoin-project/go-proofs"]
-	path = vendor/github.com/filecoin-project/go-proofs
-	url = git@github.com:filecoin-project/go-proofs.git
-	branch = master
 [submodule "proofs/rust-proofs"]
 	path = proofs/rust-proofs
 	url = git@github.com:filecoin-project/rust-proofs.git
