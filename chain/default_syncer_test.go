@@ -543,31 +543,6 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	assertHead(assert, chain, wideTs)
 }
 
-/* Resource management tests */
-// Syncer stops traversing a chain that is too long.
-func TestErrorOnLongChain(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
-	ctx := context.Background()
-
-	headTS := genTS
-	var badChain [][]*cid.Cid
-	for i := 0; i <= maxNewChainLen; i++ {
-		headblk := RequireMkFakeChild(require, headTS, genCid, genStateRoot, uint64(0), uint64(0))
-		badChain = append(badChain, []*cid.Cid{headblk.Cid()})
-		_ = requirePutBlocks(require, cst, headblk)
-		headTS = consensus.RequireNewTipSet(require, headblk)
-	}
-	headCids := badChain[len(badChain)-1]
-	err := syncer.HandleNewBlocks(ctx, headCids)
-	assert.Error(err) // should error
-	for _, badCids := range badChain {
-		// none of these blocks/tipsets should be added
-		assertNoAdd(assert, chain, badCids)
-	}
-}
-
 /* Tests with Unmocked state */
 
 // Syncer handles MarketView weight comparisons.

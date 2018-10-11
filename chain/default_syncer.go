@@ -16,9 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// The maximum number of tipsets not yet in the store that the syncer will
-// traverse during chain collection before ignoring the chain.
-const maxNewChainLen = 500 // TODO set this parameter in an informed way
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
 var blkWaitTime = time.Second // TODO set this parameter in an informed way too
@@ -127,7 +124,7 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // It does NOT add tipsets to the store.
 func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
 	var chain []consensus.TipSet
-	for i := 0; i < maxNewChainLen; i++ {
+	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := types.NewSortedCidSet(blkCids...).String()
@@ -163,7 +160,6 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Ci
 		}
 		blkCids = parentCidSet.ToSlice()
 	}
-	return nil, nil, ErrNewChainTooLong
 }
 
 // loadTipSetState retrieves the tipset state root from the chain store
