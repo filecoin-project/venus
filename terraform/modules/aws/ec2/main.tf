@@ -90,6 +90,16 @@ resource "aws_instance" "this" {
     }
   }
 
+  provisioner "file" {
+    content     = "${file("${path.module}/node_keys.zip")}"
+    destination = "/home/ubuntu/node_keys.zip"
+
+    connection {
+      type = "ssh"
+      user = "ubuntu"
+    }
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /home/ubuntu/peers.sh",
