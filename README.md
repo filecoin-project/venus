@@ -45,8 +45,8 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
 ### Clone
 
 ```sh
-> mkdir -p ${GOPATH}/src/github.com/filecoin-project
-> git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+mkdir -p ${GOPATH}/src/github.com/filecoin-project
+git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 ```
 
 ### Install Dependencies
@@ -55,8 +55,8 @@ go-filecoin's dependencies are managed by [gx][2]; this project is not "go getta
 other build and test dependencies, run:
 
 ```sh
-> cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-> go run ./build/*.go deps
+cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+go run ./build/*.go deps
 ```
 
 ### Managing Submodules
@@ -67,14 +67,14 @@ Filecoin uses Git Submodules to consume `rust-proofs`. To initialize the submodu
 initialize the submodule manually:
 
 ```sh
-> cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-> git submodule update --init
+cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+git submodule update --init
 ```
 
 Later, when the head of the `rust-proofs` `master` branch changes, you may want to update `go-filecoin` to use these changes:
 
 ```sh
-> git submodule update --remote
+git submodule update --remote
 ```
 
 Note that updating the `rust-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
@@ -84,47 +84,47 @@ Note that updating the `rust-proofs` submodule in this way will require a commit
 The filecoin binary must be built prior to testing changes made during development. To do so, run:
 
 ```sh
-> go run ./build/*.go build
+go run ./build/*.go build
 ```
 
 Then, run the tests:
 
 ```sh
-> go run ./build/*.go test
+go run ./build/*.go test
 ```
 
 Note: Build and test can be combined:
 
 ```sh
-> go run ./build/*.go best
+go run ./build/*.go best
 ```
 
 ### Build Commands
 
 ```sh
 # Build
-> go run ./build/*.go build
+go run ./build/*.go build
 
 # Install
-> go run ./build/*.go install
+go run ./build/*.go install
 
 # Test
-> go run ./build/*.go test
+go run ./build/*.go test
 
 # Build & Test
-> go run ./build/*.go best
+go run ./build/*.go best
 
 # Coverage
-> go run ./build/*.go test -cover
+go run ./build/*.go test -cover
 
 # Lint
-> go run ./build/*.go lint
+go run ./build/*.go lint
 
 # Race
-> go run ./build/*.go test -race
+go run ./build/*.go test -race
 
 # Deps, Lint, Build, Test (with args passed to Test)
-> go run ./build/*.go all
+go run ./build/*.go all
 ```
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
