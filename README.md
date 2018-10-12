@@ -137,6 +137,35 @@ go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-fil
 go-filecoin daemon      # Starts the daemon, you may now issue it commands in another terminal
 ```
 
+To set up a node and connect into an existing cluster:
+```
+rm -fr ~/.filecoin
+# filecoin requires the same genesis block as the cluster and you should
+# also give your node a name so you can easily find it on the dashboard.
+# The easiest way to connect into the labweek cluster is using the
+# following flags (you could of course address update the config directly
+# if you wanted instead):
+go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-labweek
+go-filecoin config stats.nickname '"yournodename"'
+go-filecoin daemon
+# In a new terminal, tell your local node to stream logs to the aggregator:
+go-filecoin log streamto <aggregator multiaddr>
+# Ex: go-filecoin log streamto /dns4/test.kittyhawk.wtf/tcp/19000
+#
+# Other stuff:
+# - Dashboard: http://test.kittyhawk.wtf:8010
+# - Faucet to get $$: http://test.kittyhawk.wtf:9797
+# - Block explorer: http://test.kittyhawk.wtf:8000
+# - Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000 
+# - SSH (dev team only please):
+#     ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
+#     sudo -s
+#     docker ps
+#     docker logs -f <container_name> # filecoin-{0,4} 
+#     # see processes running in container
+#     docker top filecoin-{0,4}
+```
+
 To set up a single node capable of mining:
 ```
 rm -fr ~/.filecoin
@@ -240,13 +269,15 @@ go-filecoin client query-storage-deal <id returned above>
 # If you want to retreive the piece immediately you can bypass the retrieval market.
 # Note that this is kind of cheatsy but what works at the moment.
 go-filecoin client cat <data CID>
-
-# TDOO Retrieval Miner
+#
+# Retrieval Miner
 # If you want to fetch the piece from the miner's sealed sector, 
 # wait for the deal to be Sealed per query-storage-deal status above, and
 # then use the retrieval miner. Warning: this requires the sector be unsealed, 
-# which takes minutes to run:
-# go-filecoin retrieval-client retrieve-piece ... (exact command line TBD)
+# which takes a minute to run (it doesn't yet cache). 
+go-filecoin retrieval-client retrieve-piece <miner peer id> <data CID>
+# Ex on the miner's node, get the peer id from: go-filecoin id 
+# Then: go-filecoin retrieval-client retrieve-piece QmXtaLS9N3URQ2uCkqpLP6KZv7rVbT5KyjU5MQAgQM6yCq QmNqefRonNc2Rn5VwEB5wqJLE9arURmBUSay3kbjJoLJG9
 ```
 
 ## Community
