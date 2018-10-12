@@ -30,7 +30,7 @@ import (
 )
 
 // seed is used to make all randomness (keys and fake commitments) deterministic.
-var seed int64 = 234
+var seed int64 = 666
 
 // Miner is
 type Miner struct {
