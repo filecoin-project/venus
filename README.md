@@ -264,8 +264,8 @@ go-filecoin client cat <data CID> | wc -c
 go-filecoin orderbook asks | jq
 # Propose a storage deal, using the <miner address> from the ask.
 go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
-# Check the status:
-go-filecoin client query-storage-deal <id returned above>
+# TODO we want to be able to check the status, like this but the command above doesn't return an id
+# go-filecoin client query-storage-deal <id returned above>
 # If you want to retreive the piece immediately you can bypass the retrieval market.
 # Note that this is kind of cheatsy but what works at the moment.
 go-filecoin client cat <data CID>
