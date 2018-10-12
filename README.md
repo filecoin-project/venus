@@ -8,7 +8,7 @@ Filecoin is a decentralized storage network that turns cloud storage into an alg
 market runs on a blockchain with a native protocol token (also called "filecoin" or FIL), which miners earn
 by providing storage to clients.
 
-👋`Trying out the project for the first time?` We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
+👋![Trying out the project for the first time?](http://img4me.com/7gky8g7.png) We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
 
 ## Table of Contents
 
