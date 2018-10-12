@@ -51,7 +51,7 @@ func init() {
 	detailspath := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/gen.json")
 	detailsFile, err := os.Open(detailspath)
 	if err != nil {
-		fmt.Printf("Fixture data not found. Skipping fixture initialization: %s\n", err)
+		// fmt.Printf("Fixture data not found. Skipping fixture initialization: %s\n", err)
 		return
 	}
 	defer func() {
