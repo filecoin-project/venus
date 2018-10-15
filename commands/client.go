@@ -267,7 +267,7 @@ var clientProposeStorageDealCmd = &cmds.Command{
 			return
 		}
 
-		af, ok := types.NewAttoFILFromString(price, 10)
+		af, ok := types.NewAttoFILFromFILString(price)
 		if !ok {
 			re.SetError("failed to parse price", cmdkit.ErrNormal)
 			return
