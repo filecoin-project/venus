@@ -20,7 +20,6 @@ var minerCmd = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
-		"add-ask":       minerAddAskCmd,
 		"owner":         minerOwnerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
@@ -119,60 +118,6 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, newPid)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		re.Emit(c) // nolint: errcheck
-	},
-	Type: cid.Cid{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
-			return PrintString(w, c)
-		}),
-	},
-}
-
-var minerAddAskCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline: "Add an ask to the storage market",
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
-		cmdkit.StringArg("size", true, false, "size in bytes of the ask"),
-		cmdkit.StringArg("price", true, false, "the price of the ask"),
-	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send the ask from"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		fromAddr, err := optionalAddr(req.Options["from"])
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		minerAddr, err := address.NewFromString(req.Arguments[0])
-		if err != nil {
-			err = errors.Wrap(err, "invalid miner address")
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
-
-		size, ok := types.NewBytesAmountFromString(req.Arguments[1], 10)
-		if !ok {
-			re.SetError(ErrInvalidSize, cmdkit.ErrNormal)
-			return
-		}
-
-		price, ok := types.NewAttoFILFromFILString(req.Arguments[2])
-		if !ok {
-			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
-			return
-		}
-
-		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, size, price)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return

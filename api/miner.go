@@ -14,6 +14,5 @@ import (
 type Miner interface {
 	Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error)
 	UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (*cid.Cid, error)
-	AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, size *types.BytesAmount, price *types.AttoFIL) (*cid.Cid, error)
 	GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }

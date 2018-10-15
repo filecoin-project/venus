@@ -39,7 +39,7 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
 
 ### Install Go and Rust
 
-  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
   - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
 
 ### Clone
@@ -156,12 +156,12 @@ go-filecoin log streamto <aggregator multiaddr>
 # - Dashboard: http://test.kittyhawk.wtf:8010
 # - Faucet to get $$: http://test.kittyhawk.wtf:9797
 # - Block explorer: http://test.kittyhawk.wtf:8000
-# - Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000 
+# - Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000
 # - SSH (dev team only please):
 #     ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
 #     sudo -s
 #     docker ps
-#     docker logs -f <container_name> # filecoin-{0,4} 
+#     docker logs -f <container_name> # filecoin-{0,4}
 #     # see processes running in container
 #     docker top filecoin-{0,4}
 ```
@@ -174,8 +174,8 @@ go-filecoin daemon
 # Note the output of the daemon, it should say "My peer ID is <W>", where <W>
 # is a long cid string starting with "Qm".  <W> is used in a later command.
 # Switch terminals
-# The miner is present in the genesis block car file created from the 
-# json file, but the node is not yet configured to use it. Get the 
+# The miner is present in the genesis block car file created from the
+# json file, but the node is not yet configured to use it. Get the
 # miner address from the json file fixtures/gen.json and replace <X>
 # in the command below with it:
 go-filecoin config mining.minerAddress '"<X>"'
@@ -183,7 +183,7 @@ go-filecoin config mining.minerAddress '"<X>"'
 # so note that owner key name in fixtures/gen.json, we'll call it <Y> for short,
 # and import that key from the fixtures:
 go-filecoin wallet import fixtures/<Y>.key
-# Note the output of this command, call it <Z>. This output is the address of 
+# Note the output of this command, call it <Z>. This output is the address of
 # the account that owns the miner.
 # The miner was not created with a pre-set peerid, so set it so that
 # clients can find it.
@@ -215,23 +215,23 @@ go-filecoin daemon
 
 #### Running multiple nodes with IPTB
 
-IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
+IPTB provides an automtion layer that makes it easy run multiple filecoin nodes.
 For example, it enables you to easily start up 10 mining nodes locally on your machine.
 Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
 
 #### Sample commands
 
 ```
-# ----- List and ping a peer ----- 
+# ----- List and ping a peer -----
 go-filecoin swarm peers
 go-filecoin ping <peerID>
 
-#  ----- View latest mined block ----- 
+#  ----- View latest mined block -----
 go-filecoin chain head
 go-filecoin show block <blockID> | jq
 
-#  ----- Create a miner ----- 
-# Requires the node be a part of a cluster that already has miners and 
+#  ----- Create a miner -----
+# Requires the node be a part of a cluster that already has miners and
 # no miner configured for this node yet.
 go-filecoin miner create 10 10
 # Waits for the message to be included on chain, updates the minerAddress in the
@@ -241,27 +241,18 @@ go-filecoin config mining.minerAddress
 # And the owner:
 go-filecoin miner owner <minerAddress>
 
-#  ----- As a miner, force a block to be mined immediately ----- 
+#  ----- As a miner, force a block to be mined immediately -----
 go-filecoin mine once
 
-#  ----- As a miner, make an ask ----- 
-# Get your miner address
-go-filecoin config mining.minerAddress
-# Get your miner owner address 
-go-filecoin miner owner <minerAddress>
-go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
-# Wait for the block to be mined (~30s) and view the ask:
-go-filecoin orderbook asks | jq
-
-#  ----- As a client, make a deal ----- 
+#  ----- As a client, make a deal -----
 echo "Hi my name is $USER"> hello.txt
 go-filecoin client import ./hello.txt
 # Verify it was imported:
 go-filecoin client cat <data CID>
 # Get the file size:
 go-filecoin client cat <data CID> | wc -c
-# Find a miner by looking through the orderbook
-go-filecoin orderbook asks | jq
+# TODO: Find a miner
+
 # Propose a storage deal, using the <miner address> from the ask.
 go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
 # TODO we want to be able to check the status, like this but the command above doesn't return an id
@@ -271,12 +262,12 @@ go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --
 go-filecoin client cat <data CID>
 #
 # Retrieval Miner
-# If you want to fetch the piece from the miner's sealed sector, 
+# If you want to fetch the piece from the miner's sealed sector,
 # wait for the deal to be Sealed per query-storage-deal status above, and
-# then use the retrieval miner. Warning: this requires the sector be unsealed, 
-# which takes a minute to run (it doesn't yet cache). 
+# then use the retrieval miner. Warning: this requires the sector be unsealed,
+# which takes a minute to run (it doesn't yet cache).
 go-filecoin retrieval-client retrieve-piece <miner peer id> <data CID>
-# Ex on the miner's node, get the peer id from: go-filecoin id 
+# Ex on the miner's node, get the peer id from: go-filecoin id
 # Then: go-filecoin retrieval-client retrieve-piece QmXtaLS9N3URQ2uCkqpLP6KZv7rVbT5KyjU5MQAgQM6yCq QmNqefRonNc2Rn5VwEB5wqJLE9arURmBUSay3kbjJoLJG9
 ```
 
@@ -287,7 +278,7 @@ Here are a few places to get help and hang out with the Filecoin community:
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
 - [#filecoin-chat on Slack](https://protocollabs.slack.com/messages/CD4RLHMU0/convo/CCYS39YKZ-1538593031.000100/) — for live support and hacking with others
 - [Discussion forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
-- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
+- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md).
 
 ## License
 

@@ -101,8 +101,6 @@ type Node struct {
 	blockTime          time.Duration
 
 	// Storage Market Interfaces
-	StorageClient      *StorageClient
-	StorageBroker      *StorageBroker
 	StorageMinerClient *StorageMinerClient
 	StorageMiner       *StorageMiner
 
@@ -373,8 +371,6 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 	}
 	node.HelloSvc = core.NewHello(node.Host, node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
-	node.StorageClient = NewStorageClient(node)
-	node.StorageBroker = NewStorageBroker(node)
 	node.StorageMinerClient = NewStorageMinerClient(node)
 
 	node.RetrievalClient = NewRetrievalClient(node)

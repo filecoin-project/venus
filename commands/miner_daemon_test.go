@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,105 +158,6 @@ func TestMinerCreate(t *testing.T) {
 		d1.MineAndPropagate(time.Second, d)
 		wg.Wait()
 	})
-}
-
-func TestMinerAddAskSuccess(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d1.ShutdownSuccess()
-
-	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-
-	d1.ConnectSuccess(d)
-
-	var wg sync.WaitGroup
-	var minerAddr address.Address
-
-	wg.Add(1)
-	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "100", "20")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Address{})
-		minerAddr = addr
-		wg.Done()
-	}()
-
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
-
-	wg.Add(1)
-	go func() {
-		ask := d.RunSuccess("miner", "add-ask", minerAddr.String(), "20", "10",
-			"--from", fixtures.TestAddresses[2],
-		)
-		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
-		require.NoError(t, err)
-		assert.NotNil(askCid)
-
-		wg.Done()
-	}()
-
-	wg.Wait()
-}
-
-func TestMinerAddAskFail(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d1.ShutdownSuccess()
-
-	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-
-	d1.ConnectSuccess(d)
-
-	var wg sync.WaitGroup
-	var minerAddr address.Address
-
-	wg.Add(1)
-	go func() {
-		miner := d.RunSuccess("miner", "create",
-			"--from", fixtures.TestAddresses[2],
-			"--peerid", th.RequireRandomPeerID().Pretty(),
-			"100", "20",
-		)
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Address{})
-		minerAddr = addr
-		wg.Done()
-	}()
-
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
-
-	d.RunFail(
-		"invalid from address",
-		"miner", "add-ask", minerAddr.String(), "20", "10",
-		"--from", "hello",
-	)
-	d.RunFail(
-		"invalid miner address",
-		"miner", "add-ask", "hello", "20", "10",
-		"--from", fixtures.TestAddresses[2],
-	)
-	d.RunFail(
-		"invalid size",
-		"miner", "add-ask", minerAddr.String(), "2f", "10",
-		"--from", fixtures.TestAddresses[2],
-	)
-	d.RunFail(
-		"invalid price",
-		"miner", "add-ask", minerAddr.String(), "10", "3f",
-		"--from", fixtures.TestAddresses[2],
-	)
 }
 
 func TestMinerOwner(t *testing.T) {

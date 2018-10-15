@@ -153,10 +153,6 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var minerExports = exec.Exports{
-	"addAsk": &exec.FunctionSignature{
-		Params: []abi.Type{abi.AttoFIL, abi.BytesAmount},
-		Return: []abi.Type{abi.Integer},
-	},
 	"getOwner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
@@ -198,53 +194,6 @@ var minerExports = exec.Exports{
 // Exports returns the miner actors exported functions.
 func (ma *Actor) Exports() exec.Exports {
 	return minerExports
-}
-
-// AddAsk adds an ask via this miner to the storage markets orderbook.
-func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, size *types.BytesAmount) (*big.Int, uint8,
-	error) {
-	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		if ctx.Message().From != state.Owner {
-			return nil, Errors[ErrCallerUnauthorized]
-		}
-
-		// compute locked storage + new ask
-		total := state.LockedStorage.Add(size)
-
-		if total.GreaterThan(SectorSize.Mul(types.NewBytesAmount(state.PledgeSectors.Uint64()))) {
-			return nil, Errors[ErrInsufficientPledge]
-		}
-
-		state.LockedStorage = total
-
-		// TODO: kinda feels weird that I can't get a real type back here
-		out, ret, err := ctx.Send(address.StorageMarketAddress, "addAsk", nil, []interface{}{price, size})
-		if err != nil {
-			return nil, err
-		}
-
-		askID, err := abi.Deserialize(out[0], abi.Integer)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "error deserializing")
-		}
-
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
-		}
-
-		return askID.Val, nil
-	})
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	askID, ok := out.(*big.Int)
-	if !ok {
-		return nil, 1, errors.NewRevertErrorf("expected an Integer return value from call, but got %T instead", out)
-	}
-
-	return askID, 0, nil
 }
 
 // GetOwner returns the miners owner.

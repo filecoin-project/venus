@@ -265,13 +265,13 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	badParams, err := abi.EncodeValues(params)
 	assert.NoError(err)
-	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
+	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "getPower", badParams)
 
 	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Empty(rct.Receipt.Return)
-	assert.Contains(rct.ExecutionError.Error(), "invalid params: expected 2 parameters, but got 1")
+	assert.Contains(rct.ExecutionError.Error(), "invalid params: expected 0 parameters, but got 1")
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
@@ -290,7 +290,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 		addr2: act2,
 	})
 	badParams := []byte{1, 2, 3, 4, 5}
-	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "addAsk", badParams)
+	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "getPower", badParams)
 
 	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.

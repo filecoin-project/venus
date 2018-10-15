@@ -570,49 +570,6 @@ func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 	}
 }
 
-// MakeDeal will make a deal with the miner `miner`, using data `dealData`.
-// MakeDeal will return the cid of `dealData`
-func (td *TestDaemon) MakeDeal(dealData string, miner *TestDaemon, fromAddr string) string {
-
-	// The daemons need 2 monies each.
-	td.MakeMoney(2)
-	miner.MakeMoney(2)
-
-	// How long to wait for miner blocks to propagate to other nodes
-	propWait := time.Second * 3
-
-	m := miner.CreateMinerAddr(fromAddr)
-
-	askO := miner.RunSuccess(
-		"miner", "add-ask",
-		"--from", fromAddr,
-		m.String(), "1200", "1",
-	)
-	miner.MineAndPropagate(propWait, td)
-	miner.RunSuccess("message", "wait", "--return", strings.TrimSpace(askO.ReadStdout()))
-
-	td.RunSuccess(
-		"client", "add-bid",
-		"--from", fromAddr,
-		"500", "1",
-	)
-	td.MineAndPropagate(propWait, miner)
-
-	buf := strings.NewReader(dealData)
-	o := td.RunWithStdin(buf, "client", "import").AssertSuccess()
-	ddCid := strings.TrimSpace(o.ReadStdout())
-
-	negidO := td.RunSuccess("client", "propose-deal", "--ask=0", "--bid=0", ddCid)
-
-	miner.MineAndPropagate(propWait, td)
-
-	negid := strings.Split(strings.Split(negidO.ReadStdout(), "\n")[1], " ")[1]
-	// ensure we have made the deal
-	td.RunSuccess("client", "query-deal", negid)
-	// return the cid for the dealData (ddCid)
-	return ddCid
-}
-
 // GetDefaultAddress returns the default sender address for this daemon.
 func (td *TestDaemon) GetDefaultAddress() string {
 	addrs := td.RunSuccess("wallet", "addrs", "ls")

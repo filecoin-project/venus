@@ -18,7 +18,6 @@ type API interface {
 	Miner() Miner
 	Mining() Mining
 	Mpool() Mpool
-	Orderbook() Orderbook
 	Paych() Paych
 	Ping() Ping
 	RetrievalClient() RetrievalClient

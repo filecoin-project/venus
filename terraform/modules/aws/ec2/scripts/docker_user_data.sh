@@ -164,11 +164,6 @@ do
   docker exec "filecoin-$$i" $$filecoin_exec \
          mining start
 
-  # add an ask
-  # 1024*1024*1024*3
-  docker exec "filecoin-$$i" $$filecoin_exec \
-         miner add-ask "$$newMinerAddr" 3221225472 1
-
   # make a deal
   dd if=/dev/random of="$$CAR_DIR/fake.dat"  bs=1M  count=1 # small data file will be autosealed
   dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "/var/filecoin/car/fake.dat" | tail -n +2)

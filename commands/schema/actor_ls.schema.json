@@ -45,25 +45,9 @@
           "additionalProperties": {
             "type": "object"
           }
-        },
-        "Orderbook": {
-          "type": "object",
-          "properties": {
-            "Asks":{
-              "type": "object",
-              "additionalProperties": { "$ref": "#/definitions/Ask" }
-            },
-            "Bids": {
-              "type": "object",
-              "additionalProperties": { "$ref": "#/definitions/Bid" }
-            },
-            "NextAskID": { "type": "number" },
-            "NextBidID":{ "type": "number" }
-          },
-          "required": ["Asks", "Bids", "NextAskID", "NextBidID"]
         }
       },
-      "required": ["Miners", "Orderbook"]
+      "required": ["Miners"]
     },
     "PaymentChannel": {
       "type": "object",
