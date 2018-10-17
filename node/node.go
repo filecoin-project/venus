@@ -150,6 +150,9 @@ type Node struct {
 
 	// OfflineMode, when true, disables libp2p
 	OfflineMode bool
+
+	// Router is a router from IPFS
+	Router routing.IpfsRouting
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -322,6 +325,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Repo:          nc.Repo,
 		Wallet:        fcWallet,
 		blockTime:     nc.BlockTime,
+		Router:        router,
 	}
 
 	// Bootstrapping network peers.

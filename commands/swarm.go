@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
+	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 
@@ -23,8 +24,9 @@ libp2p peers on the internet.
 `,
 	},
 	Subcommands: map[string]*cmds.Command{
-		"connect": swarmConnectCmd,
-		"peers":   swarmPeersCmd,
+		"connect":  swarmConnectCmd,
+		"peers":    swarmPeersCmd,
+		"findpeer": findPeerDhtCmd,
 	},
 }
 
@@ -113,6 +115,41 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 				fmt.Fprintf(w, "connect %s success\n", a.Peer) // nolint: errcheck
 			}
 			return nil
+		}),
+	},
+}
+
+var findPeerDhtCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Find the multiaddresses associated with a Peer ID.",
+		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerID", true, true, "The ID of the peer to search for."),
+	},
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) {
+		peerID, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			res.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		out, err := GetAPI(env).Swarm().FindPeer(req.Context, peerID)
+		if err != nil {
+			res.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		for _, addr := range out.Addrs {
+			if err := res.Emit(addr.String()); err != nil {
+				panic("Could not emit multiaddress")
+			}
+		}
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
+			_, err := fmt.Fprintln(w, addr)
+			return err
 		}),
 	},
 }

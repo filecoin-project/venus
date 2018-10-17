@@ -2,12 +2,15 @@ package api
 
 import (
 	"context"
+	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	peerstore "gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
 )
 
 // Swarm is the interface that defines methods to interact with the p2p swarm of the node.
 type Swarm interface {
 	Peers(ctx context.Context, verbose, latency, streams bool) (*SwarmConnInfos, error)
 	Connect(ctx context.Context, addrs []string) ([]SwarmConnectResult, error)
+	FindPeer(ctx context.Context, peerID peer.ID) (peerstore.PeerInfo, error)
 }
 
 // SwarmConnInfo represents details about a single swarm connection.
