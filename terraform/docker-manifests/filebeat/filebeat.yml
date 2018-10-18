@@ -1,0 +1,35 @@
+filebeat.prospectors:
+- type: docker
+  combine_partial: true
+  containers:
+    path: "/usr/share/dockerlogs"
+    stream: "stdout"
+    ids:
+      - "*"
+
+- type: docker
+  combine_partial: true
+  containers:
+    path: "/usr/share/dockerlogs"
+    stream: "stderr"
+    ids:
+      - "*"
+
+processors:
+- decode_json_fields:
+    fields: ["message"]
+    target: "msg"
+# overwrite existing target elasticsearch fields while decoding json fields    
+    overwrite_keys: true
+- add_docker_metadata: ~
+
+logging.level: info
+logging.to_files: true
+logging.to_syslog: false
+logging.files.path: /usr/share/filebeat/logs
+logging.files.name: filebeat
+#10MB each => 70MB max
+logging.files.keepfiles: 7 
+
+output.logstash:
+  hosts: '${LOGSTASH_HOSTS}'
