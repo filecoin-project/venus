@@ -14,6 +14,7 @@ import (
 	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	"gx/ipfs/QmbXRda5H2K3MSQyWWxTMtd8DWuguEBUCe6hpxfXVpFUGj/go-multistream"
 	unixfs "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
@@ -630,6 +631,9 @@ func (smc *StorageMinerClient) TryToStoreData(ctx context.Context, miner address
 
 	s, err := smc.nd.Host.NewStream(ctx, pid, StorageDealProtocolID)
 	if err != nil {
+		if err == multistream.ErrNotSupported {
+			return nil, errors.New("Could not establish connection with peer. Is the peer mining?")
+		}
 		return nil, errors.Wrap(err, "failed to establish connection with the peer")
 	}
 
