@@ -21,9 +21,6 @@ variable "ip_whitelist" {
     "100.9.239.66/32",   #C5-LA
     "136.24.82.246/32",  #eefahy
     "54.162.174.163/32", #gmas dev box
-    "80.169.33.44/32",   #Glasgow CitizenM lobby
-    "18.215.122.92/32",  #Forest's IP
-    "62.255.249.157/32"  #Science center
   ] 
 }
 

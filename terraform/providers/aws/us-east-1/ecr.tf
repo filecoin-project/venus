@@ -61,6 +61,7 @@ output "ecr-blockexplorer-url" {
 output "ecr-dashboard-aggregator-url" {
   value = "${aws_ecr_repository.dashboard-aggregator.repository_url}"
 }
+
 output "ecr-dashboard-visualizer-url" {
   value = "${aws_ecr_repository.dashboard-visualizer.repository_url}"
 }

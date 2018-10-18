@@ -107,7 +107,6 @@ module "kh-test" {
   logstash_hosts            = "${aws_route53_record.logstash_nlb.fqdn}"
 }
 
-
 output "kh-test-public_ip" {
   value = "${module.kh-test.instance_public_ip}"
 }
@@ -119,3 +118,4 @@ output "kh-test-dns" {
 # output "kh-test-user_data" {
 #   value = "${module.kh-test.user_data}"
 # }
+
