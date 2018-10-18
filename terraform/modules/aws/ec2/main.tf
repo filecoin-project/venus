@@ -39,8 +39,13 @@ variable "has_many_instance_storage" {
   default = "false"
 }
 
+variable "ami" {
+  default = "latest"
+}
+
 locals {
   storage_setup = "${var.has_many_instance_storage == "true" ? data.template_file.setup_lvm_instance_storage.rendered : data.template_file.setup_instance_storage.rendered}"
+  ami =  "${var.ami == "latest" ? data.aws_ami.ubuntu.id : var.ami}"
 }
 
 data "aws_ami" "ubuntu" {
@@ -60,7 +65,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "this" {
-  ami           = "${data.aws_ami.ubuntu.id}"
+  ami           = "${local.ami}"
   key_name      = "${var.public_key_name}"
   user_data     = "${data.template_file.user_data.rendered}"
   instance_type = "${var.instance_type}"

@@ -87,6 +87,7 @@ resource "aws_security_group" "filecoin" {
 module "kh-test" {
   source = "../../../modules/aws/ec2/"
 
+  ami             = "ami-0ac019f4fcb7cb7e6"
   docker_tag      = "${var.docker_tag}"
   instance_type   = "c5d.4xlarge"
   instance_name   = "test"
