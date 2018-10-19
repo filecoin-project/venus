@@ -57,7 +57,7 @@ func TestActorFormat(t *testing.T) {
 }
 
 func requireCid(t *testing.T, data string) *cid.Cid {
-	prefix := cid.NewPrefixV1(cid.Raw, types.DefaultHashFunction)
+	prefix := cid.V1Builder{ Codec: cid.Raw, MhType: types.DefaultHashFunction}
 	cid, err := prefix.Sum([]byte(data))
 	require.NoError(t, err)
 	return cid

@@ -864,7 +864,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 	// Only create a miner if we don't already have one.
 	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
-		return nil, fmt.Errorf("Can only have on miner per node")
+		return nil, fmt.Errorf("Can only have one miner per node")
 	}
 
 	ctx = log.Start(ctx, "Node.CreateMiner")
