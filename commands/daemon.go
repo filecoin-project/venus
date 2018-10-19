@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof" // nolint: golint
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
@@ -137,7 +138,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 	cfg.SetAllowedMethods(config.API.AccessControlAllowMethods...)
 	cfg.SetAllowCredentials(config.API.AccessControlAllowCredentials)
 
-	signal.Notify(sigCh, os.Interrupt)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
 	maddr, err := ma.NewMultiaddr(config.API.Address)
@@ -200,8 +201,8 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		}
 	}()
 
-	<-sigCh
-	fmt.Println("Got interrupt, shutting down...")
+	signal := <-sigCh
+	fmt.Printf("Got %s, shutting down...\n", signal)
 
 	// allow 5 seconds for clean shutdown. Ideally it would never take this long.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)

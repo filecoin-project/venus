@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -396,10 +397,22 @@ func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
 	tdErr := td.ReadStderr()
-	assert.NoError(td.test, err, tdErr)
-	assert.NotContains(td.test, tdErr, "CRITICAL")
-	assert.NotContains(td.test, tdErr, "ERROR")
-	assert.NotContains(td.test, tdErr, "WARNING")
+
+	// We filter out errors expected from the cleanup associated with SIGTERM
+	ExpectedErrors := []string{
+		regexp.QuoteMeta("BlockSub.Next(): subscription cancelled by calling sub.Cancel()"),
+		regexp.QuoteMeta("MessageSub.Next(): subscription cancelled by calling sub.Cancel()"),
+		regexp.QuoteMeta("BlockSub.Next(): context canceled"),
+		regexp.QuoteMeta("MessageSub.Next(): context canceled"),
+	}
+
+	filteredStdErr := tdErr
+	for _, errorMsg := range ExpectedErrors {
+		filteredStdErr = regexp.MustCompile("(?m)^.*"+errorMsg+".*$").ReplaceAllString(filteredStdErr, "")
+	}
+
+	assert.NotContains(td.test, filteredStdErr, "CRITICAL")
+	assert.NotContains(td.test, filteredStdErr, "ERROR")
 }
 
 // ShutdownEasy stops the daemon using `SIGINT`.
