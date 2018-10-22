@@ -103,9 +103,22 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	}
 }
 
+// loadSyncerFromRepo creates a store and syncer from an existing repo.
+func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (Syncer, *hamt.CborIpldStore) {
+	powerTable := &consensus.TestView{}
+	bs := bstore.NewBlockstore(r.Datastore())
+	cst := hamt.NewCborStore()
+	con := consensus.NewExpected(cst, bs, powerTable, genCid)
+	syncer, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
+	ctx := context.Background()
+	err := chain.Load(ctx)
+	require.NoError(err)
+	return syncer, cst
+}
+
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(require *require.Assertions) (Syncer, Store, *hamt.CborIpldStore) {
+func initSyncTestDefault(require *require.Assertions) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
 	powerTable := &consensus.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -123,11 +136,11 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 	cst := hamt.NewCborStore()
 	con := consensus.NewExpected(cst, bs, powerTable, genCid)
 	requireSetTestChain(require, con, false)
-	sync, chain, cst := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
+	sync, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	return sync, chain, cst, con
 }
 
-func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (Syncer, Store, *hamt.CborIpldStore) {
+func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
 	ctx := context.Background()
 
 	// chain.Store
@@ -151,7 +164,7 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 	requireHead(require, chain, calcGenTS)
 	requireTsAdded(require, chain, calcGenTS)
 
-	return syncer, chain, cst
+	return syncer, chain, cst, r
 }
 
 func containsTipSet(tsasSlice []*TipSetAndState, ts consensus.TipSet) bool {
@@ -241,7 +254,7 @@ func requirePutBlocks(require *require.Assertions, cst *hamt.CborIpldStore, blks
 func TestSyncOneBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 	expectedTs := consensus.RequireNewTipSet(require, link1blk1)
 
@@ -257,7 +270,7 @@ func TestSyncOneBlock(t *testing.T) {
 func TestSyncOneTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	cids := requirePutBlocks(require, cst, link1blk1, link1blk2)
@@ -295,7 +308,7 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 func TestSyncChainTipSetByTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	cids1 := requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -328,7 +341,7 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 func TestSyncChainHead(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -349,7 +362,7 @@ func TestSyncChainHead(t *testing.T) {
 func TestSyncIgnoreLightFork(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
@@ -379,7 +392,7 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 func TestHeavierFork(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
@@ -423,7 +436,7 @@ func TestHeavierFork(t *testing.T) {
 func TestBlocksNotATipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -434,12 +447,105 @@ func TestBlocksNotATipSet(t *testing.T) {
 	assertNoAdd(assert, chain, badCids)
 }
 
-/* particularly tricky edge case */
+/* particularly tricky edge cases relating to subtle Expected Consensus requirements */
+
+// Syncer is capable of recovering from a fork reorg after Load.
+func TestLoadFork(t *testing.T) {
+	t.Skip()
+	assert := assert.New(t)
+	require := require.New(t)
+	syncer, chain, cst, r := initSyncTestDefault(require)
+	ctx := context.Background()
+
+	// Set up chain store to have standard chain up to link2
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	cids2 := requirePutBlocks(require, cst, link2.ToSlice()...)
+	err := syncer.HandleNewBlocks(ctx, cids2)
+	require.NoError(err)
+
+	// Now sync the store with a heavier fork, forking off link1.
+	forkbase := consensus.RequireNewTipSet(require, link2blk1)
+	forklink1blk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
+	forklink1blk2 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink1blk3 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink1 := consensus.RequireNewTipSet(require, forklink1blk1, forklink1blk2, forklink1blk3)
+
+	forklink2blk1 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(0), uint64(0))
+	forklink2blk2 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink2blk3 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3)
+
+	forklink3blk1 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(0), uint64(0))
+	forklink3blk2 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1, forklink3blk2)
+
+	_ = requirePutBlocks(require, cst, forklink1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink2.ToSlice()...)
+	forkHead := requirePutBlocks(require, cst, forklink3.ToSlice()...)
+	err = syncer.HandleNewBlocks(ctx, forkHead)
+	require.NoError(err)
+	requireHead(require, chain, forklink3)
+
+	// Shut down store, reload and wire to syncer.
+	loadSyncer, loadCst := loadSyncerFromRepo(require, r)
+
+	// Test that the syncer can sync a block on the old chain
+	cids3 := requirePutBlocks(require, loadCst, link3.ToSlice()...)
+	err = loadSyncer.HandleNewBlocks(ctx, cids3)
+	assert.NoError(err)
+}
+
+// Syncer must track state of subsets of parent tipsets tracked in the store
+// when they are the ancestor in a chain.  This is in order to maintain the
+// invariant that the aggregate state of the  parents of the base of a collected chain
+// is kept in the store.  This invariant allows chains built on subsets of
+// tracked tipsets to be handled correctly.
+// This test tests that the syncer stores the state of such a base tipset of a collected chain,
+// i.e. a subset of an existing tipset in the store.
+//
+// Ex: {A1, A2} -> {B1, B2, B3} in store to start
+// {B1, B2} -> {C1, C2} chain 1 input to syncer
+// C1 -> D1 chain 2 input to syncer
+//
+// The last operation will fail if the state of subset {B1, B2} is not
+// kept in the store because syncing C1 requires retrieving parent state.
+func TestSubsetParent(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	syncer, _, cst, _ := initSyncTestDefault(require)
+	ctx := context.Background()
+
+	// Set up store to have standard chain up to link2
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	cids2 := requirePutBlocks(require, cst, link2.ToSlice()...)
+	err := syncer.HandleNewBlocks(ctx, cids2)
+	require.NoError(err)
+
+	// Sync one tipset with a parent equal to a subset of an existing
+	// tipset in the store.
+	forkbase := consensus.RequireNewTipSet(require, link2blk1, link2blk2)
+	forkblk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
+	forkblk2 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
+	forkHead := requirePutBlocks(require, cst, forklink.ToSlice()...)
+	err = syncer.HandleNewBlocks(ctx, forkHead)
+	assert.NoError(err)
+
+	// Sync another tipset with a parent equal to a subset of the tipset
+	// just synced.
+	newForkbase := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
+	newForkblk := RequireMkFakeChild(require, newForkbase, genCid, genStateRoot, uint64(0), uint64(0))
+	newForklink := consensus.RequireNewTipSet(require, newForkblk)
+	newForkHead := requirePutBlocks(require, cst, newForklink.ToSlice()...)
+	err = syncer.HandleNewBlocks(ctx, newForkHead)
+	assert.NoError(err)
+}
+
 // Check that the syncer correctly adds widened chain ancestors to the store.
 func TestWidenChainAncestor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	syncer, chain, cst := initSyncTestDefault(require)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 	link2blkother := RequireMkFakeChild(require, link1, genCid, genStateRoot, uint64(27), uint64(0))
 
@@ -574,7 +680,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	weightDeepStateRoot := weightDeepGenBlk.StateRoot
 
 	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid)
-	syncer, chain, cst := initSyncTest(require, con, testGen, cst, bs, r)
+	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
 		TipSet:          weightDeepTS,
