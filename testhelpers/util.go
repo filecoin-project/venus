@@ -1,12 +1,10 @@
 package testhelpers
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 )
 
@@ -41,22 +39,22 @@ func GetGoPath() (string, error) {
 	return filepath.Join(home, "go"), nil
 }
 
-// GetFilecoinBinary returns the path where the filecoin binary will be if it has been built.
-func GetFilecoinBinary() (string, error) {
+// MustGetFilecoinBinary returns the path where the filecoin binary will be if it has been built and panics otherwise.
+func MustGetFilecoinBinary() string {
 	gopath, err := GetGoPath()
 	if err != nil {
-		return "", errors.Wrap(err, "failed to get GOPATH")
+		panic(err)
 	}
 
 	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
 	_, err = os.Stat(bin)
-	if err == nil {
-		return bin, nil
+	if err != nil {
+		panic(err)
 	}
 
 	if os.IsNotExist(err) {
-		return "", fmt.Errorf("You are missing the filecoin binary...try building, searched in '%s'", bin)
+		panic("You are missing the filecoin binary...try building'")
 	}
 
-	return "", err
+	return bin
 }

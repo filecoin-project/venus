@@ -2,8 +2,11 @@ package commands
 
 import (
 	"context"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds/http"
@@ -138,9 +141,14 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 
 	res, err := client.Send(req)
 	if err != nil {
-		return err
+		if isConnectionRefused(err) {
+			re.SetError("Connection Refused. Is the daemon running?", cmdkit.ErrFatal)
+			return nil
+		}
+		re.SetError(err, cmdkit.ErrFatal)
+		return nil
 	}
-	// send request to server
+
 	wait := make(chan struct{})
 	// copy received result into cli emitter
 	go func() {
@@ -225,4 +233,22 @@ func requiresDaemon(req *cmds.Request) bool {
 	}
 
 	return true
+}
+
+func isConnectionRefused(err error) bool {
+	urlErr, ok := err.(*url.Error)
+	if !ok {
+		return false
+	}
+
+	opErr, ok := urlErr.Err.(*net.OpError)
+	if !ok {
+		return false
+	}
+
+	syscallErr, ok := opErr.Err.(*os.SyscallError)
+	if !ok {
+		return false
+	}
+	return syscallErr.Err == syscall.ECONNREFUSED
 }
