@@ -109,37 +109,7 @@ requiring mutiple round trips from someone whose next availability
 
 ## Project Management
 
-* We use a modified Agile scrum method. Details are in [Agile and Scrum at Protocol Labs - Filecoin](https://docs.google.com/document/d/16PQVR5vTnbt6DtgxVIEdjc4n0TrqWEtOiWZLItQXC74/edit?ts=5ab28811#).
-* We track work items via the [Project Board](https://app.zenhub.com/workspace/o/filecoin-project/go-filecoin/boards?repos=113219518). We use Zenhub because it provides agile project management tools, but integrates directly with Github.
-
-| Stage | What is it for? |
-|---|---|
-| Icebox | Things we decided not to do for now. |
-| Backlog | New issues. |
-| Ready | Issues move here after they have good descriptions, acceptance criteria, and initial estimates. |
-| This Sprint | Selected by team for current sprint. Looking for work? Start here. |
-| In Progress | When you start work on an issue, move here and assign yourself. |
-| Review/QA | For PRs and issues. Move here manually when you create a PR. |
-| Blocked | If you are working on something but get stuck because of external factors. |
-| Closed | :tada:|
-
-- The first and last stages are kept up-to-date automatically.
-   - New issues created in `go-filecoin` show up automatically in `Backlog`
-   - When a PR is merged, the referenced issues are closed and moved to `Closed`.
-- All other stages are updated manually.
-- All work you are doing should be tracked through an issue. If an issue doesn't exist, create one.
-
-### Picking up a story
-
-In order to surface design constraints as early as possible clarify an
-implementation plan ahead of implementation with someone knowledgable
-of the issue. That is, when you pick up a story spend some time with
-it and then clarify what you think should happen with someone familiar
-with the issue and code. Typically this is the person who filed the
-issue but a different stakeholder could be called out explicitly in
-the issue or found in Slack. Reflect any decisions that were made or
-directives you receive back into the issue to avoid misunderstandings.
-Only implement once you're sure you have a solid plan.
+Details in [dev-process.md](dev-process.md).
 
 ## Conventions and Style
 

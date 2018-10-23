@@ -14,6 +14,7 @@ by providing storage to clients.
 
 - [Installation](#installation)
 - [Development](#development)
+  - [Contributing and dev process](#contributing-and-dev-process)
   - [Install Go and Rust](#install-go-and-rust)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
@@ -36,6 +37,11 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
   - Click `Container 0 > filecoin.tar.gz` to download the release.
 
 ## Development
+
+### Contributing and dev process
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for the contributing guide and [dev-process.md](dev-process.md) to
+learn about project management.
 
 ### Install Go and Rust
 
