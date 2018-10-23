@@ -103,23 +103,30 @@ func ReceiveOutCh(ch <-chan Output) int {
 	}
 }
 
-// FifthTestView is an implementation of the powertable view used for testing mining
-// wherein each miner has 1/5 power.
-type FifthTestView struct{}
+// TestPowerTableView is an implementation of the powertable view used for testing mining
+// wherein each miner has 1/n power.
+type TestPowerTableView struct {
+	n uint64
+}
 
-var _ consensus.PowerTableView = &FifthTestView{}
+var _ consensus.PowerTableView = &TestPowerTableView{}
 
-// Total always returns 5.
-func (tv *FifthTestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return uint64(5), nil
+// NewTestPowerTableView creates a test power view with the given total power
+func NewTestPowerTableView(n uint64) *TestPowerTableView {
+	return &TestPowerTableView{n: n}
+}
+
+// Total always returns n.
+func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+	return tv.n, nil
 }
 
 // Miner always returns 1.
-func (tv *FifthTestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	return uint64(1), nil
 }
 
 // HasPower always returns true.
-func (tv *FifthTestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
 }

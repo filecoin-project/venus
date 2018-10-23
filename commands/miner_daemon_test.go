@@ -161,7 +161,6 @@ func TestMinerCreate(t *testing.T) {
 }
 
 func TestMinerOwner(t *testing.T) {
-	t.Skip("TODO: flaky test")
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -208,11 +207,11 @@ var testConfig = &gengen.GenesisCfg{
 	Miners: []gengen.Miner{
 		{
 			Owner: 0,
-			Power: 5000,
+			Power: 5,
 		},
 		{
 			Owner: 1,
-			Power: 1000,
+			Power: 1,
 		},
 	},
 }

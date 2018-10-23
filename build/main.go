@@ -213,7 +213,6 @@ func lint(packages ...string) {
 
 func build() {
 	buildFilecoin()
-	buildFakecoin()
 	buildGengen()
 	buildFaucet()
 	generateGenesis()
@@ -227,16 +226,6 @@ func generateGenesis() {
 		"--out-car", "fixtures/genesis.car",
 		"--out-json", "fixtures/gen.json",
 		"--config", "./fixtures/setup.json",
-	)
-}
-
-func buildFakecoin() {
-	log.Println("Building go-fakecoin...")
-	runParts(
-		"go", "build",
-		"-o", "tools/go-fakecoin/go-fakecoin",
-		"-v",
-		"./tools/go-fakecoin",
 	)
 }
 
@@ -293,8 +282,6 @@ func main() {
 		smartdeps()
 	case "lint":
 		lint(args[1:]...)
-	case "build-fakecoin":
-		buildFakecoin()
 	case "build-filecoin":
 		buildFilecoin()
 	case "build-gengen":
