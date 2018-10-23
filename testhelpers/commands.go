@@ -145,8 +145,7 @@ func (td *TestDaemon) Run(args ...string) *Output {
 // stdin of the process.
 func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	td.test.Helper()
-	bin, err := GetFilecoinBinary()
-	require.NoError(td.test, err)
+	bin := MustGetFilecoinBinary()
 
 	ctx, cancel := context.WithTimeout(context.Background(), td.cmdTimeout)
 	defer cancel()
@@ -692,10 +691,7 @@ func WithMiner(m string) func(*TestDaemon) {
 // NewDaemon creates a new `TestDaemon`, using the passed in configuration options.
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
-	filecoinBin, err := GetFilecoinBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
+	filecoinBin := MustGetFilecoinBinary()
 
 	//Ask the kernel for a port to avoid conflicts
 	cmdPort, err := GetFreePort()
@@ -790,10 +786,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 // RunInit is the equivialent of executing `go-filecoin init`.
 func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
-	filecoinBin, err := GetFilecoinBinary()
-	if err != nil {
-		return nil, err
-	}
+	filecoinBin := MustGetFilecoinBinary()
 
 	finalArgs := append([]string{"init"}, opts...)
 	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
