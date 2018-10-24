@@ -51,8 +51,8 @@ resource "aws_security_group" "logstash" {
 
 resource "aws_instance" "logstash" {
   count         = "2"
-  ami           = "${data.aws_ami.bionic.id}"
-  key_name      = "${aws_key_pair.c5-gmasgras.key_name}"
+  ami           = "ami-0ac019f4fcb7cb7e6"
+  key_name      = "${aws_key_pair.filecoin.key_name}"
   user_data     = "${data.template_file.logstash_user_data.rendered}"
   instance_type = "t2.small"
 
