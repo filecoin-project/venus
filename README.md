@@ -43,10 +43,11 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for the contributing guide and [dev-process.md](dev-process.md) to
 learn about project management.
 
-### Install Go and Rust
+### Install Go, GoMetaLinter and Rust
 
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
-  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
+  - You'll need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
+  - You'll also need to install the gometalinter dependency independently using the [instructions here](https://github.com/alecthomas/gometalinter#installing).
 
 ### Clone
 
@@ -57,7 +58,7 @@ git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.c
 
 ### Install Dependencies
 
-go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
+go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx and
 other build and test dependencies, run:
 
 ```sh
