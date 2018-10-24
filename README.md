@@ -17,7 +17,6 @@ by providing storage to clients.
 
 - [Installation](#installation)
 - [Development](#development)
-  - [Contributing and dev process](#contributing-and-dev-process)
   - [Install Go and Rust](#install-go-and-rust)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
@@ -41,16 +40,10 @@ You can download prebuilt binaries for Linux and MacOS from CircleCI.
 
 ## Development
 
-### Contributing and dev process
+### Install Go and Rust
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for the contributing guide and [dev-process.md](dev-process.md) to
-learn about project management.
-
-### Install Go, GoMetaLinter and Rust
-
-  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
-  - You'll need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
-  - You'll also need to install the gometalinter dependency independently using the [instructions here](https://github.com/alecthomas/gometalinter#installing).
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
 
 ### Clone
 
@@ -61,7 +54,7 @@ git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.c
 
 ### Install Dependencies
 
-go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx and
+go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
 
 ```sh
@@ -157,140 +150,195 @@ go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-fil
 go-filecoin daemon      # Starts the daemon, you may now issue it commands in another terminal
 ```
 
-To set up a node and connect into an existing cluster:
+### To set up a node and connect into an existing cluster:
+
+
+Filecoin requires the same genesis block as the cluster and you should
+also give your node a name so you can easily find it on the dashboard.
+The easiest way to connect into the labweek cluster is using the
+following flags (you could of course address update the config directly
+if you wanted instead):
+
 ```
-rm -fr ~/.filecoin
-# filecoin requires the same genesis block as the cluster and you should
-# also give your node a name so you can easily find it on the dashboard.
-# The easiest way to connect into the labweek cluster is using the
-# following flags (you could of course address update the config directly
-# if you wanted instead):
+rm -fr ~/.filecoin  # ONLY if you have a pre-existing install
 go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-labweek
-go-filecoin config stats.nickname '"yournodename"'
+go-filecoin config stats.nickname '"yournodename"' # Note " inside ' !
 go-filecoin daemon
-# In a new terminal, tell your local node to stream logs to the aggregator:
-go-filecoin log streamto <aggregator multiaddr>
-# Ex: go-filecoin log streamto /dns4/test.kittyhawk.wtf/tcp/19000
-#
-# Other stuff:
-# - Dashboard: http://test.kittyhawk.wtf:8010
-# - Faucet to get $$: http://test.kittyhawk.wtf:9797
-# - Block explorer: http://test.kittyhawk.wtf:8000
-# - Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000
-# - SSH (dev team only please):
-#     ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
-#     sudo -s
-#     docker ps
-#     docker logs -f <container_name> # filecoin-{0,4}
-#     # see processes running in container
-#     docker top filecoin-{0,4}
+```
+
+In a new terminal, tell your local node to stream logs to the aggregator:
+`go-filecoin log streamto <aggregator multiaddr>`
+
+_Example_: `go-filecoin log streamto /dns4/test.kittyhawk.wtf/tcp/19000`
+
+Other stuff:
+- Dashboard: http://test.kittyhawk.wtf:8010
+- Faucet to get $$: http://test.kittyhawk.wtf:9797
+- Block explorer: http://test.kittyhawk.wtf:8000
+- Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000 
+- SSH (dev team only please):
+```
+    ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
+    sudo -s
+    docker ps
+    docker logs -f <container_name> filecoin-{0,4} 
+    see processes running in container
+    docker top filecoin-{0,4}
 ```
 
 To set up a single node capable of mining:
 ```
-rm -fr ~/.filecoin
+rm -fr ~/.filecoin   # only if you have a pre-existing install
 go-filecoin init --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
-# Note the output of the daemon, it should say "My peer ID is <W>", where <W>
-# is a long cid string starting with "Qm".  <W> is used in a later command.
-# Switch terminals
-# The miner is present in the genesis block car file created from the
-# json file, but the node is not yet configured to use it. Get the
-# miner address from the json file fixtures/gen.json and replace <X>
-# in the command below with it:
-go-filecoin config mining.minerAddress '"<X>"'
-# The account that owns the miner is also not yet configured in the node
-# so note that owner key name in fixtures/gen.json, we'll call it <Y> for short,
-# and import that key from the fixtures:
-go-filecoin wallet import fixtures/<Y>.key
-# Note the output of this command, call it <Z>. This output is the address of
-# the account that owns the miner.
-# The miner was not created with a pre-set peerid, so set it so that
-# clients can find it.
-go-filecoin miner update-peerid --from=<Z> <X> <W>
-# Now you can run a lookup
-go-filecoin address lookup <X>
-# the output should now be <W>
 ```
 
+Note the output of the daemon, it should say "My peer ID is `<W>`", where `<W>`
+is a long cid string starting with "Qm".  `<W>` is used in a later command.
+
+Switch terminals.
+
+The miner is present in the genesis block car file created from the 
+json file, but the node is not yet configured to use it. Get the 
+miner address from the json file fixtures/gen.json and replace `<X>`
+in the command below with it:
+
+`go-filecoin config mining.minerAddress '"<X>"'`
+
+The account that owns the miner is also not yet configured in the node
+so note that owner key name in fixtures/gen.json, we'll call it `<Y>` for short,
+and import that key from the fixtures:
+
+`go-filecoin wallet import fixtures/<Y>.key`
+
+Note the output of this command, call it `<Z>`. This output is the address of 
+the account that owns the miner.
+The miner was not created with a pre-set peerid, so set it so that
+clients can find it.
+
+`go-filecoin miner update-peerid --from=<Z> <X> <W>`
+
+Now you can run a lookup:
+`go-filecoin address lookup <X>`
+
+The output should now be `<W>`
+
 To configure a node's auto-sealing scheduler:
+The auto-sealer is used to automatically seal the data that a miner received
+from a client into a sector. Without this feature, miners would wait until
+they had accumulated $SECTORSIZE worth of client data before initiating the
+sealing process so that they didn't waste precious hard drive space. With
+auto-sealing enabled, the miner will use $SECTORSIZE bytes of storage each
+period unless there are no data to store that period.
+
+To control how frequently the auto-sealer runs, provide a positive integer
+value for the --auto-seal-interval-seconds option. To disable this feature,
+provide a 0.
+
+If the option is omitted, a default of 120 seconds will be used.
+
 ```
-# The auto-sealer is used to automatically seal the data that a miner received
-# from a client into a sector. Without this feature, miners would wait until
-# they had accumulated $SECTORSIZE worth of client data before initiating the
-# sealing process so that they didn't waste precious hard drive space. With
-# auto-sealing enabled, the miner will use $SECTORSIZE bytes of storage each
-# period unless there are no data to store that period.
-#
-# To control how frequently the auto-sealer runs, provide a positive integer
-# value for the --auto-seal-interval-seconds option. To disable this feature,
-# provide a 0.
-#
-# If the option is omitted, a default of 120 seconds will be used.
-#
 rm -fr ~/.filecoin
 go-filecoin init --auto-seal-interval-seconds=0 --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
 ```
 
-#### Running multiple nodes with IPTB
+## Running multiple nodes with IPTB
 
-IPTB provides an automtion layer that makes it easy run multiple filecoin nodes.
+IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
 For example, it enables you to easily start up 10 mining nodes locally on your machine.
 Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
 
-#### Sample commands
+## Sample commands
 
+### List and ping a peer 
 ```
-# ----- List and ping a peer -----
 go-filecoin swarm peers
 go-filecoin ping <peerID>
-
-#  ----- View latest mined block -----
+```
+#
+###  View latest mined block 
+```
 go-filecoin chain head
-go-filecoin show block <blockID>
-
-#  ----- Create a miner -----
-# Requires the node be a part of a cluster that already has miners and
-# no miner configured for this node yet.
+go-filecoin show block <blockID> | jq
+```
+#
+#### Create a miner
+```
+# Create a miner
+# Requires the node be a part of a cluster that already has miners 
+# and no miner configured for this node yet.
 go-filecoin miner create 10 10
-# Waits for the message to be included on chain, updates the minerAddress in the
-# node's config, and sets the peerid appropriately.
+
+# Waits for the message to be included on chain, updates the minerAddress
+# in the node's config, and sets the peerid appropriately.
 # Get your miner address
 go-filecoin config mining.minerAddress
+
 # And the owner:
 go-filecoin miner owner <minerAddress>
+```
 
-#  ----- As a miner, force a block to be mined immediately -----
-go-filecoin mine once
+### As a miner, force a block to be mined immediately 
+`go-filecoin mine once`
 
-#  ----- As a client, make a deal -----
+#
+### As a miner, make an ask 
+```
+# As a miner, make an ask 
+# Get your miner address
+go-filecoin config mining.minerAddress
+
+# Get your miner owner address 
+go-filecoin miner owner <minerAddress>
+go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
+
+# Wait for the block to be mined (~30s) and view the ask:
+go-filecoin orderbook asks | jq
+```
+#
+### As a client, make a deal 
+
+```
+# As a client, make a deal 
 echo "Hi my name is $USER"> hello.txt
 go-filecoin client import ./hello.txt
+
 # Verify it was imported:
 go-filecoin client cat <data CID>
+
 # Get the file size:
 go-filecoin client cat <data CID> | wc -c
-# TODO: Find a miner
+
+# Find a miner by looking through the orderbook
+go-filecoin orderbook asks | jq
 
 # Propose a storage deal, using the <miner address> from the ask.
 go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
-# TODO we want to be able to check the status, like this but the command above doesn't return an id
-# go-filecoin client query-storage-deal <id returned above>
+
+# TODO we want to be able to check the status, like this but the command above doesn't 
+# return an id
+go-filecoin client query-storage-deal <id returned above>
+
 # If you want to retreive the piece immediately you can bypass the retrieval market.
 # Note that this is kind of cheatsy but what works at the moment.
 go-filecoin client cat <data CID>
-#
-# Retrieval Miner
-# If you want to fetch the piece from the miner's sealed sector,
-# wait for the deal to be Sealed per query-storage-deal status above, and
-# then use the retrieval miner. Warning: this requires the sector be unsealed,
-# which takes a minute to run (it doesn't yet cache).
-go-filecoin retrieval-client retrieve-piece <miner peer id> <data CID>
-# Ex on the miner's node, get the peer id from: go-filecoin id
-# Then: go-filecoin retrieval-client retrieve-piece QmXtaLS9N3URQ2uCkqpLP6KZv7rVbT5KyjU5MQAgQM6yCq QmNqefRonNc2Rn5VwEB5wqJLE9arURmBUSay3kbjJoLJG9
 ```
-
+#
+### Retrieval Miner
+If you want to fetch the piece from the miner's sealed sector, 
+wait for the deal to be Sealed per query-storage-deal status above, and
+then use the retrieval miner. Warning: this requires the sector be unsealed, 
+which takes a minute to run (it doesn't yet cache). 
+go-filecoin retrieval-client retrieve-piece <miner peer id> <data CID>
+Ex on the miner's node, get the peer id from: go-filecoin id 
+Then: 
+```
+go-filecoin retrieval-client \
+   retrieve-piece QmXtaLS9N3URQ2uCkqpLP6KZv7rVbT5KyjU5MQAgQM6yCq \
+   QmNqefRonNc2Rn5VwEB5wqJLE9arURmBUSay3kbjJoLJG9
+```
+#
 ## Community
 
 Here are a few places to get help and hang out with the Filecoin community:
@@ -298,8 +346,9 @@ Here are a few places to get help and hang out with the Filecoin community:
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
 - [#filecoin-chat on Slack](https://protocollabs.slack.com/messages/CD4RLHMU0/convo/CCYS39YKZ-1538593031.000100/) — for live support and hacking with others
 - [Discussion forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
-- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md).
+- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
+#
 ## License
 
 The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
