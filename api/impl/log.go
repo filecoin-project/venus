@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"unicode"
 
 	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
@@ -53,11 +52,6 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	nickname, ok := nodeNic.(string)
 	if !ok {
 		return errors.New("failed to cast nickname from config")
-	}
-	// sanitizing
-	if !isSanitary(nickname) {
-		log.Warningf("node nickname: %s contains non letter character, omitting from logs", nickname)
-		nickname = ""
 	}
 
 	mconns, err := multidns.Resolve(ctx, maddr)
@@ -132,13 +126,4 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	wconn.Flush() // nolint: errcheck
 
 	return nil
-}
-
-func isSanitary(s string) bool {
-	for _, r := range s {
-		if !unicode.IsLetter(r) {
-			return false
-		}
-	}
-	return true
 }
