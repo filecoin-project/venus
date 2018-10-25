@@ -125,7 +125,7 @@ func TestActorLs(t *testing.T) {
 		assertSchemaValid(t, a, schemaLoader)
 
 		actor, _ = storagemarket.NewActor()
-		head, _ := cid.NewPrefixV1(cid.DagCBOR, types.DefaultHashFunction).Sum([]byte("test cid"))
+		head, _ := cid.V1Builder{Codec: cid.DagCBOR, MhType: types.DefaultHashFunction}.Sum([]byte("test cid"))
 		actor.Head = head
 		a = makeActorView(actor, "address", &storagemarket.Actor{})
 

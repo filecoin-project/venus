@@ -112,7 +112,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 }
 
 func requireCid(t *testing.T, data string) *cid.Cid {
-	prefix := cid.NewPrefixV1(cid.Raw, types.DefaultHashFunction)
+	prefix := cid.V1Builder{Codec: cid.Raw, MhType: types.DefaultHashFunction}
 	id, err := prefix.Sum([]byte(data))
 	require.NoError(t, err)
 	return id
