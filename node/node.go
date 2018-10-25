@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -429,7 +430,7 @@ func (node *Node) Start(ctx context.Context) error {
 func (node *Node) setupMining(ctx context.Context) error {
 	// initialize a sector store
 	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	if node.Repo.Config().Mining.PerformRealProofs {
+	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
 		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
 	}
 	node.SectorStore = sstore
@@ -958,21 +959,13 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	if err != nil {
 		return nil, err
 	}
+
 	err = node.saveMinerAddressToConfig(minerAddress)
-
-	// initialize a sector store
-	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	if node.Repo.Config().Mining.PerformRealProofs {
-		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	}
-	node.SectorStore = sstore
-
-	// initialize a sector builder
-	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize sector builder")
+		return &minerAddress, err
 	}
-	node.sectorBuilder = sectorBuilder
+
+	err = node.setupMining(ctx)
 
 	return &minerAddress, err
 }

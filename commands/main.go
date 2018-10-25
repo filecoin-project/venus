@@ -36,9 +36,6 @@ const (
 	// ELStdout tells the daemon to write event logs to stdout.
 	ELStdout = "elstdout"
 
-	// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
-	PerformRealProofs = "perform-real-proofs"
-
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
 	AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 

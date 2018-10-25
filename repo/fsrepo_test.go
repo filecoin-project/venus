@@ -36,7 +36,6 @@ const (
 
 [mining]
   minerAddress = ""
-  performRealProofs = false
   autoSealIntervalSeconds = 120
 
 [wallet]

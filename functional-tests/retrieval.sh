@@ -8,7 +8,14 @@ set -o pipefail
 export GO_FILECOIN_LOG_LEVEL=3
 export FILECOIN_PROOFS_FAST_DELAY_SECONDS=1
 
-USE_BIG_SECTORS=$1
+if [ -z $1 ]; then
+    USE_SMALL_SECTORS="true"
+else
+    USE_SMALL_SECTORS=$1
+fi
+
+export FIL_USE_SMALL_SECTORS=${USE_SMALL_SECTORS}
+
 if [ -z $2 ]; then
     AUTO_SEAL_INTERVAL_SECONDS="0"
 else
@@ -26,16 +33,16 @@ UNSEAL_PATH=$(mktemp)
 BLOCK_TIME="5s"
 HODL="HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL"
 
-if [ "$USE_BIG_SECTORS" = true ] ; then
+if [ "${USE_SMALL_SECTORS}" = true ] ; then
+    echo ${HODL} > ${PIECE_1_PATH}
+    echo "BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN" > ${PIECE_2_PATH}
+else
     # Keeping first piece block count at: 1040000 < 1040384 = 1065353216/1024
     # will prevent first piece from triggering seal.
     dd if=/dev/urandom of=${PIECE_1_PATH} bs=1024 count=1040000
     # A total block count of: (piece_1_count + piece_2_count) = 1040000 + 500 = 1040500 > 1040384
     # will cause the second piece to trigger a seal.
     dd if=/dev/urandom of=${PIECE_2_PATH} bs=1024 count=500
-else
-    echo ${HODL} > ${PIECE_1_PATH}
-    echo "BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN" > ${PIECE_2_PATH}
 fi
 
 function finish {
@@ -63,14 +70,8 @@ function import_private_key {
 }
 
 function init_daemon {
-  local __perform_real_proofs=true
-  if [ "$USE_BIG_SECTORS" = true ] ; then
-      __perform_real_proofs=false
-  fi
-
   ./go-filecoin init \
     --auto-seal-interval-seconds=${AUTO_SEAL_INTERVAL_SECONDS} \
-    --perform-real-proofs=$__perform_real_proofs \
     --repodir=$1 \
     --cmdapiaddr=/ip4/127.0.0.1/tcp/$2 \
     --walletfile= \
@@ -313,12 +314,7 @@ echo ""
 
 
 
-if [ "$USE_BIG_SECTORS" = true ] ; then
-    echo "big sector piece is too... big to cat"
-    echo ""
-    echo "report on unsealed file..."
-    du -sh ${UNSEAL_PATH}
-else
+if [ "${USE_SMALL_SECTORS}" = true ] ; then
     GOT=$(cat ${UNSEAL_PATH})
 
     if [ "${GOT}" = "${HODL}" ]; then
@@ -331,4 +327,9 @@ else
         echo "${GOT}"
         exit 1
     fi
+else
+    echo "big sector piece is too... big to cat"
+    echo ""
+    echo "report on unsealed file..."
+    du -sh ${UNSEAL_PATH}
 fi

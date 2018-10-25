@@ -36,10 +36,6 @@ const ProofLength = 192
 // https://github.com/filecoin-project/go-filecoin/issues/966
 var ProvingPeriodBlocks = types.NewBlockHeight(20000)
 
-// SectorSize is the amount of bytes, in a single sector.
-// TODO: derive from config and/or from sector_builder
-var SectorSize = types.NewBytesAmount(1016 * 1024 * 1024)
-
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
 	ErrPublicKeyTooBig = 33

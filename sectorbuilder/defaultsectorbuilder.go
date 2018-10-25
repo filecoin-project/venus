@@ -188,9 +188,9 @@ func configureSectorBuilderFromMetadata(store *metadataStore, sb *defaultSectorB
 
 	// note: The following guard exists to prevent a situation in which the
 	// sector builder was initialized with a sector store configured to use
-	// large sectors (PerformRealProofs=false), user data was written to
+	// large sectors (FIL_USE_SMALL_SECTORS=false), user data was written to
 	// the staging area, and then the node was reconfigured to use small
-	// sector sizes (PerformRealProofs=true).
+	// sector sizes (FIL_USE_SMALL_SECTORS=true).
 	//
 	// Going forward, the SectorBuilder should be able to manage multiple
 	// unsealed sectors concurrently, segregating them (and their sealed
