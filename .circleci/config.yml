@@ -160,6 +160,45 @@ jobs:
       - store_artifacts:
           path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
           destination: filecoin.tar.gz
+
+
+  build_docker:
+    docker:
+      - image: circleci/golang:latest
+
+    resource_class: large
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - setup_remote_docker:
+          docker_layer_caching: true 
+
+      - run:
+          name: Install AWS CLI
+          command: |
+            sudo apt-get install -y python-pip libyaml-dev python-dev jq
+            sudo pip install awscli
+      - run:
+          name: login to ECR
+          command: |
+            export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
+            eval $(aws --region us-east-1 ecr --no-include-email get-login)
+
+      # The first checkout ensures we have the files needed to restore the cache
+      - checkout
+
+      # Pull in all submodules (inc. rust-proofs)
+      - run: git submodule update --init
+
+      - run:
+          name: build & push image
+          command: |
+            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+            docker build -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
+
 experimental:
   notify:
     branches:
@@ -173,3 +212,9 @@ workflows:
     jobs:
       - build_macos
       - build_linux
+      - build_docker:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              only: /.*ci-build-cluster/
