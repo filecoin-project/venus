@@ -235,7 +235,7 @@ go-filecoin ping <peerID>
 
 #  ----- View latest mined block -----
 go-filecoin chain head
-go-filecoin show block <blockID> | jq
+go-filecoin show block <blockID>
 
 #  ----- Create a miner -----
 # Requires the node be a part of a cluster that already has miners and
