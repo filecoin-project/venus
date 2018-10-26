@@ -113,7 +113,7 @@ docker exec "filecoin-0" $$filecoin_exec \
        config mining.minerAddress "\"$${minerAddr}\""
 
 # import miner owner
-minerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "/var/filecoin/car/0.key" | tail -n +2 | sed -e 's/^"//' -e 's/"$$//')
+minerOwner=$$(docker exec "filecoin-0" $$filecoin_exec wallet import "/var/filecoin/car/0.key" | sed -e 's/^"//' -e 's/"$$//')
 
 # update the peerID of the miner to the correct value
 peerID=$$(docker exec "filecoin-0" $$filecoin_exec id | grep -v Fixture | jq ".ID" -r)
@@ -159,14 +159,14 @@ done
 # send some tokens
 for i in {1..4}
 do
-  nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls | tail -n +2)
-  msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$$minerOwner" --value 100 "$$nodeAddr" | tail -n +2)
+  nodeAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec wallet addrs ls)
+  msgCidRaw=$$(docker exec "filecoin-0" $$filecoin_exec message send --from "$$minerOwner" --value 100 "$$nodeAddr")
   msgCid=$$(echo $$msgCidRaw | sed -e 's/^node\[0\] exit 0 //')
   docker exec "filecoin-$$i" $$filecoin_exec \
          message wait "$$msgCid"
 
   # create the actual miner
-  newMinerAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec miner create 10 10 | tail -n +2)
+  newMinerAddr=$$(docker exec "filecoin-$$i" $$filecoin_exec miner create 10 10)
 
   # start mining
   docker exec "filecoin-$$i" $$filecoin_exec \
@@ -174,7 +174,7 @@ do
 
   # make a deal
   dd if=/dev/random of="$$CAR_DIR/fake.dat"  bs=1M  count=1 # small data file will be autosealed
-  dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "/var/filecoin/car/fake.dat" | tail -n +2)
+  dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "/var/filecoin/car/fake.dat")
   rm "$$CAR_DIR/fake.dat"
 
   docker exec "filecoin-0" $$filecoin_exec \
