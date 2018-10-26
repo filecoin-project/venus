@@ -102,8 +102,8 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	if fcn.OfflineMode {
 		re.Emit("Filecoin node running in offline mode (libp2p is disabled)\n") // nolint: errcheck
 	} else {
-		re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host.ID().Pretty())) // nolint: errcheck
-		for _, a := range fcn.Host.Addrs() {
+		re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host().ID().Pretty())) // nolint: errcheck
+		for _, a := range fcn.Host().Addrs() {
 			re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
 		}
 	}
@@ -259,16 +259,16 @@ func NewHeartbeat(node *node.Node) (*Heartbeat, error) {
 
 	// Get all peers of this node
 	var peers []string
-	for _, p := range node.Host.Peerstore().Peers() {
+	for _, p := range node.Host().Peerstore().Peers() {
 		// lets not include our own peer ID in the connection list
-		if p == node.Host.ID() {
+		if p == node.Host().ID() {
 			continue
 		}
 		peers = append(peers, p.Pretty())
 	}
 
 	// Get our peerID
-	peerID := node.Host.ID().Pretty()
+	peerID := node.Host().ID().Pretty()
 
 	return &Heartbeat{
 		MinerAddress:    minerAddress,

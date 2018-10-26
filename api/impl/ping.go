@@ -24,7 +24,7 @@ const pingTimeout = time.Second * 10
 func (np *nodePing) Ping(ctx context.Context, pid peer.ID, count uint, delay time.Duration) (<-chan *api.PingResult, error) {
 	nd := np.api.node
 
-	if pid == nd.Host.ID() {
+	if pid == nd.Host().ID() {
 		return nil, ErrCannotPingSelf
 	}
 

@@ -23,7 +23,7 @@ func (api *nodeDag) Get(ctx context.Context, ref string) (interface{}, error) {
 		return nil, err
 	}
 
-	dserv := dag.NewDAGService(api.api.node.Blockservice)
+	dserv := dag.NewDAGService(api.api.node.BlockService())
 	resolver := resolver.NewBasicResolver(dserv)
 
 	objc, rem, err := resolver.ResolveToLastNode(ctx, parsedRef)

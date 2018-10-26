@@ -25,6 +25,7 @@ import (
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -155,11 +156,11 @@ func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node
 func ConnectNodes(t *testing.T, a, b *Node) {
 	t.Helper()
 	pi := pstore.PeerInfo{
-		ID:    b.Host.ID(),
-		Addrs: b.Host.Addrs(),
+		ID:    b.Host().ID(),
+		Addrs: b.Host().Addrs(),
 	}
 
-	err := a.Host.Connect(context.TODO(), pi)
+	err := a.Host().Connect(context.TODO(), pi)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +185,7 @@ func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, op
 	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
 	seed.GiveKey(t, node, 0)
 	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
-	_, err := NewStorageMiner(context.Background(), node, minerAddr, minerOwnerAddr)
+	_, err := storage.NewMiner(context.Background(), minerAddr, minerOwnerAddr, node)
 	assert.NoError(t, err)
 
 	return node
@@ -259,11 +260,11 @@ func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif consensus.Ge
 
 	if mockMineMode {
 		nd.PowerTable = &consensus.TestView{}
-		newCon := consensus.NewExpected(nd.CborStore, nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
+		newCon := consensus.NewExpected(nd.CborStore(), nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
 		newChainStore, ok := nd.ChainReader.(chain.Store)
 		require.True(t, ok)
 
-		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore, newCon, newChainStore)
+		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore(), newCon, newChainStore)
 		nd.Syncer = newSyncer
 		nd.Consensus = newCon
 	}
@@ -340,7 +341,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		if err != nil {
 			return nil, err
 		}
-		return state.LoadStateTree(ctx, node.CborStore, tsas.TipSetStateRoot, builtin.Actors)
+		return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 	}
 	getStateTree := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return getStateFromKey(ctx, ts.String())
@@ -361,7 +362,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		return node.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, address.TestAddress, th.BlockTimeTest)
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, th.BlockTimeTest)
 	cur := node.ChainReader.Head()
 	out := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(out.Err)
@@ -385,7 +386,7 @@ func requireResetNodeGen(require *require.Assertions, node *Node, gif consensus.
 // function provided.
 func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	ctx := context.Background()
-	newGenBlk, err := gif(node.CborStore, node.Blockstore)
+	newGenBlk, err := gif(node.CborStore(), node.Blockstore)
 	if err != nil {
 		return err
 	}
@@ -399,7 +400,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 		TipSetStateRoot: newGenBlk.StateRoot,
 	}
 
-	newChainStore := chain.NewDefaultStore(node.Repo.ChainDatastore(), node.CborStore, newGenBlk.Cid())
+	newChainStore := chain.NewDefaultStore(node.Repo.ChainDatastore(), node.CborStore(), newGenBlk.Cid())
 
 	if err = newChainStore.PutTipSetAndState(ctx, genTsas); err != nil {
 		return errors.Wrap(err, "failed to put genesis block in chain store")
@@ -419,14 +420,14 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	if !ok {
 		return errors.New("failed to cast chain.Store to chain.ReadStore")
 	}
-	newCon := consensus.NewExpected(node.CborStore, node.Blockstore, node.PowerTable, newGenBlk.Cid())
-	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore, newCon, newChainStore)
-	newMsgWaiter := NewMessageWaiter(newChainReader, node.Blockstore, node.CborStore)
+	newCon := consensus.NewExpected(node.CborStore(), node.Blockstore, node.PowerTable, newGenBlk.Cid())
+	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
+	newMsgWaiter := NewMessageWaiter(newChainReader, node.Blockstore, node.CborStore())
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer
 	node.MessageWaiter = newMsgWaiter
-	node.Lookup = lookup.NewChainLookupService(newChainReader, node.DefaultSenderAddress, node.Blockstore)
+	node.lookup = lookup.NewChainLookupService(newChainReader, node.DefaultSenderAddress, node.Blockstore)
 	return nil
 }
 

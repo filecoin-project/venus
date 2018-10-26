@@ -27,7 +27,7 @@ func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pled
 	}
 
 	if pid == "" {
-		pid = nd.Host.ID()
+		pid = nd.Host().ID()
 	}
 
 	res, err := nd.CreateMiner(ctx, fromAddr, pledge, pid, collateral)

@@ -63,7 +63,7 @@ func TestChainLsRun(t *testing.T) {
 
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
-		genBlock, err := consensus.InitGenesis(n.CborStore, n.Blockstore)
+		genBlock, err := consensus.InitGenesis(n.CborStore(), n.Blockstore)
 		require.NoError(err)
 
 		chlBlock := types.NewBlockForTest(genBlock, 1)

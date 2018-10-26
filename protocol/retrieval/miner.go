@@ -1,33 +1,44 @@
-package node
+package retrieval
 
 import (
 	"io/ioutil"
 
+	host "gx/ipfs/QmPMtD39NN63AEUNghk1LFQcTLcCmYL8MtRzdv8BRUsC4Z/go-libp2p-host"
 	inet "gx/ipfs/QmQSbtGXCyNrj34LWL8EgXyNNYDZ8r3SwQcpW5pPxVhLnM/go-libp2p-net"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 )
 
-const RetrievePieceForFreeProtocolID = protocol.ID("/fil/retrieval/free/0.0.0") // nolint: golint
+var log = logging.Logger("/fil/retrieval")
 
-// RetrievalMiner serves requests for pieces from RetrievalClients.
-type RetrievalMiner struct {
-	nd *Node
+const retrievalFreeProtocol = protocol.ID("/fil/retrieval/free/0.0.0")
+
+// TODO: better name
+type minerNode interface {
+	Host() host.Host
+	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// NewRetrievalMiner is used to create a RetrievalMiner and bind a handling function to the piece retrieval protocol.
-func NewRetrievalMiner(nd *Node) *RetrievalMiner {
-	rm := &RetrievalMiner{
-		nd: nd,
+// Miner serves requests for pieces from RetrievalClients.
+type Miner struct {
+	node minerNode
+}
+
+// NewMiner is used to create a Miner and bind a handling function to the piece retrieval protocol.
+func NewMiner(nd minerNode) *Miner {
+	rm := &Miner{
+		node: nd,
 	}
 
-	nd.Host.SetStreamHandler(RetrievePieceForFreeProtocolID, rm.handleRetrievePieceForFree)
+	nd.Host().SetStreamHandler(retrievalFreeProtocol, rm.handleRetrievePieceForFree)
 
 	return rm
 }
 
-func (rm *RetrievalMiner) handleRetrievePieceForFree(s inet.Stream) {
+func (rm *Miner) handleRetrievePieceForFree(s inet.Stream) {
 	defer s.Close() // nolint: errcheck
 
 	var req RetrievePieceRequest
@@ -36,7 +47,7 @@ func (rm *RetrievalMiner) handleRetrievePieceForFree(s inet.Stream) {
 		return
 	}
 
-	reader, err := rm.nd.SectorBuilder.ReadPieceFromSealedSector(req.PieceRef)
+	reader, err := rm.node.SectorBuilder().ReadPieceFromSealedSector(req.PieceRef)
 	if err != nil {
 		log.Warningf("failed to obtain a reader for piece with CID %s: %s", req.PieceRef.String(), err)
 

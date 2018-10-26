@@ -12,7 +12,7 @@ import (
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,7 +29,7 @@ func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 	// For now, lets just do things the ipfs way.
 
 	nd := api.api.node
-	ds := dag.NewDAGService(nd.Blockservice)
+	ds := dag.NewDAGService(nd.BlockService())
 
 	data, err := ds.Get(ctx, c)
 	if err != nil {
@@ -40,16 +40,16 @@ func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, erro
 }
 
 func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
-	ds := dag.NewDAGService(api.api.node.Blockservice)
+	ds := dag.NewDAGService(api.api.node.BlockService())
 	spl := chunk.DefaultSplitter(data)
 
 	return imp.BuildDagFromReader(ds, spl)
 }
 
-func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, price *types.AttoFIL, duration uint64) (*node.StorageDealResponse, error) {
-	return api.api.node.StorageMinerClient.TryToStoreData(ctx, miner, data, duration, price)
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, price *types.AttoFIL, duration uint64) (*storage.DealResponse, error) {
+	return api.api.node.StorageMinerClient.ProposeDeal(ctx, miner, data, duration, price)
 }
 
-func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*node.StorageDealResponse, error) {
-	return api.api.node.StorageMinerClient.Query(ctx, prop)
+func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*storage.DealResponse, error) {
+	return api.api.node.StorageMinerClient.QueryDeal(ctx, prop)
 }

@@ -297,21 +297,30 @@ func (store *DefaultStore) HeadEvents() *pubsub.PubSub {
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
-
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	// Ensure consistency by storing this new head on disk.
-	if err := store.writeHead(ctx, ts.ToSortedCidSet()); err != nil {
-		return errors.Wrap(err, "failed to write new Head to datastore")
-	}
+	var err error
+	go func() {
+		if errInner := store.writeHead(ctx, ts.ToSortedCidSet()); errInner != nil {
+			err = errors.Wrap(errInner, "failed to write new Head to datastore")
+		}
+		wg.Done()
+	}()
 
 	store.head = ts
 	store.mu.Unlock()
 	// Publish an event that we have a new head.
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 	store.mu.Lock() // lock up before the defer hits
-	return nil
+
+	wg.Wait()
+
+	return err
 }
 
 // writeHead writes the given cid set as head to disk.

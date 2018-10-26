@@ -55,7 +55,7 @@ func NewOutput(b *types.Block, e error) Output {
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output)
+	Mine(runCtx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -115,58 +115,59 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetSta
 type DoSomeWorkFunc func()
 
 // Mine implements the DefaultWorkers main mining function..
-func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) {
+// The returned bool indicates if this miner created a new block or not.
+func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool {
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 	if len(base) == 0 {
 		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
-		return
+		return false
 	}
 
 	st, err := w.getStateTree(ctx, base)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get state tree for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
-		return
+		return false
 	}
 	totalPower, err := w.powerTable.Total(ctx, st, w.blockstore)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get total power from power table: %s", err.Error())
 		outCh <- Output{Err: err}
-		return
+		return false
 	}
 	myPower, err := w.powerTable.Miner(ctx, st, w.blockstore, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine returning because couldn't get miner power from power table: %s", err.Error())
 		outCh <- Output{Err: err}
-		return
+		return false
 	}
 
 	log.Debugf("Worker.Mine myPower: %d - totalPower: %d", myPower, totalPower)
 	if myPower == 0 {
 		// we don't have any power, it doesn't make sense to mine quite yet
-		return
+		return false
 	}
 
 	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), nullBlkCount)
 	if ctx.Err() != nil {
 		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
-		return
+		return false
 	}
 
 	challenge, err := createChallenge(base, uint64(nullBlkCount))
 	if err != nil {
 		outCh <- Output{Err: err}
-		return
+		return false
 	}
 	prCh := createProof(challenge, w.createPoST)
 	var ticket []byte
 	select {
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
-		return
+		return false
 	case proof := <-prCh:
 		ticket = createTicket(proof, w.minerAddr)
 	}
@@ -179,8 +180,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		}
 		log.Infof("Worker.Mine generates new winning block! %s", next.Cid().String())
 		outCh <- NewOutput(next, err)
-		return
+		return true
 	}
+
+	return false
 }
 
 // TODO -- in general this won't work with only the base tipset, we'll potentially

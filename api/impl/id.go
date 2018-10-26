@@ -16,7 +16,7 @@ func newNodeID(api *nodeAPI) *nodeID {
 
 // Details, returns detailed information about the underlying node.
 func (a *nodeID) Details() (*api.IDDetails, error) {
-	host := a.api.node.Host
+	host := a.api.node.Host()
 	hostID := host.ID().Pretty()
 	addrs := host.Addrs()
 

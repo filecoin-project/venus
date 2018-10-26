@@ -24,7 +24,7 @@ func TestBasicDaemonHeartbeat(t *testing.T) {
 	assert.NoError(err)
 
 	// should have a matching peerID
-	assert.Equal(n.Host.ID().Pretty(), hb.PeerID)
+	assert.Equal(n.Host().ID().Pretty(), hb.PeerID)
 
 	// miner address is empty string if one isn't set
 	assert.Equal("", hb.MinerAddress)
@@ -41,7 +41,7 @@ func TestBasicDaemonHeartbeat(t *testing.T) {
 	assert.Equal(hts, hb.HeaviestTipset)
 
 	// we are only connected to our selves
-	require.True(len(n.Host.Peerstore().Peers()) == 1)
+	require.True(len(n.Host().Peerstore().Peers()) == 1)
 	// the heartbeat omits this
 	assert.True(len(hb.Peers) == 0)
 

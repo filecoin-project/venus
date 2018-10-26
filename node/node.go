@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -43,6 +45,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/protocol/hello"
+	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -67,9 +72,11 @@ var (
 	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
+type floodSubProcessorFunc func(ctx context.Context, msg *floodsub.Message) error
+
 // Node represents a full Filecoin node.
 type Node struct {
-	Host     host.Host
+	host     host.Host
 	PeerHost host.Host
 
 	Consensus   consensus.Protocol
@@ -101,19 +108,19 @@ type Node struct {
 	blockTime          time.Duration
 
 	// Storage Market Interfaces
-	StorageMinerClient *StorageMinerClient
-	StorageMiner       *StorageMiner
+	StorageMinerClient *storage.Client
+	StorageMiner       *storage.Miner
 
 	// Retrieval Interfaces
-	RetrievalClient *RetrievalClient
-	RetrievalMiner  *RetrievalMiner
+	RetrievalClient *retrieval.Client
+	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
 	PubSub            *floodsub.PubSub
 	BlockSub          *floodsub.Subscription
 	MessageSub        *floodsub.Subscription
 	Ping              *ping.PingService
-	HelloSvc          *core.Hello
+	HelloSvc          *hello.Handler
 	RelayBootstrapper *filnet.Bootstrapper
 	Bootstrapper      *filnet.Bootstrapper
 	OnlineStore       *hamt.CborIpldStore
@@ -125,7 +132,7 @@ type Node struct {
 	Repo repo.Repo
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
-	SectorBuilder sectorbuilder.SectorBuilder
+	sectorBuilder sectorbuilder.SectorBuilder
 
 	// SectorStore is used to manage staging and sealed sectors.
 	SectorStore proofs.SectorStore
@@ -137,13 +144,13 @@ type Node struct {
 	Blockstore bstore.Blockstore
 
 	// Blockservice is a higher level interface for fetching data
-	Blockservice bserv.BlockService
+	blockservice bserv.BlockService
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
-	CborStore *hamt.CborIpldStore
+	cborStore *hamt.CborIpldStore
 
 	// A lookup service for mapping on-chain miner address to libp2p identity.
-	Lookup lookup.PeerLookupService
+	lookup lookup.PeerLookupService
 
 	// cancelSubscriptionsCtx is a handle to cancel the block and message subscriptions.
 	cancelSubscriptionsCtx context.CancelFunc
@@ -306,9 +313,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	nd := &Node{
-		Blockservice:  bservice,
+		blockservice:  bservice,
 		Blockstore:    bs,
-		CborStore:     &cstOffline,
+		cborStore:     &cstOffline,
 		OnlineStore:   &cstOnline,
 		Consensus:     consensus,
 		ChainReader:   chainReader,
@@ -316,7 +323,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PowerTable:    powerTable,
 		MessageWaiter: messageWaiter,
 		Exchange:      bswap,
-		Host:          peerHost,
+		host:          peerHost,
 		MsgPool:       msgPool,
 		OfflineMode:   nc.OfflineMode,
 		PeerHost:      peerHost,
@@ -341,7 +348,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse relay addresses [%s]", ra)
 	}
-	nd.RelayBootstrapper = filnet.NewBootstrapper(rpi, nd.Host, nd.Host.Network(), len(ra), period)
+	nd.RelayBootstrapper = filnet.NewBootstrapper(rpi, nd.Host(), nd.Host().Network(), len(ra), period)
 
 	// Bootstrapper maintains connections to some subset of addresses
 	ba := nd.Repo.Config().Bootstrap.Addresses
@@ -350,10 +357,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
-	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host, nd.Host.Network(), minPeerThreshold, period)
+	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), minPeerThreshold, period)
 
 	// On-chain lookup service
-	nd.Lookup = lookup.NewChainLookupService(nd.ChainReader, nd.DefaultSenderAddress, bs)
+	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, nd.DefaultSenderAddress, bs)
 
 	return nd, nil
 }
@@ -362,6 +369,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 func (node *Node) Start(ctx context.Context) error {
 	if err := node.ChainReader.Load(ctx); err != nil {
 		return err
+	}
+
+	// Only set these up, if there is a miner configured.
+	if _, err := node.MiningAddress(); err == nil {
+		if err := node.setupMining(ctx); err != nil {
+			return err
+		}
 	}
 
 	// Start up 'hello' handshake service
@@ -374,14 +388,14 @@ func (node *Node) Start(ctx context.Context) error {
 			log.Info("error handling blocks: %s", types.NewSortedCidSet(cids...).String())
 		}
 	}
-	node.HelloSvc = core.NewHello(node.Host, node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
-	node.StorageMinerClient = NewStorageMinerClient(node)
+	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
+	node.StorageMinerClient = storage.NewClient(node)
 
-	node.RetrievalClient = NewRetrievalClient(node)
-	node.RetrievalMiner = NewRetrievalMiner(node)
+	node.RetrievalClient = retrieval.NewClient(node)
+	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
-	blkSub, err := node.PubSub.Subscribe(BlocksTopic)
+	blkSub, err := node.PubSub.Subscribe(BlockTopic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to blocks topic")
 	}
@@ -408,6 +422,24 @@ func (node *Node) Start(ctx context.Context) error {
 		node.RelayBootstrapper.Start(context.Background())
 		node.Bootstrapper.Start(context.Background())
 	}
+
+	return nil
+}
+
+func (node *Node) setupMining(ctx context.Context) error {
+	// initialize a sector store
+	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	if node.Repo.Config().Mining.PerformRealProofs {
+		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	}
+	node.SectorStore = sstore
+
+	// initialize a sector builder
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize sector builder")
+	}
+	node.sectorBuilder = sectorBuilder
 
 	return nil
 }
@@ -462,7 +494,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.Ti
 
 		// When a new best TipSet is promoted we remove messages in it from the
 		// message pool (and add them back in if we have a re-org).
-		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore, head, newHead); err != nil {
+		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
 			panic(err)
 		}
 		head = newHead
@@ -493,22 +525,19 @@ func (node *Node) cancelSubscriptions() {
 // Stop initiates the shutdown of the node.
 func (node *Node) Stop(ctx context.Context) {
 	node.ChainReader.HeadEvents().Unsub(node.HeaviestTipSetCh)
-	if node.cancelMining != nil {
-		node.cancelMining()
-	}
-	if node.miningDoneWg != nil {
-		node.miningDoneWg.Wait()
-	}
+	node.StopMining(ctx)
+
 	node.cancelSubscriptions()
 	node.ChainReader.Stop()
 
-	if node.SectorBuilder != nil {
-		if err := node.SectorBuilder.Close(); err != nil {
+	if node.SectorBuilder() != nil {
+		if err := node.SectorBuilder().Close(); err != nil {
 			fmt.Printf("error closing sector builder: %s\n", err)
 		}
+		node.sectorBuilder = nil
 	}
 
-	if err := node.Host.Close(); err != nil {
+	if err := node.Host().Close(); err != nil {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 
@@ -558,6 +587,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 
+	// ensure we have a sector builder
+	if node.SectorBuilder() == nil {
+		if err := node.setupMining(ctx); err != nil {
+			return err
+		}
+	}
+
 	minerOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
@@ -571,7 +607,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 			if err != nil {
 				return nil, err
 			}
-			return state.LoadStateTree(ctx, node.CborStore, tsas.TipSetStateRoot, builtin.Actors)
+			return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 		}
 		getState := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
 			return getStateFromKey(ctx, ts.String())
@@ -591,7 +627,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 			}
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore, minerAddr, blockTime)
+		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
 		outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
@@ -600,20 +636,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 		node.miningDoneWg.Add(1)
 		go node.handleNewMiningOutput(outCh)
 	}
-
-	// initialize a sector store
-	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	if node.Repo.Config().Mining.PerformRealProofs {
-		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	}
-	node.SectorStore = sstore
-
-	// initialize a sector builder
-	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize sector builder")
-	}
-	node.SectorBuilder = sectorBuilder
 
 	// initialize a storage miner
 	storageMiner, err := initStorageMinerForNode(ctx, node)
@@ -627,18 +649,21 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go func() {
 		for {
 			select {
-			case result := <-node.SectorBuilder.SectorSealResults():
+			case result := <-node.SectorBuilder().SectorSealResults():
 				switch val := result.(type) {
 				case error:
 					log.Errorf("failed to seal piece: %s", val.Error())
 				case *sectorbuilder.SealedSector:
-					msg, err := node.SendMessage(ctx, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
+					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
+					// as our miners existence depends on this.
+					// TODO: what is the right number of retries?
+					_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
 					if err != nil {
-						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d", minerOwnerAddr, minerAddr, val.SectorID)
+						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentAddedToMempool(val, msg, val.SectorID, nil)
+					node.StorageMiner.OnCommitmentAddedToChain(val, nil)
 				}
 			case <-node.miningCtx.Done():
 				return
@@ -655,7 +680,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					return
 				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
 					log.Info("auto-seal has been triggered")
-					if err := node.SectorBuilder.SealAllStagedSectors(ctx); err != nil {
+					if err := node.SectorBuilder().SealAllStagedSectors(node.miningCtx); err != nil {
 						log.Errorf("scheduler received error from node.SectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
 						return
 					}
@@ -707,7 +732,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
-	sb, err := sectorbuilder.Init(node.miningCtx, node.Repo.Datastore(), node.Blockservice, minerAddr, node.SectorStore, lastUsedSectorID)
+	sb, err := sectorbuilder.Init(node.miningCtx, node.Repo.Datastore(), node.BlockService(), minerAddr, node.SectorStore, lastUsedSectorID)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}
@@ -715,7 +740,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-func initStorageMinerForNode(ctx context.Context, node *Node) (*StorageMiner, error) {
+func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
@@ -726,7 +751,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*StorageMiner, er
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := NewStorageMiner(ctx, node, minerAddr, miningOwnerAddr)
+	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
@@ -737,6 +762,16 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*StorageMiner, er
 // StopMining stops mining on new blocks.
 func (node *Node) StopMining(ctx context.Context) {
 	node.setIsMining(false)
+
+	if node.cancelMining != nil {
+		node.cancelMining()
+	}
+
+	if node.miningDoneWg != nil {
+		node.miningDoneWg.Wait()
+	}
+
+	// TODO: stop node.StorageMiner
 }
 
 // GetSignature fetches the signature for the given method on the appropriate actor.
@@ -787,10 +822,12 @@ func NextNonce(ctx context.Context, node *Node, address address.Address) (nonce 
 	if err != nil {
 		return 0, err
 	}
+
 	nonce, err = core.NextNonce(ctx, st, node.MsgPool, address)
 	if err != nil {
 		return 0, err
 	}
+
 	return nonce, nil
 }
 
@@ -836,7 +873,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve state")
 	}
-	st, err := state.LoadStateTree(ctx, node.CborStore, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve state")
 	}
@@ -922,6 +959,21 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 	err = node.saveMinerAddressToConfig(minerAddress)
+
+	// initialize a sector store
+	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	if node.Repo.Config().Mining.PerformRealProofs {
+		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	}
+	node.SectorStore = sstore
+
+	// initialize a sector builder
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize sector builder")
+	}
+	node.sectorBuilder = sectorBuilder
+
 	return &minerAddress, err
 }
 
@@ -965,6 +1017,65 @@ func (node *Node) defaultWalletAddress() (address.Address, error) {
 		return address.Address{}, err
 	}
 	return addr.(address.Address), nil
+}
+
+// SendMessageAndWait creates a message, adds it to the mempool and waits for inclusion.
+// It will retry upto retries times, if there is a nonce error when including it.
+// It returns the deserialized results, or an error.
+func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (res []interface{}, err error) {
+	for i := 0; i < int(retries); i++ {
+		log.Debugf("SendMessageAndWait (%s) retry %d/%d", method, i, retries)
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			msgCid, err := node.SendMessage(ctx, from, to, val, method, params...)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to add message to mempool")
+			}
+
+			err = node.WaitForMessage(
+				ctx,
+				msgCid,
+				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+					if receipt.ExitCode != uint8(0) {
+						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
+					}
+
+					signature, err := node.GetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
+					if err != nil {
+						return err
+					}
+					retValues := make([]interface{}, len(receipt.Return))
+					for i := 0; i < len(receipt.Return); i++ {
+						val, err := abi.DecodeValues(receipt.Return[i], []abi.Type{signature.Return[i]})
+						if err != nil {
+							return err
+						}
+						retValues[i] = abi.FromValues(val)
+					}
+					return nil
+				},
+			)
+
+			if err != nil {
+				// TODO: expose nonce errors, instead of using strings.
+				// TODO: we might want to retry on other errors, add these here when needed.
+				if strings.Contains(err.Error(), "nonce too high") || strings.Contains(err.Error(), "nonce too low") {
+					log.Warningf("SendMessageAndWait: failed to send message, retrying: %s", err)
+					// cleanup message pool
+					node.MsgPool.Remove(msgCid)
+					continue
+				}
+				return nil, errors.Wrap(err, "unexpected error")
+			}
+
+			return res, nil
+		}
+	}
+
+	return nil, errors.Wrapf(err, "failed to send message after %d retries", retries)
 }
 
 // SendMessage is a convinent helper around adding a new message to the message pool.
@@ -1016,4 +1127,45 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 		return nil, err
 	}
 	return types.NewBlockHeight(height), nil
+}
+
+func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *floodsub.Subscription, sname string) {
+	for {
+		pubSubMsg, err := s.Next(ctx)
+		if err != nil {
+			log.Errorf("%s.Next(): %s", sname, err)
+			return
+		}
+
+		if err := f(ctx, pubSubMsg); err != nil {
+			log.Errorf("%s(): %s", fname, err)
+		}
+	}
+}
+
+// -- Accessors
+
+// Host returns the nodes host.
+func (node *Node) Host() host.Host {
+	return node.host
+}
+
+// SectorBuilder returns the nodes sectorBuilder.
+func (node *Node) SectorBuilder() sectorbuilder.SectorBuilder {
+	return node.sectorBuilder
+}
+
+// BlockService returns the nodes blockservice.
+func (node *Node) BlockService() bserv.BlockService {
+	return node.blockservice
+}
+
+// CborStore returns the nodes cborStore.
+func (node *Node) CborStore() *hamt.CborIpldStore {
+	return node.cborStore
+}
+
+// Lookup returns the nodes lookup service.
+func (node *Node) Lookup() lookup.PeerLookupService {
+	return node.lookup
 }

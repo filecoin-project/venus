@@ -28,11 +28,11 @@ func newNodeSwarm(api *nodeAPI) *nodeSwarm {
 func (ns *nodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) (*api.SwarmConnInfos, error) {
 	nd := ns.api.node
 
-	if nd.Host == nil {
+	if nd.Host() == nil {
 		return nil, ErrNodeOffline
 	}
 
-	conns := nd.Host.Network().Conns()
+	conns := nd.Host().Network().Conns()
 
 	var out api.SwarmConnInfos
 	for _, c := range conns {
@@ -52,7 +52,7 @@ func (ns *nodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) 
 		*/
 
 		if verbose || latency {
-			lat := nd.Host.Peerstore().LatencyEWMA(pid)
+			lat := nd.Host().Peerstore().LatencyEWMA(pid)
 			if lat == 0 {
 				ci.Latency = "n/a"
 			} else {
@@ -77,7 +77,7 @@ func (ns *nodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) 
 func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmConnectResult, error) {
 	nd := ns.api.node
 
-	swrm, ok := nd.Host.Network().(*swarm.Swarm)
+	swrm, ok := nd.Host().Network().(*swarm.Swarm)
 	if !ok {
 		return nil, fmt.Errorf("peerhost network was not a swarm")
 	}
@@ -93,7 +93,7 @@ func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmCo
 
 		output[i].Peer = pi.ID.Pretty()
 
-		if err := nd.Host.Connect(ctx, pi); err != nil {
+		if err := nd.Host().Connect(ctx, pi); err != nil {
 			return nil, errors.Wrapf(err, "peer: %s", output[i].Peer)
 		}
 	}

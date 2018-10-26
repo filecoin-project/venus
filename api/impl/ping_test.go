@@ -20,14 +20,14 @@ func TestPing(t *testing.T) {
 
 	nodes := node.MakeNodesStarted(t, 2, false, true)
 	api0 := New(nodes[0])
-	p1 := nodes[1].Host.ID()
+	p1 := nodes[1].Host().ID()
 	pi1 := pstore.PeerInfo{
 		ID:    p1,
-		Addrs: nodes[1].Host.Addrs(),
+		Addrs: nodes[1].Host().Addrs(),
 	}
 
 	// connect the nodes
-	nodes[0].Host.Connect(ctx, pi1)
+	nodes[0].Host().Connect(ctx, pi1)
 
 	ch, err := api0.Ping().Ping(ctx, p1, 5, 10*time.Millisecond)
 	require.NoError(err)

@@ -33,7 +33,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		if err != nil {
 			return nil, err
 		}
-		return state.LoadStateTree(ctx, nd.CborStore, tsas.TipSetStateRoot, builtin.Actors)
+		return state.LoadStateTree(ctx, nd.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 	}
 	getState := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return getStateByKey(ctx, ts.String())
@@ -54,7 +54,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nd.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.ApplyMessages, nd.PowerTable, nd.Blockstore, nd.CborStore, miningAddr, blockTime)
+	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.ApplyMessages, nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, blockTime)
 
 	res := mining.MineOnce(ctx, worker, mineDelay, ts)
 	if res.Err != nil {

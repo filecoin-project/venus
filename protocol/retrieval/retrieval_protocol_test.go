@@ -1,4 +1,4 @@
-package node_test
+package retrieval_test
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	. "github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -38,12 +38,11 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 
 	someRandomCid := types.NewCidForTestGetter()()
 
-	_, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host.ID(), someRandomCid)
+	_, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), someRandomCid)
 	require.Error(err)
 }
 
 func TestRetrievalProtocolHappyPath(t *testing.T) {
-	t.Skip("FIXME: this need #1075 to work again")
 	t.Parallel()
 
 	require := require.New(t)
@@ -61,11 +60,11 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 
 	// pretend like we've run through the storage protocol and saved user's
 	// data to the miner's block store and sector builder
-	pieceA, bytesA := createRandomPieceInfo(t, minerNode.Blockservice, testSectorSize/2)
-	pieceB, bytesB := createRandomPieceInfo(t, minerNode.Blockservice, testSectorSize-(testSectorSize/2))
+	pieceA, bytesA := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize/2)
+	pieceB, bytesB := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize-(testSectorSize/2))
 
-	minerNode.SectorBuilder.AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
-	minerNode.SectorBuilder.AddPiece(ctx, pieceB) // triggers seal
+	minerNode.SectorBuilder().AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
+	minerNode.SectorBuilder().AddPiece(ctx, pieceB) // triggers seal
 
 	// wait for commitSector to make it into the chain
 	cancelA := make(chan struct{})
@@ -88,12 +87,12 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	}
 
 	// retrieve piece by CID and compare bytes with what we sent to miner
-	retrievedBytesA, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host.ID(), pieceA.Ref)
+	retrievedBytesA, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), pieceA.Ref)
 	require.NoError(err)
 	require.True(bytes.Equal(bytesA, retrievedBytesA))
 
 	// retrieve/compare the second piece for good measure
-	retrievedBytesB, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host.ID(), pieceB.Ref)
+	retrievedBytesB, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), pieceB.Ref)
 	require.NoError(err)
 	require.True(bytes.Equal(bytesB, retrievedBytesB))
 
@@ -180,14 +179,14 @@ func createRandomBytes(t *testing.T, n uint64) []byte {
 	return slice
 }
 
-func configureMinerAndClient(t *testing.T) (minerNode *Node, clientNode *Node, minerAddr address.Address, minerOwnerAddr address.Address) {
+func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) {
 	ctx := context.Background()
 
-	seed := MakeChainSeed(t, TestGenCfg)
+	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the minerNode (and gets the miner peer key)
-	minerNode = NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(0))
-	clientNode = NodeWithChainSeed(t, seed)
+	minerNode = node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(0))
+	clientNode = node.NodeWithChainSeed(t, seed)
 
 	// give the minerNode node a key and the miner associated with that key
 	seed.GiveKey(t, minerNode, 0)
@@ -201,7 +200,7 @@ func configureMinerAndClient(t *testing.T) (minerNode *Node, clientNode *Node, m
 	require.NoError(t, clientNode.Start(ctx))
 
 	// make sure they're swarmed together (for block propagation)
-	ConnectNodes(t, minerNode, clientNode)
+	node.ConnectNodes(t, minerNode, clientNode)
 
 	return
 }

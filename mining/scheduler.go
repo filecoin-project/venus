@@ -82,7 +82,8 @@ const MineDelayConversionFactor = 30
 // input channel does not cause the scheduler to stop; cancel the miningCtx to
 // stop all mining and shut down the scheduler.
 func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup) {
-	outCh := make(chan Output)
+	// we buffer 1 to make sure we do not get blocked when shutting down
+	outCh := make(chan Output, 1)
 	var doneWg sync.WaitGroup    // for internal use
 	var extDoneWg sync.WaitGroup // for external use
 
@@ -92,6 +93,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 		defer doneWg.Done()
 		nullBlkCount := 0
 		var prevBase consensus.TipSet
+		var prevWon bool
 		for {
 			select {
 			case <-miningCtx.Done():
@@ -106,10 +108,17 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 				outCh <- NewOutput(nil, errors.New("cannot mine on unset (nil) head"))
 				return
 			}
+			if prevWon && prevBase.Equals(base) {
+				// Skip this round, this likely means that the new head has not propagated yet through the system.
+				// TODO: investigate if there is a better way to handle this situation.
+				continue
+			}
+
 			// Determine how many null blocks we should mine with.
 			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, base)
+
 			// Mine synchronously! Ignore all new tipsets.
-			s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
+			prevWon = s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
 			prevBase = base
 		}
 	}()

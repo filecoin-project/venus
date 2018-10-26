@@ -15,11 +15,11 @@ import (
 func connect(t *testing.T, nd1, nd2 *Node) {
 	t.Helper()
 	pinfo := peerstore.PeerInfo{
-		ID:    nd2.Host.ID(),
-		Addrs: nd2.Host.Addrs(),
+		ID:    nd2.Host().ID(),
+		Addrs: nd2.Host().Addrs(),
 	}
 
-	if err := nd1.Host.Connect(context.Background(), pinfo); err != nil {
+	if err := nd1.Host().Connect(context.Background(), pinfo); err != nil {
 		t.Fatal(err)
 	}
 }

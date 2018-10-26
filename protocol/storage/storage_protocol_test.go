@@ -1,4 +1,4 @@
-package node_test
+package storage_test
 
 import (
 	"context"
@@ -12,7 +12,8 @@ import (
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
-	. "github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/node"
+	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,9 @@ import (
 )
 
 func TestSerializeProposal(t *testing.T) {
-	p := &StorageDealProposal{}
+	t.Parallel()
+
+	p := &DealProposal{}
 	p.Size = types.NewBytesAmount(5)
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
@@ -31,18 +34,17 @@ func TestSerializeProposal(t *testing.T) {
 }
 
 func TestStorageProtocolBasic(t *testing.T) {
-	t.Skip("FIXME: there are race conditions here, fix them. #986")
 	t.Parallel()
 
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
 
-	seed := MakeChainSeed(t, TestGenCfg)
+	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the miner (and gets the miner peer key)
-	miner := NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
-	client := NodeWithChainSeed(t, seed)
+	miner := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	client := node.NodeWithChainSeed(t, seed)
 	minerAPI := impl.New(miner)
 
 	// Give the miner node the right private key, and set them up with
@@ -52,15 +54,15 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	seed.GiveKey(t, client, 1)
 
-	c := NewStorageMinerClient(client)
-	m, err := NewStorageMiner(ctx, miner, mineraddr, minerOwnerAddr)
+	c := NewClient(client)
+	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner)
 	assert.NoError(err)
 	_ = m
 
 	assert.NoError(miner.Start(ctx))
 	assert.NoError(client.Start(ctx))
 
-	ConnectNodes(t, miner, client)
+	node.ConnectNodes(t, miner, client)
 	err = minerAPI.Mining().Start(ctx)
 	assert.NoError(err)
 	defer minerAPI.Mining().Stop(ctx)
@@ -80,7 +82,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	assert.NoError(err)
 	protonode := dag.NodeWithData(raw)
 
-	assert.NoError(client.Blockservice.AddBlock(protonode))
+	assert.NoError(client.BlockService().AddBlock(protonode))
 
 	var foundSeal bool
 	var foundPoSt bool
@@ -115,13 +117,13 @@ func TestStorageProtocolBasic(t *testing.T) {
 		}
 	}
 
-	ref, err := c.TryToStoreData(ctx, mineraddr, protonode.Cid(), 10, types.NewAttoFILFromFIL(60))
+	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 10, types.NewAttoFILFromFIL(60))
 	assert.NoError(err)
 
 	time.Sleep(time.Millisecond * 100) // Bad dignifiedquire, bad!
 	var done bool
 	for i := 0; i < 5; i++ {
-		resp, err := c.Query(ctx, ref.Proposal)
+		resp, err := c.QueryDeal(ctx, ref.Proposal)
 		assert.NoError(err)
 		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Staged {
@@ -133,11 +135,13 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	require.True(done)
 	require.False(waitTimeout(&wg, 20*time.Second), "waiting for submission timed out")
+	require.True(foundSeal, "no commitSector on chain")
+	require.True(foundPoSt, "no submitPoSt on chain")
 
 	// Now all things should be ready
 	done = false
 	for i := 0; i < 10; i++ {
-		resp, err := c.Query(ctx, ref.Proposal)
+		resp, err := c.QueryDeal(ctx, ref.Proposal)
 		assert.NoError(err)
 		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Posted {

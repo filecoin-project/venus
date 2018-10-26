@@ -72,7 +72,7 @@ func (api *nodeAddrs) Ls(ctx context.Context) ([]address.Address, error) {
 }
 
 func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID, error) {
-	id, err := api.api.node.Lookup.GetPeerIDByMinerAddress(ctx, addr)
+	id, err := api.api.node.Lookup().GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to find miner with address %s", addr.String())
 	}

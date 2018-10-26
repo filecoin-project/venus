@@ -1,4 +1,4 @@
-package core
+package hello
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 )
 
-// HelloProtocol is the libp2p protocol identifier for the hello protocol.
-const HelloProtocol = "/fil/hello/1.0.0"
+// Protocol is the libp2p protocol identifier for the hello protocol.
+const protocol = "/fil/hello/1.0.0"
 
-var log = logging.Logger("hello")
+var log = logging.Logger("/fil/hello")
 
-// HelloMsg is the data structure of a single message in the hello protocol.
-type HelloMsg struct {
+// Message is the data structure of a single message in the hello protocol.
+type Message struct {
 	HeaviestTipSetCids   []*cid.Cid
 	HeaviestTipSetHeight uint64
 	GenesisHash          *cid.Cid
@@ -32,11 +32,11 @@ type syncCallback func(from peer.ID, cids []*cid.Cid, height uint64)
 
 type getTipSetFunc func() consensus.TipSet
 
-// Hello implements the 'Hello' protocol handler. Upon connecting to a new
+// Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
 // our chain, and receive the same information from them. This is used to
 // initiate a chainsync and detect connections to forks.
-type Hello struct {
+type Handler struct {
 	host host.Host
 
 	genesis *cid.Cid
@@ -49,16 +49,16 @@ type Hello struct {
 	getHeaviestTipSet getTipSetFunc
 }
 
-// NewHello creates a new instance of the hello protocol and registers it to
+// New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Hello {
-	hello := &Hello{
+func New(h host.Host, gen *cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Handler {
+	hello := &Handler{
 		host:              h,
 		genesis:           gen,
 		chainSyncCB:       syncCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
 	}
-	h.SetStreamHandler(HelloProtocol, hello.handleNewStream)
+	h.SetStreamHandler(protocol, hello.handleNewStream)
 
 	// register for connection notifications
 	h.Network().Notify((*helloNotify)(hello))
@@ -66,12 +66,12 @@ func NewHello(h host.Host, gen *cid.Cid, syncCallback syncCallback, getHeaviestT
 	return hello
 }
 
-func (h *Hello) handleNewStream(s net.Stream) {
+func (h *Handler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 
 	from := s.Conn().RemotePeer()
 
-	var hello HelloMsg
+	var hello Message
 	if err := json.NewDecoder(s).Decode(&hello); err != nil {
 		log.Warningf("bad hello message from peer %s: %s", from, err)
 		return
@@ -91,7 +91,7 @@ func (h *Hello) handleNewStream(s net.Stream) {
 // ErrBadGenesis is the error returned when a missmatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *Hello) processHelloMessage(from peer.ID, msg *HelloMsg) error {
+func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		log.Errorf("Their genesis cid: %s", msg.GenesisHash.String())
 		log.Errorf("Our genesis cid: %s", h.genesis.String())
@@ -102,22 +102,22 @@ func (h *Hello) processHelloMessage(from peer.ID, msg *HelloMsg) error {
 	return nil
 }
 
-func (h *Hello) getOurHelloMessage() *HelloMsg {
+func (h *Handler) getOurHelloMessage() *Message {
 	heaviest := h.getHeaviestTipSet()
 	height, err := heaviest.Height()
 	if err != nil {
 		panic("somehow heaviest tipset is empty")
 	}
 
-	return &HelloMsg{
+	return &Message{
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
 		HeaviestTipSetHeight: height,
 	}
 }
 
-func (h *Hello) sayHello(ctx context.Context, p peer.ID) error {
-	s, err := h.host.NewStream(ctx, p, HelloProtocol)
+func (h *Handler) sayHello(ctx context.Context, p peer.ID) error {
+	s, err := h.host.NewStream(ctx, p, protocol)
 	if err != nil {
 		return err
 	}
@@ -130,10 +130,10 @@ func (h *Hello) sayHello(ctx context.Context, p peer.ID) error {
 
 // New peer connection notifications
 
-type helloNotify Hello
+type helloNotify Handler
 
-func (hn *helloNotify) hello() *Hello {
-	return (*Hello)(hn)
+func (hn *helloNotify) hello() *Handler {
+	return (*Handler)(hn)
 }
 
 const helloTimeout = time.Second * 10

@@ -46,11 +46,11 @@ func TestNodeNetworking(t *testing.T) {
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
-		ID:    nd2.Host.ID(),
-		Addrs: nd2.Host.Addrs(),
+		ID:    nd2.Host().ID(),
+		Addrs: nd2.Host().Addrs(),
 	}
 
-	err := nd1.Host.Connect(ctx, pinfo)
+	err := nd1.Host().Connect(ctx, pinfo)
 	assert.NoError(err)
 
 	nd1.Stop(ctx)
@@ -89,8 +89,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		nd1, nd2 := nds[0], nds[1]
 
 		// Gotta be a better way to do this?
-		peer1 := fmt.Sprintf("%s/ipfs/%s", nd1.Host.Addrs()[0].String(), nd1.Host.ID().Pretty())
-		peer2 := fmt.Sprintf("%s/ipfs/%s", nd2.Host.Addrs()[0].String(), nd2.Host.ID().Pretty())
+		peer1 := fmt.Sprintf("%s/ipfs/%s", nd1.Host().Addrs()[0].String(), nd1.Host().ID().Pretty())
+		peer2 := fmt.Sprintf("%s/ipfs/%s", nd2.Host().Addrs()[0].String(), nd2.Host().ID().Pretty())
 
 		// Create a node with the nodes above as bootstrap nodes.
 		r := repo.NewInMemoryRepo()
@@ -111,8 +111,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		connected := false
 		// poll until we are connected, to avoid flaky tests
 		for i := 0; i <= 30; i++ {
-			l1 := len(nd.Host.Network().ConnsToPeer(nd1.Host.ID()))
-			l2 := len(nd.Host.Network().ConnsToPeer(nd2.Host.ID()))
+			l1 := len(nd.Host().Network().ConnsToPeer(nd1.Host().ID()))
+			l2 := len(nd.Host().Network().ConnsToPeer(nd2.Host().ID()))
 
 			connected = l1 == 1 && l2 == 1
 			if connected {
@@ -233,26 +233,26 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true, true)[0]
+	node := MakeNodesUnstarted(t, 1, true, false)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
 	// Msg pool: [m0, m1],   Chain: gen -> b[m2, m3]
 	// to
 	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
-	chainForTest.Load(ctx) // load up head to get genesis block
+	assert.NoError(chainForTest.Load(ctx)) // load up head to get genesis block
 	genTS := chainForTest.Head()
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
 
-	oldChain := core.NewChainWithMessages(node.CborStore, genTS, [][]*types.SignedMessage{{m[2], m[3]}})
-	newChain := core.NewChainWithMessages(node.CborStore, genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
+	oldChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{m[2], m[3]}})
+	newChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
 
 	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
 		TipSet:          oldChain[len(oldChain)-1],
 		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
 	})
-	chainForTest.SetHead(ctx, oldChain[len(oldChain)-1])
+	assert.NoError(chainForTest.SetHead(ctx, oldChain[len(oldChain)-1]))
 	assert.NoError(node.Start(ctx))
 	updateMsgPoolDoneCh := make(chan struct{})
 	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
@@ -265,10 +265,11 @@ func TestUpdateMessagePool(t *testing.T) {
 		TipSet:          newChain[len(newChain)-1],
 		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
 	})
-	chainForTest.SetHead(ctx, newChain[len(newChain)-1])
+	assert.NoError(chainForTest.SetHead(ctx, newChain[len(newChain)-1]))
 	<-updateMsgPoolDoneCh
 	assert.Equal(2, len(node.MsgPool.Pending()))
 	pending := node.MsgPool.Pending()
+
 	assert.True(types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
 	assert.True(types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))
 	node.Stop(ctx)
@@ -316,7 +317,7 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *r
 	assert.True(ok)
 
 	m1, m2 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}})
+	chainWithMsgs := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(1, len(ts))
 	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
@@ -336,7 +337,7 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, require *requir
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
 	m3, m4 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m3, m4}})
+	chainWithMsgs := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, assert, node, m3, false, nil)
@@ -373,7 +374,7 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, require *requ
 	assert.True(ok)
 
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(node.CborStore, node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	chain := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
 	err := chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(err)
@@ -415,12 +416,12 @@ func TestWaitConflicting(t *testing.T) {
 	b1 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(0), uint64(0))
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
-	core.MustPut(node.CborStore, b1)
+	core.MustPut(node.CborStore(), b1)
 
 	b2 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(1), uint64(0))
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}
-	core.MustPut(node.CborStore, b2)
+	core.MustPut(node.CborStore(), b2)
 
 	ts := consensus.RequireNewTipSet(require, b1, b2)
 	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{

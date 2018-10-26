@@ -52,7 +52,7 @@ func TestDagGet(t *testing.T) {
 		ipldnode := types.NewBlockForTest(nil, 1234).ToNode()
 
 		// put into out blockservice
-		assert.NoError(n.Blockservice.AddBlock(ipldnode))
+		assert.NoError(n.BlockService().AddBlock(ipldnode))
 
 		res, err := api.Dag().Get(ctx, ipldnode.Cid().String())
 		assert.NoError(err)

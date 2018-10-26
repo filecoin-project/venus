@@ -37,10 +37,11 @@ func TestSchedulerPassesValue(t *testing.T) {
 	assert, _, ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(ctx, c) // individual run ctx splits off from mining ctx
 		assert.Equal(inTS, ts)
 		outCh <- Output{}
+		return true
 	}
 	var head consensus.TipSet
 	headFunc := func() consensus.TipSet {
@@ -58,8 +59,9 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 	assert, _, _ := newTestUtils(t)
 	ctx := context.Background()
 
-	nothingMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	nothingMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		outCh <- Output{}
+		return false
 	}
 	nilHeadFunc := func() consensus.TipSet {
 		return nil
@@ -80,14 +82,15 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	ts2 := consensus.RequireNewTipSet(require, blk2)
 
 	checkNullBlocks := 0
-	checkNullBlockMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	checkNullBlockMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		select {
 		case <-ctx.Done():
-			return
+			return false
 		default:
 		}
 		assert.Equal(checkNullBlocks, nBC)
 		outCh <- Output{}
+		return false
 	}
 	var head consensus.TipSet
 	headFunc := func() consensus.TipSet {
@@ -125,9 +128,10 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 		return head
 	}
 
-	checkValsMine := func(c context.Context, ts consensus.TipSet, nBC int, outCh chan<- Output) {
+	checkValsMine := func(c context.Context, ts consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(ts, checkTS)
 		outCh <- Output{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -159,9 +163,10 @@ func TestSchedulerCollect(t *testing.T) {
 	headFunc := func() consensus.TipSet {
 		return head
 	}
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(inTS, ts3)
 		outCh <- Output{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -216,13 +221,14 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	headFunc := func() consensus.TipSet {
 		return head
 	}
-	shouldCancelMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	shouldCancelMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		mineTimer := time.NewTimer(th.BlockTimeTest)
 		select {
 		case <-mineTimer.C:
 			t.Fatal("should not take whole time")
 		case <-c.Done():
 		}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(shouldCancelMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -247,11 +253,10 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
 	ts3 := consensus.RequireNewTipSet(require, blk3)
 
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) {
+	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(inTS, checkTS)
 		outCh <- Output{}
-		// two outputs, to allow us to change values before it runs again without racing
-		outCh <- Output{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -262,14 +267,17 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	<-outCh
 	head = ts2 // again we're racing :(
 	checkTS = ts2
-	<-outCh
 
 	<-outCh
 	checkTS = ts3
 	head = ts3
-	<-outCh
 
 	cancel()
 	doneWg.Wait()
+
+	// drain the channel
+	for range outCh {
+	}
+
 	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
 }

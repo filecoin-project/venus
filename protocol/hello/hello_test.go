@@ -1,4 +1,4 @@
-package core
+package hello
 
 import (
 	"context"
@@ -34,6 +34,8 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
 }
 
 func TestHelloHandshake(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -52,8 +54,8 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := NewHello(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := NewHello(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
+	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	h2 := New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 	_, _ = h1, h2
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
@@ -69,6 +71,8 @@ func TestHelloHandshake(t *testing.T) {
 }
 
 func TestHelloBadGenesis(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -88,8 +92,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := NewHello(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := NewHello(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
+	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	h2 := New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 	_, _ = h1, h2
 
 	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -105,6 +109,8 @@ func TestHelloBadGenesis(t *testing.T) {
 }
 
 func TestHelloMultiBlock(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -131,8 +137,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := NewHello(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := NewHello(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
+	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	h2 := New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 	_, _ = h1, h2
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()

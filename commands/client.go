@@ -10,7 +10,7 @@ import (
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -131,9 +131,9 @@ var clientProposeStorageDealCmd = &cmds.Command{
 
 		re.Emit(resp) // nolint: errcheck
 	},
-	Type: node.StorageDealResponse{},
+	Type: storage.DealResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.StorageDealResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
 			fmt.Fprintf(w, "State:   %s\n", resp.State.String())    // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)           // nolint: errcheck
 			fmt.Fprintf(w, "DealID:  %s\n", resp.Proposal.String()) // nolint: errcheck
@@ -164,9 +164,9 @@ var clientQueryStorageDealCmd = &cmds.Command{
 
 		re.Emit(resp) // nolint: errcheck
 	},
-	Type: node.StorageDealResponse{},
+	Type: storage.DealResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *node.StorageDealResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			return nil
