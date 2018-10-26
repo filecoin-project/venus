@@ -172,10 +172,10 @@ In a new terminal, tell your local node to stream logs to the aggregator:
 _Example_: `go-filecoin log streamto /dns4/test.kittyhawk.wtf/tcp/19000`
 
 Other stuff:
-- Dashboard: http://test.kittyhawk.wtf:8010
-- Faucet to get $$: http://test.kittyhawk.wtf:9797
-- Block explorer: http://test.kittyhawk.wtf:8000
-- Dashboard aggregator collection (TCP): test.kittyhawk.wtf:19000 
+- Dashboard: [http://test.kittyhawk.wtf:8010](http://test.kittyhawk.wtf:8010)
+- Faucet to get $$: [http://test.kittyhawk.wtf:9797](http://test.kittyhawk.wtf:9797)
+- Block explorer: [http://test.kittyhawk.wtf:8000](http://test.kittyhawk.wtf:8000)
+- Dashboard aggregator collection (TCP): [http://test.kittyhawk.wtf:19000](http://test.kittyhawk.wtf:19000) 
 - SSH (dev team only please):
 ```
     ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
