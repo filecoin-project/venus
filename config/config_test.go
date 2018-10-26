@@ -70,6 +70,17 @@ func TestWriteFile(t *testing.T) {
 	assert.NoError(os.Remove(filepath.Join(dir, "config.toml")))
 }
 
+func TestSetRejectsInvalidNicks(t *testing.T) {
+	assert := assert.New(t)
+	cfg := NewDefaultConfig()
+
+	// sic: toml includes the quotes in the value
+	_, err := cfg.Set("stats.nickname", "\"goodnick\"")
+	assert.NoError(err)
+	_, err = cfg.Set("stats.nickname", "bad nick<p>")
+	assert.Error(err)
+}
+
 func TestConfigRoundtrip(t *testing.T) {
 	assert := assert.New(t)
 

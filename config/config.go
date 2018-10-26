@@ -280,7 +280,7 @@ func (cfg *Config) Set(key string, tomlVal string) (interface{}, error) {
 
 		// TODO: Build a more generic config validation system
 		if key == "stats.nickname" {
-			match, _ := regexp.MatchString("^[a-zA-Z]+$", tomlVal)
+			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", tomlVal)
 			if !match {
 				return nil, errors.New("node nickname must only contain letters")
 			}
