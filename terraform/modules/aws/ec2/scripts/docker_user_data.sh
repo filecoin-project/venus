@@ -73,7 +73,11 @@ FILECOIN_STORAGE=/mnt/storage/filecoins
 # initialize filecoin nodes
 for i in {0..4}; do mkdir -p "$${FILECOIN_STORAGE}"/$$i; done
 
-# unzip keys
+# decrypt node keys
+KEYS_PASS=$$(aws ssm get-parameter  --region us-east-1 --name kittyhawk-node-keys-pass --with-decryption | jq -r '.Parameter .Value')
+echo $$KEYS_PASS | gpg --batch --yes --passphrase-fd 0 --output /home/ubuntu/node_keys.zip /home/ubuntu/node_keys.zip.gpg
+
+# unzip node keys
 apt install -y unzip
 unzip -q /home/ubuntu/node_keys.zip -d /home/ubuntu/car/
 
