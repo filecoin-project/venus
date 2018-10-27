@@ -199,6 +199,44 @@ jobs:
             docker build -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
 
+  deploy_cluster:
+    docker:
+      - image: circleci/golang:latest
+    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - run:
+          name: Install AWS CLI
+          command: |
+            sudo apt-get install -y python-pip libyaml-dev python-dev jq
+            sudo pip install awscli
+      - run:
+          name: install Terraform
+          command: |
+            wget -O /tmp/terraform_0.11.8_linux_amd64.zip https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
+            unzip -d /go/bin/ /tmp/terraform_0.11.8_linux_amd64.zip
+            chmod +x /go/bin/terraform
+
+      # The first checkout ensures we have the files needed to restore the cache
+      - checkout
+
+      - run:
+          name: plan & apply Terraform
+          command: |
+            export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
+            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+            cd ~/go/src/github.com/filecoin-project/go-filecoin/terraform/providers/aws/us-east-1/
+            terraform init
+            terraform get && terraform plan -input=false \
+            -var docker_tag=$SHORT_GIT_SHA -var prometheus_httpasswd="NOT_SET" -var alertmanager_httpasswd="NOT_SET" \
+            -var kittyhawk-node-keys-pass="NOT_SET" -var alerts_slack_api_url="NOT_SET" \
+            -target=module.kh-nightly -out sync.out 
+            terraform apply sync.out
+
 experimental:
   notify:
     branches:
@@ -212,9 +250,20 @@ workflows:
     jobs:
       - build_macos
       - build_linux
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 6 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_linux
       - build_docker:
           requires:
             - build_linux
-          filters:
-            branches:
-              only: /.*ci-build-cluster/
+      - deploy_cluster:
+          requires:
+            - build_docker
