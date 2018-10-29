@@ -693,24 +693,13 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
 	filecoinBin := MustGetFilecoinBinary()
 
-	//Ask the kernel for a port to avoid conflicts
-	cmdPort, err := GetFreePort()
-	if err != nil {
-		t.Fatal(err)
-	}
-	swarmPort, err := GetFreePort()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dir, err := ioutil.TempDir("", "go-fil-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	td := &TestDaemon{
-		cmdAddr:    fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", cmdPort),
-		swarmAddr:  fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort),
+
 		test:       t,
 		repoDir:    dir,
 		init:       true, // we want to init unless told otherwise
@@ -725,14 +714,12 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	for _, option := range options {
 		option(td)
 	}
-	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
-	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
+
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
 	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	// build command options
 	initopts := []string{
-		cmdAPIAddrFlag,
 		repoDirFlag,
 	}
 
@@ -758,6 +745,22 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 			t.Fatal(err)
 		}
 	}
+
+	//Ask the kernel for a port to avoid conflicts
+	cmdPort, err := GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	swarmPort, err := GetFreePort()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	td.cmdAddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", cmdPort)
+	td.swarmAddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort)
+
+	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
+	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 
 	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
 	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
