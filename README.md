@@ -136,6 +136,16 @@ go run ./build/*.go all
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
+## Helpful Environment Variables
+
+To avoid setting the `--repodir` flag when executing commands, you can set the environment variable `FIL_PATH` with a default value to use for the flag.
+
+| Variable                | Description                                                                       |
+|-------------------------|-----------------------------------------------------------------------------------|
+| `FIL_API`               | This is the default host and port for daemon commands.                            |
+| `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value. |
+| `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                               |
+
 ## Running Filecoin
 
 ```
