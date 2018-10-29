@@ -67,7 +67,7 @@ func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.
 	genRoot := genBlk.StateRoot
 
 	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid)
-	syncer, chain, cst := initSyncTest(require, con, testGen, cst, bs, r)
+	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
 		TipSet:          genesisTS,
