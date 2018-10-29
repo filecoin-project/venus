@@ -13,9 +13,10 @@ type SealRequest struct {
 
 // SealResponse contains the commitments resulting from a successful Seal().
 type SealResponse struct {
-	CommD [32]byte  // data commitment: merkle root of raw data
-	CommR [32]byte  // replica commitment: merkle root of replicated data
-	Proof [192]byte // proof
+	CommD     [32]byte  // data commitment: merkle root of raw data
+	CommR     [32]byte  // replica commitment: merkle root of replicated data
+	CommRStar [32]byte  // a hash of intermediate layers
+	Proof     [384]byte // SNARK bytes * proof-of-replication partitions
 }
 
 // UnsealResponse contains contains the number of bytes unsealed (and written) by Unseal().
@@ -36,12 +37,13 @@ type UnsealRequest struct {
 
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
-	CommD    [32]byte    // returned from seal
-	CommR    [32]byte    // returned from seal
-	Proof    [192]byte   // returned from Seal
-	ProverID [31]byte    // uniquely identifies miner
-	SectorID [31]byte    // uniquely identifies sector
-	Storage  SectorStore // used to manipulate sectors
+	CommD     [32]byte    // returned from seal
+	CommR     [32]byte    // returned from seal
+	CommRStar [32]byte    // returned from seal
+	Proof     [384]byte   // returned from Seal
+	ProverID  [31]byte    // uniquely identifies miner
+	SectorID  [31]byte    // uniquely identifies sector
+	Storage   SectorStore // used to manipulate sectors
 }
 
 // GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
@@ -52,8 +54,7 @@ type GeneratePoSTRequest struct {
 
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
-	Storage SectorStore
-	Proof   [192]byte
+	Proof [192]byte
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
@@ -68,7 +69,7 @@ type VerifySealResponse struct {
 
 // GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoSTResponse struct {
-	Faults []uint8
+	Faults []uint64
 	Proof  [192]byte
 }
 

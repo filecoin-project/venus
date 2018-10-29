@@ -31,7 +31,7 @@ type sealedSectorMetadata struct {
 	CommR                [32]byte
 	NumBytes             uint64
 	Pieces               []*PieceInfo
-	Proof                [192]byte
+	Proof                [384]byte
 	SealedSectorAccess   string
 	SectorID             uint64
 	UnsealedSectorAccess string

@@ -79,14 +79,19 @@ func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
 	var commD [32]byte
 	copy(commD[:], commDSlice)
 
-	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), 192)
-	var proof [192]byte
+	commRStarSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r_star[0]), 32)
+	var commRStar [32]byte
+	copy(commRStar[:], commRStarSlice)
+
+	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), 384)
+	var proof [384]byte
 	copy(proof[:], proofSlice)
 
 	res = SealResponse{
-		CommR: commR,
-		CommD: commD,
-		Proof: proof,
+		CommD:     commD,
+		CommR:     commR,
+		CommRStar: commRStar,
+		Proof:     proof,
 	}
 
 	return
@@ -103,6 +108,9 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 	commRCBytes := C.CBytes(req.CommR[:])
 	defer C.free(commRCBytes)
 
+	commRStarCBytes := C.CBytes(req.CommRStar[:])
+	defer C.free(commRStarCBytes)
+
 	proofCBytes := C.CBytes(req.Proof[:])
 	defer C.free(proofCBytes)
 
@@ -117,9 +125,10 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
+		(*[32]C.uint8_t)(commRStarCBytes),
 		(*[31]C.uint8_t)(proverIDCBytes),
 		(*[31]C.uint8_t)(sectorIDCbytes),
-		(*[192]C.uint8_t)(proofCBytes),
+		(*[384]C.uint8_t)(proofCBytes),
 	)))
 	defer C.destroy_verify_seal_response(resPtr)
 
@@ -204,7 +213,7 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 
 	return GeneratePoSTResponse{
 		Proof:  proof,
-		Faults: C.GoBytes(unsafe.Pointer(resPtr.faults_ptr), C.int(resPtr.faults_len)),
+		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
 	}, nil
 }
 
@@ -214,10 +223,8 @@ func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, err
 
 	proofPtr := (*[192]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
 
-	var fake *C.Box_SectorStore
-
 	// a mutable pointer to a VerifyPoSTResponse C-struct
-	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(fake, proofPtr)))
+	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(proofPtr)))
 	defer C.destroy_verify_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -227,4 +234,15 @@ func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, err
 	return VerifyPoSTResponse{
 		IsValid: bool(resPtr.is_valid),
 	}, nil
+}
+
+// goUint64s accepts a pointer to a C-allocated uint64 and a size and produces
+// a Go-managed slice of uint64. Note that this function copies values into the
+// Go heap from C.
+func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
+	out := make([]uint64, size)
+	if src != nil {
+		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
+	}
+	return out
 }

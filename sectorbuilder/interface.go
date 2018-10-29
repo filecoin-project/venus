@@ -65,7 +65,7 @@ type SealedSector struct {
 	CommR                [32]byte
 	numBytes             uint64
 	pieces               []*PieceInfo
-	proof                [192]byte
+	proof                [384]byte
 	sealedSectorAccess   string
 	SectorID             uint64
 	unsealedSectorAccess string

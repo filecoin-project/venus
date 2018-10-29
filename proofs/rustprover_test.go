@@ -139,12 +139,13 @@ func TestRustProverFullCycle(t *testing.T) {
 		// STEP THREE: verify the returned proof and commitments
 
 		res, err := (&RustProver{}).VerifySeal(VerifySealRequest{
-			CommD:    resSeal.CommD,
-			CommR:    resSeal.CommR,
-			Proof:    resSeal.Proof,
-			ProverID: proverID,
-			SectorID: sectorID,
-			Storage:  store,
+			CommD:     resSeal.CommD,
+			CommR:     resSeal.CommR,
+			CommRStar: resSeal.CommRStar,
+			Proof:     resSeal.Proof,
+			ProverID:  proverID,
+			SectorID:  sectorID,
+			Storage:   store,
 		})
 		require.NoError(err)
 		require.True(res.IsValid)
@@ -177,16 +178,7 @@ func TestRustProverFullCycle(t *testing.T) {
 func TestPoSTCycle(t *testing.T) {
 	require := require.New(t)
 
-	sealed, err := ioutil.TempDir("", "sealed")
-	require.NoError(err)
-
-	staging, err := ioutil.TempDir("", "staging")
-	require.NoError(err)
-
-	rp := &RustProver{}
-	sm := NewProofTestSectorStore(staging, sealed)
-
-	gres, gerr := rp.GeneratePoST(GeneratePoSTRequest{
+	gres, gerr := (&RustProver{}).GeneratePoST(GeneratePoSTRequest{
 		CommRs:        [][32]byte{createDummyCommR(), createDummyCommR()},
 		ChallengeSeed: [32]byte{},
 	})
@@ -196,14 +188,23 @@ func TestPoSTCycle(t *testing.T) {
 	// end-to-end PoST test over a small number of replica commitments
 	require.Equal("00101010", fmt.Sprintf("%08b", gres.Proof[0]))
 	require.Equal(1, len(gres.Faults))
-	require.Equal(uint8(0), gres.Faults[0])
+	require.Equal(uint64(0), gres.Faults[0])
 
-	vres, verr := rp.VerifyPoST(VerifyPoSTRequest{
-		Proof:   gres.Proof,
-		Storage: sm,
+	vres, verr := (&RustProver{}).VerifyPoST(VerifyPoSTRequest{
+		Proof: gres.Proof,
 	})
 	require.NoError(verr)
 	require.True(vres.IsValid)
+}
+
+func TestHandlesNullFaultsPtr(t *testing.T) {
+	gres, gerr := (&RustProver{}).GeneratePoST(GeneratePoSTRequest{
+		CommRs:        [][32]byte{},
+		ChallengeSeed: [32]byte{},
+	})
+	require.NoError(t, gerr)
+
+	require.Equal(t, 0, len(gres.Faults))
 }
 
 func createProverID() [31]byte {

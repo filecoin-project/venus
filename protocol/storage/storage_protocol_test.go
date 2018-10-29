@@ -134,7 +134,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	require.True(done)
-	require.False(waitTimeout(&wg, 20*time.Second), "waiting for submission timed out")
+	require.False(waitTimeout(&wg, 120*time.Second), "waiting for submission timed out")
 	require.True(foundSeal, "no commitSector on chain")
 	require.True(foundPoSt, "no submitPoSt on chain")
 
