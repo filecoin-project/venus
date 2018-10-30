@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"math/big"
 
 	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -61,4 +62,36 @@ func (api *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (
 	}
 
 	return address.NewFromBytes(bytes[0])
+}
+
+func (api *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
+	bytes, _, err := api.api.Message().Query(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getPower",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	power := big.NewInt(0).SetBytes(bytes[0])
+
+	return power, nil
+}
+
+func (api *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
+	bytes, _, err := api.api.Message().Query(
+		ctx,
+		address.Address{},
+		address.StorageMarketAddress,
+		"getTotalStorage",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	power := big.NewInt(0).SetBytes(bytes[0])
+
+	return power, nil
 }

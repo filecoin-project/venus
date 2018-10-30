@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 
@@ -21,6 +22,7 @@ var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
 		"owner":         minerOwnerCmd,
+		"power":         minerPowerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
@@ -155,6 +157,43 @@ var minerOwnerCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
 			return PrintString(w, a)
+		}),
+	},
+}
+
+var minerPowerCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Get the power of a miner versus the total storage market power",
+		ShortDescription: `Check the current power of a given miner and total power of the storage market.
+		Values will be output as a ratio where the first number is the miner power and second is the total market power.`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		power, err := GetAPI(env).Miner().GetPower(req.Context, minerAddr)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
+			return
+		}
+		total, err := GetAPI(env).Miner().GetTotalPower(req.Context)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
+			return
+		}
+
+		str := fmt.Sprintf("%d / %d", power, total)
+		re.Emit(str) // nolint: errcheck
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "the address of the miner"),
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
+			_, err := fmt.Fprintln(w, a)
+			return err
 		}),
 	},
 }

@@ -198,6 +198,45 @@ func TestMinerOwner(t *testing.T) {
 	assert.NoError(err)
 }
 
+func TestMinerPower(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	actorLsOutput := d.RunSuccess("actor", "ls")
+
+	scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
+	var addressStruct struct{ Address string }
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "MinerActor") {
+			json.Unmarshal([]byte(line), &addressStruct)
+			break
+		}
+	}
+
+	powerOutput := d.RunSuccess("miner", "power", addressStruct.Address)
+
+	power := powerOutput.ReadStdoutTrimNewlines()
+
+	assert.NoError(err)
+	assert.Equal("1 / 6", power)
+}
+
 var testConfig = &gengen.GenesisCfg{
 	Keys: 4,
 	PreAlloc: []string{
