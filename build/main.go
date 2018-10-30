@@ -101,6 +101,7 @@ func deps() {
 		"go get github.com/docker/docker/client",
 		"go get github.com/docker/docker/pkg/stdcopy",
 		"go get github.com/ipsn/go-secp256k1",
+		"cargo update --manifest-path proofs/rust-proofs/Cargo.toml",
 		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 
@@ -119,6 +120,7 @@ func smartdeps() {
 		"gx install",
 		"gx-go rewrite",
 		"gometalinter --install",
+		"cargo update --manifest-path proofs/rust-proofs/Cargo.toml",
 		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
 	// packages we need to install
