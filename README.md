@@ -156,7 +156,7 @@ go-filecoin daemon      # Starts the daemon, you may now issue it commands in an
 Filecoin requires the same genesis block as the cluster and you should
 also give your node a name so you can easily find it on the dashboard.
 The easiest way to connect into the labweek cluster is using the
-following flags (you could of course address update the config directly
+following flags (you could of course update the config directly
 if you wanted instead):
 
 ```
