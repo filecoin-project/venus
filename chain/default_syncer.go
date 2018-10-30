@@ -147,8 +147,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Ci
 			return nil, nil, err
 		}
 
-		// Finish traversal if all these blocks are in the store.
-		if syncer.chainStore.HasAllBlocks(ctx, blkCids) {
+		// Finish traversal if the tipset made is tracked in the store.
+		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
 			return chain, ts, nil
 		}
 
@@ -162,60 +162,21 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Ci
 	}
 }
 
-// loadTipSetState retrieves the tipset state root from the chain store
-// loads the state tree, and returns the state tree and root.
-func (syncer *DefaultSyncer) loadTipSetState(ctx context.Context, tsKey string) (state.Tree, *cid.Cid, error) {
+// tipSetState returns the state resulting from applying the input tipset to
+// the chain.  Precondition: the tipset must be in the store
+func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (state.Tree, error) {
+	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
+		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
+	}
 	tsas, err := syncer.chainStore.GetTipSetAndState(ctx, tsKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	st, err := state.LoadStateTree(ctx, syncer.cstOffline, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return st, tsas.TipSetStateRoot, nil
-}
-
-// tipSetState returns the state and state cid resulting from applying the
-// input tipset to the chain.  Precondition: the parent tipset must be in the
-// store.
-func (syncer *DefaultSyncer) tipSetState(ctx context.Context, ts consensus.TipSet) (state.Tree, *cid.Cid, error) {
-	tsKey := ts.String()
-	if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
-		return syncer.loadTipSetState(ctx, tsKey)
-	}
-
-	pCidSet, err := ts.Parents()
-	if err != nil {
-		return nil, nil, err
-	}
-	pKey := pCidSet.String()
-	// If we have been adding aggregate tipset states into the
-	// store every time we compute them it is an invariant that
-	// the parents of all base tipsets must have a state value in
-	// the store.  This invariant is maintained because the syncer
-	// only calls tipSetState on a tipset whose parent tipset has already
-	// been synced to the store.
-	// TODO -- we will need to either change this invariant and move
-	// to generating states on demand, or start persisting
-	// the tipindex to the cborstore when we start limiting cache sizes.
-	if !syncer.chainStore.HasTipSetAndState(ctx, pKey) {
-		return nil, nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in store")
-	}
-	st, _, err := syncer.loadTipSetState(ctx, pKey)
-	if err != nil {
-		return nil, nil, err
-	}
-	st, err = syncer.consensus.RunStateTransition(ctx, ts, st)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "unexpected error: tipset in store should always transition validly")
-	}
-
-	root, err := st.Flush(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	return st, root, nil
+	return st, nil
 }
 
 // syncOne syncs a single tipset with the chain store. syncOne calculates the
@@ -223,27 +184,16 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, ts consensus.TipSe
 // in order to validate the tipset.  In the case the input tipset is valid,
 // syncOne calls into consensus to check its weight, and then updates the head
 // of the store if this tipset is the heaviest.
+//
+// Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
+// ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus.TipSet) error {
-	// Lookup parent state and add to store if not yet there.  It is
-	// guaranteed by the syncer that the grandparent's state is in the
-	// store.
-	st, pRoot, err := syncer.tipSetState(ctx, parent)
+	// Lookup parent state. It is guaranteed by the syncer that it is in
+	// the store
+	st, err := syncer.tipSetState(ctx, parent.String())
 	if err != nil {
 		return err
 	}
-	if !syncer.chainStore.HasTipSetAndState(ctx, parent.String()) {
-		err = syncer.chainStore.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          parent,
-			TipSetStateRoot: pRoot,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	// TODO if using LBP for challenge sampling > 1 we should
-	// use consensus.LookBackParam and extend store interface
-	// to include looking up tipsets by height.
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
@@ -265,21 +215,18 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 	logSyncer.Debugf("successfully updated store with %s", next.String())
 
 	// TipSet is validated and added to store, now check if it is the heaviest.
-	nextParent, err := next.Parents()
+	// If it is the heaviest update the chainStore.
+	nextParentSt, err := syncer.tipSetState(ctx, parent.String()) // call again to get a copy
 	if err != nil {
 		return err
 	}
-	nextParentSt, _, err := syncer.loadTipSetState(ctx, nextParent.String())
-	if err != nil {
-		return err
-	}
-	headParent, err := syncer.chainStore.Head().Parents()
+	headParentCids, err := syncer.chainStore.Head().Parents()
 	if err != nil {
 		return err
 	}
 	var headParentSt state.Tree
-	if headParent.Len() != 0 { // head is not genesis
-		headParentSt, _, err = syncer.loadTipSetState(ctx, headParent.String())
+	if headParentCids.Len() != 0 { // head is not genesis
+		headParentSt, err = syncer.tipSetState(ctx, headParentCids.String())
 		if err != nil {
 			return err
 		}
@@ -352,8 +299,8 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts consensus.TipSet) (co
 		}
 	}
 
-	// check that the tipset from the store actually added new blocks
-	if wts.String() == ts.String() {
+	// check that the tipset is distinct from the input and tipsets from the store.
+	if wts.String() == ts.String() || wts.String() == max.TipSet.String() {
 		return nil, nil
 	}
 
