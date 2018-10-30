@@ -84,23 +84,25 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	assert.NoError(client.BlockService().AddBlock(protonode))
 
-	var foundSeal bool
+	var foundCommit bool
 	var foundPoSt bool
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// TODO: remove this hack to get new blocks
 	old := miner.AddNewlyMinedBlock
+	var bCount, mCount int
 	miner.AddNewlyMinedBlock = func(ctx context.Context, blk *types.Block) {
+		bCount++
+		mCount += len(blk.Messages)
 		old(ctx, blk)
 
-		if !foundSeal {
+		if !foundCommit {
 			for i, msg := range blk.Messages {
 				if msg.Message.Method == "commitSector" {
-					assert.False(foundSeal, "multiple commitSector submissions must not happen")
+					assert.False(foundCommit, "multiple commitSector submissions must not happen")
 					assert.Equal(uint8(0), blk.MessageReceipts[i].ExitCode, "seal submission failed")
-					foundSeal = true
+					foundCommit = true
 					wg.Done()
 				}
 			}
@@ -119,14 +121,18 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 10, types.NewAttoFILFromFIL(60))
 	assert.NoError(err)
+	requireQueryDeal := func() (DealState, string) {
+		resp, err := c.QueryDeal(ctx, ref.Proposal)
+		require.NoError(err)
+		return resp.State, resp.Message
+	}
 
 	time.Sleep(time.Millisecond * 100) // Bad dignifiedquire, bad!
 	var done bool
 	for i := 0; i < 5; i++ {
-		resp, err := c.QueryDeal(ctx, ref.Proposal)
-		assert.NoError(err)
-		assert.NotEqual(Failed, resp.State, resp.Message)
-		if resp.State == Staged {
+		state, message := requireQueryDeal()
+		assert.NotEqual(Failed, state, message)
+		if state == Staged {
 			done = true
 			break
 		}
@@ -134,8 +140,12 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	require.True(done)
-	require.False(waitTimeout(&wg, 120*time.Second), "waiting for submission timed out")
-	require.True(foundSeal, "no commitSector on chain")
+	if waitTimeout(&wg, 120*time.Second) {
+		state, message := requireQueryDeal()
+		require.NotEqual(Failed, state, message)
+		assert.Fail("waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
+	}
+	require.True(foundCommit, "no commitSector on chain")
 	require.True(foundPoSt, "no submitPoSt on chain")
 
 	// Now all things should be ready
