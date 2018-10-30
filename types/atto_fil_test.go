@@ -163,6 +163,17 @@ func TestAttoFILSubtraction(t *testing.T) {
 	})
 }
 
+func TestMulInt(t *testing.T) {
+	multiplier := big.NewInt(25)
+	attoFIL := AttoFIL{val: big.NewInt(1000)}
+
+	t.Run("correctly multiplies the values and returns an AttoFIL", func(t *testing.T) {
+		assert := assert.New(t)
+		expected := AttoFIL{val: big.NewInt(25000)}
+		assert.Equal(attoFIL.MulBigInt(multiplier), &expected)
+	})
+}
+
 func TestPriceCalculation(t *testing.T) {
 	price := NewAttoFILFromFIL(123)
 	numBytes := NewBytesAmount(10)

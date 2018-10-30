@@ -22,6 +22,9 @@ import (
 // MinimumPledge is the minimum amount of sectors a user can pledge.
 var MinimumPledge = big.NewInt(10)
 
+// MinimumCollateralPerSector is the minimum amount of collateral required per sector
+var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
+
 const (
 	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
 	ErrPledgeTooLow = 33
@@ -41,17 +44,20 @@ const (
 	ErrDealCommitted = 40
 	// ErrInsufficientBidFunds indicates the value of the bid message is less than the price of the space.
 	ErrInsufficientBidFunds = 41
+	// ErrInsufficientCollateral indicates the collateral is too low.
+	ErrInsufficientCollateral = 42
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrPledgeTooLow:         errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
-	ErrUnknownMiner:         errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
-	ErrInvalidSignature:     errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
-	ErrUnknownDeal:          errors.NewCodedRevertErrorf(ErrUnknownDeal, "unknown deal id"),
-	ErrNotDealOwner:         errors.NewCodedRevertErrorf(ErrNotDealOwner, "miner tried to commit with someone elses deal"),
-	ErrDealCommitted:        errors.NewCodedRevertErrorf(ErrDealCommitted, "deal already committed"),
-	ErrInsufficientBidFunds: errors.NewCodedRevertErrorf(ErrInsufficientBidFunds, "must send price * size funds to create bid"),
+	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
+	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
+	ErrInvalidSignature:       errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
+	ErrUnknownDeal:            errors.NewCodedRevertErrorf(ErrUnknownDeal, "unknown deal id"),
+	ErrNotDealOwner:           errors.NewCodedRevertErrorf(ErrNotDealOwner, "miner tried to commit with someone elses deal"),
+	ErrDealCommitted:          errors.NewCodedRevertErrorf(ErrDealCommitted, "deal already committed"),
+	ErrInsufficientBidFunds:   errors.NewCodedRevertErrorf(ErrInsufficientBidFunds, "must send price * size funds to create bid"),
+	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", MinimumCollateralPerSector),
 }
 
 func init() {
@@ -133,6 +139,10 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
+		if vmctx.Message().Value.LessThan(MinimumCollateral(pledge)) {
+			return nil, Errors[ErrInsufficientCollateral]
+		}
+
 		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value)
 		if err := vmctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
 			return nil, err
@@ -208,4 +218,9 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error)
 	}
 
 	return count, 0, nil
+}
+
+// MinimumCollateral returns the minimum required amount of collateral for a given pledge
+func MinimumCollateral(sectors *big.Int) *types.AttoFIL {
+	return MinimumCollateralPerSector.MulBigInt(sectors)
 }

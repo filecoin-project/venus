@@ -56,16 +56,35 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pledge := big.NewInt(5)
+	st, vms := core.CreateStorages(ctx, t)
+	pdata := actor.MustConvertParams(pledge, []byte{}, th.RequireRandomPeerID())
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, MinimumCollateral(pledge), "createMiner", pdata)
+	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+
+	assert.NoError(err)
+	require.NotNil(result.ExecutionError)
+	assert.Contains(result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
+}
+
+func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	st, vms := core.CreateStorages(ctx, t)
-
-	pdata := actor.MustConvertParams(big.NewInt(5), []byte{}, th.RequireRandomPeerID())
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
+	pdata := actor.MustConvertParams(big.NewInt(15000), []byte{}, th.RequireRandomPeerID())
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "createMiner", pdata)
 	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+
 	assert.NoError(err)
-	assert.Contains(result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
+	require.NotNil(result.ExecutionError)
+	assert.Contains(result.ExecutionError.Error(), Errors[ErrInsufficientCollateral].Error())
 }
 
 func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
@@ -119,6 +138,13 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
+}
+
+func TestMinimumCollateral(t *testing.T) {
+	assert := assert.New(t)
+	numSectors := big.NewInt(25000)
+	expected := types.NewAttoFILFromFIL(25)
+	assert.Equal(MinimumCollateral(numSectors), expected)
 }
 
 // this is used to simulate an attack where someone derives the likely address of another miner's

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	mrand "math/rand"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -147,9 +149,11 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 	if pledge == uint64(0) {
 		pledge = uint64(10)
 	}
+	var bigIntPledge big.Int
+	bigIntPledge.SetUint64(pledge)
 
 	// create miner
-	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), types.NewZeroAttoFIL())
+	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), storagemarket.MinimumCollateral(&bigIntPledge))
 	require.NoError(err)
 	fmt.Printf("create miner\n")
 	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, genCid)

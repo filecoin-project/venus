@@ -147,6 +147,13 @@ func (z *AttoFIL) Sub(y *AttoFIL) *AttoFIL {
 	return &newZ
 }
 
+// MulBigInt multiplies attoFIL by a given big int
+func (z *AttoFIL) MulBigInt(x *big.Int) *AttoFIL {
+	newVal := big.NewInt(0)
+	newVal.Mul(z.val, x)
+	return &AttoFIL{val: newVal}
+}
+
 // Equal returns true if z = y
 func (z *AttoFIL) Equal(y *AttoFIL) bool {
 	ensureZeroAmounts(&z, &y)

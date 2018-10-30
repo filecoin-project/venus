@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"io/ioutil"
+	"math/big"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 
@@ -50,7 +52,7 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			args = append(args, "1000000", "20")
+			args = append(args, "1000000", storagemarket.MinimumCollateral(big.NewInt(1000000)).String())
 
 			var wg sync.WaitGroup
 
