@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 )
@@ -20,12 +21,13 @@ func (api *nodeChain) Head() ([]*cid.Cid, error) {
 		return nil, ErrHeaviestTipSetNotFound
 	}
 	tsSlice := ts.ToSlice()
-	out := make([]*cid.Cid, len(tsSlice))
-	for i, b := range tsSlice {
-		out[i] = b.Cid()
+	out := types.SortedCidSet{}
+
+	for _, b := range tsSlice {
+		out.Add(b.Cid())
 	}
 
-	return out, nil
+	return out.ToSlice(), nil
 }
 
 func (api *nodeChain) Ls(ctx context.Context) <-chan interface{} {

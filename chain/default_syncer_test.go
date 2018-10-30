@@ -2,7 +2,7 @@ package chain
 
 import (
 	"context"
-	//	"fmt"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,6 +68,9 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link1blk1 = RequireMkFakeChildWithCon(require, genTS, genCid, genStateRoot, uint64(0), uint64(0), con)
 	link1blk2 = RequireMkFakeChildWithCon(require, genTS, genCid, genStateRoot, uint64(1), uint64(0), con)
 	link1 = consensus.RequireNewTipSet(require, link1blk1, link1blk2)
+
+	fmt.Println("link1 ? ", link1)
+
 	if mockStateRoots {
 		link1State = cidGetter()
 	} else {

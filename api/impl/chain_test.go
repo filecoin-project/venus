@@ -49,6 +49,36 @@ func TestChainHead(t *testing.T) {
 		assert.Len(out, 1)
 		types.AssertCidsEqual(assert, out[0], blk.Cid())
 	})
+
+	t.Run("the blockchain head is sorted", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		require := require.New(t)
+		assert := assert.New(t)
+
+		blk := types.NewBlockForTest(nil, 0)
+		blk2 := types.NewBlockForTest(nil, 1)
+		blk3 := types.NewBlockForTest(nil, 2)
+
+		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		chainStore, ok := n.ChainReader.(chain.Store)
+		require.True(ok)
+
+		newTipSet := consensus.RequireNewTipSet(require, blk)
+		consensus.RequireTipSetAdd(require, blk2, newTipSet)
+		consensus.RequireTipSetAdd(require, blk3, newTipSet)
+
+		chainStore.SetHead(ctx, newTipSet)
+
+		api := New(n)
+		out, err := api.Chain().Head()
+
+		sortedCidSet := types.NewSortedCidSet(blk.Cid(), blk2.Cid(), blk3.Cid())
+
+		require.NoError(err)
+		assert.Len(out, 3)
+		assert.Equal(sortedCidSet.ToSlice(), out)
+	})
 }
 
 func TestChainLsRun(t *testing.T) {
