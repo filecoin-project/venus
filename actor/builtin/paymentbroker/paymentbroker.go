@@ -583,7 +583,7 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 	byChannelID, err := byPayer.Find(ctx, payer.String())
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return actor.LoadLookup(ctx, storage, nil)
+			return actor.LoadLookup(ctx, storage, cid.Undef)
 		}
 		return nil, err
 	}
@@ -592,5 +592,5 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 		return nil, errors.NewFaultError("Paymentbroker payer is not a Cid")
 	}
 
-	return actor.LoadTypedLookup(ctx, storage, &byChannelCID, &PaymentChannel{})
+	return actor.LoadTypedLookup(ctx, storage, byChannelCID, &PaymentChannel{})
 }

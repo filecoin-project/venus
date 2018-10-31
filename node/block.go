@@ -30,7 +30,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
-	if err := node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blkCid}); err != nil {
+	if err := node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blkCid}); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message)
 	}
 	log.SetTag(ctx, "block", blk)
 
-	err = node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blk.Cid()})
+	err = node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blk.Cid()})
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")
 	}

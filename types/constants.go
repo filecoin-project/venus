@@ -14,28 +14,28 @@ const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 var AccountActorCodeObj ipld.Node
 
 // AccountActorCodeCid is the cid of the above object
-var AccountActorCodeCid *cid.Cid
+var AccountActorCodeCid cid.Cid
 
 // StorageMarketActorCodeObj is the code representation of the builtin storage market actor.
 var StorageMarketActorCodeObj ipld.Node
 
 // StorageMarketActorCodeCid is the cid of the above object
-var StorageMarketActorCodeCid *cid.Cid
+var StorageMarketActorCodeCid cid.Cid
 
 // PaymentBrokerActorCodeObj is the code representation of the builtin payment broker actor.
 var PaymentBrokerActorCodeObj ipld.Node
 
 // PaymentBrokerActorCodeCid is the cid of the above object
-var PaymentBrokerActorCodeCid *cid.Cid
+var PaymentBrokerActorCodeCid cid.Cid
 
 // MinerActorCodeObj is the code representation of the builtin miner actor.
 var MinerActorCodeObj ipld.Node
 
 // MinerActorCodeCid is the cid of the above object
-var MinerActorCodeCid *cid.Cid
+var MinerActorCodeCid cid.Cid
 
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
-var ActorCodeCidTypeNames = make(map[*cid.Cid]string)
+var ActorCodeCidTypeNames = make(map[cid.Cid]string)
 
 func init() {
 	AccountActorCodeObj = dag.NewRawNode([]byte("accountactor"))
@@ -57,8 +57,8 @@ func init() {
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
-func ActorCodeTypeName(code *cid.Cid) string {
-	if code == nil {
+func ActorCodeTypeName(code cid.Cid) string {
+	if !code.Defined() {
 		return "EmptyActor"
 	}
 

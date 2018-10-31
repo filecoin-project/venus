@@ -20,7 +20,7 @@ var (
 // applying the messages in this tipset to it's parent state.
 type TipSetAndState struct {
 	// root of aggregate state after applying tipset
-	TipSetStateRoot *cid.Cid
+	TipSetStateRoot cid.Cid
 	TipSet          consensus.TipSet
 }
 

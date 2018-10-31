@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
@@ -81,18 +82,18 @@ func TestLoadLookup(t *testing.T) {
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
-	lookup, err := LoadLookup(ctx, storage, nil)
+	lookup, err := LoadLookup(ctx, storage, cid.Undef)
 	require.NoError(err)
 
 	err = lookup.Set(ctx, "foo", "someData")
 	require.NoError(err)
 
-	cid, err := lookup.Commit(ctx)
+	c, err := lookup.Commit(ctx)
 	require.NoError(err)
 
-	assert.NotNil(cid)
+	assert.True(c.Defined())
 
-	err = storage.Commit(cid, nil)
+	err = storage.Commit(c, cid.Undef)
 	require.NoError(err)
 
 	err = vms.Flush()
@@ -103,7 +104,7 @@ func TestLoadLookup(t *testing.T) {
 		vms = vm.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
-		lookup, err = LoadLookup(ctx, storage, cid)
+		lookup, err = LoadLookup(ctx, storage, c)
 		require.NoError(err)
 
 		value, err := lookup.Find(ctx, "foo")
@@ -117,7 +118,7 @@ func TestLoadLookup(t *testing.T) {
 		vms = vm.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
-		lookup, err = LoadLookup(ctx, storage, cid)
+		lookup, err = LoadLookup(ctx, storage, c)
 		require.NoError(err)
 
 		_, err := lookup.Find(ctx, "bar")
@@ -136,9 +137,9 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
-	cid := types.NewCidForTestGetter()()
+	c := types.NewCidForTestGetter()()
 
-	_, err := LoadLookup(ctx, storage, cid)
+	_, err := LoadLookup(ctx, storage, c)
 	require.Error(err)
 	assert.Equal(vm.ErrNotFound, err)
 }
@@ -153,11 +154,11 @@ func TestSetKeyValue(t *testing.T) {
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
-	cid, err := SetKeyValue(ctx, storage, nil, "foo", "bar")
+	c, err := SetKeyValue(ctx, storage, cid.Undef, "foo", "bar")
 	require.NoError(err)
-	assert.NotNil(cid)
+	assert.True(c.Defined())
 
-	lookup, err := LoadLookup(ctx, storage, cid)
+	lookup, err := LoadLookup(ctx, storage, c)
 	require.NoError(err)
 
 	val, err := lookup.Find(ctx, "foo")

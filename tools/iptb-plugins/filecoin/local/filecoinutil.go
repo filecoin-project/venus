@@ -81,27 +81,27 @@ func (l *Localfilecoin) readerFor(file string) (io.ReadCloser, error) {
 
 // GetPeerID returns the nodes peerID by running its `id` command.
 // TODO this a temp fix, should read the nodes keystore instead
-func (l *Localfilecoin) GetPeerID() (*cid.Cid, error) {
+func (l *Localfilecoin) GetPeerID() (cid.Cid, error) {
 	// run the id command
 	out, err := l.RunCmd(context.TODO(), nil, "go-filecoin", "id", "--format=<id>")
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	if out.ExitCode() != 0 {
-		return nil, errors.New("Could not get PeerID, non-zero exit code")
+		return cid.Undef, errors.New("Could not get PeerID, non-zero exit code")
 	}
 
 	_, err = io.Copy(os.Stdout, out.Stderr())
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	// convert the reader to a string TODO this is annoying
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(out.Stdout())
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 	cidStr := strings.TrimSpace(buf.String())
 

@@ -31,7 +31,7 @@ func newNodeClient(api *nodeAPI) *nodeClient {
 	return &nodeClient{api: api}
 }
 
-func (api *nodeClient) Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error) {
+func (api *nodeClient) Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 	// TODO: this goes back to 'how is data stored and referenced'
 	// For now, lets just do things the ipfs way.
 
@@ -53,11 +53,11 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 	return imp.BuildDagFromReader(ds, spl)
 }
 
-func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, askid uint64, duration uint64) (*storage.DealResponse, error) {
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64) (*storage.DealResponse, error) {
 	return api.api.node.StorageMinerClient.ProposeDeal(ctx, miner, data, askid, duration)
 }
 
-func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*storage.DealResponse, error) {
+func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error) {
 	return api.api.node.StorageMinerClient.QueryDeal(ctx, prop)
 }
 

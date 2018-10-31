@@ -35,7 +35,7 @@ var errTimeout = errors.New("timeout")
 // Localfilecoin represents a filecoin node
 type Localfilecoin struct {
 	dir     string
-	peerid  *cid.Cid
+	peerid  cid.Cid
 	apiaddr multiaddr.Multiaddr
 }
 

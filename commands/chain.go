@@ -38,7 +38,7 @@ var chainHeadCmd = &cmds.Command{
 
 		re.Emit(out) //nolint: errcheck
 	},
-	Type: []*cid.Cid{},
+	Type: []cid.Cid{},
 }
 
 var chainLsCmd = &cmds.Command{

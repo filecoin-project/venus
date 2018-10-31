@@ -135,7 +135,7 @@ func TestBlockScore(t *testing.T) {
 	})
 }
 
-func cidFromString(input string) (*cid.Cid, error) {
+func cidFromString(input string) (cid.Cid, error) {
 	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
 	return prefix.Sum([]byte(input))
 }

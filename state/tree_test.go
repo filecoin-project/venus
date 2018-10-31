@@ -107,7 +107,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	t.Run("actor exists", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := actor.NewActor(nil, types.NewAttoFILFromFIL(10))
+		a := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(10))
 		assert.NoError(tree.SetActor(ctx, addr, a))
 
 		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {

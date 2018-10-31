@@ -101,7 +101,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 
 // SomeCid generates a Cid for use in tests where you want a Cid but don't care
 // what it is.
-func SomeCid() *cid.Cid {
+func SomeCid() cid.Cid {
 	b := &Block{}
 	return b.Cid()
 }
@@ -109,9 +109,9 @@ func SomeCid() *cid.Cid {
 // NewCidForTestGetter returns a closure that returns a Cid unique to that invocation.
 // The Cid is unique wrt the closure returned, not globally. You can use this function
 // in tests.
-func NewCidForTestGetter() func() *cid.Cid {
+func NewCidForTestGetter() func() cid.Cid {
 	i := Uint64(31337)
-	return func() *cid.Cid {
+	return func() cid.Cid {
 		b := &Block{Height: i}
 		i++
 		return b.Cid()
@@ -241,7 +241,7 @@ func NewMsgsWithAddrs(n int, a []address.Address) []*Message {
 
 // HasCid allows two values with CIDs to be compared.
 type HasCid interface {
-	Cid() *cid.Cid
+	Cid() cid.Cid
 }
 
 // AssertHaveSameCid asserts that two values have identical CIDs.
@@ -252,7 +252,7 @@ func AssertHaveSameCid(a *assert.Assertions, m HasCid, n HasCid) {
 }
 
 // AssertCidsEqual asserts that two CIDS are identical.
-func AssertCidsEqual(a *assert.Assertions, m *cid.Cid, n *cid.Cid) {
+func AssertCidsEqual(a *assert.Assertions, m cid.Cid, n cid.Cid) {
 	if !m.Equals(n) {
 		a.Fail("CIDs don't match", "not equal %v %v", m, n)
 	}

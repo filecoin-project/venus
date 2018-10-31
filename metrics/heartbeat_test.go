@@ -169,7 +169,6 @@ func mustMakeTipset(t *testing.T, height types.Uint64) consensus.TipSet {
 		Height:            types.Uint64(height),
 		Nonce:             0,
 		Messages:          nil,
-		StateRoot:         nil,
 		MessageReceipts:   nil,
 	})
 	if err != nil {

@@ -109,7 +109,7 @@ func (h sectorBuilderTestHarness) close() {
 	}
 }
 
-func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
+func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) cid.Cid {
 	pieceInfo, err := h.createPieceInfo(pieceData)
 	require.NoError(h.t, err)
 
@@ -119,15 +119,15 @@ func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
 	return pieceInfo.Ref
 }
 
-func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (*cid.Cid, error) {
+func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (cid.Cid, error) {
 	pieceInfo, err := h.createPieceInfo(pieceData)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	_, err = h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return pieceInfo.Ref, nil

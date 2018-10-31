@@ -32,7 +32,7 @@ func TestMpool(t *testing.T) {
 		c := strings.Trim(out.ReadStdout(), "\n")
 		ci, err := cid.Decode(c)
 		assert.NoError(err)
-		assert.NotNil(ci)
+		assert.True(ci.Defined())
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {

@@ -22,7 +22,7 @@ type mockSyncCallback struct {
 	mock.Mock
 }
 
-func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []*cid.Cid, h uint64) {
+func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []cid.Cid, h uint64) {
 	msb.Called(p, cids, h)
 }
 

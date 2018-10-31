@@ -25,9 +25,9 @@ type Ask struct {
 
 // Client is the interface that defines methods to manage client operations.
 type Client interface {
-	Cat(ctx context.Context, c *cid.Cid) (uio.DagReader, error)
+	Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error)
 	ImportData(ctx context.Context, data io.Reader) (ipld.Node, error)
-	ProposeStorageDeal(ctx context.Context, data *cid.Cid, miner address.Address, ask uint64, duration uint64) (*storage.DealResponse, error)
-	QueryStorageDeal(ctx context.Context, prop *cid.Cid) (*storage.DealResponse, error)
+	ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, ask uint64, duration uint64) (*storage.DealResponse, error)
+	QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error)
 	ListAsks(ctx context.Context) (<-chan Ask, error)
 }

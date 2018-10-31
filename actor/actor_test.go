@@ -56,7 +56,7 @@ func TestActorFormat(t *testing.T) {
 	assert.Contains(formatted, "PaymentBrokerActor")
 }
 
-func requireCid(t *testing.T, data string) *cid.Cid {
+func requireCid(t *testing.T, data string) cid.Cid {
 	prefix := cid.V1Builder{Codec: cid.Raw, MhType: types.DefaultHashFunction}
 	cid, err := prefix.Sum([]byte(data))
 	require.NoError(t, err)

@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (*cid.Cid, state.Tree) {
+func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -627,7 +627,7 @@ func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
 
 	act3 := state.MustGetActor(st, addr3)
 	assert.Equal(types.NewAttoFILFromFIL(300), act3.Balance)
-	assert.Nil(act3.Code)
+	assert.Equal(act3.Code, cid.Undef)
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {

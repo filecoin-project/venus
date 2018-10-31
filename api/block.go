@@ -11,5 +11,5 @@ import (
 // Block is the interface that defines methods to get human-readable
 // represenations of Filecoin objects.
 type Block interface {
-	Get(ctx context.Context, id *cid.Cid) (*types.Block, error)
+	Get(ctx context.Context, id cid.Cid) (*types.Block, error)
 }

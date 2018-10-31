@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	cid1, cid2        *cid.Cid
+	cid1, cid2        cid.Cid
 	mockSignerForTest types.MockSigner
 )
 
@@ -26,7 +26,7 @@ func init() {
 	mockSignerForTest = types.NewMockSigner(ki)
 }
 
-func block(require *require.Assertions, height int, parentCid *cid.Cid, parentWeight uint64, msg string) *types.Block {
+func block(require *require.Assertions, height int, parentCid cid.Cid, parentWeight uint64, msg string) *types.Block {
 	addrGetter := address.NewForTestGetter()
 
 	m1 := types.NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))

@@ -19,7 +19,7 @@ func TestSortedCidSet(t *testing.T) {
 
 	// Iterate empty set is fine
 	it := s.Iter()
-	assert.Nil(it.Value())
+	assert.Equal(it.Value(), cid.Undef)
 	assert.False(it.Next())
 
 	c1, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pJ")
@@ -53,7 +53,7 @@ func TestSortedCidSet(t *testing.T) {
 	assert.True(it.Next())
 	assert.True(c3.Equals(it.Value()))
 	assert.False(it.Next())
-	assert.Nil(it.Value())
+	assert.Equal(it.Value(), cid.Undef)
 	assert.True(it.Complete())
 
 	assert.True(s.Remove(c2))

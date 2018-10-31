@@ -236,7 +236,7 @@ func configureFreshSectorBuilder(sb *defaultSectorBuilder) error {
 }
 
 // ReadPieceFromSealedSector produces a Reader used to get original piece-bytes from a sealed sector.
-func (sb *defaultSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
+func (sb *defaultSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
 	unsealArgs, err := sb.metadataStore.getUnsealArgsForPiece(sb.minerAddr, pieceCid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no piece with cid %s has yet been sealed into a sector", pieceCid.String())

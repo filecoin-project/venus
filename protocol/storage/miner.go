@@ -61,7 +61,7 @@ type storageDealState struct {
 // node is the interface of what we actually need from the node.
 // TODO: is there a better way to do this? maybe at least a better name?
 type node interface {
-	WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	WaitForMessage(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	GetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error)
 	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
@@ -159,20 +159,20 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResp
 	return resp, nil
 }
 
-func (sm *Miner) getStorageDeal(c *cid.Cid) *storageDealState {
+func (sm *Miner) getStorageDeal(c cid.Cid) *storageDealState {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
 	return sm.deals[c.KeyString()]
 }
 
-func (sm *Miner) updateDealState(c *cid.Cid, f func(*DealResponse)) {
+func (sm *Miner) updateDealState(c cid.Cid, f func(*DealResponse)) {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
 	f(sm.deals[c.KeyString()].state)
 	log.Debugf("Miner.updateDealState(%s) - %d", c.String(), sm.deals[c.KeyString()].state)
 }
 
-func (sm *Miner) processStorageDeal(c *cid.Cid) {
+func (sm *Miner) processStorageDeal(c cid.Cid) {
 	log.Debugf("Miner.processStorageDeal(%s)", c.String())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -243,25 +243,25 @@ func (sm *Miner) processStorageDeal(c *cid.Cid) {
 type dealsAwaitingSealStruct struct {
 	l sync.Mutex
 	// Maps from sector id to the deal cids with pieces in the sector.
-	sectorsToDeals map[uint64][]*cid.Cid
+	sectorsToDeals map[uint64][]cid.Cid
 	// Maps from sector id to sector.
 	successfulSectors map[uint64]*sectorbuilder.SealedSector
 	// Maps from sector id to seal failure error string.
 	failedSectors map[uint64]string
 
-	onSuccess func(dealCid *cid.Cid, sector *sectorbuilder.SealedSector)
-	onFail    func(dealCid *cid.Cid, message string)
+	onSuccess func(dealCid cid.Cid, sector *sectorbuilder.SealedSector)
+	onFail    func(dealCid cid.Cid, message string)
 }
 
 func newDealsAwaitingSeal() *dealsAwaitingSealStruct {
 	return &dealsAwaitingSealStruct{
-		sectorsToDeals:    make(map[uint64][]*cid.Cid),
+		sectorsToDeals:    make(map[uint64][]cid.Cid),
 		successfulSectors: make(map[uint64]*sectorbuilder.SealedSector),
 		failedSectors:     make(map[uint64]string),
 	}
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) add(sectorID uint64, dealCid *cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSealStruct) add(sectorID uint64, dealCid cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -284,7 +284,7 @@ func (dealsAwaitingSeal *dealsAwaitingSealStruct) add(sectorID uint64, dealCid *
 		if ok {
 			dealsAwaitingSeal.sectorsToDeals[sectorID] = append(deals, dealCid)
 		} else {
-			dealsAwaitingSeal.sectorsToDeals[sectorID] = []*cid.Cid{dealCid}
+			dealsAwaitingSeal.sectorsToDeals[sectorID] = []cid.Cid{dealCid}
 		}
 	}
 }
@@ -329,7 +329,7 @@ func (sm *Miner) OnCommitmentAddedToChain(sector *sectorbuilder.SealedSector, er
 	sm.dealsAwaitingSeal.success(sector)
 }
 
-func (sm *Miner) onCommitSuccess(dealCid *cid.Cid, sector *sectorbuilder.SealedSector) {
+func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSector) {
 	sm.updateDealState(dealCid, func(resp *DealResponse) {
 		resp.State = Posted
 		resp.ProofInfo = &ProofInfo{
@@ -340,7 +340,7 @@ func (sm *Miner) onCommitSuccess(dealCid *cid.Cid, sector *sectorbuilder.SealedS
 	})
 }
 
-func (sm *Miner) onCommitFail(dealCid *cid.Cid, message string) {
+func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 	sm.updateDealState(dealCid, func(resp *DealResponse) {
 		resp.Message = message
 		resp.State = Failed
@@ -479,7 +479,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuil
 }
 
 // Query responds to a query for the proposal referenced by the given cid
-func (sm *Miner) Query(ctx context.Context, c *cid.Cid) *DealResponse {
+func (sm *Miner) Query(ctx context.Context, c cid.Cid) *DealResponse {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
 	d, ok := sm.deals[c.KeyString()]
@@ -510,7 +510,7 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 	}
 }
 
-func getFileSize(ctx context.Context, c *cid.Cid, dserv ipld.DAGService) (uint64, error) {
+func getFileSize(ctx context.Context, c cid.Cid, dserv ipld.DAGService) (uint64, error) {
 	fnode, err := dserv.Get(ctx, c)
 	if err != nil {
 		return 0, err

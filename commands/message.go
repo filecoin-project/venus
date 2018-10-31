@@ -76,9 +76,9 @@ var msgSendCmd = &cmds.Command{
 
 		re.Emit(c) // nolint: errcheck
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},

@@ -32,14 +32,14 @@ var (
 	link4blk1, link4blk2            *types.Block
 
 	// Cids
-	genCid                                                       *cid.Cid
-	genStateRoot, link1State, link2State, link3State, link4State *cid.Cid
+	genCid                                                       cid.Cid
+	genStateRoot, link1State, link2State, link3State, link4State cid.Cid
 
 	// TipSets
 	genTS, link1, link2, link3, link4 consensus.TipSet
 
 	// utils
-	cidGetter func() *cid.Cid
+	cidGetter func() cid.Cid
 )
 
 func init() {
@@ -216,7 +216,7 @@ func assertTsAdded(assert *assert.Assertions, chain Store, ts consensus.TipSet) 
 	}
 }
 
-func assertNoAdd(assert *assert.Assertions, chain Store, cids []*cid.Cid) {
+func assertNoAdd(assert *assert.Assertions, chain Store, cids []cid.Cid) {
 	ctx := context.Background()
 	// Tip Index correctly updated
 	_, err := chain.GetTipSetAndState(ctx, types.NewSortedCidSet(cids...).String())
@@ -237,9 +237,9 @@ func assertHead(assert *assert.Assertions, chain Store, head consensus.TipSet) {
 	assert.Equal(head, gotHead)
 }
 
-func requirePutBlocks(require *require.Assertions, cst *hamt.CborIpldStore, blks ...*types.Block) []*cid.Cid {
+func requirePutBlocks(require *require.Assertions, cst *hamt.CborIpldStore, blks ...*types.Block) []cid.Cid {
 	ctx := context.Background()
-	var cids []*cid.Cid
+	var cids []cid.Cid
 	for _, blk := range blks {
 		c, err := cst.Put(ctx, blk)
 		require.NoError(err)
@@ -291,13 +291,13 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 	expTs1 := consensus.RequireNewTipSet(require, link1blk1)
 
 	cids := requirePutBlocks(require, cst, link1blk1, link1blk2)
-	err := syncer.HandleNewBlocks(ctx, []*cid.Cid{cids[0]})
+	err := syncer.HandleNewBlocks(ctx, []cid.Cid{cids[0]})
 	assert.NoError(err)
 
 	assertTsAdded(assert, chain, expTs1)
 	assertHead(assert, chain, expTs1)
 
-	err = syncer.HandleNewBlocks(ctx, []*cid.Cid{cids[1]})
+	err = syncer.HandleNewBlocks(ctx, []cid.Cid{cids[1]})
 	assert.NoError(err)
 
 	assertTsAdded(assert, chain, link1)
@@ -441,7 +441,7 @@ func TestBlocksNotATipSet(t *testing.T) {
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
 	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
-	badCids := []*cid.Cid{link1blk1.Cid(), link2blk1.Cid()}
+	badCids := []cid.Cid{link1blk1.Cid(), link2blk1.Cid()}
 	err := syncer.HandleNewBlocks(ctx, badCids)
 	assert.Error(err)
 	assertNoAdd(assert, chain, badCids)

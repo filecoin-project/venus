@@ -86,7 +86,7 @@ func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol,
 // WARNING -- this will take one second to error out if blocks are not found.
 // TODO the timeout factor blkWaitTime and maybe the whole timeout mechanism
 // could use some actual thought, this was just a simple first pass.
-func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []*cid.Cid) ([]*types.Block, error) {
+func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
 	var blks []*types.Block
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
@@ -122,7 +122,7 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 //
 // collectChain is the entrypoint to the code that interacts with the network.
 // It does NOT add tipsets to the store.
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
 	var chain []consensus.TipSet
 	for {
 		var blks []*types.Block
@@ -311,7 +311,7 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts consensus.TipSet) (co
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []*cid.Cid) error {
+func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error {
 	// ********** WARNING **********
 	//
 	// This concurrency model is flawed.  The mutex is held during a possibly

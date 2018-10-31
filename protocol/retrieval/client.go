@@ -37,7 +37,7 @@ func NewClient(nd clientNode) *Client {
 }
 
 // RetrievePiece connects to a miner and transfers a piece of content.
-func (sc *Client) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID *cid.Cid) (io.ReadCloser, error) {
+func (sc *Client) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID cid.Cid) (io.ReadCloser, error) {
 	s, err := sc.node.Host().NewStream(ctx, minerPeerID, retrievalFreeProtocol)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create stream to retrieval miner")

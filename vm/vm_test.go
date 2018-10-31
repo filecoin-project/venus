@@ -18,9 +18,9 @@ import (
 )
 
 func TestTransfer(t *testing.T) {
-	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
-	actor3 := actor.NewActor(nil, nil)
+	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
+	actor3 := actor.NewActor(cid.Undef, nil)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)

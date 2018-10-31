@@ -55,7 +55,7 @@ func TestMessagePoolAddBadSignature(t *testing.T) {
 	smsg.Message.Nonce = types.Uint64(uint64(smsg.Message.Nonce) + uint64(1)) // invalidate message
 
 	c, err := pool.Add(smsg)
-	assert.Nil(c)
+	assert.False(c.Defined())
 	assert.Error(err)
 }
 

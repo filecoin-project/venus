@@ -62,8 +62,8 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
-	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 	newAddress := address.NewForTestGetter()
 

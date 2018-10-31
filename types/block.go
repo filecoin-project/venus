@@ -52,14 +52,14 @@ type Block struct {
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot *cid.Cid `json:"stateRoot"`
+	StateRoot cid.Cid `json:"stateRoot,omitempty"`
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 }
 
 // Cid returns the content id of this block.
-func (b *Block) Cid() *cid.Cid {
+func (b *Block) Cid() cid.Cid {
 	// TODO: Cache ToNode() and/or ToNode().Cid(). We should be able to do this efficiently using
 	// DeepEquals(), or perhaps our own Equals() interface.
 	return b.ToNode().Cid()

@@ -39,7 +39,7 @@ func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pled
 	return *res, nil
 }
 
-func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (*cid.Cid, error) {
+func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -50,7 +50,7 @@ func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addr
 	)
 }
 
-func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (*cid.Cid, error) {
+func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,

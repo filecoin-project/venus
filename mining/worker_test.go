@@ -87,7 +87,7 @@ func TestGenerate(t *testing.T) {
 	//  - test nonce gap
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
 	pool := core.NewMessagePool()
 	// Install the fake actor so we can execute it.
@@ -369,7 +369,7 @@ func TestGenerateError(t *testing.T) {
 
 type StateTreeForTest struct {
 	state.Tree
-	TestFlush func(ctx context.Context) (*cid.Cid, error)
+	TestFlush func(ctx context.Context) (cid.Cid, error)
 }
 
 func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
@@ -380,7 +380,7 @@ func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
 	return &stt
 }
 
-func (st *StateTreeForTest) Flush(ctx context.Context) (*cid.Cid, error) {
+func (st *StateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
@@ -395,8 +395,8 @@ func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, uint64, erro
 func makeExplodingGetStateTree(st state.Tree) func(context.Context, consensus.TipSet) (state.Tree, error) {
 	return func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
-		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
-			return nil, errors.New("boom no flush")
+		stt.TestFlush = func(ctx context.Context) (cid.Cid, error) {
+			return cid.Undef, errors.New("boom no flush")
 		}
 
 		return stt, nil

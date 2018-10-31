@@ -118,7 +118,7 @@ func TestSectorBuilder(t *testing.T) {
 				// removed when the CID has been sealed into a sector.
 				pieceCidSet := sync.Map{}
 
-				done := make(chan *cid.Cid)
+				done := make(chan cid.Cid)
 				errs := make(chan error)
 
 				go func() {

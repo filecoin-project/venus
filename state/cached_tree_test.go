@@ -111,7 +111,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	require.Equal("actor not found", err.Error())
 }
 
-func requireCid(t *testing.T, data string) *cid.Cid {
+func requireCid(t *testing.T, data string) cid.Cid {
 	prefix := cid.V1Builder{Codec: cid.Raw, MhType: types.DefaultHashFunction}
 	id, err := prefix.Sum([]byte(data))
 	require.NoError(t, err)

@@ -39,7 +39,7 @@ type detailsStruct struct {
 		Address string
 		Power   uint64
 	}
-	GenesisCid *cid.Cid
+	GenesisCid cid.Cid
 }
 
 func init() {

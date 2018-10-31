@@ -102,7 +102,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root consensus.TipSet, msgS
 }
 
 // MustPut stores the thingy in the store or panics if it cannot.
-func MustPut(store *hamt.CborIpldStore, thingy interface{}) *cid.Cid {
+func MustPut(store *hamt.CborIpldStore, thingy interface{}) cid.Cid {
 	cid, err := store.Put(context.Background(), thingy)
 	if err != nil {
 		panic(err)
@@ -111,7 +111,7 @@ func MustPut(store *hamt.CborIpldStore, thingy interface{}) *cid.Cid {
 }
 
 // MustDecodeCid decodes a string to a Cid pointer, panicking on error
-func MustDecodeCid(cidStr string) *cid.Cid {
+func MustDecodeCid(cidStr string) cid.Cid {
 	decode, err := cid.Decode(cidStr)
 	if err != nil {
 		panic(err)

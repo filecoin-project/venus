@@ -67,7 +67,7 @@ type RenderedGenInfo struct {
 	Miners []RenderedMinerInfo
 
 	// GenesisCid is the cid of the created genesis block
-	GenesisCid *cid.Cid
+	GenesisCid cid.Cid
 }
 
 // RenderedMinerInfo contains info about a created miner
@@ -304,5 +304,5 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 		return nil, err
 	}
 
-	return info, car.WriteCar(ctx, dserv, []*cid.Cid{info.GenesisCid}, out)
+	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
 }

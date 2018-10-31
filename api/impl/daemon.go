@@ -213,27 +213,27 @@ func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) erro
 }
 
 // LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
-func LoadGenesis(rep repo.Repo, sourceName string) (*cid.Cid, error) {
+func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
 
 	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
-		return nil, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
+		return cid.Undef, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
 	}
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
 		// recently deployed test cluster.
 		response, err := http.Get(sourceName)
 		if err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 		source = response.Body
 	} else if sourceURL.Scheme != "" {
-		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+		return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
 	} else {
 		file, err := os.Open(sourceName)
 		if err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 		source = file
 	}
@@ -244,11 +244,11 @@ func LoadGenesis(rep repo.Repo, sourceName string) (*cid.Cid, error) {
 
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	if len(ch.Roots) != 1 {
-		return nil, fmt.Errorf("expected car with only a single root")
+		return cid.Undef, fmt.Errorf("expected car with only a single root")
 	}
 
 	return ch.Roots[0], nil

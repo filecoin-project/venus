@@ -109,7 +109,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	require.True(len(retrievedBytesA) > 0)
 }
 
-func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient, minerPeerID peer.ID, pieceCid *cid.Cid) ([]byte, error) {
+func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient, minerPeerID peer.ID, pieceCid cid.Cid) ([]byte, error) {
 	r, err := retrievalClient.RetrievePiece(ctx, minerPeerID, pieceCid)
 	if err != nil {
 		return nil, err

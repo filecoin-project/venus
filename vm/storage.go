@@ -103,7 +103,7 @@ func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 }
 
 // Put adds a node to temporary storage by id.
-func (s Storage) Put(v interface{}) (*cid.Cid, error) {
+func (s Storage) Put(v interface{}) (cid.Cid, error) {
 	var nd format.Node
 	var err error
 	if blk, ok := v.(blocks.Block); ok {
@@ -115,7 +115,7 @@ func (s Storage) Put(v interface{}) (*cid.Cid, error) {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
-		return nil, exec.Errors[exec.ErrDecode]
+		return cid.Undef, exec.Errors[exec.ErrDecode]
 	}
 
 	c := nd.Cid()
@@ -126,7 +126,7 @@ func (s Storage) Put(v interface{}) (*cid.Cid, error) {
 
 // Get retrieves a chunk from either temporary storage or its backing store.
 // If the chunk is not found in storage, a vm.ErrNotFound error is returned.
-func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
+func (s Storage) Get(cid cid.Cid) ([]byte, error) {
 	key := cid.KeyString()
 	n, ok := s.chunks[key]
 	if ok {
@@ -147,9 +147,9 @@ func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
 // Commit updates the head of the current actor to the given cid.
 // The new cid must be the content id of a chunk put in storage.
 // The given oldCid must match the cid of the current actor.
-func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) error {
+func (s Storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
 	// commit to initialize actor only permitted if Head and expected id are nil
-	if oldCid != nil && s.actor.Head != nil && !oldCid.Equals(s.actor.Head) {
+	if oldCid.Defined() && s.actor.Head.Defined() && !oldCid.Equals(s.actor.Head) {
 		return exec.Errors[exec.ErrStaleHead]
 	} else if oldCid != s.actor.Head { // covers case where only one cid is nil
 		return exec.Errors[exec.ErrStaleHead]
@@ -166,7 +166,7 @@ func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) error {
 }
 
 // Head return the current head of the actor's memory
-func (s Storage) Head() *cid.Cid {
+func (s Storage) Head() cid.Cid {
 	return s.actor.Head
 }
 
@@ -209,9 +209,9 @@ func (s *Storage) Flush() error {
 // liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.
 // That is the given id , any links in the chunk referenced by the given id, or any links
 // referenced from those links.
-func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
-	if id == nil {
-		return make(map[string]*cid.Cid), nil
+func (s Storage) liveDescendantIds(id cid.Cid) (map[string]cid.Cid, error) {
+	if !id.Defined() {
+		return make(map[string]cid.Cid), nil
 	}
 	chunk, ok := s.chunks[id.KeyString()]
 	if !ok {
@@ -222,13 +222,13 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 
 		// unstaged chunk that exists in datastore is valid, but halts recursion.
 		if has {
-			return map[string]*cid.Cid{}, nil
+			return map[string]cid.Cid{}, nil
 		}
 
 		return nil, vmerrors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
-	ids := map[string]*cid.Cid{id.KeyString(): id}
+	ids := map[string]cid.Cid{id.KeyString(): id}
 
 	for _, link := range chunk.Links() {
 		linked, err := s.liveDescendantIds(link.Cid)

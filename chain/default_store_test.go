@@ -230,7 +230,7 @@ func TestHasAllBlocks(t *testing.T) {
 
 	RequirePutTestChain(require, chain)
 
-	var cids []*cid.Cid
+	var cids []cid.Cid
 	for _, blk := range blks {
 		c := blk.Cid()
 		cids = append(cids, c)

@@ -31,7 +31,7 @@ var miningOnceCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),

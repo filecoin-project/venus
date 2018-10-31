@@ -18,5 +18,5 @@ import (
 // example a syncer might decide to cut off traversal of an unknown fork
 // after too many blocks.
 type Syncer interface {
-	HandleNewBlocks(ctx context.Context, blkCids []*cid.Cid) error
+	HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error
 }

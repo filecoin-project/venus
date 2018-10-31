@@ -56,7 +56,7 @@ type Dockerfilecoin struct {
 	EntryPoint   []string
 	VolumePrefix string
 	dir          string
-	peerid       *cid.Cid
+	peerid       cid.Cid
 	apiaddr      multiaddr.Multiaddr
 	swarmaddr    multiaddr.Multiaddr
 }
