@@ -68,10 +68,10 @@ func TestVMContextSendFailures(t *testing.T) {
 	newAddress := address.NewForTestGetter()
 
 	mockStateTree := state.MockStateTree{
-		BuiltinActors: map[string]exec.ExecutableActor{},
+		BuiltinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
 	fakeActorCid := types.NewCidForTestGetter()()
-	mockStateTree.BuiltinActors[fakeActorCid.KeyString()] = &actor.FakeActor{}
+	mockStateTree.BuiltinActors[fakeActorCid] = &actor.FakeActor{}
 	tree := state.NewCachedStateTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)

@@ -40,8 +40,8 @@ type Miner struct {
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
 
-	// deals is a list of deals we made. It is indexed by the KeyString of the CID of the proposal.
-	deals   map[string]*storageDealState
+	// deals is a list of deals we made. It is indexed by the CID of the proposal.
+	deals   map[cid.Cid]*storageDealState
 	dealsLk sync.Mutex
 
 	postInProcessLk sync.Mutex
@@ -78,7 +78,7 @@ func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd
 	sm := &Miner{
 		minerAddr:      minerAddr,
 		minerOwnerAddr: minerOwnerAddr,
-		deals:          make(map[string]*storageDealState),
+		deals:          make(map[cid.Cid]*storageDealState),
 		node:           nd,
 	}
 	sm.dealsAwaitingSeal = newDealsAwaitingSeal()
@@ -148,7 +148,7 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResp
 	defer sm.dealsLk.Unlock()
 
 	// TODO: clear out deals when appropriate.
-	sm.deals[propcid.KeyString()] = &storageDealState{
+	sm.deals[propcid] = &storageDealState{
 		proposal: p,
 		state:    resp,
 	}
@@ -162,14 +162,14 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResp
 func (sm *Miner) getStorageDeal(c cid.Cid) *storageDealState {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
-	return sm.deals[c.KeyString()]
+	return sm.deals[c]
 }
 
 func (sm *Miner) updateDealState(c cid.Cid, f func(*DealResponse)) {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
-	f(sm.deals[c.KeyString()].state)
-	log.Debugf("Miner.updateDealState(%s) - %d", c.String(), sm.deals[c.KeyString()].state)
+	f(sm.deals[c].state)
+	log.Debugf("Miner.updateDealState(%s) - %d", c.String(), sm.deals[c].state)
 }
 
 func (sm *Miner) processStorageDeal(c cid.Cid) {
@@ -482,7 +482,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuil
 func (sm *Miner) Query(ctx context.Context, c cid.Cid) *DealResponse {
 	sm.dealsLk.Lock()
 	defer sm.dealsLk.Unlock()
-	d, ok := sm.deals[c.KeyString()]
+	d, ok := sm.deals[c]
 	if !ok {
 		return &DealResponse{
 			State:   Unknown,

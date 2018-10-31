@@ -87,7 +87,7 @@ func (s *storageMap) Flush() error {
 // Storage is a place to hold chunks that are created while processing a block.
 type Storage struct {
 	actor      *actor.Actor
-	chunks     map[string]ipld.Node
+	chunks     map[cid.Cid]ipld.Node
 	blockstore blockstore.Blockstore
 }
 
@@ -96,7 +96,7 @@ var _ exec.Storage = (*Storage)(nil)
 // NewStorage creates a datastore backed storage object for the given actor
 func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 	return Storage{
-		chunks:     map[string]ipld.Node{},
+		chunks:     map[cid.Cid]ipld.Node{},
 		actor:      act,
 		blockstore: bs,
 	}
@@ -119,7 +119,7 @@ func (s Storage) Put(v interface{}) (cid.Cid, error) {
 	}
 
 	c := nd.Cid()
-	s.chunks[c.KeyString()] = nd
+	s.chunks[c] = nd
 
 	return c, nil
 }
@@ -127,8 +127,7 @@ func (s Storage) Put(v interface{}) (cid.Cid, error) {
 // Get retrieves a chunk from either temporary storage or its backing store.
 // If the chunk is not found in storage, a vm.ErrNotFound error is returned.
 func (s Storage) Get(cid cid.Cid) ([]byte, error) {
-	key := cid.KeyString()
-	n, ok := s.chunks[key]
+	n, ok := s.chunks[cid]
 	if ok {
 		return n.RawData(), nil
 	}
@@ -177,14 +176,13 @@ func (s *Storage) Prune() error {
 		return err
 	}
 
-	if len(liveIds) == len(s.chunks) {
+	if liveIds.Len() == len(s.chunks) {
 		return nil
 	}
 
-	for idKey := range s.chunks {
-		_, ok := liveIds[idKey]
-		if !ok {
-			delete(s.chunks, idKey)
+	for id := range s.chunks {
+		if !liveIds.Has(id) {
+			delete(s.chunks, id)
 		}
 	}
 
@@ -198,10 +196,11 @@ func (s *Storage) Flush() error {
 		return err
 	}
 
-	blks := make([]blocks.Block, 0, len(liveIds))
-	for idKey := range liveIds {
-		blks = append(blks, s.chunks[idKey])
-	}
+	blks := make([]blocks.Block, 0, liveIds.Len())
+	liveIds.ForEach(func(c cid.Cid) error { // nolint: errcheck
+		blks = append(blks, s.chunks[c])
+		return nil
+	})
 
 	return s.blockstore.PutMany(blks)
 }
@@ -209,11 +208,11 @@ func (s *Storage) Flush() error {
 // liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.
 // That is the given id , any links in the chunk referenced by the given id, or any links
 // referenced from those links.
-func (s Storage) liveDescendantIds(id cid.Cid) (map[string]cid.Cid, error) {
+func (s Storage) liveDescendantIds(id cid.Cid) (*cid.Set, error) {
 	if !id.Defined() {
-		return make(map[string]cid.Cid), nil
+		return cid.NewSet(), nil
 	}
-	chunk, ok := s.chunks[id.KeyString()]
+	chunk, ok := s.chunks[id]
 	if !ok {
 		has, err := s.blockstore.Has(id)
 		if err != nil {
@@ -222,22 +221,24 @@ func (s Storage) liveDescendantIds(id cid.Cid) (map[string]cid.Cid, error) {
 
 		// unstaged chunk that exists in datastore is valid, but halts recursion.
 		if has {
-			return map[string]cid.Cid{}, nil
+			return cid.NewSet(), nil
 		}
 
 		return nil, vmerrors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
-	ids := map[string]cid.Cid{id.KeyString(): id}
+	ids := cid.NewSet()
+	ids.Add(id)
 
 	for _, link := range chunk.Links() {
 		linked, err := s.liveDescendantIds(link.Cid)
 		if err != nil {
 			return nil, err
 		}
-		for idKey, id := range linked {
-			ids[idKey] = id
-		}
+		linked.ForEach(func(id cid.Cid) error { // nolint: errcheck
+			ids.Add(id)
+			return nil
+		})
 	}
 
 	return ids, nil

@@ -31,7 +31,7 @@ type clientNode interface {
 
 // Client is used to make deals directly with storage miners.
 type Client struct {
-	deals   map[string]*clientDealState
+	deals   map[cid.Cid]*clientDealState
 	dealsLk sync.Mutex
 
 	node clientNode
@@ -46,7 +46,7 @@ type clientDealState struct {
 // NewClient creaters a new storage miner client.
 func NewClient(nd clientNode) *Client {
 	return &Client{
-		deals: make(map[string]*clientDealState),
+		deals: make(map[cid.Cid]*clientDealState),
 		node:  nd,
 	}
 }
@@ -114,13 +114,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal) error {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
-	k := resp.Proposal.KeyString()
-	_, ok := smc.deals[k]
+	_, ok := smc.deals[resp.Proposal]
 	if ok {
 		return fmt.Errorf("deal [%s] is already in progress", resp.Proposal.String())
 	}
 
-	smc.deals[k] = &clientDealState{
+	smc.deals[resp.Proposal] = &clientDealState{
 		lastState: resp,
 		miner:     miner,
 		proposal:  p,
@@ -145,7 +144,7 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *DealResponse) er
 func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
-	st, ok := smc.deals[c.KeyString()]
+	st, ok := smc.deals[c]
 	if !ok {
 		return address.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
 	}

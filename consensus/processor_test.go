@@ -345,9 +345,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
@@ -506,9 +506,9 @@ func TestNestedSendBalance(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
@@ -557,9 +557,9 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
@@ -640,9 +640,9 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()

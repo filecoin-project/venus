@@ -27,7 +27,7 @@ var log = logging.Logger("core")
 type MessagePool struct {
 	lk sync.RWMutex
 
-	pending map[string]*types.SignedMessage // all pending messages
+	pending map[cid.Cid]*types.SignedMessage // all pending messages
 }
 
 // Add adds a message to the pool.
@@ -45,7 +45,7 @@ func (pool *MessagePool) Add(msg *types.SignedMessage) (cid.Cid, error) {
 		return cid.Undef, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
 	}
 
-	pool.pending[c.KeyString()] = msg
+	pool.pending[c] = msg
 	return c, nil
 }
 
@@ -66,13 +66,13 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
-	delete(pool.pending, c.KeyString())
+	delete(pool.pending, c)
 }
 
 // NewMessagePool constructs a new MessagePool.
 func NewMessagePool() *MessagePool {
 	return &MessagePool{
-		pending: make(map[string]*types.SignedMessage),
+		pending: make(map[cid.Cid]*types.SignedMessage),
 	}
 }
 

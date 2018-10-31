@@ -2,6 +2,8 @@
 package builtin
 
 import (
+	cid "gx/ipfs/QmPSQnBKM9g7BaUcZCvswUJVscQ1ipjmwxN5PXCjkp9EQ7/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -12,12 +14,12 @@ import (
 
 // Actors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
-var Actors = map[string]exec.ExecutableActor{}
+var Actors = map[cid.Cid]exec.ExecutableActor{}
 
 func init() {
 	// Instance Actors
-	Actors[types.AccountActorCodeCid.KeyString()] = &account.Actor{}
-	Actors[types.StorageMarketActorCodeCid.KeyString()] = &storagemarket.Actor{}
-	Actors[types.PaymentBrokerActorCodeCid.KeyString()] = &paymentbroker.Actor{}
-	Actors[types.MinerActorCodeCid.KeyString()] = &miner.Actor{}
+	Actors[types.AccountActorCodeCid] = &account.Actor{}
+	Actors[types.StorageMarketActorCodeCid] = &storagemarket.Actor{}
+	Actors[types.PaymentBrokerActorCodeCid] = &paymentbroker.Actor{}
+	Actors[types.MinerActorCodeCid] = &miner.Actor{}
 }

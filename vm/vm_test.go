@@ -82,7 +82,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{}})
+		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{}})
 		vmCtx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
@@ -102,8 +102,8 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[string]exec.ExecutableActor{
-			actor2.Code.KeyString(): &actor.FakeActor{},
+		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{
+			actor2.Code: &actor.FakeActor{},
 		}})
 		vmCtx := NewVMContext(actor1, actor2, msg, tree, vms, types.NewBlockHeight(0))
 		_, code, sendErr := send(context.Background(), deps, vmCtx)

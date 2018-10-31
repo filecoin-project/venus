@@ -44,7 +44,7 @@ type MockStateTree struct {
 	mock.Mock
 
 	NoMocks       bool
-	BuiltinActors map[string]exec.ExecutableActor
+	BuiltinActors map[cid.Cid]exec.ExecutableActor
 }
 
 // GetActorStorage implements Tree interface
@@ -108,7 +108,7 @@ func (m *MockStateTree) Debug() {
 
 // GetBuiltinActorCode implements StateTree.GetBuiltinActorCode
 func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error) {
-	a, ok := m.BuiltinActors[c.KeyString()]
+	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %s", c)
 	}

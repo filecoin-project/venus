@@ -22,7 +22,7 @@ type tree struct {
 	root  *hamt.Node
 	store *hamt.CborIpldStore
 
-	builtinActors map[string]exec.ExecutableActor
+	builtinActors map[cid.Cid]exec.ExecutableActor
 }
 
 // RevID identifies a snapshot of the StateTree.
@@ -48,7 +48,7 @@ type Tree interface {
 var _ Tree = &tree{}
 
 // LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c cid.Cid, builtinActors map[string]exec.ExecutableActor) (Tree, error) {
+func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load node")
@@ -67,7 +67,7 @@ func NewEmptyStateTree(store *hamt.CborIpldStore) Tree {
 }
 
 // NewEmptyStateTreeWithActors instantiates a new state tree with no data in it, except for the passed in actors.
-func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[string]exec.ExecutableActor) Tree {
+func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[cid.Cid]exec.ExecutableActor) Tree {
 	s := newEmptyStateTree(store)
 	s.builtinActors = builtinActors
 	return s
@@ -77,7 +77,7 @@ func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
 		root:          hamt.NewNode(store),
 		store:         store,
-		builtinActors: map[string]exec.ExecutableActor{},
+		builtinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
 }
 
@@ -117,7 +117,7 @@ func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, e
 	if !codePointer.Defined() {
 		return nil, fmt.Errorf("missing code")
 	}
-	actor, ok := t.builtinActors[codePointer.KeyString()]
+	actor, ok := t.builtinActors[codePointer]
 	if !ok {
 		return nil, fmt.Errorf("unknown code: %s", codePointer.String())
 	}
