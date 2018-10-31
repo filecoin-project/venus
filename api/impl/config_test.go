@@ -118,7 +118,7 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		_, err := api.Config().Set("stats.nickname", "\"Bad Nickname\"")
+		_, err := api.Config().Set("heartbeat.nickname", "\"Bad Nickname\"")
 
 		assert.EqualError(err, "node nickname must only contain letters")
 	})

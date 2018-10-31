@@ -151,7 +151,7 @@ done
 for i in {0..4}
 do
   docker exec "filecoin-$$i" $$filecoin_exec \
-         config stats.nickname '"boot"'
+         config heartbeat.nickname '"boot"'
   docker exec -d "filecoin-$$i" $$filecoin_exec \
          log streamto /ip4/172.19.0.250/tcp/9000
 done

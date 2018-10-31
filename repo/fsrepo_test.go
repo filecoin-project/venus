@@ -41,8 +41,10 @@ const (
 [wallet]
   defaultAddress = ""
 
-[stats]
-  heartbeatPeriod = "3s"
+[heartbeat]
+  beatTarget = ""
+  beatPeriod = "3s"
+  reconnectPeriod = "10s"
   nickname = ""
 `
 )
