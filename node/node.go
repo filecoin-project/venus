@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/message"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
@@ -425,6 +426,8 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Bootstrapper.Start(context.Background())
 	}
 
+	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head)
+	go hbs.Start(ctx)
 	return nil
 }
 

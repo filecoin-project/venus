@@ -117,8 +117,10 @@ type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
 	BeatTarget string `toml:"beatTarget"`
 	// BeatPeriod represents how frequently heartbeats are sent.
+	// Golang duration units are accepted.
 	BeatPeriod string `toml:"beatPeriod"`
 	// ReconnectPeriod represents how long the node waits before attempting to reconnect.
+	// Golang duration units are accepted.
 	ReconnectPeriod string `toml:"reconnectPeriod"`
 	// Nickname represents the nickname of the filecoin node,
 	Nickname string `toml:"nickname"`
@@ -284,7 +286,6 @@ func (cfg *Config) Set(key string, tomlVal string) (interface{}, error) {
 			recvT = setT
 		}
 
-		// TODO: Build a more generic config validation system
 		if key == "heartbeat.nickname" {
 			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", tomlVal)
 			if !match {
