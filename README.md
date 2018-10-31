@@ -132,6 +132,10 @@ go run ./build/*.go all
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
+### Troubleshooting Build
+
+If `go run ./build/*.go deps` or `go run ./build/*.go build` fails because of an error compiling the rust-proofs submodule make sure you are using the most up to date version of rust by running `rustup update`
+
 ## Helpful Environment Variables
 
 To avoid setting the `--repodir` flag when executing commands, you can set the environment variable `FIL_PATH` with a default value to use for the flag.
