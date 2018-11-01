@@ -194,7 +194,7 @@ jobs:
           destination: filecoin.tar.gz
 
 
-  build_docker:
+  build_docker_img:
     docker:
       - image: circleci/golang:latest
 
@@ -244,6 +244,24 @@ jobs:
       - run: *init_terraform
       - run: *run_terraform
 
+  deploy_test_cluster:
+    docker:
+      - image: circleci/golang:latest
+        environment:
+          TERRAFORM_TARGET: module.kh-test
+    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - checkout
+      - run: *install_awscli
+      - run: *install_terraform
+      - run: *init_terraform
+      - run: *run_terraform
+
+
 experimental:
   notify:
     branches:
@@ -255,17 +273,48 @@ workflows:
   version: 2
   build_all:
     jobs:
-      # - build_macos
-      # - build_linux
-      - build_docker
-      # - build_docker:
-          # requires:
-          #   - build_linux
-      - deploy_nightly_cluster:
+      - build_macos
+      - build_linux
+      - build_docker_img:
           requires:
-            - build_docker
+            - build_linux
+          filters:
+            branches:
+              only:
+                - master
 
-  nightly:
+  build_test_cluster:
+    jobs:
+      - build_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+      - build_docker_img:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+      - deploy_test_cluster:
+          requires:
+            - build_docker_img
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+
+  build_nightly_cluster:
     triggers:
       - schedule:
           cron: "0 6 * * *"
@@ -275,9 +324,9 @@ workflows:
                 - master
     jobs:
       - build_linux
-      - build_docker:
+      - build_docker_img:
           requires:
             - build_linux
       - deploy_nightly_cluster:
           requires:
-            - build_docker
+            - build_docker_img
