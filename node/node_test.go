@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,7 +24,6 @@ import (
 var seed = types.GenerateKeyInfoSeed()
 var ki = types.MustGenerateKeyInfo(10, seed)
 var mockSigner = types.NewMockSigner(ki)
-var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
@@ -273,175 +271,6 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert.True(types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
 	assert.True(types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))
 	node.Stop(ctx)
-}
-
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, node *Node, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
-	expectCid, err := expectMsg.Cid()
-	if cb == nil {
-		cb = func(b *types.Block, msg *types.SignedMessage,
-			rcp *types.MessageReceipt) error {
-			assert.True(types.SmsgCidsEqual(expectMsg, msg))
-			if wg != nil {
-				wg.Done()
-			}
-
-			return nil
-		}
-	}
-	assert.NoError(err)
-
-	err = node.WaitForMessage(context.Background(), expectCid, cb)
-	assert.Equal(expectError, err != nil)
-}
-
-type smsgs []*types.SignedMessage
-type smsgsSet [][]*types.SignedMessage
-
-func TestWaitForMessage(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-
-	node := MakeNodesUnstarted(t, 1, true, true)[0]
-
-	err := node.Start(ctx)
-	assert.NoError(err)
-
-	testWaitExisting(ctx, assert, require, node)
-	testWaitNew(ctx, assert, require, node)
-}
-
-func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
-	chainStore, ok := node.ChainReader.(chain.Store)
-	assert.True(ok)
-
-	m1, m2 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}})
-	ts := chainWithMsgs[len(chainWithMsgs)-1]
-	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
-		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
-	require.NoError(chainStore.SetHead(ctx, ts))
-
-	testWaitHelp(nil, assert, node, m1, false, nil)
-	testWaitHelp(nil, assert, node, m2, false, nil)
-}
-
-func testWaitNew(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
-	var wg sync.WaitGroup
-	chainStore, ok := node.ChainReader.(chain.Store)
-	assert.True(ok)
-
-	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
-	m3, m4 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m3, m4}})
-
-	wg.Add(2)
-	go testWaitHelp(&wg, assert, node, m3, false, nil)
-	go testWaitHelp(&wg, assert, node, m4, false, nil)
-	time.Sleep(10 * time.Millisecond)
-
-	ts := chainWithMsgs[len(chainWithMsgs)-1]
-	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
-		TipSet:          ts,
-		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
-	require.NoError(chainStore.SetHead(ctx, ts))
-
-	wg.Wait()
-}
-
-func TestWaitForMessageError(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-
-	node := MakeNodesUnstarted(t, 1, true, true)[0]
-
-	err := node.Start(ctx)
-	assert.NoError(err)
-
-	testWaitError(ctx, assert, require, node)
-}
-
-func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, node *Node) {
-	chainStore, ok := node.ChainReader.(chain.Store)
-	assert.True(ok)
-
-	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(node.CborStore(), node.ChainReader.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
-	// set the head without putting the ancestor block in the chainStore.
-	err := chainStore.SetHead(ctx, chain[len(chain)-1])
-	assert.Nil(err)
-
-	testWaitHelp(nil, assert, node, m2, true, nil)
-}
-
-func TestWaitConflicting(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-
-	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
-	testGen := consensus.MakeGenesisFunc(
-		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
-		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
-		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-	)
-	node := MakeNodesUnstartedWithGif(t, 1, true, true, testGen)[0]
-	chainForTest, ok := node.ChainReader.(chain.Store)
-	require.True(ok)
-
-	assert.NoError(node.Start(ctx))
-
-	// Create conflicting messages
-	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm1, err := types.NewSignedMessage(*m1, &mockSigner)
-	require.NoError(err)
-
-	m2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm2, err := types.NewSignedMessage(*m2, &mockSigner)
-	require.NoError(err)
-
-	baseTS := node.ChainReader.Head()
-	require.Equal(1, len(baseTS))
-	baseBlock := baseTS.ToSlice()[0]
-
-	b1 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(0), uint64(0))
-	b1.Messages = []*types.SignedMessage{sm1}
-	b1.Ticket = []byte{0} // block 1 comes first in message application
-	core.MustPut(node.CborStore(), b1)
-
-	b2 := chain.RequireMkFakeChild(require, baseTS, node.ChainReader.GenesisCid(), baseBlock.StateRoot, uint64(1), uint64(0))
-	b2.Messages = []*types.SignedMessage{sm2}
-	b2.Ticket = []byte{1}
-	core.MustPut(node.CborStore(), b2)
-
-	ts := consensus.RequireNewTipSet(require, b1, b2)
-	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
-		TipSet:          ts,
-		TipSetStateRoot: baseBlock.StateRoot,
-	})
-	chainForTest.SetHead(ctx, ts)
-	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
-		rcp *types.MessageReceipt) error {
-		assert.NotNil(rcp)
-		return nil
-	}
-	msgApplyFail := func(b *types.Block, msg *types.SignedMessage,
-		rcp *types.MessageReceipt) error {
-		assert.Nil(rcp)
-		return nil
-	}
-
-	testWaitHelp(nil, assert, node, sm1, false, msgApplySucc)
-	testWaitHelp(nil, assert, node, sm2, false, msgApplyFail)
 }
 
 func TestGetSignature(t *testing.T) {

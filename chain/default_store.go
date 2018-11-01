@@ -69,7 +69,7 @@ type DefaultStore struct {
 var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
-func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid *cid.Cid) Store {
+func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid *cid.Cid) *DefaultStore {
 	bs := bstore.NewBlockstore(ds)
 	priv := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	return &DefaultStore{

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 
+	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
@@ -13,6 +14,9 @@ import (
 
 // NewHeadTopic is the topic used to publish new heads.
 const NewHeadTopic = "new-head"
+
+// GenesisKey is the key at which the genesis Cid is written in the datastore.
+var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 
 // ReadStore is the read-only subset of the chain.Store interface.  Most callers
 // of the store should use this interface.  Some of chain.Store's read methods

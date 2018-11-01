@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
@@ -84,7 +85,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	MessageWaiter *MessageWaiter
+	MessageWaiter *message.Waiter
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -221,7 +222,7 @@ func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil 
 // readGenesisCid is a helper function that queries the provided datastore forr
 // an entry with the genesisKey cid, returning if found.
 func readGenesisCid(ds datastore.Datastore) (*cid.Cid, error) {
-	bb, err := ds.Get(genesisKey)
+	bb, err := ds.Get(chain.GenesisKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read genesisKey")
 	}
@@ -288,7 +289,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
+	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid)
 
@@ -298,7 +299,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if !ok {
 		return nil, errors.New("failed to cast chain.Store to chain.ReadStore")
 	}
-	messageWaiter := NewMessageWaiter(chainReader, bs, &cstOffline)
+	messageWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
@@ -856,6 +857,11 @@ func (node *Node) NewAddress() (address.Address, error) {
 
 	backend := (backends[0]).(*wallet.DSBackend)
 	return backend.NewAddress()
+}
+
+// WaitForMessage waits for a message to appear on chain.
+func (node *Node) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	return node.MessageWaiter.Wait(ctx, msgCid, cb)
 }
 
 // CallQueryMethod calls a method on an actor using the state of the heaviest

@@ -1,10 +1,11 @@
-package node
+package message
 
 import (
 	"context"
 	"fmt"
 
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
@@ -17,53 +18,59 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-// MessageWaiter provides a method that waits on a chain.Store to contain a
-// message in it's longest chain and then run a callback.
-type MessageWaiter struct {
+var log = logging.Logger("message.Waiter")
+
+// Waiter waits for a message to appear on chain.
+type Waiter struct {
 	chainReader chain.ReadStore
 	cst         *hamt.CborIpldStore
 	bs          bstore.Blockstore
 }
 
-// NewMessageWaiter returns a new message waiter that can trigger a callback
-// when a block with a given message is added into the longest chain of a
-// chain reader.
-func NewMessageWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborIpldStore) *MessageWaiter {
-	return &MessageWaiter{
+// NewWaiter returns a new Waiter.
+func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,
 		bs:          bs,
 	}
 }
 
-// WaitForMessage searches for a message with Cid, msgCid, then passes it, along with the containing Block and any
-// MessageRecipt, to the supplied callback, cb. If an error is encountered, it is returned. Note that it is logically
-// possible that an error is returned and the success callback is called. In that case, the error can be safely ignored.
-func (node *Node) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	return node.MessageWaiter.WaitForMessage(ctx, msgCid, cb)
-}
-
-// WaitForMessage is the internal implementation of node.WaitForMessage.
-// TODO: This implementation will become prohibitively expensive since it involves traversing the entire blockchain.
-//       We should replace with an index later.
-func (waiter *MessageWaiter) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+// Wait invokes the callback when a message with the given cid appears on chain.
+// It will find the message in both the case that it is already on chain and
+// the case that it appears in a newly mined block. An error is returned if one is
+// encountered. It is possible for both an error to be returned and the callback
+// to be invoked, eg if an error was encountered trying to find the block
+// in the block history but it suddenly appears in a newly mined block. Unless
+// the context is canceled this method will block forever if the message never
+// appears on chain.
+//
+// Note: this method does too much -- the callback should just receive the tipset
+// containing the message and the caller should pull the receipt out of the block
+// if in fact that's what it wants to do, using something like receiptFromTipset.
+// Something like receiptFromTipset is necessary because not every message in
+// a block will have a receipt in the tipset: it might be a duplicate message.
+//
+// TODO: This implementation will become prohibitively expensive since it
+// traverses the entire chain. We should use an index instead.
+func (w *Waiter) Wait(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	var emptyErr error
-	ctx = log.Start(ctx, "WaitForMessage")
+	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
-	log.Info("Calling WaitForMessage")
+	log.Info("Calling Waiter.Wait")
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
 	ch := make(chan (interface{}))
 
 	// New blocks
-	newHeadCh := waiter.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	defer waiter.chainReader.HeadEvents().Unsub(newHeadCh, chain.NewHeadTopic)
+	newHeadCh := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer w.chainReader.HeadEvents().Unsub(newHeadCh, chain.NewHeadTopic)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Historical blocks
-	historyCh := waiter.chainReader.BlockHistory(ctx)
+	historyCh := w.chainReader.BlockHistory(ctx)
 
 	// Merge historical and new block Channels.
 	go func() {
@@ -77,39 +84,46 @@ func (waiter *MessageWaiter) WaitForMessage(ctx context.Context, msgCid *cid.Cid
 		}
 	}()
 
-	for raw := range ch {
-		switch ts := raw.(type) {
-		case error:
-			log.Errorf("WaitForMessage: %s", ts)
-			return ts
-		case consensus.TipSet:
-			for _, blk := range ts {
-				for _, msg := range blk.Messages {
-					c, err := msg.Cid()
-					if err != nil {
-						log.Errorf("WaitForMessage: %s", err)
-						return err
-					}
-					if c.Equals(msgCid) {
-						recpt, err := waiter.receiptFromTipSet(ctx, msgCid, ts)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case raw, more := <-ch:
+			if !more {
+				return emptyErr
+			}
+			switch ts := raw.(type) {
+			case error:
+				log.Errorf("Waiter.Wait: %s", ts)
+				return ts
+			case consensus.TipSet:
+				for _, blk := range ts {
+					for _, msg := range blk.Messages {
+						c, err := msg.Cid()
 						if err != nil {
-							return errors.Wrap(err, "error retrieving receipt from tipset")
+							log.Errorf("Waiter.Wait: %s", err)
+							return err
 						}
-						return cb(blk, msg, recpt)
+						if c.Equals(msgCid) {
+							recpt, err := w.receiptFromTipSet(ctx, msgCid, ts)
+							if err != nil {
+								return errors.Wrap(err, "error retrieving receipt from tipset")
+							}
+							return cb(blk, msg, recpt)
+						}
 					}
 				}
 			}
+
 		}
 	}
-
-	return emptyErr
 }
 
 // receiptFromTipSet finds the receipt for the message with msgCid in the
 // input tipset.  This can differ from the message's receipt as stored in its
 // parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (waiter *MessageWaiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -133,15 +147,15 @@ func (waiter *MessageWaiter) receiptFromTipSet(ctx context.Context, msgCid *cid.
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := waiter.chainReader.GetTipSetAndState(ctx, ids.String())
+	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids.String())
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, waiter.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, w.cst, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
-	res, err := consensus.ProcessTipSet(ctx, ts, st, vm.NewStorageMap(waiter.bs))
+	res, err := consensus.ProcessTipSet(ctx, ts, st, vm.NewStorageMap(w.bs))
 	if err != nil {
 		return nil, err
 	}

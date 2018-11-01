@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/lookup"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -400,7 +401,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 		TipSetStateRoot: newGenBlk.StateRoot,
 	}
 
-	newChainStore := chain.NewDefaultStore(node.Repo.ChainDatastore(), node.CborStore(), newGenBlk.Cid())
+	var newChainStore chain.Store = chain.NewDefaultStore(node.Repo.ChainDatastore(), node.CborStore(), newGenBlk.Cid())
 
 	if err = newChainStore.PutTipSetAndState(ctx, genTsas); err != nil {
 		return errors.Wrap(err, "failed to put genesis block in chain store")
@@ -413,7 +414,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal genesis cid")
 	}
-	if err = node.Repo.Datastore().Put(genesisKey, val); err != nil {
+	if err = node.Repo.Datastore().Put(chain.GenesisKey, val); err != nil {
 		return errors.Wrap(err, "failed to persist genesis cid")
 	}
 	newChainReader, ok := newChainStore.(chain.ReadStore)
@@ -422,7 +423,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	}
 	newCon := consensus.NewExpected(node.CborStore(), node.Blockstore, node.PowerTable, newGenBlk.Cid())
 	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
-	newMsgWaiter := NewMessageWaiter(newChainReader, node.Blockstore, node.CborStore())
+	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer

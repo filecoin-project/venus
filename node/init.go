@@ -2,11 +2,9 @@ package node
 
 import (
 	"context"
-	"encoding/json"
 
 	ci "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
@@ -21,7 +19,6 @@ import (
 )
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
-var genesisKey = datastore.NewKey("/consensus/genesisCid")
 
 // InitCfg contains configuration for initializing a node
 type InitCfg struct {
@@ -63,9 +60,7 @@ func AutoSealIntervalSecondsOpt(autoSealIntervalSeconds uint) InitOpt {
 	}
 }
 
-// Init initializes a filecoin node in the given repo
-// TODO: accept options?
-//  - configurable genesis block
+// Init initializes a filecoin node in the given repo.
 func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts ...InitOpt) error {
 	cfg := new(InitCfg)
 	for _, o := range opts {
@@ -77,36 +72,8 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
-	// TODO the following should be wrapped in the chain.Store or a sub
-	// interface.
-	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, nil)
-	// Generate the genesis tipset.
-	genesis, err := gen(cst, bs)
-	if err != nil {
-		return err
-	}
-	genTipSet, err := consensus.NewTipSet(genesis)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate genesis block")
-	}
-	// Persist the genesis tipset to the repo.
-	genTsas := &chain.TipSetAndState{
-		TipSet:          genTipSet,
-		TipSetStateRoot: genesis.StateRoot,
-	}
-	if err = chainStore.PutTipSetAndState(ctx, genTsas); err != nil {
-		return errors.Wrap(err, "failed to put genesis block in chain store")
-	}
-	if err = chainStore.SetHead(ctx, genTipSet); err != nil {
-		return errors.Wrap(err, "failed to persist genesis block in chain store")
-	}
-	// Persist the genesis cid to the repo.
-	val, err := json.Marshal(genesis.Cid())
-	if err != nil {
-		return errors.Wrap(err, "failed to marshal genesis cid")
-	}
-	if err = r.Datastore().Put(genesisKey, val); err != nil {
-		return errors.Wrap(err, "failed to persist genesis cid")
+	if _, err := chain.Init(ctx, r, bs, cst, gen); err != nil {
+		return errors.Wrap(err, "Could not Init Node")
 	}
 
 	if cfg.PeerKey == nil {
