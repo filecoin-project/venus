@@ -20,16 +20,18 @@ var actorCmd = &cmds.Command{
 }
 
 var actorLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		actors, err := GetAPI(env).Actor().Ls(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		for _, actor := range actors {
-			re.Emit(actor) // nolint: errcheck
+			if err := re.Emit(actor); err != nil {
+				return err
+			}
 		}
+		return nil
 	},
 	Type: &api.ActorView{},
 	Encoders: cmds.EncoderMap{

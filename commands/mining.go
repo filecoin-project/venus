@@ -21,13 +21,12 @@ var miningCmd = &cmds.Command{
 }
 
 var miningOnceCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		blk, err := GetAPI(env).Mining().Once(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
-		re.Emit(blk.Cid()) // nolint: errcheck
+		return re.Emit(blk.Cid())
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -39,24 +38,22 @@ var miningOnceCmd = &cmds.Command{
 }
 
 var miningStartCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if err := GetAPI(env).Mining().Start(req.Context); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
-		re.Emit("Started mining") // nolint: errcheck
+		return re.Emit("Started mining")
 	},
 	Type:     "",
 	Encoders: stringEncoderMap,
 }
 
 var miningStopCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if err := GetAPI(env).Mining().Stop(req.Context); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
-		re.Emit("Stopped mining") // nolint: errcheck
+		return re.Emit("Stopped mining")
 	},
 	Encoders: stringEncoderMap,
 }

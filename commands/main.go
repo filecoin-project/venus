@@ -12,6 +12,7 @@ import (
 	ma "gx/ipfs/QmRKLtwMw131aK7ugC3G7ybpumMz78YrJe5dzneyindvG1/go-multiaddr"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds/cli"
 	cmdhttp "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds/http"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
@@ -159,7 +160,14 @@ func init() {
 
 // Run processes the arguments and stdin
 func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
-	return CliRun(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
+	err := cli.Run(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
+	if err == nil {
+		return 0, nil
+	}
+	if exerr, ok := err.(cli.ExitError); ok {
+		return int(exerr), nil
+	}
+	return 1, err
 }
 
 func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
@@ -181,24 +189,16 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 	res, err := client.Send(req)
 	if err != nil {
 		if isConnectionRefused(err) {
-			re.SetError("Connection Refused. Is the daemon running?", cmdkit.ErrFatal)
-			return nil
+			return cmdkit.Errorf(cmdkit.ErrFatal, "Connection Refused. Is the daemon running?")
 		}
-		re.SetError(err, cmdkit.ErrFatal)
-		return nil
+		return cmdkit.Errorf(cmdkit.ErrFatal, err.Error())
 	}
 
-	wait := make(chan struct{})
 	// copy received result into cli emitter
-	go func() {
-		err := cmds.Copy(re, res)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal|cmdkit.ErrFatal)
-		}
-		close(wait)
-	}()
-
-	<-wait
+	err = cmds.Copy(re, res)
+	if err != nil {
+		return cmdkit.Errorf(cmdkit.ErrFatal|cmdkit.ErrNormal, err.Error())
+	}
 	return nil
 }
 

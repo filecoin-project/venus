@@ -22,14 +22,13 @@ var bootstrapCmd = &cmds.Command{
 }
 
 var bootstrapLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		peers, err := GetAPI(env).Bootstrap().Ls(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(&bootstrapResult{peers}) // nolint: errcheck
+		return re.Emit(&bootstrapResult{peers})
 	},
 	Type: &bootstrapResult{},
 	Encoders: cmds.EncoderMap{

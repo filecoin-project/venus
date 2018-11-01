@@ -74,26 +74,42 @@ $ go-filecoin config bootstrap
 		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"api.address\")"),
 		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		api := GetAPI(env).Config()
 		key := req.Arguments[0]
 
 		if len(req.Arguments) == 2 {
-			value := req.Arguments[1]
-			err := api.Set(key, value)
-
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-			}
-		} else {
-			res, err := api.Get(key)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
-			re.Emit(res) // nolint: errcheck
+			value = req.Arguments[1]
+		} else if strings.Contains(key, "=") {
+			args := strings.Split(key, "=")
+			key = args[0]
+			value = args[1]
 		}
+
+		if value != "" {
+			res, err := api.Set(key, value)
+
+			if err != nil {
+				return err
+			}
+
+			if err != nil {
+				return err
+			}
+
+			return re.Emit(output)
+		}
+		res, err := api.Get(key)
+		if err != nil {
+			return err
+		}
+
+		output, err := makeOutput(res)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(output)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, res interface{}) error {

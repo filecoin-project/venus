@@ -42,18 +42,17 @@ var swarmPeersCmd = &cmds.Command{
 		cmdkit.BoolOption("streams", "Also list information about open streams for each peer"),
 		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		verbose, _ := req.Options["verbose"].(bool)
 		latency, _ := req.Options["latency"].(bool)
 		streams, _ := req.Options["streams"].(bool)
 
 		out, err := GetAPI(env).Swarm().Peers(req.Context, verbose, latency, streams)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(&out) // nolint: errcheck
+		return re.Emit(&out)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *api.SwarmConnInfos) error {
@@ -99,14 +98,13 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := GetAPI(env).Swarm().Connect(req.Context, req.Arguments)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(out) // nolint: errcheck
+		return re.Emit(out)
 	},
 	Type: []api.SwarmConnectResult{},
 	Encoders: cmds.EncoderMap{
@@ -127,24 +125,23 @@ var findPeerDhtCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("peerID", true, true, "The ID of the peer to search for."),
 	},
-	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		peerID, err := peer.IDB58Decode(req.Arguments[0])
 		if err != nil {
-			res.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		out, err := GetAPI(env).Swarm().FindPeer(req.Context, peerID)
 		if err != nil {
-			res.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		for _, addr := range out.Addrs {
 			if err := res.Emit(addr.String()); err != nil {
-				panic("Could not emit multiaddress")
+				return err
 			}
 		}
+		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {

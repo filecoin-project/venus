@@ -14,13 +14,12 @@ var versionCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show go-filecoin version information",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		version, err := GetAPI(env).Version().Full()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
-		re.Emit(version) // nolint: errcheck
+		return re.Emit(version)
 	},
 	Type: api.VersionInfo{},
 	Encoders: cmds.EncoderMap{

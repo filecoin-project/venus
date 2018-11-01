@@ -38,11 +38,8 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := daemonRun(req, re, env); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		return daemonRun(req, re, env)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.Encoders[cmds.Text],
