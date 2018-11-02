@@ -690,6 +690,7 @@ func WithMiner(m string) func(*TestDaemon) {
 
 // NewDaemon creates a new `TestDaemon`, using the passed in configuration options.
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
+	t.Helper()
 	// Ensure we have the actual binary
 	filecoinBin := MustGetFilecoinBinary()
 
@@ -789,7 +790,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	return td
 }
 
-// RunInit is the equivialent of executing `go-filecoin init`.
+// RunInit is the equivalent of executing `go-filecoin init`.
 func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin := MustGetFilecoinBinary()
 
@@ -802,10 +803,17 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 
 // GenesisFilePath returns the path of the WalletFile
 func GenesisFilePath() string {
+	return ProjectRoot("/fixtures/genesis.car")
+}
+
+// ProjectRoot return the project root joined with any path fragments
+func ProjectRoot(paths ...string) string {
 	gopath, err := GetGoPath()
 	if err != nil {
 		panic(err)
 	}
 
-	return filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/genesis.car")
+	allPaths := append([]string{gopath, "/src/github.com/filecoin-project/go-filecoin"}, paths...)
+
+	return filepath.Join(allPaths...)
 }

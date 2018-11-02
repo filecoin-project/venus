@@ -19,7 +19,7 @@ var initCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(WalletFile, "wallet data file: contains addresses and private keys").WithDefault(""),
 		cmdkit.StringOption(WalletAddr, "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
-		cmdkit.StringOption(GenesisFile, "path of file containing archive of genesis block DAG data"),
+		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.BoolOption(TestGenesis, "when set, creates a custom genesis block with pre-mined funds"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new nodes libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),

@@ -79,7 +79,8 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Error("bad genesis, TODO: disconnect from peer")
+		log.Error("bad genesis, disconnecting from peer")
+		s.Conn().Close() // nolint: errcheck
 		return
 	default:
 		log.Error(err)

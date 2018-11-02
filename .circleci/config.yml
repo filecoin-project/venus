@@ -28,7 +28,7 @@ aliases:
       terraform get && terraform plan -input=false \
       -var docker_tag=$SHORT_GIT_SHA -var prometheus_httpasswd="NOT_SET" -var alertmanager_httpasswd="NOT_SET" \
       -var kittyhawk-node-keys-pass="NOT_SET" -var alerts_slack_api_url="NOT_SET" \
-      -target=$TERRAFORM_TARGET -out sync.out 
+      -target=$TERRAFORM_TARGET -out sync.out
       terraform apply sync.out
 
 jobs:
@@ -239,7 +239,7 @@ jobs:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
       - setup_remote_docker:
-          docker_layer_caching: true 
+          docker_layer_caching: true
 
       - run: *install_awscli
       - run:

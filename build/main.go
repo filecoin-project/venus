@@ -223,6 +223,7 @@ func build() {
 	buildFilecoin()
 	buildGengen()
 	buildFaucet()
+	buildGenesisFileServer()
 	generateGenesis()
 }
 
@@ -259,6 +260,12 @@ func buildFaucet() {
 	log.Println("Building faucet...")
 
 	runParts("go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/")
+}
+
+func buildGenesisFileServer() {
+	log.Println("Building genesis file server...")
+
+	runParts("go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/")
 }
 
 func install() {

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	mrand "math/rand"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -30,7 +31,7 @@ import (
 )
 
 // seed is used to make all randomness (keys and fake commitments) deterministic.
-var seed int64 = 666
+var seed = time.Now().Unix()
 
 // Miner is
 type Miner struct {
