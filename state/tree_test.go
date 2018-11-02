@@ -68,7 +68,7 @@ func TestStateErrors(t *testing.T) {
 	assert.Error(err)
 	assert.True(IsActorNotFoundError(err))
 
-	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
+	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
 	assert.NoError(err)
 
 	tr2, err := LoadStateTree(ctx, cst, c, nil)
