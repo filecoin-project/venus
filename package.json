@@ -171,6 +171,11 @@
       "hash": "QmfXU2MhWoegxHoeMd3A2ytL2P6CY4FfqGWc23LTNWBwZt",
       "name": "go-multiaddr-dns",
       "version": "0.2.4"
+    },
+    {
+      "hash": "QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae",
+      "name": "go-log",
+      "version": "1.5.7"
     }
   ],
   "gxVersion": "0.12.1",

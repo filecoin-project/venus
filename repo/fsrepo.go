@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 	keystore "gx/ipfs/QmTBWmvUbMDmvnZvzTpSjz6nVNJRiMMnj3JiFcgyJjvHaq/go-ipfs-keystore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
 	lockfile "gx/ipfs/QmZzgxSj8QpR58KmdeNj97eD66X6xeDAFNjpP2xTY9oKeQ/go-fs-lock"
 	badgerds "gx/ipfs/QmciWFTxK1t1PNyPdoTsv8wtj3DWim2qRFjaUEcFWCnV8D/go-ds-badger"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
