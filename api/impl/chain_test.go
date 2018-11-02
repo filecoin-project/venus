@@ -68,14 +68,15 @@ func TestChainHead(t *testing.T) {
 		consensus.RequireTipSetAdd(require, blk2, newTipSet)
 		consensus.RequireTipSetAdd(require, blk3, newTipSet)
 
-		chainStore.SetHead(ctx, newTipSet)
+		someErr := chainStore.SetHead(ctx, newTipSet)
+		require.NoError(someErr)
 
 		api := New(n)
 		out, err := api.Chain().Head()
+		require.NoError(err)
 
 		sortedCidSet := types.NewSortedCidSet(blk.Cid(), blk2.Cid(), blk3.Cid())
 
-		require.NoError(err)
 		assert.Len(out, 3)
 		assert.Equal(sortedCidSet.ToSlice(), out)
 	})
