@@ -134,7 +134,9 @@ jobs:
       - run: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
 
       - restore_cache:
-          key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          keys:
+            - v4-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+            - v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -156,6 +158,16 @@ jobs:
 
       - save_cache:
           key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          paths:
+            - "/go/pkg"
+            - "/go/src/gx"
+            - "/go/src/github.com"
+            - "/go/src/golang.org"
+            - "/home/circleci/.rustup"
+            - "/home/circleci/.cargo"
+
+      - save_cache:
+          key: v4-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
