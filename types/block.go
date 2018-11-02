@@ -52,7 +52,7 @@ type Block struct {
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot cid.Cid `json:"stateRoot,omitempty"`
+	StateRoot cid.Cid `json:"stateRoot,omitempty" refmt:",omitempty"`
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`

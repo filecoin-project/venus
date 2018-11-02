@@ -52,7 +52,7 @@ type Actor struct{}
 
 // State is the storage market's storage.
 type State struct {
-	Miners cid.Cid
+	Miners cid.Cid `refmt:",omitempty"`
 
 	// TotalCommitedStorage is the number of sectors that are currently committed
 	// in the whole network.
