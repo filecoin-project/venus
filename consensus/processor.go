@@ -350,12 +350,12 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 	}
 
 	if msg.From != address.NetworkAddress && msg.Nonce < fromActor.Nonce {
-		log.Error("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
 		return nil, errNonceTooLow
 	}
 
 	if msg.From != address.NetworkAddress && msg.Nonce > fromActor.Nonce {
-		log.Error("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
 		return nil, errNonceTooHigh
 	}
 

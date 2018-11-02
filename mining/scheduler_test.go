@@ -28,7 +28,8 @@ func TestMineOnce(t *testing.T) {
 
 	// Echoes the sent block to output.
 	worker := NewTestWorkerWithDeps(MakeEchoMine(require))
-	result := MineOnce(context.Background(), worker, MineDelayTest, ts)
+	result, err := MineOnce(context.Background(), worker, MineDelayTest, ts)
+	assert.NoError(err)
 	assert.NoError(result.Err)
 	assert.True(ts.ToSlice()[0].StateRoot.Equals(result.NewBlock.StateRoot))
 }

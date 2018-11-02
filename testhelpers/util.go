@@ -1,9 +1,11 @@
 package testhelpers
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 )
@@ -57,4 +59,26 @@ func MustGetFilecoinBinary() string {
 	}
 
 	return bin
+}
+
+// WaitForIt waits until the given callback returns true.
+func WaitForIt(count int, delay time.Duration, cb func() (bool, error)) error {
+	var done bool
+	var err error
+	for i := 0; i < count; i++ {
+		done, err = cb()
+		if err != nil {
+			return err
+		}
+		if done {
+			break
+		}
+		time.Sleep(delay)
+	}
+
+	if !done {
+		return fmt.Errorf("timeout waiting for it")
+	}
+
+	return nil
 }

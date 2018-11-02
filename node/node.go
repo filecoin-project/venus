@@ -487,24 +487,37 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 }
 
 func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.TipSet) {
-	for ts := range node.HeaviestTipSetCh {
-		newHead := ts.(consensus.TipSet)
-		if len(newHead) == 0 {
-			log.Error("TipSet of size 0 published on HeaviestTipSetCh:")
-			log.Error("ignoring and waiting for a new Heaviest TipSet.")
-		}
+	for {
+		select {
+		case ts, ok := <-node.HeaviestTipSetCh:
+			if !ok {
+				return
+			}
+			newHead, ok := ts.(consensus.TipSet)
+			if !ok {
+				log.Error("Non-TipSet published on HeaviestTipSetCh")
+				continue
+			}
+			if len(newHead) == 0 {
+				log.Error("TipSet of size 0 published on HeaviestTipSetCh. Ignoring and waiting for a new Heaviest TipSet.")
+				continue
+			}
 
-		// When a new best TipSet is promoted we remove messages in it from the
-		// message pool (and add them back in if we have a re-org).
-		if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
-			panic(err)
-		}
-		head = newHead
+			// When a new best TipSet is promoted we remove messages in it from the
+			// message pool (and add them back in if we have a re-org).
+			if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
+				log.Error("Error updating message pool for new TipSet:", err)
+				continue
+			}
+			head = newHead
 
-		if node.StorageMiner != nil {
-			node.StorageMiner.OnNewHeaviestTipSet(newHead)
+			if node.StorageMiner != nil {
+				node.StorageMiner.OnNewHeaviestTipSet(newHead)
+			}
+			node.HeaviestTipSetHandled()
+		case <-ctx.Done():
+			return
 		}
-		node.HeaviestTipSetHandled()
 	}
 }
 

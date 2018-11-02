@@ -56,7 +56,10 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 
 	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.ApplyMessages, nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, blockTime)
 
-	res := mining.MineOnce(ctx, worker, mineDelay, ts)
+	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)
+	if err != nil {
+		return nil, err
+	}
 	if res.Err != nil {
 		return nil, res.Err
 	}

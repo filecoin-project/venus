@@ -159,7 +159,7 @@ func NewScheduler(w Worker, md time.Duration, f func() consensus.TipSet) Schedul
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the mining scheduler.  The worker will mine as many null blocks
 // on top of the input tipset as necessary and output the winning block.
-func MineOnce(ctx context.Context, w Worker, md time.Duration, ts consensus.TipSet) Output {
+func MineOnce(ctx context.Context, w Worker, md time.Duration, ts consensus.TipSet) (Output, error) {
 	pollHeadFunc := func() consensus.TipSet {
 		return ts
 	}
@@ -168,8 +168,9 @@ func MineOnce(ctx context.Context, w Worker, md time.Duration, ts consensus.TipS
 	defer subCtxCancel()
 
 	outCh, _ := s.Start(subCtx)
-	//	go func() {  <- NewInput(ts) }()
-	// TODO: need to set the function somehow here,
-	// if possible we should create a new scheduler for each mineonce call
-	return <-outCh
+	block, ok := <-outCh
+	if !ok {
+		return Output{}, errors.New("Mining completed without returning block")
+	}
+	return block, nil
 }

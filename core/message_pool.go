@@ -73,15 +73,15 @@ func NewMessagePool() *MessagePool {
 
 // getParentTips returns the parent tipset of the provided tipset
 // TODO msgPool should have access to a chain store that can just look this up...
-func getParentTipSet(store *hamt.CborIpldStore, ts consensus.TipSet) (consensus.TipSet, error) {
+func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts consensus.TipSet) (consensus.TipSet, error) {
 	newTipSet := consensus.TipSet{}
 	parents, err := ts.Parents()
 	if err != nil {
 		return nil, err
 	}
-	for it := parents.Iter(); !it.Complete(); it.Next() {
+	for it := parents.Iter(); !it.Complete() && ctx.Err() == nil; it.Next() {
 		var newBlk types.Block
-		if err := store.Get(context.TODO(), it.Value(), &newBlk); err != nil {
+		if err := store.Get(ctx, it.Value(), &newBlk); err != nil {
 			return nil, err
 		}
 		if err := newTipSet.AddBlock(&newBlk); err != nil {
@@ -96,7 +96,7 @@ func getParentTipSet(store *hamt.CborIpldStore, ts consensus.TipSet) (consensus.
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet consensus.TipSet, height uint64) ([]*types.SignedMessage, consensus.TipSet, error) {
+func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet consensus.TipSet, height uint64) ([]*types.SignedMessage, consensus.TipSet, error) {
 	var msgs []*types.SignedMessage
 	h, err := curTipSet.Height()
 	if err != nil {
@@ -122,7 +122,7 @@ func collectChainsMessagesToHeight(store *hamt.CborIpldStore, curTipSet consensu
 		case 0:
 			return msgs, curTipSet, nil
 		default:
-			nextTipSet, err := getParentTipSet(store, curTipSet)
+			nextTipSet, err := getParentTipSet(ctx, store, curTipSet)
 			if err != nil {
 				return []*types.SignedMessage{}, consensus.TipSet{}, err
 			}
@@ -156,7 +156,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	if err != nil {
 		return err
 	}
-	addToPool, old, err := collectChainsMessagesToHeight(store, old, newHeight)
+	addToPool, old, err := collectChainsMessagesToHeight(ctx, store, old, newHeight)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	if err != nil {
 		return err
 	}
-	removeFromPool, new, err := collectChainsMessagesToHeight(store, new, oldHeight)
+	removeFromPool, new, err := collectChainsMessagesToHeight(ctx, store, new, oldHeight)
 	if err != nil {
 		return err
 	}
@@ -208,11 +208,11 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		if oldParents.Empty() || newParents.Empty() {
 			break
 		}
-		old, err = getParentTipSet(store, old)
+		old, err = getParentTipSet(ctx, store, old)
 		if err != nil {
 			return err
 		}
-		new, err = getParentTipSet(store, new)
+		new, err = getParentTipSet(ctx, store, new)
 		if err != nil {
 			return err
 		}

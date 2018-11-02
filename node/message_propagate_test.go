@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -39,17 +40,10 @@ func TestMessagePropagation(t *testing.T) {
 	require.NoError(nodes[0].AddNewMessage(ctx, smsg))
 
 	// Wait for message to propagate across network
-	synced := false
-	for i := 0; i < 30; i++ {
+	require.NoError(th.WaitForIt(50, 100*time.Millisecond, func() (bool, error) {
 		l1 := len(nodes[0].MsgPool.Pending())
 		l2 := len(nodes[1].MsgPool.Pending())
 		l3 := len(nodes[2].MsgPool.Pending())
-		synced = l1 == 1 && l2 == 1 && l3 == 1
-		if synced {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	require.True(synced, "failed to propagate messages")
+		return l1 == 1 && l2 == 1 && l3 == 1, nil
+	}), "failed to propagate messages")
 }
