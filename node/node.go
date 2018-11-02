@@ -253,7 +253,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var router routing.IpfsRouting
 
 	if !nc.OfflineMode {
-		h, err := libp2p.New(ctx, nc.Libp2pOpts...)
+		h, err := libp2p.New(ctx, libp2p.DisableRelay(), libp2p.ChainOptions(nc.Libp2pOpts...))
 		if err != nil {
 			return nil, err
 		}

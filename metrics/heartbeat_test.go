@@ -33,6 +33,7 @@ func newEndpoint(t *testing.T, port int) endpoint {
 		t.Fatal(err)
 	}
 	opts := []libp2p.Option{
+		libp2p.DisableRelay(),
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port)),
 		libp2p.Identity(priv),
 	}
