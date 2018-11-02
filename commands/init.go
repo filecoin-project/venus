@@ -23,7 +23,6 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(TestGenesis, "when set, creates a custom genesis block with pre-mined funds"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new nodes libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
-		cmdkit.BoolOption(PerformRealProofs, "if true, configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.").WithDefault(false),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(ClusterLabWeek, "when set, populates config bootstrap addrs with the dns multiaddrs of the lab week cluster and other team week specific bootstrap parameters"),
 	},
@@ -36,7 +35,6 @@ var initCmd = &cmds.Command{
 		genesisFile, _ := req.Options[GenesisFile].(string)
 		customGenesis, _ := req.Options[TestGenesis].(bool)
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		performRealProofs, _ := req.Options[PerformRealProofs].(bool)
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		teamWeek, _ := req.Options[ClusterLabWeek].(bool)
 
@@ -59,7 +57,6 @@ var initCmd = &cmds.Command{
 			api.UseCustomGenesis(customGenesis),
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
-			api.PerformRealProofs(performRealProofs),
 			api.LabWeekCluster(teamWeek),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 		)

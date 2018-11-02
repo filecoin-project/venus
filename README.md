@@ -138,13 +138,12 @@ If `go run ./build/*.go deps` or `go run ./build/*.go build` fails because of an
 
 ## Helpful Environment Variables
 
-To avoid setting the `--repodir` flag when executing commands, you can set the environment variable `FIL_PATH` with a default value to use for the flag.
-
-| Variable                | Description                                                                       |
-|-------------------------|-----------------------------------------------------------------------------------|
-| `FIL_API`               | This is the default host and port for daemon commands.                            |
-| `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value. |
-| `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                               |
+| Variable                | Description                                                                                    |
+|-------------------------|------------------------------------------------------------------------------------------------|
+| `FIL_API`               | This is the default host and port for daemon commands.                                         |
+| `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
+| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
+| `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Running Filecoin
 

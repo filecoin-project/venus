@@ -54,7 +54,6 @@ func TestWriteFile(t *testing.T) {
 
 [mining]
   minerAddress = ""
-  performRealProofs = false
   autoSealIntervalSeconds = 120
 
 [wallet]

@@ -24,7 +24,6 @@ var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") //
 type InitCfg struct {
 	PeerKey                 ci.PrivKey
 	DefaultWalletAddress    address.Address
-	PerformRealProofs       bool
 	AutoSealIntervalSeconds uint
 }
 
@@ -43,13 +42,6 @@ func PeerKeyOpt(k ci.PrivKey) InitOpt {
 func DefaultWalletAddressOpt(addr address.Address) InitOpt {
 	return func(c *InitCfg) {
 		c.DefaultWalletAddress = addr
-	}
-}
-
-// PerformRealProofsOpt configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
-func PerformRealProofsOpt(performRealProofs bool) InitOpt {
-	return func(c *InitCfg) {
-		c.PerformRealProofs = performRealProofs
 	}
 }
 
@@ -92,7 +84,6 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 
 	newConfig := r.Config()
 
-	newConfig.Mining.PerformRealProofs = cfg.PerformRealProofs
 	newConfig.Mining.AutoSealIntervalSeconds = cfg.AutoSealIntervalSeconds
 
 	if cfg.DefaultWalletAddress != (address.Address{}) {

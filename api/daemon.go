@@ -32,8 +32,6 @@ type DaemonInitConfig struct {
 	PeerKeyFile string
 	// WithMiner, if set, sets the config value for the local miner to this address.
 	WithMiner address.Address
-	// PerformRealProofs, if true, will cause the node to exercise the real PoRep and PoSt operations
-	PerformRealProofs bool
 	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
 	LabWeekCluster bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
@@ -95,14 +93,6 @@ func PeerKeyFile(p string) DaemonInitOpt {
 func WithMiner(miner address.Address) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) error {
 		dc.WithMiner = miner
-		return nil
-	}
-}
-
-// PerformRealProofs configures the daemon to run the real (slow) PoSt and PoRep operations against small sectors.
-func PerformRealProofs(performRealProofs bool) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
-		dc.PerformRealProofs = performRealProofs
 		return nil
 	}
 }
