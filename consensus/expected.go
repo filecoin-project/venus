@@ -3,7 +3,9 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/address"
 	"math/big"
 	"strings"
 
@@ -11,6 +13,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -19,7 +22,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-var log = logging.Logger("consensus.expected")
+var (
+	ticketDomain *big.Int
+	log          = logging.Logger("consensus.expected")
+)
+
+func init() {
+	ticketDomain = &big.Int{}
+	ticketDomain.Exp(big.NewInt(2), big.NewInt(256), nil)
+	ticketDomain.Sub(ticketDomain, big.NewInt(1))
+}
 
 var (
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
@@ -46,6 +58,7 @@ type Expected struct {
 
 	// cstore is used for loading state trees during message running.
 	cstore *hamt.CborIpldStore
+
 	// bstore contains data referenced by actors within the state
 	// during message running.  Additionally bstore is used for
 	// accessing the power table.
@@ -239,15 +252,70 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, pSt state.
 
 // validateMining throws an error if any tipset's block was mined by an invalid
 // miner address.
+
+// Q: should this really be tried for every block in the tipset? If so spec should be updated.
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet) error {
+
+	// TODO: Recompute the challenge
+	// 		return error if challenge failed
+	// TODO: validate the proof with PoST.Verify() ?
+	// 		return error if proof invalid
+	// TODO: validate that the ticket is a valid signature over the hash of the proof
+	// 		return error if signature invalid
+
 	for _, blk := range ts.ToSlice() {
-		if !c.PwrTableView.HasPower(ctx, st, c.bstore, blk.Miner) {
-			return errors.New("invalid miner address without network power")
+		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
+		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
+		if err != nil {
+			return errors.Wrap(err, "couldn't compute ticket")
 		}
-		// TODO: check that ticket is a winner
+		if result {
+			return nil
+		}
 	}
-	return nil
+	return errors.New("miner ticket is invalid")
 }
+
+func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree,
+						ticket types.Signature, miner address.Address) (bool,error) {
+
+	// See https://github.com/filecoin-project/aq/issues/70 for an explanation of the math here.
+	totalPower, err := ptv.Total(ctx, st, bs)
+	if err != nil {
+		return false, errors.Wrap(err, "Couldn't get totalPower")
+	}
+
+	myPower, err := ptv.Miner(ctx, st, bs, miner)
+	if err != nil {
+		return false, errors.Wrap(err, "Couldn't get minerPower")
+	}
+
+	lhs := &big.Int{}
+	lhs.SetBytes(ticket)
+	lhs.Mul(lhs, big.NewInt(int64(totalPower)))
+
+	rhs := &big.Int{}
+	rhs.Mul(big.NewInt(int64(myPower)), ticketDomain)
+	return lhs.Cmp(rhs) < 0, nil
+}
+
+// TODO -- in general this won't work with only the base tipset, we'll potentially
+// need some chain manager utils, similar to the State function, to sample
+// further back in the chain.
+func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
+	smallest, err := parents.MinTicket()
+	if err != nil {
+		return nil, err
+	}
+
+	buf := make([]byte, 4)
+	n := binary.PutUvarint(buf, nullBlkCount)
+	buf = append(smallest, buf[:n]...)
+
+	h := sha256.Sum256(buf)
+	return h[:], nil
+}
+
 
 // runMessages applies the messages of all blocks within the input
 // tipset to the input base state.  Messages are applied block by
