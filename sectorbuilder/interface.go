@@ -16,7 +16,15 @@ func init() {
 // written, sealed into sectors, and later unsealed and read.
 type SectorBuilder interface {
 	// AddPiece writes the given piece into an unsealed sector and returns the
-	// id of that sector.
+	// id of that sector. This method has a race; it is possible that the
+	// sector into which the piece-bytes were written is sealed before this
+	// method returns. In the real world this should not happen, as sealing
+	// takes a long time to complete. In tests, where sealing happens
+	// near-instantaneously, it is possible to exercise this race.
+	//
+	// TODO: Replace this method with something that accepts a piece cid and a
+	// value which represents the number of bytes in the piece and returns a
+	// sector id (to which piece bytes will be written) and a Writer.
 	AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error)
 
 	// ReadPieceFromSealedSector produces a Reader used to get original
