@@ -117,7 +117,7 @@ function swarm_connect {
 }
 
 function chain_ls {
-  ./go-filecoin chain ls \
+  ./go-filecoin chain ls --enc=json \
     --repodir=$1
 }
 

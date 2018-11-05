@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
@@ -17,7 +18,7 @@ import (
 
 func TestChainDaemon(t *testing.T) {
 	t.Parallel()
-	t.Run("chain ls returns the whole chain", func(t *testing.T) {
+	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
@@ -68,5 +69,45 @@ func TestChainDaemon(t *testing.T) {
 		require.NoError(err)
 
 		assert.True(b[0].Parents.Empty())
+	})
+
+	t.Run("chain ls with text encoding returns only CIDs", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		require := require.New(t)
+
+		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		defer daemon.ShutdownSuccess()
+
+		var blocks []types.Block
+		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
+		err := json.Unmarshal([]byte(blockJSON), &blocks)
+		genesisBlockCid := blocks[0].Cid().String()
+		require.NoError(err)
+
+		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+
+		expectedOutput := fmt.Sprintf("%s\n%s", newBlockCid, genesisBlockCid)
+
+		chainLsResult := daemon.RunSuccess("chain", "ls").ReadStdoutTrimNewlines()
+
+		assert.Equal(chainLsResult, expectedOutput)
+	})
+
+	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		defer daemon.ShutdownSuccess()
+
+		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+
+		chainLsResult := daemon.RunSuccess("chain", "ls", "--long").ReadStdoutTrimNewlines()
+
+		assert.Contains(chainLsResult, newBlockCid)
+		assert.Contains(chainLsResult, fixtures.TestMiners[0])
+		assert.Contains(chainLsResult, "1")
+		assert.Contains(chainLsResult, "0")
 	})
 }

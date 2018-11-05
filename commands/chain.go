@@ -2,6 +2,11 @@
 package commands
 
 import (
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
@@ -38,7 +43,11 @@ var chainHeadCmd = &cmds.Command{
 
 var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "dump full block chain",
+		Tagline:          "list blocks in the blockchain",
+		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
+	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption("long", "l", "list blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		for raw := range GetAPI(env).Chain().Ls(req.Context) {
@@ -58,4 +67,35 @@ var chainLsCmd = &cmds.Command{
 		}
 	},
 	Type: []types.Block{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]types.Block) error {
+			showAll, _ := req.Options["long"].(bool)
+			blocks := *res
+
+			for _, block := range blocks {
+				var output strings.Builder
+
+				if showAll {
+					output.WriteString(block.Cid().String())
+					output.WriteString("\t")
+					output.WriteString(block.Miner.String())
+					output.WriteString("\t")
+					output.WriteString(block.StateRoot.String())
+					output.WriteString("\t")
+					output.WriteString(strconv.FormatUint(uint64(block.Height), 10))
+					output.WriteString("\t")
+					output.WriteString(strconv.Itoa(len(block.Messages)))
+				} else {
+					output.WriteString(block.Cid().String())
+				}
+
+				_, err := fmt.Fprintln(w, output.String())
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		}),
+	},
 }
