@@ -6,22 +6,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/tools/faucet/limiter"
 )
 
 var log = logging.Logger("faucet")
+
+// Tick interval to cleanup wallet addrs that have passed the expiry time
+var limiterCleanTick = time.Minute * 15
+
+// Default timeout between wallet fund requests
+var defaultLimiterExpiry = time.Hour * 24
 
 func init() {
 	// Info level
 	logging.SetAllLoggers(4)
 }
 
+type timeImpl struct{}
+
+// Until returns the time.Duration until time.Time t
+func (mt *timeImpl) Until(t time.Time) time.Duration {
+	return time.Until(t)
+}
+
 func main() {
 	filapi := flag.String("fil-api", "localhost:3453", "set the api address of the filecoin node to use")
 	filwal := flag.String("fil-wallet", "", "(required) set the wallet address for the controlled filecoin node to send funds from")
+	expiry := flag.Duration("limiter-expiry", defaultLimiterExpiry, "minimum time duration between faucet request to the same wallet addr")
 	faucetval := flag.Int64("faucet-val", 500, "set the amount of fil to pay to each requester")
 	flag.Parse()
 
@@ -30,6 +47,16 @@ func main() {
 		flag.Usage()
 		return
 	}
+
+	addrLimiter := limiter.NewLimiter(&timeImpl{})
+
+	// Clean the limiter every limiterCleanTick
+	go func() {
+		c := time.Tick(limiterCleanTick)
+		for range c {
+			addrLimiter.Clean()
+		}
+	}()
 
 	http.HandleFunc("/", displayForm)
 	http.HandleFunc("/tap", func(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +71,13 @@ func main() {
 		if err != nil {
 			log.Errorf("Failed to parse target address: %s %s", target, err)
 			http.Error(w, fmt.Sprintf("Failed to parse target address %s %s", target, err.Error()), 400)
+			return
+		}
+
+		if readyIn, ok := addrLimiter.Ready(target); !ok {
+			log.Errorf("Limit hit for target address %s", target)
+			w.Header().Add("Retry-After", fmt.Sprintf("%d", int64(readyIn/time.Second)))
+			http.Error(w, fmt.Sprintf("Too Many Requests, please wait %s", readyIn), http.StatusTooManyRequests)
 			return
 		}
 
@@ -77,6 +111,8 @@ func main() {
 			http.Error(w, "faucet unmarshal failed", 500)
 			return
 		}
+
+		addrLimiter.Add(target, time.Now().Add(*expiry))
 
 		log.Info("Request successful. Message CID: %s", msgcid.String())
 		w.WriteHeader(200)
