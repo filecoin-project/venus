@@ -258,7 +258,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 		mustCloseChannel(t, targetDaemon, voucher, target)
 
 		// channel has been closed
-		lsStr := listChannelsAsStrs(d, payer)[0]
+		lsStr := listChannelsAsStrs(targetDaemon, payer)[0]
 		assert.Contains(lsStr, "no channels")
 
 		// channel's original locked funds minus the redeemed voucher amount
