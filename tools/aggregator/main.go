@@ -27,7 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	if *listenF == 0 {
-		log.Fatal("Ya'll please provide a port to bind on with -l")
+		log.Fatal("Ya'll please provide a port to bind on with -listen")
 	}
 
 	var priv crypto.PrivKey

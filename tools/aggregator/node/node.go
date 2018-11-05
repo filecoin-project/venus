@@ -137,7 +137,7 @@ func (a *Service) startInput() error {
 				if err != nil {
 					//TODO better handling
 					log.Errorf("hearbeat decode failed: %s", err)
-					return s.Close()
+					return err
 				}
 				a.Source <- event.LogEvent{
 					FromPeer:          peer,

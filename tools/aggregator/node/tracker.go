@@ -45,7 +45,7 @@ func NewTracker() *Tracker {
 
 // TrackConsensus updates the metrics Tracker keeps, threadsafe
 func (t *Tracker) TrackConsensus(peer, ts string) {
-	log.Debug("track peer: %s, tipset: %s", peer, ts)
+	log.Debugf("track peer: %s, tipset: %s", peer, ts)
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
@@ -53,7 +53,7 @@ func (t *Tracker) TrackConsensus(peer, ts string) {
 	// get the tipset the nodes is con currently
 	curTs, ok := t.NodeTips[peer]
 	if ok {
-		log.Debug("peer: %s, current tipset: %s", peer, curTs)
+		log.Debugf("peer: %s, current tipset: %s", peer, curTs)
 		t.TipsCount[curTs]--
 		if t.TipsCount[curTs] == 0 {
 			delete(t.TipsCount, curTs)
@@ -62,7 +62,7 @@ func (t *Tracker) TrackConsensus(peer, ts string) {
 
 	t.NodeTips[peer] = ts
 	t.TipsCount[ts]++
-	log.Debug("update peer: %s, tipset: %s, nodes at tipset: %d", peer, ts, t.TipsCount[ts])
+	log.Debugf("update peer: %s, tipset: %s, nodes at tipset: %d", peer, ts, t.TipsCount[ts])
 }
 
 // TrackerSummary generates a summary of the metrics Tracker keeps, threadsafe
@@ -73,6 +73,8 @@ func (t *Tracker) TrackerSummary() TrackerSummary {
 	nc, ht := nodesInConsensus(t.TipsCount)
 	nd := tn - nc
 
+	nodesConsensus.WithLabelValues(aggregatorLabel).Set(float64(nc))
+	nodesDispute.WithLabelValues(aggregatorLabel).Set(float64(nd))
 	return TrackerSummary{
 		TrackedNodes:     tn,
 		NodesInConsensus: nc,
@@ -97,10 +99,8 @@ func nodesInConsensus(tipsetCount map[string]int) (int, string) {
 		out = append(out, tr)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Rank > out[j].Rank })
-	if len(out) > 1 {
-		if out[0].Rank == out[1].Rank {
-			return 0, ""
-		}
+	if len(out) > 1 && out[0].Rank == out[1].Rank {
+		return 0, ""
 	}
 	return out[0].Rank, out[0].Tipset
 }

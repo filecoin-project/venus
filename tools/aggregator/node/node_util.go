@@ -37,10 +37,16 @@ func NewFullAddr(h host.Host) (ma.Multiaddr, error) {
 // TODO add promtheus metrics to call backs to measure # of connected peers
 func RegisterNotifyBundle(h host.Host) {
 	notify := &net.NotifyBundle{
-		ListenF:       func(n net.Network, m ma.Multiaddr) { log.Debugf("Listener Opened: %s", m.String()) },
-		ListenCloseF:  func(n net.Network, m ma.Multiaddr) { log.Debugf("Listened Closed: %s", m.String()) },
-		ConnectedF:    func(n net.Network, c net.Conn) { log.Infof("Node Connected: %s", c.RemotePeer().Pretty()) },
-		DisconnectedF: func(n net.Network, c net.Conn) { log.Infof("Node Disconnected: %s", c.RemotePeer().Pretty()) },
+		ListenF:      func(n net.Network, m ma.Multiaddr) { log.Debugf("Listener Opened: %s", m.String()) },
+		ListenCloseF: func(n net.Network, m ma.Multiaddr) { log.Debugf("Listened Closed: %s", m.String()) },
+		ConnectedF: func(n net.Network, c net.Conn) {
+			log.Infof("Node Connected: %s", c.RemotePeer().Pretty())
+			connectedNodes.WithLabelValues(aggregatorLabel).Inc()
+		},
+		DisconnectedF: func(n net.Network, c net.Conn) {
+			log.Infof("Node Disconnected: %s", c.RemotePeer().Pretty())
+			connectedNodes.WithLabelValues(aggregatorLabel).Dec()
+		},
 		OpenedStreamF: func(n net.Network, s net.Stream) { log.Debugf("Stream Opened: %s", s.Conn().RemotePeer().Pretty()) },
 		ClosedStreamF: func(n net.Network, s net.Stream) { log.Debugf("Stream Opened: %s", s.Conn().RemotePeer().Pretty()) },
 	}
