@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
 	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	"testing"
@@ -37,15 +38,14 @@ func TestIsWinningTicket(t *testing.T) {
 		{0xFF, 0, 5, false},
 	}
 
-
 	minerAddress := address.NewForTestGetter()()
-	ctx :=	context.Background()
+	ctx := context.Background()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
 	var st state.Tree
 
 	for _, c := range cases {
-		ptv :=	NewTestPowerTableView(c.myPower, c.totalPower)
+		ptv := NewTestPowerTableView(c.myPower, c.totalPower)
 		ticket := [sha256.Size]byte{}
 		ticket[0] = c.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
@@ -54,6 +54,29 @@ func TestIsWinningTicket(t *testing.T) {
 	}
 }
 
+func TestIsWinningTicketErrors(t *testing.T) {
+	assert := assert.New(t)
+
+	testCase := struct {
+		ticket     byte
+		myPower    int64
+		totalPower int64
+		wins       bool
+	}{0x00, 1, 5, true}
+
+	minerAddress := address.NewForTestGetter()()
+	ctx := context.Background()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+	var st state.Tree
+
+	ptv := NewFailingTestPowerTableView(testCase.myPower, testCase.totalPower)
+	ticket := [sha256.Size]byte{}
+	ticket[0] = testCase.ticket
+	r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
+	assert.False(r)
+	assert.Equal(err.Error(), "Couldn't get totalPower: something went wrong")
+}
 
 // worker test
 func TestCreateChallenge(t *testing.T) {
@@ -90,7 +113,7 @@ func TestCreateChallenge(t *testing.T) {
 
 // TestPowerTableView is an implementation of the powertable view used for testing mining
 // wherein each miner has 1/n power.
-type TestPowerTableView struct { minerPower, totalPower uint64 }
+type TestPowerTableView struct{ minerPower, totalPower uint64 }
 
 // NewTestPowerTableView creates a test power view with the given total power
 func NewTestPowerTableView(minerPower int64, totalPower int64) *TestPowerTableView {
@@ -105,8 +128,24 @@ func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore b
 	return uint64(tv.minerPower), nil
 }
 
-// HasPower always returns true.
 func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
 }
 
+type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }
+
+func NewFailingTestPowerTableView(minerPower int64, totalPower int64) *FailingTestPowerTableView {
+	return &FailingTestPowerTableView{uint64(minerPower), uint64(totalPower)}
+}
+
+func (tv *FailingTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+	return tv.totalPower, errors.New("something went wrong")
+}
+
+func (tv *FailingTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+	return uint64(tv.minerPower), nil
+}
+
+func (tv *FailingTestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+	return true
+}
