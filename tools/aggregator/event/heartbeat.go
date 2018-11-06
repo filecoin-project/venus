@@ -10,23 +10,23 @@ import (
 	fcmetrics "github.com/filecoin-project/go-filecoin/metrics"
 )
 
-// LogEvent contains a heartbeat, the time it was received and who it was from
-type LogEvent struct {
+// HeartbeatEvent contains a heartbeat, the time it was received and who it was from
+type HeartbeatEvent struct {
 	// FromPeer is who created the event
 	FromPeer peer.ID `json:"peer"`
 	// ReceivedTimestamp represents when the event was received
 	ReceivedTimestamp time.Time `json:"timestamp"`
-	// Heartbeat data sent with event
+	// Heartbeat data sent by `FromPeer`
 	Heartbeat fcmetrics.Heartbeat `json:"heartbeat"`
 }
 
 // MarshalJSON marshals a LogEvent to json
-func (t LogEvent) MarshalJSON() (data []byte, err error) {
+func (t HeartbeatEvent) MarshalJSON() (data []byte, err error) {
 	event := t.getJSONMap()
 	return jsoniter.Marshal(event)
 }
 
-func (t LogEvent) getJSONMap() map[string]interface{} {
+func (t HeartbeatEvent) getJSONMap() map[string]interface{} {
 	event := map[string]interface{}{
 		"receivedTimestamp": t.ReceivedTimestamp.UTC().Format(`2000-01-01T15:04:05.999999999Z`),
 		"fromPeer":          t.FromPeer.Pretty(),

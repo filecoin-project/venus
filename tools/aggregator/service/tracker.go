@@ -2,26 +2,24 @@ package aggregator
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 )
 
 // Tracker tracks node consensus from heartbeats
 type Tracker struct {
-	// NodeTips tracks what tipset a node is on
+	// NodeTips is a mapping from peerID's to Tipsets
 	NodeTips map[string]string
-	// TipsCount tacks how many nodes are at each tipset
+	// TipsCount is a mapping from tipsets to number of peers mining on said tipset.
 	TipsCount map[string]int
+	// TrackedNodes is the set of nodes currently connected to the aggregator, this
+	// value is updated using the net.NotifyBundle in service_utils.go
+	TrackedNodes map[string]struct{}
 
-	// TODO replace with value calculated from net/BundleNotify callbacks
-	trackedNodes map[string]struct{}
-	// Protects maps
+	// mutex that protects access to the fields in Tracker:
+	// - NodeTips
+	// - TipsCount
+	// - TrackedNodes
 	mux sync.Mutex
-}
-
-type tipsetRank struct {
-	Tipset string
-	Rank   int
 }
 
 // TrackerSummary represents the information a tracker has on the nodes
@@ -35,12 +33,33 @@ type TrackerSummary struct {
 
 // NewTracker initializes a tracker
 func NewTracker() *Tracker {
-	// TODO add a context here else you can't shutdown all nice and purdey
 	return &Tracker{
-		trackedNodes: make(map[string]struct{}),
+		TrackedNodes: make(map[string]struct{}),
 		NodeTips:     make(map[string]string),
 		TipsCount:    make(map[string]int),
 	}
+}
+
+func (t *Tracker) ConnectNode(peer string) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	t.TrackedNodes[peer] = struct{}{}
+	connectedNodes.WithLabelValues(aggregatorLabel).Inc()
+}
+
+func (t *Tracker) DisconnectNode(peer string) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	delete(t.TrackedNodes, peer)
+	curTs := t.NodeTips[peer]
+	t.TipsCount[curTs]--
+	if t.TipsCount[curTs] == 0 {
+		delete(t.TipsCount, curTs)
+	}
+	delete(t.NodeTips, peer)
+	connectedNodes.WithLabelValues(aggregatorLabel).Dec()
 }
 
 // TrackConsensus updates the metrics Tracker keeps, threadsafe
@@ -49,7 +68,6 @@ func (t *Tracker) TrackConsensus(peer, ts string) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	t.trackedNodes[peer] = struct{}{}
 	// get the tipset the nodes is con currently
 	curTs, ok := t.NodeTips[peer]
 	if ok {
@@ -69,7 +87,7 @@ func (t *Tracker) TrackConsensus(peer, ts string) {
 func (t *Tracker) TrackerSummary() TrackerSummary {
 	t.mux.Lock()
 	defer t.mux.Unlock()
-	tn := len(t.trackedNodes)
+	tn := len(t.TrackedNodes)
 	nc, ht := nodesInConsensus(t.TipsCount)
 	nd := tn - nc
 
@@ -86,21 +104,4 @@ func (t *Tracker) TrackerSummary() TrackerSummary {
 func (t *Tracker) String() string {
 	ts := t.TrackerSummary()
 	return fmt.Sprintf("Tracked Nodes: %d, In Consensus: %d, In Dispute: %d, HeaviestTipset: %s", ts.TrackedNodes, ts.NodesInConsensus, ts.NodesInDispute, ts.HeaviestTipset)
-}
-
-// nodesInConsensus calculates the number of nodes in consunsus and the heaviesttipset
-func nodesInConsensus(tipsetCount map[string]int) (int, string) {
-	var out []tipsetRank
-	for t, r := range tipsetCount {
-		tr := tipsetRank{
-			Tipset: t,
-			Rank:   r,
-		}
-		out = append(out, tr)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Rank > out[j].Rank })
-	if len(out) > 1 && out[0].Rank == out[1].Rank {
-		return 0, ""
-	}
-	return out[0].Rank, out[0].Tipset
 }

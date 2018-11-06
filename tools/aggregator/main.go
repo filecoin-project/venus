@@ -1,15 +1,42 @@
 package main
 
+/*
+The Aggregator Service is responsible consuming heartbeats from Filecoin Nodes
+and producing metrics and stats from the heartbeats. Currently the Aggregator exports
+the following metrics:
+
+- connected_nodes:
+	Number of nodes connected to the Aggregator. This value is calculated using
+	the notifee interface, and is incremented each time Connected is called and
+	decremented each time Disconnect is called.
+
+- nodes_in_consensus:
+	Calculated by keeping a map of peerID's to Tipsets. This value is represented
+	by the largest set of nodes with a common tipset. If there is a tie for the
+	largest set this value is 0.
+
+- nodes_in_dispute:
+	Calculated by keeping a map of peerID's to Tipsets. This value is represented
+	by all nodes not contained in the largest set of nodes with a common tipset.
+	If there is a tie for the largest set this value is equal to
+	connected_nodes (meaning all nodes are out of consensus).
+
+for more context please refer to:
+https://github.com/filecoin-project/go-filecoin/issues/1235
+*/
+
 import (
 	"context"
 	"crypto/rand"
 	"flag"
 	"io/ioutil"
+	"os"
+	"os/signal"
 
 	crypto "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
 	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
 
-	"github.com/filecoin-project/go-filecoin/tools/aggregator/node"
+	"github.com/filecoin-project/go-filecoin/tools/aggregator/service"
 )
 
 var log = logging.Logger("aggregator")
@@ -23,8 +50,6 @@ func main() {
 	listenF := flag.Int("listen", 0, "port to wait for incoming connections")
 	peerKeyFile := flag.String("keyfile", "", "path to key pair file to generate pid from")
 	flag.Parse()
-
-	ctx := context.Background()
 
 	if *listenF == 0 {
 		log.Fatal("Ya'll please provide a port to bind on with -listen")
@@ -46,6 +71,16 @@ func main() {
 		}
 	}
 
+	// Set up interrupts and child context `cctx`
+	osSignalChan := make(chan os.Signal, 1)
+	signal.Notify(osSignalChan, os.Kill, os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func(cancel context.CancelFunc) {
+		sig := <-osSignalChan
+		log.Info(sig)
+		cancel()
+	}(cancel)
+
 	// Make a host that listens on the given port
 	an, err := aggregator.New(ctx, *listenF, priv)
 	if err != nil {
@@ -53,13 +88,8 @@ func main() {
 	}
 
 	// run it till it dies
-	if err := an.Start(ctx); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := an.Wait(); err != nil {
-		log.Fatal(err)
-	}
+	an.Run(ctx)
+	<-ctx.Done()
 
 }
 

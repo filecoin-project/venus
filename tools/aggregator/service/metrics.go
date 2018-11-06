@@ -28,7 +28,7 @@ var (
 
 	nodesDispute = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "nodes_in_disput",
+			Name: "nodes_in_dispute",
 			Help: "number of nodes in dispute",
 		},
 		[]string{aggregatorLabel},

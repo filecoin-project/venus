@@ -11,7 +11,8 @@ import (
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
 )
 
-// NewLibp2pHost creates a new libp2p host that listens on port `port`
+// NewLibp2pHost creates a new libp2p host that listens on port `port`, and will
+// have a peerID based on `priv`.
 func NewLibp2pHost(ctx context.Context, priv crypto.PrivKey, port int) (host.Host, error) {
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port)),
@@ -33,19 +34,19 @@ func NewFullAddr(h host.Host) (ma.Multiaddr, error) {
 	return h.Addrs()[0].Encapsulate(hAddr), nil
 }
 
-// RegisterNotifyBundle adds a net.NotifyBundle to host `h`
-// TODO add promtheus metrics to call backs to measure # of connected peers
-func RegisterNotifyBundle(h host.Host) {
+// RegisterNotifyBundle adds a net.NotifyBundle to host `h` and will update
+// Tracker `t`'s TrackedNodes value.
+func RegisterNotifyBundle(h host.Host, t *Tracker) {
 	notify := &net.NotifyBundle{
 		ListenF:      func(n net.Network, m ma.Multiaddr) { log.Debugf("Listener Opened: %s", m.String()) },
 		ListenCloseF: func(n net.Network, m ma.Multiaddr) { log.Debugf("Listened Closed: %s", m.String()) },
 		ConnectedF: func(n net.Network, c net.Conn) {
 			log.Infof("Node Connected: %s", c.RemotePeer().Pretty())
-			connectedNodes.WithLabelValues(aggregatorLabel).Inc()
+			t.ConnectNode(c.RemotePeer().String())
 		},
 		DisconnectedF: func(n net.Network, c net.Conn) {
-			log.Infof("Node Disconnected: %s", c.RemotePeer().Pretty())
-			connectedNodes.WithLabelValues(aggregatorLabel).Dec()
+			log.Warningf("Node Disconnected: %s", c.RemotePeer().Pretty())
+			t.DisconnectNode(c.RemotePeer().String())
 		},
 		OpenedStreamF: func(n net.Network, s net.Stream) { log.Debugf("Stream Opened: %s", s.Conn().RemotePeer().Pretty()) },
 		ClosedStreamF: func(n net.Network, s net.Stream) { log.Debugf("Stream Opened: %s", s.Conn().RemotePeer().Pretty()) },
