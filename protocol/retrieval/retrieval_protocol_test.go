@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -71,21 +72,27 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	// wait for commitSector to make it into the chain
 	cancelA := make(chan struct{})
 	cancelB := make(chan struct{})
+	errCh := make(chan error)
 	defer close(cancelA)
 	defer close(cancelB)
+	defer close(errCh)
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA):
+	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA, errCh):
+	case err = <-errCh:
+		require.NoError(err)
 	case <-time.After(120 * time.Second):
 		cancelA <- struct{}{}
-		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in miner node's chain", testSectorSize, minerOwnerAddr)
+		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in **miner** node's chain", testSectorSize, minerOwnerAddr)
 	}
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB):
+	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB, errCh):
+	case err = <-errCh:
+		require.NoError(err)
 	case <-time.After(120 * time.Second):
 		cancelB <- struct{}{}
-		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in client node's chain", testSectorSize, minerOwnerAddr)
+		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in **client** node's chain", testSectorSize, minerOwnerAddr)
 	}
 
 	// retrieve piece by CID and compare bytes with what we sent to miner
@@ -118,7 +125,8 @@ func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient
 
 // firstMatchingMsgInChain queries the blockchain history in a loop for a block
 // with matching properties, publishing the first match to the returned channel.
-func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager chain.ReadStore, msgMethod string, msgSenderAddr address.Address, cancelCh <-chan struct{}) <-chan *types.Block {
+// Note: this function should probably be API porcelain.
+func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager chain.ReadStore, msgMethod string, msgSenderAddr address.Address, cancelCh <-chan struct{}, errCh chan<- error) <-chan *types.Block {
 	out := make(chan *types.Block)
 
 	go func() {
@@ -132,13 +140,16 @@ func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager cha
 				select {
 				case <-cancelCh:
 					return
-				case event, ok := <-history:
-					if !ok {
+				case event, more := <-history:
+					if !more {
 						break Loop
 					}
 
 					ts, ok := event.(consensus.TipSet)
-					require.True(t, ok, "expected a TipSet")
+					if !ok {
+						errCh <- fmt.Errorf("expected a TipSet, got a %T with value %v", event, event)
+						return
+					}
 
 					for _, block := range ts.ToSlice() {
 						for _, message := range block.Messages {
@@ -161,7 +172,8 @@ func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager cha
 func createRandomPieceInfo(t *testing.T, blockService blockservice.BlockService, n uint64) (*sectorbuilder.PieceInfo, []byte) {
 	randomBytes := createRandomBytes(t, n)
 	node := merkledag.NewRawNode(randomBytes)
-	blockService.AddBlock(node)
+	err := blockService.AddBlock(node)
+	require.NoError(t, err)
 
 	size, err := node.Size()
 	require.NoError(t, err)

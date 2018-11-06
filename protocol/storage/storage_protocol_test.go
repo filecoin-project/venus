@@ -143,7 +143,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	if waitTimeout(&wg, 120*time.Second) {
 		state, message := requireQueryDeal()
 		require.NotEqual(Failed, state, message)
-		assert.Fail("waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
+		assert.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
 	}
 	require.True(foundCommit, "no commitSector on chain")
 	require.True(foundPoSt, "no submitPoSt on chain")
