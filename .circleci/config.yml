@@ -1,4 +1,36 @@
 version: 2
+aliases:
+  - &install_awscli
+    name: Install AWS CLI
+    command: |
+      sudo apt-get install -y python-pip libyaml-dev python-dev jq
+      sudo pip install awscli
+  - &install_terraform
+    name: install Terraform
+    command: |
+      wget -O /tmp/terraform_0.11.8_linux_amd64.zip https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
+      unzip -d /go/bin/ /tmp/terraform_0.11.8_linux_amd64.zip
+      chmod +x /go/bin/terraform
+  - &init_terraform
+    name: init Terraform
+    command: |
+      export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+      export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
+      cd ~/go/src/github.com/filecoin-project/go-filecoin/terraform/providers/aws/us-east-1/
+      terraform init
+  - &run_terraform
+    name: plan & apply Terraform
+    command: |
+      export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+      export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
+      export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+      cd ~/go/src/github.com/filecoin-project/go-filecoin/terraform/providers/aws/us-east-1/
+      terraform get && terraform plan -input=false \
+      -var docker_tag=$SHORT_GIT_SHA -var prometheus_httpasswd="NOT_SET" -var alertmanager_httpasswd="NOT_SET" \
+      -var kittyhawk-node-keys-pass="NOT_SET" -var alerts_slack_api_url="NOT_SET" \
+      -target=$TERRAFORM_TARGET -out sync.out 
+      terraform apply sync.out
+
 jobs:
   build_macos:
     macos:
@@ -102,7 +134,9 @@ jobs:
       - run: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
 
       - restore_cache:
-          key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          keys:
+            - v4-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+            - v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -124,6 +158,16 @@ jobs:
 
       - save_cache:
           key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+          paths:
+            - "/go/pkg"
+            - "/go/src/gx"
+            - "/go/src/github.com"
+            - "/go/src/golang.org"
+            - "/home/circleci/.rustup"
+            - "/home/circleci/.cargo"
+
+      - save_cache:
+          key: v4-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -160,6 +204,76 @@ jobs:
       - store_artifacts:
           path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
           destination: filecoin.tar.gz
+
+
+  build_docker_img:
+    docker:
+      - image: circleci/golang:latest
+
+    resource_class: large
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - setup_remote_docker:
+          docker_layer_caching: true 
+
+      - run: *install_awscli
+      - run:
+          name: login to ECR
+          command: |
+            export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
+            export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
+            eval $(aws --region us-east-1 ecr --no-include-email get-login)
+
+      # The first checkout ensures we have the files needed to restore the cache
+      - checkout
+
+      # Pull in all submodules (inc. rust-proofs)
+      - run: git submodule update --init
+
+      - run:
+          name: build & push image
+          command: |
+            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+            docker build -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
+
+  deploy_nightly_cluster:
+    docker:
+      - image: circleci/golang:latest
+        environment:
+          TERRAFORM_TARGET: module.kh-nightly
+    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - checkout
+      - run: *install_awscli
+      - run: *install_terraform
+      - run: *init_terraform
+      - run: *run_terraform
+
+  deploy_test_cluster:
+    docker:
+      - image: circleci/golang:latest
+        environment:
+          TERRAFORM_TARGET: module.kh-test
+    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - checkout
+      - run: *install_awscli
+      - run: *install_terraform
+      - run: *init_terraform
+      - run: *run_terraform
+
+
 experimental:
   notify:
     branches:
@@ -173,3 +287,58 @@ workflows:
     jobs:
       - build_macos
       - build_linux
+      - build_docker_img:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              only:
+                - master
+
+  build_test_cluster:
+    jobs:
+      - build_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+      - build_docker_img:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+      - deploy_test_cluster:
+          requires:
+            - build_docker_img
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^redeploy_test_cluster/
+
+  build_nightly_cluster:
+    triggers:
+      - schedule:
+          cron: "0 6 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_linux
+      - build_docker_img:
+          requires:
+            - build_linux
+      - deploy_nightly_cluster:
+          requires:
+            - build_docker_img

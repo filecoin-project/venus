@@ -96,8 +96,8 @@ resource "aws_instance" "this" {
   }
 
   provisioner "file" {
-    content     = "${file("${path.module}/node_keys.zip")}"
-    destination = "/home/ubuntu/node_keys.zip"
+    content     = "${file("${path.module}/node_keys.zip.gpg")}"
+    destination = "/home/ubuntu/node_keys.zip.gpg"
 
     connection {
       type = "ssh"

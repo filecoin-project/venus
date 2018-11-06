@@ -44,7 +44,73 @@ resource "aws_iam_policy" "ecr_allow_all" {
 EOF
 }
 
+resource "aws_iam_policy" "ssm-node-keys-pass" {
+  name        = "ssm-node-keys-pass"
+  description = "Allow SSM node-keys-pass"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": "ssm:GetParameter",
+            "Resource": "arn:aws:ssm:us-east-1:657871693752:parameter/kittyhawk-node-keys-pass"
+        }
+    ]
+}
+EOF
+}
+#"arn:aws:ssm:*:*:parameter/kittyhawk-node-keys-pass",
+
+#TODO move these to ec2 kittyhawk module
 resource "aws_iam_role_policy_attachment" "filecoin_kittyhawk-ecr_allow_all" {
   role       = "${aws_iam_role.filecoin_kittyhawk.name}"
   policy_arn = "${aws_iam_policy.ecr_allow_all.arn}"
+}
+
+resource "aws_iam_role_policy_attachment" "filecoin-kittyhawk_ssm-node-keys-pass" {
+  role       = "${aws_iam_role.filecoin_kittyhawk.name}"
+  policy_arn = "${aws_iam_policy.ssm-node-keys-pass.arn}"
+}
+
+
+resource "aws_iam_group" "ecr-users" {
+  name = "ecr-users"
+}
+
+resource "aws_iam_policy" "ecr-allow-push-pull" {
+  name = "ecr-allow-push-pull"
+  description = "Allow ECR Push&Pull"
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+                "ecr:DescribeImages",
+                "ecr:GetAuthorizationToken",
+                "ecr:DescribeRepositories",
+                "ecr:ListImages",
+                "ecr:InitiateLayerUpload",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetRepositoryPolicy",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart",
+                "ecr:CompleteLayerUpload"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_group_policy_attachment" "ecr-users_ecr-allow-push-pull" {
+  group = "${aws_iam_group.ecr-users.name}"
+  policy_arn = "${aws_iam_policy.ecr-allow-push-pull.arn}"
 }
