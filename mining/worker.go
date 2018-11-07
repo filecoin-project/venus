@@ -64,7 +64,7 @@ type DefaultWorker struct {
 
 	// consensus thing struct
 	getStateTree GetStateTree
-	getWeight    GetWeight  // TODO: no longer needed
+	getWeight    GetWeight // TODO: no longer needed
 
 	// core filecoin things
 	messagePool   *core.MessagePool
@@ -86,7 +86,7 @@ func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, 
 func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree:  getStateTree,
-		getWeight:     getWeight,  // TODO: no longer needed
+		getWeight:     getWeight, // TODO: no longer needed
 		messagePool:   messagePool,
 		applyMessages: applyMessages,
 		powerTable:    powerTable,

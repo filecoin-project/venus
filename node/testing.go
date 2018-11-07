@@ -230,7 +230,7 @@ func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif conse
 	nd, err := New(context.Background(), opts...)
 
 	if alwaysWinningTicket {
-		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1),uint64(1))
+		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
 		newCon := consensus.NewExpected(nd.CborStore(), nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
 		newChainStore, ok := nd.ChainReader.(chain.Store)
 		require.True(t, ok)

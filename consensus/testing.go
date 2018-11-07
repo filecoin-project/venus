@@ -68,4 +68,3 @@ func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore b
 func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
 }
-
