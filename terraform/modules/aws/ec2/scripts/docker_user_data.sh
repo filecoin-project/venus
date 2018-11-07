@@ -17,7 +17,7 @@ ${setup_instance_storage}
 DOCKER_OVERRIDE=$$(cat <<-END
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376
+ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376 -g /mnt/storage/docker
 END
                )
 DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
@@ -45,7 +45,7 @@ docker run -d \
        -e REACT_APP_API_PORT=34530 -e REACT_APP_API_URL="${instance_name}.kittyhawk.wtf" \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer
 
-docker network create --subnet 172.19.0.0/16 filecoin
+docker network create --subnet 172.19.0.0/24 filecoin
 # DASHBOARD
 docker run -d --name=dashboard-aggregator \
        --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 -p 19000:9000 \
@@ -100,6 +100,8 @@ do
   docker run -d \
          --name "filecoin-$$i" --hostname "filecoin-$$i" \
          --network=filecoin -p "900$$i:9000" -p "3453$$i:3453" \
+         --ip "172.19.0.1$${i}" \
+         --entrypoint=/usr/local/bin/cluster_start \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor -e FILECOIN_PATH="/var/local/filecoin" \
