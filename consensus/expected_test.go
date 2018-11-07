@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+
 	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
@@ -78,7 +79,6 @@ func TestIsWinningTicketErrors(t *testing.T) {
 	assert.Equal(err.Error(), "Couldn't get totalPower: something went wrong")
 }
 
-// worker test
 func TestCreateChallenge(t *testing.T) {
 	assert := assert.New(t)
 

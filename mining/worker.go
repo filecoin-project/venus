@@ -62,9 +62,9 @@ type DefaultWorker struct {
 	createPoST DoSomeWorkFunc  // TODO: rename createPoSTFunc
 	minerAddr  address.Address // TODO: needs to be a key in the near future
 
-	// consensus thing struct
+	// consensus things
 	getStateTree GetStateTree
-	getWeight    GetWeight // TODO: no longer needed
+	getWeight    GetWeight
 
 	// core filecoin things
 	messagePool   *core.MessagePool
@@ -86,7 +86,7 @@ func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, 
 func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree:  getStateTree,
-		getWeight:     getWeight, // TODO: no longer needed
+		getWeight:     getWeight,
 		messagePool:   messagePool,
 		applyMessages: applyMessages,
 		powerTable:    powerTable,
@@ -145,7 +145,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 
 	// TODO: Test the interplay of isWinningTicket() and createPoST()
 
-	// state tree, ticket, miner address
 	weHaveAWinner, err := consensus.IsWinningTicket(ctx, w.blockstore, w.powerTable, st, ticket, w.minerAddr)
 
 	if err != nil {

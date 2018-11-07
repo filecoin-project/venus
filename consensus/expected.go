@@ -252,8 +252,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, pSt state.
 
 // validateMining throws an error if any tipset's block was mined by an invalid
 // miner address.
-
-// Q: should this really be tried for every block in the tipset? If so spec should be updated.
+// See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet) error {
 
 	// TODO: Recompute the challenge
@@ -280,10 +279,12 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet)
 	return errors.New("miner ticket is invalid")
 }
 
+// IsWinningTicket fetches miner power & total power, returns true if it's a winning ticket, false if not,
+//    errors out if minerPower or totalPower can't be found.
+//    See https://github.com/filecoin-project/aq/issues/70 for an explanation of the math here.
 func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree,
 	ticket types.Signature, miner address.Address) (bool, error) {
 
-	// See https://github.com/filecoin-project/aq/issues/70 for an explanation of the math here.
 	totalPower, err := ptv.Total(ctx, st, bs)
 	if err != nil {
 		return false, errors.Wrap(err, "Couldn't get totalPower")
@@ -303,9 +304,10 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 	return lhs.Cmp(rhs) < 0, nil
 }
 
-// TODO -- in general this won't work with only the base tipset, we'll potentially
-// need some chain manager utils, similar to the State function, to sample
-// further back in the chain.
+// CreateChallenge creates/recreates the block challenge for purposes of validation.
+//   TODO -- in general this won't work with only the base tipset, we'll potentially
+//     need some chain manager utils, similar to the State function, to sample
+//     further back in the chain.
 func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
