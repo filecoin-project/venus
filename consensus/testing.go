@@ -23,9 +23,9 @@ func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.
 	return uint64(1), nil
 }
 
-// Miner always returns 0.
+// Miner always returns 1.
 func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(0), nil
+	return uint64(1), nil
 }
 
 // HasPower always returns true.
@@ -46,4 +46,28 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) TipSet 
 func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts TipSet) {
 	err := ts.AddBlock(blk)
 	require.NoError(err)
+}
+
+// TestPowerTableView is an implementation of the powertable view used for testing mining
+// wherein each miner has totalPower/minerPower power.
+type TestPowerTableView struct{ minerPower, totalPower uint64 }
+
+// NewTestPowerTableView creates a test power view with the given total power
+func NewTestPowerTableView(minerPower uint64, totalPower uint64) *TestPowerTableView {
+	return &TestPowerTableView{minerPower, totalPower}
+}
+
+// Total always returns value that was supplied to NewTestPowerTableView.
+func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+	return tv.totalPower, nil
+}
+
+// Miner always returns value that was supplied to NewTestPowerTableView.
+func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+	return tv.minerPower, nil
+}
+
+// HasPower always returns true.
+func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+	return true
 }

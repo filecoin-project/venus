@@ -16,6 +16,12 @@ func init() {
 }
 
 // Block is a block in the blockchain.
+// TODO: Add/update these fields
+//   * BlockSig Signature
+//   * MsgRoot
+//   * Proof
+//   * ReceiptsRoot
+//   * Tickets []Signature  the parent tickets
 type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
