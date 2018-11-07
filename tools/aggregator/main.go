@@ -73,7 +73,7 @@ func main() {
 
 	// Set up interrupts and child context `cctx`
 	osSignalChan := make(chan os.Signal, 1)
-	signal.Notify(osSignalChan, os.Kill, os.Interrupt)
+	signal.Notify(osSignalChan, os.Interrupt)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func(cancel context.CancelFunc) {
 		sig := <-osSignalChan

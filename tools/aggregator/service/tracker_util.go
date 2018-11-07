@@ -9,7 +9,7 @@ type tipsetRank struct {
 	Rank   int
 }
 
-// nodesInConsensus calculates the number of nodes in consunsus and the heaviesttipset
+// nodesInConsensus calculates the number of nodes in consensus and the heaviesttipset
 func nodesInConsensus(tipsetCount map[string]int) (int, string) {
 	var out []tipsetRank
 	for t, r := range tipsetCount {

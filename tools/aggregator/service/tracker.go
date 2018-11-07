@@ -40,6 +40,8 @@ func NewTracker() *Tracker {
 	}
 }
 
+// ConnectNode will add a node to the trackers `TrackedNode` set and
+// increment the connected_nodes prometheus metric.
 func (t *Tracker) ConnectNode(peer string) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
@@ -48,6 +50,8 @@ func (t *Tracker) ConnectNode(peer string) {
 	connectedNodes.WithLabelValues(aggregatorLabel).Inc()
 }
 
+// DisconnectNode will remove a node from the trackers `TrackedNode` set and
+// decrement the connected_nodes prometheus metric.
 func (t *Tracker) DisconnectNode(peer string) {
 	t.mux.Lock()
 	defer t.mux.Unlock()

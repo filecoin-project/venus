@@ -95,9 +95,7 @@ TESTLOOP:
 				break TESTLOOP
 			}
 		}
-		break
 	}
-	t.Log("Tracking 2 nodes")
 	testFail.Stop()
 
 	nodes[1].Stop(ctx)
@@ -112,7 +110,6 @@ TESTLOOP:
 			}
 		}
 	}
-	t.Log("Tracking 1 node")
 
 }
 

@@ -13,14 +13,14 @@ import (
 // HeartbeatEvent contains a heartbeat, the time it was received and who it was from
 type HeartbeatEvent struct {
 	// FromPeer is who created the event
-	FromPeer peer.ID `json:"peer"`
+	FromPeer peer.ID `json:"fromPeer"`
 	// ReceivedTimestamp represents when the event was received
-	ReceivedTimestamp time.Time `json:"timestamp"`
+	ReceivedTimestamp time.Time `json:"receivedTimestamp"`
 	// Heartbeat data sent by `FromPeer`
 	Heartbeat fcmetrics.Heartbeat `json:"heartbeat"`
 }
 
-// MarshalJSON marshals a LogEvent to json
+// MarshalJSON marshals a HeartbeatEvent to json
 func (t HeartbeatEvent) MarshalJSON() (data []byte, err error) {
 	event := t.getJSONMap()
 	return jsoniter.Marshal(event)

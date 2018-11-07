@@ -33,11 +33,9 @@ type Service struct {
 	// FullAddress is the complete multiaddress this Service is dialable on.
 	FullAddress ma.Multiaddr
 
-	// Tracer keeps track of how many nodes are connected to the aggregator service
+	// Tracker keeps track of how many nodes are connected to the aggregator service
 	// as well as how many filecoin nodes are in and not in consensus.
 	Tracker *Tracker
-
-	ctx context.Context
 }
 
 // New creates a new aggregator service that listens on `listenPort` for
@@ -67,7 +65,7 @@ func New(ctx context.Context, listenPort int, priv crypto.PrivKey) (*Service, er
 	}, nil
 }
 
-// Run will start a gorutine for each new connection from a filecoin node, and
+// Run will start a goroutine for each new connection from a filecoin node, and
 // add the connected nodes heartbeat to consensus tracking.
 func (a *Service) Run(ctx context.Context) {
 	// we create an error group the manage error handling in the
@@ -86,16 +84,17 @@ func (a *Service) Run(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				default:
+					// TODO Decode blocks if there is no data, meaning the above ctx.Done
+					// check will not be hit, this can be fixed using go errgroups.
 					// Assume first the message is JSON and try to decode it
 					var hb fcmetrics.Heartbeat
 					err := dec.Decode(&hb)
 					if err != nil {
 						if err.Error() == "connection reset" {
 							return
-						} else {
-							log.Errorf("hearbeat decode failed: %s", err)
-							return
 						}
+						log.Errorf("heartbeat decode failed: %s", err)
+						return
 					}
 					a.Tracker.TrackConsensus(peer.String(), hb.Tipset)
 				}
