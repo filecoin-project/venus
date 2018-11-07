@@ -1,0 +1,11 @@
+#!/bin/sh
+set -x
+
+echo "in cluster_start"
+grep -qs "minerAddress" /var/local/filecoin/config.toml /dev/null 2>&1
+if [ "$?" -eq "0" ]; then
+  echo "minerAddress exists, likely restart"
+  (/usr/local/bin/node_restart)&
+fi
+
+exec /usr/local/bin/start_filecoin "$@"

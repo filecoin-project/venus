@@ -1,0 +1,20 @@
+#!/bin/sh
+set -ex
+filecoin_repo="/var/local/filecoin"
+filecoin_exec="go-filecoin --repodir=${filecoin_repo}"
+
+
+while [ ! -f "${filecoin_repo}/api" ]
+do
+  echo "Waiting for daemon to start..." && sleep 1
+done
+
+${filecoin_exec} log streamto /ip4/172.19.0.250/tcp/9000 &
+
+for node_addr in $(cat /var/filecoin/car/peers.txt)
+do
+  echo "re-joining with peer at: ${node_addr}"
+  $filecoin_exec swarm connect "${node_addr}" || true
+done
+
+${filecoin_exec} mining start
