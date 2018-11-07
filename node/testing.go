@@ -193,7 +193,7 @@ func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, op
 	return node
 }
 
-func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
+func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
@@ -229,8 +229,8 @@ func genNode(t *testing.T, offlineMode bool, mockMineMode bool, gif consensus.Ge
 
 	nd, err := New(context.Background(), opts...)
 
-	if mockMineMode {
-		nd.PowerTable = &consensus.TestView{}
+	if alwaysWinningTicket {
+		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1),uint64(1))
 		newCon := consensus.NewExpected(nd.CborStore(), nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
 		newChainStore, ok := nd.ChainReader.(chain.Store)
 		require.True(t, ok)

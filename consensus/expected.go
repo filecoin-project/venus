@@ -258,8 +258,12 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet)
 
 	// TODO: Recompute the challenge
 	// 		return error if challenge failed
-	// TODO: validate the proof with PoST.Verify() ?
+
+	// TODO: validate the proof with PoST.Verify() -- you may have to refactor s.t. you'll be
+	// able to swap out RustProver for testing purposes (see storage/miner#generatePoSt) so
+	//  verify can be faked out when 'alwaysWinningTicket' is passed as true to node/testing#genNode
 	// 		return error if proof invalid
+
 	// TODO: validate that the ticket is a valid signature over the hash of the proof
 	// 		return error if signature invalid
 

@@ -20,8 +20,8 @@ func TestIsWinningTicket(t *testing.T) {
 
 	cases := []struct {
 		ticket     byte
-		myPower    int64
-		totalPower int64
+		myPower    uint64
+		totalPower uint64
 		wins       bool
 	}{
 		{0x00, 1, 5, true},
@@ -45,7 +45,7 @@ func TestIsWinningTicket(t *testing.T) {
 	var st state.Tree
 
 	for _, c := range cases {
-		ptv := NewTestPowerTableView(c.myPower, c.totalPower)
+		ptv := consensus.NewTestPowerTableView(c.myPower, c.totalPower)
 		ticket := [sha256.Size]byte{}
 		ticket[0] = c.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
@@ -109,27 +109,6 @@ func TestCreateChallenge(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal(decoded, r)
 	}
-}
-
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has 1/n power.
-type TestPowerTableView struct{ minerPower, totalPower uint64 }
-
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower int64, totalPower int64) *TestPowerTableView {
-	return &TestPowerTableView{uint64(minerPower), uint64(totalPower)}
-}
-
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return tv.totalPower, nil
-}
-
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(tv.minerPower), nil
-}
-
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
 }
 
 type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }
