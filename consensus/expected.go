@@ -39,7 +39,7 @@ var (
 	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
 	ErrInvalidBase = errors.New("block does not connect to a known good chain")
 	// ErrUnorderedTipSets is returned when weight and minticket are the same between two tipsets.
-	ErrUnorderedTipSets = errors.New("two tipsets exist with the same weight and min ticket")
+	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
 )
 
 // ECV is the constant V defined in the EC spec.

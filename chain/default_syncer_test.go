@@ -451,7 +451,6 @@ func TestBlocksNotATipSet(t *testing.T) {
 
 // Syncer is capable of recovering from a fork reorg after Load.
 func TestLoadFork(t *testing.T) {
-	t.Skip()
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chain, cst, r := initSyncTestDefault(require)
