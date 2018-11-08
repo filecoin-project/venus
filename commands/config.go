@@ -15,16 +15,26 @@ var configCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get and set filecoin config values",
 		ShortDescription: `
-go-filecoin config controls configuration variables.  It works similar to
-'git config'.  The configuration values are stored in a config file inside
-your filecoin repo.  Specify the key as a period separated string of object
-keys. Specify the value to set as a toml value`,
+go-filecoin config controls configuration variables. It works similar to
+'git config'. The configuration values are stored in a config file inside
+your filecoin repo. When getting values, a key should be provided, like so:
+
+go-filecoin config KEY
+
+When setting values, the key should be given first, followed by the value and
+separated by a space or equals, like so:
+
+go-filecoin config KEY VALUE
+go-filecoin config KEY=VALUE
+
+Specify the key as a period separated string of object keys. Specify the value
+to set as a toml value.`,
 		LongDescription: `
-go-filecoin config controls configuration variables.  It works similar to
-'git config'.  The configuration values are stored in a config file inside
-your filecoin repo.  Outputs are written in toml format. Specify the key as
+go-filecoin config controls configuration variables. It works similar to
+'git config'. The configuration values are stored in a config file inside
+your filecoin repo. Outputs are written in toml format. Specify the key as
 a period separated string of object keys. Specify the value to set as a toml
-value.  All subkeys including entire tables can be get and set.  Examples:
+value. All subkeys including entire tables can be get and set. Examples:
 
 $ go-filecoin config bootstrap.addresses.0
 0 = "oldaddr"
@@ -61,8 +71,17 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 		api := GetAPI(env).Config()
 
 		key := req.Arguments[0]
+		value := ""
+
 		if len(req.Arguments) == 2 {
-			value := req.Arguments[1]
+			value = req.Arguments[1]
+		} else if strings.Contains(key, "=") {
+			args := strings.Split(key, "=")
+			key = args[0]
+			value = args[1]
+		}
+
+		if value != "" {
 			res, err := api.Set(key, value)
 
 			if err != nil {

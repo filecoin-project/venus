@@ -83,4 +83,29 @@ func TestConfigDaemon(t *testing.T) {
 		cfg := d.Config()
 		assert.Equal(cfg.Bootstrap, wrapped.Bootstrap)
 	})
+
+	t.Run("config <key>=<val> updates config", func(t *testing.T) {
+		t.Skip()
+		t.Parallel()
+		assert := assert.New(t)
+
+		d := th.NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
+
+		op1 := d.RunSuccess("config", "bootstrap={ addresses = [\"fake1\", \"fake2\"], period = \"1m\", minPeerThreshold = 0 }")
+
+		// validate output
+		tomlOut := op1.ReadStdout()
+		b := strings.Builder{}
+		wrapped := bootstrapWrapper{
+			Bootstrap: config.NewDefaultConfig().Bootstrap,
+		}
+		wrapped.Bootstrap.Addresses = []string{"fake1", "fake2"}
+		toml.NewEncoder(&b).Encode(wrapped)
+		assert.Equal(b.String(), tomlOut)
+
+		// validate config write
+		cfg := d.Config()
+		assert.Equal(cfg.Bootstrap, wrapped.Bootstrap)
+	})
 }
