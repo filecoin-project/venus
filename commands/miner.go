@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"strconv"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
@@ -21,6 +22,7 @@ var minerCmd = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
+		"add-ask":       minerAddAskCmd,
 		"owner":         minerOwnerCmd,
 		"power":         minerPowerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
@@ -125,6 +127,59 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return
 		}
 
+		re.Emit(c) // nolint: errcheck
+	},
+	Type: cid.Cid{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+			return PrintString(w, c)
+		}),
+	},
+}
+
+var minerAddAskCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Add an ask to the storage market",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
+		cmdkit.StringArg("price", true, false, "the price of the ask"),
+		cmdkit.StringArg("expiry", true, false, "how long this ask is valid for, in blocks"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("from", "address to send the ask from"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		minerAddr, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			err = errors.Wrap(err, "invalid miner address")
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[1])
+		if !ok {
+			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
+			return
+		}
+
+		expiry, ok := big.NewInt(0).SetString(req.Arguments[2], 10)
+		if !ok {
+			re.SetError("expiry must be a valid integer", cmdkit.ErrNormal)
+			return
+		}
+
+		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, price, expiry)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
 		re.Emit(c) // nolint: errcheck
 	},
 	Type: cid.Cid{},

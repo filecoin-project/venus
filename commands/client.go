@@ -10,8 +10,8 @@ import (
 	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var clientCmd = &cmds.Command{
@@ -23,6 +23,7 @@ var clientCmd = &cmds.Command{
 		"import":               clientImportDataCmd,
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
+		"list-asks":            clientListAsksCmd,
 	},
 }
 
@@ -87,10 +88,8 @@ var clientProposeStorageDealCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "address of miner to propose to"),
 		cmdkit.StringArg("data", true, false, "cid of the data to be stored"),
+		cmdkit.StringArg("ask", true, false, "ID of ask to propose a deal for"),
 		cmdkit.StringArg("duration", true, false, "number of blocks to store the data for"),
-	},
-	Options: []cmdkit.Option{
-		cmdkit.StringOption("price", "price per byte per block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		miner, err := address.NewFromString(req.Arguments[0])
@@ -105,25 +104,19 @@ var clientProposeStorageDealCmd = &cmds.Command{
 			return
 		}
 
-		duration, err := strconv.ParseUint(req.Arguments[2], 10, 64)
+		askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		price, ok := req.Options["price"].(string)
-		if !ok {
-			re.SetError("failed to get price option", cmdkit.ErrNormal)
+		duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
 
-		af, ok := types.NewAttoFILFromFILString(price)
-		if !ok {
-			re.SetError("failed to parse price", cmdkit.ErrNormal)
-			return
-		}
-
-		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, af, duration)
+		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -169,6 +162,34 @@ var clientQueryStorageDealCmd = &cmds.Command{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
+			return nil
+		}),
+	},
+}
+
+var clientListAsksCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "list all asks in the storage market",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		asksCh, err := GetAPI(env).Client().ListAsks(req.Context)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+
+		for a := range asksCh {
+			if a.Error != nil {
+				re.SetError(err, cmdkit.ErrNormal)
+				return
+			}
+			re.Emit(a) // nolint: errcheck
+		}
+	},
+	Type: api.Ask{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *api.Ask) error {
+			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
 			return nil
 		}),
 	},

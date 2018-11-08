@@ -11,6 +11,8 @@ import (
 	unixfs "gx/ipfs/Qmdg2crJzNUF1mLPnLPSCCaDdLDqE4Qrh9QEiDooSYkvuB/go-unixfs"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
+	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/node"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -33,6 +35,9 @@ func TestSerializeProposal(t *testing.T) {
 	}
 }
 
+// TODO: we need to really rethink how this sort of testing can be done
+// cleaner. The gengen stuff helps, but its still difficult to make actor
+// method invocations
 func TestStorageProtocolBasic(t *testing.T) {
 	t.Parallel()
 
@@ -54,7 +59,25 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	seed.GiveKey(t, client, 1)
 
-	c := NewClient(client)
+	cni := NewClientNodeImpl(
+		dag.NewDAGService(client.BlockService()),
+		client.Host(),
+		client.Lookup(),
+		func(_ context.Context, _ address.Address, _ string, _ []byte, _ *address.Address) ([][]byte, uint8, error) {
+			// This is only used for getting the price of an ask.
+			a := &mactor.Ask{
+				Price: types.NewAttoFILFromFIL(50),
+			}
+
+			enc, err := cbor.DumpObject(a)
+			if err != nil {
+				return nil, 0, err
+			}
+
+			return [][]byte{enc}, 0, nil
+		},
+	)
+	c := NewClient(cni)
 	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner)
 	assert.NoError(err)
 	_ = m
@@ -119,7 +142,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 		}
 	}
 
-	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 10, types.NewAttoFILFromFIL(60))
+	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 1, 150)
 	assert.NoError(err)
 	requireQueryDeal := func() (DealState, string) {
 		resp, err := c.QueryDeal(ctx, ref.Proposal)

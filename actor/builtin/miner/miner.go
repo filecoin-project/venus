@@ -19,6 +19,7 @@ import (
 
 func init() {
 	cbor.RegisterCborType(State{})
+	cbor.RegisterCborType(Ask{})
 	cbor.RegisterCborType(Commitments{})
 }
 
@@ -67,6 +68,13 @@ var Errors = map[uint8]error{
 // Actor is the miner actor.
 type Actor struct{}
 
+// Ask is a price advertisement by the miner
+type Ask struct {
+	Price  *types.AttoFIL
+	Expiry *types.BlockHeight
+	ID     *big.Int
+}
+
 // State is the miner actors storage.
 type State struct {
 	Owner address.Address
@@ -84,6 +92,10 @@ type State struct {
 	// the miners pledge.
 	Collateral *types.AttoFIL
 
+	// Asks is the set of asks this miner has open
+	Asks      []*Ask
+	NextAskID *big.Int
+
 	// Sectors maps sectorID to commR and commD, for all sectors this miner has committed.
 	LastUsedSectorID uint64
 	Sectors          map[string]*Commitments
@@ -91,8 +103,7 @@ type State struct {
 	ProvingPeriodStart *types.BlockHeight
 	LastPoSt           *types.BlockHeight
 
-	LockedStorage *types.BytesAmount // LockedStorage is the amount of the miner's storage that is used.
-	Power         *big.Int
+	Power *big.Int
 }
 
 // Commitments are the details we need to store about a sector we are proving.
@@ -114,9 +125,9 @@ func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, c
 		PublicKey:     key,
 		PledgeSectors: pledge,
 		Collateral:    collateral,
-		LockedStorage: types.NewBytesAmount(0),
 		Sectors:       make(map[string]*Commitments),
 		Power:         big.NewInt(0),
+		NextAskID:     big.NewInt(0),
 	}
 }
 
@@ -149,6 +160,18 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var minerExports = exec.Exports{
+	"addAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.AttoFIL, abi.Integer},
+		Return: []abi.Type{abi.Integer},
+	},
+	"getAsks": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.UintArray},
+	},
+	"getAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
 	"getOwner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
@@ -190,6 +213,110 @@ var minerExports = exec.Exports{
 // Exports returns the miner actors exported functions.
 func (ma *Actor) Exports() exec.Exports {
 	return minerExports
+}
+
+// AddAsk adds an ask to this miners ask list
+func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
+	error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		if ctx.Message().From != state.Owner {
+			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		id := big.NewInt(0).Set(state.NextAskID)
+		state.NextAskID = state.NextAskID.Add(state.NextAskID, big.NewInt(1))
+
+		// filter out expired asks
+		asks := state.Asks
+		state.Asks = state.Asks[:0]
+		for _, a := range asks {
+			if ctx.BlockHeight().LessThan(a.Expiry) {
+				state.Asks = append(state.Asks, a)
+			}
+		}
+
+		if !expiry.IsUint64() {
+			return nil, errors.NewRevertError("expiry was invalid")
+		}
+		expiryBH := types.NewBlockHeight(expiry.Uint64())
+
+		state.Asks = append(state.Asks, &Ask{
+			Price:  price,
+			Expiry: ctx.BlockHeight().Add(expiryBH),
+			ID:     id,
+		})
+
+		return id, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	askID, ok := out.(*big.Int)
+	if !ok {
+		return nil, 1, errors.NewRevertErrorf("expected an Integer return value from call, but got %T instead", out)
+	}
+
+	return askID, 0, nil
+}
+
+// GetAsks returns all the asks for this miner. (TODO: this isnt a great function signature, it returns the asks in a
+// serialized array. Consider doing this some other way)
+func (ma *Actor) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		var askids []uint64
+		for _, ask := range state.Asks {
+			if !ask.ID.IsUint64() {
+				return nil, errors.NewFaultErrorf("miner ask has invalid ID (bad invariant)")
+			}
+			askids = append(askids, ask.ID.Uint64())
+		}
+
+		return askids, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	askids, ok := out.([]uint64)
+	if !ok {
+		return nil, 1, errors.NewRevertErrorf("expected a []uint64 return value from call, but got %T instead", out)
+	}
+
+	return askids, 0, nil
+}
+
+// GetAsk returns an ask by ID
+func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		var ask *Ask
+		for _, a := range state.Asks {
+			if a.ID.Cmp(askid) == 0 {
+				ask = a
+				break
+			}
+		}
+
+		out, err := cbor.DumpObject(ask)
+		if err != nil {
+			return nil, err
+		}
+
+		return out, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	ask, ok := out.([]byte)
+	if !ok {
+		return nil, 1, errors.NewRevertErrorf("expected a Bytes return value from call, but got %T instead", out)
+	}
+
+	return ask, 0, nil
 }
 
 // GetOwner returns the miners owner.

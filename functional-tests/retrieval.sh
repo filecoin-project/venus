@@ -159,12 +159,12 @@ function set_mining_address_in_config {
 function wait_mpool_size {
   ./go-filecoin mpool \
     --wait-for-count=$1 \
-    --repodir=$2
+    --repodir="$2"
 }
 
 function add_ask {
   ./go-filecoin miner add-ask $1 $2 $3 \
-    --repodir=$4
+    --repodir="$4"
 }
 
 function miner_update_pid {
@@ -237,6 +237,7 @@ CL_PEER_ID=$(get_peer_id ${CL_REPO_DIR})
 echo ""
 echo "update miner's libp2p identity to match its node's..."
 MINER_UPDATE_PID_MSG_CID=$(miner_update_pid ${MN_MINER_FIL_ADDR} ${MN_PEER_ID} ${MN_REPO_DIR})
+MINER_ADD_ASK_MSG_CID=$(add_ask ${MN_MINER_FIL_ADDR} 10 10000 ${MN_REPO_DIR})
 
 echo ""
 echo "connecting daemons..."
@@ -264,11 +265,15 @@ echo ""
 echo "use process substitution, waiting until messages are in blockchain..."
 fork_message_wait 104 ${MINER_UPDATE_PID_MSG_CID} ${MN_REPO_DIR}
 fork_message_wait 105 ${MINER_UPDATE_PID_MSG_CID} ${CL_REPO_DIR}
+fork_message_wait 106 ${MINER_ADD_ASK_MSG_CID} ${MN_REPO_DIR}
+fork_message_wait 107 ${MINER_ADD_ASK_MSG_CID} ${CL_REPO_DIR}
 
 echo ""
 echo "block until miner peer id-update message appears in chains..."
 join 104
 join 105
+join 106
+join 107
 
 echo ""
 echo "client imports piece 1..."
@@ -277,8 +282,7 @@ PIECE_1_CID=$(cat ${PIECE_1_PATH} \
 
 echo ""
 echo "client proposes a storage deal, which transfers file 1..."
-./go-filecoin client propose-storage-deal ${MN_MINER_FIL_ADDR} ${PIECE_1_CID} 5 \
-  --price=1 \
+./go-filecoin client propose-storage-deal ${MN_MINER_FIL_ADDR} ${PIECE_1_CID} 0 5 \
   --repodir=$CL_REPO_DIR \
 
 echo ""
@@ -288,8 +292,7 @@ PIECE_2_CID=$(cat ${PIECE_2_PATH} \
 
 echo ""
 echo "client proposes a storage deal, which transfers piece 2 (triggers seal)..."
-./go-filecoin client propose-storage-deal ${MN_MINER_FIL_ADDR} ${PIECE_2_CID} 5 \
-  --price=1 \
+./go-filecoin client propose-storage-deal ${MN_MINER_FIL_ADDR} ${PIECE_2_CID} 0 5 \
   --repodir=$CL_REPO_DIR \
 
 echo ""

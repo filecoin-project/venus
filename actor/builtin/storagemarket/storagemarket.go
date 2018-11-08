@@ -30,33 +30,14 @@ const (
 	ErrPledgeTooLow = 33
 	// ErrUnknownMiner indicates a pledge under the MinimumPledge.
 	ErrUnknownMiner = 34
-	// ErrAskOwnerNotFound indicates the owner of an ask could not be found.
-	ErrAskOwnerNotFound = 35
-	// ErrInsufficientSpace indicates the bid to too big for the ask.
-	ErrInsufficientSpace = 36
-	// ErrInvalidSignature indicates the signature is invalid.
-	ErrInvalidSignature = 37
-	// ErrUnknownDeal indicates the deal id is not found.
-	ErrUnknownDeal = 38
-	// ErrNotDealOwner indicates someone other than the deal owner tried to commit.
-	ErrNotDealOwner = 39
-	// ErrDealCommitted indicates the deal is already committed.
-	ErrDealCommitted = 40
-	// ErrInsufficientBidFunds indicates the value of the bid message is less than the price of the space.
-	ErrInsufficientBidFunds = 41
 	// ErrInsufficientCollateral indicates the collateral is too low.
-	ErrInsufficientCollateral = 42
+	ErrInsufficientCollateral = 43
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
 	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
-	ErrInvalidSignature:       errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
-	ErrUnknownDeal:            errors.NewCodedRevertErrorf(ErrUnknownDeal, "unknown deal id"),
-	ErrNotDealOwner:           errors.NewCodedRevertErrorf(ErrNotDealOwner, "miner tried to commit with someone elses deal"),
-	ErrDealCommitted:          errors.NewCodedRevertErrorf(ErrDealCommitted, "deal already committed"),
-	ErrInsufficientBidFunds:   errors.NewCodedRevertErrorf(ErrInsufficientBidFunds, "must send price * size funds to create bid"),
 	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", MinimumCollateralPerSector),
 }
 
@@ -66,8 +47,7 @@ func init() {
 }
 
 // Actor implements the filecoin storage market. It is responsible
-// for starting up new miners, adding bids, asks and deals. It also exposes the
-// power table used to drive filecoin consensus.
+// for starting up new miners, and keeping track of the total storage power in the network.
 type Actor struct{}
 
 // State is the storage market's storage.
