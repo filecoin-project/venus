@@ -17,7 +17,7 @@ ${setup_instance_storage}
 DOCKER_OVERRIDE=$$(cat <<-END
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376 -g /mnt/storage/docker
+ExecStart=/usr/bin/dockerd -H unix:// -H tcp://0.0.0.0:2376 --data-root /mnt/storage/docker
 END
                )
 DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
