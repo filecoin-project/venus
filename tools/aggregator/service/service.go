@@ -96,7 +96,7 @@ func (a *Service) Run(ctx context.Context) {
 						log.Errorf("heartbeat decode failed: %s", err)
 						return
 					}
-					a.Tracker.TrackConsensus(peer.String(), hb.Tipset)
+					a.Tracker.TrackConsensus(peer.String(), hb.Head)
 				}
 			}
 		}(ctx)
