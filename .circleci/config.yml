@@ -90,6 +90,17 @@ jobs:
           name: Build
           command: go run ./build/*.go build
 
+      # place the filecoin binary in PATH for IPTB
+      - run:
+          name: Install
+          command: go run ./build/*.go install
+
+      # rebuild as the previous "install" step will move the binary and some tests
+      # still expect that it be in the repo dir
+      - run:
+          name: Build
+          command: go run ./build/*.go build
+
       - run:
           name: Test
           command: go run ./build/*.go test
@@ -179,6 +190,18 @@ jobs:
       - run:
           name: Build
           command: go run ./build/*.go build
+
+      # place the filecoin binary in PATH for IPTB
+      - run:
+          name: Install
+          command: go run ./build/*.go install
+
+      # rebuild as the previous "install" step will move the binary and some tests
+      # still expect that it be in the repo dir
+      - run:
+          name: Build
+          command: go run ./build/*.go build
+
       - run:
           name: Test
           command: |

@@ -101,6 +101,9 @@ func deps() {
 		"go get github.com/docker/docker/client",
 		"go get github.com/docker/docker/pkg/stdcopy",
 		"go get github.com/ipsn/go-secp256k1",
+		"go get github.com/json-iterator/go",
+		"go get github.com/prometheus/client_golang/prometheus",
+		"go get github.com/prometheus/client_golang/prometheus/promhttp",
 		"cargo update --manifest-path proofs/rust-proofs/Cargo.toml",
 		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
 	}
@@ -135,7 +138,10 @@ func smartdeps() {
 		"github.com/whyrusleeping/gx",
 		"github.com/whyrusleeping/gx-go",
 		"github.com/xeipuuv/gojsonschema",
+		"github.com/json-iterator/go",
 		"github.com/ipsn/go-secp256k1",
+		"github.com/prometheus/client_golang/prometheus/promhttp",
+		"github.com/prometheus/client_golang/prometheus",
 	}
 
 	gopath := os.Getenv("GOPATH")
