@@ -17,6 +17,6 @@ mkdir fixtures
 cp ../fixtures/*.key ./fixtures/
 cp ../fixtures/*.car ./fixtures/
 cp ../fixtures/*.json ./fixtures/
-cp ../fixtures/*.toml ./fixtures/
+cp ../fixtures/*.yaml ./fixtures/
 
 cd ..

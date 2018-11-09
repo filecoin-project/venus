@@ -25,8 +25,8 @@ import (
 const (
 	// APIFile is the filename containing the filecoin node's api address.
 	APIFile                = "api"
-	configFilename         = "config.toml"
-	tempConfigFilename     = ".config.toml.temp"
+	configFilename         = "config.yaml"
+	tempConfigFilename     = ".config.yaml.temp"
 	lockFile               = "repo.lock"
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"

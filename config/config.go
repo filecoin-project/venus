@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
@@ -9,28 +10,28 @@ import (
 	"strings"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/go-yaml/yaml"
 )
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig       `toml:"api"`
-	Bootstrap *BootstrapConfig `toml:"bootstrap"`
-	Datastore *DatastoreConfig `toml:"datastore"`
-	Swarm     *SwarmConfig     `toml:"swarm"`
-	Mining    *MiningConfig    `toml:"mining"`
-	Wallet    *WalletConfig    `toml:"wallet"`
-	Heartbeat *HeartbeatConfig `toml:"heartbeat"`
+	API       *APIConfig       `yaml:"api"`
+	Bootstrap *BootstrapConfig `yaml:"bootstrap"`
+	Datastore *DatastoreConfig `yaml:"datastore"`
+	Swarm     *SwarmConfig     `yaml:"swarm"`
+	Mining    *MiningConfig    `yaml:"mining"`
+	Wallet    *WalletConfig    `yaml:"wallet"`
+	Heartbeat *HeartbeatConfig `yaml:"heartbeat"`
 }
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	Address                       string   `toml:"address"`
-	AccessControlAllowOrigin      []string `toml:"accessControlAllowOrigin"`
-	AccessControlAllowCredentials bool     `toml:"accessControlAllowCredentials"`
-	AccessControlAllowMethods     []string `toml:"accessControlAllowMethods"`
+	Address                       string   `yaml:"address"`
+	AccessControlAllowOrigin      []string `yaml:"accessControlAllowOrigin"`
+	AccessControlAllowCredentials bool     `yaml:"accessControlAllowCredentials"`
+	AccessControlAllowMethods     []string `yaml:"accessControlAllowMethods"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -49,8 +50,8 @@ func newDefaultAPIConfig() *APIConfig {
 // DatastoreConfig holds all the configuration options for the datastore.
 // TODO: use the advanced datastore configuration from ipfs
 type DatastoreConfig struct {
-	Type string `toml:"type"`
-	Path string `toml:"path"`
+	Type string `yaml:"type"`
+	Path string `yaml:"path"`
 }
 
 func newDefaultDatastoreConfig() *DatastoreConfig {
@@ -62,7 +63,7 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address string `toml:"address"`
+	Address string `yaml:"address"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
@@ -73,10 +74,10 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Relays           []string `toml:"relays"`
-	Addresses        []string `toml:"addresses"`
-	MinPeerThreshold int      `toml:"minPeerThreshold,omitempty"`
-	Period           string   `toml:"period,omitempty"`
+	Relays           []string `yaml:"relays"`
+	Addresses        []string `yaml:"addresses"`
+	MinPeerThreshold int      `yaml:"minPeerThreshold,omitempty"`
+	Period           string   `yaml:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
@@ -90,8 +91,8 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddress            address.Address `toml:"minerAddress"`
-	AutoSealIntervalSeconds uint            `toml:"autoSealIntervalSeconds"`
+	MinerAddress            address.Address `yaml:"minerAddress"`
+	AutoSealIntervalSeconds uint            `yaml:"autoSealIntervalSeconds"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
@@ -103,7 +104,7 @@ func newDefaultMiningConfig() *MiningConfig {
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress address.Address `toml:"defaultAddress,omitempty"`
+	DefaultAddress address.Address `yaml:"defaultAddress,omitempty"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
@@ -112,6 +113,7 @@ func newDefaultWalletConfig() *WalletConfig {
 	}
 }
 
+<<<<<<< HEAD
 // HeartbeatConfig holds all configuration options related to node heartbeat.
 type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
@@ -124,6 +126,12 @@ type HeartbeatConfig struct {
 	ReconnectPeriod string `toml:"reconnectPeriod"`
 	// Nickname represents the nickname of the filecoin node,
 	Nickname string `toml:"nickname"`
+=======
+// StatsConfig holds all configuration options related to node stats.
+type StatsConfig struct {
+	HeartbeatPeriod string `yaml:"heartbeatPeriod,omitempty"`
+	Nickname        string `yaml:"nickname"`
+>>>>>>> WIP
 }
 
 func newDefaultHeartbeatConfig() *HeartbeatConfig {
@@ -157,7 +165,13 @@ func (cfg *Config) WriteFile(file string) error {
 	}
 	defer f.Close() // nolint: errcheck
 
-	return toml.NewEncoder(f).Encode(*cfg)
+	configString, err := yaml.Marshal(*cfg)
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprint(f, string(configString))
+	return err
 }
 
 // ReadFile reads a config file from disk.
@@ -168,7 +182,12 @@ func ReadFile(file string) (*Config, error) {
 	}
 
 	cfg := NewDefaultConfig()
-	if _, err := toml.DecodeReader(f, cfg); err != nil {
+	rawConfig, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(rawConfig, &cfg)
+	if err != nil {
 		return nil, err
 	}
 
@@ -187,10 +206,10 @@ OUTER:
 		switch v.Type().Kind() {
 		case reflect.Struct:
 			for i := 0; i < v.NumField(); i++ {
-				tomlTag := strings.Split(
-					v.Type().Field(i).Tag.Get("toml"),
+				yamlTag := strings.Split(
+					v.Type().Field(i).Tag.Get("yaml"),
 					",")[0]
-				if tomlTag == keyTag {
+				if yamlTag == keyTag {
 					v = v.Field(i)
 					if j == len(keyTags)-1 {
 						return f(v, key)
@@ -250,21 +269,21 @@ func prependKey(tomlVal string, key string, fieldT reflect.Type) string {
 
 // fieldToSet calculates the reflector Value to set the config at the given key
 // based on the user provided toml blob.
-func fieldToSet(key string, tomlVal string, fieldT reflect.Type) (reflect.Value, error) {
+func fieldToSet(key string, yamlVal string, fieldT reflect.Type) (reflect.Value, error) {
 	// set up a struct with this field for unmarshaling
-	tomlValKey := prependKey(tomlVal, key, fieldT)
+	yamlValKey := prependKey(yamlVal, key, fieldT)
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 
 	field := reflect.StructField{
 		Name: "Field",
 		Type: fieldT,
-		Tag:  reflect.StructTag("toml:" + "\"" + k + "\""),
+		Tag:  reflect.StructTag("yaml:" + "\"" + k + "\""),
 	}
 	recvT := reflect.StructOf([]reflect.StructField{field})
 	valToRecv := reflect.New(recvT)
 
-	_, err := toml.Decode(tomlValKey, valToRecv.Interface())
+	err := yaml.Unmarshal([]byte(yamlValKey), valToRecv.Interface())
 	if err != nil {
 		msg := fmt.Sprintf("input could not be marshaled to sub-config at: %s", key)
 		return valToRecv, errors.Wrap(err, msg)
@@ -273,9 +292,9 @@ func fieldToSet(key string, tomlVal string, fieldT reflect.Type) (reflect.Value,
 }
 
 // Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
-// or 'datastore' to the toml key value pair encoded in tomlVal.  Note, Set
+// or 'datastore' to the yaml key value pair encoded in yamlVal.  Note, Set
 // only handles arrays of tables specified in inline format
-func (cfg *Config) Set(key string, tomlVal string) (interface{}, error) {
+func (cfg *Config) Set(key string, yamlVal string) (interface{}, error) {
 	f := func(v reflect.Value, key string) (interface{}, error) {
 		// dereference pointer types for marshaling
 		setT := v.Type()
@@ -286,14 +305,20 @@ func (cfg *Config) Set(key string, tomlVal string) (interface{}, error) {
 			recvT = setT
 		}
 
+<<<<<<< HEAD
 		if key == "heartbeat.nickname" {
 			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", tomlVal)
+=======
+		// TODO: Build a more generic config validation system
+		if key == "stats.nickname" {
+			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", yamlVal)
+>>>>>>> WIP
 			if !match {
 				return nil, errors.New("node nickname must only contain letters")
 			}
 		}
 
-		valToSet, err := fieldToSet(key, tomlVal, recvT)
+		valToSet, err := fieldToSet(key, yamlVal, recvT)
 		if err != nil {
 			return nil, err
 		}

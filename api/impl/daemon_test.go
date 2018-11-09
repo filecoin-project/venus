@@ -70,7 +70,7 @@ func TestDaemonInitFail(t *testing.T) {
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
-		ioutil.WriteFile(filepath.Join(dir, "config.toml"), []byte("hello"), 0644)
+		ioutil.WriteFile(filepath.Join(dir, "config.yaml"), []byte("hello"), 0644)
 
 		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
 		assert.Contains(err.Error(), "repo already initialized")
@@ -80,7 +80,7 @@ func TestDaemonInitFail(t *testing.T) {
 }
 
 func ConfigExists(dir string) bool {
-	_, err := os.Stat(filepath.Join(dir, "config.toml"))
+	_, err := os.Stat(filepath.Join(dir, "config.yaml"))
 	if os.IsNotExist(err) {
 		return false
 	}

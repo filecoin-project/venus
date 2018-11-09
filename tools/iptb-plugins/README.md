@@ -94,7 +94,7 @@ initializing filecoin node at /home/frrist/testbed/testbeds/default/9
 Verify the nodes initialized their repositories correctly:
 ```shell
 $> ls $HOME/testbed/testbeds/default/0/
-badger/  config.toml  keystore/  snapshots/  version  wallet/
+badger/  config.yaml  keystore/  snapshots/  version  wallet/
 ```
 NOTE: arguments can be passed to nodes with any command by adding them after the `--` argument, e.g.:
 ```shell

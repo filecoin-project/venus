@@ -60,9 +60,13 @@ func TestConfigSet(t *testing.T) {
 			return nil
 		})[0]
 		api := New(n)
-		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
+		yamlBlob := `
+		addresses:
+		- bootup1
+		- bootup2
+		`
 
-		out, err := api.Config().Set("bootstrap", tomlBlob)
+		out, err := api.Config().Set("bootstrap", yamlBlob)
 		require.NoError(err)
 
 		// validate output
@@ -90,25 +94,33 @@ func TestConfigSet(t *testing.T) {
 		api := New(n)
 
 		// bad key
-		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
+		yamlBlob := `
+		addresses:
+		- bootup1
+		- bootup2
+		`
 
-		_, err := api.Config().Set("botstrap", tomlBlob)
+		_, err := api.Config().Set("botstrap", yamlBlob)
 		assert.EqualError(err, "key: botstrap invalid for config")
 
 		// bad value type (bootstrap is a struct not a list)
-		tomlBlobBadType := `["bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", tomlBlobBadType)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: Near line 2 (last key parsed 'bootstrap'): expected '.' or ']' to end table name, but got ',' instead")
+		yamlBlobBadType := `["bootup1", "bootup2"]`
+		_, err = api.Config().Set("bootstrap", yamlBlobBadType)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!seq into struct { Field config.BootstrapConfig \"yaml:\\\"bootstrap\\\"\" }")
 
-		// bad TOML
-		tomlBlobInvalid := `{addresses =[""bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", tomlBlobInvalid)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: Near line 1 (last key parsed 'bootstrap.addresses'): expected a comma or array terminator ']', but got 'b' instead")
+		// bad YAML
+		yamlBlobInvalid := `
+		addresses: :
+		- bootup1
+		- bootup2
+		`
+		_, err = api.Config().Set("bootstrap", yamlBlobInvalid)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!seq into struct { Field config.BootstrapConfig \"yaml:\\\"bootstrap\\\"\" }")
 
 		// bad address
-		tomlBlobBadAddr := `"fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"`
-		_, err = api.Config().Set("wallet.defaultAddress", tomlBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character")
+		yamlBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
+		_, err = api.Config().Set("wallet.defaultAddress", yamlBlobBadAddr)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `default...` into struct { Field address.Address \"yaml:\\\"defaultAddress\\\"\" }")
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {
@@ -118,7 +130,7 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		_, err := api.Config().Set("heartbeat.nickname", "\"Bad Nickname\"")
+		_, err := api.Config().Set("heartbeat.nickname", "Bad Nickname")
 
 		assert.EqualError(err, "node nickname must only contain letters")
 	})
