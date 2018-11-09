@@ -1,16 +1,25 @@
 groups:
-- name: example
+- name: kittyhawk
   rules:
-  # Alert for any filecoin node that is unreachable for >1 minute.
-  - alert: containerAlert
-    expr: absent(((time() - container_last_seen{image=~"657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:.*"}) < 60))
-    for: 1m 
+  # Alert when one or more filecoin containers are down
+  - alert: containerDownAlert
+    expr: (count by (instance_name) (time() - container_last_seen{image=~"657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:.*", instance_name=~".+"} < 31) OR vector(0)) < 5
+    for: 1m
     labels:
       severity: page
     annotations:
-      summary: "filecoin node on {{ $labels.instance }} down"
-      description: "file coin node on {{ $labels.instance }} of job {{ $labels.job }} has been down 1 minute."
+      summary: "{{ $labels.value }} filecoin nodes on {{ $labels.instance_name }} down"
+      description: "{{ $labels.value }} filecoin nodes on instance:{{ $labels.instance_name }} have been down for >1 minute."
 
+  # Alert for any filecoin node that has restarted in the past 2 minutes
+  - alert: containerRestartAlert
+    expr: (container_start_time_seconds{image=~"657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:.*"}) > (time() - 120)
+    for: 1m
+    labels:
+      severity: page
+    annotations:
+      summary: "filecoin node:{{ $labels.name }} on instance:{{ $labels.instance_name }} restarted"
+      description: "filecoin node:{{ $labels.name }} on instance:{{ $labels.instance_name }} has restarted over the past 2 minutes."
 
   # Alert for any instance that has < 15% free memory
   - alert: nodeFreeMemoryAlert
@@ -44,7 +53,7 @@ groups:
       summary: "Instance {{ $labels.instance }} high root disk usage"
       description: "{{ $labels.instance }} of job {{ $labels.job }} has been using > 80% disk space for more than 5 minutes."
 
-  # Alert for any instance that uses > 80% inodes 
+  # Alert for any instance that uses > 80% inodes
   - alert: nodeDiskInodeUsageAlert
     expr: node_filesystem_files_free / node_filesystem_files{mountpoint="/etc/hostname"} < 0.2
     for: 5m
@@ -53,8 +62,3 @@ groups:
     annotations:
       summary: "Instance {{ $labels.instance }} high root inode usage"
       description: "{{ $labels.instance }} of job {{ $labels.job }} has been using > 80% disk inodes for more than 5 minutes."
-
-
-
-
-
