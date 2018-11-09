@@ -45,7 +45,7 @@ func (api *nodeLog) StreamTo(ctx context.Context, maddr ma.Multiaddr) error {
 	peerID := nodeDetails.ID
 
 	// Get the nodes nickname.
-	nodeNic, err := api.api.Config().Get("stats.nickname")
+	nodeNic, err := api.api.Config().Get("heartbeat.nickname")
 	if err != nil {
 		return err
 	}

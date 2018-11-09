@@ -165,7 +165,7 @@ if you wanted instead):
 ```
 rm -fr ~/.filecoin  # ONLY if you have a pre-existing install
 go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-labweek
-go-filecoin config stats.nickname '"yournodename"' # Note " inside ' !
+go-filecoin config heartbeat.nickname '"yournodename"' # Note " inside ' !
 go-filecoin daemon
 ```
 

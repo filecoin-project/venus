@@ -59,8 +59,10 @@ func TestWriteFile(t *testing.T) {
 [wallet]
   defaultAddress = ""
 
-[stats]
-  heartbeatPeriod = "3s"
+[heartbeat]
+  beatTarget = ""
+  beatPeriod = "3s"
+  reconnectPeriod = "10s"
   nickname = ""
 `,
 		string(content),
@@ -74,9 +76,9 @@ func TestSetRejectsInvalidNicks(t *testing.T) {
 	cfg := NewDefaultConfig()
 
 	// sic: toml includes the quotes in the value
-	_, err := cfg.Set("stats.nickname", "\"goodnick\"")
+	_, err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
 	assert.NoError(err)
-	_, err = cfg.Set("stats.nickname", "bad nick<p>")
+	_, err = cfg.Set("heartbeat.nickname", "bad nick<p>")
 	assert.Error(err)
 }
 
