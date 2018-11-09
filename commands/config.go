@@ -22,10 +22,9 @@ your filecoin repo. When getting values, a key should be provided, like so:
 go-filecoin config KEY
 
 When setting values, the key should be given first, followed by the value and
-separated by a space or equals, like so:
+separated by a space, like so:
 
 go-filecoin config KEY VALUE
-go-filecoin config KEY=VALUE
 
 Specify the key as a period separated string of object keys. Specify the value
 to set as a toml value.`,
@@ -69,19 +68,10 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		api := GetAPI(env).Config()
-
 		key := req.Arguments[0]
-		value := ""
 
 		if len(req.Arguments) == 2 {
-			value = req.Arguments[1]
-		} else if strings.Contains(key, "=") {
-			args := strings.Split(key, "=")
-			key = args[0]
-			value = args[1]
-		}
-
-		if value != "" {
+			value := req.Arguments[1]
 			res, err := api.Set(key, value)
 
 			if err != nil {
