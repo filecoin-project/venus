@@ -60,11 +60,9 @@ func TestConfigSet(t *testing.T) {
 			return nil
 		})[0]
 		api := New(n)
-		yamlBlob := `
-		addresses:
-		- bootup1
-		- bootup2
-		`
+		yamlBlob := `addresses:
+  - bootup1
+  - bootup2`
 
 		out, err := api.Config().Set("bootstrap", yamlBlob)
 		require.NoError(err)

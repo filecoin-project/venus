@@ -113,25 +113,18 @@ func newDefaultWalletConfig() *WalletConfig {
 	}
 }
 
-<<<<<<< HEAD
 // HeartbeatConfig holds all configuration options related to node heartbeat.
 type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
-	BeatTarget string `toml:"beatTarget"`
+	BeatTarget string `yaml:"beatTarget"`
 	// BeatPeriod represents how frequently heartbeats are sent.
 	// Golang duration units are accepted.
-	BeatPeriod string `toml:"beatPeriod"`
+	BeatPeriod string `yaml:"beatPeriod"`
 	// ReconnectPeriod represents how long the node waits before attempting to reconnect.
 	// Golang duration units are accepted.
-	ReconnectPeriod string `toml:"reconnectPeriod"`
+	ReconnectPeriod string `yaml:"reconnectPeriod"`
 	// Nickname represents the nickname of the filecoin node,
-	Nickname string `toml:"nickname"`
-=======
-// StatsConfig holds all configuration options related to node stats.
-type StatsConfig struct {
-	HeartbeatPeriod string `yaml:"heartbeatPeriod,omitempty"`
-	Nickname        string `yaml:"nickname"`
->>>>>>> WIP
+	Nickname string `yaml:"nickname"`
 }
 
 func newDefaultHeartbeatConfig() *HeartbeatConfig {
@@ -271,14 +264,14 @@ func prependKey(tomlVal string, key string, fieldT reflect.Type) string {
 // based on the user provided toml blob.
 func fieldToSet(key string, yamlVal string, fieldT reflect.Type) (reflect.Value, error) {
 	// set up a struct with this field for unmarshaling
-	yamlValKey := prependKey(yamlVal, key, fieldT)
+	yamlValKey := yamlVal
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 
 	field := reflect.StructField{
 		Name: "Field",
 		Type: fieldT,
-		Tag:  reflect.StructTag("yaml:" + "\"" + k + "\""),
+		Tag:  reflect.StructTag("yaml:\"" + k + "\""),
 	}
 	recvT := reflect.StructOf([]reflect.StructField{field})
 	valToRecv := reflect.New(recvT)
@@ -305,14 +298,8 @@ func (cfg *Config) Set(key string, yamlVal string) (interface{}, error) {
 			recvT = setT
 		}
 
-<<<<<<< HEAD
 		if key == "heartbeat.nickname" {
-			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", tomlVal)
-=======
-		// TODO: Build a more generic config validation system
-		if key == "stats.nickname" {
 			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", yamlVal)
->>>>>>> WIP
 			if !match {
 				return nil, errors.New("node nickname must only contain letters")
 			}

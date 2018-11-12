@@ -176,12 +176,6 @@
       "hash": "QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae",
       "name": "go-log",
       "version": "1.5.7"
-    },
-    {
-      "author": "rosalinekarr",
-      "hash": "QmaYU5SBFQkj98ys5tQiPKyPgG8p5AHNAECtLurANk4HuW",
-      "name": "yaml",
-      "version": "2.2.1"
     }
   ],
   "gxVersion": "0.12.1",
