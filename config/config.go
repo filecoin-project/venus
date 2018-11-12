@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,26 +13,25 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/go-yaml/yaml"
 )
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig       `yaml:"api"`
-	Bootstrap *BootstrapConfig `yaml:"bootstrap"`
-	Datastore *DatastoreConfig `yaml:"datastore"`
-	Swarm     *SwarmConfig     `yaml:"swarm"`
-	Mining    *MiningConfig    `yaml:"mining"`
-	Wallet    *WalletConfig    `yaml:"wallet"`
-	Heartbeat *HeartbeatConfig `yaml:"heartbeat"`
+	API       *APIConfig       `json:"api"`
+	Bootstrap *BootstrapConfig `json:"bootstrap"`
+	Datastore *DatastoreConfig `json:"datastore"`
+	Swarm     *SwarmConfig     `json:"swarm"`
+	Mining    *MiningConfig    `json:"mining"`
+	Wallet    *WalletConfig    `json:"wallet"`
+	Heartbeat *HeartbeatConfig `json:"heartbeat"`
 }
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	Address                       string   `yaml:"address"`
-	AccessControlAllowOrigin      []string `yaml:"accessControlAllowOrigin"`
-	AccessControlAllowCredentials bool     `yaml:"accessControlAllowCredentials"`
-	AccessControlAllowMethods     []string `yaml:"accessControlAllowMethods"`
+	Address                       string   `json:"address"`
+	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
+	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
+	AccessControlAllowMethods     []string `json:"accessControlAllowMethods"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -50,8 +50,8 @@ func newDefaultAPIConfig() *APIConfig {
 // DatastoreConfig holds all the configuration options for the datastore.
 // TODO: use the advanced datastore configuration from ipfs
 type DatastoreConfig struct {
-	Type string `yaml:"type"`
-	Path string `yaml:"path"`
+	Type string `json:"type"`
+	Path string `json:"path"`
 }
 
 func newDefaultDatastoreConfig() *DatastoreConfig {
@@ -63,7 +63,7 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address string `yaml:"address"`
+	Address string `json:"address"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
@@ -74,15 +74,16 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Relays           []string `yaml:"relays"`
-	Addresses        []string `yaml:"addresses"`
-	MinPeerThreshold int      `yaml:"minPeerThreshold,omitempty"`
-	Period           string   `yaml:"period,omitempty"`
+	Relays           []string `json:"relays"`
+	Addresses        []string `json:"addresses"`
+	MinPeerThreshold int      `json:"minPeerThreshold,omitempty"`
+	Period           string   `json:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
+		Relays:           []string{},
 		Addresses:        []string{},
 		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
 		Period:           "1m",
@@ -91,8 +92,8 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddress            address.Address `yaml:"minerAddress"`
-	AutoSealIntervalSeconds uint            `yaml:"autoSealIntervalSeconds"`
+	MinerAddress            address.Address `json:"minerAddress"`
+	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
@@ -104,7 +105,7 @@ func newDefaultMiningConfig() *MiningConfig {
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress address.Address `yaml:"defaultAddress,omitempty"`
+	DefaultAddress address.Address `json:"defaultAddress,omitempty"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
@@ -116,15 +117,15 @@ func newDefaultWalletConfig() *WalletConfig {
 // HeartbeatConfig holds all configuration options related to node heartbeat.
 type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
-	BeatTarget string `yaml:"beatTarget"`
+	BeatTarget string `json:"beatTarget"`
 	// BeatPeriod represents how frequently heartbeats are sent.
 	// Golang duration units are accepted.
-	BeatPeriod string `yaml:"beatPeriod"`
+	BeatPeriod string `json:"beatPeriod"`
 	// ReconnectPeriod represents how long the node waits before attempting to reconnect.
 	// Golang duration units are accepted.
-	ReconnectPeriod string `yaml:"reconnectPeriod"`
+	ReconnectPeriod string `json:"reconnectPeriod"`
 	// Nickname represents the nickname of the filecoin node,
-	Nickname string `yaml:"nickname"`
+	Nickname string `json:"nickname"`
 }
 
 func newDefaultHeartbeatConfig() *HeartbeatConfig {
@@ -158,7 +159,7 @@ func (cfg *Config) WriteFile(file string) error {
 	}
 	defer f.Close() // nolint: errcheck
 
-	configString, err := yaml.Marshal(*cfg)
+	configString, err := json.MarshalIndent(*cfg, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,7 @@ func ReadFile(file string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = yaml.Unmarshal(rawConfig, &cfg)
+	err = json.Unmarshal(rawConfig, &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -199,10 +200,10 @@ OUTER:
 		switch v.Type().Kind() {
 		case reflect.Struct:
 			for i := 0; i < v.NumField(); i++ {
-				yamlTag := strings.Split(
-					v.Type().Field(i).Tag.Get("yaml"),
+				jsonTag := strings.Split(
+					v.Type().Field(i).Tag.Get("json"),
 					",")[0]
-				if yamlTag == keyTag {
+				if jsonTag == keyTag {
 					v = v.Field(i)
 					if j == len(keyTags)-1 {
 						return f(v, key)
@@ -239,7 +240,7 @@ OUTER:
 // including inline tables and arrays require "k = " prepended, where k is the
 // last period separated substring of key. This function assumes all tables
 // within an array are specified in inline format.
-func prependKey(tomlVal string, key string, fieldT reflect.Type) string {
+func prependKey(jsonVaml string, key string, fieldT reflect.Type) string {
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 	fieldK := fieldT.Kind()
@@ -247,36 +248,26 @@ func prependKey(tomlVal string, key string, fieldT reflect.Type) string {
 		fieldK = fieldT.Elem().Kind() // only attempt one dereference
 	}
 
-	switch fieldK {
-	case reflect.Struct:
-		tomlVal = strings.TrimSpace(tomlVal)
-		// inline table
-		if strings.HasPrefix(tomlVal, "{") {
-			return fmt.Sprintf("%s=%s", k, tomlVal)
-		}
-		return fmt.Sprintf("[%s]\n%s", key, tomlVal)
-	default:
-		return fmt.Sprintf("%s=%s", k, tomlVal)
-	}
+	return fmt.Sprintf(`{ "%s": %s }`, k, jsonVaml)
 }
 
 // fieldToSet calculates the reflector Value to set the config at the given key
 // based on the user provided toml blob.
-func fieldToSet(key string, yamlVal string, fieldT reflect.Type) (reflect.Value, error) {
+func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value, error) {
 	// set up a struct with this field for unmarshaling
-	yamlValKey := yamlVal
+	jsonValKey := prependKey(jsonVal, key, fieldT)
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 
 	field := reflect.StructField{
 		Name: "Field",
 		Type: fieldT,
-		Tag:  reflect.StructTag("yaml:\"" + k + "\""),
+		Tag:  reflect.StructTag("json:\"" + k + "\""),
 	}
 	recvT := reflect.StructOf([]reflect.StructField{field})
 	valToRecv := reflect.New(recvT)
 
-	err := yaml.Unmarshal([]byte(yamlValKey), valToRecv.Interface())
+	err := json.Unmarshal([]byte(jsonValKey), valToRecv.Interface())
 	if err != nil {
 		msg := fmt.Sprintf("input could not be marshaled to sub-config at: %s", key)
 		return valToRecv, errors.Wrap(err, msg)
@@ -285,9 +276,9 @@ func fieldToSet(key string, yamlVal string, fieldT reflect.Type) (reflect.Value,
 }
 
 // Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
-// or 'datastore' to the yaml key value pair encoded in yamlVal.  Note, Set
+// or 'datastore' to the json key value pair encoded in jsonVal.  Note, Set
 // only handles arrays of tables specified in inline format
-func (cfg *Config) Set(key string, yamlVal string) (interface{}, error) {
+func (cfg *Config) Set(key string, jsonVal string) (interface{}, error) {
 	f := func(v reflect.Value, key string) (interface{}, error) {
 		// dereference pointer types for marshaling
 		setT := v.Type()
@@ -299,13 +290,13 @@ func (cfg *Config) Set(key string, yamlVal string) (interface{}, error) {
 		}
 
 		if key == "heartbeat.nickname" {
-			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", yamlVal)
+			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonVal)
 			if !match {
 				return nil, errors.New("node nickname must only contain letters")
 			}
 		}
 
-		valToSet, err := fieldToSet(key, yamlVal, recvT)
+		valToSet, err := fieldToSet(key, jsonVal, recvT)
 		if err != nil {
 			return nil, err
 		}

@@ -491,7 +491,7 @@ func (td *TestDaemon) CreateWalletAddr() string {
 
 // Config is a helper to read out the config of the deamon
 func (td *TestDaemon) Config() *config.Config {
-	cfg, err := config.ReadFile(filepath.Join(td.repoDir, "config.yaml"))
+	cfg, err := config.ReadFile(filepath.Join(td.repoDir, "config.json"))
 	require.NoError(td.test, err)
 	return cfg
 }

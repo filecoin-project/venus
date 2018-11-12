@@ -16,36 +16,48 @@ import (
 )
 
 const (
-	expectContent = `api:
-  address: /ip4/127.0.0.1/tcp/3453
-  accessControlAllowOrigin:
-  - http://localhost:8080
-  - https://localhost:8080
-  - http://127.0.0.1:8080
-  - https://127.0.0.1:8080
-  accessControlAllowCredentials: false
-  accessControlAllowMethods:
-  - GET
-  - POST
-  - PUT
-bootstrap:
-  relays: []
-  addresses: []
-  period: 1m
-datastore:
-  type: badgerds
-  path: badger
-swarm:
-  address: /ip4/0.0.0.0/tcp/6000
-mining:
-  minerAddress: ""
-  autoSealIntervalSeconds: 120
-wallet:
-  defaultAddress: fcqnr93m78t9n7j5sqay2sceams20mmtgjw6wcurx
-heartbeat:
-  heartbeatPeriod: 3s
-  nickname: ""
-`
+	expectContent = `{
+	"api": {
+		"address": "/ip4/127.0.0.1/tcp/3453",
+		"accessControlAllowOrigin": [
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://127.0.0.1:8080",
+			"https://127.0.0.1:8080"
+		],
+		"accessControlAllowCredentials": false,
+		"accessControlAllowMethods": [
+			"GET",
+			"POST",
+			"PUT"
+		]
+	},
+	"bootstrap": {
+		"relays": [],
+		"addresses": [],
+		"period": "1m"
+	},
+	"datastore": {
+		"type": "badgerds",
+		"path": "badger"
+	},
+	"swarm": {
+		"address": "/ip4/0.0.0.0/tcp/6000"
+	},
+	"mining": {
+		"minerAddress": "",
+		"autoSealIntervalSeconds": 120
+	},
+	"wallet": {
+		"defaultAddress": ""
+	},
+	"heartbeat": {
+		"beatTarget": "",
+		"beatPeriod": "3s",
+		"reconnectPeriod": "10s",
+		"nickname": ""
+	}
+}`
 )
 
 func TestFSRepoInit(t *testing.T) {

@@ -60,11 +60,9 @@ func TestConfigSet(t *testing.T) {
 			return nil
 		})[0]
 		api := New(n)
-		yamlBlob := `addresses:
-  - bootup1
-  - bootup2`
+		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
-		out, err := api.Config().Set("bootstrap", yamlBlob)
+		out, err := api.Config().Set("bootstrap", jsonBlob)
 		require.NoError(err)
 
 		// validate output
@@ -91,34 +89,27 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		// bad key
-		yamlBlob := `
-		addresses:
-		- bootup1
-		- bootup2
-		`
+		// bad key (removed quotes *tisk tisk*)
+		jsonBlob := `{addresses: ["bootup1", "bootup2"]}`
 
-		_, err := api.Config().Set("botstrap", yamlBlob)
+		_, err := api.Config().Set("botstrap", jsonBlob)
 		assert.EqualError(err, "key: botstrap invalid for config")
 
 		// bad value type (bootstrap is a struct not a list)
-		yamlBlobBadType := `["bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", yamlBlobBadType)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!seq into struct { Field config.BootstrapConfig \"yaml:\\\"bootstrap\\\"\" }")
+		jsonBlobBadType := `["bootup1", "bootup2"]`
+		_, err = api.Config().Set("bootstrap", jsonBlobBadType)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: json: cannot unmarshal array into Go struct field .bootstrap of type config.BootstrapConfig")
 
-		// bad YAML
-		yamlBlobInvalid := `
-		addresses: :
-		- bootup1
-		- bootup2
-		`
-		_, err = api.Config().Set("bootstrap", yamlBlobInvalid)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!seq into struct { Field config.BootstrapConfig \"yaml:\\\"bootstrap\\\"\" }")
+		// bad JSON
+		jsonBlobInvalid := `{"addresses": [bootup1, "bootup2"]}`
+
+		_, err = api.Config().Set("bootstrap", jsonBlobInvalid)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: invalid character 'b' looking for beginning of value")
 
 		// bad address
-		yamlBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
-		_, err = api.Config().Set("wallet.defaultAddress", yamlBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `default...` into struct { Field address.Address \"yaml:\\\"defaultAddress\\\"\" }")
+		jsonBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
+		_, err = api.Config().Set("wallet.defaultAddress", jsonBlobBadAddr)
+		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character 'c' in literal false (expecting 'a')")
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {

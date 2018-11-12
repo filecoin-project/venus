@@ -29,8 +29,8 @@ func TestWriteFile(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	assert.NoError(cfg.WriteFile(filepath.Join(dir, "config.yaml")))
-	content, err := ioutil.ReadFile(filepath.Join(dir, "config.yaml"))
+	assert.NoError(cfg.WriteFile(filepath.Join(dir, "config.json")))
+	content, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
 	assert.NoError(err)
 
 	assert.Equal(
@@ -68,7 +68,7 @@ func TestWriteFile(t *testing.T) {
 		string(content),
 	)
 
-	assert.NoError(os.Remove(filepath.Join(dir, "config.yaml")))
+	assert.NoError(os.Remove(filepath.Join(dir, "config.json")))
 }
 
 func TestSetRejectsInvalidNicks(t *testing.T) {
@@ -91,7 +91,7 @@ func TestConfigRoundtrip(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	cfgpath := filepath.Join(dir, "config.yaml")
+	cfgpath := filepath.Join(dir, "config.json")
 	assert.NoError(cfg.WriteFile(cfgpath))
 
 	cfgout, err := ReadFile(cfgpath)
@@ -320,7 +320,7 @@ func createConfigFile(content string) (string, func(), error) {
 	if err != nil {
 		return "", nil, err
 	}
-	cfgpath := filepath.Join(dir, "config.yaml")
+	cfgpath := filepath.Join(dir, "config.json")
 
 	if err := ioutil.WriteFile(cfgpath, []byte(content), 0644); err != nil {
 		return "", nil, err
