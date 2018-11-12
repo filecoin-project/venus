@@ -3,6 +3,8 @@ package consensus
 import (
 	"context"
 
+	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -17,6 +19,11 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree, vms vm
 
 // TipSetProcessor is the signature of a function used to process tipsets
 type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree, vms vm.StorageMap) (*ProcessTipSetResponse, error)
+
+var (
+	ErrMultipleBlockReward = xerrors.New("more than one block reward message")
+	ErrBlockRewardTooHigh = xerrors.New("block reward grants greater than 1000 FIL")
+)
 
 // ProcessBlock is the entrypoint for validating the state transitions
 // of the messages in a block. When we receive a new block from the
@@ -47,6 +54,28 @@ type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree, vms vm.
 // See comments on ApplyMessage for specific intent.
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.StorageMap) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
+	
+	// Check signatures and block reward message.
+	var rewardExists bool
+	for _, smsg := range blk.Messages {
+		// Handle block reward message.
+		if smsg.Signature == nil && smsg.Message.From == address.NetworkAddress {
+			if rewardExists {
+				return nil, ErrMultipleBlockReward
+			}
+			if smsg.Message.Value.GreaterThan(types.NewAttoFILFromFIL(1000)) {
+				return nil, ErrBlockRewardTooHigh
+			}
+			rewardExists = true
+			continue
+		}
+		
+		// Handle other messages.
+		if !smsg.VerifySignature() {
+			return nil, types.ErrInvalidSignature
+		}
+	}
+	
 	bh := types.NewBlockHeight(uint64(blk.Height))
 	res, faultErr := ApplyMessages(ctx, blk.Messages, st, vms, bh)
 	if faultErr != nil {
@@ -396,12 +425,13 @@ type ApplyMessagesResponse struct {
 // groupings of messages with permanent failures, temporary failures, and
 // successes, and the permanent and temporary errors raised during application.
 // ApplyMessages will return an error iff a fault message occurs.
+// Precondition: signatures of messages are checked by the caller.
 func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 
 	for _, smsg := range messages {
-		// We only want the message, not its signature, validation should have already happened
+ 		// We only want the message, not its signature, validation should have already happened
 		msg := &smsg.Message
 		r, err := ApplyMessage(ctx, st, vms, msg, bh)
 		// If the message should not have been in the block, bail somehow.

@@ -9,6 +9,7 @@ import (
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
+	 logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log" 
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -16,6 +17,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
+
+var log = logging.Logger("wallet")   
 
 var (
 	// ErrUnknownAddress is returned when the given address is not stored in this wallet.
