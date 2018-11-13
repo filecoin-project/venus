@@ -17,7 +17,7 @@ ${setup_instance_storage}
 DOCKER_OVERRIDE=$$(cat <<-END
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2376
+ExecStart=/usr/bin/dockerd -H unix:// -H tcp://0.0.0.0:2376 --data-root /mnt/storage/docker
 END
                )
 DOCKER_OVERRIDE_PATH=/etc/systemd/system/docker.service.d/
@@ -45,7 +45,7 @@ docker run -d \
        -e REACT_APP_API_PORT=34530 -e REACT_APP_API_URL="${instance_name}.kittyhawk.wtf" \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer
 
-docker network create --subnet 172.19.0.0/16 filecoin
+docker network create --subnet 172.19.0.0/24 filecoin
 # DASHBOARD
 docker run -d --name=dashboard-aggregator \
        --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 -p 19000:9000 \
@@ -97,9 +97,11 @@ chmod -R 0777 "$${FILECOIN_STORAGE}"
 for i in {0..4}
 do
   echo "Starting filecoin-$$i"
-  docker run -d \
+  docker run -d  --restart always \
          --name "filecoin-$$i" --hostname "filecoin-$$i" \
          --network=filecoin -p "900$$i:9000" -p "3453$$i:3453" \
+         --ip "172.19.0.1$${i}" \
+         --entrypoint=/usr/local/bin/cluster_start \
          -v /home/ubuntu/car:/var/filecoin/car \
          -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor -e FILECOIN_PATH="/var/local/filecoin" \
@@ -109,6 +111,12 @@ do
 done
 
 filecoin_exec="go-filecoin --repodir=/var/local/filecoin"
+
+# store peer addrs for joining/rejoining on restart
+for i in {0..4}
+do
+  docker exec "filecoin-$i" $filecoin_exec id --format=\<addrs\> | uniq | grep 172\.19 >> $CAR_DIR/peers.txt
+done
 
 # configure mining on node 0
 minerAddr=$$(cat $${CAR_DIR}/gen.json | grep -v Fixture | jq ".Miners[0].Address" -r)
@@ -136,18 +144,10 @@ docker run -d --name faucet \
 # connect nodes
 for i in {0..4}
 do
-  for node_addr in $$(docker exec "filecoin-$$i" $$filecoin_exec id --format=\<addrs\>)
+  for node_addr in $$(cat $${CAR_DIR}/peers.txt)
   do
-    if [[ $$node_addr = *"ip4/172"* ]]; then
-      node_docker_addr=$$node_addr
-    fi
-  done
-
-  echo "$$i: $$node_docker_addr"
-  for j in {0..4}
-  do
-    echo "joining $${j} with peer at: $${node_docker_addr}"
-    docker exec "filecoin-$$j" $$filecoin_exec swarm connect "$${node_docker_addr}" || true
+    echo "joining $${i} with peer at: $${node_addr}"
+    docker exec "filecoin-$$i" $$filecoin_exec swarm connect "$${node_addr}" || true
   done
 done
 
