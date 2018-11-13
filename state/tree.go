@@ -28,6 +28,9 @@ type tree struct {
 // RevID identifies a snapshot of the StateTree.
 type RevID int
 
+// ActorWalkFn is a visitor function for actors
+type ActorWalkFn func(address.Address, *actor.Actor) error
+
 // Tree is the interface that stateTree implements. It provides accessors
 // to Get and Set actors in a backing store by address.
 type Tree interface {
@@ -36,6 +39,8 @@ type Tree interface {
 	GetActor(ctx context.Context, a address.Address) (*actor.Actor, error)
 	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
+
+	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
 
 	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
 }
@@ -171,6 +176,41 @@ func (t *tree) GetOrCreateActor(ctx context.Context, address address.Address, cr
 func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor) error {
 	if err := t.root.Set(ctx, a.String(), act); err != nil {
 		return errors.Wrap(err, "setting actor in state tree failed")
+	}
+	return nil
+}
+
+// ForEachActor calls walkFn for each actor in the state tree
+func (t *tree) ForEachActor(ctx context.Context, walkFn ActorWalkFn) error {
+	return forEachActor(ctx, t.store, t.root, walkFn)
+}
+
+func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, walkFn ActorWalkFn) error {
+	for _, p := range nd.Pointers {
+		for _, kv := range p.KVs {
+			var a actor.Actor
+			if err := hackTransferObject(kv.Value, &a); err != nil {
+				return err
+			}
+
+			addr, err := address.NewFromString(kv.Key)
+			if err != nil {
+				return err
+			}
+
+			if err := walkFn(addr, &a); err != nil {
+				return err
+			}
+		}
+		if p.Link != nil {
+			n, err := hamt.LoadNode(context.Background(), cst, p.Link)
+			if err != nil {
+				return err
+			}
+			if err := forEachActor(ctx, cst, n, walkFn); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

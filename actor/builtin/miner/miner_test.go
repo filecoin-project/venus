@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,6 +34,70 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	assert.NoError(err)
 	return addr
+}
+
+func TestAddAsk(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := core.CreateStorages(ctx, t)
+
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte{}, th.RequireRandomPeerID())
+
+	// make an ask, and then make sure it all looks good
+	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
+	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
+
+	_, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(1))
+	assert.NoError(err)
+
+	pdata = actor.MustConvertParams(big.NewInt(0))
+	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
+	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(2))
+	assert.NoError(err)
+
+	var ask Ask
+	err = actor.UnmarshalStorage(result.Receipt.Return[0], &ask)
+	require.NoError(err)
+	assert.Equal(types.NewBlockHeight(1501), ask.Expiry)
+
+	miner, err := st.GetActor(ctx, minerAddr)
+	assert.NoError(err)
+
+	var minerStorage State
+	builtin.RequireReadState(t, vms, minerAddr, miner, &minerStorage)
+	assert.Equal(1, len(minerStorage.Asks))
+	assert.Equal(uint64(1), minerStorage.NextAskID.Uint64())
+
+	// make another ask!
+	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
+	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
+	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(3))
+	assert.NoError(err)
+	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
+
+	pdata = actor.MustConvertParams(big.NewInt(1))
+	msg = types.NewMessage(address.TestAddress, minerAddr, 4, types.NewZeroAttoFIL(), "getAsk", pdata)
+	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(4))
+	assert.NoError(err)
+
+	var ask2 Ask
+	err = actor.UnmarshalStorage(result.Receipt.Return[0], &ask2)
+	require.NoError(err)
+	assert.Equal(types.NewBlockHeight(203), ask2.Expiry)
+	assert.Equal(uint64(1), ask2.ID.Uint64())
+
+	msg = types.NewMessage(address.TestAddress, minerAddr, 5, types.NewZeroAttoFIL(), "getAsks", nil)
+	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(4))
+	assert.NoError(err)
+	assert.NoError(result.ExecutionError)
+
+	var askids []uint64
+	require.NoError(actor.UnmarshalStorage(result.Receipt.Return[0], &askids))
+	assert.Len(askids, 2)
 }
 
 func TestGetKey(t *testing.T) {

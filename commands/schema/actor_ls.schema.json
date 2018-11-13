@@ -45,9 +45,13 @@
           "additionalProperties": {
             "type": "object"
           }
+        },
+        "Asks":{
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/Ask" }
         }
       },
-      "required": ["Miners"]
+      "required": ["Miners", "Asks"]
     },
     "PaymentChannel": {
       "type": "object",

@@ -96,6 +96,11 @@ func (m *MockStateTree) GetOrCreateActor(ctx context.Context, address address.Ad
 	return creator()
 }
 
+// ForEachActor implements StateTree.ForEachActor
+func (m *MockStateTree) ForEachActor(ctx context.Context, walkFn ActorWalkFn) error {
+	panic("Do not call me")
+}
+
 // Debug implements StateTree.Debug
 func (m *MockStateTree) Debug() {
 	panic("do not call me")

@@ -32,6 +32,7 @@ import (
 	dht "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht"
 	dhtopts "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht/opts"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -392,7 +393,13 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
-	node.StorageMinerClient = storage.NewClient(node)
+
+	cni := storage.NewClientNodeImpl(
+		dag.NewDAGService(node.BlockService()),
+		node.Host(),
+		node.Lookup(),
+		node.CallQueryMethod)
+	node.StorageMinerClient = storage.NewClient(cni)
 
 	node.RetrievalClient = retrieval.NewClient(node)
 	node.RetrievalMiner = retrieval.NewMiner(node)

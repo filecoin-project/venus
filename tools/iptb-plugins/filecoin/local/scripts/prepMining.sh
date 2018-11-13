@@ -80,7 +80,7 @@ do
 
     # add an ask
     printf "adding ask"
-    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 3221225472 1 # 1024*1024*1024*3
+    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 1 100000 # price of one FIL/whatever, ask is valid for 100000 blocks
 
     # make a deal
     dd if=/dev/random of="$FIXDIR/fake.dat"  bs=1m  count=1 # small data file will be autosealed
