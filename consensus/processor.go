@@ -4,7 +4,7 @@ import (
 	"context"
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -21,7 +21,9 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree, vms vm
 type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree, vms vm.StorageMap) (*ProcessTipSetResponse, error)
 
 var (
+	// ErrMultipleBlockReward is returned when processing a block with more than one block reward message.
 	ErrMultipleBlockReward = xerrors.New("more than one block reward message")
+	// ErrBlockRewardTooHigh is returned when processing a block reward higher than allowed.
 	ErrBlockRewardTooHigh = xerrors.New("block reward grants greater than 1000 FIL")
 )
 
@@ -54,7 +56,7 @@ var (
 // See comments on ApplyMessage for specific intent.
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.StorageMap) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
-	
+
 	// Check signatures and block reward message.
 	var rewardExists bool
 	for _, smsg := range blk.Messages {
@@ -69,13 +71,13 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.S
 			rewardExists = true
 			continue
 		}
-		
+
 		// Handle other messages.
 		if !smsg.VerifySignature() {
 			return nil, types.ErrInvalidSignature
 		}
 	}
-	
+
 	bh := types.NewBlockHeight(uint64(blk.Height))
 	res, faultErr := ApplyMessages(ctx, blk.Messages, st, vms, bh)
 	if faultErr != nil {
@@ -431,7 +433,7 @@ func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st stat
 	var ret ApplyMessagesResponse
 
 	for _, smsg := range messages {
- 		// We only want the message, not its signature, validation should have already happened
+		// We only want the message, not its signature, validation should have already happened
 		msg := &smsg.Message
 		r, err := ApplyMessage(ctx, st, vms, msg, bh)
 		// If the message should not have been in the block, bail somehow.
