@@ -35,17 +35,17 @@ type RustProver struct{}
 
 var _ Prover = &RustProver{}
 
-// SnarkBytes is the length of the Proof of SpaceTime proof.
-const SnarkBytes uint = 192
+// SnarkBytesLen is the length of the Proof of SpaceTime proof.
+const SnarkBytesLen uint = 192
 
-// SealBytes is the length of the proof of Seal Proof of Replication.
-const SealBytes uint = 384
+// SealBytesLen is the length of the proof of Seal Proof of Replication.
+const SealBytesLen uint = 384
 
 // PoStProof is the byte representation of the Proof of SpaceTime proof
-type PoStProof [SnarkBytes]byte
+type PoStProof [SnarkBytesLen]byte
 
 // SealProof is the byte representation of the Seal Proof of Replication
-type SealProof [SealBytes]byte
+type SealProof [SealBytesLen]byte
 
 func elapsed(what string) func() {
 	start := time.Now()
@@ -220,7 +220,7 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 
 	// copy proof bytes back to Go from C
 
-	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), C.int(SnarkBytes))
+	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), C.int(SnarkBytesLen))
 	var proof PoStProof
 	copy(proof[:], proofSlice)
 
@@ -234,7 +234,7 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
-	proofPtr := (*[C.uint(SnarkBytes)]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
+	proofPtr := (*[C.uint(SnarkBytesLen)]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
 
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(proofPtr)))
