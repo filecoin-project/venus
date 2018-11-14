@@ -34,7 +34,11 @@ docker pull $${FILECOIN_DOCKER_IMAGE}
 docker pull $${FILEBEAT_DOCKER_IMAGE}
 
 # start filebeat
-docker run -d -v /var/lib/docker/containers:/usr/share/dockerlogs:ro -v /var/run/docker.sock:/var/run/docker.sock --network host --name filebeat -e LOGSTASH_HOSTS=${logstash_hosts} $${FILEBEAT_DOCKER_IMAGE}
+docker run -d \
+       --network host --name filebeat -e LOGSTASH_HOSTS=${logstash_hosts} \
+       -v /mnt/storage/docker/containers:/usr/share/dockerlogs:ro \
+       -v /var/run/docker.sock:/var/run/docker.sock \
+       $${FILEBEAT_DOCKER_IMAGE}
 
 ${cadvisor_install}
 ${node_exporter_install}
@@ -119,7 +123,7 @@ do
 done
 
 # configure mining on node 0
-minerAddr=$$(cat $${CAR_DIR}/gen.json | grep -v Fixture | jq ".Miners[0].Address" -r)
+minerAddr=$$(cat $${CAR_DIR}/gen.json | grep -v Fixture | jq -r '.Miners[] | select(.Owner == 0).Address')
 
 docker exec "filecoin-0" $$filecoin_exec \
        config mining.minerAddress "\"$${minerAddr}\""
@@ -176,12 +180,18 @@ do
   docker exec "filecoin-$$i" $$filecoin_exec \
          mining start
 
+  # add an ask
+  MINER_ADD_ASK_MSG_CID=$$(docker exec "filecoin-$$i" $$filecoin_exec miner add-ask $${minerAddr} 10 10000)
+
+  # wait for ask to be mined
+  docker exec "filecoin-$$i" $$filecoin_exec message wait $${MINER_ADD_ASK_MSG_CID}
+
   # make a deal
   dd if=/dev/random of="$$CAR_DIR/fake.dat"  bs=1M  count=1 # small data file will be autosealed
   dataCid=$$(docker exec "filecoin-0" $$filecoin_exec client import "/var/filecoin/car/fake.dat")
   rm "$$CAR_DIR/fake.dat"
 
   docker exec "filecoin-0" $$filecoin_exec \
-         client propose-storage-deal --price 1 "$$newMinerAddr" "$$dataCid" 10000
+         client propose-storage-deal $${newMinerAddr} $${dataCid} 0 8640
 done
 
