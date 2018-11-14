@@ -13,7 +13,7 @@ var (
 	ErrMessageSigned = errors.New("message already contains a signature")
 	// ErrMessageUnsigned is returned when `RecoverAddress` is called on a signedmessage that does not contain a signature
 	ErrMessageUnsigned = errors.New("message does not contain a signature")
-	// ErrInvalidSignature is used to indicate that a message was not validly signed by its sender.
+	// ErrInvalidSignature indicates an invalid message signature.
 	ErrInvalidSignature = errors.New("invalid signature by sender over message data")
 )
 
@@ -77,10 +77,10 @@ func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) 
 func (smsg *SignedMessage) VerifySignature() bool {
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
-		log.Infof("error in signature verification: %s", err)
+		log.Infof("invalid signature: %s", err)
 		return false
 	}
-	return VerifySignature(bmsg, smsg.Message.From, smsg.Signature)
+	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing

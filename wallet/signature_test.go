@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-/* Test types.VerifySignature */
+/* Test types.IsValidSignature */
 
 func requireSignerAddr(require *require.Assertions) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
@@ -44,7 +44,7 @@ func TestSignatureOk(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(err)
 
-	assert.True(types.VerifySignature(data, addr, sig))
+	assert.True(types.IsValidSignature(data, addr, sig))
 }
 
 // Signature is nil.
@@ -55,7 +55,7 @@ func TestNilSignature(t *testing.T) {
 	_, addr := requireSignerAddr(require)
 
 	data := []byte("THESE BYTES NEED A SIGNATURE")
-	assert.False(types.VerifySignature(data, addr, nil))
+	assert.False(types.IsValidSignature(data, addr, nil))
 }
 
 // Signature is over different data.
@@ -71,7 +71,7 @@ func TestDataCorrupted(t *testing.T) {
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
 
-	assert.False(types.VerifySignature(corruptData, addr, sig))
+	assert.False(types.IsValidSignature(corruptData, addr, sig))
 }
 
 // Signature is valid for data but was signed by a different address.
@@ -88,7 +88,7 @@ func TestInvalidAddress(t *testing.T) {
 	badAddr, err := fs.NewAddress()
 	require.NoError(err)
 
-	assert.False(types.VerifySignature(data, badAddr, sig))
+	assert.False(types.IsValidSignature(data, badAddr, sig))
 }
 
 // Signature is corrupted.
@@ -103,7 +103,7 @@ func TestSignatureCorrupted(t *testing.T) {
 	require.NoError(err)
 	sig[0] = sig[0] ^ 0xFF // This operation ensures sig is modified
 
-	assert.False(types.VerifySignature(data, addr, sig))
+	assert.False(types.IsValidSignature(data, addr, sig))
 }
 
 /* Test types.SignedMessage */

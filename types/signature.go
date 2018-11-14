@@ -12,9 +12,9 @@ var log = logging.Logger("types")
 // Signature is the result of a cryptographic sign operation.
 type Signature = Bytes
 
-// VerifySignature cryptographically verifies that 'sig' is the signed hash of 'data' with
+// IsValidSignature cryptographically verifies that 'sig' is the signed hash of 'data' with
 // the public key belonging to `addr`.
-func VerifySignature(data []byte, addr address.Address, sig Signature) bool {
+func IsValidSignature(data []byte, addr address.Address, sig Signature) bool {
 	maybePk, err := wutil.Ecrecover(data, sig)
 	if err != nil {
 		// Any error returned from Ecrecover means this signature is not valid.

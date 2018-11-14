@@ -38,7 +38,7 @@ func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSe
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
-	rewardMsg := types.NewMessage(address.NetworkAddress, w.minerAddr, 0, types.NewAttoFILFromFIL(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, w.minerAddr, 0, consensus.BlockRewardAmount(), "", nil)
 	srewardMsg := &types.SignedMessage{
 		Message:   *rewardMsg,
 		Signature: nil,

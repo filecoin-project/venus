@@ -188,7 +188,7 @@ func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *t
 //
 func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
 	data := createVoucherSignatureData(chid, amt)
-	if !types.VerifySignature(data, payer, sig) {
+	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
@@ -235,7 +235,7 @@ func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.Ch
 // funds remaining in the channel to the payer account and deletes the channel.
 func (pb *Actor) Close(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
 	data := createVoucherSignatureData(chid, amt)
-	if !types.VerifySignature(data, payer, sig) {
+	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 

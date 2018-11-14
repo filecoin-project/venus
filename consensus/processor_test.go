@@ -187,7 +187,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	assert.True(expStCid.Equals(gotStCid))
 }
 
-func TestProcessBlockBadSig(t *testing.T) {
+func TestProcessBlockBadMsgSig(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -242,7 +242,7 @@ func TestProcessBlockReward(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
-	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, types.NewAttoFILFromFIL(1000), "", nil)
+	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, BlockRewardAmount(), "", nil)
 	sRewardMsg := &types.SignedMessage{
 		Message:   *rewardMsg,
 		Signature: nil,
@@ -290,7 +290,7 @@ func TestProcessBlockBadReward(t *testing.T) {
 	}
 	ret, err := ProcessBlock(ctx, blk, st, vms)
 	assert.Nil(ret)
-	assert.EqualError(err, ErrBlockRewardTooHigh.Error())
+	assert.EqualError(err, ErrIncorrectBlockReward.Error())
 }
 
 func TestProcessBlockTwoRewardMsgs(t *testing.T) {
@@ -332,7 +332,7 @@ func TestProcessBlockTwoRewardMsgs(t *testing.T) {
 	}
 	ret, err := ProcessBlock(ctx, blk, st, vms)
 	assert.Nil(ret)
-	assert.EqualError(err, ErrMultipleBlockReward.Error())
+	assert.EqualError(err, types.ErrInvalidSignature.Error())
 }
 
 func TestProcessBlockVMErrors(t *testing.T) {

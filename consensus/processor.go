@@ -21,10 +21,8 @@ type Processor func(ctx context.Context, blk *types.Block, st state.Tree, vms vm
 type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree, vms vm.StorageMap) (*ProcessTipSetResponse, error)
 
 var (
-	// ErrMultipleBlockReward is returned when processing a block with more than one block reward message.
-	ErrMultipleBlockReward = xerrors.New("more than one block reward message")
-	// ErrBlockRewardTooHigh is returned when processing a block reward higher than allowed.
-	ErrBlockRewardTooHigh = xerrors.New("block reward grants greater than 1000 FIL")
+	// ErrIncorrectBlockReward is returned when processing a block reward higher than allowed.
+	ErrIncorrectBlockReward = xerrors.New("block reward incorrect")
 )
 
 // ProcessBlock is the entrypoint for validating the state transitions
@@ -57,27 +55,6 @@ var (
 func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.StorageMap) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
 
-	// Check signatures and block reward message.
-	var rewardExists bool
-	for _, smsg := range blk.Messages {
-		// Handle block reward message.
-		if smsg.Signature == nil && smsg.Message.From == address.NetworkAddress {
-			if rewardExists {
-				return nil, ErrMultipleBlockReward
-			}
-			if smsg.Message.Value.GreaterThan(types.NewAttoFILFromFIL(1000)) {
-				return nil, ErrBlockRewardTooHigh
-			}
-			rewardExists = true
-			continue
-		}
-
-		// Handle other messages.
-		if !smsg.VerifySignature() {
-			return nil, types.ErrInvalidSignature
-		}
-	}
-
 	bh := types.NewBlockHeight(uint64(blk.Height))
 	res, faultErr := ApplyMessages(ctx, blk.Messages, st, vms, bh)
 	if faultErr != nil {
@@ -90,6 +67,17 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.S
 		return emptyResults, res.TemporaryErrors[0]
 	}
 	return res.Results, nil
+}
+
+func isRewardMessage(smsg *types.SignedMessage) bool {
+	return smsg.Signature == nil && smsg.Message.From == address.NetworkAddress
+}
+
+// BlockRewardAmount returns the max FIL value miners can claim as the block reward.
+// TODO this is one of the system parameters that should be configured as part of
+// https://github.com/filecoin-project/go-filecoin/issues/884.
+func BlockRewardAmount() *types.AttoFIL {
+	return types.NewAttoFILFromFIL(1000)
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -432,10 +420,19 @@ func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st stat
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 
-	for _, smsg := range messages {
-		// We only want the message, not its signature, validation should have already happened
-		msg := &smsg.Message
-		r, err := ApplyMessage(ctx, st, vms, msg, bh)
+	for i, smsg := range messages {
+		// If first message is reward message, verify it is correct.
+		// TODO: we do not enforce that first message must be reward,
+		// should we?
+		if i == 0 && isRewardMessage(smsg) {
+			if smsg.Message.Value.GreaterThan(BlockRewardAmount()) {
+				return emptyRet, ErrIncorrectBlockReward
+			}
+		} else if !smsg.VerifySignature() {
+			return emptyRet, types.ErrInvalidSignature
+		}
+
+		r, err := ApplyMessage(ctx, st, vms, &smsg.Message, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
