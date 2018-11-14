@@ -47,6 +47,18 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert.Len(pool.Pending(), 0)
 }
 
+func TestMessagePoolAddBadSignature(t *testing.T) {
+	assert := assert.New(t)
+
+	pool := NewMessagePool()
+	smsg := newSignedMessage()
+	smsg.Message.Nonce = types.Uint64(uint64(smsg.Message.Nonce) + uint64(1)) // invalidate message
+
+	c, err := pool.Add(smsg)
+	assert.Nil(c)
+	assert.Error(err)
+}
+
 func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
 

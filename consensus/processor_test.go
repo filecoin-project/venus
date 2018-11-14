@@ -187,6 +187,154 @@ func TestProcessTipsConflicts(t *testing.T) {
 	assert.True(expStCid.Equals(gotStCid))
 }
 
+func TestProcessBlockBadMsgSig(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	newAddress := address.NewForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+	mockSigner := types.NewMockSigner(ki)
+
+	toAddr := newAddress()
+	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
+	fromAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+		fromAddr: fromAct,
+	})
+
+	vms := th.VMStorage()
+	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	require.NoError(err)
+	// corrupt the message data
+	smsg.Message.Nonce = 13
+
+	blk := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.SignedMessage{smsg},
+	}
+	results, err := ProcessBlock(ctx, blk, st, vms)
+	require.Nil(results)
+	assert.EqualError(err, types.ErrInvalidSignature.Error())
+}
+
+// ProcessBlock should not fail with an unsigned block reward message.
+func TestProcessBlockReward(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	newAddress := address.NewForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	minerOwnerAddr := newAddress()
+	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
+	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+		minerOwnerAddr: ownerAct,
+		// TODO: get rid of this ugly hack as soon once we have
+		// sustainable reward message support (i.e. anything but setting
+		// up network address in genesis with a bunch of FIL).
+		address.NetworkAddress: networkAct,
+	})
+
+	vms := th.VMStorage()
+	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, BlockRewardAmount(), "", nil)
+	sRewardMsg := &types.SignedMessage{
+		Message:   *rewardMsg,
+		Signature: nil,
+	}
+
+	blk := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.SignedMessage{sRewardMsg},
+	}
+	_, err := ProcessBlock(ctx, blk, st, vms)
+	assert.NoError(err)
+}
+
+func TestProcessBlockBadReward(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	newAddress := address.NewForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	minerOwnerAddr := newAddress()
+	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
+	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+		minerOwnerAddr: ownerAct,
+		// TODO: get rid of this ugly hack as soon once we have
+		// sustainable reward message support (i.e. anything but setting
+		// up network address in genesis with a bunch of FIL).
+		address.NetworkAddress: networkAct,
+	})
+
+	vms := th.VMStorage()
+	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, types.NewAttoFILFromFIL(1001), "", nil)
+	sRewardMsg := &types.SignedMessage{
+		Message:   *rewardMsg,
+		Signature: nil,
+	}
+
+	blk := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.SignedMessage{sRewardMsg},
+	}
+	ret, err := ProcessBlock(ctx, blk, st, vms)
+	assert.Nil(ret)
+	assert.EqualError(err, ErrIncorrectBlockReward.Error())
+}
+
+func TestProcessBlockTwoRewardMsgs(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	newAddress := address.NewForTestGetter()
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	minerOwnerAddr := newAddress()
+	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
+	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+		minerOwnerAddr: ownerAct,
+		// TODO: get rid of this ugly hack as soon once we have
+		// sustainable reward message support (i.e. anything but setting
+		// up network address in genesis with a bunch of FIL).
+		address.NetworkAddress: networkAct,
+	})
+
+	vms := th.VMStorage()
+	rewardMsg1 := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, types.NewAttoFILFromFIL(1000), "", nil)
+	sRewardMsg1 := &types.SignedMessage{
+		Message:   *rewardMsg1,
+		Signature: nil,
+	}
+
+	rewardMsg2 := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 1, types.NewAttoFILFromFIL(1000), "", nil)
+	sRewardMsg2 := &types.SignedMessage{
+		Message:   *rewardMsg2,
+		Signature: nil,
+	}
+
+	blk := &types.Block{
+		Height:    20,
+		StateRoot: stCid,
+		Messages:  []*types.SignedMessage{sRewardMsg1, sRewardMsg2},
+	}
+	ret, err := ProcessBlock(ctx, blk, st, vms)
+	assert.Nil(ret)
+	assert.EqualError(err, types.ErrInvalidSignature.Error())
+}
+
 func TestProcessBlockVMErrors(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

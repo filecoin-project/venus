@@ -40,6 +40,11 @@ func (pool *MessagePool) Add(msg *types.SignedMessage) (*cid.Cid, error) {
 		return nil, errors.Wrap(err, "failed to create CID")
 	}
 
+	// Reject messages with invalid signatires
+	if !msg.VerifySignature() {
+		return nil, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
+	}
+
 	pool.pending[c.KeyString()] = msg
 	return c, nil
 }
