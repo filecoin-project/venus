@@ -109,6 +109,7 @@ do
          -v /home/ubuntu/car:/var/filecoin/car \
          -v "$${FILECOIN_STORAGE}"/$$i:/var/local/filecoin \
          -e IPFS_LOGGING_FMT=nocolor -e FILECOIN_PATH="/var/local/filecoin" \
+         -e GO_FILECOIN_LOG_LEVEL=5 \
          --log-driver json-file --log-opt max-size=10m \
          $${FILECOIN_DOCKER_IMAGE} daemon --elstdout \
          --repodir="/var/local/filecoin" --swarmlisten="/ip4/0.0.0.0/tcp/9000" --block-time="30s"
@@ -181,7 +182,7 @@ do
          mining start
 
   # add an ask
-  MINER_ADD_ASK_MSG_CID=$$(docker exec "filecoin-$$i" $$filecoin_exec miner add-ask $${minerAddr} 10 10000)
+  MINER_ADD_ASK_MSG_CID=$$(docker exec "filecoin-$$i" $$filecoin_exec miner add-ask $${newMinerAddr} 10 10000)
 
   # wait for ask to be mined
   docker exec "filecoin-$$i" $$filecoin_exec message wait $${MINER_ADD_ASK_MSG_CID}
