@@ -2,6 +2,7 @@ package sectorbuilder
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"io"
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
@@ -73,7 +74,7 @@ type SealedSector struct {
 	CommR                [32]byte
 	numBytes             uint64
 	pieces               []*PieceInfo
-	proof                [384]byte
+	proof                proofs.SealProof
 	sealedSectorAccess   string
 	SectorID             uint64
 	unsealedSectorAccess string
