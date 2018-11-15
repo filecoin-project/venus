@@ -52,8 +52,9 @@ docker run -d \
 docker network create --subnet 172.19.0.0/24 filecoin
 # DASHBOARD
 docker run -d --name=dashboard-aggregator \
-       --network=filecoin --hostname=dashboard-aggregator -p 9080:9080 -p 19000:9000 \
+       --network=filecoin --hostname=dashboard-aggregator \
        --ip 172.19.0.250 \
+       -p 9080:9080 -p 9081:9081 -p 9082:9082 \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-aggregator:latest
 
 docker run -d --name=dashboard-visualizer \
@@ -162,7 +163,7 @@ do
   docker exec "filecoin-$$i" $$filecoin_exec \
          config heartbeat.nickname '"boot"'
   docker exec -d "filecoin-$$i" $$filecoin_exec \
-         log streamto /ip4/172.19.0.250/tcp/9000
+         config heartbeat.beatTarget '"/ip4/172.19.0.250/tcp/9081/ipfs/QmVR3UFv588pSu8AxSw9C6DrMHiUFkWwdty8ajgPvtWaGU"'
 done
 
 # send some tokens
