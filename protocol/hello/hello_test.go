@@ -55,9 +55,8 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
-	_, _ = h1, h2
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
@@ -111,15 +110,14 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
-	_, _ = h1, h2
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	mn.LinkAll()
-	mn.ConnectAllButSelf()
+	require.NoError(mn.LinkAll())
+	require.NoError(mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -156,9 +154,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
-	h2 := New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
-	_, _ = h1, h2
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet)
+	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()

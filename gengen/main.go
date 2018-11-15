@@ -45,7 +45,7 @@ $ cat setup.json
 		},
 		{
 			"owner": 1,
-      power": 1000
+			"power": 1000
 		}
 	]
 }

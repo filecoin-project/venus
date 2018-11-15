@@ -39,76 +39,67 @@ type DaemonInitConfig struct {
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
-type DaemonInitOpt func(*DaemonInitConfig) error
+type DaemonInitOpt func(*DaemonInitConfig)
 
 // UseCustomGenesis enables or disables the custom genesis functionality on daemon init.
 func UseCustomGenesis(use bool) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.UseCustomGenesis = use
-		return nil
 	}
 }
 
 // WalletFile sets the path to a wallet file on daemon init.
 func WalletFile(p string) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.WalletFile = p
-		return nil
 	}
 }
 
 // WalletAddr defines a the address to store, used in combination with WalletFile.
 func WalletAddr(addr string) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.WalletAddr = addr
-		return nil
 	}
 }
 
 // GenesisFile defines a custom genesis file to use on daemon init.
 func GenesisFile(p string) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.GenesisFile = p
-		return nil
 	}
 }
 
 // RepoDir defines the location on disk of the repo.
 func RepoDir(p string) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.RepoDir = p
-		return nil
 	}
 }
 
 // PeerKeyFile defines the file to load a libp2p peer key from
 func PeerKeyFile(p string) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.PeerKeyFile = p
-		return nil
 	}
 }
 
 // WithMiner sets the WithMiner option.
 func WithMiner(miner address.Address) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.WithMiner = miner
-		return nil
 	}
 }
 
 // LabWeekCluster sets the LabWeekCluster option.
 func LabWeekCluster(doit bool) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.LabWeekCluster = doit
-		return nil
 	}
 }
 
 // AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
 func AutoSealIntervalSeconds(autoSealIntervalSeconds uint) DaemonInitOpt {
-	return func(dc *DaemonInitConfig) error {
+	return func(dc *DaemonInitConfig) {
 		dc.AutoSealIntervalSeconds = autoSealIntervalSeconds
-		return nil
 	}
 }

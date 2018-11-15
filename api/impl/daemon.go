@@ -3,7 +3,10 @@ package impl
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 
 	crypto "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
@@ -54,9 +57,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	// load configuration options
 	cfg := &api.DaemonInitConfig{}
 	for _, o := range opts {
-		if err := o(cfg); err != nil {
-			return err
-		}
+		o(cfg)
 	}
 
 	if err := repo.InitFSRepo(cfg.RepoDir, config.NewDefaultConfig()); err != nil {
@@ -197,17 +198,37 @@ func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) erro
 	return nil
 }
 
-// LoadGenesis gets the genesis block from a filecoin repo and a car file
-func LoadGenesis(rep repo.Repo, fname string) (*cid.Cid, error) {
-	fi, err := os.Open(fname)
+// LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
+func LoadGenesis(rep repo.Repo, sourceName string) (*cid.Cid, error) {
+	var source io.ReadCloser
+
+	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
 	}
-	defer fi.Close() // nolint: errcheck
+	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
+		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
+		// recently deployed test cluster.
+		response, err := http.Get(sourceName)
+		if err != nil {
+			return nil, err
+		}
+		source = response.Body
+	} else if sourceURL.Scheme != "" {
+		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+	} else {
+		file, err := os.Open(sourceName)
+		if err != nil {
+			return nil, err
+		}
+		source = file
+	}
+
+	defer source.Close() // nolint: errcheck
 
 	bs := blockstore.NewBlockstore(rep.Datastore())
 
-	ch, err := car.LoadCar(bs, fi)
+	ch, err := car.LoadCar(bs, source)
 	if err != nil {
 		return nil, err
 	}
