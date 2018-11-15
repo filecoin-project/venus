@@ -208,7 +208,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		// target redeems the voucher (on-chain)
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
 
-		lsStr := listChannelsAsStrs(d, &payer)[0]
+		lsStr := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 1000, amt redeemed: 10, eol: %s", channelID, target.String(), eol.String()), lsStr)
 
 		d.RunSuccess("mining once")
