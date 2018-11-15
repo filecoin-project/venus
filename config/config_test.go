@@ -34,37 +34,48 @@ func TestWriteFile(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(
-		`[api]
-  address = "/ip4/127.0.0.1/tcp/3453"
-  accessControlAllowOrigin = ["http://localhost:8080", "https://localhost:8080", "http://127.0.0.1:8080", "https://127.0.0.1:8080"]
-  accessControlAllowCredentials = false
-  accessControlAllowMethods = ["GET", "POST", "PUT"]
-
-[bootstrap]
-  addresses = []
-  minPeerThreshold = 0
-  period = "1m"
-
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
-[swarm]
-  address = "/ip4/0.0.0.0/tcp/6000"
-
-[mining]
-  minerAddress = ""
-  autoSealIntervalSeconds = 120
-
-[wallet]
-  defaultAddress = ""
-
-[heartbeat]
-  beatTarget = ""
-  beatPeriod = "3s"
-  reconnectPeriod = "10s"
-  nickname = ""
-`,
+		`{
+	"api": {
+		"address": "/ip4/127.0.0.1/tcp/3453",
+		"accessControlAllowOrigin": [
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://127.0.0.1:8080",
+			"https://127.0.0.1:8080"
+		],
+		"accessControlAllowCredentials": false,
+		"accessControlAllowMethods": [
+			"GET",
+			"POST",
+			"PUT"
+		]
+	},
+	"bootstrap": {
+		"addresses": [],
+		"minPeerThreshold": 0,
+		"period": "1m"
+	},
+	"datastore": {
+		"type": "badgerds",
+		"path": "badger"
+	},
+	"swarm": {
+		"address": "/ip4/0.0.0.0/tcp/6000"
+	},
+	"mining": {
+		"minerAddress": "",
+		"autoSealIntervalSeconds": 120
+	},
+	"wallet": {
+		"defaultAddress": ""
+	},
+	"heartbeat": {
+		"beatTarget": "",
+		"beatPeriod": "3s",
+		"reconnectPeriod": "10s",
+		"nickname": ""
+	}
+}`,
 		string(content),
 	)
 
@@ -263,7 +274,7 @@ path = "mushroom-mushroom"`
 		assert.Equal(cfg1.Datastore, cfg.Datastore)
 
 		// inline tables
-		tomlBlob = `  {type = "badgerbadgerbadgerds", path = "mushroom-mushroom"}`
+		tomlBlob = `	{type = "badgerbadgerbadgerds", path = "mushroom-mushroom"}`
 		out, err = cfg.Set("datastore", tomlBlob)
 		assert.NoError(err)
 

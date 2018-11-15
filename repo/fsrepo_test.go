@@ -33,8 +33,8 @@ const (
 		]
 	},
 	"bootstrap": {
-		"relays": [],
 		"addresses": [],
+		"minPeerThreshold": 0,
 		"period": "1m"
 	},
 	"datastore": {

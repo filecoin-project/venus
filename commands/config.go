@@ -1,14 +1,12 @@
 package commands
 
 import (
-	"fmt"
-	"io"
+	"encoding/json"
 	"reflect"
 	"strings"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 )
 
 var configCmd = &cmds.Command{
@@ -102,23 +100,6 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 			re.Emit(output) // nolint: errcheck
 		}
 	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, v interface{}) error {
-			key := req.Arguments[0]
-			vT := reflect.TypeOf(v)
-			k := makeKey(key, vT)
-
-			field := reflect.StructField{
-				Name: "Field",
-				Type: vT,
-				Tag:  reflect.StructTag(fmt.Sprintf("toml:\"%s\"", k)),
-			}
-			encodeT := reflect.StructOf([]reflect.StructField{field})
-			vWrap := reflect.New(encodeT)
-			vWrap.Elem().Field(0).Set(reflect.ValueOf(v))
-			return toml.NewEncoder(w).Encode(vWrap.Interface())
-		}),
-	},
 }
 
 // makeKey makes the correct display key for the TOML formatting of the given
@@ -154,12 +135,11 @@ func makeOutput(configField interface{}) (interface{}, error) {
 
 	if cfT.Kind() == reflect.Struct {
 		var output interface{}
-		b := strings.Builder{}
-		err := toml.NewEncoder(&b).Encode(configField)
+		jsonOut, err := json.Marshal(configField)
 		if err != nil {
 			return nil, err
 		}
-		_, err = toml.Decode(b.String(), &output)
+		err = json.Unmarshal(jsonOut, &output)
 		if err != nil {
 			return nil, err
 		}

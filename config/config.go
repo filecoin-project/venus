@@ -74,16 +74,15 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Relays           []string `json:"relays"`
+	Relays           []string `json:"relays,omitempty"`
 	Addresses        []string `json:"addresses"`
-	MinPeerThreshold int      `json:"minPeerThreshold,omitempty"`
+	MinPeerThreshold int      `json:"minPeerThreshold"`
 	Period           string   `json:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
 func newDefaultBootstrapConfig() *BootstrapConfig {
 	return &BootstrapConfig{
-		Relays:           []string{},
 		Addresses:        []string{},
 		MinPeerThreshold: 0, // TODO: we don't actually have an bootstrap peers yet.
 		Period:           "1m",
@@ -235,7 +234,7 @@ OUTER:
 	return nil, fmt.Errorf("empty key is invalid")
 }
 
-// prependKey includes the TOML key in the tomlVal blob necessary for correct
+// prependKey includes the JSON key in the jsonVal blob necessary for correct
 // marshaling.  Ordinary tables require "[key]\n" prepended.  All others,
 // including inline tables and arrays require "k = " prepended, where k is the
 // last period separated substring of key. This function assumes all tables
@@ -252,7 +251,7 @@ func prependKey(jsonVaml string, key string, fieldT reflect.Type) string {
 }
 
 // fieldToSet calculates the reflector Value to set the config at the given key
-// based on the user provided toml blob.
+// based on the user provided json blob.
 func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value, error) {
 	// set up a struct with this field for unmarshaling
 	jsonValKey := prependKey(jsonVal, key, fieldT)
