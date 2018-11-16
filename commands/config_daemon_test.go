@@ -43,7 +43,8 @@ func TestConfigDaemon(t *testing.T) {
 
 		period := "1m"
 
-		op1 := d.RunSuccess("config", "bootstrap.period", period)
+		d.RunSuccess("config", "bootstrap.period", period)
+		op1 := d.RunSuccess("config", "bootstrap.period")
 
 		// validate output
 		jsonOut := op1.ReadStdout()
@@ -63,7 +64,8 @@ func TestConfigDaemon(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		op1 := d.RunSuccess("config", "bootstrap", `{ "addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0 }`)
+		d.RunSuccess("config", "bootstrap", `{ "addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0 }`)
+		op1 := d.RunSuccess("config", "bootstrap")
 
 		// validate output
 		jsonOut := op1.ReadStdout()
