@@ -34,6 +34,27 @@ func TestConfigDaemon(t *testing.T) {
 		assert.Equal(fmt.Sprintf("%q\n", config.NewDefaultConfig().Datastore.Path), jsonOut)
 	})
 
+	t.Run("config <key> simple_value updates config", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+
+		d := th.NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
+
+		period := "1m"
+
+		op1 := d.RunSuccess("config", "bootstrap.period", period)
+
+		// validate output
+		jsonOut := op1.ReadStdout()
+		bootstrapConfig := config.NewDefaultConfig().Bootstrap
+		assert.Equal(fmt.Sprintf("\"%s\"\n", period), jsonOut)
+
+		// validate config write
+		cfg := d.Config()
+		assert.Equal(cfg.Bootstrap, bootstrapConfig)
+	})
+
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
