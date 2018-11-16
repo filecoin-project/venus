@@ -141,7 +141,7 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 |-------------------------|------------------------------------------------------------------------------------------------|
 | `FIL_API`               | This is the default host and port for daemon commands.                                         |
 | `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
-| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
+| `FIL_USE_SMALL_SECTORS` | Seal all sector data, as the proofs system only ever seals the first 127 bytes at the moment.  |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Running Filecoin
