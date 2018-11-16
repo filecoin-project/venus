@@ -243,13 +243,10 @@ OUTER:
 // including inline tables and arrays require "k = " prepended, where k is the
 // last period separated substring of key. This function assumes all tables
 // within an array are specified in inline format.
-func prependKey(jsonValue string, key string, fieldT reflect.Type) string {
+// TODO(dont merge): kill
+func prependKey(jsonValue string, key string) string {
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
-	fieldK := fieldT.Kind()
-	if fieldK == reflect.Ptr {
-		fieldK = fieldT.Elem().Kind() // only attempt one dereference
-	}
 
 	if !json.Valid([]byte(jsonValue)) {
 		return fmt.Sprintf(`{ "%s": "%s" }`, k, jsonValue)
@@ -262,7 +259,7 @@ func prependKey(jsonValue string, key string, fieldT reflect.Type) string {
 // based on the user provided json blob.
 func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value, error) {
 	// set up a struct with this field for unmarshaling
-	jsonValKey := prependKey(jsonVal, key, fieldT)
+	jsonValKey := prependKey(jsonVal, key)
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 

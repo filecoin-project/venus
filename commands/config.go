@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"reflect"
-	"strings"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
@@ -100,26 +99,6 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 			re.Emit(output) // nolint: errcheck
 		}
 	},
-}
-
-// makeKey makes the correct display key for the TOML formatting of the given
-// type. If the type serializes to a TOML table/table array the entire key
-// should be returned, otherwise only the last period separated substring is
-// returned
-func makeKey(key string, vT reflect.Type) string {
-	ks := strings.Split(key, ".")
-	switch vT.Kind() {
-	case reflect.Ptr, reflect.Array, reflect.Slice:
-		elemT := vT.Elem()
-		if elemT.Kind() == reflect.Struct || elemT.Kind() == reflect.Map {
-			return key
-		}
-		return ks[len(ks)-1]
-	case reflect.Struct, reflect.Map:
-		return key
-	default:
-		return ks[len(ks)-1]
-	}
 }
 
 // makeOutput converts struct configFields to a map[string]interface{} with
