@@ -24,39 +24,22 @@ separated by a space, like so:
 go-filecoin config KEY VALUE
 
 Specify the key as a period separated string of object keys. Specify the value
-to set as a toml value.`,
+to set as a JSON value.`,
 		LongDescription: `
 go-filecoin config controls configuration variables. It works similar to
 'git config'. The configuration values are stored in a config file inside
-your filecoin repo. Outputs are written in toml format. Specify the key as
-a period separated string of object keys. Specify the value to set as a toml
+your filecoin repo. Outputs are written in JSON format. Specify the key as
+a period separated string of object keys. Specify the value to set as a JSON
 value. All subkeys including entire tables can be get and set. Examples:
 
-$ go-filecoin config bootstrap.addresses.0
-0 = "oldaddr"
-
 $ go-filecoin config bootstrap.addresses '["newaddr"]'
-addresses = ["newaddr"]
-
-$ go-filecoin config bootstrap.addresses.0 '"oldaddr"'
-0 = "oldaddr"
+["newaddr"]
 
 $ go-filecoin config bootstrap
-[bootstrap]
- addresses = ["oldaddr"]
+{"addresses":["newaddr"]}
 
-$ go-filecoin config datastore 'type = "badgerds"
-path="badger"
-'
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
-$ go-filecoin config datastore '{type="badgerds", path="badger"}'
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
+$ go-filecoin config datastore '{"type":"badgerds","path":"badger"}'
+{"path":"badger","type":"badgerds"}
 `,
 	},
 	Arguments: []cmdkit.Argument{
@@ -102,7 +85,7 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 }
 
 // makeOutput converts struct configFields to a map[string]interface{} with
-// toml tags as the string keys.  This is to preserve tag information across
+// JSON tags as the string keys.  This is to preserve tag information across
 // daemon calls in the presence of many different possible configField types
 func makeOutput(configField interface{}) (interface{}, error) {
 	cfV := reflect.ValueOf(configField)
