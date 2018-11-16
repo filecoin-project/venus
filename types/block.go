@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"sort"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -16,12 +17,6 @@ func init() {
 }
 
 // Block is a block in the blockchain.
-// TODO: Add/update these fields
-//   * BlockSig Signature
-//   * MsgRoot
-//   * Proof
-//   * ReceiptsRoot
-//   * Tickets []Signature  the parent tickets
 type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
@@ -56,6 +51,10 @@ type Block struct {
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
+
+	// Proof is a proof of spacetime generated using the hash of the InputSig as
+	// a challenge
+	Proof proofs.PoStProof `json:"proof"`
 }
 
 // Cid returns the content id of this block.

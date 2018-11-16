@@ -295,7 +295,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
-	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid)
+
+	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &proofs.RustProver{})
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, consensus, chainStore)

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/big"
 	"strings"
 
@@ -65,18 +66,21 @@ type Expected struct {
 	bstore blockstore.Blockstore
 
 	genesisCid cid.Cid
+
+	prover proofs.Prover
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
 		PwrTableView: pt,
 		genesisCid:   gCid,
+		prover:       prover,
 	}
 }
 
@@ -255,23 +259,36 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, pSt state.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet) error {
 
-	// TODO: Recompute the challenge
-	// 		return error if challenge failed
-
-	// TODO: validate the proof with PoST.Verify() -- you may have to refactor s.t. you'll be
-	// able to swap out RustProver for testing purposes (see storage/miner#generatePoSt) so
-	//  verify can be faked out when 'alwaysWinningTicket' is passed as true to node/testing#genNode
-	// 		return error if proof invalid
-
-	// TODO: validate that the ticket is a valid signature over the hash of the proof
-	// 		return error if signature invalid
-
 	for _, blk := range ts.ToSlice() {
+		parentHeight, err := ts.Height()
+		if err != nil {
+			return errors.Wrap(err, "failed to get parentHeight")
+		}
+
+		nullBlockCount := uint64(blk.Height) - parentHeight
+		challenge, err := CreateChallenge(ts, nullBlockCount)
+		if err != nil {
+			return errors.Wrap(err, "couldn't create challenge")
+		}
+
+		isValid, err := proofs.IsPoStValidWithProver(c.prover, blk.Proof[:], challenge)
+		if err != nil {
+			return errors.Wrap(err, "could not test the proof's validity")
+		}
+		if !isValid {
+			// TODO: Temporary way to deal w/ this condition until proofs are updated.
+			log.Debugf("TODO: return error; proof is invalid.")
+		}
+
+		// TODO: validate that the ticket is a valid signature over the hash of the proof
+		// 		return error if signature invalid.  Need BlockSig added to Block struct first.
+
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "couldn't compute ticket")
 		}
+
 		if result {
 			return nil
 		}

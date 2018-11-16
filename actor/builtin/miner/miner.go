@@ -518,6 +518,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
+		// TODO: use IsPoStValidWithProver when proofs are implemented
 		req := proofs.VerifyPoSTRequest{
 			Proof: [ProofLength]byte{},
 		}
