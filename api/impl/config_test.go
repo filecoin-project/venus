@@ -104,12 +104,12 @@ func TestConfigSet(t *testing.T) {
 		jsonBlobInvalid := `{"addresses": [bootup1, "bootup2"]}`
 
 		_, err = api.Config().Set("bootstrap", jsonBlobInvalid)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: invalid character 'b' looking for beginning of value")
+		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: invalid character 'a' after object key:value pair")
 
 		// bad address
 		jsonBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
 		_, err = api.Config().Set("wallet.defaultAddress", jsonBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character 'c' in literal false (expecting 'a')")
+		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character")
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {

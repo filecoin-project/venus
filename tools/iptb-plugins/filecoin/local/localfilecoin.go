@@ -409,11 +409,11 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 // GetConfig returns the nodes config.
 func (l *Localfilecoin) GetConfig() (interface{}, error) {
-	return config.ReadFile(filepath.Join(l.dir, "config.toml"))
+	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }
 
 // WriteConfig writes a nodes config file.
 func (l *Localfilecoin) WriteConfig(cfg interface{}) error {
 	lcfg := cfg.(*config.Config)
-	return lcfg.WriteFile(filepath.Join(l.dir, "config.toml"))
+	return lcfg.WriteFile(filepath.Join(l.dir, "config.json"))
 }

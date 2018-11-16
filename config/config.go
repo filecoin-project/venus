@@ -239,7 +239,7 @@ OUTER:
 // including inline tables and arrays require "k = " prepended, where k is the
 // last period separated substring of key. This function assumes all tables
 // within an array are specified in inline format.
-func prependKey(jsonVaml string, key string, fieldT reflect.Type) string {
+func prependKey(jsonValue string, key string, fieldT reflect.Type) string {
 	ks := strings.Split(key, ".")
 	k := ks[len(ks)-1]
 	fieldK := fieldT.Kind()
@@ -247,7 +247,11 @@ func prependKey(jsonVaml string, key string, fieldT reflect.Type) string {
 		fieldK = fieldT.Elem().Kind() // only attempt one dereference
 	}
 
-	return fmt.Sprintf(`{ "%s": %s }`, k, jsonVaml)
+	if !json.Valid([]byte(jsonValue)) {
+		return fmt.Sprintf(`{ "%s": "%s" }`, k, jsonValue)
+	}
+
+	return fmt.Sprintf(`{ "%s": %s }`, k, jsonValue)
 }
 
 // fieldToSet calculates the reflector Value to set the config at the given key
