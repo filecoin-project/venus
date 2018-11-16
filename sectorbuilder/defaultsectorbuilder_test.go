@@ -23,7 +23,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		var sealingWg sync.WaitGroup
@@ -36,18 +36,15 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		go func() {
 			for raw := range h.sectorBuilder.SectorSealResults() {
-				switch val := raw.(type) {
-				case error:
-					sealingErr = val
+				if raw.SealingErr != nil {
+					sealingErr = raw.SealingErr
 					sealingWg.Done()
-				case *SealedSector:
-					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
-						sealed = val
+				} else if raw.SealingResult != nil {
+					if raw.SealingResult.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealed = raw.SealingResult
 						sealingWg.Done()
 					}
 				}
-
-				return
 			}
 		}()
 
@@ -134,7 +131,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sb := h.sectorBuilder.(*defaultSectorBuilder)
@@ -155,17 +152,14 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		go func() {
 			for raw := range h.sectorBuilder.SectorSealResults() {
-				switch val := raw.(type) {
-				case error:
-					sealingErr = val
+				if raw.SealingErr != nil {
+					sealingErr = raw.SealingErr
 					sealingWg.Done()
-				case *SealedSector:
-					if val != nil && val.SectorID == firstSectorID {
+				} else if raw.SealingResult != nil {
+					if raw.SealingResult.SectorID == firstSectorID {
 						sealingWg.Done()
 					}
 				}
-
-				return
 			}
 		}()
 
@@ -185,7 +179,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sb := h.sectorBuilder.(*defaultSectorBuilder)
@@ -211,18 +205,15 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		go func() {
 			for raw := range sb.SectorSealResults() {
-				switch val := raw.(type) {
-				case error:
-					sealingErr = val
+				if raw.SealingErr != nil {
+					sealingErr = raw.SealingErr
 					sealingWg.Done()
-				case *SealedSector:
-					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
-						sealed = val
+				} else if raw.SealingResult != nil {
+					if raw.SealingResult.unsealedSectorAccess == sector.unsealedSectorAccess {
+						sealed = raw.SealingResult
 						sealingWg.Done()
 					}
 				}
-
-				return
 			}
 		}()
 
@@ -258,7 +249,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sb := h.sectorBuilder.(*defaultSectorBuilder)
@@ -284,7 +275,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 		var sealingErr error
 		sealingWg.Add(1)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sb := h.sectorBuilder.(*defaultSectorBuilder)
@@ -299,17 +290,14 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		go func() {
 			for raw := range sb.SectorSealResults() {
-				switch val := raw.(type) {
-				case error:
-					sealingErr = val
+				if raw.SealingErr != nil {
+					sealingErr = raw.SealingErr
 					sealingWg.Done()
-				case *SealedSector:
-					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+				} else if raw.SealingResult != nil {
+					if raw.SealingResult != nil && raw.SealingResult.unsealedSectorAccess == sector.unsealedSectorAccess {
 						sealingWg.Done()
 					}
 				}
-
-				return
 			}
 		}()
 
@@ -337,7 +325,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 		var sealingErr error
 		sealingWg.Add(1)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		a := h.maxBytesPerSector / 2
@@ -352,17 +340,14 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		go func() {
 			for raw := range sbA.SectorSealResults() {
-				switch val := raw.(type) {
-				case error:
-					sealingErr = val
+				if raw.SealingErr != nil {
+					sealingErr = raw.SealingErr
 					sealingWg.Done()
-				case *SealedSector:
-					if val != nil && val.unsealedSectorAccess == sector.unsealedSectorAccess {
+				} else if raw.SealingResult != nil {
+					if raw.SealingResult.unsealedSectorAccess == sector.unsealedSectorAccess {
 						sealingWg.Done()
 					}
 				}
-
-				return
 			}
 		}()
 
@@ -401,7 +386,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sbA := h.sectorBuilder.(*defaultSectorBuilder)
@@ -444,7 +429,7 @@ func TestDefaultSectorBuilder(t *testing.T) {
 
 		require := require.New(t)
 
-		h := newSectorBuilderTestHarness(context.Background(), t)
+		h := newSectorBuilderTestHarness(context.Background(), t, golang)
 		defer h.close()
 
 		sbA := h.sectorBuilder.(*defaultSectorBuilder)

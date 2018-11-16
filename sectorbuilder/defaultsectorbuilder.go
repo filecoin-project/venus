@@ -34,7 +34,7 @@ type defaultSectorBuilder struct {
 
 	// SectorSealResults is sent a value whenever sealing completes. The value
 	// will be either a *SealedSector or an error.
-	sectorSealResults chan interface{}
+	sectorSealResults chan SectorSealResult
 
 	// dispenses SectorAccess, used by FPS to determine where to read/write
 	// sector and unsealed sector file-bytes
@@ -62,7 +62,7 @@ func (sb *defaultSectorBuilder) Close() error {
 	return nil
 }
 
-func (sb *defaultSectorBuilder) SectorSealResults() <-chan interface{} {
+func (sb *defaultSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 	return sb.sectorSealResults
 }
 
@@ -152,7 +152,7 @@ func Init(miningCtx context.Context, dataStore repo.Datastore, blockService bser
 		metadataStore:     mstore,
 		sectorStore:       sstore,
 		sectorIDNonce:     lastUsedSectorID,
-		sectorSealResults: make(chan interface{}),
+		sectorSealResults: make(chan SectorSealResult),
 	}
 
 	metadata, err := mstore.getSectorBuilderMetadata(minerAddr)
@@ -527,7 +527,11 @@ func (sb *defaultSectorBuilder) sealAsync(s *UnsealedSector) (finalErr error) {
 	go func() {
 		res2, err := (&proofs.RustProver{}).Seal(req)
 		if err != nil {
-			sb.sectorSealResults <- err
+			sb.sectorSealResults <- SectorSealResult{
+				SectorID:      s.SectorID,
+				SealingErr:    err,
+				SealingResult: nil,
+			}
 			return
 		}
 
@@ -536,7 +540,11 @@ func (sb *defaultSectorBuilder) sealAsync(s *UnsealedSector) (finalErr error) {
 			log.Errorf("failed to checkpoint the recently-sealed, staged sector with id %d: %s", s.SectorID, err.Error())
 		}
 
-		sb.sectorSealResults <- ss
+		sb.sectorSealResults <- SectorSealResult{
+			SectorID:      s.SectorID,
+			SealingErr:    nil,
+			SealingResult: ss,
+		}
 	}()
 
 	return nil

@@ -160,8 +160,7 @@ jobs:
       - run:
           name: Install Rust toolchain (for rust-proofs)
           command: |
-            (which cargo && which rustc) || (sudo apt-get update && sudo apt-get install -y libssl-dev &&
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y)
+            (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y)
 
       - run:
           name: Install Dependencies

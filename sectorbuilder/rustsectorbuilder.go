@@ -33,6 +33,14 @@ func elapsed(what string) func() {
 type RustSectorBuilder struct {
 	blockService bserv.BlockService
 	ptr          unsafe.Pointer
+
+	// sectorSealResults is sent a value whenever seal completes for a sector,
+	// either successfully or with a failure.
+	sectorSealResults chan SectorSealResult
+
+	// sealStatusPoller polls for sealing status for the sectors whose ids it
+	// knows about.
+	sealStatusPoller *sealStatusPoller
 }
 
 // RustSectorStoreType configures the behavior of the SectorStore used by the SectorBuilder.
@@ -51,40 +59,54 @@ const (
 
 var _ SectorBuilder = &RustSectorBuilder{}
 
+// RustSectorBuilderConfig is a configuration object used when instantiating a
+// Rust-backed SectorBuilder through the FFI. All fields are required.
+type RustSectorBuilderConfig struct {
+	blockService        bserv.BlockService
+	lastUsedSectorID    uint64
+	metadataDir         string
+	proverID            [31]byte
+	sealedSectorDir     string
+	sectorStoreType     RustSectorStoreType
+	stagedSectorDir     string
+	maxNumStagedSectors int
+}
+
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
-func NewRustSectorBuilder(blockService bserv.BlockService, sectorStoreType RustSectorStoreType, lastUsedSectorID uint64, metadataDir string, proverID [31]byte, stagedSectorDir string, sealedSectorDir string) (*RustSectorBuilder, error) {
+func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
 	defer elapsed("NewRustSectorBuilder")()
 
-	cMetadataDir := C.CString(metadataDir)
+	cMetadataDir := C.CString(cfg.metadataDir)
 	defer C.free(unsafe.Pointer(cMetadataDir))
 
-	proverIDCBytes := C.CBytes(proverID[:])
+	proverIDCBytes := C.CBytes(cfg.proverID[:])
 	defer C.free(proverIDCBytes)
 
-	cStagedSectorDir := C.CString(stagedSectorDir)
+	cStagedSectorDir := C.CString(cfg.stagedSectorDir)
 	defer C.free(unsafe.Pointer(cStagedSectorDir))
 
-	cSealedSectorDir := C.CString(sealedSectorDir)
+	cSealedSectorDir := C.CString(cfg.sealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	var cfg C.ConfiguredStore
-	if sectorStoreType == Live {
-		cfg = C.ConfiguredStore(C.Live)
-	} else if sectorStoreType == Test {
-		cfg = C.ConfiguredStore(C.Test)
-	} else if sectorStoreType == ProofTest {
-		cfg = C.ConfiguredStore(C.ProofTest)
+	var scfg C.ConfiguredStore
+	if cfg.sectorStoreType == Live {
+		scfg = C.ConfiguredStore(C.Live)
+	} else if cfg.sectorStoreType == Test {
+		scfg = C.ConfiguredStore(C.Test)
+	} else if cfg.sectorStoreType == ProofTest {
+		scfg = C.ConfiguredStore(C.ProofTest)
 	} else {
-		return nil, errors.Errorf("unknown sector store type: %v", sectorStoreType)
+		return nil, errors.Errorf("unknown sector store type: %v", cfg.sectorStoreType)
 	}
 
 	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(
-		(*C.ConfiguredStore)(unsafe.Pointer(&cfg)),
-		C.uint64_t(lastUsedSectorID),
+		(*C.ConfiguredStore)(unsafe.Pointer(&scfg)),
+		C.uint64_t(cfg.lastUsedSectorID),
 		cMetadataDir,
 		(*[31]C.uint8_t)(proverIDCBytes),
 		cStagedSectorDir,
 		cSealedSectorDir,
+		C.uint8_t(cfg.maxNumStagedSectors),
 	)))
 	defer C.destroy_init_sector_builder_response(resPtr)
 
@@ -93,15 +115,33 @@ func NewRustSectorBuilder(blockService bserv.BlockService, sectorStoreType RustS
 	}
 
 	sb := &RustSectorBuilder{
-		ptr:          unsafe.Pointer(resPtr.sector_builder),
-		blockService: blockService,
+		blockService:      cfg.blockService,
+		ptr:               unsafe.Pointer(resPtr.sector_builder),
+		sectorSealResults: make(chan SectorSealResult),
 	}
+
+	sb.sealStatusPoller = newSealStatusPoller(sb.sectorSealResults, sb.findSealedSectorMetadata)
 
 	runtime.SetFinalizer(sb, func(o *RustSectorBuilder) {
 		o.destroy()
 	})
 
 	return sb, nil
+}
+
+// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes which
+// will fit into a newly-provisioned staged sector.
+func (sb *RustSectorBuilder) GetMaxUserBytesPerStagedSector() (numBytes uint64, err error) {
+	defer elapsed("GetMaxUserBytesPerStagedSector")()
+
+	resPtr := (*C.GetMaxStagedBytesPerSector)(unsafe.Pointer(C.get_max_user_bytes_per_staged_sector((*C.SectorBuilder)(sb.ptr))))
+	defer C.destroy_get_max_user_bytes_per_staged_sector_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return 0, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return uint64(resPtr.max_staged_bytes_per_sector), nil
 }
 
 // AddPiece writes the given piece into an unsealed sector and returns the id
@@ -146,7 +186,71 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (secto
 		return 0, errors.New(C.GoString(resPtr.error_msg))
 	}
 
+	sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
+
 	return uint64(resPtr.sector_id), nil
+}
+
+func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSector, error) {
+	resPtr := (*C.GetSealStatusResponse)(unsafe.Pointer(C.get_seal_status((*C.SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
+	defer C.destroy_get_seal_status_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	if resPtr.seal_status_code == C.Failed {
+		return nil, errors.New(C.GoString(resPtr.seal_error_msg))
+	} else if resPtr.seal_status_code == C.Pending {
+		return nil, nil
+	} else if resPtr.seal_status_code == C.Sealing {
+		return nil, nil
+	} else if resPtr.seal_status_code == C.Sealed {
+		commRSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r[0]), 32)
+		var commR [32]byte
+		copy(commR[:], commRSlice)
+
+		commDSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_d[0]), 32)
+		var commD [32]byte
+		copy(commD[:], commDSlice)
+
+		commRStarSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r_star[0]), 32)
+		var commRStar [32]byte
+		copy(commRStar[:], commRStarSlice)
+
+		proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.snark_proof[0]), 384)
+		var proof [384]byte
+		copy(proof[:], proofSlice)
+
+		// Map from a dynamically-sized C array of C.PieceMetadata to a Go slice
+		// of *PieceInfo.
+		ps := make([]*PieceInfo, resPtr.pieces_len)
+		xs := (*[1 << 30]C.PieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
+		for i := 0; i < int(resPtr.pieces_len); i++ {
+			ref, err := cid.Decode(C.GoString(xs[i].piece_key))
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to marshal from string to cid")
+			}
+
+			ps[i] = &PieceInfo{
+				Ref:  ref,
+				Size: uint64(xs[i].num_bytes),
+			}
+		}
+
+		return &SealedSector{
+			CommD:              commD,
+			CommR:              commR,
+			CommRStar:          commRStar,
+			pieces:             ps,
+			proof:              proof,
+			sealedSectorAccess: C.GoString(resPtr.sector_access),
+			SectorID:           sectorID,
+		}, nil
+	} else {
+		// unknown
+		return nil, errors.New("unexpected seal status")
+	}
 }
 
 // ReadPieceFromSealedSector is a stub.
@@ -154,9 +258,16 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Re
 	panic("implement me")
 }
 
-// SealAllStagedSectors is a stub.
+// SealAllStagedSectors schedules sealing of all staged sectors.
 func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
-	panic("implement me")
+	resPtr := (*C.SealAllStagedSectorsResponse)(unsafe.Pointer(C.seal_all_staged_sectors((*C.SectorBuilder)(sb.ptr))))
+	defer C.destroy_seal_all_staged_sectors_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return nil
 }
 
 // SealedSectors is a stub.
@@ -165,13 +276,14 @@ func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
 }
 
 // SectorSealResults is a stub.
-func (sb *RustSectorBuilder) SectorSealResults() <-chan interface{} {
-	panic("implement me")
+func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
+	return sb.sectorSealResults
 }
 
-// Close is a stub.
+// Close shuts down the RustSectorBuilder's poller.
 func (sb *RustSectorBuilder) Close() error {
-	panic("implement me")
+	sb.sealStatusPoller.stop()
+	return nil
 }
 
 // destroy deallocates and destroys a DiskBackedSectorStore.

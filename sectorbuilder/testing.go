@@ -21,6 +21,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type sectorBuilderType int
+
+const (
+	rust = sectorBuilderType(iota)
+	golang
+)
+
 type sectorBuilderTestHarness struct {
 	blockService      bserv.BlockService
 	ctx               context.Context
@@ -31,15 +38,36 @@ type sectorBuilderTestHarness struct {
 	maxBytesPerSector uint64
 }
 
-func newSectorBuilderTestHarness(ctx context.Context, t *testing.T) sectorBuilderTestHarness { // nolint: deadcode
+func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBuilderType) sectorBuilderTestHarness { // nolint: deadcode
 	memRepo := repo.NewInMemoryRepo()
 	blockStore := bstore.NewBlockstore(memRepo.Datastore())
 	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
 	sectorStore := proofs.NewProofTestSectorStore(memRepo.StagingDir(), memRepo.SealedDir())
 	minerAddr := address.MakeTestAddress("wombat")
 
-	sectorBuilder, err := Init(ctx, memRepo.Datastore(), blockService, minerAddr, sectorStore, 0)
-	require.NoError(t, err)
+	var sectorBuilder SectorBuilder
+	if cfg == golang {
+		sb, err := Init(ctx, memRepo.Datastore(), blockService, minerAddr, sectorStore, 0)
+		require.NoError(t, err)
+
+		sectorBuilder = sb
+	} else if cfg == rust {
+		sb, err := NewRustSectorBuilder(RustSectorBuilderConfig{
+			blockService:        blockService,
+			lastUsedSectorID:    0,
+			metadataDir:         memRepo.StagingDir(),
+			proverID:            [31]byte{},
+			sealedSectorDir:     memRepo.SealedDir(),
+			sectorStoreType:     ProofTest,
+			stagedSectorDir:     memRepo.StagingDir(),
+			maxNumStagedSectors: 1,
+		})
+		require.NoError(t, err)
+
+		sectorBuilder = sb
+	} else {
+		t.Fatalf("unhandled sector builder type: %v", cfg)
+	}
 
 	response, err := sectorStore.GetMaxUnsealedBytesPerSector()
 	require.NoError(t, err)
@@ -71,13 +99,6 @@ func (h sectorBuilderTestHarness) close() {
 	if len(msg) != 0 {
 		h.t.Fatalf("error(s) closing harness: %s", strings.Join(msg, " and "))
 	}
-}
-
-func (h sectorBuilderTestHarness) requirePieceInfo(pieceData []byte) *PieceInfo {
-	pieceInfo, err := h.createPieceInfo(pieceData)
-	require.NoError(h.t, err)
-
-	return pieceInfo
 }
 
 func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {

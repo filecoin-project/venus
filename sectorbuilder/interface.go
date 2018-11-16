@@ -2,11 +2,12 @@ package sectorbuilder
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"io"
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/proofs"
 )
 
 func init() {
@@ -43,13 +44,26 @@ type SectorBuilder interface {
 	// same channel. Values will be either a *SealedSector or an error. A
 	// *SealedSector will be sent to the returned channel only once, regardless
 	// of the number of times SectorSealResults is called.
-	SectorSealResults() <-chan interface{}
+	SectorSealResults() <-chan SectorSealResult
 
 	// Close signals that this SectorBuilder is no longer in use. SectorBuilder
 	// metadata will not be deleted when Close is called; an equivalent
 	// SectorBuilder can be created later by applying the Init function to the
 	// arguments used to create the instance being closed.
 	Close() error
+}
+
+// SectorSealResult represents the outcome of a sector's sealing.
+type SectorSealResult struct {
+	SectorID uint64
+
+	// SealingErr contains any error encountered while sealing.
+	// Note: Either SealingResult or SealingErr may be non-nil, not both.
+	SealingErr error
+
+	// SealingResult contains the successful output of the sealing operation.
+	// Note: Either SealingResult or SealingErr may be non-nil, not both.
+	SealingResult *SealedSector
 }
 
 // PieceInfo is information about a filecoin piece
@@ -71,11 +85,12 @@ type UnsealedSector struct {
 // SealedSector is a sector that has been sealed by the PoRep setup process
 type SealedSector struct {
 	CommD                [32]byte
-	CommR                [32]byte
-	numBytes             uint64
+	CommR                [32]byte // deprecated (will be removed soon)
+	CommRStar            [32]byte
+	numBytes             uint64 // deprecated (will be removed soon)
 	pieces               []*PieceInfo
 	proof                proofs.SealProof
-	sealedSectorAccess   string
+	sealedSectorAccess   string // deprecated (will be removed soon)
 	SectorID             uint64
-	unsealedSectorAccess string
+	unsealedSectorAccess string // deprecated (will be removed soon)
 }

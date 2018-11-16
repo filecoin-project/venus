@@ -675,10 +675,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 		for {
 			select {
 			case result := <-node.SectorBuilder().SectorSealResults():
-				switch val := result.(type) {
-				case error:
-					log.Errorf("failed to seal piece: %s", val.Error())
-				case *sectorbuilder.SealedSector:
+				if result.SealingErr != nil {
+					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
+				} else if result.SealingResult != nil {
+					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
