@@ -179,6 +179,10 @@ func ReadFile(file string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(rawConfig) == 0 {
+		return cfg, nil
+	}
+
 	err = json.Unmarshal(rawConfig, &cfg)
 	if err != nil {
 		return nil, err

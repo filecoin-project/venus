@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -116,15 +117,15 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		assert := assert.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
-[api]
-address = "/ip4/127.0.0.1/tcp/9999"
-# ignored
-other = false
-
-[swarm]
-# ignored
-other = "hello"
-`)
+		{
+			"api": {
+				"address": "/ip4/127.0.0.1/tcp/9999",
+				"keyThatDoesntExit": false
+			},
+			"swarm": {
+				"keyThatDoesntExit": "hello"
+			}
+		}`)
 		assert.NoError(err)
 		defer cleaner()
 		cfg, err := ReadFile(cfgpath)
@@ -138,11 +139,12 @@ other = "hello"
 		assert := assert.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
-[api]
-address = "/ip4/127.0.0.1/tcp/9999"
-# ignored
-other = false
-`)
+		{
+			"api": {
+				"address": "/ip4/127.0.0.1/tcp/9999",
+				"keyThatDoesntExit'": false
+			}
+		}`)
 		assert.NoError(err)
 		defer cleaner()
 		cfg, err := ReadFile(cfgpath)
@@ -256,16 +258,14 @@ func TestConfigSet(t *testing.T) {
 		assert := assert.New(t)
 		cfg := NewDefaultConfig()
 
-		tomlBlob := `type = "badgerbadgerbadgerds"
-path = "mushroom-mushroom"`
-		out, err := cfg.Set("datastore", tomlBlob)
+		jsonBlob := `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
+		out, err := cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 		assert.Equal(cfg.Datastore.Type, "badgerbadgerbadgerds")
 		assert.Equal(cfg.Datastore.Path, "mushroom-mushroom")
 		assert.Equal(out, cfg.Datastore)
 
-		cfg1path, cleaner, err := createConfigFile(
-			"[datastore]\n" + tomlBlob)
+		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(err)
 		defer cleaner()
 
@@ -274,8 +274,8 @@ path = "mushroom-mushroom"`
 		assert.Equal(cfg1.Datastore, cfg.Datastore)
 
 		// inline tables
-		tomlBlob = `	{type = "badgerbadgerbadgerds", path = "mushroom-mushroom"}`
-		out, err = cfg.Set("datastore", tomlBlob)
+		jsonBlob = `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
+		out, err = cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 
 		assert.Equal(out, cfg.Datastore)
