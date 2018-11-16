@@ -47,15 +47,6 @@
             "null"
           ]
         },
-        "parentTickets": {
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
-        },
         "parentWeightNumerator": {
           "type": "string"
         },
