@@ -229,7 +229,7 @@ check_faucet () {
        "http://$$faucetHost/tap" \
        -o /dev/null
 
-  for (( count=3; count>0; count-- )); do
+  for (( count=5; count>0; count-- )); do
     balance=$$(docker exec "filecoin-4" $$filecoin_exec wallet balance $$faucetTarget)
 
     if [ $$balance -gt $$startBalance ]; then
