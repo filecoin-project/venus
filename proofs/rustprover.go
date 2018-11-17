@@ -132,9 +132,14 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
+	cfg, err := CSectorStoreType(req.StoreType)
+	if err != nil {
+		return VerifySealResponse{}, err
+	}
+
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
-		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
+		cfg,
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
@@ -208,7 +213,6 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 
 	// a mutable pointer to a GeneratePoSTResponse C-struct
 	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post(
-		(*C.Box_SectorStore)(nil), // TODO: remove this now-unused parameter from rust-proofs
 		(*C.uint8_t)(cflattened),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])))))
@@ -258,4 +262,21 @@ func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
 		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
 	}
 	return out
+}
+
+// CSectorStoreType marshals from SectorStoreType to the FFI type
+// *C.ConfiguredStore.
+func CSectorStoreType(cfg SectorStoreType) (*C.ConfiguredStore, error) {
+	var scfg C.ConfiguredStore
+	if cfg == Live {
+		scfg = C.ConfiguredStore(C.Live)
+	} else if cfg == Test {
+		scfg = C.ConfiguredStore(C.Test)
+	} else if cfg == ProofTest {
+		scfg = C.ConfiguredStore(C.ProofTest)
+	} else {
+		return nil, errors.Errorf("unknown sector store type: %v", cfg)
+	}
+
+	return &scfg, nil
 }

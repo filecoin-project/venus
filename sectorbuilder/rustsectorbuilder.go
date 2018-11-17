@@ -7,6 +7,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/filecoin-project/go-filecoin/proofs"
+
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
@@ -43,20 +45,6 @@ type RustSectorBuilder struct {
 	sealStatusPoller *sealStatusPoller
 }
 
-// RustSectorStoreType configures the behavior of the SectorStore used by the SectorBuilder.
-type RustSectorStoreType int
-
-const (
-	// Live configures the SectorBuilder to be used by someone operating a real
-	// Filecoin node.
-	Live = RustSectorStoreType(iota)
-	// Test configures the SectorBuilder to be used with large sectors, in tests.
-	Test
-	// ProofTest configures the SectorBuilder to perform real proofs against small
-	// sectors.
-	ProofTest
-)
-
 var _ SectorBuilder = &RustSectorBuilder{}
 
 // RustSectorBuilderConfig is a configuration object used when instantiating a
@@ -67,7 +55,7 @@ type RustSectorBuilderConfig struct {
 	metadataDir         string
 	proverID            [31]byte
 	sealedSectorDir     string
-	sectorStoreType     RustSectorStoreType
+	sectorStoreType     proofs.SectorStoreType
 	stagedSectorDir     string
 	maxNumStagedSectors int
 }
@@ -88,19 +76,13 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	cSealedSectorDir := C.CString(cfg.sealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	var scfg C.ConfiguredStore
-	if cfg.sectorStoreType == Live {
-		scfg = C.ConfiguredStore(C.Live)
-	} else if cfg.sectorStoreType == Test {
-		scfg = C.ConfiguredStore(C.Test)
-	} else if cfg.sectorStoreType == ProofTest {
-		scfg = C.ConfiguredStore(C.ProofTest)
-	} else {
+	scfg, err := proofs.CSectorStoreType(cfg.sectorStoreType)
+	if err != nil {
 		return nil, errors.Errorf("unknown sector store type: %v", cfg.sectorStoreType)
 	}
 
 	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(
-		(*C.ConfiguredStore)(unsafe.Pointer(&scfg)),
+		(*C.ConfiguredStore)(unsafe.Pointer(scfg)),
 		C.uint64_t(cfg.lastUsedSectorID),
 		cMetadataDir,
 		(*[31]C.uint8_t)(proverIDCBytes),

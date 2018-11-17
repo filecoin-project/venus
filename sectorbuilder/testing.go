@@ -58,7 +58,7 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 			metadataDir:         memRepo.StagingDir(),
 			proverID:            [31]byte{},
 			sealedSectorDir:     memRepo.SealedDir(),
-			sectorStoreType:     ProofTest,
+			sectorStoreType:     proofs.ProofTest,
 			stagedSectorDir:     memRepo.StagingDir(),
 			maxNumStagedSectors: 1,
 		})

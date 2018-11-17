@@ -1,6 +1,8 @@
 package proofs
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 // SealRequest represents a request to seal a sector.
 type SealRequest struct {
@@ -37,13 +39,13 @@ type UnsealRequest struct {
 
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
-	CommD     [32]byte    // returned from seal
-	CommR     [32]byte    // returned from seal
-	CommRStar [32]byte    // returned from seal
-	Proof     SealProof   // returned from Seal
-	ProverID  [31]byte    // uniquely identifies miner
-	SectorID  [31]byte    // uniquely identifies sector
-	Storage   SectorStore // used to manipulate sectors
+	CommD     [32]byte        // returned from seal
+	CommR     [32]byte        // returned from seal
+	CommRStar [32]byte        // returned from seal
+	Proof     SealProof       // returned from Seal
+	ProverID  [31]byte        // uniquely identifies miner
+	SectorID  [31]byte        // uniquely identifies sector
+	StoreType SectorStoreType // used to control sealing/verification performance
 }
 
 // GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
@@ -143,3 +145,17 @@ type ReadUnsealedRequest struct {
 type ReadUnsealedResponse struct {
 	Data []byte
 }
+
+// SectorStoreType configures the behavior of the SectorStore used by the SectorBuilder.
+type SectorStoreType int
+
+const (
+	// Live configures the SectorBuilder to be used by someone operating a real
+	// Filecoin node.
+	Live = SectorStoreType(iota)
+	// Test configures the SectorBuilder to be used with large sectors, in tests.
+	Test
+	// ProofTest configures the SectorBuilder to perform real proofs against small
+	// sectors.
+	ProofTest
+)

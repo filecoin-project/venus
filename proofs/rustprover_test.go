@@ -86,14 +86,17 @@ func TestRustProverFullCycle(t *testing.T) {
 	cases := []struct {
 		name  string
 		store SectorStore
+		cfg   SectorStoreType
 	}{
 		{
 			name:  "NewProofTestSectorStore",
 			store: NewProofTestSectorStore(stagingDir, sealedDir),
+			cfg:   ProofTest,
 		},
 		{
 			name:  "NewTestSectorStore",
 			store: NewTestSectorStore(stagingDir, sealedDir),
+			cfg:   Test,
 		},
 	}
 
@@ -145,7 +148,7 @@ func TestRustProverFullCycle(t *testing.T) {
 			Proof:     resSeal.Proof,
 			ProverID:  proverID,
 			SectorID:  sectorID,
-			Storage:   store,
+			StoreType: c.cfg,
 		})
 		require.NoError(err)
 		require.True(res.IsValid)
