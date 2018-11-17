@@ -83,12 +83,6 @@ resource "aws_security_group" "filecoin" {
   }
 }
 
-resource "aws_ssm_parameter" "kittyhawk-node-keys-pass" {
-  name  = "kittyhawk-node-keys-pass"
-  type  = "String"
-  value = "${var.kittyhawk-node-keys-pass}"
-}
-
 
 # kh test instance
 module "kh-test" {
