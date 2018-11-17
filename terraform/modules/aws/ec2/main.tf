@@ -43,6 +43,10 @@ variable "ami" {
   default = "latest"
 }
 
+variable "alertmanager_url" {
+  default = "http://alertmanager.kittyhawk.wtf/api/v1/alerts"
+}
+
 locals {
   storage_setup = "${var.has_many_instance_storage == "true" ? data.template_file.setup_lvm_instance_storage.rendered : data.template_file.setup_instance_storage.rendered}"
   ami =  "${var.ami == "latest" ? data.aws_ami.ubuntu.id : var.ami}"
@@ -129,16 +133,17 @@ data "template_file" "user_data" {
   template = "${file("${path.module}/scripts/docker_user_data.sh")}"
 
   vars {
-    node_exporter_install  = "${data.template_file.node_exporter_install.rendered}"
-    cadvisor_install       = "${data.template_file.cadvisor_install.rendered}"
-    docker_install         = "${data.template_file.docker_install.rendered}"
-    setup_instance_storage = "${local.storage_setup}"
-    docker_uri             = "${var.docker_uri}"
-    docker_tag             = "${var.docker_tag}"
-    filebeat_docker_uri    = "${var.filebeat_docker_uri}"
-    filebeat_docker_tag    = "${var.filebeat_docker_tag}"
-    logstash_hosts         = "${var.logstash_hosts}"
-    instance_name          = "${var.instance_name}"
+    node_exporter_install   = "${data.template_file.node_exporter_install.rendered}"
+    cadvisor_install        = "${data.template_file.cadvisor_install.rendered}"
+    docker_install          = "${data.template_file.docker_install.rendered}"
+    setup_instance_storage  = "${local.storage_setup}"
+    docker_uri              = "${var.docker_uri}"
+    docker_tag              = "${var.docker_tag}"
+    filebeat_docker_uri     = "${var.filebeat_docker_uri}"
+    filebeat_docker_tag     = "${var.filebeat_docker_tag}"
+    logstash_hosts          = "${var.logstash_hosts}"
+    instance_name           = "${var.instance_name}"
+    alertmanager_url        = "${var.alertmanager_url}"
   }
 }
 

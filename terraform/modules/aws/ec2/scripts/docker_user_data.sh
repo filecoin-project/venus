@@ -59,7 +59,7 @@ docker run -d --name=dashboard-aggregator \
 docker run -d --name=dashboard-visualizer \
        -p 8010:3000 \
        -e DANGEROUSLY_DISABLE_HOST_CHECK=true \
-       -e REACT_APP_FEED_URL="ws://${instance_name}.kittyhawk.wtf:9080" \
+       -e REACT_APP_FEED_URL="ws://${instance_name}.kittyhawk.wtf:9080/feed" \
        -e REACT_APP_EXPLORER_URL="http://${instance_name}.kittyhawk.wtf:8000" \
        657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-visualizer:latest
 
@@ -196,12 +196,10 @@ do
          client propose-storage-deal $${newMinerAddr} $${dataCid} 0 8640
 done
 
+
 # Deployment checks
-
 send_alert () {
-  alertmanagerIp=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alertmanager)
-  alertmanagerHost="$$alertmanagerIp:9093"
-
+  alertmanager_basic_auth=$$(aws ssm get-parameter  --region us-east-1 --name kittyhawk-node-alertmanager_basic_auth --with-decryption | jq -r '.Parameter .Value')
   alerts="[
     {
       \"labels\": {
@@ -212,14 +210,11 @@ send_alert () {
         }
     }
   ]"
-
-  URL="http://$$alertmanagerHost"
-
-  curl -XPOST -d"$$alerts" $$URL/api/v1/alerts
+  curl -XPOST -d"$$alerts" -u $${alertmanager_basic_auth} \
+       ${alertmanager_url}
 }
 
 # Faucet Check
-
 check_faucet () {
   local faucetIp faucetHost faucetTarget
   local -i count balance startBalance
@@ -230,9 +225,9 @@ check_faucet () {
   startBalance=$$(docker exec "filecoin-4" $$filecoin_exec wallet balance $$faucetTarget)
 
   curl -sSL -D - -XPOST \
-    --data "target=$$faucetTarget" \
-    "http://$$faucetHost/tap" \
-    -o /dev/null
+       --data "target=$$faucetTarget" \
+       "http://$$faucetHost/tap" \
+       -o /dev/null
 
   for (( count=3; count>0; count-- )); do
     balance=$$(docker exec "filecoin-4" $$filecoin_exec wallet balance $$faucetTarget)
@@ -246,12 +241,11 @@ check_faucet () {
   done
 
   if [ $$count -eq 0 ]; then
-    send_alert "faucet" "Faucet did not transfer funds in required time during cluster setup"
+    send_alert "${instance_name} faucet" "Faucet did not transfer funds in required time during cluster setup"
     exit 1
   fi
 }
 
 # Run checks
-
-check_faucet()
+check_faucet
 
