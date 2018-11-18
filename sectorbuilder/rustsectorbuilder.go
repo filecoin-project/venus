@@ -1,6 +1,7 @@
 package sectorbuilder
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"runtime"
@@ -207,7 +208,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		// Map from a dynamically-sized C array of C.PieceMetadata to a Go slice
 		// of *PieceInfo.
 		ps := make([]*PieceInfo, resPtr.pieces_len)
-		xs := (*[1 << 30]C.PieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
+		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
 		for i := 0; i < int(resPtr.pieces_len); i++ {
 			ref, err := cid.Decode(C.GoString(xs[i].piece_key))
 			if err != nil {
@@ -237,7 +238,17 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 
 // ReadPieceFromSealedSector is a stub.
 func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
-	panic("implement me")
+	cPieceKey := C.CString(pieceCid.String())
+	defer C.free(unsafe.Pointer(cPieceKey))
+
+	resPtr := (*C.ReadPieceFromSealedSectorResponse)(unsafe.Pointer(C.read_piece_from_sealed_sector((*C.SectorBuilder)(sb.ptr), cPieceKey)))
+	defer C.destroy_read_piece_from_sealed_sector_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return bytes.NewReader(C.GoBytes(unsafe.Pointer(resPtr.data_ptr), C.int(resPtr.data_len))), nil
 }
 
 // SealAllStagedSectors schedules sealing of all staged sectors.

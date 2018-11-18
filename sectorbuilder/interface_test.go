@@ -2,6 +2,8 @@ package sectorbuilder
 
 import (
 	"context"
+	"encoding/hex"
+	"io/ioutil"
 	"sort"
 	"sync"
 	"testing"
@@ -160,6 +162,45 @@ func TestSectorBuilder(t *testing.T) {
 					t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
 					return false
 				})
+			}()
+		}
+	})
+
+	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
+		t.Parallel()
+
+		for _, cfg := range []sectorBuilderType{golang, rust} {
+			func() {
+				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
+				defer h.close()
+
+				inputBytes := requireRandomBytes(t, h.maxBytesPerSector)
+				info, err := h.createPieceInfo(inputBytes)
+				require.NoError(t, err)
+
+				sectorID, err := h.sectorBuilder.AddPiece(context.Background(), info)
+				require.NoError(t, err)
+
+				timeout := time.After(120 * time.Second)
+			Loop:
+				for {
+					select {
+					case val := <-h.sectorBuilder.SectorSealResults():
+						require.NoError(t, val.SealingErr)
+						require.Equal(t, sectorID, val.SealingResult.SectorID)
+						break Loop
+					case <-timeout:
+						break Loop // I've always dreamt of using GOTO
+					}
+				}
+
+				reader, err := h.sectorBuilder.ReadPieceFromSealedSector(info.Ref)
+				require.NoError(t, err)
+
+				outputBytes, err := ioutil.ReadAll(reader)
+				require.NoError(t, err)
+
+				require.Equal(t, hex.EncodeToString(inputBytes), hex.EncodeToString(outputBytes))
 			}()
 		}
 	})

@@ -206,6 +206,7 @@ jobs:
           command: |
             go run ./build/*.go test -covermode=atomic -coverprofile=coverage.txt &&
             bash <(curl -s https://codecov.io/bash)
+
       - run:
           name: Functional Tests
           command: ./functional-tests/retrieval.sh
