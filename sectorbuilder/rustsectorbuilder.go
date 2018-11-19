@@ -205,7 +205,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		var proof [384]byte
 		copy(proof[:], proofSlice)
 
-		// Map from a dynamically-sized C array of C.PieceMetadata to a Go slice
+		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
 		// of *PieceInfo.
 		ps := make([]*PieceInfo, resPtr.pieces_len)
 		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
@@ -265,7 +265,62 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 
 // SealedSectors is a stub.
 func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
-	panic("implement me")
+	resPtr := (*C.GetSealedSectorsResponse)(unsafe.Pointer(C.get_sealed_sectors((*C.SectorBuilder)(sb.ptr))))
+	defer C.destroy_get_sealed_sectors_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil
+	}
+
+	sectors := make([]*SealedSector, resPtr.sectors_len)
+	sectorPtrs := (*[1 << 30]C.FFISealedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr))[:resPtr.sectors_len:resPtr.sectors_len]
+	for i := 0; i < int(resPtr.sectors_len); i++ {
+		secPtr := sectorPtrs[i]
+
+		commRSlice := C.GoBytes(unsafe.Pointer(&secPtr.comm_r[0]), 32)
+		var commR [32]byte
+		copy(commR[:], commRSlice)
+
+		commDSlice := C.GoBytes(unsafe.Pointer(&secPtr.comm_d[0]), 32)
+		var commD [32]byte
+		copy(commD[:], commDSlice)
+
+		commRStarSlice := C.GoBytes(unsafe.Pointer(&secPtr.comm_r_star[0]), 32)
+		var commRStar [32]byte
+		copy(commRStar[:], commRStarSlice)
+
+		proofSlice := C.GoBytes(unsafe.Pointer(&secPtr.snark_proof[0]), 384)
+		var proof [384]byte
+		copy(proof[:], proofSlice)
+
+		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
+		// of *PieceInfo.
+		ps := make([]*PieceInfo, secPtr.pieces_len)
+		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(secPtr.pieces_ptr))[:secPtr.pieces_len:secPtr.pieces_len]
+		for j := 0; j < int(secPtr.pieces_len); j++ {
+			ref, err := cid.Decode(C.GoString(xs[j].piece_key))
+			if err != nil {
+				return nil
+			}
+
+			ps[j] = &PieceInfo{
+				Ref:  ref,
+				Size: uint64(xs[j].num_bytes),
+			}
+		}
+
+		sectors[i] = &SealedSector{
+			CommD:              commD,
+			CommR:              commR,
+			CommRStar:          commRStar,
+			pieces:             ps,
+			proof:              proof,
+			sealedSectorAccess: C.GoString(secPtr.sector_access),
+			SectorID:           uint64(secPtr.sector_id),
+		}
+	}
+
+	return sectors
 }
 
 // SectorSealResults is a stub.

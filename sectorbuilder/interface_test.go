@@ -158,6 +158,9 @@ func TestSectorBuilder(t *testing.T) {
 					}
 				}
 
+				sealedSectors := h.sectorBuilder.SealedSectors()
+				require.Equal(t, len(sealedSectors), 5)
+
 				pieceCidSet.Range(func(key, value interface{}) bool {
 					t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
 					return false
