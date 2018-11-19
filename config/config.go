@@ -194,8 +194,7 @@ func ReadFile(file string) (*Config, error) {
 // traverseConfig contains the shared traversal logic for getting and setting
 // config values.  It uses reflection to find the sub-struct referenced by `key`
 // and applies a processing function to the referenced struct
-func (cfg *Config) traverseConfig(key string,
-	f func(reflect.Value, string) (interface{}, error)) (interface{}, error) {
+func (cfg *Config) traverseConfig(key string) (reflect.Value, error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	keyTags := strings.Split(key, ".")
 OUTER:
@@ -209,7 +208,7 @@ OUTER:
 				if jsonTag == keyTag {
 					v = v.Field(i)
 					if j == len(keyTags)-1 {
-						return f(v, key)
+						return v, nil
 					}
 					v = reflect.Indirect(v) // only attempt one dereference
 					continue OUTER
@@ -218,24 +217,24 @@ OUTER:
 		case reflect.Array, reflect.Slice:
 			i64, err := strconv.ParseUint(keyTag, 0, 0)
 			if err != nil {
-				return nil, fmt.Errorf("non-integer key into slice")
+				return reflect.Value{}, fmt.Errorf("non-integer key into slice")
 			}
 			i := int(i64)
 			if i > v.Len()-1 {
-				return nil, fmt.Errorf("key into slice out of range")
+				return reflect.Value{}, fmt.Errorf("key into slice out of range")
 			}
 			v = v.Index(i)
 			if j == len(keyTags)-1 {
-				return f(v, key)
+				return v, nil
 			}
 			v = reflect.Indirect(v) // only attempt one dereference
 			continue OUTER
 		}
 
-		return nil, fmt.Errorf("key: %s invalid for config", key)
+		return reflect.Value{}, fmt.Errorf("key: %s invalid for config", key)
 	}
 	// Cannot get here as len(strings.Split(s, sep)) >= 1 with non-empty sep
-	return nil, fmt.Errorf("empty key is invalid")
+	return reflect.Value{}, fmt.Errorf("empty key is invalid")
 }
 
 // prependKey includes the JSON key in the jsonVal blob necessary for correct
@@ -283,45 +282,46 @@ func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value,
 // or 'datastore' to the json key value pair encoded in jsonVal.  Note, Set
 // only handles arrays of tables specified in inline format
 func (cfg *Config) Set(key string, jsonVal string) (interface{}, error) {
-	f := func(v reflect.Value, key string) (interface{}, error) {
-		// dereference pointer types for marshaling
-		setT := v.Type()
-		var recvT reflect.Type
-		if setT.Kind() == reflect.Ptr {
-			recvT = setT.Elem()
-		} else {
-			recvT = setT
-		}
-
-		if key == "heartbeat.nickname" {
-			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonVal)
-			if !match {
-				return nil, errors.New("node nickname must only contain letters")
-			}
-		}
-
-		valToSet, err := fieldToSet(key, jsonVal, recvT)
-		if err != nil {
-			return nil, err
-		}
-		// add pointers back for setting
-		if setT.Kind() == reflect.Ptr {
-			valToSet = valToSet.Addr()
-		}
-
-		v.Set(valToSet)
-
-		return v.Interface(), nil
+	v, err := cfg.traverseConfig(key)
+	if err != nil {
+		return nil, err
 	}
 
-	return cfg.traverseConfig(key, f)
+	// dereference pointer types for marshaling
+	setT := v.Type()
+	var recvT reflect.Type
+	if setT.Kind() == reflect.Ptr {
+		recvT = setT.Elem()
+	} else {
+		recvT = setT
+	}
+
+	if key == "heartbeat.nickname" {
+		match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonVal)
+		if !match {
+			return nil, errors.New("node nickname must only contain letters")
+		}
+	}
+
+	valToSet, err := fieldToSet(key, jsonVal, recvT)
+	if err != nil {
+		return nil, err
+	}
+	// add pointers back for setting
+	if setT.Kind() == reflect.Ptr {
+		valToSet = valToSet.Addr()
+	}
+
+	v.Set(valToSet)
+
+	return v.Interface(), nil
 }
 
 // Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
 func (cfg *Config) Get(key string) (interface{}, error) {
-	f := func(v reflect.Value, key string) (interface{}, error) {
-		return v.Interface(), nil
+	v, err := cfg.traverseConfig(key)
+	if err != nil {
+		return nil, err
 	}
-
-	return cfg.traverseConfig(key, f)
+	return v.Interface(), nil
 }
