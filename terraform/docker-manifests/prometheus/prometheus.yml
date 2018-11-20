@@ -48,3 +48,18 @@ scrape_configs:
         target_label: instance
       - source_labels: [__meta_ec2_tag_Name]
         target_label: instance_name
+
+  - job_name: 'aggregator'
+    ec2_sd_configs:
+      - region: us-east-1
+        port: 9082
+    relabel_configs:
+        # Only monitor instances with a Name starting with "SD Demo"
+      - source_labels: [__meta_ec2_tag_metrics]
+        regex: true.*
+        action: keep
+        # Use the instance ID as the instance label
+      - source_labels: [__meta_ec2_instance_id]
+        target_label: instance
+      - source_labels: [__meta_ec2_tag_Name]
+        target_label: instance_name

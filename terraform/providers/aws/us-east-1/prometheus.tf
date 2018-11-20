@@ -57,6 +57,18 @@ resource "aws_security_group" "node_exporter" {
   }
 }
 
+resource "aws_security_group" "aggregator" {
+  name   = "aggregator"
+  vpc_id = "${module.vpc.vpc_id}"
+
+  ingress {
+    protocol        = "tcp"
+    from_port       = 9082
+    to_port         = 9082
+    security_groups = ["${aws_security_group.prometheus.id}"]
+  }
+}
+
 resource "aws_instance" "prometheus" {
   ami           = "${data.aws_ami.bionic.id}"
   key_name      = "${aws_key_pair.filecoin.key_name}"

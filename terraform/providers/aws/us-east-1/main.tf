@@ -100,6 +100,7 @@ module "kh-test" {
     "${aws_security_group.filecoin.id}",
     "${aws_security_group.cadvisor.id}",
     "${aws_security_group.node_exporter.id}",
+    "${aws_security_group.aggregator.id}"
   ]
 
   iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
@@ -136,6 +137,7 @@ module "kh-nightly" {
     "${aws_security_group.filecoin.id}",
     "${aws_security_group.cadvisor.id}",
     "${aws_security_group.node_exporter.id}",
+    "${aws_security_group.aggregator.id}"
   ]
 
   iam_instance_profile_name = "${aws_iam_instance_profile.filecoin_kittyhawk.name}"
