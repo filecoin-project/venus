@@ -47,7 +47,7 @@ $ go-filecoin config datastore '{"type":"badgerds","path":"badger"}'
 
 		if len(req.Arguments) == 2 {
 			value := req.Arguments[1]
-			_, err := api.Set(key, value)
+			err := api.Set(key, value)
 
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)

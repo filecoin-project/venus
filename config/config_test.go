@@ -88,9 +88,9 @@ func TestSetRejectsInvalidNicks(t *testing.T) {
 	cfg := NewDefaultConfig()
 
 	// sic: toml includes the quotes in the value
-	_, err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
+	err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
 	assert.NoError(err)
-	_, err = cfg.Set("heartbeat.nickname", "bad nick<p>")
+	err = cfg.Set("heartbeat.nickname", "bad nick<p>")
 	assert.Error(err)
 }
 
@@ -234,24 +234,14 @@ func TestConfigSet(t *testing.T) {
 		cfg := NewDefaultConfig()
 
 		// set string
-		out, err := cfg.Set("api.address", `"/ip4/127.9.9.9/tcp/0"`)
+		err := cfg.Set("api.address", `"/ip4/127.9.9.9/tcp/0"`)
 		assert.NoError(err)
 		assert.Equal(cfg.API.Address, "/ip4/127.9.9.9/tcp/0")
-		assert.Equal(out, cfg.API.Address)
 
 		// set slice
-		out, err = cfg.Set("api.accessControlAllowOrigin",
-			`["http://localroast:7854"]`)
+		err = cfg.Set("api.accessControlAllowOrigin", `["http://localroast:7854"]`)
 		assert.NoError(err)
-		assert.Equal(cfg.API.AccessControlAllowOrigin,
-			[]string{"http://localroast:7854"})
-		assert.Equal(out, cfg.API.AccessControlAllowOrigin)
-
-		// set slice element
-		out, err = cfg.Set("api.accessControlAllowOrigin.0", `"http://localhost:1234"`)
-		assert.NoError(err)
-		assert.Equal(cfg.API.AccessControlAllowOrigin[0], "http://localhost:1234")
-		assert.Equal(out, cfg.API.AccessControlAllowOrigin[0])
+		assert.Equal(cfg.API.AccessControlAllowOrigin, []string{"http://localroast:7854"})
 	})
 
 	t.Run("set table value", func(t *testing.T) {
@@ -259,11 +249,10 @@ func TestConfigSet(t *testing.T) {
 		cfg := NewDefaultConfig()
 
 		jsonBlob := `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
-		out, err := cfg.Set("datastore", jsonBlob)
+		err := cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 		assert.Equal(cfg.Datastore.Type, "badgerbadgerbadgerds")
 		assert.Equal(cfg.Datastore.Path, "mushroom-mushroom")
-		assert.Equal(out, cfg.Datastore)
 
 		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(err)
@@ -275,10 +264,9 @@ func TestConfigSet(t *testing.T) {
 
 		// inline tables
 		jsonBlob = `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
-		out, err = cfg.Set("datastore", jsonBlob)
+		err = cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 
-		assert.Equal(out, cfg.Datastore)
 		assert.Equal(cfg1.Datastore, cfg.Datastore)
 	})
 
@@ -287,41 +275,34 @@ func TestConfigSet(t *testing.T) {
 		cfg := NewDefaultConfig()
 
 		// bad key
-		_, err := cfg.Set("datastore.nope", `"too bad, fake key"`)
-		assert.Error(err)
-
-		// index out of bounds
-		_, err = cfg.Set("bootstrap.addresses.45", `"555"`)
-		assert.Error(err)
-		_, err = cfg.Set("bootstrap.addresses.-1", `"555"`)
+		err := cfg.Set("datastore.nope", `"too bad, fake key"`)
 		assert.Error(err)
 
 		// not TOML
-		_, err = cfg.Set("bootstrap.addresses", `nota.toml?key`)
+		err = cfg.Set("bootstrap.addresses", `nota.toml?key`)
 		assert.Error(err)
 
 		// newlines in inline tables are invalid
 		tomlB := `{type = "badgerbadgerbadgerds",
 path = "mushroom-mushroom"}`
-		_, err = cfg.Set("datastore", tomlB)
+		err = cfg.Set("datastore", tomlB)
 		assert.Error(err)
 
 		// setting values of wrong type
-		_, err = cfg.Set("datastore.type", `["not a", "string"]`)
+		err = cfg.Set("datastore.type", `["not a", "string"]`)
 		assert.Error(err)
 
-		_, err = cfg.Set("bootstrap.addresses", `"not a list"`)
+		err = cfg.Set("bootstrap.addresses", `"not a list"`)
 		assert.Error(err)
 
-		_, err = cfg.Set("api", `"strings aren't structs"`)
+		err = cfg.Set("api", `"strings aren't structs"`)
 		assert.Error(err)
 
 		// Corrupt address won't pass checksum
-		_, err = cfg.Set("mining.defaultAddress",
-			`"fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt"`)
-		assert.Contains(err.Error(), "invalid")
+		//err = cfg.Set("mining.defaultAddress", "fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt")
+		//assert.Contains(err.Error(), "invalid")
 
-		_, err = cfg.Set("wallet.defaultAddress", `"corruptandtooshort"`)
+		err = cfg.Set("wallet.defaultAddress", "corruptandtooshort")
 		assert.Contains(err.Error(), "invalid character")
 	})
 }

@@ -278,43 +278,68 @@ func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value,
 	return valToRecv.Elem().Field(0), nil
 }
 
+func isJSONObject(jsonString string) bool {
+	var obj interface{}
+	json.Unmarshal([]byte(jsonString), &obj)
+	return reflect.ValueOf(obj).Kind() == reflect.Map
+}
+
+type KeyValPair struct {
+	Key   string
+	Value string
+}
+
 // Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
-// or 'datastore' to the json key value pair encoded in jsonVal.  Note, Set
-// only handles arrays of tables specified in inline format
-func (cfg *Config) Set(key string, jsonVal string) (interface{}, error) {
-	v, err := cfg.traverseConfig(key)
-	if err != nil {
-		return nil, err
+// or 'datastore' to the json key value pair encoded in jsonVal.
+func (cfg *Config) Set(dottedKey string, jsonString string) error {
+	if !json.Valid([]byte(jsonString)) {
+		jsonBytes, _ := json.Marshal(jsonString)
+		jsonString = string(jsonBytes)
 	}
 
-	// dereference pointer types for marshaling
-	setT := v.Type()
-	var recvT reflect.Type
-	if setT.Kind() == reflect.Ptr {
-		recvT = setT.Elem()
-	} else {
-		recvT = setT
+	if isJSONObject(jsonString) {
+		// An object to split up; ie the recursive case
+		var obj map[string]json.RawMessage
+		json.Unmarshal([]byte(jsonString), &obj)
+		for key := range obj {
+			longerDottedKey := dottedKey + "." + key
+			err := cfg.Set(longerDottedKey, string(obj[key]))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
-	if key == "heartbeat.nickname" {
-		match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonVal)
+	if err := validate(dottedKey, jsonString); err != nil {
+		return err
+	}
+
+	jsonString = constructJsonToMerge(dottedKey, jsonString)
+
+	decoder := json.NewDecoder(strings.NewReader(jsonString))
+	decoder.DisallowUnknownFields()
+
+	return decoder.Decode(&cfg)
+}
+
+func constructJsonToMerge(dottedKey string, jsonString string) string {
+	keys := strings.Split(dottedKey, ".")
+	for i := len(keys) - 1; i >= 0; i-- {
+		jsonString = fmt.Sprintf(`{ "%s": %s }`, keys[i], jsonString)
+	}
+	return jsonString
+}
+
+// Validates config option the value for the given key
+func validate(dottedKey string, jsonString string) error {
+	if dottedKey == "heartbeat.nickname" {
+		match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonString)
 		if !match {
-			return nil, errors.New("node nickname must only contain letters")
+			return errors.Errorf(`"%s" must only contain letters`, dottedKey)
 		}
 	}
-
-	valToSet, err := fieldToSet(key, jsonVal, recvT)
-	if err != nil {
-		return nil, err
-	}
-	// add pointers back for setting
-	if setT.Kind() == reflect.Ptr {
-		valToSet = valToSet.Addr()
-	}
-
-	v.Set(valToSet)
-
-	return v.Interface(), nil
+	return nil
 }
 
 // Get gets the config sub-struct referenced by `key`, e.g. 'api.address'

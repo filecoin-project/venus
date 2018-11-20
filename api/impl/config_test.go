@@ -62,13 +62,14 @@ func TestConfigSet(t *testing.T) {
 		api := New(n)
 		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
-		out, err := api.Config().Set("bootstrap", jsonBlob)
+		err := api.Config().Set("bootstrap", jsonBlob)
+		require.NoError(err)
+		out, err := api.Config().Get("bootstrap")
 		require.NoError(err)
 
 		// validate output
 		expected := config.NewDefaultConfig().Bootstrap
 		expected.Addresses = []string{"bootup1", "bootup2"}
-		expected.Period = ""
 		assert.Equal(expected, out)
 
 		// validate config write
@@ -92,24 +93,24 @@ func TestConfigSet(t *testing.T) {
 		// bad key (removed quotes *tisk tisk*)
 		jsonBlob := `{addresses: ["bootup1", "bootup2"]}`
 
-		_, err := api.Config().Set("botstrap", jsonBlob)
-		assert.EqualError(err, "key: botstrap invalid for config")
+		err := api.Config().Set("botstrap", jsonBlob)
+		assert.EqualError(err, "json: unknown field \"botstrap\"")
 
 		// bad value type (bootstrap is a struct not a list)
 		jsonBlobBadType := `["bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", jsonBlobBadType)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: json: cannot unmarshal array into Go struct field .bootstrap of type config.BootstrapConfig")
+		err = api.Config().Set("bootstrap", jsonBlobBadType)
+		assert.Error(err)
 
 		// bad JSON
 		jsonBlobInvalid := `{"addresses": [bootup1, "bootup2"]}`
 
-		_, err = api.Config().Set("bootstrap", jsonBlobInvalid)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: invalid character 'a' after object key:value pair")
+		err = api.Config().Set("bootstrap", jsonBlobInvalid)
+		assert.EqualError(err, "json: cannot unmarshal string into Go struct field Config.bootstrap of type config.BootstrapConfig")
 
 		// bad address
 		jsonBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
-		_, err = api.Config().Set("wallet.defaultAddress", jsonBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character")
+		err = api.Config().Set("wallet.defaultAddress", jsonBlobBadAddr)
+		assert.EqualError(err, "invalid character")
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {
@@ -119,8 +120,8 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		_, err := api.Config().Set("heartbeat.nickname", "Bad Nickname")
+		err := api.Config().Set("heartbeat.nickname", "Bad Nickname")
 
-		assert.EqualError(err, "node nickname must only contain letters")
+		assert.EqualError(err, `"heartbeat.nickname" must only contain letters`)
 	})
 }

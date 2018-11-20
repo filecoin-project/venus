@@ -69,18 +69,16 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	lcfg := icfg.(*config.Config)
 
-	_, err = lcfg.Set("bootstrap.addresses", "[]")
-	if err != nil {
+	err = lcfg.Set("bootstrap.addresses", "[]")
+	if err := lcfg.Set("bootstrap.addresses", "[]"); err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`)
-	if err != nil {
+	if err := lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`)
-	if err != nil {
+	if err := lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
 	}
 
