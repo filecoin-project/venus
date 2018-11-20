@@ -52,7 +52,7 @@ type Block struct {
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 
-	// Proof is a proof of spacetime generated using the hash of the InputSig as
+	// Proof is a proof of spacetime generated using the hash of the previous ticket as
 	// a challenge
 	Proof proofs.PoStProof `json:"proof"`
 }

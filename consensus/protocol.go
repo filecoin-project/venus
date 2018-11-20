@@ -35,5 +35,5 @@ type Protocol interface {
 	IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (int, error)
 	// RunStateTransition returns the state resulting from applying the input ts to the parent
 	// state pSt.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts TipSet, pSt state.Tree) (state.Tree, error)
+	RunStateTransition(ctx context.Context, ts TipSet, parentTs TipSet, pSt state.Tree) (state.Tree, error)
 }

@@ -32,9 +32,6 @@
         "miner": {
           "type": "string"
         },
-        "msgRoot": {
-          "$ref": "#/definitions/Cid"
-        },
         "nonce": {
           "type": "string"
         },
@@ -58,9 +55,6 @@
             "type": "integer"
           },
           "type": "array"
-        },
-        "receiptsRoot": {
-          "$ref": "#/definitions/Cid"
         },
         "reward": {
           "type": "string"
@@ -96,7 +90,9 @@
       "required": [
         "/"
       ],
-      "type": "object"
+      "type": [
+        "object"
+      ]
     },
     "Message": {
       "additionalProperties": false,
