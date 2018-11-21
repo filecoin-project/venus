@@ -31,7 +31,7 @@ resource "aws_security_group" "logstash" {
     protocol    = "tcp"
     from_port   = "${local.port}"
     to_port     = "${local.port}"
-    cidr_blocks = ["${module.vpc.vpc_cidr_block}"]
+    cidr_blocks = ["${module.vpc.vpc_cidr_block}", "147.75.88.221/32"]
   }
 
   ingress {
