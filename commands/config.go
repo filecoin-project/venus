@@ -1,6 +1,9 @@
 package commands
 
 import (
+	"encoding/json"
+	"io"
+
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
 )
@@ -51,7 +54,6 @@ $ go-filecoin config datastore '{"type":"badgerds","path":"badger"}'
 
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
-				return
 			}
 		} else {
 			res, err := api.Get(key)
@@ -62,5 +64,12 @@ $ go-filecoin config datastore '{"type":"badgerds","path":"badger"}'
 
 			re.Emit(res) // nolint: errcheck
 		}
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, res interface{}) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
+		}),
 	},
 }
