@@ -54,6 +54,15 @@ type DatastoreConfig struct {
 	Path string `json:"path"`
 }
 
+// Validators hold the list of validation functions for each configuration
+// property. Validators must take a key and json string respectively as
+// arguments, and must return either an error or nil depending on whether or not
+// the given key and value are valid. Validators will only be run if a property
+// being set matches the name given in this map.
+var validators = map[string]func(string, string) error{
+	"heartbeat.nickname": validateLettersOnly,
+}
+
 func newDefaultDatastoreConfig() *DatastoreConfig {
 	return &DatastoreConfig{
 		Type: "badgerds",
@@ -191,10 +200,31 @@ func ReadFile(file string) (*Config, error) {
 	return cfg, nil
 }
 
-// traverseConfig contains the shared traversal logic for getting and setting
-// config values.  It uses reflection to find the sub-struct referenced by `key`
-// and applies a processing function to the referenced struct
-func (cfg *Config) traverseConfig(key string) (reflect.Value, error) {
+// Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
+// or 'datastore' to the json key value pair encoded in jsonVal.
+func (cfg *Config) Set(dottedKey string, jsonString string) error {
+	if !json.Valid([]byte(jsonString)) {
+		jsonBytes, _ := json.Marshal(jsonString)
+		jsonString = string(jsonBytes)
+	}
+
+	if err := validate(dottedKey, jsonString); err != nil {
+		return err
+	}
+
+	keys := strings.Split(dottedKey, ".")
+	for i := len(keys) - 1; i >= 0; i-- {
+		jsonString = fmt.Sprintf(`{ "%s": %s }`, keys[i], jsonString)
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(jsonString))
+	decoder.DisallowUnknownFields()
+
+	return decoder.Decode(&cfg)
+}
+
+// Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
+func (cfg *Config) Get(key string) (interface{}, error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	keyTags := strings.Split(key, ".")
 OUTER:
@@ -208,7 +238,7 @@ OUTER:
 				if jsonTag == keyTag {
 					v = v.Field(i)
 					if j == len(keyTags)-1 {
-						return v, nil
+						return v.Interface(), nil
 					}
 					v = reflect.Indirect(v) // only attempt one dereference
 					continue OUTER
@@ -217,136 +247,55 @@ OUTER:
 		case reflect.Array, reflect.Slice:
 			i64, err := strconv.ParseUint(keyTag, 0, 0)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("non-integer key into slice")
+				return nil, fmt.Errorf("non-integer key into slice")
 			}
 			i := int(i64)
 			if i > v.Len()-1 {
-				return reflect.Value{}, fmt.Errorf("key into slice out of range")
+				return nil, fmt.Errorf("key into slice out of range")
 			}
 			v = v.Index(i)
 			if j == len(keyTags)-1 {
-				return v, nil
+				return v.Interface(), nil
 			}
 			v = reflect.Indirect(v) // only attempt one dereference
 			continue OUTER
 		}
 
-		return reflect.Value{}, fmt.Errorf("key: %s invalid for config", key)
+		return nil, fmt.Errorf("key: %s invalid for config", key)
 	}
 	// Cannot get here as len(strings.Split(s, sep)) >= 1 with non-empty sep
-	return reflect.Value{}, fmt.Errorf("empty key is invalid")
+	return nil, fmt.Errorf("empty key is invalid")
 }
 
-// prependKey includes the JSON key in the jsonVal blob necessary for correct
-// marshaling.  Ordinary tables require "[key]\n" prepended.  All others,
-// including inline tables and arrays require "k = " prepended, where k is the
-// last period separated substring of key. This function assumes all tables
-// within an array are specified in inline format.
-// TODO(dont merge): kill
-func prependKey(jsonValue string, key string) string {
-	ks := strings.Split(key, ".")
-	k := ks[len(ks)-1]
-
-	if !json.Valid([]byte(jsonValue)) {
-		return fmt.Sprintf(`{ "%s": "%s" }`, k, jsonValue)
-	}
-
-	return fmt.Sprintf(`{ "%s": %s }`, k, jsonValue)
-}
-
-// fieldToSet calculates the reflector Value to set the config at the given key
-// based on the user provided json blob.
-func fieldToSet(key string, jsonVal string, fieldT reflect.Type) (reflect.Value, error) {
-	// set up a struct with this field for unmarshaling
-	jsonValKey := prependKey(jsonVal, key)
-	ks := strings.Split(key, ".")
-	k := ks[len(ks)-1]
-
-	field := reflect.StructField{
-		Name: "Field",
-		Type: fieldT,
-		Tag:  reflect.StructTag("json:\"" + k + "\""),
-	}
-	recvT := reflect.StructOf([]reflect.StructField{field})
-	valToRecv := reflect.New(recvT)
-
-	err := json.Unmarshal([]byte(jsonValKey), valToRecv.Interface())
-	if err != nil {
-		msg := fmt.Sprintf("input could not be marshaled to sub-config at: %s", key)
-		return valToRecv, errors.Wrap(err, msg)
-	}
-	return valToRecv.Elem().Field(0), nil
-}
-
-func isJSONObject(jsonString string) bool {
+// validate runs validations on a given key and json string. validate uses the
+// validators map defined at the top of this file to determine which validations
+// to use for each key.
+func validate(dottedKey string, jsonString string) error {
 	var obj interface{}
 	json.Unmarshal([]byte(jsonString), &obj)
-	return reflect.ValueOf(obj).Kind() == reflect.Map
-}
-
-type KeyValPair struct {
-	Key   string
-	Value string
-}
-
-// Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
-// or 'datastore' to the json key value pair encoded in jsonVal.
-func (cfg *Config) Set(dottedKey string, jsonString string) error {
-	if !json.Valid([]byte(jsonString)) {
-		jsonBytes, _ := json.Marshal(jsonString)
-		jsonString = string(jsonBytes)
-	}
-
-	if isJSONObject(jsonString) {
-		// An object to split up; ie the recursive case
+	if reflect.ValueOf(obj).Kind() == reflect.Map {
 		var obj map[string]json.RawMessage
 		json.Unmarshal([]byte(jsonString), &obj)
 		for key := range obj {
-			longerDottedKey := dottedKey + "." + key
-			err := cfg.Set(longerDottedKey, string(obj[key]))
-			if err != nil {
+			if err := validate(dottedKey + "." + key, string(obj[key])); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 
-	if err := validate(dottedKey, jsonString); err != nil {
-		return err
+	if validationFunc, present := Validators[dottedKey]; present {
+		return validationFunc(dottedKey, jsonString)
 	}
 
-	jsonString = constructJsonToMerge(dottedKey, jsonString)
-
-	decoder := json.NewDecoder(strings.NewReader(jsonString))
-	decoder.DisallowUnknownFields()
-
-	return decoder.Decode(&cfg)
-}
-
-func constructJsonToMerge(dottedKey string, jsonString string) string {
-	keys := strings.Split(dottedKey, ".")
-	for i := len(keys) - 1; i >= 0; i-- {
-		jsonString = fmt.Sprintf(`{ "%s": %s }`, keys[i], jsonString)
-	}
-	return jsonString
-}
-
-// Validates config option the value for the given key
-func validate(dottedKey string, jsonString string) error {
-	if dottedKey == "heartbeat.nickname" {
-		match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", jsonString)
-		if !match {
-			return errors.Errorf(`"%s" must only contain letters`, dottedKey)
-		}
-	}
 	return nil
 }
 
-// Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
-func (cfg *Config) Get(key string) (interface{}, error) {
-	v, err := cfg.traverseConfig(key)
-	if err != nil {
-		return nil, err
+// validateLettersOnly validates that a given value contains only letters. If it
+// does not, an error is returned using the given key for the message.
+func validateLettersOnly(key string, value string) error {
+	if match, _ := regexp.MatchString("^\"[a-zA-Z]+\"$", value); !match {
+		return errors.Errorf(`"%s" must only contain letters`, key)
 	}
-	return v.Interface(), nil
+	return nil
 }

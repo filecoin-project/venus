@@ -64,14 +64,14 @@ func TestConfigDaemon(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		d.RunSuccess("config", "bootstrap", `{ "addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0 }`)
+		d.RunSuccess("config", "bootstrap", `{"addresses": ["fake1", "fake2"], "period": "1m", "minPeerThreshold": 0}`)
 		op1 := d.RunSuccess("config", "bootstrap")
 
 		// validate output
 		jsonOut := op1.ReadStdout()
 		bootstrapConfig := config.NewDefaultConfig().Bootstrap
 		bootstrapConfig.Addresses = []string{"fake1", "fake2"}
-		someJSON, err := json.Marshal(bootstrapConfig)
+		someJSON, err := json.MarshalIndent(bootstrapConfig, "", "\t")
 		require.NoError(err)
 		assert.Equal(fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
 
