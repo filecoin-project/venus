@@ -1057,10 +1057,17 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 				return nil, errors.Wrap(err, "failed to add message to mempool")
 			}
 
+			// Under some circumstances, the WaitForMessage will neither call
+			// its callback nor return an error. If this happens, we need to
+			// try to send this message again. This is a temporary hack to work
+			// around this bug. We need to find a real solution ASAP. See
+			// go-filecoin issue #1351.
+			waitCallbackWasCalled := false
 			err = node.WaitForMessage(
 				ctx,
 				msgCid,
 				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+					waitCallbackWasCalled = true
 					if receipt.ExitCode != uint8(0) {
 						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 					}
@@ -1080,6 +1087,12 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 					return nil
 				},
 			)
+
+			if err == nil && !waitCallbackWasCalled {
+				log.Warningf("SendMessageAndWait: failed to send message, retrying: %s", err)
+				node.MsgPool.Remove(msgCid)
+				continue
+			}
 
 			if err != nil {
 				// TODO: expose nonce errors, instead of using strings.
