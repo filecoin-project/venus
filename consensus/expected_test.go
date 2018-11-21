@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"  
 	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
@@ -36,12 +38,18 @@ func TestNewExpected(t *testing.T) {
 // TestExpected_NewValidTipSet also tests validateBlockStructure.
 func TestExpected_NewValidTipSet(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	cst, bstore, prover := setupCborBlockstoreProofs()
+	// TODO: get a empty parent state cid.
+	emptySt := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	ctx := context.Background()
+	emptyRoot, err := emptySt.Flush(ctx)
+	require.NoError(err)
 	ptv := consensus.NewTestPowerTableView(1, 5)
 
 	t.Run("NewValidTipSet returns a tipset + nil when valid blocks", func(t *testing.T) {
-		ctx, blocks := setUpContextAndBlocks()
+		_, blocks, _ := setUpContextAndBlocks(emptyRoot)
 		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
@@ -68,7 +76,6 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
 
-		ctx := context.Background()
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.Error(err, "Foo")
 		assert.Nil(tipSet)
@@ -84,7 +91,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	require := require.New(t)
 
 	cistore, bstore, prover := setupCborBlockstoreProofs()
-	ctx, blocks := setUpContextAndBlocks()
 
 	vms := testhelpers.VMStorage()
 	fakeActorCodeCid := types.AccountActorCodeCid
@@ -99,26 +105,34 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		addr1: act1,
 		addr2: act2,
 	})
+	ctx := context.Background()
+	stateRoot, err := stateTree.Flush(ctx)
+	require.NoError(err)	
+
+	_, blocks, parent := setUpContextAndBlocks(stateRoot)
+
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		ptv := consensus.NewTestPowerTableView(1, 5)
 		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
-		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
 		require.NoError(err)
-
-		_, err = exp.RunStateTransition(ctx, tipSet, stateTree)
-
-		// therefore we know that it passed validateMining() and got to c.runMessages call.
-		assert.EqualError(err, "blocks state root does not match computed result")
+		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		require.NoError(err)		
+		
+		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
+		assert.NoError(err)
 	})
 
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 		ptv := NewFailingMinerTestPowerTableView(1, 5)
 		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
-		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
 		require.NoError(err)
+		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		require.NoError(err)		
 
-		_, err = exp.RunStateTransition(ctx, tipSet, stateTree)
+		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
 		assert.EqualError(err, "couldn't compute ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
@@ -244,16 +258,16 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, pr
 	return cis, bs, pv
 }
 
-func setUpContextAndBlocks() (context.Context, []*types.Block) {
+func setUpContextAndBlocks(parentStateRoot *cid.Cid) (context.Context, []*types.Block, *types.Block) {
 	ctx := context.Background()
 	parentBlock := types.NewBlockForTest(nil, 0)
-	parentBlock.StateRoot = types.SomeCid()
+	parentBlock.StateRoot = parentStateRoot
 	blocks := []*types.Block{
 		types.NewBlockForTest(parentBlock, 0),
 		types.NewBlockForTest(parentBlock, 0),
 		types.NewBlockForTest(parentBlock, 0),
 	}
-	return ctx, blocks
+	return ctx, blocks, parentBlock
 }
 
 type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }
