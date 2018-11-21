@@ -1,7 +1,6 @@
 package sectorbuilder
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"io"
@@ -10,7 +9,7 @@ import (
 
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
 	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
+	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 
@@ -53,14 +52,13 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		sectorBuilder = sb
 	} else if cfg == rust {
 		sb, err := NewRustSectorBuilder(RustSectorBuilderConfig{
-			blockService:        blockService,
-			lastUsedSectorID:    0,
-			metadataDir:         memRepo.StagingDir(),
-			proverID:            [31]byte{},
-			sealedSectorDir:     memRepo.SealedDir(),
-			sectorStoreType:     proofs.ProofTest,
-			stagedSectorDir:     memRepo.StagingDir(),
-			maxNumStagedSectors: 1,
+			BlockService:     blockService,
+			LastUsedSectorID: 0,
+			MetadataDir:      memRepo.StagingDir(),
+			MinerAddr:        minerAddr,
+			SealedSectorDir:  memRepo.SealedDir(),
+			SectorStoreType:  proofs.ProofTest,
+			StagedSectorDir:  memRepo.StagingDir(),
 		})
 		require.NoError(t, err)
 
@@ -69,7 +67,7 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		t.Fatalf("unhandled sector builder type: %v", cfg)
 	}
 
-	response, err := sectorStore.GetMaxUnsealedBytesPerSector()
+	numBytes, err := sectorBuilder.GetMaxUserBytesPerStagedSector()
 	require.NoError(t, err)
 
 	return sectorBuilderTestHarness{
@@ -79,7 +77,7 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		blockService:      blockService,
 		sectorBuilder:     sectorBuilder,
 		minerAddr:         minerAddr,
-		maxBytesPerSector: response.NumBytes,
+		maxBytesPerSector: numBytes,
 	}
 }
 
@@ -111,20 +109,6 @@ func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
 	return pieceInfo.Ref
 }
 
-func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (*cid.Cid, error) {
-	pieceInfo, err := h.createPieceInfo(pieceData)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return pieceInfo.Ref, nil
-}
-
 func (h sectorBuilderTestHarness) createPieceInfo(pieceData []byte) (*PieceInfo, error) {
 	data := dag.NewRawNode(pieceData)
 
@@ -136,83 +120,6 @@ func (h sectorBuilderTestHarness) createPieceInfo(pieceData []byte) (*PieceInfo,
 		Ref:  data.Cid(),
 		Size: uint64(len(pieceData)),
 	}, nil
-}
-
-func metadataMustMatch(require *require.Assertions, sb *defaultSectorBuilder, sector *UnsealedSector, sealed *SealedSector, pieces int) { // nolint: deadcode
-	if sealed != nil {
-		sealedMeta := sealed.dumpCurrentState()
-		sealedMetaPersisted, err := sb.metadataStore.getSealedSectorMetadata(sealed.CommR)
-		require.NoError(err)
-		require.Equal(sealedMeta, sealedMetaPersisted)
-	} else {
-		meta := sector.dumpCurrentState()
-		require.Len(meta.Pieces, pieces)
-
-		// persisted and calculated metadata match.
-		metaPersisted, err := sb.metadataStore.getSectorMetadata(sector.unsealedSectorAccess)
-		require.NoError(err)
-		require.Equal(metaPersisted, meta)
-	}
-
-	builderMeta := sb.dumpCurrentState()
-	builderMetaPersisted, err := sb.metadataStore.getSectorBuilderMetadata(sb.minerAddr)
-	require.NoError(err)
-	require.Equal(builderMeta, builderMetaPersisted)
-}
-
-func pieceInfoMustEqual(t *testing.T, p1 *PieceInfo, p2 *PieceInfo) {
-	if p1.Size != p2.Size {
-		t.Fatalf("p1.size(%d) != p2.size(%d)\n", p1.Size, p2.Size)
-	}
-
-	if !p1.Ref.Equals(p2.Ref) {
-		t.Fatalf("p1.Ref(%s) != p2.Ref(%s)\n", p1.Ref.String(), p2.Ref.String())
-	}
-}
-
-func sectorBuildersMustEqual(t *testing.T, sb1 *defaultSectorBuilder, sb2 *defaultSectorBuilder) { // nolint: deadcode
-	require := require.New(t)
-
-	require.Equal(sb1.minerAddr, sb2.minerAddr)
-	require.Equal(sb1.sectorSize, sb2.sectorSize)
-
-	sectorsMustEqual(t, sb1.curUnsealedSector, sb2.curUnsealedSector)
-
-	require.Equal(len(sb1.sealedSectors), len(sb2.sealedSectors))
-	for i := 0; i < len(sb1.sealedSectors); i++ {
-		sealedSectorsMustEqual(t, sb1.sealedSectors[i], sb2.sealedSectors[i])
-	}
-}
-
-func sealedSectorsMustEqual(t *testing.T, ss1 *SealedSector, ss2 *SealedSector) {
-	require := require.New(t)
-
-	if ss1 == nil && ss2 == nil {
-		return
-	}
-
-	require.Equal(ss1.sealedSectorAccess, ss2.sealedSectorAccess)
-	require.Equal(ss1.unsealedSectorAccess, ss2.unsealedSectorAccess)
-	require.Equal(ss1.numBytes, ss2.numBytes)
-	require.True(bytes.Equal(ss1.CommR[:], ss2.CommR[:]))
-
-	require.Equal(len(ss1.pieces), len(ss2.pieces))
-	for i := 0; i < len(ss1.pieces); i++ {
-		pieceInfoMustEqual(t, ss1.pieces[i], ss2.pieces[i])
-	}
-}
-
-func sectorsMustEqual(t *testing.T, s1 *UnsealedSector, s2 *UnsealedSector) {
-	require := require.New(t)
-
-	require.Equal(s1.unsealedSectorAccess, s2.unsealedSectorAccess)
-	require.Equal(s1.maxBytes, s2.maxBytes)
-	require.Equal(s1.numBytesUsed, s2.numBytesUsed)
-
-	require.Equal(len(s1.pieces), len(s2.pieces))
-	for i := 0; i < len(s1.pieces); i++ {
-		pieceInfoMustEqual(t, s1.pieces[i], s2.pieces[i])
-	}
 }
 
 func requireRandomBytes(t *testing.T, n uint64) []byte { // nolint: deadcode

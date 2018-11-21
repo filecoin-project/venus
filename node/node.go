@@ -439,15 +439,14 @@ func (node *Node) Start(ctx context.Context) error {
 }
 
 func (node *Node) setupMining(ctx context.Context) error {
-	// initialize a sector store
-	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+	// configure the underlying sector store, defaulting to the non-test version
+	sectorStoreType := proofs.Live
 	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
+		sectorStoreType = proofs.ProofTest
 	}
-	node.SectorStore = sstore
 
 	// initialize a sector builder
-	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node, sectorStoreType)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize sector builder")
 	}
@@ -677,8 +676,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 			case result := <-node.SectorBuilder().SectorSealResults():
 				if result.SealingErr != nil {
 					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
-				} else if result.SealingResult != nil {
-					val := result.SealingResult
+				} else if result.SealingSuccess != nil {
+					val := result.SealingSuccess
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
@@ -746,7 +745,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
+func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType proofs.SectorStoreType) (sectorbuilder.SectorBuilder, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
@@ -757,7 +756,17 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
-	sb, err := sectorbuilder.Init(node.miningCtx, node.Repo.Datastore(), node.BlockService(), minerAddr, node.SectorStore, lastUsedSectorID)
+	cfg := sectorbuilder.RustSectorBuilderConfig{
+		BlockService:     node.blockservice,
+		LastUsedSectorID: lastUsedSectorID,
+		MetadataDir:      node.Repo.StagingDir(),
+		MinerAddr:        minerAddr,
+		SealedSectorDir:  node.Repo.SealedDir(),
+		SectorStoreType:  sectorStoreType,
+		StagedSectorDir:  node.Repo.StagingDir(),
+	}
+
+	sb, err := sectorbuilder.NewRustSectorBuilder(cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
 	}

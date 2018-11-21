@@ -8,6 +8,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 
 	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
@@ -24,6 +25,10 @@ import (
 
 */
 import "C"
+
+// MaxNumStagedSectors configures the maximum number of staged sectors which can
+// be open and accepting data at any time.
+const MaxNumStagedSectors = 1
 
 func elapsed(what string) func() {
 	start := time.Now()
@@ -51,45 +56,46 @@ var _ SectorBuilder = &RustSectorBuilder{}
 // RustSectorBuilderConfig is a configuration object used when instantiating a
 // Rust-backed SectorBuilder through the FFI. All fields are required.
 type RustSectorBuilderConfig struct {
-	blockService        bserv.BlockService
-	lastUsedSectorID    uint64
-	metadataDir         string
-	proverID            [31]byte
-	sealedSectorDir     string
-	sectorStoreType     proofs.SectorStoreType
-	stagedSectorDir     string
-	maxNumStagedSectors int
+	BlockService     bserv.BlockService
+	LastUsedSectorID uint64
+	MetadataDir      string
+	MinerAddr        address.Address
+	SealedSectorDir  string
+	SectorStoreType  proofs.SectorStoreType
+	StagedSectorDir  string
 }
 
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
 func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
 	defer elapsed("NewRustSectorBuilder")()
 
-	cMetadataDir := C.CString(cfg.metadataDir)
+	cMetadataDir := C.CString(cfg.MetadataDir)
 	defer C.free(unsafe.Pointer(cMetadataDir))
 
-	proverIDCBytes := C.CBytes(cfg.proverID[:])
+	proverID := addressToProverID(cfg.MinerAddr)
+
+	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
 
-	cStagedSectorDir := C.CString(cfg.stagedSectorDir)
+	cStagedSectorDir := C.CString(cfg.StagedSectorDir)
 	defer C.free(unsafe.Pointer(cStagedSectorDir))
 
-	cSealedSectorDir := C.CString(cfg.sealedSectorDir)
+	cSealedSectorDir := C.CString(cfg.SealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	scfg, err := proofs.CSectorStoreType(cfg.sectorStoreType)
+	scfg, err := proofs.CSectorStoreType(cfg.SectorStoreType)
 	if err != nil {
-		return nil, errors.Errorf("unknown sector store type: %v", cfg.sectorStoreType)
+		return nil, errors.Errorf("unknown sector store type: %v", cfg.SectorStoreType)
 	}
 
 	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(
 		(*C.ConfiguredStore)(unsafe.Pointer(scfg)),
-		C.uint64_t(cfg.lastUsedSectorID),
+		C.uint64_t(cfg.LastUsedSectorID),
 		cMetadataDir,
 		(*[31]C.uint8_t)(proverIDCBytes),
 		cStagedSectorDir,
 		cSealedSectorDir,
-		C.uint8_t(cfg.maxNumStagedSectors),
+		C.uint8_t(MaxNumStagedSectors),
 	)))
 	defer C.destroy_init_sector_builder_response(resPtr)
 
@@ -98,7 +104,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	}
 
 	sb := &RustSectorBuilder{
-		blockService:      cfg.blockService,
+		blockService:      cfg.BlockService,
 		ptr:               unsafe.Pointer(resPtr.sector_builder),
 		sectorSealResults: make(chan SectorSealResult),
 	}
@@ -174,7 +180,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (secto
 	return uint64(resPtr.sector_id), nil
 }
 
-func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSector, error) {
+func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {
 	resPtr := (*C.GetSealStatusResponse)(unsafe.Pointer(C.get_seal_status((*C.SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
 	defer C.destroy_get_seal_status_response(resPtr)
 
@@ -208,27 +214,28 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
 		// of *PieceInfo.
 		ps := make([]*PieceInfo, resPtr.pieces_len)
-		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
-		for i := 0; i < int(resPtr.pieces_len); i++ {
-			ref, err := cid.Decode(C.GoString(xs[i].piece_key))
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to marshal from string to cid")
-			}
+		if resPtr.pieces_len != 0 {
+			xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
+			for i := 0; i < int(resPtr.pieces_len); i++ {
+				ref, err := cid.Decode(C.GoString(xs[i].piece_key))
+				if err != nil {
+					return nil, errors.Wrap(err, "failed to marshal from string to cid")
+				}
 
-			ps[i] = &PieceInfo{
-				Ref:  ref,
-				Size: uint64(xs[i].num_bytes),
+				ps[i] = &PieceInfo{
+					Ref:  ref,
+					Size: uint64(xs[i].num_bytes),
+				}
 			}
 		}
 
-		return &SealedSector{
-			CommD:              commD,
-			CommR:              commR,
-			CommRStar:          commRStar,
-			pieces:             ps,
-			proof:              proof,
-			sealedSectorAccess: C.GoString(resPtr.sector_access),
-			SectorID:           sectorID,
+		return &SealedSectorMetadata{
+			CommD:     commD,
+			CommR:     commR,
+			CommRStar: commRStar,
+			Pieces:    ps,
+			Proof:     proof,
+			SectorID:  sectorID,
 		}, nil
 	} else {
 		// unknown
@@ -264,7 +271,7 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 }
 
 // SealedSectors is a stub.
-func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
+func (sb *RustSectorBuilder) SealedSectors() []*SealedSectorMetadata {
 	resPtr := (*C.GetSealedSectorsResponse)(unsafe.Pointer(C.get_sealed_sectors((*C.SectorBuilder)(sb.ptr))))
 	defer C.destroy_get_sealed_sectors_response(resPtr)
 
@@ -272,7 +279,11 @@ func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
 		return nil
 	}
 
-	sectors := make([]*SealedSector, resPtr.sectors_len)
+	sectors := make([]*SealedSectorMetadata, resPtr.sectors_len)
+	if resPtr.sectors_len == 0 {
+		return sectors
+	}
+
 	sectorPtrs := (*[1 << 30]C.FFISealedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr))[:resPtr.sectors_len:resPtr.sectors_len]
 	for i := 0; i < int(resPtr.sectors_len); i++ {
 		secPtr := sectorPtrs[i]
@@ -296,27 +307,28 @@ func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
 		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
 		// of *PieceInfo.
 		ps := make([]*PieceInfo, secPtr.pieces_len)
-		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(secPtr.pieces_ptr))[:secPtr.pieces_len:secPtr.pieces_len]
-		for j := 0; j < int(secPtr.pieces_len); j++ {
-			ref, err := cid.Decode(C.GoString(xs[j].piece_key))
-			if err != nil {
-				return nil
-			}
+		if secPtr.pieces_len != 0 {
+			xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(secPtr.pieces_ptr))[:secPtr.pieces_len:secPtr.pieces_len]
+			for j := 0; j < int(secPtr.pieces_len); j++ {
+				ref, err := cid.Decode(C.GoString(xs[j].piece_key))
+				if err != nil {
+					return nil
+				}
 
-			ps[j] = &PieceInfo{
-				Ref:  ref,
-				Size: uint64(xs[j].num_bytes),
+				ps[j] = &PieceInfo{
+					Ref:  ref,
+					Size: uint64(xs[j].num_bytes),
+				}
 			}
 		}
 
-		sectors[i] = &SealedSector{
-			CommD:              commD,
-			CommR:              commR,
-			CommRStar:          commRStar,
-			pieces:             ps,
-			proof:              proof,
-			sealedSectorAccess: C.GoString(secPtr.sector_access),
-			SectorID:           uint64(secPtr.sector_id),
+		sectors[i] = &SealedSectorMetadata{
+			CommD:     commD,
+			CommR:     commR,
+			CommRStar: commRStar,
+			Pieces:    ps,
+			Proof:     proof,
+			SectorID:  uint64(secPtr.sector_id),
 		}
 	}
 

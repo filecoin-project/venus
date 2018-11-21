@@ -47,9 +47,14 @@ fi
 
 function finish {
   echo ""
-  echo "cleaning up..."
+  echo "sending kill signal to daemons..."
   kill $MN_PID || true
   kill $CL_PID || true
+
+  echo ""
+  echo "wait a few seconds for nodes to terminate..."
+  sleep 5
+
   rm -f ${PIECE_1_PATH}
   rm -f ${PIECE_2_PATH}
   rm -f ${UNSEAL_PATH}
