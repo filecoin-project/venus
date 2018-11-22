@@ -4,9 +4,7 @@
 
 The following is a set of guidelines for contributing to the Filecoin
 Project. Feel free to propose changes, as these guidelines are a living
-document.
-
-Filecoin, including go-filecoin and all related modules, follows the
+document. Filecoin, including go-filecoin and all related modules, follows the
 [Filecoin Code of Conduct](CODE_OF_CONDUCT.md).
 
 ### Table Of Contents
@@ -29,11 +27,12 @@ adhere to the following guidance:
 
   * **DO enable progress**: As a contributor your _#1 priority_ should
   be enabling the progress of other contributors. When we enable our
-  teammates we increase our leverage and velocity. Don't be a gate-keeper, 
+  collaborators we increase our leverage and velocity. Don't be a gate-keeper, 
   someone who introduces unactionable or unnecessary obstacles to progress.
      * Corollary: *make progress*. Don't get stuck. Ask for help.
-     * Corollary: *prioritize code reviews*. Progress is measured by working
-     code that delivers values to users, please help people get it merged.
+     * Corollary: *prioritize code reviews and requests for
+     feedback*. Progress is measured by working code that delivers
+     values to users, please help people get it merged.
 
   * **DO NOT create technical debt**: We have passed the point in the project
   where "do the simplest thing possible that works" is a good strategy. We need
@@ -67,14 +66,13 @@ adhere to the following guidance:
   should not take a `Node` as a dependency: they should take the narrower
   set of things they actually need. Building blocks should not go on `Node`,
   they should go into separate, smaller abstractions that depend on the 
-  narrow set of things they actually need. [More detail in this issue.](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
+  narrow set of things they actually need. [More detail in this issue](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
  
   * **DO embrace asynchronous workflows**: To the extent possible, drive work
   asynchronously through issues. Accept as both a strength and constraint
   of the project that sometimes the best person to do your code review is 12
   time zones away, and it might take you several days to get a PR in because of
-  time zone issues.
-
+  it.
 
 ## Code Reviews
 
@@ -96,8 +94,8 @@ As for approvals:
   * Comments should be actionable and clearly state what is requested.
   * By default, code review comments are advisory: reviewee
  should consider them but doesn't _have_ to respond or
- address them
-  * A comment that says "BLOCKING" must be addressed and responded
+ address them.
+  * A comment that starts with "BLOCKING" must be addressed and responded
  to. A reviewer has to decide how to deliver a blocking comment: via
  "Request Changes" (merge blocking) or via "Add Comments" or "Approve"
  (not merge blocking):
@@ -108,9 +106,10 @@ As for approvals:
   reworked.
     * If a reviewer makes a blocking comment but does not block
   merging ("Add Comments" or "Approve") then the reviewee can
-  merge if the issue is addressed. Example: you have an off by one
-  error. It's mandatory to fix but doesn't necessarily require
-  another look from the reviewer.
+  merge if the issue is addressed. Example: reviewer points out
+  an off by one error in a blocking comment, as they Approve the
+  PR. You have to fix the error but the reviewer trusts you to do
+  that and you can merge without further review once you have.
   * Approval means approval even in the face of minor changes.
   github should be configured to allow merging with earlier
   approval even after rebasing/minor changes.
