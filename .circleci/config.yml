@@ -73,7 +73,7 @@ jobs:
       - run:
           name: Install Rust
           command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
       - run:
           name: Install dependencies
           command: go run ./build/*.go smartdeps
@@ -160,7 +160,7 @@ jobs:
       - run:
           name: Install Rust toolchain (for rust-proofs)
           command: |
-            (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y)
+            (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- -y)
 
       - run:
           name: Install Dependencies
