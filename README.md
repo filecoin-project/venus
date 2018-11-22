@@ -352,6 +352,27 @@ Here are a few places to get help and hang out with the Filecoin community:
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
 #
+
+## Clusters
+
+### Test Cluster
+
+Deployed via CI by tagging a commit with `redeploy_test_cluster`
+
+- Dashboard: http://test.kittyhawk.wtf:8010/
+- Connected Nodes: http://test.kittyhawk.wtf:9080/report
+- Prometheus Endpoint: http://test.kittyhawk.wtf:9080/metrics
+
+### Nightly Cluster
+
+Deployed from master by CI every day at 0600 UTC
+
+- Dashboard: http://nightly.kittyhawk.wtf:8010/
+- Connected Nodes: http://nightly.kittyhawk.wtf:9080/report
+- Prometheus Endpoint: http://nightly.kittyhawk.wtf:9080/metrics
+
+#
+
 ## License
 
 The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
