@@ -53,13 +53,15 @@ adhere to the following guidance:
     the code next. Or you could do the right thing which is going to take you
     longer. "Do not create technical debt" means do the right thing.
 
-  * **DO capture design intent on paper, ahead of implementation, and subject
-  it to constructive feedback**: explicitly identify the problem you are solving,
-  the requirements and constraints the solution must meet, the proposal, its rationale,
-  and any alternatives we should not pursue. This can be done in the form of a 
-  [designdoc](designdocs.md), but
-  really anything that captures this intent is fine. Note there is a
-  [similar process for protocol-level changes](https://github.com/filecoin-project/specs/blob/master/process.md).
+  * **DO capture design intent on paper, ahead of implementation, and
+  subject it to constructive feedback**: explicitly identify the
+  problem you are solving, the requirements and constraints the
+  solution must meet, the proposal, its rationale, and any
+  alternatives we should not pursue. Essentially, write a
+  [designdoc](designdocs.md). The length and detail should be
+  commensurate with the size, risk, and importance of the thing in
+  question.  Note there is a [similar process for protocol-level
+  changes](https://github.com/filecoin-project/specs/blob/master/process.md).
  
   * **DO NOT add dependencies on `Node` or add more implementation to `Node`**: The 
   `Node` has become a god object and a dependency of convenience. Abstractions
