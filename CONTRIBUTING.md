@@ -246,6 +246,7 @@ Presently (Q4'18) the minimum bar is:
  * Code review (see above).
  * Lint (`go run ./build/*.go lint`).
  * Must match a subset of the spec.
+ * Documentation is up to date.
 
 ## Pull Requests
 
