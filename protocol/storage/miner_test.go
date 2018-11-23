@@ -16,7 +16,7 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 	cid2 := newCid()
 
 	wantSectorID := uint64(42)
-	wantSector := &sectorbuilder.SealedSectorMetadata{SectorID: wantSectorID}
+	wantSector := &sectorbuilder.SealedSector{SectorID: wantSectorID}
 	someOtherSectorID := uint64(100)
 
 	wantMessage := "boom"
@@ -27,7 +27,7 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
+		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSector) {
 			assert.Equal(sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}
@@ -46,7 +46,7 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
+		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSector) {
 			assert.Equal(sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}

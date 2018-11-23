@@ -66,8 +66,8 @@ func (sb *defaultSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 	return sb.sectorSealResults
 }
 
-func (sb *defaultSectorBuilder) GetMaxUserBytesPerStagedSector() (uint64, error) {
-	return sb.sectorSize, nil
+func (sb *defaultSectorBuilder) MaxBytesPerSector() uint64 {
+	return sb.sectorSize
 }
 
 var _ SectorBuilder = &defaultSectorBuilder{}
@@ -123,23 +123,11 @@ func (sb *defaultSectorBuilder) newSealedSector(commR [32]byte, commD [32]byte, 
 }
 
 // SealedSectors returns a list of all currently sealed sectors.
-func (sb *defaultSectorBuilder) SealedSectors() []*SealedSectorMetadata {
+func (sb *defaultSectorBuilder) SealedSectors() []*SealedSector {
 	sb.sealedSectorsLk.RLock()
 	defer sb.sealedSectorsLk.RUnlock()
 
-	var meta []*SealedSectorMetadata
-	for _, ss := range sb.sealedSectors {
-		meta = append(meta, &SealedSectorMetadata{
-			CommD:     ss.CommD,
-			CommR:     ss.CommR,
-			CommRStar: ss.CommRStar,
-			Pieces:    ss.pieces,
-			Proof:     ss.proof,
-			SectorID:  ss.SectorID,
-		})
-	}
-
-	return meta
+	return sb.sealedSectors
 }
 
 // Init creates a new sector builder for the given miner. If a SectorBuilder had previously been created
@@ -207,12 +195,8 @@ func configureSectorBuilderFromMetadata(store *metadataStore, sb *defaultSectorB
 	// Going forward, the SectorBuilder should be able to manage multiple
 	// unsealed sectors concurrently, segregating them (and their sealed
 	// counterparts) by sector size.
-	maxBytes, err := sb.GetMaxUserBytesPerStagedSector()
-	if err != nil {
-		return errors.Wrap(err, "couldn't get max bytes from sector builder")
-	}
-	if maxBytes != sector.maxBytes {
-		return errors.Errorf("sector builder has been configured to use %d-byte sectors, but loaded unsealed sector uses %d-byte sectors", maxBytes, sector.maxBytes)
+	if sb.MaxBytesPerSector() != sector.maxBytes {
+		return errors.Errorf("sector builder has been configured to use %d-byte sectors, but loaded unsealed sector uses %d-byte sectors", sb.MaxBytesPerSector(), sector.maxBytes)
 	}
 
 	if err := sb.syncFile(sector); err != nil {
@@ -544,9 +528,9 @@ func (sb *defaultSectorBuilder) sealAsync(s *UnsealedSector) (finalErr error) {
 		res2, err := (&proofs.RustProver{}).Seal(req)
 		if err != nil {
 			sb.sectorSealResults <- SectorSealResult{
-				SectorID:       s.SectorID,
-				SealingErr:     err,
-				SealingSuccess: nil,
+				SectorID:      s.SectorID,
+				SealingErr:    err,
+				SealingResult: nil,
 			}
 			return
 		}
@@ -556,19 +540,10 @@ func (sb *defaultSectorBuilder) sealAsync(s *UnsealedSector) (finalErr error) {
 			log.Errorf("failed to checkpoint the recently-sealed, staged sector with id %d: %s", s.SectorID, err.Error())
 		}
 
-		meta := &SealedSectorMetadata{
-			CommD:     ss.CommD,
-			CommR:     ss.CommR,
-			CommRStar: ss.CommRStar,
-			Pieces:    ss.pieces,
-			Proof:     ss.proof,
-			SectorID:  ss.SectorID,
-		}
-
 		sb.sectorSealResults <- SectorSealResult{
-			SectorID:       s.SectorID,
-			SealingErr:     nil,
-			SealingSuccess: meta,
+			SectorID:      s.SectorID,
+			SealingErr:    nil,
+			SealingResult: ss,
 		}
 	}()
 

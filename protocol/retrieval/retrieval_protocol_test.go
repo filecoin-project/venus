@@ -55,9 +55,9 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	require.NoError(minerNode.StartMining(ctx))
 	defer minerNode.StopMining(ctx)
 
-	numBytes, err := minerNode.SectorBuilder().GetMaxUserBytesPerStagedSector()
+	response, err := minerNode.SectorStore.GetMaxUnsealedBytesPerSector()
 	require.NoError(err)
-	testSectorSize := uint64(numBytes)
+	testSectorSize := uint64(response.NumBytes)
 
 	// pretend like we've run through the storage protocol and saved user's
 	// data to the miner's block store and sector builder

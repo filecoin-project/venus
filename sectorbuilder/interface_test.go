@@ -18,7 +18,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{rust, golang} {
+		for _, cfg := range []sectorBuilderType{golang} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -33,8 +33,8 @@ func TestSectorBuilder(t *testing.T) {
 					for val := range h.sectorBuilder.SectorSealResults() {
 						if val.SealingErr != nil {
 							errs <- val.SealingErr
-						} else if val.SealingSuccess != nil {
-							for _, pieceInfo := range val.SealingSuccess.Pieces {
+						} else if val.SealingResult != nil {
+							for _, pieceInfo := range val.SealingResult.pieces {
 								sealedPieceCidCh <- pieceInfo.Ref.String()
 							}
 						}
@@ -109,7 +109,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{rust, golang} {
+		for _, cfg := range []sectorBuilderType{golang} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -125,8 +125,8 @@ func TestSectorBuilder(t *testing.T) {
 					for val := range h.sectorBuilder.SectorSealResults() {
 						if val.SealingErr != nil {
 							errs <- val.SealingErr
-						} else if val.SealingSuccess != nil {
-							for _, pieceInfo := range val.SealingSuccess.Pieces {
+						} else if val.SealingResult != nil {
+							for _, pieceInfo := range val.SealingResult.pieces {
 								done <- pieceInfo.Ref
 							}
 						}
@@ -172,7 +172,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang, rust} {
+		for _, cfg := range []sectorBuilderType{golang} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -190,7 +190,7 @@ func TestSectorBuilder(t *testing.T) {
 					select {
 					case val := <-h.sectorBuilder.SectorSealResults():
 						require.NoError(t, val.SealingErr)
-						require.Equal(t, sectorID, val.SealingSuccess.SectorID)
+						require.Equal(t, sectorID, val.SealingResult.SectorID)
 						break Loop
 					case <-timeout:
 						break Loop // I've always dreamt of using GOTO
