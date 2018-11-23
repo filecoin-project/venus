@@ -956,12 +956,8 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	if err != nil {
 		return nil, err
 	}
-	params, err := abi.ToEncodedValues(big.NewInt(int64(pledge)), pubkey, pid)
-	if err != nil {
-		return nil, err
-	}
 
-	smsgCid, err := node.SendMessage(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", params)
+	smsgCid, err := node.SendMessage(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
