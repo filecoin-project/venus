@@ -90,8 +90,9 @@ func TestStorageProtocolBasic(t *testing.T) {
 	assert.NoError(err)
 	defer minerAPI.Mining().Stop(ctx)
 
-	sectorSize, err := miner.SectorBuilder().GetMaxUserBytesPerStagedSector()
+	response, err := miner.SectorStore.GetMaxUnsealedBytesPerSector()
 	require.NoError(err)
+	sectorSize := uint64(response.NumBytes)
 
 	data := unixfs.NewFSNode(unixfs.TFile)
 	bytes := make([]byte, sectorSize)

@@ -33,8 +33,8 @@ func TestSectorBuilder(t *testing.T) {
 					for val := range h.sectorBuilder.SectorSealResults() {
 						if val.SealingErr != nil {
 							errs <- val.SealingErr
-						} else if val.SealingSuccess != nil {
-							for _, pieceInfo := range val.SealingSuccess.Pieces {
+						} else if val.SealingResult != nil {
+							for _, pieceInfo := range val.SealingResult.pieces {
 								sealedPieceCidCh <- pieceInfo.Ref.String()
 							}
 						}
@@ -125,8 +125,8 @@ func TestSectorBuilder(t *testing.T) {
 					for val := range h.sectorBuilder.SectorSealResults() {
 						if val.SealingErr != nil {
 							errs <- val.SealingErr
-						} else if val.SealingSuccess != nil {
-							for _, pieceInfo := range val.SealingSuccess.Pieces {
+						} else if val.SealingResult != nil {
+							for _, pieceInfo := range val.SealingResult.pieces {
 								done <- pieceInfo.Ref
 							}
 						}
@@ -190,7 +190,7 @@ func TestSectorBuilder(t *testing.T) {
 					select {
 					case val := <-h.sectorBuilder.SectorSealResults():
 						require.NoError(t, val.SealingErr)
-						require.Equal(t, sectorID, val.SealingSuccess.SectorID)
+						require.Equal(t, sectorID, val.SealingResult.SectorID)
 						break Loop
 					case <-timeout:
 						break Loop // I've always dreamt of using GOTO
