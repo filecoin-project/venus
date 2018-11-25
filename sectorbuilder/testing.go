@@ -45,12 +45,18 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 	sectorStore := proofs.NewProofTestSectorStore(memRepo.StagingDir(), memRepo.SealedDir())
 	minerAddr := address.MakeTestAddress("wombat")
 
+	var maxBytes uint64
 	var sectorBuilder SectorBuilder
 	if cfg == golang {
 		sb, err := Init(ctx, memRepo.Datastore(), blockService, minerAddr, sectorStore, 0)
 		require.NoError(t, err)
 
 		sectorBuilder = sb
+
+		response, err := sectorStore.GetMaxUnsealedBytesPerSector()
+		require.NoError(t, err)
+
+		maxBytes = response.NumBytes
 	} else if cfg == rust {
 		sb, err := NewRustSectorBuilder(RustSectorBuilderConfig{
 			blockService:        blockService,
@@ -65,12 +71,14 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		require.NoError(t, err)
 
 		sectorBuilder = sb
+
+		n, err := sb.GetMaxUserBytesPerStagedSector()
+		require.NoError(t, err)
+
+		maxBytes = n
 	} else {
 		t.Fatalf("unhandled sector builder type: %v", cfg)
 	}
-
-	response, err := sectorStore.GetMaxUnsealedBytesPerSector()
-	require.NoError(t, err)
 
 	return sectorBuilderTestHarness{
 		ctx:               ctx,
@@ -79,7 +87,7 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		blockService:      blockService,
 		sectorBuilder:     sectorBuilder,
 		minerAddr:         minerAddr,
-		maxBytesPerSector: response.NumBytes,
+		maxBytesPerSector: maxBytes,
 	}
 }
 
