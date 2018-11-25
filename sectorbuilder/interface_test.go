@@ -106,7 +106,7 @@ func TestSectorBuilder(t *testing.T) {
 		}
 	})
 
-	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
+	t.Run("concurrent writes", func(t *testing.T) {
 		t.Parallel()
 
 		for _, cfg := range []sectorBuilderType{golang, rust} {
@@ -158,9 +158,14 @@ func TestSectorBuilder(t *testing.T) {
 					}
 				}
 
+				// make some basic assertions about the output of
+				// SectorBuilder#SealedSectors()
 				sealedSectors, err := h.sectorBuilder.SealedSectors()
 				require.NoError(t, err)
 				require.Equal(t, len(sealedSectors), 5)
+				for _, meta := range sealedSectors {
+					require.NotEqual(t, 0, len(meta.pieces))
+				}
 
 				pieceCidSet.Range(func(key, value interface{}) bool {
 					t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
