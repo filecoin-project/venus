@@ -18,7 +18,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -109,7 +109,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -172,7 +172,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
