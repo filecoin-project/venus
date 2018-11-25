@@ -225,7 +225,8 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 	}
 }
 
-// ReadPieceFromSealedSector is a stub.
+// ReadPieceFromSealedSector produces a Reader used to get original piece-bytes
+// from a sealed sector.
 func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
 	cPieceKey := C.CString(pieceCid.String())
 	defer C.free(unsafe.Pointer(cPieceKey))
@@ -269,7 +270,8 @@ func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSector, error) {
 	return meta, nil
 }
 
-// SectorSealResults is a stub.
+// SectorSealResults returns an unbuffered channel that is sent a value whenever
+// sealing completes.
 func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 	return sb.sectorSealResults
 }
