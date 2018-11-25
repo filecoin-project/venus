@@ -169,7 +169,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (secto
 		return 0, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
+	go sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
 
 	return uint64(resPtr.sector_id), nil
 }
