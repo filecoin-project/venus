@@ -158,7 +158,8 @@ func TestSectorBuilder(t *testing.T) {
 					}
 				}
 
-				sealedSectors := h.sectorBuilder.SealedSectors()
+				sealedSectors, err := h.sectorBuilder.SealedSectors()
+				require.NoError(t, err)
 				require.Equal(t, len(sealedSectors), 5)
 
 				pieceCidSet.Range(func(key, value interface{}) bool {
@@ -204,6 +205,21 @@ func TestSectorBuilder(t *testing.T) {
 				require.NoError(t, err)
 
 				require.Equal(t, hex.EncodeToString(inputBytes), hex.EncodeToString(outputBytes))
+			}()
+		}
+	})
+
+	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
+		t.Parallel()
+
+		for _, cfg := range []sectorBuilderType{golang, rust} {
+			func() {
+				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
+				defer h.close()
+
+				sealedSectors, err := h.sectorBuilder.SealedSectors()
+				require.NoError(t, err)
+				require.Equal(t, 0, len(sealedSectors))
 			}()
 		}
 	})
