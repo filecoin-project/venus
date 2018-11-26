@@ -118,7 +118,7 @@ As for approvals:
 
 Comments should be blocking or come with an approval unless you are
 still looking things over or you're asking for clarification. It's
-ok/encouraged to ask for explanations.
+ok/encouraged to ask for explanations, in the PR or in IRC.
 
 ## Conventions and Style
 
@@ -188,7 +188,7 @@ incorrect view of the world.
 * If an error could be transient, attempt to continue making progress.
 * If an error appears to be permanent or we have inconsistent internal state, error out to the top level
   and exit cleanly if possible. 
-* **DO NOT INTENTIONALLY CRASH THE NODE**. Don't panic if you can exit cleanly. Panicing stops the node
+* **DO NOT INTENTIONALLY CRASH THE NODE**. Don't panic() if you can exit cleanly. panic()ing stops the node
   from doing useful work that might be unrelated to the error and does not give subsystems an opportunity to
   clean up, thus potentially creating additional problems. 
 
@@ -197,7 +197,7 @@ that should not happen and that a dev should go look at.
 
 ## The Spec
 
-The spec must be in sync with the code. 
+The Filecoin Specification (https://github.com/filecoin-project/specs) must be in sync with the code. 
 
 TODO(Q4'18): we need an updated process here.
 

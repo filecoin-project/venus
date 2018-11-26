@@ -34,10 +34,10 @@ It is important to understand that the goal of a design doc is not to defend a p
 ## Benefits
 
 Capturing design intent on paper, in the open, in a designdoc:
-- **Subjects it to thoughtful criticism** from a variety of points of view, engaging many brains to increase the chance that the design is successful. It increases the chances of finding problems early.
-- **Clearly articulates what is and is not important**, giving people the tools to make good judgements. It captures thinking so that when problems come up later we have something to refer to.
-- **Synchronizes the community on important questions**. It avoids the situation where important questions are decided elsewhere leaving people feeling like they didn’t have a voice.
-- **Disseminates information in a scalable fashion**. It spreads the big picture efficiently and enables new contributors to come up to speed more quickly.
+- **Subjects it to thoughtful criticism**.
+- **Clearly articulates what is and is not important**.
+- **Synchronizes the community on important questions**. 
+- **Disseminates information in a scalable fashion**. 
 
 ## What is a designdoc not?
 
