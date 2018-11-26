@@ -59,14 +59,13 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T, cfg sectorBu
 		maxBytes = response.NumBytes
 	} else if cfg == rust {
 		sb, err := NewRustSectorBuilder(RustSectorBuilderConfig{
-			blockService:        blockService,
-			lastUsedSectorID:    0,
-			metadataDir:         memRepo.StagingDir(),
-			proverID:            [31]byte{},
-			sealedSectorDir:     memRepo.SealedDir(),
-			sectorStoreType:     proofs.ProofTest,
-			stagedSectorDir:     memRepo.StagingDir(),
-			maxNumStagedSectors: 1,
+			BlockService:     blockService,
+			LastUsedSectorID: 0,
+			MetadataDir:      memRepo.StagingDir(),
+			MinerAddr:        minerAddr,
+			SealedSectorDir:  memRepo.SealedDir(),
+			SectorStoreType:  proofs.ProofTest,
+			StagedSectorDir:  memRepo.StagingDir(),
 		})
 		require.NoError(t, err)
 
