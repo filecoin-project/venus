@@ -174,7 +174,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
 
-		ls := listChannelsAsStrs(d, &payer)[0]
+		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID.String(), target.String()), ls)
 	})
 }
