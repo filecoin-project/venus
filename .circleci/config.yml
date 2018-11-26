@@ -8,8 +8,8 @@ aliases:
   - &install_terraform
     name: install Terraform
     command: |
-      wget -O /tmp/terraform_0.11.8_linux_amd64.zip https://releases.hashicorp.com/terraform/0.11.8/terraform_0.11.8_linux_amd64.zip
-      unzip -d /go/bin/ /tmp/terraform_0.11.8_linux_amd64.zip
+      wget -O /tmp/terraform_0.11.10_linux_amd64.zip https://releases.hashicorp.com/terraform/0.11.10/terraform_0.11.10_linux_amd64.zip
+      unzip -d /go/bin/ /tmp/terraform_0.11.10_linux_amd64.zip
       chmod +x /go/bin/terraform
   - &init_terraform
     name: init Terraform
