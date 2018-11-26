@@ -241,7 +241,7 @@ go tool pprof /tmp/profile.dump
 
 Presently (Q4'18) the minimum bar is:
  * Unit tests.
- * Tests must not by flaky.
+ * Tests must not be flaky.
  * Must pass CI.
  * Code review (see above).
  * Lint (`go run ./build/*.go lint`).
