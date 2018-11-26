@@ -862,7 +862,7 @@ func NextNonce(ctx context.Context, node *Node, address address.Address) (nonce 
 // (see NextNonce).
 // This function is unsafe. Creating multiple messages from the
 // same actor before adding them to the message pool will result
-// in duplicate nonces. Use node.SendMessage()
+// in duplicate nonces. Use node.SendMessage() instead.
 func newMessageWithNextNonce(ctx context.Context, node *Node, from, to address.Address, value *types.AttoFIL, method string, params []byte) (_ *types.Message, err error) {
 	ctx = log.Start(ctx, "Node.NewMessageWithNextNonce")
 	defer func() {
