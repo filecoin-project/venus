@@ -18,7 +18,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -106,10 +106,10 @@ func TestSectorBuilder(t *testing.T) {
 		}
 	})
 
-	t.Run("concurrent writes where size(piece) == max", func(t *testing.T) {
+	t.Run("concurrent writes", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -158,8 +158,14 @@ func TestSectorBuilder(t *testing.T) {
 					}
 				}
 
-				sealedSectors := h.sectorBuilder.SealedSectors()
+				// make some basic assertions about the output of
+				// SectorBuilder#SealedSectors()
+				sealedSectors, err := h.sectorBuilder.SealedSectors()
+				require.NoError(t, err)
 				require.Equal(t, len(sealedSectors), 5)
+				for _, meta := range sealedSectors {
+					require.NotEqual(t, 0, len(meta.pieces))
+				}
 
 				pieceCidSet.Range(func(key, value interface{}) bool {
 					t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
@@ -172,7 +178,7 @@ func TestSectorBuilder(t *testing.T) {
 	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
 		t.Parallel()
 
-		for _, cfg := range []sectorBuilderType{golang} {
+		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
 				defer h.close()
@@ -204,6 +210,21 @@ func TestSectorBuilder(t *testing.T) {
 				require.NoError(t, err)
 
 				require.Equal(t, hex.EncodeToString(inputBytes), hex.EncodeToString(outputBytes))
+			}()
+		}
+	})
+
+	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
+		t.Parallel()
+
+		for _, cfg := range []sectorBuilderType{golang, rust} {
+			func() {
+				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
+				defer h.close()
+
+				sealedSectors, err := h.sectorBuilder.SealedSectors()
+				require.NoError(t, err)
+				require.Equal(t, 0, len(sealedSectors))
 			}()
 		}
 	})

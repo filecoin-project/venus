@@ -123,11 +123,11 @@ func (sb *defaultSectorBuilder) newSealedSector(commR [32]byte, commD [32]byte, 
 }
 
 // SealedSectors returns a list of all currently sealed sectors.
-func (sb *defaultSectorBuilder) SealedSectors() []*SealedSector {
+func (sb *defaultSectorBuilder) SealedSectors() ([]*SealedSector, error) {
 	sb.sealedSectorsLk.RLock()
 	defer sb.sealedSectorsLk.RUnlock()
 
-	return sb.sealedSectors
+	return sb.sealedSectors, nil
 }
 
 // Init creates a new sector builder for the given miner. If a SectorBuilder had previously been created

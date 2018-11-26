@@ -169,7 +169,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (secto
 		return 0, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
+	go sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
 
 	return uint64(resPtr.sector_id), nil
 }
@@ -205,20 +205,9 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		var proof [384]byte
 		copy(proof[:], proofSlice)
 
-		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
-		// of *PieceInfo.
-		ps := make([]*PieceInfo, resPtr.pieces_len)
-		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr))[:resPtr.pieces_len:resPtr.pieces_len]
-		for i := 0; i < int(resPtr.pieces_len); i++ {
-			ref, err := cid.Decode(C.GoString(xs[i].piece_key))
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to marshal from string to cid")
-			}
-
-			ps[i] = &PieceInfo{
-				Ref:  ref,
-				Size: uint64(xs[i].num_bytes),
-			}
+		ps, err := goPieceInfos((*C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr)), resPtr.pieces_len)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
 
 		return &SealedSector{
@@ -236,7 +225,8 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 	}
 }
 
-// ReadPieceFromSealedSector is a stub.
+// ReadPieceFromSealedSector produces a Reader used to get original piece-bytes
+// from a sealed sector.
 func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
 	cPieceKey := C.CString(pieceCid.String())
 	defer C.free(unsafe.Pointer(cPieceKey))
@@ -263,18 +253,50 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 	return nil
 }
 
-// SealedSectors is a stub.
-func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
+// SealedSectors returns a slice of all sealed sector metadata for the sector builder, or an error.
+func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSector, error) {
 	resPtr := (*C.GetSealedSectorsResponse)(unsafe.Pointer(C.get_sealed_sectors((*C.SectorBuilder)(sb.ptr))))
 	defer C.destroy_get_sealed_sectors_response(resPtr)
 
 	if resPtr.status_code != 0 {
-		return nil
+		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	sectors := make([]*SealedSector, resPtr.sectors_len)
-	sectorPtrs := (*[1 << 30]C.FFISealedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr))[:resPtr.sectors_len:resPtr.sectors_len]
-	for i := 0; i < int(resPtr.sectors_len); i++ {
+	meta, err := goSealedSectorMetadata((*C.FFISealedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
+	if err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
+// SectorSealResults returns an unbuffered channel that is sent a value whenever
+// sealing completes.
+func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
+	return sb.sectorSealResults
+}
+
+// Close shuts down the RustSectorBuilder's poller.
+func (sb *RustSectorBuilder) Close() error {
+	sb.sealStatusPoller.stop()
+	return nil
+}
+
+// destroy deallocates and destroys a DiskBackedSectorStore.
+func (sb *RustSectorBuilder) destroy() {
+	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
+
+	sb.ptr = nil
+}
+
+func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*SealedSector, error) {
+	sectors := make([]*SealedSector, size)
+	if src == nil || size == 0 {
+		return sectors, nil
+	}
+
+	sectorPtrs := (*[1 << 30]C.FFISealedSectorMetadata)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
 		secPtr := sectorPtrs[i]
 
 		commRSlice := C.GoBytes(unsafe.Pointer(&secPtr.comm_r[0]), 32)
@@ -293,20 +315,9 @@ func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
 		var proof [384]byte
 		copy(proof[:], proofSlice)
 
-		// Map from a dynamically-sized C array of C.FFIPieceMetadata to a Go slice
-		// of *PieceInfo.
-		ps := make([]*PieceInfo, secPtr.pieces_len)
-		xs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(secPtr.pieces_ptr))[:secPtr.pieces_len:secPtr.pieces_len]
-		for j := 0; j < int(secPtr.pieces_len); j++ {
-			ref, err := cid.Decode(C.GoString(xs[j].piece_key))
-			if err != nil {
-				return nil
-			}
-
-			ps[j] = &PieceInfo{
-				Ref:  ref,
-				Size: uint64(xs[j].num_bytes),
-			}
+		ps, err := goPieceInfos((*C.FFIPieceMetadata)(unsafe.Pointer(secPtr.pieces_ptr)), secPtr.pieces_len)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
 
 		sectors[i] = &SealedSector{
@@ -320,23 +331,27 @@ func (sb *RustSectorBuilder) SealedSectors() []*SealedSector {
 		}
 	}
 
-	return sectors
+	return sectors, nil
 }
 
-// SectorSealResults is a stub.
-func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
-	return sb.sectorSealResults
-}
+func goPieceInfos(src *C.FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) {
+	ps := make([]*PieceInfo, size)
+	if src == nil || size == 0 {
+		return ps, nil
+	}
 
-// Close shuts down the RustSectorBuilder's poller.
-func (sb *RustSectorBuilder) Close() error {
-	sb.sealStatusPoller.stop()
-	return nil
-}
+	ptrs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
+		ref, err := cid.Decode(C.GoString(ptrs[i].piece_key))
+		if err != nil {
+			return nil, err
+		}
 
-// destroy deallocates and destroys a DiskBackedSectorStore.
-func (sb *RustSectorBuilder) destroy() {
-	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
+		ps[i] = &PieceInfo{
+			Ref:  ref,
+			Size: uint64(ptrs[i].num_bytes),
+		}
+	}
 
-	sb.ptr = nil
+	return ps, nil
 }
