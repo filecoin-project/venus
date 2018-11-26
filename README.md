@@ -26,6 +26,7 @@ by providing storage to clients.
 - [Running Filecoin](#running-filecoin)
    - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
+- [Cluster](#Clusters)
 - [Community](#community)
 - [License](#license)
 
@@ -151,42 +152,6 @@ If `go run ./build/*.go deps` or `go run ./build/*.go build` fails because of an
 rm -fr ~/.filecoin      # <== optional, in case you have a pre-existing install
 go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-filecoin init --help`
 go-filecoin daemon      # Starts the daemon, you may now issue it commands in another terminal
-```
-
-### To set up a node and connect into an existing cluster:
-
-
-Filecoin requires the same genesis block as the cluster and you should
-also give your node a name so you can easily find it on the dashboard.
-The easiest way to connect into the labweek cluster is using the
-following flags (you could of course update the config directly
-if you wanted instead):
-
-```
-rm -fr ~/.filecoin  # ONLY if you have a pre-existing install
-go-filecoin init --genesisfile ./fixtures/genesis.car --cluster-labweek
-go-filecoin config heartbeat.nickname '"yournodename"' # Note " inside ' !
-go-filecoin daemon
-```
-
-In a new terminal, tell your local node to stream logs to the aggregator:
-`go-filecoin log streamto <aggregator multiaddr>`
-
-_Example_: `go-filecoin log streamto /dns4/test.kittyhawk.wtf/tcp/19000`
-
-Other stuff:
-- Dashboard: [http://test.kittyhawk.wtf:8010](http://test.kittyhawk.wtf:8010)
-- Faucet to get $$: [http://test.kittyhawk.wtf:9797](http://test.kittyhawk.wtf:9797)
-- Block explorer: [http://test.kittyhawk.wtf:8000](http://test.kittyhawk.wtf:8000)
-- Dashboard aggregator collection (TCP): [http://test.kittyhawk.wtf:19000](http://test.kittyhawk.wtf:19000) 
-- SSH (dev team only please):
-```
-    ssh -i <AWS - Terraform SSH key from 1Password> ubuntu@test.kittyhawk.wtf
-    sudo -s
-    docker ps
-    docker logs -f <container_name> filecoin-{0,4} 
-    see processes running in container
-    docker top filecoin-{0,4}
 ```
 
 To set up a single node capable of mining:
@@ -352,6 +317,31 @@ Here are a few places to get help and hang out with the Filecoin community:
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
 #
+
+## Clusters
+
+### Test Cluster
+
+Deployed via CI by tagging a commit with `redeploy_test_cluster`
+
+- Faucet: http://test.kittyhawk.wtf:9797/
+- Dashboard: http://test.kittyhawk.wtf:8010/
+- Block explorer: http://test.kittyhawk.wtf:8000/
+- Prometheus Endpoint: http://test.kittyhawk.wtf:9080/metrics
+- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9080/report
+
+### Nightly Cluster
+
+Deployed from master by CI every day at 0600 UTC
+
+- Faucet: http://nightly.kittyhawk.wtf:9797/
+- Dashboard: http://nightly.kittyhawk.wtf:8010/
+- Block explorer: http://nightly.kittyhawk.wtf:8000/
+- Prometheus Endpoint: http://nightly.kittyhawk.wtf:9080/metrics
+- Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9080/report
+
+#
+
 ## License
 
 The Filecoin Project is dual-licensed under Apache 2.0 and MIT terms:
