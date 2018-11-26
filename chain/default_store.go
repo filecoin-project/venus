@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/json"
+	"runtime/debug"
 	"sync"
 
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
@@ -49,7 +50,7 @@ type DefaultStore struct {
 	// head is the tipset at the head of the best known chain.
 	head consensus.TipSet
 	// Protects head and genesisCid.
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	// headEvents is a pubsub channel that publishes an event every time the head changes.
 	// We operate under the assumption that tipsets published to this channel
@@ -297,30 +298,35 @@ func (store *DefaultStore) HeadEvents() *pubsub.PubSub {
 // SetHead sets the passed in tipset as the new head of this chain.
 func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
+
+	// Add logging to debug sporadic test failure.
+	if len(ts) < 1 {
+		logStore.Error("Publishing empty tipset")
+		logStore.Error(debug.Stack())
+	}
+
+	if err := store.setHeadPersistent(ctx, ts); err != nil {
+		return err
+	}
+
+	// Publish an event that we have a new head.
+	store.HeadEvents().Pub(ts, NewHeadTopic)
+
+	return nil
+}
+
+func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts consensus.TipSet) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-
 	// Ensure consistency by storing this new head on disk.
-	var err error
-	go func() {
-		if errInner := store.writeHead(ctx, ts.ToSortedCidSet()); errInner != nil {
-			err = errors.Wrap(errInner, "failed to write new Head to datastore")
-		}
-		wg.Done()
-	}()
+	if errInner := store.writeHead(ctx, ts.ToSortedCidSet()); errInner != nil {
+		return errors.Wrap(errInner, "failed to write new Head to datastore")
+	}
 
 	store.head = ts
-	store.mu.Unlock()
-	// Publish an event that we have a new head.
-	store.HeadEvents().Pub(ts, NewHeadTopic)
-	store.mu.Lock() // lock up before the defer hits
 
-	wg.Wait()
-
-	return err
+	return nil
 }
 
 // writeHead writes the given cid set as head to disk.
@@ -353,8 +359,8 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 
 // Head returns the current head.
 func (store *DefaultStore) Head() consensus.TipSet {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+	store.mu.RLock()
+	defer store.mu.RUnlock()
 
 	return store.head
 }
@@ -437,8 +443,8 @@ func (store *DefaultStore) walkChain(ctx context.Context, tips []*types.Block, c
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *DefaultStore) GenesisCid() *cid.Cid {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+	store.mu.RLock()
+	defer store.mu.RUnlock()
 	return store.genesis
 }
 
