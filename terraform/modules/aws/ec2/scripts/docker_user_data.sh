@@ -51,11 +51,11 @@ docker run -d \
 
 docker network create --subnet 172.19.0.0/24 filecoin
 # DASHBOARD
-docker run -d --name=dashboard-aggregator \
-       --network=filecoin --hostname=dashboard-aggregator \
+docker run -d --name=filecoin-aggregator \
+       --network=filecoin --hostname=filecoin-aggregator \
        --ip 172.19.0.250 \
        -p 9080:9080 -p 9081:9081 -p 9082:9082 \
-       657871693752.dkr.ecr.us-east-1.amazonaws.com/dashboard-aggregator:latest
+       657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-aggregator:latest
 
 docker run -d --name=dashboard-visualizer \
        -p 8010:3000 \
