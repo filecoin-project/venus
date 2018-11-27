@@ -87,10 +87,12 @@ func TestSetRejectsInvalidNicks(t *testing.T) {
 	assert := assert.New(t)
 	cfg := NewDefaultConfig()
 
-	// sic: toml includes the quotes in the value
+	// sic: json includes the quotes in the value
 	err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
 	assert.NoError(err)
 	err = cfg.Set("heartbeat.nickname", "bad nick<p>")
+	assert.Error(err)
+	err = cfg.Set("heartbeat", `{"heartbeat": "bad nick"}`)
 	assert.Error(err)
 }
 
@@ -278,8 +280,8 @@ func TestConfigSet(t *testing.T) {
 		err := cfg.Set("datastore.nope", `"too bad, fake key"`)
 		assert.Error(err)
 
-		// not TOML
-		err = cfg.Set("bootstrap.addresses", `nota.toml?key`)
+		// not json
+		err = cfg.Set("bootstrap.addresses", `nota.json?key`)
 		assert.Error(err)
 
 		// newlines in inline tables are invalid

@@ -35,14 +35,18 @@ value. All subkeys including entire tables can be get and set. Examples:
 $ go-filecoin config bootstrap.addresses '["newaddr"]'
 
 $ go-filecoin config bootstrap
-{"addresses":["newaddr"]}
+{
+	"addresses": [
+		"newaddr"
+	]
+}
 
 $ go-filecoin config datastore '{"type":"badgerds","path":"badger"}'
 `,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"API.Address\")."),
-		cmdkit.StringArg("value", false, false, "The value to set the config entry to."),
+		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"api.address\")"),
+		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		api := GetAPI(env).Config()
