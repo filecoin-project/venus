@@ -22,16 +22,35 @@ func init() {
 	}
 }
 
-// run executes a given command on the shell, like
-// `run("git status")`
-func run(name string) {
-	args := strings.Split(name, " ")
-	runParts(args...)
+// command is a structure representing a shell command to be run in the
+// specified directory
+type command struct {
+	dir   string
+	parts []string
 }
 
-func runParts(args ...string) {
-	name := strings.Join(args, " ")
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
+// cmd creates a new command using the pwd and its cwd
+func cmd(parts ...string) command {
+	return cmdWithDir("./", parts...)
+}
+
+// cmdWithDir creates a new command using the specified directory as its cwd
+func cmdWithDir(dir string, parts ...string) command {
+	return command{
+		dir:   dir,
+		parts: parts,
+	}
+}
+
+func runCmd(c command) {
+	parts := c.parts
+	if len(parts) == 1 {
+		parts = strings.Split(parts[0], " ")
+	}
+
+	name := strings.Join(parts, " ")
+	cmd := exec.Command(parts[0], parts[1:]...) // #nosec
+	cmd.Dir = c.dir
 	log.Println(name)
 
 	stderr, err := cmd.StderrPipe()
@@ -85,31 +104,32 @@ func runCapture(name string) string {
 func deps() {
 	log.Println("Installing dependencies...")
 
-	list := []string{
-		"git submodule update --init",
-		"go get github.com/whyrusleeping/gx",
-		"go get github.com/whyrusleeping/gx-go",
-		"gx install",
-		"gx-go rewrite",
-		"go get github.com/alecthomas/gometalinter",
-		"gometalinter --install",
-		"go get github.com/stretchr/testify",
-		"go get github.com/xeipuuv/gojsonschema",
-		"go get github.com/ipfs/iptb",
-		"go get github.com/docker/docker/api/types",
-		"go get github.com/docker/docker/api/types/container",
-		"go get github.com/docker/docker/client",
-		"go get github.com/docker/docker/pkg/stdcopy",
-		"go get github.com/ipsn/go-secp256k1",
-		"go get github.com/json-iterator/go",
-		"go get github.com/prometheus/client_golang/prometheus",
-		"go get github.com/prometheus/client_golang/prometheus/promhttp",
-		"cargo update --manifest-path proofs/rust-proofs/Cargo.toml",
-		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
+	cmds := []command{
+		cmd("git submodule update --init"),
+		cmd("go get github.com/whyrusleeping/gx"),
+		cmd("go get github.com/whyrusleeping/gx-go"),
+		cmd("gx install"),
+		cmd("gx-go rewrite"),
+		cmd("go get github.com/alecthomas/gometalinter"),
+		cmd("gometalinter --install"),
+		cmd("go get github.com/stretchr/testify"),
+		cmd("go get github.com/xeipuuv/gojsonschema"),
+		cmd("go get github.com/ipfs/iptb"),
+		cmd("go get github.com/docker/docker/api/types"),
+		cmd("go get github.com/docker/docker/api/types/container"),
+		cmd("go get github.com/docker/docker/client"),
+		cmd("go get github.com/docker/docker/pkg/stdcopy"),
+		cmd("go get github.com/ipsn/go-secp256k1"),
+		cmd("go get github.com/json-iterator/go"),
+		cmd("go get github.com/prometheus/client_golang/prometheus"),
+		cmd("go get github.com/prometheus/client_golang/prometheus/promhttp"),
+		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
+		cmdWithDir("./proofs/rust-proofs", "cargo update"),
+		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
 
-	for _, name := range list {
-		run(name)
+	for _, c := range cmds {
+		runCmd(c)
 	}
 }
 
@@ -118,13 +138,14 @@ func smartdeps() {
 	log.Println("Installing dependencies...")
 
 	// commands we need to run
-	cmds := []string{
-		"git submodule update --init",
-		"gx install",
-		"gx-go rewrite",
-		"gometalinter --install",
-		"cargo update --manifest-path proofs/rust-proofs/Cargo.toml",
-		"cargo build --release --all --manifest-path proofs/rust-proofs/Cargo.toml",
+	cmds := []command{
+		cmd("git submodule update --init"),
+		cmd("gx install"),
+		cmd("gx-go rewrite"),
+		cmd("gometalinter --install"),
+		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
+		cmdWithDir("./proofs/rust-proofs", "cargo update"),
+		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
 	// packages we need to install
 	pkgs := []string{
@@ -167,14 +188,14 @@ func smartdeps() {
 	for _, pkg := range pkgs {
 		pkgpath := filepath.Join(gopath, "src", pkg)
 		if _, err := os.Stat(pkgpath); os.IsNotExist(err) {
-			run(fmt.Sprintf("go get %s", pkg))
+			runCmd(cmd(fmt.Sprintf("go get %s", pkg)))
 		} else {
-			run(fmt.Sprintf("go install %s", pkg))
+			runCmd(cmd(fmt.Sprintf("go install %s", pkg)))
 		}
 	}
 
-	for _, op := range cmds {
-		run(op)
+	for _, c := range cmds {
+		runCmd(c)
 	}
 }
 
@@ -204,7 +225,7 @@ func lint(packages ...string) {
 		"--min-occurrences=6", // for goconst
 	}
 
-	runParts(append(append(configs, fastLinters...), packages...)...)
+	runCmd(cmd(append(append(configs, fastLinters...), packages...)...))
 
 	slowLinters := []string{
 		"--deadline=10m",
@@ -216,7 +237,7 @@ func lint(packages ...string) {
 		"--enable=deadcode",
 	}
 
-	runParts(append(append(configs, slowLinters...), packages...)...)
+	runCmd(cmd(append(append(configs, slowLinters...), packages...)...))
 }
 
 func build() {
@@ -229,13 +250,13 @@ func build() {
 
 func generateGenesis() {
 	log.Println("Generating genesis...")
-	runParts(
+	runCmd(cmd([]string{
 		"./gengen/gengen",
 		"--keypath", "fixtures",
 		"--out-car", "fixtures/genesis.car",
 		"--out-json", "fixtures/gen.json",
 		"--config", "./fixtures/setup.json",
-	)
+	}...))
 }
 
 func buildFilecoin() {
@@ -243,42 +264,42 @@ func buildFilecoin() {
 
 	commit := runCapture("git log -n 1 --format=%H")
 
-	runParts(
+	runCmd(cmd([]string{
 		"go", "build",
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
-	)
+	}...))
 }
 
 func buildGengen() {
 	log.Println("Building gengen utils...")
 
-	runParts("go", "build", "-o", "./gengen/gengen", "./gengen")
+	runCmd(cmd([]string{"go", "build", "-o", "./gengen/gengen", "./gengen"}...))
 }
 
 func buildFaucet() {
 	log.Println("Building faucet...")
 
-	runParts("go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/")
+	runCmd(cmd([]string{"go", "build", "-o", "./tools/faucet/faucet", "./tools/faucet/"}...))
 }
 
 func buildGenesisFileServer() {
 	log.Println("Building genesis file server...")
 
-	runParts("go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/")
+	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
 func install() {
 	log.Println("Installing...")
 
-	runParts("go", "install")
+	runCmd(cmd("go install"))
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
 func test(args ...string) {
 	log.Println("Testing...")
 
-	run(fmt.Sprintf("go test -parallel 8 ./... %s", strings.Join(args, " ")))
+	runCmd(cmd(fmt.Sprintf("go test -parallel 8 ./... %s", strings.Join(args, " "))))
 }
 
 func main() {
