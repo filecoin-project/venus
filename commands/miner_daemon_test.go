@@ -255,7 +255,7 @@ func TestMinerOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
 		t.Fatal(err)
 	}
 
@@ -293,7 +293,7 @@ func TestMinerPower(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
 		t.Fatal(err)
 	}
 
