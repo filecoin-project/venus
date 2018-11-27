@@ -76,7 +76,7 @@ jobs:
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
       - run:
           name: Install dependencies
-          command: go run ./build/*.go smartdeps
+          command: go run ./build/*.go deps
       - save_cache:
           key: v4-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
           paths:
@@ -164,7 +164,7 @@ jobs:
 
       - run:
           name: Install Dependencies
-          command: go run ./build/*.go smartdeps
+          command: go run ./build/*.go deps
 
       - save_cache:
           key: v4-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
