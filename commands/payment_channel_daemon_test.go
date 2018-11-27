@@ -264,12 +264,12 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 		// channel's original locked funds minus the redeemed voucher amount
 		// are returned to the payer
 		args := []string{"wallet", "balance", payer.String()}
-		balStr := th.RunSuccessFirstLine(d, args...)
+		balStr := th.RunSuccessFirstLine(targetDaemon, args...)
 		assert.Equal("999990", balStr)
 
 		// target's balance reflects redeemed voucher
 		args = []string{"wallet", "balance", target.String()}
-		balStr = th.RunSuccessFirstLine(d, args...)
+		balStr = th.RunSuccessFirstLine(targetDaemon, args...)
 		assert.Equal("1000010", balStr)
 	})
 }
