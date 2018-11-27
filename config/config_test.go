@@ -307,6 +307,17 @@ path = "mushroom-mushroom"}`
 		err = cfg.Set("wallet.defaultAddress", "corruptandtooshort")
 		assert.Contains(err.Error(), "invalid character")
 	})
+
+	t.Run("setting leaves does not interfere with neighboring leaves", func(t *testing.T) {
+		assert := assert.New(t)
+		cfg := NewDefaultConfig()
+
+		err := cfg.Set("bootstrap.period", `"3m"`)
+		assert.NoError(err)
+		err = cfg.Set("bootstrap.minPeerThreshold", `5`)
+		assert.NoError(err)
+		assert.Equal(cfg.Bootstrap.Period, "3m")
+	})
 }
 
 func createConfigFile(content string) (string, func(), error) {
