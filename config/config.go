@@ -272,12 +272,16 @@ OUTER:
 // to use for each key.
 func validate(dottedKey string, jsonString string) error {
 	var obj interface{}
-	json.Unmarshal([]byte(jsonString), &obj)
+	if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
+		return err
+	}
 	if reflect.ValueOf(obj).Kind() == reflect.Map {
 		var obj map[string]json.RawMessage
-		json.Unmarshal([]byte(jsonString), &obj)
+		if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
+			return err
+		}
 		for key := range obj {
-			if err := validate(dottedKey + "." + key, string(obj[key])); err != nil {
+			if err := validate(dottedKey+"."+key, string(obj[key])); err != nil {
 				return err
 			}
 		}
