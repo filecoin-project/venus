@@ -90,8 +90,8 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		// bad key (removed quotes *tisk tisk*)
-		jsonBlob := `{addresses: ["bootup1", "bootup2"]}`
+		// bad key
+		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
 		err := api.Config().Set("botstrap", jsonBlob)
 		assert.EqualError(err, "json: unknown field \"botstrap\"")

@@ -69,7 +69,6 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	lcfg := icfg.(*config.Config)
 
-	err = lcfg.Set("bootstrap.addresses", "[]")
 	if err := lcfg.Set("bootstrap.addresses", "[]"); err != nil {
 		return nil, err
 	}
