@@ -283,7 +283,7 @@ go-filecoin client cat <data CID>
 go-filecoin client cat <data CID> | wc -c
 
 # Find a miner by running client list-asks
-# go-filecoin client list-asks asks | jq
+go-filecoin client list-asks asks | jq
 
 # Propose a storage deal, using the <miner address> from the ask.
 # First make sure that mining is running
