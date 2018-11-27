@@ -26,6 +26,10 @@ resource "aws_ecr_repository" "filecoin-aggregator" {
   name = "filecoin-aggregator"
 }
 
+resource "aws_ecr_repository" "filecoin-genesis-file-server" {
+  name = "filecoin-genesis-file-server"
+}
+
 resource "aws_ecr_repository" "dashboard-visualizer" {
   name = "dashboard-visualizer"
 }
@@ -60,6 +64,10 @@ output "ecr-blockexplorer-url" {
 
 output "ecr-filecoin-aggregator-url" {
   value = "${aws_ecr_repository.filecoin-aggregator.repository_url}"
+}
+
+output "ecr-filecoin-genesis-file-server-url" {
+  value = "${aws_ecr_repository.filecoin-genesis-file-server.repository_url}"
 }
 
 output "ecr-dashboard-visualizer-url" {
