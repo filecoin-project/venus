@@ -22,8 +22,8 @@ resource "aws_ecr_repository" "blockexplorer" {
   name = "blockexplorer"
 }
 
-resource "aws_ecr_repository" "dashboard-aggregator" {
-  name = "dashboard-aggregator"
+resource "aws_ecr_repository" "filecoin-aggregator" {
+  name = "filecoin-aggregator"
 }
 
 resource "aws_ecr_repository" "dashboard-visualizer" {
@@ -58,8 +58,8 @@ output "ecr-blockexplorer-url" {
   value = "${aws_ecr_repository.blockexplorer.repository_url}"
 }
 
-output "ecr-dashboard-aggregator-url" {
-  value = "${aws_ecr_repository.dashboard-aggregator.repository_url}"
+output "ecr-filecoin-aggregator-url" {
+  value = "${aws_ecr_repository.filecoin-aggregator.repository_url}"
 }
 
 output "ecr-dashboard-visualizer-url" {
