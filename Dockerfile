@@ -15,8 +15,7 @@ COPY . $SRC_DIR
 # Build the thing.
 RUN cd $SRC_DIR \
   && go run ./build/*go deps \
-  && go run ./build/*go build \
-  && go build -o ./gengen/gengen ./gengen
+  && go run ./build/*go build
 
 # Build gengen
 RUN cd
@@ -74,10 +73,9 @@ RUN mkdir -p $FILECOIN_PATH \
 && adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
 && chown filecoin:users $FILECOIN_PATH
 
-
 # There is only one bootstrapped miner
 RUN cat /data/gen.json | jq ".Miners[0].Address" > /data/minerAddr0 \
-cat /data/gen.json | jq ".Keys[\"a\"]" > /data/walletKey0
+&& cat /data/gen.json | jq ".Keys[0]" > /data/walletKey0
 
 # Expose the fs-repo as a volume.
 # start_filecoin initializes an fs-repo if none is mounted.
