@@ -86,21 +86,14 @@ Note that updating the `rust-proofs` submodule in this way will require a commit
 
 ### Running Tests
 
-The filecoin binary must be built prior to testing changes made during development. To do so, run:
-
 ```sh
+# First, build the binary:
 go run ./build/*.go build
-```
 
-Then, run the tests:
-
-```sh
+# Then, run the tests:
 go run ./build/*.go test
-```
 
-Note: Build and test can be combined:
-
-```sh
+# Note: build and test can be combined:
 go run ./build/*.go best
 ```
 
