@@ -224,32 +224,32 @@ SUBCOMMANDS
   START RUNNING FILECOIN
     init                   - Initialize a filecoin repo
     config <key> [<value>] - Get and set filecoin config values
-    daemon                 - Start a long-running daemon -process
+    daemon                 - Start a long-running daemon process
     wallet                 - Manage your filecoin wallets
     address                - Interact with wallet addresses
     
   STORE AND RETRIEVE DATA
-    client                 - Make deals, store data, retrieve dataManage client operations
+    client                 - Make deals, store data, retrieve data
     retrieval-client       - Manage retrieval client operations
 
   MINE
-    miner			 - Manage miner operations a single miner actor
+    miner                  - Manage a single miner actor
     mining                 - Manage all mining operations for a node
 
   VIEW DATA STRUCTURES
     chain                  - Inspect the filecoin blockchain 
-    dag                    - Interact with IPLD DAG objects..
-    show                   - Get human-readable representations of Ffilecoin objects
+    dag                    - Interact with IPLD DAG objects
+    show                   - Get human-readable representations of filecoin objects
 
   NETWORK COMMANDS
     bootstrap              - Interact with bootstrap addresses
     id                     - Show info about the network peers 
     ping <peer ID>...      - Send echo request packets to p2p network members
-    swarm                  - Interact with the swarm.
+    swarm                  - Interact with the swarm
  
   ACTOR COMMANDS
-    actor      		- Interact with actors. Actors are built-in smart contracts. 
-    paych      		- Payment channel operations
+    actor      		         - Interact with actors. Actors are built-in smart contracts. 
+    paych      		         - Payment channel operations
     
   MESSAGE COMMANDS
     message                - Manage messages
