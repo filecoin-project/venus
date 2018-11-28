@@ -7,7 +7,6 @@ import (
 	"math/big"
 	mrand "math/rand"
 	"strconv"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -29,9 +28,6 @@ import (
 	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
 	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
 )
-
-// seed is used to make all randomness (keys and fake commitments) deterministic.
-var seed = time.Now().Unix()
 
 // Miner is
 type Miner struct {
@@ -91,7 +87,7 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed int64) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
@@ -292,7 +288,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
-func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
+func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo, error) {
 	// TODO: these six lines are ugly. We can do better...
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
@@ -303,7 +299,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer) (*RenderedGenInfo, error) {
 
 	ctx := context.Background()
 
-	info, err := GenGen(ctx, cfg, cst, bstore)
+	info, err := GenGen(ctx, cfg, cst, bstore, seed)
 	if err != nil {
 		return nil, err
 	}

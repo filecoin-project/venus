@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -56,11 +57,14 @@ set the initial genesis block:
 $ go-filecoin init --genesisfile=genesis.car
 */
 func main() {
+	var defaultSeed = time.Now().Unix()
+
 	jsonout := flag.Bool("json", false, "sets output to be json")
 	keypath := flag.String("keypath", ".", "sets location to write key files to")
 	outJSON := flag.String("out-json", "", "enables json output and writes it to the given file")
 	outCar := flag.String("out-car", "", "writes the generated car file to the give path, instead of stdout")
 	configFilePath := flag.String("config", "", "reads configuration from this json file, instead of stdin")
+	seed := flag.Int64("seed", defaultSeed, "provides the seed for randomization, defaults to current unix epoch")
 
 	flag.Parse()
 
@@ -79,7 +83,7 @@ func main() {
 		}
 		outfile = f
 	}
-	info, err := gengen.GenGenesisCar(cfg, outfile)
+	info, err := gengen.GenGenesisCar(cfg, outfile, *seed)
 	if err != nil {
 		panic(err)
 	}
