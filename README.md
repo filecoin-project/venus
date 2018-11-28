@@ -11,17 +11,18 @@
 
 - [What is Filecoin?](#what-is-filecoin)
 - [Install](#install)
-  - [Install from binary](#install-from-binary)
-  - [Install from source](#install-from-source)
+  - [System Requirements](#system-requirements)
+  - [Install from Binary](#install-from-binary)
+  - [Install from Source](#install-from-source)
     - [Install Go and Rust](#install-go-and-rust)
     - [Clone](#clone)
     - [Install Dependencies](#install-dependencies)
-    - [Managing Submodules](#managing-submodules)
-    - [Running Tests](#running-tests)
+    - [Manage Submodules](#manage-submodules)
+    - [Run Tests](#run-tests)
     - [Build Commands](#build-commands)
 - [Usage](#usage)
    - [Start Running Filecoin](#start-running-filecoin)
-   - [Run multiple nodes with IPTB](#run-multiple-nodes-with-iptb)
+   - [Run Multiple Nodes with IPTB](#run-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
    - [Helpful Environment Variables](#helpful-environment-variables)
 - [Clusters](#clusters)
@@ -39,12 +40,12 @@ Filecoin is a decentralized storage network that turns the world’s unused stor
 ### System Requirements
 Filecoin can run on most Linux and MacOS systems. Windows is not yet officially supported.
 
-### Install from binary
+### Install from Binary
 
   - We host prebuilt binaries over at [CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
   - Follow the remaining steps in [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started)
 
-### Install from source
+### Install from Source
 
 #### Install Go and Rust
 
@@ -58,7 +59,7 @@ mkdir -p ${GOPATH}/src/github.com/filecoin-project
 git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 ```
 
-#### Install Dependencies
+#### Install dependencies
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
@@ -68,7 +69,7 @@ cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 go run ./build/*.go deps
 ```
 
-#### Managing Submodules
+#### Manage Submodules
 
 _If you're not editing `rust-proofs` you can skip this step, because `deps` build (above) will do it for you._
 
@@ -87,7 +88,7 @@ git submodule update --remote
 
 Note that updating the `rust-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
-### Running Tests
+### Run Tests
 
 ```sh
 # First, build the binary:
@@ -200,7 +201,7 @@ go-filecoin init --auto-seal-interval-seconds=0 --genesisfile ./fixtures/genesis
 go-filecoin daemon
 ```
 
-### Run multiple nodes with IPTB
+### Run Multiple Nodes with IPTB
 
 The [localfilecoin IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
 
