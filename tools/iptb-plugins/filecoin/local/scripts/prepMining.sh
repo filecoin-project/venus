@@ -10,6 +10,12 @@
 #
 # TODO add tests to verify this always works.
 
+# Linux and OSX have different dd flags
+DD_FILE_SIZE=1m
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  # <3
+  DD_FILE_SIZE=1M
+fi
 
 if test -z "$1"
 then
@@ -83,7 +89,7 @@ do
     iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 1 100000 # price of one FIL/whatever, ask is valid for 100000 blocks
 
     # make a deal
-    dd if=/dev/random of="$FIXDIR/fake.dat"  bs=1m  count=1 # small data file will be autosealed
+    dd if=/dev/random of="$FIXDIR/fake.dat"  bs="$DD_FILE_SIZE"  count=1 # small data file will be autosealed
     dataCidRaw=$(iptb run 0 -- go-filecoin client import "$FIXDIR/fake.dat")
     rm "$FIXDIR/fake.dat"
     dataCid=$(echo $dataCidRaw | sed -e 's/^node\[0\] exit 0 //')
