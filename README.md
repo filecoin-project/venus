@@ -11,7 +11,6 @@
 
 - [What is Filecoin?](#what-is-filecoin)
 - [Installation](#installation)
-- [Development](#development)
   - [Install Go and Rust](#install-go-and-rust)
   - [Clone](#clone)
   - [Install Dependencies](#install-dependencies)
@@ -21,30 +20,33 @@
 - [Running Filecoin](#running-filecoin)
    - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
-- [Cluster](#Clusters)
+- [Clusters](#Clusters)
 - [Community](#community)
 - [License](#license)
-
-👋**Trying out the project for the first time?** We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
 
 ## What is Filecoin?
 Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/1.-How-Filecoin-Works) for more.
 
 ## Installation
 
+👋**Trying out the project for the first time?** We highly recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started).
+
+### System Requirements
+Filecoin can run on most Linux and MacOS systems. Windows is not yet officially supported.
+
 There are 2 ways you can start running `go-filecoin`.
 
-## Install the prebuilt binary
+### Installing from binary
 
-  - Go to [filecoin-project on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
+  - We host prebuilt binaries over at [CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
   - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
   - Click the 'Artifacts' tab.
   - Click `Container 0 > filecoin.tar.gz` to download the release.
-  - 
+  - Follow the remaining steps in [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started)
 
-## Build from source
+### Installing from source
 
-### Install Go and Rust
+#### Install Go and Rust
 
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
   - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule.
