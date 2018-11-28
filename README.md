@@ -17,12 +17,14 @@
     - [Clone](#clone)
     - [Install Dependencies](#install-dependencies)
     - [Managing Submodules](#managing-submodules)
-    - [Running tests](#running-tests)
+    - [Running Tests](#running-tests)
     - [Build Commands](#build-commands)
 - [Running Filecoin](#running-filecoin)
-   - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
+   - [Start Running Filecoin](#start-running-filecoin)
+   - [Run multiple nodes with IPTB](#run-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
-- [Clusters](#Clusters)
+- [Clusters](#clusters)
+- [Contributing](#contributing)
 - [Community](#community)
 - [License](#license)
 
@@ -140,6 +142,9 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 
 ## Running Filecoin
 
+### Start Running Filecoin
+To start running Filecoin, you must initialize and start a daemon:
+
 ```
 rm -fr ~/.filecoin      # <== optional, in case you have a pre-existing install
 go-filecoin init        # Creates config in ~/.filecoin; to see options: `go-filecoin init --help`
@@ -203,112 +208,74 @@ go-filecoin init --auto-seal-interval-seconds=0 --genesisfile ./fixtures/genesis
 go-filecoin daemon
 ```
 
-## Running multiple nodes with IPTB
+### Run multiple nodes with IPTB
 
-IPTB provides an automation layer that makes it easy to run multiple filecoin nodes. 
-For example, it enables you to easily start up 10 mining nodes locally on your machine.
-Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
+The [localfilecoin IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
 
-## Sample commands
+### Sample Commands
 
-### List and ping a peer 
+```sh
+USAGE
+  go-filecoin - A decentralized storage network
+
+OPTIONS
+
+  --cmdapiaddr           string - set the api port to use
+  --repodir              string - set the directory of the repo, defaults to ~/.filecoin.
+  --enc,      --encoding string - The encoding type the output should be encoded with (json, xml, or text). Default: text.
+  --help                 bool   - Show the full command help text.
+  -h                     bool   - Show a short version of the command help text.
+
+SUBCOMMANDS
+
+  START RUNNING FILECOIN
+    init                   - Initialize a filecoin repo
+    config <key> [<value>] - Get and set filecoin config values
+    daemon                 - Start a long-running daemon -process
+    wallet                 - Manage your filecoin wallets
+    address                - Interact with wallet addresses
+    
+  STORE AND RETRIEVE DATA
+    client                 - Make deals, store data, retrieve dataManage client operations
+    retrieval-client       - Manage retrieval client operations
+
+  MINE
+    miner			 - Manage miner operations a single miner actor
+    mining                 - Manage all mining operations for a node
+
+  VIEW DATA STRUCTURES
+    chain                  - Inspect the filecoin blockchain 
+    dag                    - Interact with IPLD DAG objects..
+    show                   - Get human-readable representations of Ffilecoin objects
+
+  NETWORK COMMANDS
+    bootstrap              - Interact with bootstrap addresses
+    id                     - Show info about the network peers 
+    ping <peer ID>...      - Send echo request packets to p2p network members
+    swarm                  - Interact with the swarm.
+ 
+  ACTOR COMMANDS
+    actor      		- Interact with actors. Actors are built-in smart contracts. 
+    paych      		- Payment channel operations
+    
+  MESSAGE COMMANDS
+    message                - Manage messages
+    mpool                  - View the mempool of outstanding messages
+
+  TOOL COMMANDS
+    log                    - Interact with the daemon event log output
+    version                - Show go-filecoin version information
+
+
+  Use 'go-filecoin <subcmd> --help' for more information about each command.
 ```
-go-filecoin swarm peers
-go-filecoin ping <peerID>
-```
-#
-###  View latest mined block 
-```
-go-filecoin chain head
-go-filecoin show block <blockID> | jq
-```
-#
-#### Create a miner
-_NOTE: If you have followed the instructions in [Running Filecoin](#Running_Filecoin), a miner will already exist from the genesis file that you used, so these instructions will not work._
-```
-# Create a miner
-# Requires the node be a part of a cluster that already has miners 
-# and no miner configured for this node yet.
-go-filecoin miner create 10 10
 
-# Waits for the message to be included on chain, updates the minerAddress
-# in the node's config, and sets the peerid appropriately.
-# Get your miner address
-go-filecoin config mining.minerAddress
+More details are in the [Filecoin Commands](https://github.com/filecoin-project/go-filecoin/wiki/7.-Filecoin-Commands) wiki page.
 
-# And the owner:
-go-filecoin miner owner <minerAddress>
-```
+## Contributing
 
-### As a miner, force a block to be mined immediately 
-`go-filecoin mining once`
+We ❤️ all our contributors; this project wouldn’t be what it is without you! If you want to help out, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-If successful, go-filecoin daemon output should show an indication of mining.
-
-#
-### As a miner, make an ask 
-```
-# As a miner, make an ask 
-# First make sure mining is running
-go-filecoin mining start
-
-# Get your miner address
-go-filecoin config mining.minerAddress
-
-# Get your miner owner address 
-go-filecoin miner owner <minerAddress>
-go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
-
-# Wait for the block to be mined (~30s) and view the ask:
-go-filecoin client list-asks | jq
-```
-#
-### As a client, make a deal 
-
-```
-# As a client, make a deal 
-echo "Hi my name is $USER"> hello.txt
-go-filecoin client import ./hello.txt
-
-# Verify it was imported:
-go-filecoin client cat <data CID>
-
-# Get the file size:
-go-filecoin client cat <data CID> | wc -c
-
-# Find a miner by running client list-asks
-go-filecoin client list-asks | jq
-
-# Propose a storage deal, using the <miner address> from the ask.
-# First make sure that mining is running
-go-filecoin mining start
-
-# propose the deal.
-go-filecoin client propose-storage-deal <miner address> <data CID> <price> <durationBlocks> 
-
-# TODO we want to be able to check the status, like this but the command above doesn't 
-# return an id
-go-filecoin client query-storage-deal <id returned above>
-
-# If you want to retreive the piece immediately you can bypass the retrieval market.
-# Note that this is kind of cheatsy but what works at the moment.
-go-filecoin client cat <data CID>
-```
-#
-### Retrieval Miner
-If you want to fetch the piece from the miner's sealed sector, 
-wait for the deal to be Sealed per query-storage-deal status above, and
-then use the retrieval miner. Warning: this requires the sector be unsealed, 
-which takes a minute to run (it doesn't yet cache). 
-go-filecoin retrieval-client retrieve-piece <miner peer id> <data CID>
-Ex on the miner's node, get the peer id from: go-filecoin id 
-Then: 
-```
-go-filecoin retrieval-client \
-   retrieve-piece QmXtaLS9N3URQ2uCkqpLP6KZv7rVbT5KyjU5MQAgQM6yCq \
-   QmNqefRonNc2Rn5VwEB5wqJLE9arURmBUSay3kbjJoLJG9
-```
-#
 ## Community
 
 Here are a few places to get help and hang out with the Filecoin community:
