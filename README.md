@@ -11,12 +11,14 @@
 
 - [What is Filecoin?](#what-is-filecoin)
 - [Installation](#installation)
-  - [Install Go and Rust](#install-go-and-rust)
-  - [Clone](#clone)
-  - [Install Dependencies](#install-dependencies)
-  - [Managing Submodules](#managing-submodules)
-  - [Running tests](#running-tests)
-  - [Build Commands](#build-commands)
+  - [Installing from binary](#installing-from-binary)
+  - [Installing from source](#installing-from-source)
+    - [Install Go and Rust](#install-go-and-rust)
+    - [Clone](#clone)
+    - [Install Dependencies](#install-dependencies)
+    - [Managing Submodules](#managing-submodules)
+    - [Running tests](#running-tests)
+    - [Build Commands](#build-commands)
 - [Running Filecoin](#running-filecoin)
    - [Running multiple nodes with IPTB](#running-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
@@ -65,10 +67,9 @@ go run ./build/*.go deps
 
 #### Managing Submodules
 
-_This step is necessary if you want to edit `rust-proofs`. If you're not editing `rust-proofs` there's no need to do this manually, because the `deps` build step will do it for you._
+_If you're not editing `rust-proofs` you can skip this step, because `deps` build (above) will do it for you._
 
-Filecoin uses Git Submodules to consume `rust-proofs`. To initialize the submodule, either run `deps` (as per above), or
-initialize the submodule manually:
+Filecoin uses Git Submodules to consume `rust-proofs`. To initialize:
 
 ```sh
 cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
