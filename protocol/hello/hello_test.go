@@ -35,7 +35,6 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
 }
 
 func TestHelloHandshake(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -89,8 +88,6 @@ func TestHelloHandshake(t *testing.T) {
 }
 
 func TestHelloBadGenesis(t *testing.T) {
-	t.Parallel()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -126,8 +123,6 @@ func TestHelloBadGenesis(t *testing.T) {
 }
 
 func TestHelloMultiBlock(t *testing.T) {
-	t.Parallel()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
