@@ -26,6 +26,144 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
+func TestMinerHelp(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	t.Run("--help shows general miner help", func(t *testing.T) {
+		t.Parallel()
+
+		expected := []string{
+			"miner add-ask <miner> <price> <expiry> - Add an ask to the storage market",
+			"miner create <pledge> <collateral>     - Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+			"miner owner <miner>                    - Show the actor address of <miner>",
+			"miner pledge <miner>                   - View number of pledged, 1GB sectors for <miner>",
+			"miner power <miner>                    - Get the power of a miner versus the total storage market power",
+			"miner update-peerid <address> <peerid> - Change the libp2p identity that a miner is operating",
+		}
+
+		result := runHelpSuccess(t, "miner", "--help")
+		for _, elem := range expected {
+			assert.Contains(result, elem)
+		}
+	})
+
+	t.Run("pledge --help shows pledge help", func(t *testing.T) {
+		t.Parallel()
+		result := runHelpSuccess(t, "miner", "pledge", "--help")
+		assert.Contains(result, "Shows the number of pledged 1GB sectors for the given miner address")
+	})
+
+	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
+		t.Parallel()
+		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
+		assert.Contains(result, "Issues a new message to the network to update the miner's libp2p identity.")
+	})
+	t.Run("add-ask --help shows add-ask help", func(t *testing.T) {
+		t.Parallel()
+		result := runHelpSuccess(t, "miner", "add-ask", "--help")
+		assert.Contains(result, " Add an ask to the storage market")
+	})
+
+	t.Run("owner --help shows owner help", func(t *testing.T) {
+		t.Parallel()
+		result := runHelpSuccess(t, "miner", "owner", "--help")
+		assert.Contains(result, "Given <miner> miner address, output the address of the actor that owns the miner.")
+	})
+
+	t.Run("power --help shows power help", func(t *testing.T) {
+		t.Parallel()
+		result := runHelpSuccess(t, "miner", "power", "--help")
+		expected := []string{
+			"Check the current power of a given miner and total power of the storage market.",
+			"Values will be output as a ratio where the first number is the miner power and second is the total market power.",
+		}
+		for _, elem := range expected {
+			assert.Contains(result, elem)
+		}
+	})
+
+	t.Run("create --help shows create help", func(t *testing.T) {
+		t.Parallel()
+
+		expected := []string{
+			"Issues a new message to the network to create the miner, then waits for the",
+			"message to be mined as this is required to return the address of the new miner",
+			"Collateral must be enough for <pledge> pledged 1GB sectors.",
+		}
+
+		result := runHelpSuccess(t, "miner", "create", "--help")
+		for _, elem := range expected {
+			assert.Contains(result, elem)
+		}
+	})
+
+}
+
+func runHelpSuccess(t *testing.T, args ...string) string {
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	op := d.RunSuccess(args...)
+	return op.ReadStdoutTrimNewlines()
+}
+
+func TestMinerPledge(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	t.Run("shows error with no miner address", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+		defer d.ShutdownSuccess()
+
+		d.RunFail("argument \"miner\" is required", "miner", "pledge")
+	})
+
+	t.Run("shows pledge amount for miner", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+		defer d.ShutdownSuccess()
+
+		// get Miner address
+		actorLsOutput := d.RunSuccess("actor", "ls")
+		scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
+		var addressStruct struct{ Address string }
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "MinerActor") {
+				json.Unmarshal([]byte(line), &addressStruct)
+				break
+			}
+		}
+
+		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
+		result1 := op1.ReadStdoutTrimNewlines()
+		assert.Contains(result1, "10000")
+	})
+}
+
 func TestMinerCreate(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -33,6 +171,16 @@ func TestMinerCreate(t *testing.T) {
 
 	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
 	require.NoError(err)
+
+	t.Run("create --help includes pledge text", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		defer d.ShutdownSuccess()
+
+		op1 := d.RunSuccess("miner", "create", "--help")
+		result1 := op1.ReadStdoutTrimNewlines()
+		assert.Contains(result1, "<pledge>     - the size of the pledge (in 1GB sectors) for the miner")
+	})
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
