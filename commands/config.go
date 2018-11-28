@@ -48,15 +48,20 @@ an array of strings, so it should be set with something like so:
 
 $ go-filecoin config bootstrap.addresses '["newaddr"]'
 
-When setting object keys, such as bootstrap, the given JSON value will be
-intelligently merged with existing values to avoid unintentionally resetting
-configuration variables. For example, setting period then setting addresses,
-like so, will not change the value of addresses:
+When setting keys with subkeys, such as the "bootstrap" key which has 3 keys
+underneath it, period, minPeerThreshold, and addresses, the given JSON value
+will be intelligently merged with existing values to avoid unintentionally
+resetting other configuration variables under bootstrap. For example, setting
+period then setting addresses, like so, will not change the value of addresses:
 
 $ go-filecoin config bootstrap '{"period": "5m"}'
 $ go-filecoin config bootstrap '{"addresses": ["newaddr"]}'
-$ go-filecoin config bootstrap.period
-"5m"
+$ go-filecoin config bootstrap
+{
+	"addresses": ["newaddr"],
+	"minPeerThreshold": 0,
+	"period": "5m"
+}
 `,
 	},
 	Arguments: []cmdkit.Argument{
