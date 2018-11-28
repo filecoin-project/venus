@@ -35,6 +35,8 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
 }
 
 func TestHelloHandshake(t *testing.T) {
+	t.Parallel()
+
 	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,8 +62,10 @@ func TestHelloHandshake(t *testing.T) {
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	_, err = mn.LinkPeers(a.ID(), b.ID())
+	require.NoError(err)
+	_, err = mn.ConnectPeers(a.ID(), b.ID())
+	require.NoError(err)
 
 	require.NoError(th.WaitForIt(10, 50*time.Millisecond, func() (bool, error) {
 		var msc1Done bool
@@ -88,6 +92,8 @@ func TestHelloHandshake(t *testing.T) {
 }
 
 func TestHelloBadGenesis(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -113,8 +119,10 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	_, err = mn.LinkPeers(a.ID(), b.ID())
+	require.NoError(err)
+	_, err = mn.ConnectPeers(a.ID(), b.ID())
+	require.NoError(err)
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -123,6 +131,8 @@ func TestHelloBadGenesis(t *testing.T) {
 }
 
 func TestHelloMultiBlock(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
@@ -155,8 +165,10 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
 
-	mn.LinkAll()
-	mn.ConnectAllButSelf()
+	_, err = mn.LinkPeers(a.ID(), b.ID())
+	require.NoError(err)
+	_, err = mn.ConnectPeers(a.ID(), b.ID())
+	require.NoError(err)
 
 	time.Sleep(time.Millisecond * 50)
 
