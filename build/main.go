@@ -104,6 +104,11 @@ func runCapture(name string) string {
 func deps() {
 	log.Println("Installing dependencies...")
 
+	cachepath := os.Getenv("FILECOIN_PARAMETER_CACHE")
+	if cachepath == "" {
+		cachepath = "/tmp/filecoin-proof-parameters"
+	}
+
 	cmds := []command{
 		cmd("git submodule update --init"),
 		cmd("go get github.com/whyrusleeping/gx"),
@@ -126,6 +131,8 @@ func deps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
 		cmdWithDir("./proofs/rust-proofs", "cargo update"),
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
+		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
+    cmd("./proofs/rust-proofs/target/release/paramcache"),
 	}
 
 	for _, c := range cmds {
