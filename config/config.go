@@ -7,7 +7,6 @@ import (
 	"os"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -229,8 +228,7 @@ func (cfg *Config) Get(key string) (interface{}, error) {
 	keyTags := strings.Split(key, ".")
 OUTER:
 	for j, keyTag := range keyTags {
-		switch v.Type().Kind() {
-		case reflect.Struct:
+		if v.Type().Kind() == reflect.Struct {
 			for i := 0; i < v.NumField(); i++ {
 				jsonTag := strings.Split(
 					v.Type().Field(i).Tag.Get("json"),
@@ -244,21 +242,6 @@ OUTER:
 					continue OUTER
 				}
 			}
-		case reflect.Array, reflect.Slice:
-			i64, err := strconv.ParseUint(keyTag, 0, 0)
-			if err != nil {
-				return nil, fmt.Errorf("non-integer key into slice")
-			}
-			i := int(i64)
-			if i > v.Len()-1 {
-				return nil, fmt.Errorf("key into slice out of range")
-			}
-			v = v.Index(i)
-			if j == len(keyTags)-1 {
-				return v.Interface(), nil
-			}
-			v = reflect.Indirect(v) // only attempt one dereference
-			continue OUTER
 		}
 
 		return nil, fmt.Errorf("key: %s invalid for config", key)
