@@ -10,16 +10,16 @@
 ## Table of Contents
 
 - [What is Filecoin?](#what-is-filecoin)
-- [Installation](#installation)
-  - [Installing from binary](#installing-from-binary)
-  - [Installing from source](#installing-from-source)
+- [Install](#install)
+  - [Install from binary](#install-from-binary)
+  - [Install from source](#install-from-source)
     - [Install Go and Rust](#install-go-and-rust)
     - [Clone](#clone)
     - [Install Dependencies](#install-dependencies)
     - [Managing Submodules](#managing-submodules)
     - [Running Tests](#running-tests)
     - [Build Commands](#build-commands)
-- [Running Filecoin](#running-filecoin)
+- [Run Filecoin](#run-filecoin)
    - [Start Running Filecoin](#start-running-filecoin)
    - [Run multiple nodes with IPTB](#run-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
@@ -31,19 +31,19 @@
 ## What is Filecoin?
 Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/1.-How-Filecoin-Works) for more.
 
-## Installation
+## Install
 
 👋**Trying out the project for the first time?** We highly recommend the [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started) in the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/).
 
 ### System Requirements
 Filecoin can run on most Linux and MacOS systems. Windows is not yet officially supported.
 
-### Installing from binary
+### Install from binary
 
   - We host prebuilt binaries over at [CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
   - Follow the remaining steps in [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started)
 
-### Installing from source
+### Install from source
 
 #### Install Go and Rust
 
