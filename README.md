@@ -19,7 +19,7 @@
     - [Managing Submodules](#managing-submodules)
     - [Running Tests](#running-tests)
     - [Build Commands](#build-commands)
-- [Run Filecoin](#run-filecoin)
+- [Usage](#usage)
    - [Start Running Filecoin](#start-running-filecoin)
    - [Run multiple nodes with IPTB](#run-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
@@ -140,7 +140,7 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 | `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
-## Running Filecoin
+## Usage
 
 ### Start Running Filecoin
 To start running Filecoin, you must initialize and start a daemon:
