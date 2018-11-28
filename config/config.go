@@ -275,6 +275,7 @@ func validate(dottedKey string, jsonString string) error {
 	if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
 		return err
 	}
+	// recursively validate sub-keys by partially unmarshalling
 	if reflect.ValueOf(obj).Kind() == reflect.Map {
 		var obj map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
