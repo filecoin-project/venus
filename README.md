@@ -1,20 +1,15 @@
-**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share anything outside of Protocol Labs. Do not discuss anything related to Filecoin outside of Protocol Labs, not even with your partners/spouses/other family members. If you have any questions about what can be discussed, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
+**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share or discuss anything related to Filecoin outside of designated preview channels, not even with partners/spouses/family members. If you have any questions about what can be discussed, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
 
 # Filecoin (go-filecoin)
 
 [![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg&circle-token=5a9d1cb48788b41d98bdfbc8b15298816ec71fea)](https://circleci.com/gh/filecoin-project/go-filecoin)
 [![codecov](https://codecov.io/gh/filecoin-project/go-filecoin/branch/master/graph/badge.svg?token=J5QWYWkgHT)](https://codecov.io/gh/filecoin-project/go-filecoin)	
 
-> Filecoin implementation in Go
-
-Filecoin is a decentralized storage network that turns cloud storage into an algorithmic market. The
-market runs on a blockchain with a native protocol token (also called "filecoin" or FIL), which miners earn
-by providing storage to clients.
-
-👋**Trying out the project for the first time?** We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
+> Filecoin implementation in Go, turning the world’s unused storage into an algorithmic market.
 
 ## Table of Contents
 
+- [What is Filecoin?](#what-is-filecoin)
 - [Installation](#installation)
 - [Development](#development)
   - [Install Go and Rust](#install-go-and-rust)
@@ -30,21 +25,29 @@ by providing storage to clients.
 - [Community](#community)
 - [License](#license)
 
+👋**Trying out the project for the first time?** We recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for more detailed instructions and guides.
+
+## What is Filecoin?
+Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/1.-How-Filecoin-Works) for more.
+
 ## Installation
 
-You can download prebuilt binaries for Linux and MacOS from CircleCI.
+There are 2 ways you can start running `go-filecoin`.
 
-  - Go to the [filecoin project page on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). (You may need to authenticate with GitHub first.)
+## Install the prebuilt binary
+
+  - Go to [filecoin-project on CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
   - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
   - Click the 'Artifacts' tab.
   - Click `Container 0 > filecoin.tar.gz` to download the release.
+  - 
 
-## Development
+## Build from source
 
 ### Install Go and Rust
 
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
-  - You'll also need Rust (v1.29.0 or later) to build the `rust-proofs` submodule. You can download it [here](https://www.rust-lang.org/).
+  - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule.
 
 ### Clone
 
