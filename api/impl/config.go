@@ -22,7 +22,6 @@ func (api *nodeConfig) Get(key string) (interface{}, error) {
 }
 
 // Set, sets the configuration value for the passed in key, to the given value.
-// Returns the newly set value on success.
 func (api *nodeConfig) Set(key, value string) error {
 	repo := api.api.node.Repo
 	cfg := repo.Config()
