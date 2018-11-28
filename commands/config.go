@@ -50,10 +50,16 @@ $ go-filecoin config bootstrap.addresses '["newaddr"]'
 
 When setting keys with subkeys, such as the "bootstrap" key which has 3 keys
 underneath it, period, minPeerThreshold, and addresses, the given JSON value
-will be intelligently merged with existing values to avoid unintentionally
-resetting other configuration variables under bootstrap. For example, setting
-period then setting addresses, like so, will not change the value of addresses:
+will be merged with existing values to avoid unintentionally resetting other
+configuration variables under "bootstrap". For example, setting period then
+setting addresses, like so, will not change the value of "period":
 
+$ go-filecoin config bootstrap
+{
+	"addresses": [],
+	"minPeerThreshold": 0,
+	"period": "1m"
+}
 $ go-filecoin config bootstrap '{"period": "5m"}'
 $ go-filecoin config bootstrap '{"addresses": ["newaddr"]}'
 $ go-filecoin config bootstrap
