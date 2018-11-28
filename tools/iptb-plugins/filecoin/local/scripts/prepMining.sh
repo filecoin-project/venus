@@ -91,7 +91,7 @@ do
 
     echo $newMinerAddr
     echo $dataCid
-    iptb run 0 -- go-filecoin client propose-storage-deal --price 1 "$newMinerAddr" "$dataCid" 10000  # I think this is where stuff fails right now??
+    iptb run 0 -- go-filecoin client propose-storage-deal "$newMinerAddr" "$dataCid" 1 10000  # I think this is where stuff fails right now??
 done
 
 printf "Complete! %d nodes connected and ready to mine >.>" "$1"
