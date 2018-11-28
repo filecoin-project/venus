@@ -23,6 +23,7 @@
    - [Start Running Filecoin](#start-running-filecoin)
    - [Run multiple nodes with IPTB](#run-multiple-nodes-with-iptb)
    - [Sample Commands](#sample-commands)
+   - [Helpful Environment Variables](#helpful-environment-variables)
 - [Clusters](#clusters)
 - [Contributing](#contributing)
 - [Community](#community)
@@ -130,15 +131,6 @@ go run ./build/*.go all
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
 **If you have problems with the build, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
-
-## Helpful Environment Variables
-
-| Variable                | Description                                                                                    |
-|-------------------------|------------------------------------------------------------------------------------------------|
-| `FIL_API`               | This is the default host and port for daemon commands.                                         |
-| `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
-| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
-| `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Usage
 
@@ -271,6 +263,15 @@ SUBCOMMANDS
 ```
 
 More details are in the [Filecoin Commands](https://github.com/filecoin-project/go-filecoin/wiki/7.-Filecoin-Commands) wiki page.
+
+### Helpful Environment Variables
+
+| Variable                | Description                                                                                    |
+|-------------------------|------------------------------------------------------------------------------------------------|
+| `FIL_API`               | This is the default host and port for daemon commands.                                         |
+| `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
+| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
+| `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Contributing
 
