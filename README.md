@@ -266,7 +266,7 @@ go-filecoin miner owner <minerAddress>
 go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
 
 # Wait for the block to be mined (~30s) and view the ask:
-go-filecoin client list-asks asks | jq
+go-filecoin client list-asks | jq
 ```
 #
 ### As a client, make a deal 
@@ -283,14 +283,14 @@ go-filecoin client cat <data CID>
 go-filecoin client cat <data CID> | wc -c
 
 # Find a miner by running client list-asks
-go-filecoin client list-asks asks | jq
+go-filecoin client list-asks | jq
 
 # Propose a storage deal, using the <miner address> from the ask.
 # First make sure that mining is running
 go-filecoin mining start
 
 # propose the deal.
-go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
+go-filecoin client propose-storage-deal <miner address> <data CID> <price> <durationBlocks> 
 
 # TODO we want to be able to check the status, like this but the command above doesn't 
 # return an id
