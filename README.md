@@ -1,4 +1,4 @@
-**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share or discuss anything related to Filecoin outside of designated preview channels, not even with partners/spouses/family members. If you have any questions about what can be discussed, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
+**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share or discuss the project outside of designated preview channels, not even with partners/spouses/family members. If you have any questions about what can be discussed, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
 
 # Filecoin (go-filecoin)
 
@@ -29,19 +29,14 @@ Filecoin is a decentralized storage network that turns the world’s unused stor
 
 ## Installation
 
-👋**Trying out the project for the first time?** We highly recommend heading to the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/) for [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started).
+👋**Trying out the project for the first time?** We highly recommend the [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started) in the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/).
 
 ### System Requirements
 Filecoin can run on most Linux and MacOS systems. Windows is not yet officially supported.
 
-There are 2 ways you can start running `go-filecoin`.
-
 ### Installing from binary
 
   - We host prebuilt binaries over at [CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin/tree/master). Log in with Github.
-  - Click on the most recent successful build for your OS (`build_linux` or `build_macos`)
-  - Click the 'Artifacts' tab.
-  - Click `Container 0 > filecoin.tar.gz` to download the release.
   - Follow the remaining steps in [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started)
 
 ### Installing from source
@@ -51,14 +46,14 @@ There are 2 ways you can start running `go-filecoin`.
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
   - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule.
 
-### Clone
+#### Clone
 
 ```sh
 mkdir -p ${GOPATH}/src/github.com/filecoin-project
 git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 ```
 
-### Install Dependencies
+#### Install Dependencies
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
@@ -68,9 +63,9 @@ cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 go run ./build/*.go deps
 ```
 
-### Managing Submodules
+#### Managing Submodules
 
-This step is necessary if you want to edit `rust-proofs`. If you're not editing `rust-proofs` there's no need to do this manually, because the `deps` build step will do it for you.
+_This step is necessary if you want to edit `rust-proofs`. If you're not editing `rust-proofs` there's no need to do this manually, because the `deps` build step will do it for you._
 
 Filecoin uses Git Submodules to consume `rust-proofs`. To initialize the submodule, either run `deps` (as per above), or
 initialize the submodule manually:
@@ -138,7 +133,7 @@ go run ./build/*.go all
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
-**If you have problems with the build, please see [8. Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
+**If you have problems with the build, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
 
 ## Helpful Environment Variables
 
