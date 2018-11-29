@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	manet "gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	"gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -440,41 +441,56 @@ func (td *TestDaemon) WaitForAPI() error {
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAddr(fromAddr string) address.Address {
-	// need money
-	td.RunSuccess("mining", "once")
+func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
+	require := require.New(td.test)
 
 	var wg sync.WaitGroup
 	var minerAddr address.Address
-
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "1000000", "500")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(td.test, err)
-		assert.NotEqual(td.test, addr, address.Address{})
+		require.NoError(err)
+		require.NotEqual(addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
-
-	// ensure mining runs after the command in our goroutine
-	td.RunSuccess("mpool --wait-for-count=1")
-
-	td.RunSuccess("mining", "once")
-
+	peer.MineAndPropagate(time.Second, td)
 	wg.Wait()
 
 	return minerAddr
 }
 
+// CreateAsk adds an ask from the
+func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr string, price string, expiry string) *big.Int {
+	var askID big.Int
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, minerAddr, price, expiry)
+		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
+		require.NoError(td.test, err)
+		assert.NotNil(td.test, askCid)
+		rcpt := td.WaitForMessageRequireSuccess(askCid)
+		askID.SetBytes(rcpt.Return[0])
+		wg.Done()
+	}()
+	peer.MineAndPropagate(time.Second, td)
+	wg.Wait()
+
+	return &askID
+}
+
 // WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
 // block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
-func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid *cid.Cid) {
+func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid *cid.Cid) *types.MessageReceipt {
 	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
 	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
 	rcpt := &types.MessageReceipt{}
 	require.NoError(td.test, json.Unmarshal([]byte(trim), rcpt))
 	require.Equal(td.test, 0, int(rcpt.ExitCode))
+	return rcpt
 }
 
 // CreateWalletAddr adds a new address to the daemons wallet and
