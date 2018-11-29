@@ -28,8 +28,8 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg *floodsub.Messag
 	return err
 }
 
-// AddNewMessage adds a new message to the pool, and publishes it to the network.
-func (node *Node) AddNewMessage(ctx context.Context, msg *types.SignedMessage) (err error) {
+// addNewMessage adds a new message to the pool, and publishes it to the network.
+func (node *Node) addNewMessage(ctx context.Context, msg *types.SignedMessage) (err error) {
 	ctx = log.Start(ctx, "Node.AddNewMessage")
 	log.SetTag(ctx, "message", msg)
 	defer func() {
