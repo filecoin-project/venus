@@ -69,18 +69,15 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	lcfg := icfg.(*config.Config)
 
-	_, err = lcfg.Set("bootstrap.addresses", "[]")
-	if err != nil {
+	if err := lcfg.Set("bootstrap.addresses", "[]"); err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`)
-	if err != nil {
+	if err := lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
 	}
 
-	_, err = lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`)
-	if err != nil {
+	if err := lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
 	}
 
@@ -409,11 +406,11 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 // GetConfig returns the nodes config.
 func (l *Localfilecoin) GetConfig() (interface{}, error) {
-	return config.ReadFile(filepath.Join(l.dir, "config.toml"))
+	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }
 
 // WriteConfig writes a nodes config file.
 func (l *Localfilecoin) WriteConfig(cfg interface{}) error {
 	lcfg := cfg.(*config.Config)
-	return lcfg.WriteFile(filepath.Join(l.dir, "config.toml"))
+	return lcfg.WriteFile(filepath.Join(l.dir, "config.json"))
 }

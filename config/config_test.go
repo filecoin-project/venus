@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,56 +30,69 @@ func TestWriteFile(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	assert.NoError(cfg.WriteFile(filepath.Join(dir, "config.toml")))
-	content, err := ioutil.ReadFile(filepath.Join(dir, "config.toml"))
+	assert.NoError(cfg.WriteFile(filepath.Join(dir, "config.json")))
+	content, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
 	assert.NoError(err)
 
 	assert.Equal(
-		`[api]
-  address = "/ip4/127.0.0.1/tcp/3453"
-  accessControlAllowOrigin = ["http://localhost:8080", "https://localhost:8080", "http://127.0.0.1:8080", "https://127.0.0.1:8080"]
-  accessControlAllowCredentials = false
-  accessControlAllowMethods = ["GET", "POST", "PUT"]
-
-[bootstrap]
-  addresses = []
-  minPeerThreshold = 0
-  period = "1m"
-
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
-[swarm]
-  address = "/ip4/0.0.0.0/tcp/6000"
-
-[mining]
-  minerAddress = ""
-  autoSealIntervalSeconds = 120
-
-[wallet]
-  defaultAddress = ""
-
-[heartbeat]
-  beatTarget = ""
-  beatPeriod = "3s"
-  reconnectPeriod = "10s"
-  nickname = ""
-`,
+		`{
+	"api": {
+		"address": "/ip4/127.0.0.1/tcp/3453",
+		"accessControlAllowOrigin": [
+			"http://localhost:8080",
+			"https://localhost:8080",
+			"http://127.0.0.1:8080",
+			"https://127.0.0.1:8080"
+		],
+		"accessControlAllowCredentials": false,
+		"accessControlAllowMethods": [
+			"GET",
+			"POST",
+			"PUT"
+		]
+	},
+	"bootstrap": {
+		"addresses": [],
+		"minPeerThreshold": 0,
+		"period": "1m"
+	},
+	"datastore": {
+		"type": "badgerds",
+		"path": "badger"
+	},
+	"swarm": {
+		"address": "/ip4/0.0.0.0/tcp/6000"
+	},
+	"mining": {
+		"minerAddress": "",
+		"autoSealIntervalSeconds": 120
+	},
+	"wallet": {
+		"defaultAddress": ""
+	},
+	"heartbeat": {
+		"beatTarget": "",
+		"beatPeriod": "3s",
+		"reconnectPeriod": "10s",
+		"nickname": ""
+	}
+}`,
 		string(content),
 	)
 
-	assert.NoError(os.Remove(filepath.Join(dir, "config.toml")))
+	assert.NoError(os.Remove(filepath.Join(dir, "config.json")))
 }
 
 func TestSetRejectsInvalidNicks(t *testing.T) {
 	assert := assert.New(t)
 	cfg := NewDefaultConfig()
 
-	// sic: toml includes the quotes in the value
-	_, err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
+	// sic: json includes the quotes in the value
+	err := cfg.Set("heartbeat.nickname", "\"goodnick\"")
 	assert.NoError(err)
-	_, err = cfg.Set("heartbeat.nickname", "bad nick<p>")
+	err = cfg.Set("heartbeat.nickname", "bad nick<p>")
+	assert.Error(err)
+	err = cfg.Set("heartbeat", `{"heartbeat": "bad nick"}`)
 	assert.Error(err)
 }
 
@@ -91,7 +105,7 @@ func TestConfigRoundtrip(t *testing.T) {
 
 	cfg := NewDefaultConfig()
 
-	cfgpath := filepath.Join(dir, "config.toml")
+	cfgpath := filepath.Join(dir, "config.json")
 	assert.NoError(cfg.WriteFile(cfgpath))
 
 	cfgout, err := ReadFile(cfgpath)
@@ -105,15 +119,15 @@ func TestConfigReadFileDefaults(t *testing.T) {
 		assert := assert.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
-[api]
-address = "/ip4/127.0.0.1/tcp/9999"
-# ignored
-other = false
-
-[swarm]
-# ignored
-other = "hello"
-`)
+		{
+			"api": {
+				"address": "/ip4/127.0.0.1/tcp/9999",
+				"keyThatDoesntExit": false
+			},
+			"swarm": {
+				"keyThatDoesntExit": "hello"
+			}
+		}`)
 		assert.NoError(err)
 		defer cleaner()
 		cfg, err := ReadFile(cfgpath)
@@ -127,11 +141,12 @@ other = "hello"
 		assert := assert.New(t)
 
 		cfgpath, cleaner, err := createConfigFile(`
-[api]
-address = "/ip4/127.0.0.1/tcp/9999"
-# ignored
-other = false
-`)
+		{
+			"api": {
+				"address": "/ip4/127.0.0.1/tcp/9999",
+				"keyThatDoesntExit'": false
+			}
+		}`)
 		assert.NoError(err)
 		defer cleaner()
 		cfg, err := ReadFile(cfgpath)
@@ -221,40 +236,27 @@ func TestConfigSet(t *testing.T) {
 		cfg := NewDefaultConfig()
 
 		// set string
-		out, err := cfg.Set("api.address", `"/ip4/127.9.9.9/tcp/0"`)
+		err := cfg.Set("api.address", `"/ip4/127.9.9.9/tcp/0"`)
 		assert.NoError(err)
 		assert.Equal(cfg.API.Address, "/ip4/127.9.9.9/tcp/0")
-		assert.Equal(out, cfg.API.Address)
 
 		// set slice
-		out, err = cfg.Set("api.accessControlAllowOrigin",
-			`["http://localroast:7854"]`)
+		err = cfg.Set("api.accessControlAllowOrigin", `["http://localroast:7854"]`)
 		assert.NoError(err)
-		assert.Equal(cfg.API.AccessControlAllowOrigin,
-			[]string{"http://localroast:7854"})
-		assert.Equal(out, cfg.API.AccessControlAllowOrigin)
-
-		// set slice element
-		out, err = cfg.Set("api.accessControlAllowOrigin.0", `"http://localhost:1234"`)
-		assert.NoError(err)
-		assert.Equal(cfg.API.AccessControlAllowOrigin[0], "http://localhost:1234")
-		assert.Equal(out, cfg.API.AccessControlAllowOrigin[0])
+		assert.Equal(cfg.API.AccessControlAllowOrigin, []string{"http://localroast:7854"})
 	})
 
 	t.Run("set table value", func(t *testing.T) {
 		assert := assert.New(t)
 		cfg := NewDefaultConfig()
 
-		tomlBlob := `type = "badgerbadgerbadgerds"
-path = "mushroom-mushroom"`
-		out, err := cfg.Set("datastore", tomlBlob)
+		jsonBlob := `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
+		err := cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 		assert.Equal(cfg.Datastore.Type, "badgerbadgerbadgerds")
 		assert.Equal(cfg.Datastore.Path, "mushroom-mushroom")
-		assert.Equal(out, cfg.Datastore)
 
-		cfg1path, cleaner, err := createConfigFile(
-			"[datastore]\n" + tomlBlob)
+		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(err)
 		defer cleaner()
 
@@ -263,11 +265,10 @@ path = "mushroom-mushroom"`
 		assert.Equal(cfg1.Datastore, cfg.Datastore)
 
 		// inline tables
-		tomlBlob = `  {type = "badgerbadgerbadgerds", path = "mushroom-mushroom"}`
-		out, err = cfg.Set("datastore", tomlBlob)
+		jsonBlob = `{"type": "badgerbadgerbadgerds", "path": "mushroom-mushroom"}`
+		err = cfg.Set("datastore", jsonBlob)
 		assert.NoError(err)
 
-		assert.Equal(out, cfg.Datastore)
 		assert.Equal(cfg1.Datastore, cfg.Datastore)
 	})
 
@@ -276,42 +277,46 @@ path = "mushroom-mushroom"`
 		cfg := NewDefaultConfig()
 
 		// bad key
-		_, err := cfg.Set("datastore.nope", `"too bad, fake key"`)
+		err := cfg.Set("datastore.nope", `"too bad, fake key"`)
 		assert.Error(err)
 
-		// index out of bounds
-		_, err = cfg.Set("bootstrap.addresses.45", `"555"`)
-		assert.Error(err)
-		_, err = cfg.Set("bootstrap.addresses.-1", `"555"`)
-		assert.Error(err)
-
-		// not TOML
-		_, err = cfg.Set("bootstrap.addresses", `nota.toml?key`)
+		// not json
+		err = cfg.Set("bootstrap.addresses", `nota.json?key`)
 		assert.Error(err)
 
 		// newlines in inline tables are invalid
 		tomlB := `{type = "badgerbadgerbadgerds",
 path = "mushroom-mushroom"}`
-		_, err = cfg.Set("datastore", tomlB)
+		err = cfg.Set("datastore", tomlB)
 		assert.Error(err)
 
 		// setting values of wrong type
-		_, err = cfg.Set("datastore.type", `["not a", "string"]`)
+		err = cfg.Set("datastore.type", `["not a", "string"]`)
 		assert.Error(err)
 
-		_, err = cfg.Set("bootstrap.addresses", `"not a list"`)
+		err = cfg.Set("bootstrap.addresses", `"not a list"`)
 		assert.Error(err)
 
-		_, err = cfg.Set("api", `"strings aren't structs"`)
+		err = cfg.Set("api", `"strings aren't structs"`)
 		assert.Error(err)
 
 		// Corrupt address won't pass checksum
-		_, err = cfg.Set("mining.defaultAddress",
-			`"fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt"`)
-		assert.Contains(err.Error(), "invalid")
+		//err = cfg.Set("mining.defaultAddress", "fcqv3gmsd9gd7dqfe60d28euf4tx9v7929corrupt")
+		//assert.Contains(err.Error(), "invalid")
 
-		_, err = cfg.Set("wallet.defaultAddress", `"corruptandtooshort"`)
+		err = cfg.Set("wallet.defaultAddress", "corruptandtooshort")
 		assert.Contains(err.Error(), "invalid character")
+	})
+
+	t.Run("setting leaves does not interfere with neighboring leaves", func(t *testing.T) {
+		assert := assert.New(t)
+		cfg := NewDefaultConfig()
+
+		err := cfg.Set("bootstrap.period", `"3m"`)
+		assert.NoError(err)
+		err = cfg.Set("bootstrap.minPeerThreshold", `5`)
+		assert.NoError(err)
+		assert.Equal(cfg.Bootstrap.Period, "3m")
 	})
 }
 
@@ -320,7 +325,7 @@ func createConfigFile(content string) (string, func(), error) {
 	if err != nil {
 		return "", nil, err
 	}
-	cfgpath := filepath.Join(dir, "config.toml")
+	cfgpath := filepath.Join(dir, "config.json")
 
 	if err := ioutil.WriteFile(cfgpath, []byte(content), 0644); err != nil {
 		return "", nil, err

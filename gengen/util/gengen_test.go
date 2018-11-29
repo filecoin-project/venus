@@ -37,7 +37,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(err)
 
-	_, err = GenGenesisCar(testConfig, fi)
+	_, err = GenGenesisCar(testConfig, fi, 0)
 	assert.NoError(err)
 	assert.NoError(fi.Close())
 
@@ -64,7 +64,7 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 
 		ctx := context.Background()
 
-		inf, err := GenGen(ctx, testConfig, cst, bstore)
+		inf, err := GenGen(ctx, testConfig, cst, bstore, 0)
 		assert.NoError(err)
 		if info == nil {
 			info = inf

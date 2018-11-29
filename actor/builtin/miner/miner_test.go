@@ -24,11 +24,23 @@ import (
 )
 
 func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
-	pdata := actor.MustConvertParams(big.NewInt(100), key, pid)
-	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(100), "createMiner", pdata)
+	return createTestMinerWith(100, 100, assert, st, vms, minerOwnerAddr, key, pid)
+}
 
-	result, err := consensus.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(0))
+func createTestMinerWith(pledge int64,
+	collateral uint64,
+	assert *assert.Assertions,
+	stateTree state.Tree,
+	vms vm.StorageMap,
+	minerOwnerAddr address.Address,
+	key []byte,
+	peerId peer.ID,
+) address.Address {
+	pdata := actor.MustConvertParams(big.NewInt(pledge), key, peerId)
+	nonce := core.MustGetNonce(stateTree, address.TestAddress)
+	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createMiner", pdata)
+
+	result, err := consensus.ApplyMessage(context.Background(), stateTree, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
@@ -36,7 +48,8 @@ func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap
 	return addr
 }
 
-func TestAddAsk(t *testing.T) {
+func TestAskFunctions(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -111,9 +124,7 @@ func TestGetKey(t *testing.T) {
 	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, signature, th.RequireRandomPeerID())
 
 	// retrieve key
-	result, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, "getKey", []byte{}, address.TestAddress, types.NewBlockHeight(0))
-	assert.NoError(err)
-	assert.Equal(uint8(0), exitCode)
+	result := callQueryMethodSuccess("getKey", ctx, t, st, vms, address.TestAddress, minerAddr)
 	assert.Equal(result[0], signature)
 }
 
@@ -132,8 +143,8 @@ func TestCBOREncodeState(t *testing.T) {
 }
 
 func TestPeerIdGetterAndSetter(t *testing.T) {
+	require := require.New(t)
 	t.Run("successfully retrieves and updates peer ID", func(t *testing.T) {
-		require := require.New(t)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -144,20 +155,25 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		// retrieve peer ID
-		retPidA := getPeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr)
-		require.Equal(peer.IDB58Encode(origPid), peer.IDB58Encode(retPidA))
+		resultA := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
+		pid, err := peer.IDFromBytes(resultA[0])
+		require.NoError(err)
+
+		require.Equal(peer.IDB58Encode(origPid), peer.IDB58Encode(pid))
 
 		// update peer ID
 		newPid := th.RequireRandomPeerID()
 		updatePeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
-		retPidB := getPeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr)
-		require.Equal(peer.IDB58Encode(newPid), peer.IDB58Encode(retPidB))
+		resultB := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
+		pid, err = peer.IDFromBytes(resultB[0])
+		require.NoError(err)
+
+		require.Equal(peer.IDB58Encode(newPid), peer.IDB58Encode(pid))
 	})
 
 	t.Run("authorization failure while updating peer ID", func(t *testing.T) {
-		require := require.New(t)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -182,6 +198,45 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 	})
 }
 
+func TestMinerGetPledge(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+
+	t.Run("GetPledge returns pledged sectors, 0, nil when successful", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, vms := core.CreateStorages(ctx, t)
+
+		minerAddr := createTestMinerWith(120, 240, assert.New(t), st, vms, address.TestAddress,
+			[]byte("my public key"), th.RequireRandomPeerID())
+
+		// retrieve power (trivial result for no proven sectors)
+		result := callQueryMethodSuccess("getPledge", ctx, t, st, vms, address.TestAddress, minerAddr)[0][0]
+
+		require.Equal(120, int(result))
+	})
+}
+
+func TestMinerGetPower(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+
+	t.Run("GetPower returns proven sectors, 0, nil when successful", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, vms := core.CreateStorages(ctx, t)
+
+		minerAddr := createTestMinerWith(120, 240, assert.New(t), st, vms, address.TestAddress,
+			[]byte("my public key"), th.RequireRandomPeerID())
+
+		// retrieve power (trivial result for no proven sectors)
+		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
+		require.Equal([]byte{}, result[0])
+	})
+}
+
 func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
 	require := require.New(t)
 
@@ -199,15 +254,16 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms v
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)
 }
 
-func getPeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address) peer.ID {
-	res, code, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, fromAddr, nil)
+func callQueryMethodSuccess(method string,
+	ctx context.Context,
+	t *testing.T, st state.Tree,
+	vms vm.StorageMap,
+	fromAddr address.Address,
+	minerAddr address.Address) [][]byte {
+	res, code, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
-
-	pid, err := peer.IDFromBytes(res[0])
-	require.NoError(t, err)
-
-	return pid
+	return res
 }
 
 func TestMinerCommitSector(t *testing.T) {

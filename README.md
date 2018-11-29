@@ -133,9 +133,7 @@ go run ./build/*.go all
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
-### Troubleshooting Build
-
-If `go run ./build/*.go deps` or `go run ./build/*.go build` fails because of an error compiling the rust-proofs submodule make sure you are using the most up to date version of rust by running `rustup update`
+**If you have problems with the build, please see [8. Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
 
 ## Helpful Environment Variables
 
@@ -143,7 +141,7 @@ If `go run ./build/*.go deps` or `go run ./build/*.go build` fails because of an
 |-------------------------|------------------------------------------------------------------------------------------------|
 | `FIL_API`               | This is the default host and port for daemon commands.                                         |
 | `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
-| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
+| `FIL_USE_SMALL_SECTORS` | Seal all sector data, as the proofs system only ever seals the first 127 bytes at the moment.  |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Running Filecoin
@@ -161,35 +159,35 @@ go-filecoin init --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
 ```
 
-Note the output of the daemon, it should say "My peer ID is `<W>`", where `<W>`
-is a long cid string starting with "Qm".  `<W>` is used in a later command.
+Note the output of the daemon, it should say "My peer ID is `<peerID>`", where `<peerID>`
+is a long [CID](https://github.com/filecoin-project/specs/blob/master/definitions.md#cid) string starting with "Qm".  `<peerID>` is used in a later command.
 
 Switch terminals.
 
 The miner is present in the genesis block car file created from the 
 json file, but the node is not yet configured to use it. Get the 
-miner address from the json file fixtures/gen.json and replace `<X>`
+miner address from the json file fixtures/gen.json and replace `<minerAddr>`
 in the command below with it:
 
-`go-filecoin config mining.minerAddress '"<X>"'`
+`go-filecoin config mining.minerAddress '"<minerAddr>"'`
 
 The account that owns the miner is also not yet configured in the node
-so note that owner key name in fixtures/gen.json, we'll call it `<Y>` for short,
+so note that owner key name in fixtures/gen.json. We'll call it `<minerOwnerKey>`,
 and import that key from the fixtures:
 
-`go-filecoin wallet import fixtures/<Y>.key`
+`go-filecoin wallet import fixtures/<minerOwnerKey>.key`
 
-Note the output of this command, call it `<Z>`. This output is the address of 
+Note the output of this command, call it `<minerOwnerAddress>`. This output is the address of 
 the account that owns the miner.
-The miner was not created with a pre-set peerid, so set it so that
+The miner was not created with a pre-set Peer ID, so set it so that
 clients can find it.
 
-`go-filecoin miner update-peerid --from=<Z> <X> <W>`
+`go-filecoin miner update-peerid --from=<minerOwnerAddress> <minerAddr> <peerID>`
 
 Now you can run a lookup:
-`go-filecoin address lookup <X>`
+`go-filecoin address lookup <minerAddr>`
 
-The output should now be `<W>`
+The output should now be `<peerID>`
 
 To configure a node's auto-sealing scheduler:
 The auto-sealer is used to automatically seal the data that a miner received
@@ -213,7 +211,7 @@ go-filecoin daemon
 
 ## Running multiple nodes with IPTB
 
-IPTB provides an automtion layer that makes it easy run multiple filecoin nodes. 
+IPTB provides an automation layer that makes it easy to run multiple filecoin nodes. 
 For example, it enables you to easily start up 10 mining nodes locally on your machine.
 Please refer to the [README.md](https://github.com/filecoin-project/go-filecoin/blob/master/tools/iptb-plugins/README.md).
 
@@ -232,6 +230,7 @@ go-filecoin show block <blockID> | jq
 ```
 #
 #### Create a miner
+_NOTE: If you have followed the instructions in [Running Filecoin](#Running_Filecoin), a miner will already exist from the genesis file that you used, so these instructions will not work._
 ```
 # Create a miner
 # Requires the node be a part of a cluster that already has miners 
@@ -248,12 +247,17 @@ go-filecoin miner owner <minerAddress>
 ```
 
 ### As a miner, force a block to be mined immediately 
-`go-filecoin mine once`
+`go-filecoin mining once`
+
+If successful, go-filecoin daemon output should show an indication of mining.
 
 #
 ### As a miner, make an ask 
 ```
 # As a miner, make an ask 
+# First make sure mining is running
+go-filecoin mining start
+
 # Get your miner address
 go-filecoin config mining.minerAddress
 
@@ -262,7 +266,7 @@ go-filecoin miner owner <minerAddress>
 go-filecoin miner add-ask <minerAddress> <size> <price> --from=<ownerAddress>
 
 # Wait for the block to be mined (~30s) and view the ask:
-go-filecoin orderbook asks | jq
+go-filecoin client list-asks | jq
 ```
 #
 ### As a client, make a deal 
@@ -278,11 +282,15 @@ go-filecoin client cat <data CID>
 # Get the file size:
 go-filecoin client cat <data CID> | wc -c
 
-# Find a miner by looking through the orderbook
-go-filecoin orderbook asks | jq
+# Find a miner by running client list-asks
+go-filecoin client list-asks | jq
 
 # Propose a storage deal, using the <miner address> from the ask.
-go-filecoin client propose-storage-deal <miner address> <data CID> <duration> --price=2
+# First make sure that mining is running
+go-filecoin mining start
+
+# propose the deal.
+go-filecoin client propose-storage-deal <miner address> <data CID> <price> <durationBlocks> 
 
 # TODO we want to be able to check the status, like this but the command above doesn't 
 # return an id
@@ -312,7 +320,7 @@ go-filecoin retrieval-client \
 Here are a few places to get help and hang out with the Filecoin community:
 
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
-- [#filecoin-chat on Slack](https://protocollabs.slack.com/messages/CD4RLHMU0/convo/CCYS39YKZ-1538593031.000100/) — for live support and hacking with others
+- [Filecoin Dev on Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) — for live support and hacking with others
 - [Discussion forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
@@ -326,9 +334,10 @@ Deployed via CI by tagging a commit with `redeploy_test_cluster`
 
 - Faucet: http://test.kittyhawk.wtf:9797/
 - Dashboard: http://test.kittyhawk.wtf:8010/
+- Genesis File: http://test.kittyhawk.wtf:8020/genesis.car
 - Block explorer: http://test.kittyhawk.wtf:8000/
-- Prometheus Endpoint: http://test.kittyhawk.wtf:9080/metrics
-- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9080/report
+- Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
+- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
 
 ### Nightly Cluster
 
@@ -336,9 +345,10 @@ Deployed from master by CI every day at 0600 UTC
 
 - Faucet: http://nightly.kittyhawk.wtf:9797/
 - Dashboard: http://nightly.kittyhawk.wtf:8010/
+- Genesis File: http://nightly.kittyhawk.wtf:8020/genesis.car
 - Block explorer: http://nightly.kittyhawk.wtf:8000/
-- Prometheus Endpoint: http://nightly.kittyhawk.wtf:9080/metrics
-- Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9080/report
+- Prometheus Endpoint: http://nightly.kittyhawk.wtf:9082/metrics
+- Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9082/nodes
 
 #
 

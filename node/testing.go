@@ -56,7 +56,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	blkserv := bserv.New(bstore, offl)
 	cst := &hamt.CborIpldStore{Blocks: blkserv}
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore)
+	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0)
 	require.NoError(t, err)
 
 	return &ChainSeed{
