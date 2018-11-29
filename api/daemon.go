@@ -32,8 +32,10 @@ type DaemonInitConfig struct {
 	PeerKeyFile string
 	// WithMiner, if set, sets the config value for the local miner to this address.
 	WithMiner address.Address
-	// LabWeekCluster, if set, sets the config to enable bootstrapping to the labweek cluster.
-	LabWeekCluster bool
+	// ClusterTest, if set, sets the config to enable bootstrapping to the test cluster.
+	ClusterTest bool
+	// ClusterNightly, if set, sets the config to enable bootstrapping to the nightly cluster.
+	ClusterNightly bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
 	AutoSealIntervalSeconds uint
 }
@@ -90,10 +92,17 @@ func WithMiner(miner address.Address) DaemonInitOpt {
 	}
 }
 
-// LabWeekCluster sets the LabWeekCluster option.
-func LabWeekCluster(doit bool) DaemonInitOpt {
+// ClusterTest sets the ClusterTest option.
+func ClusterTest(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
-		dc.LabWeekCluster = doit
+		dc.ClusterTest = doit
+	}
+}
+
+// ClusterNightly sets the ClusterNightly option.
+func ClusterNightly(doit bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) {
+		dc.ClusterNightly = doit
 	}
 }
 

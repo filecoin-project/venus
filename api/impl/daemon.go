@@ -104,11 +104,25 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
-	// Setup labweek release specific config options.
-	if cfg.LabWeekCluster {
+	if cfg.ClusterTest && cfg.ClusterNightly {
+		return fmt.Errorf(`Cannot use both "--cluster-test" and "--cluster-nightly" options`)
+	}
+
+	// Setup cluster test specific config options.
+	if cfg.ClusterTest {
 		newConfig := rep.Config()
-		newConfig.Bootstrap.Relays = fixtures.LabWeekRelayAddrs
-		newConfig.Bootstrap.Addresses = fixtures.LabWeekBootstrapAddrs
+		newConfig.Bootstrap.Addresses = fixtures.ClusterTestBootstrapAddrs
+		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.Period = "10s"
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
+	// Setup cluster nightly specific config options.
+	if cfg.ClusterNightly {
+		newConfig := rep.Config()
+		newConfig.Bootstrap.Addresses = fixtures.ClusterNightlyBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
 		if err := rep.ReplaceConfig(newConfig); err != nil {

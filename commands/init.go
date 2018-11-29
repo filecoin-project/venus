@@ -24,7 +24,8 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new nodes libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(ClusterLabWeek, "when set, populates config bootstrap addrs with the dns multiaddrs of the lab week cluster and other team week specific bootstrap parameters"),
+		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
+		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		repoDir := getRepoDir(req)
@@ -36,7 +37,8 @@ var initCmd = &cmds.Command{
 		customGenesis, _ := req.Options[TestGenesis].(bool)
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
-		teamWeek, _ := req.Options[ClusterLabWeek].(bool)
+		clusterTest, _ := req.Options[ClusterTest].(bool)
+		clusterNightly, _ := req.Options[ClusterNightly].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options["with-miner"].(string); ok {
@@ -57,7 +59,8 @@ var initCmd = &cmds.Command{
 			api.UseCustomGenesis(customGenesis),
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
-			api.LabWeekCluster(teamWeek),
+			api.ClusterTest(clusterTest),
+			api.ClusterNightly(clusterNightly),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 		)
 

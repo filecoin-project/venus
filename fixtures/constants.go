@@ -106,26 +106,40 @@ func KeyFilePaths() []string {
 	return res
 }
 
-// Lab week cluster addrs
+// test cluster addrs
 const (
-	filecoinBootstrap0 string = "/dns4/test.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
-	filecoinBootstrap1 string = "/dns4/test.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
-	filecoinBootstrap2 string = "/dns4/test.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
-	filecoinBootstrap3 string = "/dns4/test.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
-	filecoinBootstrap4 string = "/dns4/test.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
+	testFilecoinBootstrap0 string = "/dns4/test.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
+	testFilecoinBootstrap1 string = "/dns4/test.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
+	testFilecoinBootstrap2 string = "/dns4/test.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
+	testFilecoinBootstrap3 string = "/dns4/test.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
+	testFilecoinBootstrap4 string = "/dns4/test.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
-// LabWeekRelayAddrs are the dns multiaddrs for the nodes of the filecoin
-// cluster that run relays
-var LabWeekRelayAddrs = []string{
-	filecoinBootstrap0,
+// nightly cluster addrs
+const (
+	nightlyFilecoinBootstrap0 string = "/dns4/nightly.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
+	nightlyFilecoinBootstrap1 string = "/dns4/nightly.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
+	nightlyFilecoinBootstrap2 string = "/dns4/nightly.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
+	nightlyFilecoinBootstrap3 string = "/dns4/nightly.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
+	nightlyFilecoinBootstrap4 string = "/dns4/nightly.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
+)
+
+// ClusterTestBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// test cluster.
+var ClusterTestBootstrapAddrs = []string{
+	testFilecoinBootstrap0,
+	testFilecoinBootstrap1,
+	testFilecoinBootstrap2,
+	testFilecoinBootstrap3,
+	testFilecoinBootstrap4,
 }
 
-// LabWeekBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
-// cluster running at lab week.
-var LabWeekBootstrapAddrs = []string{
-	filecoinBootstrap1,
-	filecoinBootstrap2,
-	filecoinBootstrap3,
-	filecoinBootstrap4,
+// ClusterNightlyBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// nightly cluster
+var ClusterNightlyBootstrapAddrs = []string{
+	nightlyFilecoinBootstrap0,
+	nightlyFilecoinBootstrap1,
+	nightlyFilecoinBootstrap2,
+	nightlyFilecoinBootstrap3,
+	nightlyFilecoinBootstrap4,
 }
