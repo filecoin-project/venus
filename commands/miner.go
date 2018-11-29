@@ -18,7 +18,7 @@ import (
 
 var minerCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Manage miner operations",
+		Tagline: "Manage a single miner actor",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
@@ -61,7 +61,7 @@ var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
-message to be mined as this is required to return the address of the new miner. 
+message to be mined as this is required to return the address of the new miner.
 Collateral must be enough for <pledge> pledged 1GB sectors.`,
 	},
 	Arguments: []cmdkit.Argument{
