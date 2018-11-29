@@ -136,6 +136,7 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 
 **If you have problems with the build, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
 
+
 ## Usage
 
 ### Start Running Filecoin
@@ -302,6 +303,7 @@ Deployed via CI by tagging a commit with `redeploy_test_cluster`
 
 - Faucet: http://test.kittyhawk.wtf:9797/
 - Dashboard: http://test.kittyhawk.wtf:8010/
+- Genesis File: http://test.kittyhawk.wtf:8020/genesis.car
 - Block explorer: http://test.kittyhawk.wtf:8000/
 - Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
 - Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
@@ -312,6 +314,7 @@ Deployed from master by CI every day at 0600 UTC
 
 - Faucet: http://nightly.kittyhawk.wtf:9797/
 - Dashboard: http://nightly.kittyhawk.wtf:8010/
+- Genesis File: http://nightly.kittyhawk.wtf:8020/genesis.car
 - Block explorer: http://nightly.kittyhawk.wtf:8000/
 - Prometheus Endpoint: http://nightly.kittyhawk.wtf:9082/metrics
 - Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9082/nodes
