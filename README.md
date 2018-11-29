@@ -1,4 +1,4 @@
-**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share or discuss the project outside of designated preview channels, not even with partners/spouses/family members. If you have any questions about what can be discussed, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
+**Note: THE FILECOIN PROJECT IS STILL EXTREMELY CONFIDENTIAL. Do not share or discuss the project outside of designated preview channels  (chat channels, Discourse forum, GitHub, emails to Filecoin team), not even with partners/spouses/family members. If you have any questions, please email [legal@protocol.ai](mailto:legal@protocol.ai).**
 
 # Filecoin (go-filecoin)
 
@@ -17,8 +17,8 @@
     - [Install Go and Rust](#install-go-and-rust)
     - [Clone](#clone)
     - [Install Dependencies](#install-dependencies)
-    - [Manage Submodules](#manage-submodules)
-    - [Run Tests](#run-tests)
+    - [Manage Submodules Manually](#manage-submodules-manually)
+    - [Build, Run Tests, and Install](#build-run-tests-and-install)
     - [Build Commands](#build-commands)
 - [Usage](#usage)
    - [Start Running Filecoin](#start-running-filecoin)
@@ -49,7 +49,7 @@ Filecoin can run on most Linux and MacOS systems. Windows is not yet officially 
 
 #### Install Go and Rust
 
-  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.10. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.11.2. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
   - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule.
 
 #### Clone
@@ -59,7 +59,7 @@ mkdir -p ${GOPATH}/src/github.com/filecoin-project
 git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 ```
 
-#### Install dependencies
+#### Install Dependencies
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
@@ -69,7 +69,7 @@ cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 go run ./build/*.go deps
 ```
 
-#### Manage Submodules
+#### Manage Submodules Manually
 
 _If you're not editing `rust-proofs` you can skip this step, because `deps` build (above) will do it for you._
 
@@ -88,7 +88,7 @@ git submodule update --remote
 
 Note that updating the `rust-proofs` submodule in this way will require a commit to `go-filecoin` (changing the submodule hash).
 
-### Run Tests
+### Build, Run Tests, and Install
 
 ```sh
 # First, build the binary:
@@ -99,6 +99,9 @@ go run ./build/*.go test
 
 # Note: build and test can be combined:
 go run ./build/*.go best
+
+# Install go-filecoin
+go run ./build/*.go install
 ```
 
 ### Build Commands
@@ -151,7 +154,7 @@ go-filecoin init --genesisfile ./fixtures/genesis.car
 go-filecoin daemon
 ```
 
-Note the output of the daemon, it should say "My peer ID is `<peerID>`", where `<peerID>`
+Note the output of the daemon. It should say "My peer ID is `<peerID>`", where `<peerID>`
 is a long [CID](https://github.com/filecoin-project/specs/blob/master/definitions.md#cid) string starting with "Qm".  `<peerID>` is used in a later command.
 
 Switch terminals.
@@ -171,7 +174,7 @@ and import that key from the fixtures:
 
 Note the output of this command, call it `<minerOwnerAddress>`. This output is the address of 
 the account that owns the miner.
-The miner was not created with a pre-set Peer ID, so set it so that
+The miner was not created with a pre-set `peerID`, so set it so that
 clients can find it.
 
 `go-filecoin miner update-peerid --from=<minerOwnerAddress> <minerAddr> <peerID>`
@@ -203,9 +206,11 @@ go-filecoin daemon
 
 ### Run Multiple Nodes with IPTB
 
-The [localfilecoin IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
+The [`localfilecoin` IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
 
 ### Sample Commands
+
+To see a full list of commands, run `go-filecoin --help`.
 
 ```sh
 USAGE
@@ -271,7 +276,7 @@ More details are in the [Filecoin Commands](https://github.com/filecoin-project/
 |-------------------------|------------------------------------------------------------------------------------------------|
 | `FIL_API`               | This is the default host and port for daemon commands.                                         |
 | `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
-| `FIL_USE_SMALL_SECTORS` | Seal alll sector data, as the proofs system only ever seals the first 127 bytes at the moment. |
+| `FIL_USE_SMALL_SECTORS` | Seal all sector data, as the proofs system only ever seals the first 127 bytes at the moment.  |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
 ## Contributing
