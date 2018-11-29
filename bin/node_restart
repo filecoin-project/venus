@@ -9,8 +9,6 @@ do
   echo "Waiting for daemon to start..." && sleep 1
 done
 
-${filecoin_exec} log streamto /ip4/172.19.0.250/tcp/9000 &
-
 for node_addr in $(cat /var/filecoin/car/peers.txt)
 do
   echo "re-joining with peer at: ${node_addr}"
