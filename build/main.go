@@ -100,7 +100,9 @@ func runCapture(name string) string {
 	return strings.Trim(string(output), lineBreak)
 }
 
-func clearParamcacheCommands() []command {
+// clearParamCacheCommands clears the groth parameter cache used when sealing a
+// sector to ensure consistent builds
+func clearParamCacheCommands() []command {
 	cachepath := os.Getenv("FILECOIN_PARAMETER_CACHE")
 	if cachepath == "" {
 		cachepath = "/tmp/filecoin-proof-parameters"
@@ -140,7 +142,7 @@ func deps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
 
-	cmds = append(cmds, clearParamcacheCommands()...)
+	cmds = append(cmds, clearParamCacheCommands()...)
 
 	for _, c := range cmds {
 		runCmd(c)
@@ -162,7 +164,7 @@ func smartdeps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
 
-	cmds = append(cmds, clearParamcacheCommands()...)
+	cmds = append(cmds, clearParamCacheCommands()...)
 
 	// packages we need to install
 	pkgs := []string{
