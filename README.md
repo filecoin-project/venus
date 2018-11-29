@@ -280,18 +280,19 @@ More details are in the [Filecoin Commands](https://github.com/filecoin-project/
 | `FIL_USE_SMALL_SECTORS` | Seal all sector data, as the proofs system only ever seals the first 127 bytes at the moment.  |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
 
-## Contributing
+## Contributing 
 
 We ❤️ all our contributors; this project wouldn’t be what it is without you! If you want to help out, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Community
 
-Here are a few places to get help and hang out with the Filecoin community:
-
+Here are a few places to get help and connect with the Filecoin community:
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
-- [Filecoin Dev on Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) — for live support and hacking with others
-- [Discussion forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
+- Matrix/Riot: [#fil-dev on matrix.org](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
+- [Filecoin Community Forum](https://filecoin1.trydiscourse.com/) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
+
+Looking for even more? See the full rundown at [filecoin-project/community](https://github.com/filecoin-project/community).
 
 #
 
