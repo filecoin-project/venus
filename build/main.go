@@ -137,6 +137,7 @@ func deps() {
 		cmd("go get github.com/json-iterator/go"),
 		cmd("go get github.com/prometheus/client_golang/prometheus"),
 		cmd("go get github.com/prometheus/client_golang/prometheus/promhttp"),
+		cmd("go get github.com/jstemmer/go-junit-report"),
 		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
 		cmdWithDir("./proofs/rust-proofs", "cargo update"),
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
@@ -182,6 +183,7 @@ func smartdeps() {
 		"github.com/ipsn/go-secp256k1",
 		"github.com/prometheus/client_golang/prometheus/promhttp",
 		"github.com/prometheus/client_golang/prometheus",
+		"github.com/jstemmer/go-junit-report",
 	}
 
 	gopath := os.Getenv("GOPATH")
