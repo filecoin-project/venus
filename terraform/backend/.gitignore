@@ -1,4 +1,0 @@
-.DS_Store
-.terraform/
-*.backup
-*.tfvars

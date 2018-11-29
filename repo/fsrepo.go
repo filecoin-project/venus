@@ -25,8 +25,8 @@ import (
 const (
 	// APIFile is the filename containing the filecoin node's api address.
 	APIFile                = "api"
-	configFilename         = "config.toml"
-	tempConfigFilename     = ".config.toml.temp"
+	configFilename         = "config.json"
+	tempConfigFilename     = ".config.json.temp"
 	lockFile               = "repo.lock"
 	versionFilename        = "version"
 	walletDatastorePrefix  = "wallet"
@@ -371,7 +371,7 @@ func initConfig(p string, cfg *config.Config) error {
 }
 
 func genSnapshotFileName() string {
-	return fmt.Sprintf("%s-%d.toml", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
+	return fmt.Sprintf("%s-%d.json", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
 }
 
 func checkWritable(dir string) error {

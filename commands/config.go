@@ -1,101 +1,90 @@
 package commands
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
-	"reflect"
-	"strings"
 
 	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
 	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 )
 
 var configCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get and set filecoin config values",
 		ShortDescription: `
-go-filecoin config controls configuration variables. It works similar to
-'git config'. The configuration values are stored in a config file inside
-your filecoin repo. When getting values, a key should be provided, like so:
+go-filecoin config controls configuration variables. These variables are stored
+in a config file inside your filecoin repo. When getting values, a key should be
+provided, like so:
 
 go-filecoin config KEY
 
-When setting values, the key should be given first, followed by the value and
-separated by a space or equals, like so:
+When setting values, the key should be given first followed by the value and
+separated by a space, like so:
 
 go-filecoin config KEY VALUE
-go-filecoin config KEY=VALUE
 
-Specify the key as a period separated string of object keys. Specify the value
-to set as a toml value.`,
+The key should be specified as a period separated string of keys. The value may
+be either a bare string or any valid json compatible with the given key.`,
 		LongDescription: `
-go-filecoin config controls configuration variables. It works similar to
-'git config'. The configuration values are stored in a config file inside
-your filecoin repo. Outputs are written in toml format. Specify the key as
-a period separated string of object keys. Specify the value to set as a toml
-value. All subkeys including entire tables can be get and set. Examples:
+go-filecoin config controls configuration variables. The configuration values
+are stored as a JSON config file in your filecoin repo. When using go-filecoin
+config, a key and value may be provided to set variables, or just a key may be
+provided to fetch it's associated value without modifying it.
 
-$ go-filecoin config bootstrap.addresses.0
-0 = "oldaddr"
+Keys should be listed with a dot separation for each layer of nesting within The
+JSON config. For example, the "addresses" key resides within an object under the
+"bootstrap" key, therefore it should be addressed with the string
+"bootstrap.addresses" like so:
+
+$ go-filecoin config bootstrap.addresses
+[
+	"newaddr"
+]
+
+Values may be either bare strings (be sure to quote said string if they contain
+spaces to avoid arguments being separated by your shell) or as encoded JSON
+compatible with the associated keys. For example, "bootstrap.addresses" expects
+an array of strings, so it should be set with something like so:
 
 $ go-filecoin config bootstrap.addresses '["newaddr"]'
-addresses = ["newaddr"]
 
-$ go-filecoin config bootstrap.addresses.0 '"oldaddr"'
-0 = "oldaddr"
+When setting keys with subkeys, such as the "bootstrap" key which has 3 keys
+underneath it, period, minPeerThreshold, and addresses, the given JSON value
+will be merged with existing values to avoid unintentionally resetting other
+configuration variables under "bootstrap". For example, setting period then
+setting addresses, like so, will not change the value of "period":
 
 $ go-filecoin config bootstrap
-[bootstrap]
- addresses = ["oldaddr"]
-
-$ go-filecoin config datastore 'type = "badgerds"
-path="badger"
-'
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
-$ go-filecoin config datastore '{type="badgerds", path="badger"}'
-[datastore]
-  type = "badgerds"
-  path = "badger"
-
+{
+	"addresses": [],
+	"minPeerThreshold": 0,
+	"period": "1m"
+}
+$ go-filecoin config bootstrap '{"period": "5m"}'
+$ go-filecoin config bootstrap '{"addresses": ["newaddr"]}'
+$ go-filecoin config bootstrap
+{
+	"addresses": ["newaddr"],
+	"minPeerThreshold": 0,
+	"period": "5m"
+}
 `,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"API.Address\")."),
-		cmdkit.StringArg("value", false, false, "The value to set the config entry to."),
+		cmdkit.StringArg("key", true, false, "The key of the config entry (e.g. \"api.address\")"),
+		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		api := GetAPI(env).Config()
-
 		key := req.Arguments[0]
-		value := ""
 
 		if len(req.Arguments) == 2 {
-			value = req.Arguments[1]
-		} else if strings.Contains(key, "=") {
-			args := strings.Split(key, "=")
-			key = args[0]
-			value = args[1]
-		}
-
-		if value != "" {
-			res, err := api.Set(key, value)
+			value := req.Arguments[1]
+			err := api.Set(key, value)
 
 			if err != nil {
 				re.SetError(err, cmdkit.ErrNormal)
-				return
 			}
-
-			output, err := makeOutput(res)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
-			re.Emit(output) // nolint: errcheck
 		} else {
 			res, err := api.Get(key)
 			if err != nil {
@@ -103,78 +92,14 @@ $ go-filecoin config datastore '{type="badgerds", path="badger"}'
 				return
 			}
 
-			output, err := makeOutput(res)
-			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
-			}
-
-			re.Emit(output) // nolint: errcheck
+			re.Emit(res) // nolint: errcheck
 		}
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, v interface{}) error {
-			key := req.Arguments[0]
-			vT := reflect.TypeOf(v)
-			k := makeKey(key, vT)
-
-			field := reflect.StructField{
-				Name: "Field",
-				Type: vT,
-				Tag:  reflect.StructTag(fmt.Sprintf("toml:\"%s\"", k)),
-			}
-			encodeT := reflect.StructOf([]reflect.StructField{field})
-			vWrap := reflect.New(encodeT)
-			vWrap.Elem().Field(0).Set(reflect.ValueOf(v))
-			return toml.NewEncoder(w).Encode(vWrap.Interface())
+		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, res interface{}) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
 		}),
 	},
-}
-
-// makeKey makes the correct display key for the TOML formatting of the given
-// type. If the type serializes to a TOML table/table array the entire key
-// should be returned, otherwise only the last period separated substring is
-// returned
-func makeKey(key string, vT reflect.Type) string {
-	ks := strings.Split(key, ".")
-	switch vT.Kind() {
-	case reflect.Ptr, reflect.Array, reflect.Slice:
-		elemT := vT.Elem()
-		if elemT.Kind() == reflect.Struct || elemT.Kind() == reflect.Map {
-			return key
-		}
-		return ks[len(ks)-1]
-	case reflect.Struct, reflect.Map:
-		return key
-	default:
-		return ks[len(ks)-1]
-	}
-}
-
-// makeOutput converts struct configFields to a map[string]interface{} with
-// toml tags as the string keys.  This is to preserve tag information across
-// daemon calls in the presence of many different possible configField types
-func makeOutput(configField interface{}) (interface{}, error) {
-	cfV := reflect.ValueOf(configField)
-	cfT := cfV.Type()
-	if cfT.Kind() == reflect.Ptr {
-		cfV = cfV.Elem()
-		cfT = cfT.Elem()
-	}
-
-	if cfT.Kind() == reflect.Struct {
-		var output interface{}
-		b := strings.Builder{}
-		err := toml.NewEncoder(&b).Encode(configField)
-		if err != nil {
-			return nil, err
-		}
-		_, err = toml.Decode(b.String(), &output)
-		if err != nil {
-			return nil, err
-		}
-		return output, nil
-	}
-
-	return configField, nil
 }

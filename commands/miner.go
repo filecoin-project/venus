@@ -24,19 +24,48 @@ var minerCmd = &cmds.Command{
 		"create":        minerCreateCmd,
 		"add-ask":       minerAddAskCmd,
 		"owner":         minerOwnerCmd,
+		"pledge":        minerPledgeCmd,
 		"power":         minerPowerCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
 
-var minerCreateCmd = &cmds.Command{
+var minerPledgeCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Create a new file miner",
-		ShortDescription: `Issues a new message to the network to create the miner. Then waits for the
-message to be mined as this is required to return the address of the new miner.`,
+		Tagline:          "View number of pledged, 1GB sectors for <miner>",
+		ShortDescription: `Shows the number of pledged 1GB sectors for the given miner address`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in sector count) for the miner"),
+		cmdkit.StringArg("miner", true, false, "the miner address"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+		var err error
+
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal)
+			return
+		}
+		pledgeSectors, err := GetAPI(env).Miner().GetPledge(req.Context, minerAddr)
+		if err != nil {
+			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
+			return
+		}
+
+		str := fmt.Sprintf("%d", pledgeSectors)
+		re.Emit(str) // nolint: errcheck
+	},
+}
+
+var minerCreateCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
+message to be mined as this is required to return the address of the new miner. 
+Collateral must be enough for <pledge> pledged 1GB sectors.`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in 1GB sectors) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "the amount of collateral to be sent"),
 	},
 	Options: []cmdkit.Option{
@@ -191,6 +220,10 @@ var minerAddAskCmd = &cmds.Command{
 }
 
 var minerOwnerCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Show the actor address of <miner>",
+		ShortDescription: `Given <miner> miner address, output the address of the actor that owns the miner.`,
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
@@ -220,7 +253,7 @@ var minerPowerCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get the power of a miner versus the total storage market power",
 		ShortDescription: `Check the current power of a given miner and total power of the storage market.
-		Values will be output as a ratio where the first number is the miner power and second is the total market power.`,
+Values will be output as a ratio where the first number is the miner power and second is the total market power.`,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
 		minerAddr, err := optionalAddr(req.Arguments[0])

@@ -1,0 +1,51 @@
+FROM golang:1.10-stretch
+MAINTAINER Filecoin Dev Team
+
+RUN apt-get update && apt-get install -y ca-certificates file sudo clang
+RUN curl -sSf https://static.rust-lang.org/rustup.sh | sh -
+
+# This docker file is a modified version of
+# https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
+# Thanks Lars :)
+
+ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+
+COPY . $SRC_DIR
+
+# Build genesis server
+RUN cd $SRC_DIR \
+&& go run ./build/*go deps \
+&& go build -o ./genesis-file-server ./tools/genesis-file-server/main.go
+
+RUN cd
+
+# Get su-exec, a very minimal tool for dropping privileges,
+# and tini, a very minimal init daemon for containers
+ENV SUEXEC_VERSION v0.2
+ENV TINI_VERSION v0.16.1
+RUN set -x \
+  && cd /tmp \
+  && git clone https://github.com/ncopa/su-exec.git \
+  && cd su-exec \
+  && git checkout -q $SUEXEC_VERSION \
+  && make \
+  && cd /tmp \
+  && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
+  && chmod +x tini
+
+
+# Now comes the actual target image, which aims to be as small as possible.
+FROM busybox:1-glibc
+MAINTAINER Filecoin Dev Team
+
+# Get the binary, entrypoint script, and TLS CAs from the build container.
+ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+COPY --from=0 $SRC_DIR/genesis-file-server /usr/local/bin/genesis-file-server
+COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
+COPY --from=0 /tmp/tini /sbin/tini
+COPY --from=0 /etc/ssl/certs /etc/ssl/certs
+
+EXPOSE 8080
+
+# There's an fs-repo, and initializes one if there isn't.
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/genesis-file-server", "-port=8080", "-genesis-file-path=/opt/genesis/genesis.car"]
