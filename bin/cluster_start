@@ -2,7 +2,7 @@
 set -x
 
 echo "in cluster_start"
-grep -qs "minerAddress" /var/local/filecoin/config.toml /dev/null 2>&1
+grep -qs "minerAddress" /var/local/filecoin/config.json /dev/null 2>&1
 if [ "$?" -eq "0" ]; then
   echo "minerAddress exists, likely restart"
   (/usr/local/bin/node_restart)&
