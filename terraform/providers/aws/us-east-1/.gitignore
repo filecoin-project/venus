@@ -1,3 +1,0 @@
-*.backup
-.terraform/
-*.tfvars

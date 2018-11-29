@@ -92,6 +92,22 @@ func (api *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (
 	return power, nil
 }
 
+func (api *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
+	bytes, _, err := api.api.Message().Query(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getPledge",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	power := big.NewInt(0).SetBytes(bytes[0])
+
+	return power, nil
+}
+
 func (api *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
 	bytes, _, err := api.api.Message().Query(
 		ctx,

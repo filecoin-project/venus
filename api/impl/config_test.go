@@ -60,15 +60,16 @@ func TestConfigSet(t *testing.T) {
 			return nil
 		})[0]
 		api := New(n)
-		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
+		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
-		out, err := api.Config().Set("bootstrap", tomlBlob)
+		err := api.Config().Set("bootstrap", jsonBlob)
+		require.NoError(err)
+		out, err := api.Config().Get("bootstrap")
 		require.NoError(err)
 
 		// validate output
 		expected := config.NewDefaultConfig().Bootstrap
 		expected.Addresses = []string{"bootup1", "bootup2"}
-		expected.Period = ""
 		assert.Equal(expected, out)
 
 		// validate config write
@@ -90,25 +91,26 @@ func TestConfigSet(t *testing.T) {
 		api := New(n)
 
 		// bad key
-		tomlBlob := `{addresses = ["bootup1", "bootup2"]}  `
+		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
-		_, err := api.Config().Set("botstrap", tomlBlob)
-		assert.EqualError(err, "key: botstrap invalid for config")
+		err := api.Config().Set("botstrap", jsonBlob)
+		assert.EqualError(err, "json: unknown field \"botstrap\"")
 
 		// bad value type (bootstrap is a struct not a list)
-		tomlBlobBadType := `["bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", tomlBlobBadType)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: Near line 2 (last key parsed 'bootstrap'): expected '.' or ']' to end table name, but got ',' instead")
+		jsonBlobBadType := `["bootup1", "bootup2"]`
+		err = api.Config().Set("bootstrap", jsonBlobBadType)
+		assert.Error(err)
 
-		// bad TOML
-		tomlBlobInvalid := `{addresses =[""bootup1", "bootup2"]`
-		_, err = api.Config().Set("bootstrap", tomlBlobInvalid)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: bootstrap: Near line 1 (last key parsed 'bootstrap.addresses'): expected a comma or array terminator ']', but got 'b' instead")
+		// bad JSON
+		jsonBlobInvalid := `{"addresses": [bootup1, "bootup2"]}`
+
+		err = api.Config().Set("bootstrap", jsonBlobInvalid)
+		assert.EqualError(err, "json: cannot unmarshal string into Go struct field Config.bootstrap of type config.BootstrapConfig")
 
 		// bad address
-		tomlBlobBadAddr := `"fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"`
-		_, err = api.Config().Set("wallet.defaultAddress", tomlBlobBadAddr)
-		assert.EqualError(err, "input could not be marshaled to sub-config at: wallet.defaultAddress: invalid character")
+		jsonBlobBadAddr := "fcqnyc0muxjajygqavu645m8ja04vckk2kcorrupt"
+		err = api.Config().Set("wallet.defaultAddress", jsonBlobBadAddr)
+		assert.EqualError(err, "invalid character")
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {
@@ -118,8 +120,8 @@ func TestConfigSet(t *testing.T) {
 		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
 		api := New(n)
 
-		_, err := api.Config().Set("heartbeat.nickname", "\"Bad Nickname\"")
+		err := api.Config().Set("heartbeat.nickname", "Bad Nickname")
 
-		assert.EqualError(err, "node nickname must only contain letters")
+		assert.EqualError(err, `"heartbeat.nickname" must only contain letters`)
 	})
 }

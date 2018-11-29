@@ -196,6 +196,10 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
 	},
+	"getPledge": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.Integer},
+	},
 	"getPower": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.Integer},
@@ -462,6 +466,24 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 	}
 
 	return 0, nil
+}
+
+// GetPledge returns the number of pledged sectors
+func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.PledgeSectors, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	pledgeSectors, ok := ret.(*big.Int)
+	if !ok {
+		return nil, 1, errors.NewFaultError("Failed to retrieve pledge sectors")
+	}
+
+	return pledgeSectors, 0, nil
 }
 
 // GetPower returns the amount of proven sectors for this miner.
