@@ -75,6 +75,45 @@ const (
 var rootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "A decentralized storage network",
+		Subcommands: `
+START RUNNING FILECOIN
+  go-filecoin init                   - Initialize a filecoin repo
+  go-filecoin config <key> [<value>] - Get and set filecoin config values
+  go-filecoin daemon                 - Start a long-running daemon process
+  go-filecoin wallet                 - Manage your filecoin wallets
+  go-filecoin address                - Interact with addresses
+
+STORE AND RETRIEVE DATA
+  go-filecoin client                 - Make deals, store data, retrieve data
+  go-filecoin retrieval-client       - Manage retrieval client operations
+
+MINE
+  go-filecoin miner                  - Manage a single miner actor
+  go-filecoin mining                 - Manage all mining operations for a node
+
+VIEW DATA STRUCTURES
+  go-filecoin chain                  - Inspect the filecoin blockchain
+  go-filecoin dag                    - Interact with IPLD DAG objects
+  go-filecoin show                   - Get human-readable representations of filecoin objects
+
+NETWORK COMMANDS
+  go-filecoin bootstrap              - Interact with bootstrap addresses
+  go-filecoin id                     - Show info about the network peers
+  go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
+  go-filecoin swarm                  - Interact with the swarm
+
+ACTOR COMMANDS
+  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts.
+  go-filecoin paych                  - Payment channel operations
+
+MESSAGE COMMANDS
+  go-filecoin message                - Manage messages
+  go-filecoin mpool                  - View the mempool of outstanding messages
+
+  TOOL COMMANDS
+  go-filecoin log                    - Interact with the daemon event log output.
+  go-filecoin version                - Show go-filecoin version information
+`,
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
