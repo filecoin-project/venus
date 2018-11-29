@@ -38,7 +38,7 @@ Filecoin is a decentralized storage network that turns the world’s unused stor
 👋**Trying out the project for the first time?** We highly recommend the [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started) in the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki/).
 
 ### System Requirements
-Filecoin can run on most Linux and MacOS systems. Windows is not yet officially supported.
+Filecoin can run on most Linux and MacOS systems. Windows is not yet supported.
 
 ### Install from Binary
 
