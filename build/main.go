@@ -100,14 +100,21 @@ func runCapture(name string) string {
 	return strings.Trim(string(output), lineBreak)
 }
 
-// deps installs all dependencies
-func deps() {
-	log.Println("Installing dependencies...")
-
+func clearParamcacheCommands() []command {
 	cachepath := os.Getenv("FILECOIN_PARAMETER_CACHE")
 	if cachepath == "" {
 		cachepath = "/tmp/filecoin-proof-parameters"
 	}
+
+	return []command{
+		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
+		cmd("./proofs/rust-proofs/target/release/paramcache"),
+	}
+}
+
+// deps installs all dependencies
+func deps() {
+	log.Println("Installing dependencies...")
 
 	cmds := []command{
 		cmd("git submodule update --init"),
@@ -131,9 +138,9 @@ func deps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
 		cmdWithDir("./proofs/rust-proofs", "cargo update"),
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
-		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
-    cmd("./proofs/rust-proofs/target/release/paramcache"),
 	}
+
+	cmds = append(cmds, clearParamcacheCommands()...)
 
 	for _, c := range cmds {
 		runCmd(c)
@@ -154,6 +161,9 @@ func smartdeps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo update"),
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
+
+	cmds = append(cmds, clearParamcacheCommands()...)
+
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",
