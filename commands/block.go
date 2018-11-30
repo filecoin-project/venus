@@ -8,7 +8,7 @@ import (
 
 var showCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Get human-readable representations of Filecoin objects",
+		Tagline: "Get human-readable representations of filecoin objects",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"block": showBlockCmd,

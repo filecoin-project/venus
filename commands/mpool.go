@@ -12,7 +12,7 @@ import (
 
 var mpoolCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "View the mempool",
+		Tagline: "View the mempool of outstanding messages",
 	},
 	Options: []cmdkit.Option{
 		cmdkit.UintOption("wait-for-count", "block until this number of messages are in the pool").WithDefault(0),

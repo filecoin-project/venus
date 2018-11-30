@@ -16,7 +16,7 @@ import (
 // swarmCmd contains swarm commands.
 var swarmCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Interact with the swarm.",
+		Tagline: "Interact with the swarm",
 		ShortDescription: `
 'go-filecoin swarm' is a tool to manipulate the libp2p swarm. The swarm is the
 component that opens, listens for, and maintains connections to other

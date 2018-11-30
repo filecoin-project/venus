@@ -30,7 +30,7 @@ var sigCh = make(chan os.Signal, 1)
 
 var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Start a long-running daemon-process",
+		Tagline: "Start a long-running daemon process",
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(SwarmListen),

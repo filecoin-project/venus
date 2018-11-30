@@ -11,7 +11,7 @@ import (
 
 var miningCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Manage mining operations",
+		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"once":  miningOnceCmd,

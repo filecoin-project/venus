@@ -12,7 +12,7 @@ import (
 
 var actorCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Interact with actors",
+		Tagline: "Interact with actors. Actors are built-in smart contracts.",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"ls": actorLsCmd,
