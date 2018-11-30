@@ -110,7 +110,7 @@ MESSAGE COMMANDS
   go-filecoin message                - Manage messages
   go-filecoin mpool                  - View the mempool of outstanding messages
 
-  TOOL COMMANDS
+TOOL COMMANDS
   go-filecoin log                    - Interact with the daemon event log output.
   go-filecoin version                - Show go-filecoin version information
 `,
