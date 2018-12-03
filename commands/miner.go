@@ -32,7 +32,7 @@ var minerCmd = &cmds.Command{
 
 var minerPledgeCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "View number of pledged, 1GB sectors for <miner>",
+		Tagline:          "View number of pledged 1GB sectors for <miner>",
 		ShortDescription: `Shows the number of pledged 1GB sectors for the given miner address`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -62,11 +62,11 @@ var minerCreateCmd = &cmds.Command{
 		Tagline: "Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
-Collateral must be enough for <pledge> pledged 1GB sectors.`,
+Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in 1GB sectors) for the miner"),
-		cmdkit.StringArg("collateral", true, false, "the amount of collateral to be sent"),
+		cmdkit.StringArg("collateral", true, false, "the amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
@@ -172,8 +172,8 @@ var minerAddAskCmd = &cmds.Command{
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
-		cmdkit.StringArg("price", true, false, "the price of the ask"),
-		cmdkit.StringArg("expiry", true, false, "how long this ask is valid for, in blocks"),
+		cmdkit.StringArg("price", true, false, "the price in FIL of the ask"),
+		cmdkit.StringArg("expiry", true, false, "how long this ask is valid for in blocks"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the ask from"),

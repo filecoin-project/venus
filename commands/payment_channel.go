@@ -36,7 +36,7 @@ message to be mined to get the channelID.`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("target", true, false, "address of account that will redeem funds"),
-		cmdkit.StringArg("amount", true, false, "filecoin amount for the channel"),
+		cmdkit.StringArg("amount", true, false, "amount in FIL for the channel"),
 		cmdkit.StringArg("eol", true, false, "the block height at which the channel should expire"),
 	},
 	Options: []cmdkit.Option{
@@ -140,7 +140,7 @@ var voucherCmd = &cmds.Command{
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("channel", true, false, "channel id of channel from which to create voucher"),
-		cmdkit.StringArg("amount", true, false, "filecoin amount of this voucher"),
+		cmdkit.StringArg("amount", true, false, "amount in FIL of this voucher"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address for which to retrieve channels"),
@@ -292,7 +292,7 @@ var extendCmd = &cmds.Command{
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("channel", true, false, "id of channel to extend"),
-		cmdkit.StringArg("amount", true, false, "filecoin amount for the channel"),
+		cmdkit.StringArg("amount", true, false, "amount in FIL for the channel"),
 		cmdkit.StringArg("eol", true, false, "the block height at which the channel should expire"),
 	},
 	Options: []cmdkit.Option{
