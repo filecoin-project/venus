@@ -309,6 +309,25 @@ Deployed via CI by tagging a commit with `redeploy_test_cluster`
 - Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
 - Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
 
+To connect a Filecoin Node to the Test Cluster:
+
+```bash
+# Initalize the daemon to connect to the cluster and download the cluster genesis block
+go-filecoin init --cluster-test --genesisfile=http://test.kittyhawk.wtf:8020/genesis.car
+
+# Start the daemon (backgrounded for simplicity here)
+go-filecoin daemon
+
+# Give filecoin a nickname if you'd like (appears along side the PeerID in dashboard)
+go-filecoin config heartbeat.nickname "Porkchop"
+
+# Configure the filecoin daemon to connect to the clusters dashboard
+go-filecoin config heartbeat.beatTarget "/dns4/test.kittyhawk.wtf/tcp/9081/ipfs/QmVR3UFv588pSu8AxSw9C6DrMHiUFkWwdty8ajgPvtWaGU"
+
+```
+
+
+
 ### Nightly Cluster
 
 Deployed from master by CI every day at 0600 UTC
@@ -319,6 +338,25 @@ Deployed from master by CI every day at 0600 UTC
 - Block explorer: http://nightly.kittyhawk.wtf:8000/
 - Prometheus Endpoint: http://nightly.kittyhawk.wtf:9082/metrics
 - Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9082/nodes
+
+To connect a Filecoin Node to the Nightly Cluster:
+
+```bash
+# Initalize the daemon to connect to the cluster and download the cluster genesis block
+go-filecoin init --cluster-nightly --genesisfile=http://nightly.kittyhawk.wtf:8020/genesis.car
+
+# Start the daemon (backgrounded for simplicity here)
+go-filecoin daemon
+
+# Give filecoin a nickname if you'd like (appears along side the PeerID in dashboard)
+go-filecoin config heartbeat.nickname "Tatertot"
+
+# Configure the filecoin daemon to connect to the clusters dashboard
+go-filecoin config heartbeat.beatTarget "/dns4/nightly.kittyhawk.wtf/tcp/9081/ipfs/QmVR3UFv588pSu8AxSw9C6DrMHiUFkWwdty8ajgPvtWaGU"
+
+```
+
+
 
 #
 
