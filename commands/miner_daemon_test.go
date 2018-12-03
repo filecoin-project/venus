@@ -37,7 +37,7 @@ func TestMinerHelp(t *testing.T) {
 			"miner add-ask <miner> <price> <expiry> - Add an ask to the storage market",
 			"miner create <pledge> <collateral>     - Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
 			"miner owner <miner>                    - Show the actor address of <miner>",
-			"miner pledge <miner>                   - View number of pledged, 1GB sectors for <miner>",
+			"miner pledge <miner>                   - View number of pledged 1GB sectors for <miner>",
 			"miner power <miner>                    - Get the power of a miner versus the total storage market power",
 			"miner update-peerid <address> <peerid> - Change the libp2p identity that a miner is operating",
 		}
@@ -89,7 +89,7 @@ func TestMinerHelp(t *testing.T) {
 		expected := []string{
 			"Issues a new message to the network to create the miner, then waits for the",
 			"message to be mined as this is required to return the address of the new miner",
-			"Collateral must be enough for <pledge> pledged 1GB sectors.",
+			"Collateral must be greater than 0.001 FIL per pledged sector.",
 		}
 
 		result := runHelpSuccess(t, "miner", "create", "--help")

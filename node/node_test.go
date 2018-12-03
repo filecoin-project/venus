@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -395,6 +396,76 @@ func TestNextNonce(t *testing.T) {
 	})
 }
 
+func TestSendMessage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("send message adds to pool", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		requireResetNodeGen(require, node, tif)
+
+		assert.NoError(node.Start(ctx))
+
+		_, err = node.SendMessage(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), "foo", []byte{})
+		require.NoError(err)
+
+		assert.Equal(1, len(node.MsgPool.Pending()))
+	})
+
+	t.Run("send message avoids nonce race", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		node := MakeNodesUnstarted(t, 1, true, true)[0]
+		nodeAddr, err := node.NewAddress()
+		assert.NoError(err)
+
+		tif := consensus.MakeGenesisFunc(
+			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
+		)
+		requireResetNodeGen(require, node, tif)
+
+		assert.NoError(node.Start(ctx))
+
+		var wg sync.WaitGroup
+
+		addTwentyMessages := func(batch int) {
+			defer wg.Done()
+			for i := 0; i < 20; i++ {
+				_, err = node.SendMessage(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				require.NoError(err)
+			}
+		}
+
+		// add messages concurrently
+		for i := 0; i < 3; i++ {
+			wg.Add(1)
+			go addTwentyMessages(i)
+		}
+
+		wg.Wait()
+
+		assert.Equal(60, len(node.MsgPool.Pending()))
+
+		// expect none of the messages to have the same nonce
+		nonces := map[uint64]bool{}
+		for _, message := range node.MsgPool.Pending() {
+			_, found := nonces[uint64(message.Nonce)]
+			require.False(found)
+			nonces[uint64(message.Nonce)] = true
+		}
+	})
+}
+
 func TestNewMessageWithNextNonce(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -426,7 +497,7 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		})
 		chainForTest.SetHead(ctx, headTS)
 
-		msg, err := NewMessageWithNextNonce(ctx, node, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
+		msg, err := newMessageWithNextNonce(ctx, node, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
 		require.NoError(err)
 		assert.Equal(uint64(42), uint64(msg.Nonce))
 	})

@@ -1,36 +1,36 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmWHbPAp5UWfwZE3XCgD93xsCYZyk12tAAQVL3QXLKcWaj/toml"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig       `toml:"api"`
-	Bootstrap *BootstrapConfig `toml:"bootstrap"`
-	Datastore *DatastoreConfig `toml:"datastore"`
-	Swarm     *SwarmConfig     `toml:"swarm"`
-	Mining    *MiningConfig    `toml:"mining"`
-	Wallet    *WalletConfig    `toml:"wallet"`
-	Heartbeat *HeartbeatConfig `toml:"heartbeat"`
+	API       *APIConfig       `json:"api"`
+	Bootstrap *BootstrapConfig `json:"bootstrap"`
+	Datastore *DatastoreConfig `json:"datastore"`
+	Swarm     *SwarmConfig     `json:"swarm"`
+	Mining    *MiningConfig    `json:"mining"`
+	Wallet    *WalletConfig    `json:"wallet"`
+	Heartbeat *HeartbeatConfig `json:"heartbeat"`
 }
 
 // APIConfig holds all configuration options related to the api.
 type APIConfig struct {
-	Address                       string   `toml:"address"`
-	AccessControlAllowOrigin      []string `toml:"accessControlAllowOrigin"`
-	AccessControlAllowCredentials bool     `toml:"accessControlAllowCredentials"`
-	AccessControlAllowMethods     []string `toml:"accessControlAllowMethods"`
+	Address                       string   `json:"address"`
+	AccessControlAllowOrigin      []string `json:"accessControlAllowOrigin"`
+	AccessControlAllowCredentials bool     `json:"accessControlAllowCredentials"`
+	AccessControlAllowMethods     []string `json:"accessControlAllowMethods"`
 }
 
 func newDefaultAPIConfig() *APIConfig {
@@ -49,8 +49,17 @@ func newDefaultAPIConfig() *APIConfig {
 // DatastoreConfig holds all the configuration options for the datastore.
 // TODO: use the advanced datastore configuration from ipfs
 type DatastoreConfig struct {
-	Type string `toml:"type"`
-	Path string `toml:"path"`
+	Type string `json:"type"`
+	Path string `json:"path"`
+}
+
+// Validators hold the list of validation functions for each configuration
+// property. Validators must take a key and json string respectively as
+// arguments, and must return either an error or nil depending on whether or not
+// the given key and value are valid. Validators will only be run if a property
+// being set matches the name given in this map.
+var Validators = map[string]func(string, string) error{
+	"heartbeat.nickname": validateLettersOnly,
 }
 
 func newDefaultDatastoreConfig() *DatastoreConfig {
@@ -62,7 +71,7 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address string `toml:"address"`
+	Address string `json:"address"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {
@@ -73,10 +82,10 @@ func newDefaultSwarmConfig() *SwarmConfig {
 
 // BootstrapConfig holds all configuration options related to bootstrap nodes
 type BootstrapConfig struct {
-	Relays           []string `toml:"relays"`
-	Addresses        []string `toml:"addresses"`
-	MinPeerThreshold int      `toml:"minPeerThreshold,omitempty"`
-	Period           string   `toml:"period,omitempty"`
+	Relays           []string `json:"relays,omitempty"`
+	Addresses        []string `json:"addresses"`
+	MinPeerThreshold int      `json:"minPeerThreshold"`
+	Period           string   `json:"period,omitempty"`
 }
 
 // TODO: provide bootstrap node addresses
@@ -90,8 +99,8 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
-	MinerAddress            address.Address `toml:"minerAddress"`
-	AutoSealIntervalSeconds uint            `toml:"autoSealIntervalSeconds"`
+	MinerAddress            address.Address `json:"minerAddress"`
+	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
@@ -103,7 +112,7 @@ func newDefaultMiningConfig() *MiningConfig {
 
 // WalletConfig holds all configuration options related to the wallet.
 type WalletConfig struct {
-	DefaultAddress address.Address `toml:"defaultAddress,omitempty"`
+	DefaultAddress address.Address `json:"defaultAddress,omitempty"`
 }
 
 func newDefaultWalletConfig() *WalletConfig {
@@ -115,15 +124,15 @@ func newDefaultWalletConfig() *WalletConfig {
 // HeartbeatConfig holds all configuration options related to node heartbeat.
 type HeartbeatConfig struct {
 	// BeatTarget represents the address the filecoin node will send heartbeats to.
-	BeatTarget string `toml:"beatTarget"`
+	BeatTarget string `json:"beatTarget"`
 	// BeatPeriod represents how frequently heartbeats are sent.
 	// Golang duration units are accepted.
-	BeatPeriod string `toml:"beatPeriod"`
+	BeatPeriod string `json:"beatPeriod"`
 	// ReconnectPeriod represents how long the node waits before attempting to reconnect.
 	// Golang duration units are accepted.
-	ReconnectPeriod string `toml:"reconnectPeriod"`
+	ReconnectPeriod string `json:"reconnectPeriod"`
 	// Nickname represents the nickname of the filecoin node,
-	Nickname string `toml:"nickname"`
+	Nickname string `json:"nickname"`
 }
 
 func newDefaultHeartbeatConfig() *HeartbeatConfig {
@@ -157,7 +166,13 @@ func (cfg *Config) WriteFile(file string) error {
 	}
 	defer f.Close() // nolint: errcheck
 
-	return toml.NewEncoder(f).Encode(*cfg)
+	configString, err := json.MarshalIndent(*cfg, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprint(f, string(configString))
+	return err
 }
 
 // ReadFile reads a config file from disk.
@@ -168,52 +183,65 @@ func ReadFile(file string) (*Config, error) {
 	}
 
 	cfg := NewDefaultConfig()
-	if _, err := toml.DecodeReader(f, cfg); err != nil {
+	rawConfig, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	if len(rawConfig) == 0 {
+		return cfg, nil
+	}
+
+	err = json.Unmarshal(rawConfig, &cfg)
+	if err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
 }
 
-// traverseConfig contains the shared traversal logic for getting and setting
-// config values.  It uses reflection to find the sub-struct referenced by `key`
-// and applies a processing function to the referenced struct
-func (cfg *Config) traverseConfig(key string,
-	f func(reflect.Value, string) (interface{}, error)) (interface{}, error) {
+// Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
+// or 'datastore' to the json key value pair encoded in jsonVal.
+func (cfg *Config) Set(dottedKey string, jsonString string) error {
+	if !json.Valid([]byte(jsonString)) {
+		jsonBytes, _ := json.Marshal(jsonString)
+		jsonString = string(jsonBytes)
+	}
+
+	if err := validate(dottedKey, jsonString); err != nil {
+		return err
+	}
+
+	keys := strings.Split(dottedKey, ".")
+	for i := len(keys) - 1; i >= 0; i-- {
+		jsonString = fmt.Sprintf(`{ "%s": %s }`, keys[i], jsonString)
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(jsonString))
+	decoder.DisallowUnknownFields()
+
+	return decoder.Decode(&cfg)
+}
+
+// Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
+func (cfg *Config) Get(key string) (interface{}, error) {
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	keyTags := strings.Split(key, ".")
 OUTER:
 	for j, keyTag := range keyTags {
-		switch v.Type().Kind() {
-		case reflect.Struct:
+		if v.Type().Kind() == reflect.Struct {
 			for i := 0; i < v.NumField(); i++ {
-				tomlTag := strings.Split(
-					v.Type().Field(i).Tag.Get("toml"),
+				jsonTag := strings.Split(
+					v.Type().Field(i).Tag.Get("json"),
 					",")[0]
-				if tomlTag == keyTag {
+				if jsonTag == keyTag {
 					v = v.Field(i)
 					if j == len(keyTags)-1 {
-						return f(v, key)
+						return v.Interface(), nil
 					}
 					v = reflect.Indirect(v) // only attempt one dereference
 					continue OUTER
 				}
 			}
-		case reflect.Array, reflect.Slice:
-			i64, err := strconv.ParseUint(keyTag, 0, 0)
-			if err != nil {
-				return nil, fmt.Errorf("non-integer key into slice")
-			}
-			i := int(i64)
-			if i > v.Len()-1 {
-				return nil, fmt.Errorf("key into slice out of range")
-			}
-			v = v.Index(i)
-			if j == len(keyTags)-1 {
-				return f(v, key)
-			}
-			v = reflect.Indirect(v) // only attempt one dereference
-			continue OUTER
 		}
 
 		return nil, fmt.Errorf("key: %s invalid for config", key)
@@ -222,99 +250,40 @@ OUTER:
 	return nil, fmt.Errorf("empty key is invalid")
 }
 
-// prependKey includes the TOML key in the tomlVal blob necessary for correct
-// marshaling.  Ordinary tables require "[key]\n" prepended.  All others,
-// including inline tables and arrays require "k = " prepended, where k is the
-// last period separated substring of key. This function assumes all tables
-// within an array are specified in inline format.
-func prependKey(tomlVal string, key string, fieldT reflect.Type) string {
-	ks := strings.Split(key, ".")
-	k := ks[len(ks)-1]
-	fieldK := fieldT.Kind()
-	if fieldK == reflect.Ptr {
-		fieldK = fieldT.Elem().Kind() // only attempt one dereference
+// validate runs validations on a given key and json string. validate uses the
+// validators map defined at the top of this file to determine which validations
+// to use for each key.
+func validate(dottedKey string, jsonString string) error {
+	var obj interface{}
+	if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
+		return err
 	}
-
-	switch fieldK {
-	case reflect.Struct:
-		tomlVal = strings.TrimSpace(tomlVal)
-		// inline table
-		if strings.HasPrefix(tomlVal, "{") {
-			return fmt.Sprintf("%s=%s", k, tomlVal)
+	// recursively validate sub-keys by partially unmarshalling
+	if reflect.ValueOf(obj).Kind() == reflect.Map {
+		var obj map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(jsonString), &obj); err != nil {
+			return err
 		}
-		return fmt.Sprintf("[%s]\n%s", key, tomlVal)
-	default:
-		return fmt.Sprintf("%s=%s", k, tomlVal)
-	}
-}
-
-// fieldToSet calculates the reflector Value to set the config at the given key
-// based on the user provided toml blob.
-func fieldToSet(key string, tomlVal string, fieldT reflect.Type) (reflect.Value, error) {
-	// set up a struct with this field for unmarshaling
-	tomlValKey := prependKey(tomlVal, key, fieldT)
-	ks := strings.Split(key, ".")
-	k := ks[len(ks)-1]
-
-	field := reflect.StructField{
-		Name: "Field",
-		Type: fieldT,
-		Tag:  reflect.StructTag("toml:" + "\"" + k + "\""),
-	}
-	recvT := reflect.StructOf([]reflect.StructField{field})
-	valToRecv := reflect.New(recvT)
-
-	_, err := toml.Decode(tomlValKey, valToRecv.Interface())
-	if err != nil {
-		msg := fmt.Sprintf("input could not be marshaled to sub-config at: %s", key)
-		return valToRecv, errors.Wrap(err, msg)
-	}
-	return valToRecv.Elem().Field(0), nil
-}
-
-// Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
-// or 'datastore' to the toml key value pair encoded in tomlVal.  Note, Set
-// only handles arrays of tables specified in inline format
-func (cfg *Config) Set(key string, tomlVal string) (interface{}, error) {
-	f := func(v reflect.Value, key string) (interface{}, error) {
-		// dereference pointer types for marshaling
-		setT := v.Type()
-		var recvT reflect.Type
-		if setT.Kind() == reflect.Ptr {
-			recvT = setT.Elem()
-		} else {
-			recvT = setT
-		}
-
-		if key == "heartbeat.nickname" {
-			match, _ := regexp.MatchString("^\"?[a-zA-Z]+\"?$", tomlVal)
-			if !match {
-				return nil, errors.New("node nickname must only contain letters")
+		for key := range obj {
+			if err := validate(dottedKey+"."+key, string(obj[key])); err != nil {
+				return err
 			}
 		}
-
-		valToSet, err := fieldToSet(key, tomlVal, recvT)
-		if err != nil {
-			return nil, err
-		}
-		// add pointers back for setting
-		if setT.Kind() == reflect.Ptr {
-			valToSet = valToSet.Addr()
-		}
-
-		v.Set(valToSet)
-
-		return v.Interface(), nil
+		return nil
 	}
 
-	return cfg.traverseConfig(key, f)
+	if validationFunc, present := Validators[dottedKey]; present {
+		return validationFunc(dottedKey, jsonString)
+	}
+
+	return nil
 }
 
-// Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
-func (cfg *Config) Get(key string) (interface{}, error) {
-	f := func(v reflect.Value, key string) (interface{}, error) {
-		return v.Interface(), nil
+// validateLettersOnly validates that a given value contains only letters. If it
+// does not, an error is returned using the given key for the message.
+func validateLettersOnly(key string, value string) error {
+	if match, _ := regexp.MatchString("^\"[a-zA-Z]+\"$", value); !match {
+		return errors.Errorf(`"%s" must only contain letters`, key)
 	}
-
-	return cfg.traverseConfig(key, f)
+	return nil
 }

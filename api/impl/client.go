@@ -2,8 +2,10 @@ package impl
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"math/big"
+
+	"github.com/filecoin-project/go-filecoin/abi"
 
 	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
 	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
@@ -72,7 +74,7 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 	go func() {
 		defer close(out)
 		err = st.ForEachActor(ctx, func(addr address.Address, act *actor.Actor) error {
-			if act.Code != types.MinerActorCodeCid {
+			if !types.MinerActorCodeCid.Equals(act.Code) {
 				return nil
 			}
 
@@ -84,20 +86,32 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 				return err
 			}
 
-			var asks []miner.Ask
-			if err := cbor.DecodeInto(ret[0], &asks); err != nil {
+			var asksIds []uint64
+			if err := cbor.DecodeInto(ret[0], &asksIds); err != nil {
 				return err
 			}
 
-			for _, a := range asks {
-				if !a.ID.IsUint64() {
-					return fmt.Errorf("ask had bad ID: %s", a.ID)
+			for _, id := range asksIds {
+				// encode the parameters
+				encodedParams, err := abi.ToEncodedValues(big.NewInt(int64(id)))
+				if err != nil {
+					return err
+				}
+
+				ret, _, err := nd.CallQueryMethod(ctx, addr, "getAsk", encodedParams, nil)
+				if err != nil {
+					return err
+				}
+
+				var ask miner.Ask
+				if err := cbor.DecodeInto(ret[0], &ask); err != nil {
+					return err
 				}
 
 				out <- mapi.Ask{
-					Expiry: a.Expiry,
-					ID:     a.ID.Uint64(),
-					Price:  a.Price,
+					Expiry: ask.Expiry,
+					ID:     ask.ID.Uint64(),
+					Price:  ask.Price,
 					Miner:  addr,
 				}
 			}

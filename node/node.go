@@ -89,6 +89,7 @@ type Node struct {
 	PowerTable  consensus.PowerTableView
 
 	MessageWaiter *message.Waiter
+	messageLock   sync.Mutex
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -856,10 +857,14 @@ func NextNonce(ctx context.Context, node *Node, address address.Address) (nonce 
 	return nonce, nil
 }
 
-// NewMessageWithNextNonce returns a new types.Message whose
+// newMessageWithNextNonce returns a new types.Message whose
 // nonce is set to our best guess at the next appropriate value
 // (see NextNonce).
-func NewMessageWithNextNonce(ctx context.Context, node *Node, from, to address.Address, value *types.AttoFIL, method string, params []byte) (_ *types.Message, err error) {
+// This function is unsafe for concurrent calling.
+// Creating multiple messages from the same actor before adding
+// them to the message pool will result
+// in duplicate nonces. Use node.SendMessage() instead.
+func newMessageWithNextNonce(ctx context.Context, node *Node, from, to address.Address, value *types.AttoFIL, method string, params []byte) (_ *types.Message, err error) {
 	ctx = log.Start(ctx, "Node.NewMessageWithNextNonce")
 	defer func() {
 		log.FinishWithErr(ctx, err)
@@ -952,26 +957,8 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	if err != nil {
 		return nil, err
 	}
-	params, err := abi.ToEncodedValues(big.NewInt(int64(pledge)), pubkey, pid)
-	if err != nil {
-		return nil, err
-	}
 
-	msg, err := NewMessageWithNextNonce(ctx, node, accountAddr, address.StorageMarketAddress, collateral, "createMiner", params)
-	if err != nil {
-		return nil, err
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := node.AddNewMessage(ctx, smsg); err != nil {
-		return nil, err
-	}
-
-	smsgCid, err := smsg.Cid()
+	smsgCid, err := node.SendMessage(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -1107,7 +1094,11 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 		return nil, errors.Wrap(err, "invalid params")
 	}
 
-	msg, err := NewMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
+	// lock to avoid race for message nonce
+	node.messageLock.Lock()
+	defer node.messageLock.Unlock()
+
+	msg, err := newMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid message")
 	}
@@ -1117,7 +1108,7 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 		return nil, errors.Wrap(err, "failed to sign message")
 	}
 
-	if err := node.AddNewMessage(ctx, smsg); err != nil {
+	if err := node.addNewMessage(ctx, smsg); err != nil {
 		return nil, errors.Wrap(err, "failed to submit message")
 	}
 

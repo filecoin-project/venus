@@ -100,6 +100,20 @@ func runCapture(name string) string {
 	return strings.Trim(string(output), lineBreak)
 }
 
+// clearParamCacheCommands clears the groth parameter cache used when sealing a
+// sector to ensure consistent builds
+func clearParamCacheCommands() []command {
+	cachepath := os.Getenv("FILECOIN_PARAMETER_CACHE")
+	if cachepath == "" {
+		cachepath = "/tmp/filecoin-proof-parameters"
+	}
+
+	return []command{
+		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
+		cmd("./proofs/rust-proofs/target/release/paramcache"),
+	}
+}
+
 // deps installs all dependencies
 func deps() {
 	log.Println("Installing dependencies...")
@@ -128,6 +142,8 @@ func deps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
 
+	cmds = append(cmds, clearParamCacheCommands()...)
+
 	for _, c := range cmds {
 		runCmd(c)
 	}
@@ -147,6 +163,9 @@ func smartdeps() {
 		cmdWithDir("./proofs/rust-proofs", "cargo update"),
 		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
 	}
+
+	cmds = append(cmds, clearParamCacheCommands()...)
+
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",

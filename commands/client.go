@@ -16,7 +16,7 @@ import (
 
 var clientCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Manage client operations",
+		Tagline: "Make deals, store data, retrieve data",
 	},
 	Subcommands: map[string]*cmds.Command{
 		"cat":                  clientCatCmd,
