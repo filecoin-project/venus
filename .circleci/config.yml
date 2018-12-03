@@ -227,10 +227,22 @@ jobs:
       - run: git submodule update --init
 
       - run:
-          name: build & push image
+          name: build & push image - filecoin
           command: |
             docker build -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
+
+      - run:
+          name: build & push image - genesis file server
+          command: |
+            docker build -f Dockerfile.genesis -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
+
+      - run:
+          name: build & push image - faucet
+          command: |
+            docker build -f Dockerfile.faucet -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
 
 workflows:
   version: 2
