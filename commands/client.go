@@ -80,12 +80,30 @@ var clientImportDataCmd = &cmds.Command{
 var clientProposeStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "propose a storage deal with a storage miner",
+		ShortDescription: `Sends a storage deal proposal to a miner`,
+		LongDescription: `
+Send a storage deal proposal to a miner. The first and second arguments to this
+subcommand should be the address of the miner to send the deal and the CID of
+the data to be stored respectively.
+
+The third argument should be an ask ID representing how much to exchange for the
+storage deal. Existing asks can be listed with the following command:
+
+$ go-filecoin client list-asks
+
+See the miner command help text for more information on asks.
+
+The last argument should be the number of blocks for which to store the data.
+New blocks are generated about every 30 seconds, so the time given should be
+represented as a count of 30 second intervals. For example, 1 minute would be 2,
+1 hour would be 120, and 1 day would be 2880.
+`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "address of miner to propose to"),
-		cmdkit.StringArg("data", true, false, "cid of the data to be stored"),
-		cmdkit.StringArg("ask", true, false, "ID of ask to propose a deal for"),
-		cmdkit.StringArg("duration", true, false, "number of blocks to store the data for"),
+		cmdkit.StringArg("miner", true, false, "address of miner to send storage proposal"),
+		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
+		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
+		cmdkit.StringArg("duration", true, false, "time in blocks (about 30 seconds) to store data"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		miner, err := address.NewFromString(req.Arguments[0])
