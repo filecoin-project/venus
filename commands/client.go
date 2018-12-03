@@ -30,9 +30,15 @@ var clientCmd = &cmds.Command{
 var clientCatCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Read out data stored on the network",
+		ShortDescription: `Export storage deal data from the storage market`,
+		LongDescription: `
+Prints data from the storage market specified with a given CID to stdout. The
+only argumen should be the CID to return. The data will be returned in what ever
+format was provided with the data initially.
+`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "cid of data to read"),
+		cmdkit.StringArg("cid", true, false, "CID of data to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		c, err := cid.Decode(req.Arguments[0])
@@ -51,7 +57,13 @@ var clientCatCmd = &cmds.Command{
 
 var clientImportDataCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "import data into the local node",
+		Tagline: "Import data into the local node",
+		ShortDescription: `Import storage deal data into the storage market`,
+		LongDescription: `
+Imports data previously exported with the client cat command into the storage
+market. This command takes only one argument, the path of the file to import.
+See the go-filecoin client cat command for more details.
+`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.FileArg("file", true, false, "path to file to import").EnableStdin(),
@@ -79,7 +91,7 @@ var clientImportDataCmd = &cmds.Command{
 
 var clientProposeStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "propose a storage deal with a storage miner",
+		Tagline: "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
 Send a storage deal proposal to a miner. The first and second arguments to this
@@ -146,10 +158,16 @@ represented as a count of 30 second intervals. For example, 1 minute would be 2,
 
 var clientQueryStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "query a storage deals status",
+		Tagline: "Query a storage deals status",
+		ShortDescription: `Checks the status of a given storage deal proposal`,
+		LongDescription: `
+Checks the status of a storage deal proposal specified the id as the only
+argument. Results will be returned as a formatted string with status and message
+unless otherwise specified by the --enc flag.
+`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("id", true, false, "cid of deal to query"),
+		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		propcid, err := cid.Decode(req.Arguments[0])
@@ -176,7 +194,13 @@ var clientQueryStorageDealCmd = &cmds.Command{
 
 var clientListAsksCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "list all asks in the storage market",
+		Tagline: "List all asks in the storage market",
+		ShortDescription: `Lists all asks in the current storage market`,
+		LongDescription: `
+Lists all asks in the storage market. This command takes no arguments. Results
+will be returned as a space separated table with miner, id, price and expiration
+respectively.
+`,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		asksCh, err := GetAPI(env).Client().ListAsks(req.Context)
