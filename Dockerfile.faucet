@@ -1,7 +1,7 @@
 FROM golang:1.10-stretch
 MAINTAINER Filecoin Dev Team
 
-RUN apt-get update && apt-get install -y ca-certificates file sudo
+RUN apt-get update && apt-get install -y ca-certificates file sudo clang
 RUN curl -sSf https://static.rust-lang.org/rustup.sh | sh -
 
 # This docker file is a modified version of
