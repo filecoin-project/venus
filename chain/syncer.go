@@ -3,7 +3,7 @@ package chain
 import (
 	"context"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 )
 
 // Syncer handles new blocks, either from the network or the local node's

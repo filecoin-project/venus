@@ -3,7 +3,7 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )

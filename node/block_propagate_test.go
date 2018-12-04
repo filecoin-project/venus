@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	peerstore "gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
+	peerstore "gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/types"
 

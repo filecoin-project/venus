@@ -1,7 +1,7 @@
 package impl
 
 import (
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"

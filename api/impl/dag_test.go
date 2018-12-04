@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
+	"gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
 
 	"github.com/stretchr/testify/assert"
 

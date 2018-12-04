@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	writer "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log/writer"
+	writer "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log/writer"
 )
 
 type nodeLog struct {
