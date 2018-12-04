@@ -52,8 +52,12 @@ func TestSectorBuilder(t *testing.T) {
 				piecesToSeal := 10
 				for i := 0; i < piecesToSeal; i++ {
 					go func() {
-						pieceCid := h.requireAddPiece(requireRandomBytes(t, h.maxBytesPerSector/3))
-						addedPieceCidCh <- pieceCid.String()
+						pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector/3))
+						if err != nil {
+							errs <- err
+						} else {
+							addedPieceCidCh <- pieceCid.String()
+						}
 					}()
 				}
 
@@ -63,7 +67,7 @@ func TestSectorBuilder(t *testing.T) {
 				// wait for a bit of time for the various seal() ops to complete
 				// and capture the CIDs of added pieces for comparison with the
 				// CIDS of sealed pieces
-				timeout := time.After(120 * time.Second)
+				timeout := time.After(240 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -77,7 +81,7 @@ func TestSectorBuilder(t *testing.T) {
 						sealedPieceCids = append(sealedPieceCids, pieceCid)
 						piecesToSeal--
 					case <-timeout:
-						t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
+						t.Fatalf("timed out waiting for seal ops to complete (%d remaining) (cfg %s)", piecesToSeal, cfgToString(cfg))
 					}
 				}
 
@@ -136,13 +140,17 @@ func TestSectorBuilder(t *testing.T) {
 				piecesToSeal := 5
 				for i := 0; i < piecesToSeal; i++ {
 					go func() {
-						pieceCid := h.requireAddPiece(requireRandomBytes(t, h.maxBytesPerSector))
-						pieceCidSet.Store(pieceCid.String(), true)
+						pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector))
+						if err != nil {
+							errs <- err
+						} else {
+							pieceCidSet.Store(pieceCid.String(), true)
+						}
 					}()
 				}
 
 				// realistically, this should take 15-20 seconds
-				timeout := time.After(120 * time.Second)
+				timeout := time.After(240 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -154,7 +162,7 @@ func TestSectorBuilder(t *testing.T) {
 						pieceCidSet.Delete(sealed.String())
 						piecesToSeal--
 					case <-timeout:
-						t.Fatalf("timed out waiting for seal ops to complete (%d remaining)", piecesToSeal)
+						t.Fatalf("timed out waiting for seal ops to complete (%d remaining) (cfg %s)", piecesToSeal, cfgToString(cfg))
 					}
 				}
 
@@ -168,7 +176,7 @@ func TestSectorBuilder(t *testing.T) {
 				}
 
 				pieceCidSet.Range(func(key, value interface{}) bool {
-					t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
+					t.Fatalf("should have removed each piece from set as they were sealed (found %s) (cfg %s)", key, cfgToString(cfg))
 					return false
 				})
 			}()
@@ -190,7 +198,7 @@ func TestSectorBuilder(t *testing.T) {
 				sectorID, err := h.sectorBuilder.AddPiece(context.Background(), info)
 				require.NoError(t, err)
 
-				timeout := time.After(120 * time.Second)
+				timeout := time.After(240 * time.Second)
 			Loop:
 				for {
 					select {
@@ -228,4 +236,14 @@ func TestSectorBuilder(t *testing.T) {
 			}()
 		}
 	})
+}
+
+func cfgToString(cfg sectorBuilderType) string {
+	if cfg == golang {
+		return "golang"
+	} else if cfg == rust {
+		return "rust"
+	} else {
+		panic("unknown cfg")
+	}
 }
