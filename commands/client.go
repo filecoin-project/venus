@@ -30,10 +30,9 @@ var clientCmd = &cmds.Command{
 var clientCatCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Read out data stored on the network",
-		ShortDescription: `Export storage deal data from the storage market`,
-		LongDescription: `
+		ShortDescription: `
 Prints data from the storage market specified with a given CID to stdout. The
-only argumen should be the CID to return. The data will be returned in what ever
+only argument should be the CID to return. The data will be returned in whatever
 format was provided with the data initially.
 `,
 	},
@@ -58,8 +57,7 @@ format was provided with the data initially.
 var clientImportDataCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Import data into the local node",
-		ShortDescription: `Import storage deal data into the storage market`,
-		LongDescription: `
+		ShortDescription: `
 Imports data previously exported with the client cat command into the storage
 market. This command takes only one argument, the path of the file to import.
 See the go-filecoin client cat command for more details.
@@ -94,21 +92,17 @@ var clientProposeStorageDealCmd = &cmds.Command{
 		Tagline: "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
-Send a storage deal proposal to a miner. The first and second arguments to this
-subcommand should be the address of the miner to send the deal and the CID of
-the data to be stored respectively.
-
-The third argument should be an ask ID representing how much to exchange for the
-storage deal. Existing asks can be listed with the following command:
+Send a storage deal proposal to a miner. IDs provided to this command should
+represent valid asks. Existing asks can be listed with the following command:
 
 $ go-filecoin client list-asks
 
 See the miner command help text for more information on asks.
 
-The last argument should be the number of blocks for which to store the data.
-New blocks are generated about every 30 seconds, so the time given should be
-represented as a count of 30 second intervals. For example, 1 minute would be 2,
-1 hour would be 120, and 1 day would be 2880.
+Duration should be specified with the number of blocks for which to store the
+data. New blocks are generated about every 30 seconds, so the time given should
+be represented as a count of 30 second intervals. For example, 1 minute would
+be 2, 1 hour would be 120, and 1 day would be 2880.
 `,
 	},
 	Arguments: []cmdkit.Argument{
@@ -158,12 +152,11 @@ represented as a count of 30 second intervals. For example, 1 minute would be 2,
 
 var clientQueryStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Query a storage deals status",
-		ShortDescription: `Checks the status of a given storage deal proposal`,
-		LongDescription: `
-Checks the status of a storage deal proposal specified the id as the only
-argument. Results will be returned as a formatted string with status and message
-unless otherwise specified by the --enc flag.
+		Tagline: "Query a storage deal's status",
+		ShortDescription: `
+Checks the status of the storage deal proposal specified by the id. Results will
+be returned as a formatted string with deal status and message unless otherwise
+specified by the --enc flag.
 `,
 	},
 	Arguments: []cmdkit.Argument{
@@ -195,8 +188,7 @@ unless otherwise specified by the --enc flag.
 var clientListAsksCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "List all asks in the storage market",
-		ShortDescription: `Lists all asks in the current storage market`,
-		LongDescription: `
+		ShortDescription: `
 Lists all asks in the storage market. This command takes no arguments. Results
 will be returned as a space separated table with miner, id, price and expiration
 respectively.
