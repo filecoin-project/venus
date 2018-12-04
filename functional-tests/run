@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+
+# Shell Tests
+. $DIR/retrieval
+
+# Go tests
+go test "./$(basename $DIR)/..."

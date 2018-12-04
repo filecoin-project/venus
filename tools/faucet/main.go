@@ -115,6 +115,7 @@ func main() {
 		addrLimiter.Add(target, time.Now().Add(*expiry))
 
 		log.Info("Request successful. Message CID: %s", msgcid.String())
+		w.Header().Add("Message-Cid", msgcid.String())
 		w.WriteHeader(200)
 		fmt.Fprint(w, "Success! Message CID: ") // nolint: errcheck
 		fmt.Fprintln(w, msgcid.String())        // nolint: errcheck
