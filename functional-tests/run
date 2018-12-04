@@ -4,10 +4,9 @@ set -e
 set -o pipefail
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-cd $DIR
 
 # Shell Tests
-./retrieval
+. $DIR/retrieval
 
 # Go tests
-go test ./...
+go test "./$(basename $DIR)/..."
