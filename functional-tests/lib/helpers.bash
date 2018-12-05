@@ -7,6 +7,19 @@ function finish {
   echo "cleaning up..."
   kill "$MN_PID" || true
   kill "$CL_PID" || true
+
+  # Force KILL after 10 seconds if the daemons don't exit
+  (sleep 10 && kill -9 "$MN_PID") & WAITER_MN=$!
+  (sleep 10 && kill -9 "$CL_PID") & WAITER_CL=$!
+
+  # Wait for daemons to exit
+  wait "$MN_PID"
+  wait "$CL_PID"
+
+  # Kill watchers
+  kill $WAITER_MN
+  kill $WAITER_CL
+
   rm -f "${PIECE_1_PATH}"
   rm -f "${PIECE_2_PATH}"
   rm -f "${UNSEAL_PATH}"
