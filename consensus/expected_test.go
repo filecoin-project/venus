@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
 	"gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"  
+	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
 
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
@@ -107,10 +107,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	})
 	ctx := context.Background()
 	stateRoot, err := stateTree.Flush(ctx)
-	require.NoError(err)	
+	require.NoError(err)
 
 	_, blocks, parent := setUpContextAndBlocks(stateRoot)
-
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		ptv := consensus.NewTestPowerTableView(1, 5)
@@ -118,8 +117,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
 		require.NoError(err)
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
-		require.NoError(err)		
-		
+		require.NoError(err)
+
 		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
 		assert.NoError(err)
 	})
@@ -130,7 +129,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
 		require.NoError(err)
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
-		require.NoError(err)		
+		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
 		assert.EqualError(err, "couldn't compute ticket: Couldn't get minerPower: something went wrong with the miner power")
