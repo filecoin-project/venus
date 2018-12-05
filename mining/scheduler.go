@@ -55,6 +55,7 @@ import (
 // cancels any run in progress and shuts the scheduler down.
 type Scheduler interface {
 	Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup)
+	IsStarted() bool
 }
 
 type timingScheduler struct {
@@ -65,6 +66,8 @@ type timingScheduler struct {
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
 	pollHeadFunc func() consensus.TipSet
+
+	isStarted bool
 }
 
 // MineDelayConversionFactor is the constant that divides the mining block time
@@ -89,6 +92,8 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 
 	log.Debugf("scheduler starting main receive loop")
 	doneWg.Add(1)
+
+	s.isStarted = true
 	go func() {
 		defer doneWg.Done()
 		nullBlkCount := 0
@@ -97,6 +102,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 		for {
 			select {
 			case <-miningCtx.Done():
+				s.isStarted = false
 				return
 			default:
 			}
@@ -135,6 +141,12 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	return outCh, &extDoneWg
 }
 
+// IsStarted is called when starting mining to tell whether the scheduler should be
+// started
+func (s *timingScheduler) IsStarted() bool {
+	return s.isStarted
+}
+
 // nextNullBlkCount determines how many null blocks should be mined on top of
 // the current base tipset, currBase, given the previous base, prevBase and the
 // previous number of null blocks mined on the previous base, prevNullBlkCount.
@@ -159,6 +171,9 @@ func NewScheduler(w Worker, md time.Duration, f func() consensus.TipSet) Schedul
 // MineOnce is a convenience function that presents a synchronous blocking
 // interface to the mining scheduler.  The worker will mine as many null blocks
 // on top of the input tipset as necessary and output the winning block.
+// It makes a polling function that simply returns the provided tipset.
+// Then the scheduler takes this polling function, and the worker and the
+// mining duration
 func MineOnce(ctx context.Context, w Worker, md time.Duration, ts consensus.TipSet) (Output, error) {
 	pollHeadFunc := func() consensus.TipSet {
 		return ts

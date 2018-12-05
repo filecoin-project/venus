@@ -608,6 +608,9 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
+	if node.isMining() {
+		return errors.New("Node is already mining")
+	}
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
@@ -655,8 +658,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
+	}
+
+	// paranoid check
+	if !node.MiningScheduler.IsStarted() {
 		node.miningCtx, node.cancelMining = context.WithCancel(context.Background())
 		outCh, doneWg := node.MiningScheduler.Start(node.miningCtx)
+
 		node.miningDoneWg = doneWg
 		node.AddNewlyMinedBlock = node.addNewlyMinedBlock
 		node.miningDoneWg.Add(1)
