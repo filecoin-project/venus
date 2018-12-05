@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"io"
+	"strings"
 
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
@@ -77,6 +78,7 @@ $ go-filecoin config bootstrap
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		api := GetAPI(env).Config()
 		key := req.Arguments[0]
+		var value string
 
 		if len(req.Arguments) == 2 {
 			value = req.Arguments[1]
@@ -87,29 +89,17 @@ $ go-filecoin config bootstrap
 		}
 
 		if value != "" {
-			res, err := api.Set(key, value)
-
+			err := api.Set(key, value)
 			if err != nil {
 				return err
 			}
-
-			if err != nil {
-				return err
-			}
-
-			return re.Emit(output)
 		}
 		res, err := api.Get(key)
 		if err != nil {
 			return err
 		}
 
-		output, err := makeOutput(res)
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(output)
+		return re.Emit(res)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(func(req *cmds.Request, w io.Writer, res interface{}) error {

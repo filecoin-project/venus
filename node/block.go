@@ -39,7 +39,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	return node.PubSub.Publish(BlockTopic, b.ToNode().RawData())
 }
 
-func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message) (err error) {
+func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (err error) {
 	ctx = log.Start(ctx, "Node.processBlock")
 	defer func() {
 		log.FinishWithErr(ctx, err)

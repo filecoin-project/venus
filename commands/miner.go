@@ -38,22 +38,21 @@ var minerPledgeCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the miner address"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		pledgeSectors, err := GetAPI(env).Miner().GetPledge(req.Context, minerAddr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		str := fmt.Sprintf("%d", pledgeSectors)
 		re.Emit(str) // nolint: errcheck
+		return nil
 	},
 }
 

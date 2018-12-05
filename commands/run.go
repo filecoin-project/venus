@@ -131,13 +131,11 @@ func CliRun(ctx context.Context, root *cmds.Command,
 		encType = cmds.JSON
 	}
 
-	// first if condition checks the command's encoder map, second checks global encoder map (cmd vs. cmds)
-	if enc, ok := cmd.Encoders[encType]; ok {
-		re, exitCh = cmdsCli.NewResponseEmitter(stdout, stderr, enc, req)
-	} else if enc, ok := cmds.Encoders[encType]; ok {
-		re, exitCh = cmdsCli.NewResponseEmitter(stdout, stderr, enc, req)
-	} else {
-		return 1, fmt.Errorf("could not find matching encoder for enctype %#v", encType)
+	// TODO(Frrist) Validate changes after updating cmds package
+	re, exitCh, err = cmdsCli.NewResponseEmitter(stdout, stderr, req)
+	if err != nil {
+		printErr(err)
+		return 1, err
 	}
 
 	// Run the command and send any errors that it returns to the error

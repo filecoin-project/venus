@@ -76,7 +76,7 @@ var (
 	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
-type floodSubProcessorFunc func(ctx context.Context, msg *floodsub.Message) error
+type pubSubProcessorFunc func(ctx context.Context, msg *pubsub.Message) error
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -121,9 +121,9 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	PubSub            *floodsub.PubSub
-	BlockSub          *floodsub.Subscription
-	MessageSub        *floodsub.Subscription
+	PubSub            *pubsub.PubSub
+	BlockSub          *pubsub.Subscription
+	MessageSub        *pubsub.Subscription
 	Ping              *ping.PingService
 	HelloSvc          *hello.Handler
 	RelayBootstrapper *filnet.Bootstrapper
@@ -307,9 +307,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
-	fsub, err := floodsub.NewFloodSub(ctx, peerHost)
+	fsub, err := pubsub.NewFloodSub(ctx, peerHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up floodsub")
+		return nil, errors.Wrap(err, "failed to set up pubsub")
 	}
 	backend, err := wallet.NewDSBackend(nc.Repo.WalletDatastore())
 	if err != nil {
@@ -1108,7 +1108,7 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}
 
-	if err := node.AddNewMessage(ctx, smsg); err != nil {
+	if err := node.addNewMessage(ctx, smsg); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to submit message")
 	}
 
@@ -1142,7 +1142,7 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	return types.NewBlockHeight(height), nil
 }
 
-func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *floodsub.Subscription, sname string) {
+func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s *pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
 		if err != nil {
