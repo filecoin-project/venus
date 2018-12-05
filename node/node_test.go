@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -135,6 +136,41 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NotNil(nd.ChainReader.Head())
 	nd.Stop(ctx)
+}
+
+func TestNodeStartMining(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	//require := require.New(t)
+	ctx := context.Background()
+
+	seed := MakeChainSeed(t, TestGenCfg)
+	minerNode := NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+
+	seed.GiveKey(t, minerNode, 0)
+	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode)
+	assert.NoError(err)
+
+	assert.NoError(minerNode.Start(ctx))
+
+	t.Run("Start/Stop/Start results in a MiningScheduler that is started", func(t *testing.T) {
+		assert.NoError(minerNode.StartMining(ctx))
+		defer minerNode.StopMining(ctx)
+		assert.True(minerNode.MiningScheduler.IsStarted())
+		minerNode.StopMining(ctx)
+		assert.False(minerNode.MiningScheduler.IsStarted())
+		assert.NoError(minerNode.StartMining(ctx))
+		assert.True(minerNode.MiningScheduler.IsStarted())
+	})
+
+	t.Run("Start + Start gives an error message saying mining is already started", func(t *testing.T) {
+		assert.NoError(minerNode.StartMining(ctx))
+		defer minerNode.StopMining(ctx)
+		err := minerNode.StartMining(ctx)
+		assert.Error(err, "Node is already mining")
+	})
+
 }
 
 // skipped anyway, now commented out.  With new mining we really need something here though.

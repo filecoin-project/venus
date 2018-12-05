@@ -21,12 +21,20 @@ const MineDelayTest = time.Millisecond * 500
 // MockScheduler is a mock Scheduler.
 type MockScheduler struct {
 	mock.Mock
+	isStarted bool
 }
 
 // Start is the MockScheduler's Start function.
 func (s *MockScheduler) Start(ctx context.Context) (<-chan Output, *sync.WaitGroup) {
 	args := s.Called(ctx)
+	s.isStarted = true
 	return args.Get(0).(<-chan Output), args.Get(1).(*sync.WaitGroup)
+}
+
+// IsStarted is the equivalent to scheduler.IsStarted, to know when the scheduler
+// has been started.
+func (s *MockScheduler) IsStarted() bool {
+	return s.isStarted
 }
 
 // TestWorker is a worker with a customizable work function to facilitate
