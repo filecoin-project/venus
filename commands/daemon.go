@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds/http"
-	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	"gx/ipfs/QmQVUtnrNGtCRkCMpXgpApfzQjc8FDaDVxHqWH8cnZQeh5/go-multiaddr-net"
+	ma "gx/ipfs/QmRKLtwMw131aK7ugC3G7ybpumMz78YrJe5dzneyindvG1/go-multiaddr"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	writer "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log/writer"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	cmdhttp "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds/http"
+	writer "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log/writer"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -38,11 +38,8 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
-		if err := daemonRun(req, re, env); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		return daemonRun(req, re, env)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.Encoders[cmds.Text],

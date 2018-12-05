@@ -1,10 +1,10 @@
 package types
 
 import (
-	mh "gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
-	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	ipld "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
+	dag "gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
+	mh "gx/ipfs/QmerPMzPk1mJVowm8KgmoknWa4yCYvvugMPsgWmDNUvDLW/go-multihash"
 )
 
 // DefaultHashFunction represents the default hashing function to use
@@ -14,28 +14,28 @@ const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 var AccountActorCodeObj ipld.Node
 
 // AccountActorCodeCid is the cid of the above object
-var AccountActorCodeCid *cid.Cid
+var AccountActorCodeCid cid.Cid
 
 // StorageMarketActorCodeObj is the code representation of the builtin storage market actor.
 var StorageMarketActorCodeObj ipld.Node
 
 // StorageMarketActorCodeCid is the cid of the above object
-var StorageMarketActorCodeCid *cid.Cid
+var StorageMarketActorCodeCid cid.Cid
 
 // PaymentBrokerActorCodeObj is the code representation of the builtin payment broker actor.
 var PaymentBrokerActorCodeObj ipld.Node
 
 // PaymentBrokerActorCodeCid is the cid of the above object
-var PaymentBrokerActorCodeCid *cid.Cid
+var PaymentBrokerActorCodeCid cid.Cid
 
 // MinerActorCodeObj is the code representation of the builtin miner actor.
 var MinerActorCodeObj ipld.Node
 
 // MinerActorCodeCid is the cid of the above object
-var MinerActorCodeCid *cid.Cid
+var MinerActorCodeCid cid.Cid
 
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
-var ActorCodeCidTypeNames = make(map[*cid.Cid]string)
+var ActorCodeCidTypeNames = make(map[cid.Cid]string)
 
 func init() {
 	AccountActorCodeObj = dag.NewRawNode([]byte("accountactor"))
@@ -57,8 +57,8 @@ func init() {
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
-func ActorCodeTypeName(code *cid.Cid) string {
-	if code == nil {
+func ActorCodeTypeName(code cid.Cid) string {
+	if !code.Defined() {
 		return "EmptyActor"
 	}
 

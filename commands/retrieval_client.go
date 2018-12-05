@@ -1,10 +1,10 @@
 package commands
 
 import (
-	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 )
 
 var retrievalClientCmd = &cmds.Command{
@@ -24,25 +24,22 @@ var clientRetrievePieceCmd = &cmds.Command{
 		cmdkit.StringArg("pid", true, false, "libp2p peer id of storage miner"),
 		cmdkit.StringArg("cid", true, false, "content identifier of piece to read"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerPeerID, err := peer.IDB58Decode(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		pieceCID, err := cid.Decode(req.Arguments[1])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		readCloser, err := GetAPI(env).RetrievalClient().RetrievePiece(req.Context, minerPeerID, pieceCID)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(readCloser) // nolint: errcheck
+		return re.Emit(readCloser)
 	},
 }

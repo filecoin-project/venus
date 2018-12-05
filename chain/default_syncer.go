@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -86,7 +86,7 @@ func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol,
 // WARNING -- this will take one second to error out if blocks are not found.
 // TODO the timeout factor blkWaitTime and maybe the whole timeout mechanism
 // could use some actual thought, this was just a simple first pass.
-func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []*cid.Cid) ([]*types.Block, error) {
+func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
 	var blks []*types.Block
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
@@ -122,7 +122,7 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 //
 // collectChain is the entrypoint to the code that interacts with the network.
 // It does NOT add tipsets to the store.
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []*cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
 	var chain []consensus.TipSet
 	for {
 		var blks []*types.Block
@@ -311,7 +311,7 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts consensus.TipSet) (co
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []*cid.Cid) error {
+func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error {
 	// ********** WARNING **********
 	//
 	// This concurrency model is flawed.  The mutex is held during a possibly

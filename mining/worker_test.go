@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 )
 
 func Test_Mine(t *testing.T) {
@@ -87,7 +87,7 @@ func TestGenerate(t *testing.T) {
 	//  - test nonce gap
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, *cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
 	pool := core.NewMessagePool()
 	// Install the fake actor so we can execute it.
@@ -369,7 +369,7 @@ func TestGenerateError(t *testing.T) {
 
 type StateTreeForTest struct {
 	state.Tree
-	TestFlush func(ctx context.Context) (*cid.Cid, error)
+	TestFlush func(ctx context.Context) (cid.Cid, error)
 }
 
 func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
@@ -380,7 +380,7 @@ func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
 	return &stt
 }
 
-func (st *StateTreeForTest) Flush(ctx context.Context) (*cid.Cid, error) {
+func (st *StateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
@@ -395,8 +395,8 @@ func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, uint64, erro
 func makeExplodingGetStateTree(st state.Tree) func(context.Context, consensus.TipSet) (state.Tree, error) {
 	return func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
-		stt.TestFlush = func(ctx context.Context) (*cid.Cid, error) {
-			return nil, errors.New("boom no flush")
+		stt.TestFlush = func(ctx context.Context) (cid.Cid, error) {
+			return cid.Undef, errors.New("boom no flush")
 		}
 
 		return stt, nil

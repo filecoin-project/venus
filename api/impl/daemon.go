@@ -9,12 +9,12 @@ import (
 	"net/url"
 	"os"
 
-	crypto "gx/ipfs/QmPvyPwuCgJ7pDmrKDxRtsScJgBaM5h4EpRL2qQJsmXf4n/go-libp2p-crypto"
-	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	crypto "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	blockstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	car "gx/ipfs/QmcQSyreJnxiZ1TCop3s5hjgsggpzCNjrbgqzUoQv4ywEW/go-car"
-	blockstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	car "gx/ipfs/QmXJvCikt5h24mb57JAUjaxGxSS6THnpgx81g7Ywpv9ZNd/go-car"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
@@ -213,27 +213,27 @@ func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) erro
 }
 
 // LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
-func LoadGenesis(rep repo.Repo, sourceName string) (*cid.Cid, error) {
+func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
 
 	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
-		return nil, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
+		return cid.Undef, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
 	}
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
 		// recently deployed test cluster.
 		response, err := http.Get(sourceName)
 		if err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 		source = response.Body
 	} else if sourceURL.Scheme != "" {
-		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+		return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
 	} else {
 		file, err := os.Open(sourceName)
 		if err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 		source = file
 	}
@@ -244,11 +244,11 @@ func LoadGenesis(rep repo.Repo, sourceName string) (*cid.Cid, error) {
 
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	if len(ch.Roots) != 1 {
-		return nil, fmt.Errorf("expected car with only a single root")
+		return cid.Undef, fmt.Errorf("expected car with only a single root")
 	}
 
 	return ch.Roots[0], nil

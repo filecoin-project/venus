@@ -2,9 +2,9 @@ package impl
 
 import (
 	"context"
-	"gx/ipfs/QmSbvata2WqNkqGtZNg8MR3SKwnB8iQ7vTPJgWqB8bC5kR/go-multibase"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	"gx/ipfs/QmekxXDhCxCJRNuzmHreuaT3BsuJcsjcXWNrtV9C8DRHtd/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -19,7 +19,7 @@ func newNodePaych(api *nodeAPI) *nodePaych {
 	return &nodePaych{api: api}
 }
 
-func (api *nodePaych) Create(ctx context.Context, fromAddr, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Create(ctx context.Context, fromAddr, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -98,10 +98,10 @@ func (api *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, cha
 	return multibase.Encode(multibase.Base58BTC, cborVoucher)
 }
 
-func (api *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return api.api.Message().Send(
@@ -114,7 +114,7 @@ func (api *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, vouc
 	)
 }
 
-func (api *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (*cid.Cid, error) {
+func (api *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,
@@ -125,10 +125,10 @@ func (api *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, cha
 	)
 }
 
-func (api *nodePaych) Close(ctx context.Context, fromAddr address.Address, voucherRaw string) (*cid.Cid, error) {
+func (api *nodePaych) Close(ctx context.Context, fromAddr address.Address, voucherRaw string) (cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return api.api.Message().Send(
@@ -141,7 +141,7 @@ func (api *nodePaych) Close(ctx context.Context, fromAddr address.Address, vouch
 	)
 }
 
-func (api *nodePaych) Extend(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (*cid.Cid, error) {
+func (api *nodePaych) Extend(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
 	return api.api.Message().Send(
 		ctx,
 		fromAddr,

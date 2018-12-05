@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sort"
 
-	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
+	"gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
+	swarm "gx/ipfs/QmQrYHkcGprZBUFnRigeiZFkaFDBHtmRhDdPpSiiUTRNwv/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	swarm "gx/ipfs/QmYSM6PKnCe9YVPNMisfpoBmczzHkA7h5Wrnc36DtdJhGo/go-libp2p-swarm"
-	"gx/ipfs/QmeKD8YT7887Xu6Z86iZmpYNxrLogJexqxEugSmaf14k64/go-libp2p-peerstore"
+	peer "gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/filnet"

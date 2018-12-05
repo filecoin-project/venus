@@ -3,12 +3,12 @@ package vm
 import (
 	"errors"
 
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	blocks "gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
-	format "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
-	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	blocks "gx/ipfs/QmWoXtvgC8inqFkAATB7cp2Dax7XBi9VDvSg9RCCZufmRk/go-block-format"
+	format "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
+	ipld "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -87,7 +87,7 @@ func (s *storageMap) Flush() error {
 // Storage is a place to hold chunks that are created while processing a block.
 type Storage struct {
 	actor      *actor.Actor
-	chunks     map[string]ipld.Node
+	chunks     map[cid.Cid]ipld.Node
 	blockstore blockstore.Blockstore
 }
 
@@ -96,14 +96,14 @@ var _ exec.Storage = (*Storage)(nil)
 // NewStorage creates a datastore backed storage object for the given actor
 func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
 	return Storage{
-		chunks:     map[string]ipld.Node{},
+		chunks:     map[cid.Cid]ipld.Node{},
 		actor:      act,
 		blockstore: bs,
 	}
 }
 
 // Put adds a node to temporary storage by id.
-func (s Storage) Put(v interface{}) (*cid.Cid, error) {
+func (s Storage) Put(v interface{}) (cid.Cid, error) {
 	var nd format.Node
 	var err error
 	if blk, ok := v.(blocks.Block); ok {
@@ -115,20 +115,19 @@ func (s Storage) Put(v interface{}) (*cid.Cid, error) {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
-		return nil, exec.Errors[exec.ErrDecode]
+		return cid.Undef, exec.Errors[exec.ErrDecode]
 	}
 
 	c := nd.Cid()
-	s.chunks[c.KeyString()] = nd
+	s.chunks[c] = nd
 
 	return c, nil
 }
 
 // Get retrieves a chunk from either temporary storage or its backing store.
 // If the chunk is not found in storage, a vm.ErrNotFound error is returned.
-func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
-	key := cid.KeyString()
-	n, ok := s.chunks[key]
+func (s Storage) Get(cid cid.Cid) ([]byte, error) {
+	n, ok := s.chunks[cid]
 	if ok {
 		return n.RawData(), nil
 	}
@@ -147,9 +146,9 @@ func (s Storage) Get(cid *cid.Cid) ([]byte, error) {
 // Commit updates the head of the current actor to the given cid.
 // The new cid must be the content id of a chunk put in storage.
 // The given oldCid must match the cid of the current actor.
-func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) error {
+func (s Storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
 	// commit to initialize actor only permitted if Head and expected id are nil
-	if oldCid != nil && s.actor.Head != nil && !oldCid.Equals(s.actor.Head) {
+	if oldCid.Defined() && s.actor.Head.Defined() && !oldCid.Equals(s.actor.Head) {
 		return exec.Errors[exec.ErrStaleHead]
 	} else if oldCid != s.actor.Head { // covers case where only one cid is nil
 		return exec.Errors[exec.ErrStaleHead]
@@ -166,7 +165,7 @@ func (s Storage) Commit(newCid *cid.Cid, oldCid *cid.Cid) error {
 }
 
 // Head return the current head of the actor's memory
-func (s Storage) Head() *cid.Cid {
+func (s Storage) Head() cid.Cid {
 	return s.actor.Head
 }
 
@@ -177,14 +176,13 @@ func (s *Storage) Prune() error {
 		return err
 	}
 
-	if len(liveIds) == len(s.chunks) {
+	if liveIds.Len() == len(s.chunks) {
 		return nil
 	}
 
-	for idKey := range s.chunks {
-		_, ok := liveIds[idKey]
-		if !ok {
-			delete(s.chunks, idKey)
+	for id := range s.chunks {
+		if !liveIds.Has(id) {
+			delete(s.chunks, id)
 		}
 	}
 
@@ -198,10 +196,11 @@ func (s *Storage) Flush() error {
 		return err
 	}
 
-	blks := make([]blocks.Block, 0, len(liveIds))
-	for idKey := range liveIds {
-		blks = append(blks, s.chunks[idKey])
-	}
+	blks := make([]blocks.Block, 0, liveIds.Len())
+	liveIds.ForEach(func(c cid.Cid) error { // nolint: errcheck
+		blks = append(blks, s.chunks[c])
+		return nil
+	})
 
 	return s.blockstore.PutMany(blks)
 }
@@ -209,11 +208,11 @@ func (s *Storage) Flush() error {
 // liveDescendantIds returns the ids of all chunks reachable from the given id for this storage.
 // That is the given id , any links in the chunk referenced by the given id, or any links
 // referenced from those links.
-func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
-	if id == nil {
-		return make(map[string]*cid.Cid), nil
+func (s Storage) liveDescendantIds(id cid.Cid) (*cid.Set, error) {
+	if !id.Defined() {
+		return cid.NewSet(), nil
 	}
-	chunk, ok := s.chunks[id.KeyString()]
+	chunk, ok := s.chunks[id]
 	if !ok {
 		has, err := s.blockstore.Has(id)
 		if err != nil {
@@ -222,22 +221,24 @@ func (s Storage) liveDescendantIds(id *cid.Cid) (map[string]*cid.Cid, error) {
 
 		// unstaged chunk that exists in datastore is valid, but halts recursion.
 		if has {
-			return map[string]*cid.Cid{}, nil
+			return cid.NewSet(), nil
 		}
 
 		return nil, vmerrors.NewFaultErrorf("linked node, %s, missing from storage during flush", id)
 	}
 
-	ids := map[string]*cid.Cid{id.KeyString(): id}
+	ids := cid.NewSet()
+	ids.Add(id)
 
 	for _, link := range chunk.Links() {
 		linked, err := s.liveDescendantIds(link.Cid)
 		if err != nil {
 			return nil, err
 		}
-		for idKey, id := range linked {
-			ids[idKey] = id
-		}
+		linked.ForEach(func(id cid.Cid) error { // nolint: errcheck
+			ids.Add(id)
+			return nil
+		})
 	}
 
 	return ids, nil

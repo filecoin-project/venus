@@ -19,7 +19,7 @@ func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address addr
 	if err != nil {
 		return 0, err
 	}
-	if actor.Code != nil && !actor.Code.Equals(types.AccountActorCodeCid) {
+	if actor.Code.Defined() && !actor.Code.Equals(types.AccountActorCodeCid) {
 		return 0, xerrors.New("actor not an account or empty actor")
 	}
 

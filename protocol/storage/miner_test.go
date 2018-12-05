@@ -1,7 +1,7 @@
 package storage
 
 import (
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/sectorbuilder"
@@ -26,8 +26,8 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
-		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSector) {
+		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSector) {
 			assert.Equal(sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}
@@ -45,8 +45,8 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
-		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid *cid.Cid, sector *sectorbuilder.SealedSector) {
+		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSector) {
 			assert.Equal(sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}
@@ -64,8 +64,8 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
-		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onFail = func(dealCid *cid.Cid, message string) {
+		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(message, wantMessage)
 			gotCids = append(gotCids, dealCid)
 		}
@@ -83,8 +83,8 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := newDealsAwaitingSeal()
-		gotCids := []*cid.Cid{}
-		dealsAwaitingSeal.onFail = func(dealCid *cid.Cid, message string) {
+		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(message, wantMessage)
 			gotCids = append(gotCids, dealCid)
 		}

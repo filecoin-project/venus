@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -33,7 +33,7 @@ type ReadStore interface {
 	// exist.
 	GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error)
 	// GetBlock gets a block by cid.
-	GetBlock(ctx context.Context, id *cid.Cid) (*types.Block, error)
+	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
 	HeadEvents() *pubsub.PubSub
 	// Head returns the head of the chain tracked by the store.
@@ -42,7 +42,7 @@ type ReadStore interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 
 	BlockHistory(ctx context.Context) <-chan interface{}
-	GenesisCid() *cid.Cid
+	GenesisCid() cid.Cid
 }
 
 // Store wraps the on-disk storage of a valid blockchain.  Callers can get and
@@ -69,8 +69,8 @@ type Store interface {
 	// GetBlocks gets several blocks by cid. In the future there is caching here
 	GetBlocks(ctx context.Context, ids types.SortedCidSet) ([]*types.Block, error)
 	// HasAllBlocks indicates whether the blocks are in the store.
-	HasAllBlocks(ctx context.Context, cs []*cid.Cid) bool
-	HasBlock(ctx context.Context, c *cid.Cid) bool
+	HasAllBlocks(ctx context.Context, cs []cid.Cid) bool
+	HasBlock(ctx context.Context, c cid.Cid) bool
 
 	// SetHead sets the internally tracked  head to the provided tipset.
 	SetHead(ctx context.Context, s consensus.TipSet) error

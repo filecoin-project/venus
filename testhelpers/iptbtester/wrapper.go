@@ -11,7 +11,7 @@ import (
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/stretchr/testify/require"
-	logging "gx/ipfs/QmRREK2CAZ5Re2Bd9zZFG6FeYDppUWt5cMgsoUEp3ktgSr/go-log"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
@@ -56,7 +56,7 @@ func TestActorFormat(t *testing.T) {
 	assert.Contains(formatted, "PaymentBrokerActor")
 }
 
-func requireCid(t *testing.T, data string) *cid.Cid {
+func requireCid(t *testing.T, data string) cid.Cid {
 	prefix := cid.V1Builder{Codec: cid.Raw, MhType: types.DefaultHashFunction}
 	cid, err := prefix.Sum([]byte(data))
 	require.NoError(t, err)

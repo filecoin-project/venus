@@ -2,8 +2,8 @@ package types
 
 import (
 	"encoding/json"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ func TestSortedCidSet(t *testing.T) {
 
 	// Iterate empty set is fine
 	it := s.Iter()
-	assert.Nil(it.Value())
+	assert.Equal(it.Value(), cid.Undef)
 	assert.False(it.Next())
 
 	c1, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pJ")
@@ -53,7 +53,7 @@ func TestSortedCidSet(t *testing.T) {
 	assert.True(it.Next())
 	assert.True(c3.Equals(it.Value()))
 	assert.False(it.Next())
-	assert.Nil(it.Value())
+	assert.Equal(it.Value(), cid.Undef)
 	assert.True(it.Complete())
 
 	assert.True(s.Remove(c2))

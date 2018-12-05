@@ -5,10 +5,10 @@ import (
 	"sort"
 	"sync"
 
-	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -27,25 +27,25 @@ var log = logging.Logger("core")
 type MessagePool struct {
 	lk sync.RWMutex
 
-	pending map[string]*types.SignedMessage // all pending messages
+	pending map[cid.Cid]*types.SignedMessage // all pending messages
 }
 
 // Add adds a message to the pool.
-func (pool *MessagePool) Add(msg *types.SignedMessage) (*cid.Cid, error) {
+func (pool *MessagePool) Add(msg *types.SignedMessage) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
 	c, err := msg.Cid()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create CID")
+		return cid.Undef, errors.Wrap(err, "failed to create CID")
 	}
 
 	// Reject messages with invalid signatires
 	if !msg.VerifySignature() {
-		return nil, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
+		return cid.Undef, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
 	}
 
-	pool.pending[c.KeyString()] = msg
+	pool.pending[c] = msg
 	return c, nil
 }
 
@@ -62,17 +62,17 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 }
 
 // Remove removes the message by CID from the pending pool.
-func (pool *MessagePool) Remove(c *cid.Cid) {
+func (pool *MessagePool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
-	delete(pool.pending, c.KeyString())
+	delete(pool.pending, c)
 }
 
 // NewMessagePool constructs a new MessagePool.
 func NewMessagePool() *MessagePool {
 	return &MessagePool{
-		pending: make(map[string]*types.SignedMessage),
+		pending: make(map[cid.Cid]*types.SignedMessage),
 	}
 }
 
@@ -231,7 +231,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		}
 	}
 	// m.Cid() can error, so collect all the Cids before
-	removeCids := make([]*cid.Cid, len(removeFromPool))
+	removeCids := make([]cid.Cid, len(removeFromPool))
 	for i, m := range removeFromPool {
 		cid, err := m.Cid()
 		if err != nil {

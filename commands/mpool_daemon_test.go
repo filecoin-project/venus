@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/stretchr/testify/assert"
 
@@ -32,7 +32,7 @@ func TestMpool(t *testing.T) {
 		c := strings.Trim(out.ReadStdout(), "\n")
 		ci, err := cid.Decode(c)
 		assert.NoError(err)
-		assert.NotNil(ci)
+		assert.True(ci.Defined())
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {

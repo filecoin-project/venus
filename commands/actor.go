@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 
-	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 )
 
 var actorCmd = &cmds.Command{
@@ -20,16 +20,18 @@ var actorCmd = &cmds.Command{
 }
 
 var actorLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		actors, err := GetAPI(env).Actor().Ls(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		for _, actor := range actors {
-			re.Emit(actor) // nolint: errcheck
+			if err := re.Emit(actor); err != nil {
+				return err
+			}
 		}
+		return nil
 	},
 	Type: &api.ActorView{},
 	Encoders: cmds.EncoderMap{

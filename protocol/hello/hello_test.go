@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	mocknet "gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p/p2p/net/mock"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	mocknet "gx/ipfs/QmVvV8JQmmqPCwXAaesWJPheUiEFQJ9HWRhWhuFuxVQxpR/go-libp2p/p2p/net/mock"
+	peer "gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +22,7 @@ type mockSyncCallback struct {
 	mock.Mock
 }
 
-func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []*cid.Cid, h uint64) {
+func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []cid.Cid, h uint64) {
 	msb.Called(p, cids, h)
 }
 

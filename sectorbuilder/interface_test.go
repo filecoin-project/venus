@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/stretchr/testify/require"
 )
@@ -118,7 +118,7 @@ func TestSectorBuilder(t *testing.T) {
 				// removed when the CID has been sealed into a sector.
 				pieceCidSet := sync.Map{}
 
-				done := make(chan *cid.Cid)
+				done := make(chan cid.Cid)
 				errs := make(chan error)
 
 				go func() {

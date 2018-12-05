@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 )
@@ -20,7 +20,7 @@ var (
 // applying the messages in this tipset to it's parent state.
 type TipSetAndState struct {
 	// root of aggregate state after applying tipset
-	TipSetStateRoot *cid.Cid
+	TipSetStateRoot cid.Cid
 	TipSet          consensus.TipSet
 }
 

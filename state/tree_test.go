@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	mh "gx/ipfs/QmPnFwZ2JXKnXgMw8CdBPxn7FWh6LLdjUjxV1fKHuJnkr8/go-multihash"
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	mh "gx/ipfs/QmerPMzPk1mJVowm8KgmoknWa4yCYvvugMPsgWmDNUvDLW/go-multihash"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -68,7 +68,7 @@ func TestStateErrors(t *testing.T) {
 	assert.Error(err)
 	assert.True(IsActorNotFoundError(err))
 
-	c, err := cid.NewPrefixV0(mh.BLAKE2B_MIN + 31).Sum([]byte("cats"))
+	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
 	assert.NoError(err)
 
 	tr2, err := LoadStateTree(ctx, cst, c, nil)
@@ -107,7 +107,7 @@ func TestStateGetOrCreate(t *testing.T) {
 	t.Run("actor exists", func(t *testing.T) {
 		assert := assert.New(t)
 
-		a := actor.NewActor(nil, types.NewAttoFILFromFIL(10))
+		a := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(10))
 		assert.NoError(tree.SetActor(ctx, addr, a))
 
 		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {

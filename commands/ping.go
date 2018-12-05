@@ -5,9 +5,9 @@ import (
 	"io"
 	"time"
 
-	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	peer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	peer "gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/api"
 )
@@ -27,25 +27,25 @@ trip latency information.
 	Options: []cmdkit.Option{
 		cmdkit.UintOption("count", "n", "Number of ping messages to send.").WithDefault(10),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		peerID, err := peer.IDB58Decode(req.Arguments[0])
 		if err != nil {
-			err = fmt.Errorf("failed to parse peer address '%s': %s", req.Arguments[0], err)
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return fmt.Errorf("failed to parse peer address '%s': %s", req.Arguments[0], err)
 		}
 
 		numPings, _ := req.Options["count"].(uint)
 
 		ch, err := GetAPI(env).Ping().Ping(req.Context, peerID, numPings, time.Second)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		for p := range ch {
-			re.Emit(p) // nolint: errcheck
+			if err := re.Emit(p); err != nil {
+				return err
+			}
 		}
+		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *api.PingResult) error {

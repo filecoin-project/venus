@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
@@ -27,9 +27,11 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
 		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir := getRepoDir(req)
-		re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
+		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
+			return err
+		}
 
 		walletFile, _ := req.Options[WalletFile].(string)
 		walletAddr, _ := req.Options[WalletAddr].(string)
@@ -45,12 +47,11 @@ var initCmd = &cmds.Command{
 			var err error
 			withMiner, err = address.NewFromString(m)
 			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
+				return err
 			}
 		}
 
-		err := GetAPI(env).Daemon().Init(
+		return GetAPI(env).Daemon().Init(
 			req.Context,
 			api.RepoDir(repoDir),
 			api.WalletFile(walletFile),
@@ -63,11 +64,6 @@ var initCmd = &cmds.Command{
 			api.ClusterNightly(clusterNightly),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 		)
-
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(initTextEncoder),

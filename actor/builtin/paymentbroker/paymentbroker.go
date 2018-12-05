@@ -3,9 +3,9 @@ package paymentbroker
 import (
 	"context"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -583,7 +583,7 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 	byChannelID, err := byPayer.Find(ctx, payer.String())
 	if err != nil {
 		if err == hamt.ErrNotFound {
-			return actor.LoadLookup(ctx, storage, nil)
+			return actor.LoadLookup(ctx, storage, cid.Undef)
 		}
 		return nil, err
 	}
@@ -592,5 +592,5 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 		return nil, errors.NewFaultError("Paymentbroker payer is not a Cid")
 	}
 
-	return actor.LoadTypedLookup(ctx, storage, &byChannelCID, &PaymentChannel{})
+	return actor.LoadTypedLookup(ctx, storage, byChannelCID, &PaymentChannel{})
 }

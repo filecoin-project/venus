@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -12,11 +12,11 @@ import (
 type ActorView struct {
 	ActorType string          `json:"actorType"`
 	Address   string          `json:"address"`
-	Code      *cid.Cid        `json:"code"`
+	Code      cid.Cid         `json:"code,omitempty"`
 	Nonce     uint64          `json:"nonce"`
 	Balance   *types.AttoFIL  `json:"balance"`
 	Exports   ReadableExports `json:"exports"`
-	Head      *cid.Cid        `json:"head"`
+	Head      cid.Cid         `json:"head,omitempty"`
 }
 
 // ReadableFunctionSignature is a representation of an actors function signature,

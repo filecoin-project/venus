@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	offline "gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
-	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
-	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
+	offline "gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	dag "gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -109,7 +109,7 @@ func (h sectorBuilderTestHarness) close() {
 	}
 }
 
-func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
+func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) cid.Cid {
 	pieceInfo, err := h.createPieceInfo(pieceData)
 	require.NoError(h.t, err)
 
@@ -119,15 +119,15 @@ func (h sectorBuilderTestHarness) requireAddPiece(pieceData []byte) *cid.Cid {
 	return pieceInfo.Ref
 }
 
-func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (*cid.Cid, error) {
+func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (cid.Cid, error) {
 	pieceInfo, err := h.createPieceInfo(pieceData)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	_, err = h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return pieceInfo.Ref, nil

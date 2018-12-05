@@ -4,11 +4,11 @@ import (
 	"context"
 	"math/big"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -24,7 +24,7 @@ import (
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (*cid.Cid, state.Tree) {
+func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -67,13 +67,13 @@ func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr a
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid) *actor.Actor {
+func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid, amt *types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})

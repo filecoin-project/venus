@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmV6FjemM1K8oXjrvuq3wuVWWoU2TLDPmNnKrxHzY3v6Ai/go-multiaddr-net"
+	"gx/ipfs/QmQVUtnrNGtCRkCMpXgpApfzQjc8FDaDVxHqWH8cnZQeh5/go-multiaddr-net"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	ma "gx/ipfs/QmRKLtwMw131aK7ugC3G7ybpumMz78YrJe5dzneyindvG1/go-multiaddr"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ma "gx/ipfs/QmYmsdtJ3HsodkePE3eU3TsCaP2YvPZJ4LoXnNkDE5Tpt7/go-multiaddr"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -484,7 +484,7 @@ func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr str
 
 // WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
 // block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
-func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid *cid.Cid) *types.MessageReceipt {
+func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.MessageReceipt {
 	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
 	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
 	rcpt := &types.MessageReceipt{}

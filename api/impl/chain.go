@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 )
 
 type nodeChain struct {
@@ -15,7 +15,7 @@ func newNodeChain(api *nodeAPI) *nodeChain {
 	return &nodeChain{api: api}
 }
 
-func (api *nodeChain) Head() ([]*cid.Cid, error) {
+func (api *nodeChain) Head() ([]cid.Cid, error) {
 	ts := api.api.node.ChainReader.Head()
 	if len(ts) == 0 {
 		return nil, ErrHeaviestTipSetNotFound

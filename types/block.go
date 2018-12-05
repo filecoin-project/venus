@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"sort"
 
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	node "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	node "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -52,14 +52,14 @@ type Block struct {
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
-	StateRoot *cid.Cid `json:"stateRoot"`
+	StateRoot cid.Cid `json:"stateRoot,omitempty" refmt:",omitempty"`
 
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts []*MessageReceipt `json:"messageReceipts"`
 }
 
 // Cid returns the content id of this block.
-func (b *Block) Cid() *cid.Cid {
+func (b *Block) Cid() cid.Cid {
 	// TODO: Cache ToNode() and/or ToNode().Cid(). We should be able to do this efficiently using
 	// DeepEquals(), or perhaps our own Equals() interface.
 	return b.ToNode().Cid()

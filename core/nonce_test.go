@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"

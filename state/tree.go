@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/shared"
+	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/obj"
+	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -22,7 +22,7 @@ type tree struct {
 	root  *hamt.Node
 	store *hamt.CborIpldStore
 
-	builtinActors map[string]exec.ExecutableActor
+	builtinActors map[cid.Cid]exec.ExecutableActor
 }
 
 // RevID identifies a snapshot of the StateTree.
@@ -34,7 +34,7 @@ type ActorWalkFn func(address.Address, *actor.Actor) error
 // Tree is the interface that stateTree implements. It provides accessors
 // to Get and Set actors in a backing store by address.
 type Tree interface {
-	Flush(ctx context.Context) (*cid.Cid, error)
+	Flush(ctx context.Context) (cid.Cid, error)
 
 	GetActor(ctx context.Context, a address.Address) (*actor.Actor, error)
 	GetOrCreateActor(ctx context.Context, a address.Address, c func() (*actor.Actor, error)) (*actor.Actor, error)
@@ -42,13 +42,13 @@ type Tree interface {
 
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
 
-	GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error)
+	GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error)
 }
 
 var _ Tree = &tree{}
 
 // LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c *cid.Cid, builtinActors map[string]exec.ExecutableActor) (Tree, error) {
+func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load node")
@@ -67,7 +67,7 @@ func NewEmptyStateTree(store *hamt.CborIpldStore) Tree {
 }
 
 // NewEmptyStateTreeWithActors instantiates a new state tree with no data in it, except for the passed in actors.
-func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[string]exec.ExecutableActor) Tree {
+func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[cid.Cid]exec.ExecutableActor) Tree {
 	s := newEmptyStateTree(store)
 	s.builtinActors = builtinActors
 	return s
@@ -77,15 +77,15 @@ func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
 		root:          hamt.NewNode(store),
 		store:         store,
-		builtinActors: map[string]exec.ExecutableActor{},
+		builtinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
 }
 
 // Flush serialized the state tree and flushes unflushed changes to the backing
 // datastore. The cid of the state tree is returned.
-func (t *tree) Flush(ctx context.Context) (*cid.Cid, error) {
+func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 	if err := t.root.Flush(ctx); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return t.store.Put(ctx, t.root)
@@ -113,11 +113,11 @@ func (e actorNotFoundError) ActorNotFound() bool {
 	return true
 }
 
-func (t *tree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableActor, error) {
-	if codePointer == nil {
+func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
+	if !codePointer.Defined() {
 		return nil, fmt.Errorf("missing code")
 	}
-	actor, ok := t.builtinActors[codePointer.KeyString()]
+	actor, ok := t.builtinActors[codePointer]
 	if !ok {
 		return nil, fmt.Errorf("unknown code: %s", codePointer.String())
 	}
@@ -202,7 +202,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 				return err
 			}
 		}
-		if p.Link != nil {
+		if p.Link.Defined() {
 			n, err := hamt.LoadNode(context.Background(), cst, p.Link)
 			if err != nil {
 				return err
@@ -231,7 +231,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 		for _, kv := range p.KVs {
 			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
 		}
-		if p.Link != nil {
+		if p.Link.Defined() {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
 			if err != nil {
 				fmt.Printf("unable to print link: %s: %s\n", p.Link.String(), err)
@@ -251,14 +251,14 @@ func GetAllActors(t Tree) ([]string, []*actor.Actor) {
 }
 
 // GetAllActorsFromStoreFunc is a function with the signature of GetAllActorsFromStore
-type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, *cid.Cid) ([]string, []*actor.Actor, error)
+type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, cid.Cid) ([]string, []*actor.Actor, error)
 
 // GetAllActorsFunc is a function with the signature of GetAllActors
 type GetAllActorsFunc = func(t Tree) ([]string, []*actor.Actor)
 
 // GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
 // Third returned value is any error that occurred when loading.
-func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot *cid.Cid) ([]string, []*actor.Actor, error) {
+func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot cid.Cid) ([]string, []*actor.Actor, error) {
 	st, err := LoadStateTree(ctx, store, stateRoot, nil)
 	if err != nil {
 		return nil, nil, err
@@ -280,7 +280,7 @@ func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, ac
 			addresses = append(addresses, kv.Key)
 			actors = append(actors, &a)
 		}
-		if p.Link != nil {
+		if p.Link.Defined() {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
 			// Even if we hit an error and can't follow this link, we should
 			// keep traversing its siblings.

@@ -3,9 +3,9 @@ package actor
 
 import (
 	"fmt"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -36,8 +36,8 @@ var (
 //
 // Not safe for concurrent access.
 type Actor struct {
-	Code    *cid.Cid
-	Head    *cid.Cid
+	Code    cid.Cid `refmt:",omitempty"`
+	Head    cid.Cid `refmt:",omitempty"`
 	Nonce   types.Uint64
 	Balance *types.AttoFIL
 }
@@ -49,20 +49,20 @@ func (a *Actor) IncNonce() {
 
 // Cid returns the canonical CID for the actor.
 // TODO: can we avoid returning an error?
-func (a *Actor) Cid() (*cid.Cid, error) {
+func (a *Actor) Cid() (cid.Cid, error) {
 	obj, err := cbor.WrapObject(a, types.DefaultHashFunction, -1)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal to cbor")
+		return cid.Undef, errors.Wrap(err, "failed to marshal to cbor")
 	}
 
 	return obj.Cid(), nil
 }
 
 // NewActor constructs a new actor.
-func NewActor(code *cid.Cid, balance *types.AttoFIL) *Actor {
+func NewActor(code cid.Cid, balance *types.AttoFIL) *Actor {
 	return &Actor{
 		Code:    code,
-		Head:    nil,
+		Head:    cid.Undef,
 		Nonce:   0,
 		Balance: balance,
 	}

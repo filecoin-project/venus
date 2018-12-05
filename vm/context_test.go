@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/stretchr/testify/assert"
 
@@ -62,16 +63,16 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
-	actor1 := actor.NewActor(nil, types.NewAttoFILFromFIL(100))
-	actor2 := actor.NewActor(nil, types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 	newAddress := address.NewForTestGetter()
 
 	mockStateTree := state.MockStateTree{
-		BuiltinActors: map[string]exec.ExecutableActor{},
+		BuiltinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
 	fakeActorCid := types.NewCidForTestGetter()()
-	mockStateTree.BuiltinActors[fakeActorCid.KeyString()] = &actor.FakeActor{}
+	mockStateTree.BuiltinActors[fakeActorCid] = &actor.FakeActor{}
 	tree := state.NewCachedStateTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)

@@ -3,9 +3,9 @@ package node
 import (
 	"context"
 
-	"gx/ipfs/QmT5K5mHn2KUyCDBntKoojQJAJftNzutxzpYR33w8JdN6M/go-libp2p-floodsub"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -30,7 +30,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
-	if err := node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blkCid}); err != nil {
+	if err := node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blkCid}); err != nil {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	return node.PubSub.Publish(BlockTopic, b.ToNode().RawData())
 }
 
-func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message) (err error) {
+func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (err error) {
 	ctx = log.Start(ctx, "Node.processBlock")
 	defer func() {
 		log.FinishWithErr(ctx, err)
@@ -56,7 +56,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg *floodsub.Message)
 	}
 	log.SetTag(ctx, "block", blk)
 
-	err = node.Syncer.HandleNewBlocks(ctx, []*cid.Cid{blk.Cid()})
+	err = node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blk.Cid()})
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")
 	}

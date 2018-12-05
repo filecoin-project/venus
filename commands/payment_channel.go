@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -42,42 +42,37 @@ message to be mined to get the channelID.`,
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		target, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
-			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
-			return
+			return ErrInvalidAmount
 		}
 
 		eol, ok := types.NewBlockHeightFromString(req.Arguments[2], 10)
 		if !ok {
-			re.SetError(ErrInvalidBlockHeight, cmdkit.ErrNormal)
-			return
+			return ErrInvalidBlockHeight
 		}
 
 		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, target, eol, amount)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -92,27 +87,24 @@ var lsCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address for which message is sent"),
 		cmdkit.StringOption("payer", "address for which to retrieve channels (defaults to from if omitted)"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		payerOption := req.Options["payer"]
 		payerAddr, err := optionalAddr(payerOption)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		channels, err := GetAPI(env).Paych().Ls(req.Context, fromAddr, payerAddr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(channels) // nolint: errcheck
+		return re.Emit(channels)
 	},
 	Type: map[string]*paymentbroker.PaymentChannel{},
 	Encoders: cmds.EncoderMap{
@@ -145,32 +137,28 @@ var voucherCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address for which to retrieve channels"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		channel, ok := types.NewChannelIDFromString(req.Arguments[0], 10)
 		if !ok {
-			re.SetError("invalid channel id", cmdkit.ErrNormal)
-			return
+			return fmt.Errorf("invalid channel id")
 		}
 
 		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
-			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
-			return
+			return ErrInvalidAmount
 		}
 
 		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(voucher) // nolint: errcheck
+		return re.Emit(voucher)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, voucher string) error {
@@ -190,24 +178,22 @@ var redeemCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address of the channel target"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -223,30 +209,27 @@ var reclaimCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address of the channel creator"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		channel, ok := types.NewChannelIDFromString(req.Arguments[0], 10)
 		if !ok {
-			re.SetError("invalid channel id", cmdkit.ErrNormal)
-			return
+			return fmt.Errorf("invalid channel id")
 		}
 
 		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, channel)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),
@@ -263,24 +246,22 @@ var closeCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address of the channel target"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -298,42 +279,37 @@ var extendCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address of the channel creator"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		channel, ok := types.NewChannelIDFromString(req.Arguments[0], 10)
 		if !ok {
-			re.SetError("invalid channel id", cmdkit.ErrNormal)
-			return
+			return fmt.Errorf("invalid channel id")
 		}
 
 		amount, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
-			re.SetError(ErrInvalidAmount, cmdkit.ErrNormal)
-			return
+			return ErrInvalidAmount
 		}
 
 		eol, ok := types.NewBlockHeightFromString(req.Arguments[2], 10)
 		if !ok {
-			re.SetError(ErrInvalidBlockHeight, cmdkit.ErrNormal)
-			return
+			return ErrInvalidBlockHeight
 		}
 
 		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, channel, eol, amount)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),

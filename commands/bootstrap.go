@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 )
 
 type bootstrapResult struct {
@@ -22,14 +22,13 @@ var bootstrapCmd = &cmds.Command{
 }
 
 var bootstrapLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		peers, err := GetAPI(env).Bootstrap().Ls(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(&bootstrapResult{peers}) // nolint: errcheck
+		return re.Emit(&bootstrapResult{peers})
 	},
 	Type: &bootstrapResult{},
 	Encoders: cmds.EncoderMap{

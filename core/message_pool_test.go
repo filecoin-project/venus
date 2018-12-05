@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,7 +55,7 @@ func TestMessagePoolAddBadSignature(t *testing.T) {
 	smsg.Message.Nonce = types.Uint64(uint64(smsg.Message.Nonce) + uint64(1)) // invalidate message
 
 	c, err := pool.Add(smsg)
-	assert.Nil(c)
+	assert.False(c.Defined())
 	assert.Error(err)
 }
 

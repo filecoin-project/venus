@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 )
@@ -31,7 +31,7 @@ type SectorBuilder interface {
 
 	// ReadPieceFromSealedSector produces a Reader used to get original
 	// piece-bytes from a sealed sector.
-	ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error)
+	ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error)
 
 	// SealAllStagedSectors seals any non-empty staged sectors.
 	SealAllStagedSectors(ctx context.Context) error
@@ -68,8 +68,8 @@ type SectorSealResult struct {
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
-	Ref  *cid.Cid `json:"ref"`
-	Size uint64   `json:"size"` // TODO: use BytesAmount
+	Ref  cid.Cid `json:"ref"`
+	Size uint64  `json:"size"` // TODO: use BytesAmount
 }
 
 // An UnsealedSector holds a user's staged piece-bytes. A miner fills this up

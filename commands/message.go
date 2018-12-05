@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	cmds "gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	cmdkit "gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -40,11 +40,10 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send message from"),
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		target, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		val, ok := req.Options["value"].(int)
@@ -58,8 +57,7 @@ var msgSendCmd = &cmds.Command{
 			var err error
 			fromAddr, err = address.NewFromString(o.(string))
 			if err != nil {
-				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
-				return
+				return errors.Wrap(err, "invalid from address")
 			}
 		}
 
@@ -70,15 +68,13 @@ var msgSendCmd = &cmds.Command{
 
 		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
-
-		re.Emit(c) // nolint: errcheck
+		return re.Emit(c)
 	},
-	Type: cid.Cid{},
+	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -102,12 +98,10 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("receipt", "print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
-			err = errors.Wrap(err, "invalid message cid")
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return errors.Wrap(err, "invalid message cid")
 		}
 
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
@@ -127,9 +121,9 @@ var msgWaitCmd = &cmds.Command{
 		})
 
 		if err != nil && !found {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
+		return nil
 	},
 	Type: waitResult{},
 	Encoders: cmds.EncoderMap{

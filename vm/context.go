@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -98,7 +98,7 @@ func (ctx *Context) BlockHeight() *types.BlockHeight {
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.
 func (ctx *Context) IsFromAccountActor() bool {
-	return ctx.from.Code != nil && types.AccountActorCodeCid.Equals(ctx.from.Code)
+	return ctx.from.Code.Defined() && types.AccountActorCodeCid.Equals(ctx.from.Code)
 }
 
 // Send sends a message to another actor.
@@ -168,7 +168,7 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *Context) CreateNewActor(addr address.Address, code *cid.Cid, initializerData interface{}) error {
+func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -178,7 +178,7 @@ func (ctx *Context) CreateNewActor(addr address.Address, code *cid.Cid, initiali
 		return errors.FaultErrorWrap(err, "Error retrieving or creating actor")
 	}
 
-	if newActor.Code != nil {
+	if newActor.Code.Defined() {
 		return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
 	}
 

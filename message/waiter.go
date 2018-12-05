@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -53,7 +53,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 //
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
-func (w *Waiter) Wait(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	var emptyErr error
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
@@ -123,7 +123,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block
 // input tipset.  This can differ from the message's receipt as stored in its
 // parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -180,7 +180,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts cons
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func msgIndexOfTipSet(msgCid *cid.Cid, ts consensus.TipSet, fails types.SortedCidSet) (int, error) {
+func msgIndexOfTipSet(msgCid cid.Cid, ts consensus.TipSet, fails types.SortedCidSet) (int, error) {
 	blks := ts.ToSlice()
 	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet

@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gx/ipfs/QmPTfgFTo9PFr1PvPKyKoeMgBvYPh6cX3aDP7DHKVbnCbi/go-ipfs-cmds"
-	"gx/ipfs/QmSP88ryZkHSRn1fnngAaV2Vcn63WUJzAavnRM9CVdU1Ky/go-ipfs-cmdkit"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -29,16 +29,15 @@ var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "get heaviest tipset CIDs",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := GetAPI(env).Chain().Head()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
-		re.Emit(out) //nolint: errcheck
+		return re.Emit(out)
 	},
-	Type: []*cid.Cid{},
+	Type: []cid.Cid{},
 }
 
 var chainLsCmd = &cmds.Command{
@@ -49,22 +48,23 @@ var chainLsCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("long", "l", "list blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		for raw := range GetAPI(env).Chain().Ls(req.Context) {
 			switch v := raw.(type) {
 			case error:
-				re.SetError(v, cmdkit.ErrNormal)
-				return
+				return v
 			case consensus.TipSet:
 				if len(v) == 0 {
 					panic("tipsets from this channel should have at least one member")
 				}
-				re.Emit(v.ToSlice()) // nolint: errcheck
+				if err := re.Emit(v.ToSlice()); err != nil {
+					return err
+				}
 			default:
-				re.SetError("unexpected type", cmdkit.ErrNormal)
-				return
+				return fmt.Errorf("unexpected type")
 			}
 		}
+		return nil
 	},
 	Type: []types.Block{},
 	Encoders: cmds.EncoderMap{

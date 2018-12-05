@@ -3,8 +3,8 @@ package impl
 import (
 	"context"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -21,11 +21,11 @@ func newNodeMessage(api *nodeAPI) *nodeMessage {
 	return &nodeMessage{api: api}
 }
 
-func (api *nodeMessage) Send(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
+func (api *nodeMessage) Send(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
 	nd := api.api.node
 
 	if err := setDefaultFromAddr(&from, nd); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return nd.SendMessage(ctx, from, to, val, method, params...)
@@ -66,7 +66,7 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	return retVals, signature, nil
 }
 
-func (api *nodeMessage) Wait(ctx context.Context, msgCid *cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
+func (api *nodeMessage) Wait(ctx context.Context, msgCid cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
 	nd := api.api.node
 
 	return nd.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {

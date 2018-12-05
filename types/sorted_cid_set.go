@@ -1,24 +1,23 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
 
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj/atlas"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/obj/atlas"
 )
 
 func init() {
 	cbor.RegisterCborType(atlas.BuildEntry(SortedCidSet{}).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
-			func(s SortedCidSet) ([]*cid.Cid, error) {
+			func(s SortedCidSet) ([]cid.Cid, error) {
 				return s.s, nil
 			})).
 		TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
-			func(s []*cid.Cid) (SortedCidSet, error) {
+			func(s []cid.Cid) (SortedCidSet, error) {
 				for i := 0; i < len(s)-1; i++ {
 					// Note that this will also catch duplicates.
 					if !cidLess(s[i], s[i+1]) {
@@ -36,11 +35,11 @@ func init() {
 // Sort order is lexicographic ascending, by serialization of the cid.
 // TODO: This should probably go into go-cid package - see https://github.com/ipfs/go-cid/issues/45.
 type SortedCidSet struct {
-	s []*cid.Cid // should be maintained sorted
+	s []cid.Cid // should be maintained sorted
 }
 
 // NewSortedCidSet returns a SortedCidSet with the specified items.
-func NewSortedCidSet(ids ...*cid.Cid) (res SortedCidSet) {
+func NewSortedCidSet(ids ...cid.Cid) (res SortedCidSet) {
 	for _, id := range ids {
 		res.Add(id)
 	}
@@ -49,19 +48,19 @@ func NewSortedCidSet(ids ...*cid.Cid) (res SortedCidSet) {
 
 // Add adds a cid to the set. Returns true if the item was added (didn't already exist), false
 // otherwise.
-func (s *SortedCidSet) Add(id *cid.Cid) bool {
+func (s *SortedCidSet) Add(id cid.Cid) bool {
 	idx := s.search(id)
 	if idx < len(s.s) && s.s[idx].Equals(id) {
 		return false
 	}
-	s.s = append(s.s, nil)
+	s.s = append(s.s, cid.Undef)
 	copy(s.s[idx+1:], s.s[idx:])
 	s.s[idx] = id
 	return true
 }
 
 // Has returns true if the set contains the specified cid.
-func (s SortedCidSet) Has(id *cid.Cid) bool {
+func (s SortedCidSet) Has(id cid.Cid) bool {
 	idx := s.search(id)
 	return idx < len(s.s) && s.s[idx].Equals(id)
 }
@@ -78,7 +77,7 @@ func (s SortedCidSet) Empty() bool {
 
 // Remove removes a cid from the set. Returns true if the item was removed (did in fact exist in
 // the set), false otherwise.
-func (s *SortedCidSet) Remove(id *cid.Cid) bool {
+func (s *SortedCidSet) Remove(id cid.Cid) bool {
 	idx := s.search(id)
 	if idx < len(s.s) && s.s[idx].Equals(id) {
 		copy(s.s[idx:], s.s[idx+1:])
@@ -129,8 +128,8 @@ func (s SortedCidSet) String() string {
 }
 
 // ToSlice returns a slice listing the cids in the set.
-func (s SortedCidSet) ToSlice() []*cid.Cid {
-	out := make([]*cid.Cid, s.Len())
+func (s SortedCidSet) ToSlice() []cid.Cid {
+	out := make([]cid.Cid, s.Len())
 	var i int
 	for it := s.Iter(); !it.Complete(); it.Next() {
 		out[i] = it.Value()
@@ -146,7 +145,7 @@ func (s SortedCidSet) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON parses JSON into the set.
 func (s *SortedCidSet) UnmarshalJSON(b []byte) error {
-	var ts []*cid.Cid
+	var ts []cid.Cid
 	if err := json.Unmarshal(b, &ts); err != nil {
 		return err
 	}
@@ -159,14 +158,14 @@ func (s *SortedCidSet) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (s SortedCidSet) search(id *cid.Cid) int {
+func (s SortedCidSet) search(id cid.Cid) int {
 	return sort.Search(len(s.s), func(i int) bool {
 		return !cidLess(s.s[i], id)
 	})
 }
 
 type sortedCidSetIterator struct {
-	s []*cid.Cid
+	s []cid.Cid
 	i int
 }
 
@@ -189,21 +188,17 @@ func (si *sortedCidSetIterator) Next() bool {
 }
 
 // Value returns the current item for the iterator
-func (si sortedCidSetIterator) Value() *cid.Cid {
+func (si sortedCidSetIterator) Value() cid.Cid {
 	switch {
 	case si.i < len(si.s):
 		return si.s[si.i]
 	case si.i == len(si.s):
-		return nil
+		return cid.Undef
 	default:
 		panic("unreached")
 	}
 }
 
-// Note: this relies on knowledge of internal layout of Cid.
-// TODO: ideally cid would just implement this. See: https://github.com/ipfs/go-cid/issues/46
-func cidLess(c1, c2 *cid.Cid) bool {
-	p1 := c1.Prefix()
-	p2 := c2.Prefix()
-	return p1.Version < p2.Version || p1.Codec < p2.Codec || bytes.Compare(c1.Hash(), c2.Hash()) < 0
+func cidLess(c1, c2 cid.Cid) bool {
+	return c1.KeyString() < c2.KeyString()
 }

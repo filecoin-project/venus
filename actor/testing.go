@@ -1,7 +1,8 @@
 package actor
 
 import (
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -72,7 +73,7 @@ func (ma *FakeActor) InitializeState(storage exec.Storage, initializerData inter
 		return err
 	}
 
-	return storage.Commit(id, nil)
+	return storage.Commit(id, cid.Undef)
 }
 
 // Exports returns the list of fake actor exported functions.

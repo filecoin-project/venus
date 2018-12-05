@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -26,7 +26,7 @@ func NewCachedStateTree(st Tree) *CachedTree {
 }
 
 // GetBuiltinActorCode simply delegates to the underlying tree
-func (t *CachedTree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableActor, error) {
+func (t *CachedTree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
 	return t.st.GetBuiltinActorCode(codePointer)
 }
 

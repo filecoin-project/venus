@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	hamt "gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (*cid.Cid, state.Tree) {
+func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -345,9 +345,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
@@ -506,9 +506,9 @@ func TestNestedSendBalance(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
@@ -557,9 +557,9 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
@@ -627,7 +627,7 @@ func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
 
 	act3 := state.MustGetActor(st, addr3)
 	assert.Equal(types.NewAttoFILFromFIL(300), act3.Balance)
-	assert.Nil(act3.Code)
+	assert.Equal(act3.Code, cid.Undef)
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
@@ -640,9 +640,9 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid.KeyString()] = &actor.FakeActor{}
+	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid.KeyString())
+		delete(builtin.Actors, fakeActorCodeCid)
 	}()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()

@@ -10,29 +10,29 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmPMtD39NN63AEUNghk1LFQcTLcCmYL8MtRzdv8BRUsC4Z/go-libp2p-host"
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	libp2ppeer "gx/ipfs/QmQsErDt8Qgw1XrsXf2BpEzDgGWtB1YLsTAARBup5b6B9W/go-libp2p-peer"
-	routing "gx/ipfs/QmS4niovD1U6pRjUBXivr1zvvLBqiTKbERjFo994JU7oQS/go-libp2p-routing"
-	"gx/ipfs/QmT5K5mHn2KUyCDBntKoojQJAJftNzutxzpYR33w8JdN6M/go-libp2p-floodsub"
-	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
-	"gx/ipfs/QmTwzvuH2eYPJLdp3sL4ZsdSwCcqzdwc1Vk9ssVbk25EA2/go-bitswap"
-	bsnet "gx/ipfs/QmTwzvuH2eYPJLdp3sL4ZsdSwCcqzdwc1Vk9ssVbk25EA2/go-bitswap/network"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
-	"gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p"
-	rhost "gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p/p2p/host/routed"
-	"gx/ipfs/QmVM6VuGaWcAaYjxG2om6XxMmpP3Rt9rw4nbMXVNYAPLhS/go-libp2p/p2p/protocol/ping"
+	"gx/ipfs/QmP2g3VxmC7g7fyRJDj1VJ72KHZbJ9UW24YjSWEj1XTb4H/go-ipfs-exchange-interface"
+	dht "gx/ipfs/QmQsw6Nq2A345PqChdtbWVoYbSno7uqRDHwYmYpbPHmZNc/go-libp2p-kad-dht"
+	dhtopts "gx/ipfs/QmQsw6Nq2A345PqChdtbWVoYbSno7uqRDHwYmYpbPHmZNc/go-libp2p-kad-dht/opts"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmTxeg52XprLb5j3yaP1nAP3K7sGNkG1pjrHEwBMGFfcf6/go-bitswap"
+	bsnet "gx/ipfs/QmTxeg52XprLb5j3yaP1nAP3K7sGNkG1pjrHEwBMGFfcf6/go-bitswap/network"
+	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmWw71Mz9PXKgYG8ZfTYN7Ax2Zm48Eurbne3wC2y7CKmLz/go-ipfs-exchange-interface"
-	offroute "gx/ipfs/QmYYXrfYh14XcN5jhmK31HhdAG85HjHAg5czk3Eb9cGML4/go-ipfs-routing/offline"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	"gx/ipfs/QmVvV8JQmmqPCwXAaesWJPheUiEFQJ9HWRhWhuFuxVQxpR/go-libp2p"
+	rhost "gx/ipfs/QmVvV8JQmmqPCwXAaesWJPheUiEFQJ9HWRhWhuFuxVQxpR/go-libp2p/p2p/host/routed"
+	"gx/ipfs/QmVvV8JQmmqPCwXAaesWJPheUiEFQJ9HWRhWhuFuxVQxpR/go-libp2p/p2p/protocol/ping"
+	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	routing "gx/ipfs/QmZBH87CAPFHcc7cYmBqeSQ98zQ3SX9KUxiYgzPmLWNVKz/go-libp2p-routing"
 	dhtprotocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
-	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
-	dht "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht"
-	dhtopts "gx/ipfs/Qmb8TxXJEnL65XnmkEZfGd8mEFU6cxptEP4oCfTvcDusd8/go-libp2p-kad-dht/opts"
-	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
-	dag "gx/ipfs/QmeLG6jF1xvEmHca5Vy4q4EdQWp8Xq9S6EPyZrN9wvSRLC/go-merkledag"
+	"gx/ipfs/QmahxMNoNuSsgQefo9rkpcfRFmQrMN6Q99aztKXf63K7YJ/go-libp2p-host"
+	"gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
+	libp2ppeer "gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	dag "gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
+	offroute "gx/ipfs/QmdxhyAwBrnmJFsYPK6tyHh4Yy3gK8gbULErX1dRnpUMqu/go-ipfs-routing/offline"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -76,7 +76,7 @@ var (
 	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
-type floodSubProcessorFunc func(ctx context.Context, msg *floodsub.Message) error
+type pubSubProcessorFunc func(ctx context.Context, msg *pubsub.Message) error
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -121,9 +121,9 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	PubSub            *floodsub.PubSub
-	BlockSub          *floodsub.Subscription
-	MessageSub        *floodsub.Subscription
+	PubSub            *pubsub.PubSub
+	BlockSub          *pubsub.Subscription
+	MessageSub        *pubsub.Subscription
 	Ping              *ping.PingService
 	HelloSvc          *hello.Handler
 	RelayBootstrapper *filnet.Bootstrapper
@@ -225,18 +225,18 @@ func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil 
 
 // readGenesisCid is a helper function that queries the provided datastore forr
 // an entry with the genesisKey cid, returning if found.
-func readGenesisCid(ds datastore.Datastore) (*cid.Cid, error) {
+func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 	bb, err := ds.Get(chain.GenesisKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read genesisKey")
+		return cid.Undef, errors.Wrap(err, "failed to read genesisKey")
 	}
 
 	var c cid.Cid
 	err = json.Unmarshal(bb, &c)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to cast genesisCid")
+		return cid.Undef, errors.Wrap(err, "failed to cast genesisCid")
 	}
-	return &c, nil
+	return c, nil
 }
 
 // Build instantiates a filecoin Node from the settings specified in the config.
@@ -253,7 +253,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var router routing.IpfsRouting
 
 	if !nc.OfflineMode {
-		h, err := libp2p.New(ctx, nc.Libp2pOpts...)
+		h, err := libp2p.New(ctx, libp2p.DisableRelay(), libp2p.ChainOptions(nc.Libp2pOpts...))
 		if err != nil {
 			return nil, err
 		}
@@ -307,9 +307,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
-	fsub, err := floodsub.NewFloodSub(ctx, peerHost)
+	fsub, err := pubsub.NewFloodSub(ctx, peerHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up floodsub")
+		return nil, errors.Wrap(err, "failed to set up pubsub")
 	}
 	backend, err := wallet.NewDSBackend(nc.Repo.WalletDatastore())
 	if err != nil {
@@ -384,7 +384,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// Start up 'hello' handshake service
-	syncCallBack := func(pid libp2ppeer.ID, cids []*cid.Cid, height uint64) {
+	syncCallBack := func(pid libp2ppeer.ID, cids []cid.Cid, height uint64) {
 		// TODO it is possible the syncer interface should be modified to
 		// make use of the additional context not used here (from addr + height).
 		// To keep things simple for now this info is not used.
@@ -812,7 +812,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr address.Address, m
 	}
 
 	actor, err := st.GetActor(ctx, actorAddr)
-	if err != nil || actor.Code == nil {
+	if err != nil || !actor.Code.Defined() {
 		return nil, errors.Wrap(err, "failed to get actor")
 	}
 
@@ -889,7 +889,7 @@ func (node *Node) NewAddress() (address.Address, error) {
 }
 
 // WaitForMessage waits for a message to appear on chain.
-func (node *Node) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (node *Node) WaitForMessage(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return node.MessageWaiter.Wait(ctx, msgCid, cb)
 }
 
@@ -1088,10 +1088,10 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 }
 
 // SendMessage is a convinent helper around adding a new message to the message pool.
-func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
+func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid params")
+		return cid.Undef, errors.Wrap(err, "invalid params")
 	}
 
 	// lock to avoid race for message nonce
@@ -1100,16 +1100,16 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 
 	msg, err := newMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid message")
+		return cid.Undef, errors.Wrap(err, "invalid message")
 	}
 
 	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sign message")
+		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}
 
 	if err := node.addNewMessage(ctx, smsg); err != nil {
-		return nil, errors.Wrap(err, "failed to submit message")
+		return cid.Undef, errors.Wrap(err, "failed to submit message")
 	}
 
 	return smsg.Cid()
@@ -1142,7 +1142,7 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	return types.NewBlockHeight(height), nil
 }
 
-func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *floodsub.Subscription, sname string) {
+func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s *pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
 		if err != nil {

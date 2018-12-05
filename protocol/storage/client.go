@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"sync"
 
-	"gx/ipfs/QmPMtD39NN63AEUNghk1LFQcTLcCmYL8MtRzdv8BRUsC4Z/go-libp2p-host"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	ipld "gx/ipfs/QmX5CsuHyVZeTLxgRSYkgLSDQKb9UjE8xnhQzCEJWWWFsC/go-ipld-format"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmbXRda5H2K3MSQyWWxTMtd8DWuguEBUCe6hpxfXVpFUGj/go-multistream"
+	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
+	"gx/ipfs/QmahxMNoNuSsgQefo9rkpcfRFmQrMN6Q99aztKXf63K7YJ/go-libp2p-host"
+	ipld "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -23,7 +23,7 @@ import (
 
 // TODO: this really should not be an interface fulfilled by the node.
 type clientNode interface {
-	GetFileSize(context.Context, *cid.Cid) (uint64, error)
+	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	Host() host.Host
 	Lookup() lookup.PeerLookupService
 	GetAskPrice(ctx context.Context, miner address.Address, askid uint64) (*types.AttoFIL, error)
@@ -31,7 +31,7 @@ type clientNode interface {
 
 // Client is used to make deals directly with storage miners.
 type Client struct {
-	deals   map[string]*clientDealState
+	deals   map[cid.Cid]*clientDealState
 	dealsLk sync.Mutex
 
 	node clientNode
@@ -46,13 +46,13 @@ type clientDealState struct {
 // NewClient creaters a new storage miner client.
 func NewClient(nd clientNode) *Client {
 	return &Client{
-		deals: make(map[string]*clientDealState),
+		deals: make(map[cid.Cid]*clientDealState),
 		node:  nd,
 	}
 }
 
 // ProposeDeal is
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data *cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -114,13 +114,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal) error {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
-	k := resp.Proposal.KeyString()
-	_, ok := smc.deals[k]
+	_, ok := smc.deals[resp.Proposal]
 	if ok {
 		return fmt.Errorf("deal [%s] is already in progress", resp.Proposal.String())
 	}
 
-	smc.deals[k] = &clientDealState{
+	smc.deals[resp.Proposal] = &clientDealState{
 		lastState: resp,
 		miner:     miner,
 		proposal:  p,
@@ -142,10 +141,10 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *DealResponse) er
 	}
 }
 
-func (smc *Client) minerForProposal(c *cid.Cid) (address.Address, error) {
+func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
-	st, ok := smc.deals[c.KeyString()]
+	st, ok := smc.deals[c]
 	if !ok {
 		return address.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
 	}
@@ -154,7 +153,7 @@ func (smc *Client) minerForProposal(c *cid.Cid) (address.Address, error) {
 }
 
 // QueryDeal queries an in-progress proposal.
-func (smc *Client) QueryDeal(ctx context.Context, proposalCid *cid.Cid) (*DealResponse, error) {
+func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*DealResponse, error) {
 	mineraddr, err := smc.minerForProposal(proposalCid)
 	if err != nil {
 		return nil, err
@@ -204,7 +203,7 @@ func NewClientNodeImpl(ds ipld.DAGService, host host.Host, lookup lookup.PeerLoo
 }
 
 // GetFileSize returns the size of the file referenced by 'c'
-func (cni *ClientNodeImpl) GetFileSize(ctx context.Context, c *cid.Cid) (uint64, error) {
+func (cni *ClientNodeImpl) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 	return getFileSize(ctx, c, cni.dserv)
 }
 

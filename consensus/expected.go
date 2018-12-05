@@ -9,12 +9,12 @@ import (
 	"math/big"
 	"strings"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXTpwq2AkzQsPjKqFQDNY2bMdsAT53hUBETeyj8QRHTZU/sha256-simd"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -64,14 +64,14 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
-	genesisCid *cid.Cid
+	genesisCid cid.Cid
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid *cid.Cid) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
@@ -102,7 +102,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 	// TODO: validate signature on block
 	ctx = log.Start(ctx, "Expected.validateBlockStructure")
 	log.LogKV(ctx, "ValidateBlockStructure", b.Cid().String())
-	if b.StateRoot == nil {
+	if !b.StateRoot.Defined() {
 		return fmt.Errorf("block has nil StateRoot")
 	}
 

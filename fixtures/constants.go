@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -39,7 +39,7 @@ type detailsStruct struct {
 		Address string
 		Power   uint64
 	}
-	GenesisCid *cid.Cid
+	GenesisCid cid.Cid `refmt:",omitempty"`
 }
 
 func init() {

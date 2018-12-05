@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 	"fmt"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/stretchr/testify/mock"
 
@@ -13,7 +13,7 @@ import (
 )
 
 // MustFlush flushes the StateTree or panics if it can't.
-func MustFlush(st Tree) *cid.Cid {
+func MustFlush(st Tree) cid.Cid {
 	cid, err := st.Flush(context.Background())
 	if err != nil {
 		panic(err)
@@ -31,7 +31,7 @@ func MustGetActor(st Tree, a address.Address) *actor.Actor {
 }
 
 // MustSetActor sets the actor or panics if it can't.
-func MustSetActor(st Tree, address address.Address, actor *actor.Actor) *cid.Cid {
+func MustSetActor(st Tree, address address.Address, actor *actor.Actor) cid.Cid {
 	err := st.SetActor(context.Background(), address, actor)
 	if err != nil {
 		panic(err)
@@ -44,7 +44,7 @@ type MockStateTree struct {
 	mock.Mock
 
 	NoMocks       bool
-	BuiltinActors map[string]exec.ExecutableActor
+	BuiltinActors map[cid.Cid]exec.ExecutableActor
 }
 
 // GetActorStorage implements Tree interface
@@ -55,13 +55,13 @@ func (m *MockStateTree) GetActorStorage(ctx context.Context, a address.Address, 
 var _ Tree = &MockStateTree{}
 
 // Flush implements StateTree.Flush.
-func (m *MockStateTree) Flush(ctx context.Context) (c *cid.Cid, err error) {
+func (m *MockStateTree) Flush(ctx context.Context) (c cid.Cid, err error) {
 	if m.NoMocks {
 		return
 	}
 	args := m.Called(ctx)
 	if args.Get(0) != nil {
-		c = args.Get(0).(*cid.Cid)
+		c = args.Get(0).(cid.Cid)
 	}
 	err = args.Error(1)
 	return
@@ -107,8 +107,8 @@ func (m *MockStateTree) Debug() {
 }
 
 // GetBuiltinActorCode implements StateTree.GetBuiltinActorCode
-func (m *MockStateTree) GetBuiltinActorCode(c *cid.Cid) (exec.ExecutableActor, error) {
-	a, ok := m.BuiltinActors[c.KeyString()]
+func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error) {
+	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %s", c)
 	}

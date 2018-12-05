@@ -4,12 +4,12 @@ import (
 	"context"
 	"reflect"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	cbor "gx/ipfs/QmV6BQ6fFCf9eFHDuRxvguvqfKLZtZrxthgZvDfRCs4tMN/go-ipld-cbor"
-	block "gx/ipfs/QmWAzSEoqZ6xU6pu8yL8e5WaMb7wtbfbhhN4p1DknUPtr3/go-block-format"
-	cid "gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/obj"
-	"gx/ipfs/QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk/refmt/shared"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	block "gx/ipfs/QmWoXtvgC8inqFkAATB7cp2Dax7XBi9VDvSg9RCCZufmRk/go-block-format"
+	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/obj"
+	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/exec"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
@@ -61,15 +61,15 @@ func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)
 
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
 // This function is inefficient when multiple values need to be set into the lookup.
-func SetKeyValue(ctx context.Context, storage exec.Storage, id *cid.Cid, key string, value interface{}) (*cid.Cid, error) {
+func SetKeyValue(ctx context.Context, storage exec.Storage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	err = lookup.Set(ctx, key, value)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return lookup.Commit(ctx)
@@ -77,14 +77,14 @@ func SetKeyValue(ctx context.Context, storage exec.Storage, id *cid.Cid, key str
 
 // WithLookup allows one to read and write to a hamt-ipld node from storage via a callback function.
 // This function commits the lookup before returning.
-func WithLookup(ctx context.Context, storage exec.Storage, id *cid.Cid, f func(exec.Lookup) error) (*cid.Cid, error) {
+func WithLookup(ctx context.Context, storage exec.Storage, id cid.Cid, f func(exec.Lookup) error) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	if err = f(lookup); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return lookup.Commit(ctx)
@@ -92,7 +92,7 @@ func WithLookup(ctx context.Context, storage exec.Storage, id *cid.Cid, f func(e
 
 // WithLookupForReading allows one to read from a hamt-ipld node from storage via a callback function.
 // Unlike WithLookup, this function will not attempt to commit.
-func WithLookupForReading(ctx context.Context, storage exec.Storage, id *cid.Cid, f func(exec.Lookup) error) error {
+func WithLookupForReading(ctx context.Context, storage exec.Storage, id cid.Cid, f func(exec.Lookup) error) error {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return err
@@ -103,13 +103,13 @@ func WithLookupForReading(ctx context.Context, storage exec.Storage, id *cid.Cid
 
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
-func LoadLookup(ctx context.Context, storage exec.Storage, cid *cid.Cid) (exec.Lookup, error) {
+func LoadLookup(ctx context.Context, storage exec.Storage, cid cid.Cid) (exec.Lookup, error) {
 	return LoadTypedLookup(ctx, storage, cid, nil)
 }
 
 // LoadTypedLookup loads hamt-ipld node from storage if the cid exists, or creates a new on if it is nil.
 // The provided type allows the lookup to correctly unmarshal values
-func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid *cid.Cid, valueType interface{}) (exec.Lookup, error) {
+func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid cid.Cid, valueType interface{}) (exec.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
@@ -117,7 +117,7 @@ func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid *cid.Cid, va
 	var root *hamt.Node
 	var err error
 
-	if cid == nil {
+	if !cid.Defined() {
 		root = hamt.NewNode(cborStore)
 	} else {
 		root, err = hamt.LoadNode(ctx, cborStore, cid)
@@ -140,7 +140,7 @@ type storageAsBlocks struct {
 }
 
 // GetBlock gets a block from underlying storage by cid
-func (sab *storageAsBlocks) GetBlock(ctx context.Context, c *cid.Cid) (block.Block, error) {
+func (sab *storageAsBlocks) GetBlock(ctx context.Context, c cid.Cid) (block.Block, error) {
 	chunk, err := sab.s.Get(c)
 	if err != nil {
 		return nil, err
@@ -195,9 +195,9 @@ func (l *lookup) Delete(ctx context.Context, k string) error {
 }
 
 // Commit ensures all data in the tree is flushed to storage and returns the cid of the head node.
-func (l *lookup) Commit(ctx context.Context) (*cid.Cid, error) {
+func (l *lookup) Commit(ctx context.Context) (cid.Cid, error) {
 	if err := l.n.Flush(ctx); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
 	return l.s.Put(l.n)
@@ -233,7 +233,7 @@ func (l *lookup) values(ctx context.Context, vs []*hamt.KV) ([]*hamt.KV, error) 
 	for _, p := range l.n.Pointers {
 		vs = append(vs, p.KVs...)
 
-		if p.Link == nil {
+		if !p.Link.Defined() {
 			continue
 		}
 

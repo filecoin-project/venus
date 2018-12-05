@@ -6,15 +6,15 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"gx/ipfs/QmQZadYTDF4ud9DdK85PH2vReJRzUM9YfVW4ReB1q2m51p/go-hamt-ipld"
-	bserv "gx/ipfs/QmTfTKeBhTLjSjxXQsjkF2b1DfZmYEMnknGE2y2gX57C6v/go-blockservice"
-	"gx/ipfs/QmVG5gxteQNEMhrS8prJSmU2C9rebtFuTd3SYZ5kE3YZ5k/go-datastore"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmZChCsSt8DctjceaL56Eibc29CVQq4dGKRXC5JRZ6Ppae/go-log"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
-	"gx/ipfs/QmZxjqR9Qgompju73kakSoUj3rbVndAzky3oCDiBNCxPs1/go-ipfs-exchange-offline"
-	bstore "gx/ipfs/QmcmpX42gtDv1fz24kau4wjS9hfwWj5VexWBKgGnWzsyag/go-ipfs-blockstore"
+	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -46,7 +46,7 @@ type DefaultStore struct {
 	ds repo.Datastore
 
 	// genesis is the CID of the genesis block.
-	genesis *cid.Cid
+	genesis cid.Cid
 	// head is the tipset at the head of the best known chain.
 	head consensus.TipSet
 	// Protects head and genesisCid.
@@ -70,7 +70,7 @@ type DefaultStore struct {
 var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
-func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid *cid.Cid) *DefaultStore {
+func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid cid.Cid) *DefaultStore {
 	bs := bstore.NewBlockstore(ds)
 	priv := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	return &DefaultStore{
@@ -172,23 +172,23 @@ func (store *DefaultStore) loadHead() (types.SortedCidSet, error) {
 	return cids, nil
 }
 
-func (store *DefaultStore) loadStateRoot(ts consensus.TipSet) (*cid.Cid, error) {
+func (store *DefaultStore) loadStateRoot(ts consensus.TipSet) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	bb, err := store.ds.Get(key)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
+		return cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
 	var stateRoot cid.Cid
 	err = json.Unmarshal(bb, &stateRoot)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
+		return cid.Undef, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
 	}
-	return &stateRoot, nil
+	return stateRoot, nil
 }
 
 // putBlk persists a block to disk.
@@ -262,7 +262,7 @@ func (store *DefaultStore) GetBlocks(ctx context.Context, ids types.SortedCidSet
 }
 
 // GetBlock retrieves a block by cid.
-func (store *DefaultStore) GetBlock(ctx context.Context, c *cid.Cid) (*types.Block, error) {
+func (store *DefaultStore) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
 	var blk types.Block
 	if err := store.privateStore.Get(ctx, c, &blk); err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
@@ -271,7 +271,7 @@ func (store *DefaultStore) GetBlock(ctx context.Context, c *cid.Cid) (*types.Blo
 }
 
 // HasAllBlocks indicates whether the blocks are in the store.
-func (store *DefaultStore) HasAllBlocks(ctx context.Context, cids []*cid.Cid) bool {
+func (store *DefaultStore) HasAllBlocks(ctx context.Context, cids []cid.Cid) bool {
 	for _, c := range cids {
 		if !store.HasBlock(ctx, c) {
 			return false
@@ -281,7 +281,7 @@ func (store *DefaultStore) HasAllBlocks(ctx context.Context, cids []*cid.Cid) bo
 }
 
 // HasBlock indicates whether the block is in the store.
-func (store *DefaultStore) HasBlock(ctx context.Context, c *cid.Cid) bool {
+func (store *DefaultStore) HasBlock(ctx context.Context, c cid.Cid) bool {
 	// TODO: consider adding Has method to HamtIpldCborstore if this used much,
 	// or using a different store interface for quick Has.
 	blk, err := store.GetBlock(ctx, c)
@@ -442,9 +442,9 @@ func (store *DefaultStore) walkChain(ctx context.Context, tips []*types.Block, c
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
-func (store *DefaultStore) GenesisCid() *cid.Cid {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
+func (store *DefaultStore) GenesisCid() cid.Cid {
+	store.mu.Lock()
+	defer store.mu.Unlock()
 	return store.genesis
 }
 
