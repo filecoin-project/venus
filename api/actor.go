@@ -12,11 +12,11 @@ import (
 type ActorView struct {
 	ActorType string          `json:"actorType"`
 	Address   string          `json:"address"`
-	Code      cid.Cid         `json:"code"`
+	Code      cid.Cid         `json:"code,omitempty"`
 	Nonce     uint64          `json:"nonce"`
 	Balance   *types.AttoFIL  `json:"balance"`
 	Exports   ReadableExports `json:"exports"`
-	Head      cid.Cid         `json:"head"`
+	Head      cid.Cid         `json:"head,omitempty"`
 }
 
 // ReadableFunctionSignature is a representation of an actors function signature,

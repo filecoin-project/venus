@@ -152,7 +152,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -200,7 +200,7 @@ var minerAddAskCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},

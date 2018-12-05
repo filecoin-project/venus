@@ -36,8 +36,8 @@ var (
 //
 // Not safe for concurrent access.
 type Actor struct {
-	Code    cid.Cid
-	Head    cid.Cid
+	Code    cid.Cid `refmt:",omitempty"`
+	Head    cid.Cid `refmt:",omitempty"`
 	Nonce   types.Uint64
 	Balance *types.AttoFIL
 }

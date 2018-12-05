@@ -74,7 +74,7 @@ message to be mined to get the channelID.`,
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -198,7 +198,7 @@ var redeemCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -235,7 +235,7 @@ var reclaimCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),
@@ -268,7 +268,7 @@ var closeCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			return PrintString(w, c)
 		}),
 	},
@@ -317,7 +317,7 @@ var extendCmd = &cmds.Command{
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c *cid.Cid) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
 			fmt.Fprintln(w, c) // nolint: errcheck
 			return nil
 		}),
