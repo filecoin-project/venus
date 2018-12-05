@@ -298,39 +298,10 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Clusters
 
-### Test Cluster
-
-Deployed via CI by tagging a commit with `redeploy_test_cluster`
-
-- Faucet: http://test.kittyhawk.wtf:9797/
-- Dashboard: http://test.kittyhawk.wtf:8010/
-- Genesis File: http://test.kittyhawk.wtf:8020/genesis.car
-- Block explorer: http://test.kittyhawk.wtf:8000/
-- Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
-- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
-
-To connect a Filecoin Node to the Test Cluster:
-
-```bash
-# Initalize the daemon to connect to the cluster and download the cluster genesis block
-go-filecoin init --cluster-test --genesisfile=http://test.kittyhawk.wtf:8020/genesis.car
-
-# Start the daemon (backgrounded for simplicity here)
-go-filecoin daemon
-
-# Give filecoin a nickname if you'd like (appears along side the PeerID in dashboard)
-go-filecoin config heartbeat.nickname "Porkchop"
-
-# Configure the filecoin daemon to connect to the clusters dashboard
-go-filecoin config heartbeat.beatTarget "/dns4/test.kittyhawk.wtf/tcp/9081/ipfs/QmVR3UFv588pSu8AxSw9C6DrMHiUFkWwdty8ajgPvtWaGU"
-
-```
-
-
-
 ### Nightly Cluster
 
-Deployed from master by CI every day at 0600 UTC
+Deployed from master by CI every day at 0600 UTC. **If you want to use a cluster
+you should probably be using this one.**
 
 - Faucet: http://nightly.kittyhawk.wtf:9797/
 - Dashboard: http://nightly.kittyhawk.wtf:8010/
@@ -356,7 +327,34 @@ go-filecoin config heartbeat.beatTarget "/dns4/nightly.kittyhawk.wtf/tcp/9081/ip
 
 ```
 
+### Test Cluster (for Infra)
 
+Deployed via CI by tagging a commit with `redeploy_test_cluster`. **This cluster
+is for people working on infra. You should probably avoid it unless that describes you.**
+
+- Faucet: http://test.kittyhawk.wtf:9797/
+- Dashboard: http://test.kittyhawk.wtf:8010/
+- Genesis File: http://test.kittyhawk.wtf:8020/genesis.car
+- Block explorer: http://test.kittyhawk.wtf:8000/
+- Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
+- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
+
+To connect a Filecoin Node to the Test Cluster:
+
+```bash
+# Initalize the daemon to connect to the cluster and download the cluster genesis block
+go-filecoin init --cluster-test --genesisfile=http://test.kittyhawk.wtf:8020/genesis.car
+
+# Start the daemon (backgrounded for simplicity here)
+go-filecoin daemon
+
+# Give filecoin a nickname if you'd like (appears along side the PeerID in dashboard)
+go-filecoin config heartbeat.nickname "Porkchop"
+
+# Configure the filecoin daemon to connect to the clusters dashboard
+go-filecoin config heartbeat.beatTarget "/dns4/test.kittyhawk.wtf/tcp/9081/ipfs/QmVR3UFv588pSu8AxSw9C6DrMHiUFkWwdty8ajgPvtWaGU"
+
+```
 
 #
 
