@@ -288,7 +288,7 @@ We ❤️ all our contributors; this project wouldn’t be what it is without yo
 
 Here are a few places to get help and connect with the Filecoin community:
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
-- Matrix/Riot: [#fil-dev on matrix.org](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
+- #fil-dev on [Filecoin Project Slack](https://filecoinproject.slack.com/messages/CEHHJNJS3/) or [Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
 - [Filecoin Community Forum](https://discuss.filecoin.io) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
 - [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
 
