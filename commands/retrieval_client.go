@@ -24,25 +24,23 @@ var clientRetrievePieceCmd = &cmds.Command{
 		cmdkit.StringArg("pid", true, false, "libp2p peer id of storage miner"),
 		cmdkit.StringArg("cid", true, false, "content identifier of piece to read"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerPeerID, err := peer.IDB58Decode(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		pieceCID, err := cid.Decode(req.Arguments[1])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		readCloser, err := GetAPI(env).RetrievalClient().RetrievePiece(req.Context, minerPeerID, pieceCID)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(readCloser) // nolint: errcheck
+		return nil
 	},
 }

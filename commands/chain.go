@@ -2,6 +2,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -29,14 +30,14 @@ var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "get heaviest tipset CIDs",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := GetAPI(env).Chain().Head()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(out) //nolint: errcheck
+		return nil
 	},
 	Type: []*cid.Cid{},
 }
@@ -49,22 +50,21 @@ var chainLsCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("long", "l", "list blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		for raw := range GetAPI(env).Chain().Ls(req.Context) {
 			switch v := raw.(type) {
 			case error:
-				re.SetError(v, cmdkit.ErrNormal)
-				return
+				return v
 			case consensus.TipSet:
 				if len(v) == 0 {
 					panic("tipsets from this channel should have at least one member")
 				}
 				re.Emit(v.ToSlice()) // nolint: errcheck
 			default:
-				re.SetError("unexpected type", cmdkit.ErrNormal)
-				return
+				return errors.New("unexpected type")
 			}
 		}
+		return nil
 	},
 	Type: []types.Block{},
 	Encoders: cmds.EncoderMap{

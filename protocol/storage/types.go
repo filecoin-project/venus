@@ -17,7 +17,7 @@ func init() {
 // DealProposal is the information sent over the wire, when a client proposes a deal to a miner.
 type DealProposal struct {
 	// PieceRef is the cid of the piece being stored
-	PieceRef *cid.Cid
+	PieceRef cid.Cid
 
 	// Size is the total number of bytes the proposal is asking to store
 	Size *types.BytesAmount
@@ -41,7 +41,7 @@ type DealResponse struct {
 	Message string
 
 	// Proposal is the cid of the StorageDealProposal object this response is for
-	Proposal *cid.Cid
+	Proposal cid.Cid
 
 	// ProofInfo is a collection of information needed to convince the client that
 	// the miner has sealed the data into a sector.
@@ -60,5 +60,5 @@ type ProofInfo struct {
 }
 
 type queryRequest struct {
-	Cid *cid.Cid
+	Cid cid.Cid
 }

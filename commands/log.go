@@ -27,8 +27,9 @@ Outputs event log messages (not other log messages) as they are generated.
 `,
 	},
 
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		r := GetAPI(env).Log().Tail(req.Context)
 		re.Emit(r) // nolint: errcheck
+		return nil
 	},
 }

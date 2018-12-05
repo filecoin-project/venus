@@ -76,7 +76,7 @@ var (
 	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
-type floodSubProcessorFunc func(ctx context.Context, msg *floodsub.Message) error
+type floodSubProcessorFunc func(ctx context.Context, msg *pubsub.Message) error
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -121,9 +121,9 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	PubSub            *floodsub.PubSub
-	BlockSub          *floodsub.Subscription
-	MessageSub        *floodsub.Subscription
+	PubSub            *pubsub.PubSub
+	BlockSub          *pubsub.Subscription
+	MessageSub        *pubsub.Subscription
 	Ping              *ping.PingService
 	HelloSvc          *hello.Handler
 	RelayBootstrapper *filnet.Bootstrapper
@@ -225,18 +225,18 @@ func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil 
 
 // readGenesisCid is a helper function that queries the provided datastore forr
 // an entry with the genesisKey cid, returning if found.
-func readGenesisCid(ds datastore.Datastore) (*cid.Cid, error) {
+func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 	bb, err := ds.Get(chain.GenesisKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read genesisKey")
+		return cid.Cid{}, errors.Wrap(err, "failed to read genesisKey")
 	}
 
 	var c cid.Cid
 	err = json.Unmarshal(bb, &c)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to cast genesisCid")
+		return cid.Cid{}, errors.Wrap(err, "failed to cast genesisCid")
 	}
-	return &c, nil
+	return c, nil
 }
 
 // Build instantiates a filecoin Node from the settings specified in the config.
@@ -307,7 +307,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
-	fsub, err := floodsub.NewFloodSub(ctx, peerHost)
+	fsub, err := pubsub.NewFloodSub(ctx, peerHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up floodsub")
 	}
@@ -384,7 +384,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// Start up 'hello' handshake service
-	syncCallBack := func(pid libp2ppeer.ID, cids []*cid.Cid, height uint64) {
+	syncCallBack := func(pid libp2ppeer.ID, cids []cid.Cid, height uint64) {
 		// TODO it is possible the syncer interface should be modified to
 		// make use of the additional context not used here (from addr + height).
 		// To keep things simple for now this info is not used.
@@ -812,7 +812,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr address.Address, m
 	}
 
 	actor, err := st.GetActor(ctx, actorAddr)
-	if err != nil || actor.Code == nil {
+	if err != nil || !actor.Code.Defined() {
 		return nil, errors.Wrap(err, "failed to get actor")
 	}
 
@@ -889,7 +889,7 @@ func (node *Node) NewAddress() (address.Address, error) {
 }
 
 // WaitForMessage waits for a message to appear on chain.
-func (node *Node) WaitForMessage(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (node *Node) WaitForMessage(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return node.MessageWaiter.Wait(ctx, msgCid, cb)
 }
 
@@ -1088,10 +1088,10 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 }
 
 // SendMessage is a convinent helper around adding a new message to the message pool.
-func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (*cid.Cid, error) {
+func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid params")
+		return cid.Cid{}, errors.Wrap(err, "invalid params")
 	}
 
 	// lock to avoid race for message nonce
@@ -1100,16 +1100,16 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 
 	msg, err := newMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid message")
+		return cid.Cid{}, errors.Wrap(err, "invalid message")
 	}
 
 	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to sign message")
+		return cid.Cid{}, errors.Wrap(err, "failed to sign message")
 	}
 
 	if err := node.addNewMessage(ctx, smsg); err != nil {
-		return nil, errors.Wrap(err, "failed to submit message")
+		return cid.Cid{}, errors.Wrap(err, "failed to submit message")
 	}
 
 	return smsg.Cid()
@@ -1142,7 +1142,7 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	return types.NewBlockHeight(height), nil
 }
 
-func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *floodsub.Subscription, sname string) {
+func (node *Node) handleSubscription(ctx context.Context, f floodSubProcessorFunc, fname string, s *pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
 		if err != nil {

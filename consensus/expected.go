@@ -64,14 +64,14 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
-	genesisCid *cid.Cid
+	genesisCid cid.Cid
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid *cid.Cid) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
@@ -102,7 +102,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 	// TODO: validate signature on block
 	ctx = log.Start(ctx, "Expected.validateBlockStructure")
 	log.LogKV(ctx, "ValidateBlockStructure", b.Cid().String())
-	if b.StateRoot == nil {
+	if !b.StateRoot.Defined() {
 		return fmt.Errorf("block has nil StateRoot")
 	}
 

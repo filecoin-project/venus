@@ -227,7 +227,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 
 // ReadPieceFromSealedSector produces a Reader used to get original piece-bytes
 // from a sealed sector.
-func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error) {
+func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
 	cPieceKey := C.CString(pieceCid.String())
 	defer C.free(unsafe.Pointer(cPieceKey))
 

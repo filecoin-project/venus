@@ -27,7 +27,7 @@ const (
 
 // RetrievePieceRequest represents a retrieval miner's request for content.
 type RetrievePieceRequest struct {
-	PieceRef *cid.Cid
+	PieceRef cid.Cid
 }
 
 // RetrievePieceResponse contains the requested content.

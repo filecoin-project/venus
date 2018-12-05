@@ -16,6 +16,6 @@ func newNodeRetrievalClient(api *nodeAPI) *nodeRetrievalClient {
 	return &nodeRetrievalClient{api: api}
 }
 
-func (nrc *nodeRetrievalClient) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID *cid.Cid) (io.ReadCloser, error) {
+func (nrc *nodeRetrievalClient) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID cid.Cid) (io.ReadCloser, error) {
 	return nrc.api.node.RetrievalClient.RetrievePiece(ctx, minerPeerID, pieceCID)
 }

@@ -22,22 +22,20 @@ var showBlockCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("ref", true, false, "CID of block to show"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		block, err := GetAPI(env).Block().Get(req.Context, cid)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		if err = cmds.EmitOnce(re, block); err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
+		return nil
 	},
 }

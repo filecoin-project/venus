@@ -26,7 +26,7 @@ func NewCachedStateTree(st Tree) *CachedTree {
 }
 
 // GetBuiltinActorCode simply delegates to the underlying tree
-func (t *CachedTree) GetBuiltinActorCode(codePointer *cid.Cid) (exec.ExecutableActor, error) {
+func (t *CachedTree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
 	return t.st.GetBuiltinActorCode(codePointer)
 }
 

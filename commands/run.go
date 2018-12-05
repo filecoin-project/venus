@@ -132,13 +132,8 @@ func CliRun(ctx context.Context, root *cmds.Command,
 	}
 
 	// first if condition checks the command's encoder map, second checks global encoder map (cmd vs. cmds)
-	if enc, ok := cmd.Encoders[encType]; ok {
-		re, exitCh = cmdsCli.NewResponseEmitter(stdout, stderr, enc, req)
-	} else if enc, ok := cmds.Encoders[encType]; ok {
-		re, exitCh = cmdsCli.NewResponseEmitter(stdout, stderr, enc, req)
-	} else {
-		return 1, fmt.Errorf("could not find matching encoder for enctype %#v", encType)
-	}
+	// TODO verify this change wrt EncoderMap leaving
+	re, exitCh, err = cmdsCli.NewResponseEmitter(stdout, stderr, req)
 
 	// Run the command and send any errors that it returns to the error
 	// channel execErrCh. Commands should have their panic propagated to the

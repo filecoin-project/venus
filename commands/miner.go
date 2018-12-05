@@ -38,22 +38,21 @@ var minerPledgeCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the miner address"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		pledgeSectors, err := GetAPI(env).Miner().GetPledge(req.Context, minerAddr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		str := fmt.Sprintf("%d", pledgeSectors)
 		re.Emit(str) // nolint: errcheck
+		return nil
 	},
 }
 
@@ -72,13 +71,12 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 		cmdkit.StringOption("from", "address to send from"),
 		cmdkit.StringOption("peerid", "b58-encoded libp2p peer ID that the miner will operate"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		var pid peer.ID
@@ -86,30 +84,27 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 		if peerid != nil {
 			pid, err = peer.IDB58Decode(peerid.(string))
 			if err != nil {
-				re.SetError(errors.Wrap(err, "invalid peer id"), cmdkit.ErrNormal)
-				return
+				return errors.Wrap(err, "invalid peer id")
 			}
 		}
 
 		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
 		if err != nil {
-			re.SetError(ErrInvalidPledge, cmdkit.ErrNormal)
-			return
+			return ErrInvalidPledge
 		}
 
 		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
-			re.SetError(ErrInvalidCollateral, cmdkit.ErrNormal)
-			return
+			return ErrInvalidCollateral
 		}
 
 		addr, err := GetAPI(env).Miner().Create(req.Context, fromAddr, pledge, pid, collateral)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(&addr) // nolint: errcheck
+		return nil
 	},
 	Type: address.Address{},
 	Encoders: cmds.EncoderMap{
@@ -131,32 +126,29 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		newPid, err := peer.IDB58Decode(req.Arguments[1])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, newPid)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(c) // nolint: errcheck
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -178,38 +170,33 @@ var minerAddAskCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "address to send the ask from"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			err = errors.Wrap(err, "invalid miner address")
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return errors.Wrap(err, "invalid miner address")
 		}
 
 		price, ok := types.NewAttoFILFromFILString(req.Arguments[1])
 		if !ok {
-			re.SetError(ErrInvalidPrice, cmdkit.ErrNormal)
-			return
+			return ErrInvalidPrice
 		}
 
 		expiry, ok := big.NewInt(0).SetString(req.Arguments[2], 10)
 		if !ok {
-			re.SetError("expiry must be a valid integer", cmdkit.ErrNormal)
-			return
+			return errors.New("expiry must be a valid integer")
 		}
 
 		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, price, expiry)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(c) // nolint: errcheck
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -224,19 +211,18 @@ var minerOwnerCmd = &cmds.Command{
 		Tagline:          "Show the actor address of <miner>",
 		ShortDescription: `Given <miner> miner address, output the address of the actor that owns the miner.`,
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		ownerAddr, err := GetAPI(env).Miner().GetOwner(req.Context, minerAddr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		re.Emit(&ownerAddr) // nolint: errcheck
+		return nil
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the address of the miner"),
@@ -255,25 +241,23 @@ var minerPowerCmd = &cmds.Command{
 		ShortDescription: `Check the current power of a given miner and total power of the storage market.
 Values will be output as a ratio where the first number is the miner power and second is the total market power.`,
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		power, err := GetAPI(env).Miner().GetPower(req.Context, minerAddr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 		total, err := GetAPI(env).Miner().GetTotalPower(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal) // nolint: errcheck
-			return
+			return err
 		}
 
 		str := fmt.Sprintf("%d / %d", power, total)
 		re.Emit(str) // nolint: errcheck
+		return nil
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "the address of the miner"),

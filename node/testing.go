@@ -285,7 +285,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 	resultChan := make(chan MustCreateMinerResult)
 	require := require.New(t)
 
-	if node.ChainReader.GenesisCid() == nil {
+	if !node.ChainReader.GenesisCid().Defined() {
 		panic("must initialize with genesis block first")
 	}
 

@@ -72,7 +72,7 @@ type VMContext interface {
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 
-	CreateNewActor(addr address.Address, code *cid.Cid, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
@@ -82,17 +82,17 @@ type VMContext interface {
 // Storage defines the storage module exposed to actors.
 type Storage interface {
 	// TODO: Forgot that Put() can fail in the spec, need to update.
-	Put(interface{}) (*cid.Cid, error)
-	Get(*cid.Cid) ([]byte, error)
-	Commit(*cid.Cid, *cid.Cid) error
-	Head() *cid.Cid
+	Put(interface{}) (cid.Cid, error)
+	Get(cid.Cid) ([]byte, error)
+	Commit(cid.Cid, cid.Cid) error
+	Head() cid.Cid
 }
 
 // Lookup defines an internal interface for actor storage.
 type Lookup interface {
 	Find(ctx context.Context, k string) (interface{}, error)
 	Set(ctx context.Context, k string, v interface{}) error
-	Commit(ctx context.Context) (*cid.Cid, error)
+	Commit(ctx context.Context) (cid.Cid, error)
 	Delete(ctx context.Context, k string) error
 	IsEmpty() bool
 	Values(ctx context.Context) ([]*hamt.KV, error)

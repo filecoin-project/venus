@@ -31,7 +31,7 @@ type SectorBuilder interface {
 
 	// ReadPieceFromSealedSector produces a Reader used to get original
 	// piece-bytes from a sealed sector.
-	ReadPieceFromSealedSector(pieceCid *cid.Cid) (io.Reader, error)
+	ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error)
 
 	// SealAllStagedSectors seals any non-empty staged sectors.
 	SealAllStagedSectors(ctx context.Context) error
@@ -68,8 +68,8 @@ type SectorSealResult struct {
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
-	Ref  *cid.Cid `json:"ref"`
-	Size uint64   `json:"size"` // TODO: use BytesAmount
+	Ref  cid.Cid `json:"ref,omitempty"`
+	Size uint64  `json:"size"` // TODO: use BytesAmount
 }
 
 // An UnsealedSector holds a user's staged piece-bytes. A miner fills this up

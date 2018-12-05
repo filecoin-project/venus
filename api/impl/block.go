@@ -16,6 +16,6 @@ func newNodeBlock(api *nodeAPI) *nodeBlock {
 	return &nodeBlock{api: api}
 }
 
-func (api *nodeBlock) Get(ctx context.Context, id *cid.Cid) (*types.Block, error) {
+func (api *nodeBlock) Get(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	return api.api.node.ChainReader.GetBlock(ctx, id)
 }

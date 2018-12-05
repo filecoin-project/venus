@@ -23,12 +23,12 @@ var log = logging.Logger("/fil/hello")
 
 // Message is the data structure of a single message in the hello protocol.
 type Message struct {
-	HeaviestTipSetCids   []*cid.Cid
+	HeaviestTipSetCids   []cid.Cid
 	HeaviestTipSetHeight uint64
-	GenesisHash          *cid.Cid
+	GenesisHash          cid.Cid
 }
 
-type syncCallback func(from peer.ID, cids []*cid.Cid, height uint64)
+type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
 type getTipSetFunc func() consensus.TipSet
 
@@ -39,7 +39,7 @@ type getTipSetFunc func() consensus.TipSet
 type Handler struct {
 	host host.Host
 
-	genesis *cid.Cid
+	genesis cid.Cid
 
 	// chainSyncCB is called when new peers tell us about their chain
 	chainSyncCB syncCallback
@@ -51,7 +51,7 @@ type Handler struct {
 
 // New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func New(h host.Host, gen *cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Handler {
+func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,

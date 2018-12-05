@@ -20,13 +20,13 @@ var idCmd = &cmds.Command{
 		// TODO: ideally copy this from the `ipfs id` command
 		cmdkit.StringOption("format", "f", "specify an output format"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		details, err := GetAPI(env).ID().Details()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(details) // nolint: errcheck
+		return nil
 	},
 	Type: api.IDDetails{},
 	Encoders: cmds.EncoderMap{

@@ -52,7 +52,7 @@ type Actor struct{}
 
 // State is the storage market's storage.
 type State struct {
-	Miners *cid.Cid
+	Miners cid.Cid
 
 	// TotalCommitedStorage is the number of sectors that are currently committed
 	// in the whole network.
@@ -79,7 +79,7 @@ func (sma *Actor) InitializeState(storage exec.Storage, _ interface{}) error {
 		return err
 	}
 
-	return storage.Commit(id, nil)
+	return storage.Commit(id, cid.Cid{})
 }
 
 var _ exec.ExecutableActor = (*Actor)(nil)

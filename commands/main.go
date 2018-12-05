@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/url"
 	"os"
@@ -181,11 +182,9 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 	res, err := client.Send(req)
 	if err != nil {
 		if isConnectionRefused(err) {
-			re.SetError("Connection Refused. Is the daemon running?", cmdkit.ErrFatal)
-			return nil
+			return cmdkit.Errorf(cmdkit.ErrFatal, "Connection Refused. Is the daemon running?")
 		}
-		re.SetError(err, cmdkit.ErrFatal)
-		return nil
+		return err
 	}
 
 	wait := make(chan struct{})
@@ -193,7 +192,8 @@ func (e *executor) Execute(req *cmds.Request, re cmds.ResponseEmitter, env cmds.
 	go func() {
 		err := cmds.Copy(re, res)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal|cmdkit.ErrFatal)
+			// TODO verify
+			fmt.Errorf("%s", err)
 		}
 		close(wait)
 	}()

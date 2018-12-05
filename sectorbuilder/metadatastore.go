@@ -114,7 +114,7 @@ type unsealArgs struct {
 	sectorID           uint64
 }
 
-func (st *metadataStore) getUnsealArgsForPiece(minerAddr address.Address, pieceCid *cid.Cid) (unsealArgs, error) {
+func (st *metadataStore) getUnsealArgsForPiece(minerAddr address.Address, pieceCid cid.Cid) (unsealArgs, error) {
 	metadata, err := st.getSectorBuilderMetadata(minerAddr)
 	if err != nil {
 		return unsealArgs{}, errors.Wrapf(err, "failed to get sector builder metadata for miner with addr %s", minerAddr.String())

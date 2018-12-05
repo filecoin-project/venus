@@ -23,7 +23,7 @@ import (
 
 // TODO: this really should not be an interface fulfilled by the node.
 type clientNode interface {
-	GetFileSize(context.Context, *cid.Cid) (uint64, error)
+	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	Host() host.Host
 	Lookup() lookup.PeerLookupService
 	GetAskPrice(ctx context.Context, miner address.Address, askid uint64) (*types.AttoFIL, error)
@@ -52,7 +52,7 @@ func NewClient(nd clientNode) *Client {
 }
 
 // ProposeDeal is
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data *cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -142,7 +142,7 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *DealResponse) er
 	}
 }
 
-func (smc *Client) minerForProposal(c *cid.Cid) (address.Address, error) {
+func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
 	st, ok := smc.deals[c.KeyString()]
@@ -154,7 +154,7 @@ func (smc *Client) minerForProposal(c *cid.Cid) (address.Address, error) {
 }
 
 // QueryDeal queries an in-progress proposal.
-func (smc *Client) QueryDeal(ctx context.Context, proposalCid *cid.Cid) (*DealResponse, error) {
+func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*DealResponse, error) {
 	mineraddr, err := smc.minerForProposal(proposalCid)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func NewClientNodeImpl(ds ipld.DAGService, host host.Host, lookup lookup.PeerLoo
 }
 
 // GetFileSize returns the size of the file referenced by 'c'
-func (cni *ClientNodeImpl) GetFileSize(ctx context.Context, c *cid.Cid) (uint64, error) {
+func (cni *ClientNodeImpl) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 	return getFileSize(ctx, c, cni.dserv)
 }
 

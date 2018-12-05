@@ -356,7 +356,7 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 	}
 
 	// processing an exernal message from an empty actor upgrades it to an account actor.
-	if fromActor.Code == nil {
+	if !fromActor.Code.Defined() {
 		err = account.UpgradeActor(fromActor)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")

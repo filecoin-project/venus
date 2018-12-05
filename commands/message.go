@@ -40,11 +40,10 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "address to send message from"),
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		target, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		val, ok := req.Options["value"].(int)
@@ -58,8 +57,7 @@ var msgSendCmd = &cmds.Command{
 			var err error
 			fromAddr, err = address.NewFromString(o.(string))
 			if err != nil {
-				re.SetError(errors.Wrap(err, "invalid from address"), cmdkit.ErrNormal)
-				return
+				return errors.Wrap(err, "invalid from address")
 			}
 		}
 
@@ -70,11 +68,11 @@ var msgSendCmd = &cmds.Command{
 
 		c, err := GetAPI(env).Message().Send(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(c) // nolint: errcheck
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -102,12 +100,10 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("receipt", "print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
-			err = errors.Wrap(err, "invalid message cid")
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return errors.Wrap(err, "invalid message cid")
 		}
 
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
@@ -127,9 +123,9 @@ var msgWaitCmd = &cmds.Command{
 		})
 
 		if err != nil && !found {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
+		return nil
 	},
 	Type: waitResult{},
 	Encoders: cmds.EncoderMap{

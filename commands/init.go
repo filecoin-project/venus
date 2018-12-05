@@ -27,7 +27,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
 		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir := getRepoDir(req)
 		re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)) // nolint: errcheck
 
@@ -45,8 +45,7 @@ var initCmd = &cmds.Command{
 			var err error
 			withMiner, err = address.NewFromString(m)
 			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
+				return err
 			}
 		}
 
@@ -65,9 +64,9 @@ var initCmd = &cmds.Command{
 		)
 
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
+		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(initTextEncoder),

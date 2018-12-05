@@ -17,16 +17,16 @@ var mpoolCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.UintOption("wait-for-count", "block until this number of messages are in the pool").WithDefault(0),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)
 
 		pending, err := GetAPI(env).Mpool().View(req.Context, messageCount)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(pending) // nolint: errcheck
+		return nil
 	},
 	Type: []*types.SignedMessage{},
 	Encoders: cmds.EncoderMap{

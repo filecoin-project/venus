@@ -21,7 +21,9 @@ func (noopLibP2PHost) ID() peer.ID {
 }
 
 func (noopLibP2PHost) Peerstore() peerstore.Peerstore {
-	return peerstore.NewPeerstore()
+	return nil
+	// TODO pass args
+	//return peerstore.NewPeerstore()
 }
 
 func (noopLibP2PHost) Addrs() []multiaddr.Multiaddr {

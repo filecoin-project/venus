@@ -48,10 +48,10 @@ func (msg *Message) Marshal() ([]byte, error) {
 
 // Cid returns the canonical CID for the message.
 // TODO: can we avoid returning an error?
-func (msg *Message) Cid() (*cid.Cid, error) {
+func (msg *Message) Cid() (cid.Cid, error) {
 	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
 	if err != nil {
-		return nil, errPkg.Wrap(err, "failed to marshal to cbor")
+		return cid.Cid{}, errPkg.Wrap(err, "failed to marshal to cbor")
 	}
 
 	return obj.Cid(), nil

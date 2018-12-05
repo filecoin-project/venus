@@ -34,20 +34,19 @@ var clientCatCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("cid", true, false, "cid of data to read"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		c, err := cid.Decode(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		dr, err := GetAPI(env).Client().Cat(req.Context, c)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(dr) // nolint: errcheck
+		return nil
 	},
 }
 
@@ -58,20 +57,19 @@ var clientImportDataCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.FileArg("file", true, false, "path to file to import").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fi, err := req.Files.NextFile()
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		out, err := GetAPI(env).Client().ImportData(req.Context, fi)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(out.Cid()) // nolint: errcheck
+		return nil
 	},
 	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -91,38 +89,34 @@ var clientProposeStorageDealCmd = &cmds.Command{
 		cmdkit.StringArg("ask", true, false, "ID of ask to propose a deal for"),
 		cmdkit.StringArg("duration", true, false, "number of blocks to store the data for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		miner, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		data, err := cid.Decode(req.Arguments[1])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		askid, err := strconv.ParseUint(req.Arguments[2], 10, 64)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		duration, err := strconv.ParseUint(req.Arguments[3], 10, 64)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(resp) // nolint: errcheck
+		return nil
 	},
 	Type: storage.DealResponse{},
 	Encoders: cmds.EncoderMap{
@@ -142,20 +136,19 @@ var clientQueryStorageDealCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("id", true, false, "cid of deal to query"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		propcid, err := cid.Decode(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		resp, err := GetAPI(env).Client().QueryStorageDeal(req.Context, propcid)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		re.Emit(resp) // nolint: errcheck
+		return nil
 	},
 	Type: storage.DealResponse{},
 	Encoders: cmds.EncoderMap{
@@ -171,20 +164,19 @@ var clientListAsksCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "list all asks in the storage market",
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		asksCh, err := GetAPI(env).Client().ListAsks(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		for a := range asksCh {
 			if a.Error != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
+				return err
 			}
 			re.Emit(a) // nolint: errcheck
 		}
+		return nil
 	},
 	Type: api.Ask{},
 	Encoders: cmds.EncoderMap{

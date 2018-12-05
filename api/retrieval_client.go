@@ -10,5 +10,5 @@ import (
 
 // RetrievalClient is the interface that defines methods to manage retrieval client operations.
 type RetrievalClient interface {
-	RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID *cid.Cid) (io.ReadCloser, error)
+	RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID cid.Cid) (io.ReadCloser, error)
 }

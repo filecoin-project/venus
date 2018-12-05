@@ -24,7 +24,7 @@ import (
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (*cid.Cid, state.Tree) {
+func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
 	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
@@ -67,13 +67,13 @@ func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr a
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid) *actor.Actor {
+func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid *cid.Cid, amt *types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})

@@ -15,7 +15,7 @@ func newNodeChain(api *nodeAPI) *nodeChain {
 	return &nodeChain{api: api}
 }
 
-func (api *nodeChain) Head() ([]*cid.Cid, error) {
+func (api *nodeChain) Head() ([]cid.Cid, error) {
 	ts := api.api.node.ChainReader.Head()
 	if len(ts) == 0 {
 		return nil, ErrHeaviestTipSetNotFound

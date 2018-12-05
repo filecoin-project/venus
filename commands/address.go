@@ -39,13 +39,13 @@ type addressResult struct {
 }
 
 var addrsNewCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := GetAPI(env).Address().Addrs().New(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(&addressResult{addr.String()}) // nolint: errcheck
+		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -57,16 +57,16 @@ var addrsNewCmd = &cmds.Command{
 }
 
 var addrsLsCmd = &cmds.Command{
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs, err := GetAPI(env).Address().Addrs().Ls(req.Context)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		for _, addr := range addrs {
 			re.Emit(&addressResult{addr.String()}) // nolint: errcheck
 		}
+		return nil
 	},
 	Type: &addressResult{},
 	Encoders: cmds.EncoderMap{
@@ -81,19 +81,18 @@ var addrsLookupCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "miner address to find peerId for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		v, err := GetAPI(env).Address().Addrs().Lookup(req.Context, addr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(v.Pretty()) // nolint: errcheck
+		return nil
 	},
 	Type: string(""),
 	Encoders: cmds.EncoderMap{
@@ -108,19 +107,18 @@ var balanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("address", true, false, "address to get balance for"),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		balance, err := GetAPI(env).Address().Balance(req.Context, addr)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		re.Emit(balance) // nolint: errcheck
+		return nil
 	},
 	Type: &types.AttoFIL{},
 	Encoders: cmds.EncoderMap{
@@ -134,16 +132,16 @@ var walletImportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.FileArg("walletFile", true, false, "file containing wallet data to import").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs, err := GetAPI(env).Address().Import(req.Context, req.Files)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 
 		for _, a := range addrs {
 			re.Emit(a) // nolint: errcheck
 		}
+		return nil
 	},
 	Type: address.Address{},
 }
@@ -152,25 +150,24 @@ var walletExportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("addresses", true, true, "addresses of keys to export").EnableStdin(),
 	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) {
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs := make([]address.Address, len(req.Arguments))
 		for i, arg := range req.Arguments {
 			addr, err := address.NewFromString(arg)
 			if err != nil {
-				re.SetError(err, cmdkit.ErrNormal)
-				return
+				return err
 			}
 			addrs[i] = addr
 		}
 
 		kis, err := GetAPI(env).Address().Export(req.Context, addrs)
 		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
+			return err
 		}
 		for _, ki := range kis {
 			re.Emit(ki) // nolint: errcheck
 		}
+		return nil
 	},
 	Type: types.KeyInfo{},
 }

@@ -12,7 +12,7 @@ import (
 // MessageTopic is the pubsub topic identifier on which new messages are announced.
 const MessageTopic = "/fil/msgs"
 
-func (node *Node) processMessage(ctx context.Context, pubSubMsg *floodsub.Message) (err error) {
+func (node *Node) processMessage(ctx context.Context, pubSubMsg *pubsub.Message) (err error) {
 	ctx = log.Start(ctx, "Node.processMessage")
 	defer func() {
 		log.FinishWithErr(ctx, err)

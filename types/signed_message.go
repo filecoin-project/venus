@@ -41,10 +41,10 @@ func (smsg *SignedMessage) Marshal() ([]byte, error) {
 
 // Cid returns the canonical CID for the SignedMessage.
 // TODO: can we avoid returning an error?
-func (smsg *SignedMessage) Cid() (*cid.Cid, error) {
+func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 	obj, err := cbor.WrapObject(smsg, DefaultHashFunction, -1)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal to cbor")
+		return cid.Cid{}, errors.Wrap(err, "failed to marshal to cbor")
 	}
 
 	return obj.Cid(), nil

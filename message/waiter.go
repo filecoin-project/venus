@@ -53,7 +53,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 //
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
-func (w *Waiter) Wait(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	var emptyErr error
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
@@ -123,7 +123,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid *cid.Cid, cb func(*types.Block
 // input tipset.  This can differ from the message's receipt as stored in its
 // parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -180,7 +180,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid *cid.Cid, ts cons
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func msgIndexOfTipSet(msgCid *cid.Cid, ts consensus.TipSet, fails types.SortedCidSet) (int, error) {
+func msgIndexOfTipSet(msgCid cid.Cid, ts consensus.TipSet, fails types.SortedCidSet) (int, error) {
 	blks := ts.ToSlice()
 	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet

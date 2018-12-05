@@ -31,18 +31,18 @@ type MessagePool struct {
 }
 
 // Add adds a message to the pool.
-func (pool *MessagePool) Add(msg *types.SignedMessage) (*cid.Cid, error) {
+func (pool *MessagePool) Add(msg *types.SignedMessage) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
 	c, err := msg.Cid()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create CID")
+		return cid.Cid{}, errors.Wrap(err, "failed to create CID")
 	}
 
 	// Reject messages with invalid signatires
 	if !msg.VerifySignature() {
-		return nil, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
+		return cid.Cid{}, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
 	}
 
 	pool.pending[c.KeyString()] = msg
@@ -62,7 +62,7 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 }
 
 // Remove removes the message by CID from the pending pool.
-func (pool *MessagePool) Remove(c *cid.Cid) {
+func (pool *MessagePool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -231,7 +231,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		}
 	}
 	// m.Cid() can error, so collect all the Cids before
-	removeCids := make([]*cid.Cid, len(removeFromPool))
+	removeCids := make([]cid.Cid, len(removeFromPool))
 	for i, m := range removeFromPool {
 		cid, err := m.Cid()
 		if err != nil {
