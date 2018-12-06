@@ -2,7 +2,6 @@ package mining
 
 import (
 	"context"
-	"gx/ipfs/QmZFbDTY9jfSBms2MchvYM9oYRbAF19K7Pby47yDBfpPrb/go-cid"
 	"sync"
 	"time"
 
@@ -139,24 +138,4 @@ func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore b
 // HasPower always returns true.
 func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
-}
-
-// StateTreeForTest is a StateTree with a TestFlush Flush function.
-type StateTreeForTest struct {
-	state.Tree
-	TestFlush func(ctx context.Context) (*cid.Cid, error)
-}
-
-// WrapStateTreeForTest creates a new StateTreeForTest
-func WrapStateTreeForTest(st state.Tree) *StateTreeForTest {
-	stt := StateTreeForTest{
-		st,
-		st.Flush,
-	}
-	return &stt
-}
-
-// Flush calls StateTreeForTest.TestFlush
-func (st *StateTreeForTest) Flush(ctx context.Context) (*cid.Cid, error) {
-	return st.TestFlush(ctx)
 }

@@ -7,6 +7,7 @@ import (
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -31,7 +32,7 @@ type sealedSectorMetadata struct {
 	CommR                [32]byte
 	NumBytes             uint64
 	Pieces               []*PieceInfo
-	Proof                [384]byte
+	Proof                proofs.SealProof
 	SealedSectorAccess   string
 	SectorID             uint64
 	UnsealedSectorAccess string

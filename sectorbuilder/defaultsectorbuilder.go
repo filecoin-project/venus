@@ -103,7 +103,7 @@ func (sb *defaultSectorBuilder) newUnsealedSector() (s *UnsealedSector, err erro
 
 // newSealedSector creates a new SealedSector. The new SealedSector is appended to the slice of sealed sectors managed
 // by the SectorBuilder.
-func (sb *defaultSectorBuilder) newSealedSector(commR [32]byte, commD [32]byte, proof [384]byte, label, sealedSectorAccess string, s *UnsealedSector) *SealedSector {
+func (sb *defaultSectorBuilder) newSealedSector(commR [32]byte, commD [32]byte, proof proofs.SealProof, label, sealedSectorAccess string, s *UnsealedSector) *SealedSector {
 	ss := &SealedSector{
 		CommD:                commD,
 		CommR:                commR,
