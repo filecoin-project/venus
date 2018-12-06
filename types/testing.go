@@ -3,7 +3,6 @@ package types
 import (
 	"crypto/ecdsa"
 	"fmt"
-
 	"github.com/stretchr/testify/assert"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -13,6 +12,12 @@ import (
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
+
+// NewTestPoSt creates a trivial, right-sized byte slice for a Proof of Spacetime.
+func NewTestPoSt() [192]byte {
+	var newProof [192]byte
+	return newProof
+}
 
 // MockRecoverer implements the Recoverer interface
 type MockRecoverer struct{}

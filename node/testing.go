@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/rand"
 	"os"
 	"sync"
@@ -231,7 +232,11 @@ func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif conse
 
 	if alwaysWinningTicket {
 		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
-		newCon := consensus.NewExpected(nd.CborStore(), nd.Blockstore, nd.PowerTable, nd.ChainReader.GenesisCid())
+		newCon := consensus.NewExpected(nd.CborStore(),
+			nd.Blockstore,
+			nd.PowerTable,
+			nd.ChainReader.GenesisCid(),
+			proofs.NewFakeProver(true, nil))
 		newChainStore, ok := nd.ChainReader.(chain.Store)
 		require.True(t, ok)
 
@@ -392,7 +397,11 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	if !ok {
 		return errors.New("failed to cast chain.Store to chain.ReadStore")
 	}
-	newCon := consensus.NewExpected(node.CborStore(), node.Blockstore, node.PowerTable, newGenBlk.Cid())
+	newCon := consensus.NewExpected(node.CborStore(),
+		node.Blockstore,
+		node.PowerTable,
+		newGenBlk.Cid(),
+		proofs.NewFakeProver(true, nil))
 	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
 	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	node.ChainReader = newChainReader

@@ -47,10 +47,16 @@
         "parentWeightNumerator": {
           "type": "string"
         },
-	"parentWeightDenominator": {
-	  "type": "string"
-	},
-	"reward": {
+        "parentWeightDenominator": {
+          "type": "string"
+        },
+        "proof": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "reward": {
           "type": "string"
         },
         "stateRoot": {

@@ -197,7 +197,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	st, err = syncer.consensus.RunStateTransition(ctx, next, st)
+	st, err = syncer.consensus.RunStateTransition(ctx, next, parent, st)
 	if err != nil {
 		return err
 	}

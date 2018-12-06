@@ -193,11 +193,10 @@ func TestPoSTCycle(t *testing.T) {
 	require.Equal(1, len(gres.Faults))
 	require.Equal(uint64(0), gres.Faults[0])
 
-	vres, verr := (&RustProver{}).VerifyPoST(VerifyPoSTRequest{
-		Proof: gres.Proof,
-	})
+	challenge := []byte("doesnt matter")
+	vres, verr := IsPoStValidWithProver(&RustProver{}, gres.Proof[:], challenge)
 	require.NoError(verr)
-	require.True(vres.IsValid)
+	require.True(vres)
 }
 
 func TestHandlesNullFaultsPtr(t *testing.T) {

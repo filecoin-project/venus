@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/big"
 	mrand "math/rand"
 	"testing"
@@ -47,7 +48,7 @@ func MkFakeChild(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, non
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, genCid)
+	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, genCid, proofs.NewFakeProver(true, nil))
 	return MkFakeChildWithCon(parent, genCid, stateRoot, nonce, nullBlockCount, con)
 }
 

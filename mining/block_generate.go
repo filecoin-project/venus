@@ -6,8 +6,7 @@ package mining
 
 import (
 	"context"
-
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -17,7 +16,11 @@ import (
 )
 
 // Generate returns a new block created from the messages in the pool.
-func (w *DefaultWorker) Generate(ctx context.Context, baseTipSet consensus.TipSet, ticket types.Signature, nullBlockCount uint64) (*types.Block, error) {
+func (w *DefaultWorker) Generate(ctx context.Context,
+	baseTipSet consensus.TipSet,
+	ticket types.Signature,
+	nullBlockCount uint64) (*types.Block, error) {
+
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "get state tree")

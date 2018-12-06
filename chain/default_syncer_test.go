@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,7 +109,8 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (Syncer, *hamt
 	powerTable := &consensus.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, powerTable, genCid)
+	prover := proofs.NewFakeProver(true, nil)
+	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
 	syncer, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	ctx := context.Background()
 	err := chain.Load(ctx)
@@ -123,7 +125,8 @@ func initSyncTestDefault(require *require.Assertions) (Syncer, Store, *hamt.Cbor
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, powerTable, genCid)
+	prover := proofs.NewFakeProver(true, nil)
+	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
 	return initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 }
@@ -134,7 +137,8 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, powerTable, genCid)
+	prover := proofs.NewFakeProver(true, nil)
+	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
 	sync, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	return sync, chain, cst, con
@@ -678,7 +682,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	weightDeepTS := consensus.RequireNewTipSet(require, weightDeepGenBlk)
 	weightDeepStateRoot := weightDeepGenBlk.StateRoot
 
-	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid)
+	prover := proofs.NewFakeProver(true, nil)
+	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid, prover)
 	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
@@ -706,7 +711,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(err)
 
 	// Now sync the chain with consensus using a MarketView.
-	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, weightDeepGenCid)
+	prover = proofs.NewFakeProver(true, nil)
+	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, weightDeepGenCid, prover)
 	syncer = NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))

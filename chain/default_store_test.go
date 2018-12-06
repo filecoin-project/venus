@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func initStoreTest(require *require.Assertions) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, powerTable, genCid)
+	con := consensus.NewExpected(cst, bs, powerTable, genCid, proofs.NewFakeProver(true, nil))
 	requireSetTestChain(require, con, true)
 }
 

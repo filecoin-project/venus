@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"testing"
 
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -66,7 +67,8 @@ func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.
 	genesisTS := consensus.RequireNewTipSet(require, genBlk)
 	genRoot := genBlk.StateRoot
 
-	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid)
+	prover := proofs.NewFakeProver(true, nil)
+	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid, prover)
 	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
