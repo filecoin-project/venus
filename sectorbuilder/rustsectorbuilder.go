@@ -8,6 +8,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -24,6 +25,10 @@ import (
 
 */
 import "C"
+
+// MaxNumStagedSectors configures the maximum number of staged sectors which can
+// be open and accepting data at any time.
+const MaxNumStagedSectors = 1
 
 func elapsed(what string) func() {
 	start := time.Now()
@@ -51,45 +56,46 @@ var _ SectorBuilder = &RustSectorBuilder{}
 // RustSectorBuilderConfig is a configuration object used when instantiating a
 // Rust-backed SectorBuilder through the FFI. All fields are required.
 type RustSectorBuilderConfig struct {
-	blockService        bserv.BlockService
-	lastUsedSectorID    uint64
-	metadataDir         string
-	proverID            [31]byte
-	sealedSectorDir     string
-	sectorStoreType     proofs.SectorStoreType
-	stagedSectorDir     string
-	maxNumStagedSectors int
+	BlockService     bserv.BlockService
+	LastUsedSectorID uint64
+	MetadataDir      string
+	MinerAddr        address.Address
+	SealedSectorDir  string
+	SectorStoreType  proofs.SectorStoreType
+	StagedSectorDir  string
 }
 
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
 func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
 	defer elapsed("NewRustSectorBuilder")()
 
-	cMetadataDir := C.CString(cfg.metadataDir)
+	cMetadataDir := C.CString(cfg.MetadataDir)
 	defer C.free(unsafe.Pointer(cMetadataDir))
 
-	proverIDCBytes := C.CBytes(cfg.proverID[:])
+	proverID := addressToProverID(cfg.MinerAddr)
+
+	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
 
-	cStagedSectorDir := C.CString(cfg.stagedSectorDir)
+	cStagedSectorDir := C.CString(cfg.StagedSectorDir)
 	defer C.free(unsafe.Pointer(cStagedSectorDir))
 
-	cSealedSectorDir := C.CString(cfg.sealedSectorDir)
+	cSealedSectorDir := C.CString(cfg.SealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	scfg, err := proofs.CSectorStoreType(cfg.sectorStoreType)
+	scfg, err := proofs.CSectorStoreType(cfg.SectorStoreType)
 	if err != nil {
-		return nil, errors.Errorf("unknown sector store type: %v", cfg.sectorStoreType)
+		return nil, errors.Errorf("unknown sector store type: %v", cfg.SectorStoreType)
 	}
 
 	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(
 		(*C.ConfiguredStore)(unsafe.Pointer(scfg)),
-		C.uint64_t(cfg.lastUsedSectorID),
+		C.uint64_t(cfg.LastUsedSectorID),
 		cMetadataDir,
 		(*[31]C.uint8_t)(proverIDCBytes),
-		cStagedSectorDir,
 		cSealedSectorDir,
-		C.uint8_t(cfg.maxNumStagedSectors),
+		cStagedSectorDir,
+		C.uint8_t(MaxNumStagedSectors),
 	)))
 	defer C.destroy_init_sector_builder_response(resPtr)
 
@@ -98,7 +104,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	}
 
 	sb := &RustSectorBuilder{
-		blockService:      cfg.blockService,
+		blockService:      cfg.BlockService,
 		ptr:               unsafe.Pointer(resPtr.sector_builder),
 		sectorSealResults: make(chan SectorSealResult),
 	}
