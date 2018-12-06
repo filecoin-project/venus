@@ -89,7 +89,7 @@ See the go-filecoin client cat command for more details.
 
 var clientProposeStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Propose a storage deal with a storage miner",
+		Tagline:          "Propose a storage deal with a storage miner",
 		ShortDescription: `Sends a storage deal proposal to a miner`,
 		LongDescription: `
 Send a storage deal proposal to a miner. IDs provided to this command should
@@ -109,7 +109,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.StringArg("miner", true, false, "address of miner to send storage proposal"),
 		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
 		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
-		cmdkit.StringArg("duration", true, false, "time in blocks (about 30 seconds) to store data"),
+		cmdkit.StringArg("duration", true, false, "time in blocks (about 30 seconds per block) to store data"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		miner, err := address.NewFromString(req.Arguments[0])
@@ -154,9 +154,9 @@ var clientQueryStorageDealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Query a storage deal's status",
 		ShortDescription: `
-Checks the status of the storage deal proposal specified by the id. Results will
-be returned as a formatted string with deal status and message unless otherwise
-specified by the --enc flag.
+Checks the status of the storage deal proposal specified by the id. The deal
+status and deal message will be returned as a formatted string unless another
+format is specified with the --enc flag.
 `,
 	},
 	Arguments: []cmdkit.Argument{
