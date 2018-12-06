@@ -6,6 +6,8 @@ package mining
 
 import (
 	"context"
+	"fmt"
+
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -105,7 +107,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	for _, msg := range res.SuccessfulMessages {
 		mc, err := msg.Cid()
 		if err == nil {
-			w.messagePool.Remove(mc)
+			w.messagePool.Remove2(mc, true)
 		}
 	}
 
@@ -117,7 +119,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		log.Infof("permanent ApplyMessage failure, [%s] (%s)", mc.String(), res.PermanentErrors[i])
 		// Intentionally not handling error case, since it just means we won't be able to remove from pool.
 		if err == nil {
-			w.messagePool.Remove(mc)
+			fmt.Printf("ERROR: %s\n", res.PermanentErrors[i].Error())
+			w.messagePool.Remove2(mc, false)
 		}
 	}
 

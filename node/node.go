@@ -1063,7 +1063,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 	for i := 0; i < int(retries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d", method, i, retries)
 
-		fmt.Printf("%-5s | %-35s | %-20s | %-d\n", "gf", "  Node#SendMessageAndWait", method, int(retries)-i)
+		fmt.Printf("%-5s | %-35s | %-20s | remainingRetries=%-d\n", "gf", "  Node#SendMessageAndWait", method, int(retries)-i)
 
 		select {
 		case <-ctx.Done():
