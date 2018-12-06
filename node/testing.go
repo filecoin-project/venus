@@ -2,13 +2,17 @@ package node
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
+	merkledag "gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
+	"io"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	crypto "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	pstore "gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
@@ -30,10 +34,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -449,4 +455,74 @@ func mustPeerID(k crypto.PrivKey) peer.ID {
 		panic(err)
 	}
 	return pid
+}
+
+// FirstMatchingMsgInChain queries the blockchain history in a loop for a block
+// with matching properties, publishing the first match to the returned channel.
+// Note: this function should probably be API porcelain.
+func FirstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager chain.ReadStore, msgMethod string, msgSenderAddr address.Address, cancelCh <-chan struct{}, errCh chan<- error) <-chan *types.Block {
+	out := make(chan *types.Block)
+
+	go func() {
+		defer close(out)
+
+		for {
+			history := chainManager.BlockHistory(ctx)
+
+		Loop:
+			for {
+				select {
+				case <-cancelCh:
+					return
+				case event, more := <-history:
+					if !more {
+						break Loop
+					}
+
+					ts, ok := event.(consensus.TipSet)
+					if !ok {
+						errCh <- fmt.Errorf("expected a TipSet, got a %T with value %v", event, event)
+						return
+					}
+
+					for _, block := range ts.ToSlice() {
+						for _, message := range block.Messages {
+							if message.Method == msgMethod && message.From == msgSenderAddr {
+								out <- block
+								return
+							}
+						}
+					}
+				}
+			}
+
+			time.Sleep(time.Millisecond * 100)
+		}
+	}()
+
+	return out
+}
+
+func CreateRandomPieceInfo(t *testing.T, blockService blockservice.BlockService, n uint64) (*sectorbuilder.PieceInfo, []byte) {
+	randomBytes := CreateRandomBytes(t, n)
+	node := merkledag.NewRawNode(randomBytes)
+	err := blockService.AddBlock(node)
+	require.NoError(t, err)
+
+	size, err := node.Size()
+	require.NoError(t, err)
+
+	return &sectorbuilder.PieceInfo{
+		Ref:  node.Cid(),
+		Size: size,
+	}, randomBytes
+}
+
+func CreateRandomBytes(t *testing.T, n uint64) []byte {
+	slice := make([]byte, n)
+
+	_, err := io.ReadFull(crand.Reader, slice)
+	require.NoError(t, err)
+
+	return slice
 }

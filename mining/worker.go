@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -159,6 +160,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 			log.SetTag(ctx, "block", next)
 		}
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
+
+		for _, m := range next.Messages {
+			if m.Method != "" {
+				fmt.Printf("%-4s %.0s | %-35s | %-20s\n", "gf", "", "* done generating new block", m.Method)
+			}
+		}
+
 		outCh <- NewOutput(next, err)
 		return true
 	}

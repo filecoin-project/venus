@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -45,6 +46,8 @@ func (pool *MessagePool) Add(msg *types.SignedMessage) (cid.Cid, error) {
 		return cid.Undef, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
 	}
 
+	fmt.Printf("%-4s %.0s | %-35s | %-20s | %-.10s\n", "gf", "", "  MessagePool#Add", msg.Method, c.String())
+
 	pool.pending[c] = msg
 	return c, nil
 }
@@ -65,6 +68,10 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 func (pool *MessagePool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
+
+	if msg, ok := pool.pending[c]; ok {
+		fmt.Printf("%-4s %.0s | %-35s | %-20s | %-.10s\n", "gf", "", "    * MessagePool#Remove", msg.Method, c.String())
+	}
 
 	delete(pool.pending, c)
 }

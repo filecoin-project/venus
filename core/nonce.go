@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -28,6 +29,14 @@ func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address addr
 	// TODO: consider what if anything to do if there's a gap with
 	// what's in the pool.
 	nonceFromMsgPool, found := LargestNonce(mp, address)
+
+	x := uint64(actor.Nonce)
+	if found && nonceFromMsgPool >= x {
+		x = nonceFromMsgPool + 1
+	}
+
+	fmt.Printf("%-5s | %-35s | %-20s | foundSomethingInPool=%v, currentActorNonce=%-d, whatWeWillUse=%d\n", "gf", "      NextNonce", "", found, nonce, x)
+
 	if found && nonceFromMsgPool >= nonce {
 		nonce = nonceFromMsgPool + 1
 	}

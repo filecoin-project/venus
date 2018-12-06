@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -36,6 +37,13 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	// TODO: should this just be a cid? Right now receivers ask to fetch
 	// the block over bitswap anyway.
+
+	for _, m := range b.Messages {
+		if m.Method != "" {
+			fmt.Printf("%-4s %.0s | %-35s | %-s\n", "gf", node.host.ID().Pretty(), "    * Node#AddNewBlock", m.Method)
+		}
+	}
+
 	return node.PubSub.Publish(BlockTopic, b.ToNode().RawData())
 }
 

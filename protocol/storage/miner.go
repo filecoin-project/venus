@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -426,6 +426,11 @@ func generatePoSt(commRs [][32]byte, seed [32]byte) (proofs.PoStProof, []uint64,
 }
 
 func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuilder.SealedSector) {
+	fmt.Printf("%-5s | %-35s | %-20s | %-.20s\n", "gf", "Miner#submitPoSt", "", "start")
+	defer func() {
+		fmt.Printf("%-5s | %-35s | %-20s | %-.20s\n", "gf", "Miner#submitPoSt", "", "finish")
+	}()
+
 	// TODO: real seed generation
 	seed := [32]byte{}
 	if _, err := rand.Read(seed[:]); err != nil {

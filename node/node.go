@@ -680,21 +680,28 @@ func (node *Node) StartMining(ctx context.Context) error {
 		for {
 			select {
 			case result := <-node.SectorBuilder().SectorSealResults():
-				if result.SealingErr != nil {
-					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
-				} else if result.SealingResult != nil {
-					val := result.SealingResult
-					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
-					// as our miners existence depends on this.
-					// TODO: what is the right number of retries?
-					_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
-					if err != nil {
-						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
-						continue
-					}
+				func() {
+					fmt.Printf("%-5s | %-35s | %-20s | %-.20s\n", "gf", "commitSector", "", "start")
+					defer func() {
+						fmt.Printf("%-5s | %-35s | %-20s | %-.20s\n", "gf", "commitSector", "", "finish")
+					}()
 
-					node.StorageMiner.OnCommitmentAddedToChain(val, nil)
-				}
+					if result.SealingErr != nil {
+						log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
+					} else if result.SealingResult != nil {
+						val := result.SealingResult
+						// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
+						// as our miners existence depends on this.
+						// TODO: what is the right number of retries?
+						_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
+						if err != nil {
+							log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
+							return
+						}
+
+						node.StorageMiner.OnCommitmentAddedToChain(val, nil)
+					}
+				}()
 			case <-node.miningCtx.Done():
 				return
 			}
@@ -888,10 +895,13 @@ func newMessageWithNextNonce(ctx context.Context, node *Node, from, to address.A
 		log.FinishWithErr(ctx, err)
 	}()
 
+	fmt.Printf("%-5s | %-35s | %-20s\n", "gf", "    newMessageWithNextNonce", method)
+
 	nonce, err := NextNonce(ctx, node, from)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get next nonce")
 	}
+
 	return types.NewMessage(from, to, nonce, value, method, params), nil
 }
 
@@ -1053,6 +1063,8 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 	for i := 0; i < int(retries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d", method, i, retries)
 
+		fmt.Printf("%-5s | %-35s | %-20s | %-d\n", "gf", "  Node#SendMessageAndWait", method, int(retries)-i)
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -1066,6 +1078,8 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 				ctx,
 				msgCid,
 				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+					fmt.Printf("%-5s | %-35s | %-20s | blk=%-.10s | msg=%-.10s\n", "gf", "      * node#WaitForMessage(cb)", method, blk.Cid().String(), msgCid.String())
+
 					if receipt.ExitCode != uint8(0) {
 						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 					}
@@ -1082,6 +1096,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 						}
 						retValues[i] = abi.FromValues(val)
 					}
+
 					return nil
 				},
 			)
@@ -1125,6 +1140,8 @@ func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}
+
+	fmt.Printf("%-4s %.0s | %-35s | %-20s\n", "gf", node.host.ID().Pretty(), "    Node#SendMessage", msg.Method)
 
 	if err := node.addNewMessage(ctx, smsg); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to submit message")

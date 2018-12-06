@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
@@ -40,6 +41,8 @@ func (node *Node) addNewMessage(ctx context.Context, msg *types.SignedMessage) (
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")
 	}
+
+	fmt.Printf("%-4s %.0s | %-35s | %-20s\n", "gf", node.host.ID().Pretty(), "      Node#addNewMessage", msg.Method)
 
 	if _, err := node.MsgPool.Add(msg); err != nil {
 		return errors.Wrap(err, "failed to add message to the message pool")

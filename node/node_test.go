@@ -612,3 +612,55 @@ func TestDefaultMessageFromAddress(t *testing.T) {
 		})
 	*/
 }
+
+func TestNonceRace(t *testing.T) {
+	t.Parallel()
+
+	require := require.New(t)
+	ctx := context.Background()
+
+	seed := MakeChainSeed(t, TestGenCfg)
+
+	// make one node, one of which is the minerNode (and gets the miner peer key)
+	minerNode := NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(0))
+
+	// give the minerNode node a key and the miner associated with that key
+	seed.GiveKey(t, minerNode, 0)
+	_, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
+
+	// start 'em up
+	require.NoError(minerNode.Start(ctx))
+
+	// start mining
+	require.NoError(minerNode.StartMining(ctx))
+	defer minerNode.StopMining(ctx)
+
+	response, err := minerNode.SectorStore.GetMaxUnsealedBytesPerSector()
+	require.NoError(err)
+	testSectorSize := uint64(response.NumBytes)
+
+	// pretend like we've run through the storage protocol and saved user's
+	// data to the miner's block store and sector builder
+	pieceA, _ := CreateRandomPieceInfo(t, minerNode.BlockService(), testSectorSize/2)
+	pieceB, _ := CreateRandomPieceInfo(t, minerNode.BlockService(), testSectorSize-(testSectorSize/2))
+
+	_, err = minerNode.SectorBuilder().AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
+	require.NoError(err)
+	_, err = minerNode.SectorBuilder().AddPiece(ctx, pieceB) // triggers seal
+	require.NoError(err)
+
+	// wait for commitSector to make it into the chain
+	cancelCh := make(chan struct{})
+	errorCh := make(chan error)
+	defer close(cancelCh)
+	defer close(errorCh)
+
+	select {
+	case <-FirstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelCh, errorCh):
+	case err = <-errorCh:
+		require.NoError(err)
+	case <-time.After(30 * time.Second):
+		cancelCh <- struct{}{}
+		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in **miner** node's chain", testSectorSize, minerOwnerAddr)
+	}
+}

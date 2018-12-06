@@ -3,25 +3,17 @@ package retrieval_test
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"testing"
 	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
 	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
-	"gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/api/impl"
-	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/require"
@@ -61,8 +53,8 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 
 	// pretend like we've run through the storage protocol and saved user's
 	// data to the miner's block store and sector builder
-	pieceA, bytesA := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize/2)
-	pieceB, bytesB := createRandomPieceInfo(t, minerNode.BlockService(), testSectorSize-(testSectorSize/2))
+	pieceA, bytesA := node.CreateRandomPieceInfo(t, minerNode.BlockService(), testSectorSize/2)
+	pieceB, bytesB := node.CreateRandomPieceInfo(t, minerNode.BlockService(), testSectorSize-(testSectorSize/2))
 
 	_, err = minerNode.SectorBuilder().AddPiece(ctx, pieceA) // blocks until all piece-bytes written to sector
 	require.NoError(err)
@@ -78,7 +70,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	defer close(errCh)
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA, errCh):
+	case <-node.FirstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA, errCh):
 	case err = <-errCh:
 		require.NoError(err)
 	case <-time.After(120 * time.Second):
@@ -87,7 +79,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	}
 
 	select {
-	case <-firstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB, errCh):
+	case <-node.FirstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB, errCh):
 	case err = <-errCh:
 		require.NoError(err)
 	case <-time.After(120 * time.Second):
@@ -121,76 +113,6 @@ func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient
 	}
 
 	return slice, nil
-}
-
-// firstMatchingMsgInChain queries the blockchain history in a loop for a block
-// with matching properties, publishing the first match to the returned channel.
-// Note: this function should probably be API porcelain.
-func firstMatchingMsgInChain(ctx context.Context, t *testing.T, chainManager chain.ReadStore, msgMethod string, msgSenderAddr address.Address, cancelCh <-chan struct{}, errCh chan<- error) <-chan *types.Block {
-	out := make(chan *types.Block)
-
-	go func() {
-		defer close(out)
-
-		for {
-			history := chainManager.BlockHistory(ctx)
-
-		Loop:
-			for {
-				select {
-				case <-cancelCh:
-					return
-				case event, more := <-history:
-					if !more {
-						break Loop
-					}
-
-					ts, ok := event.(consensus.TipSet)
-					if !ok {
-						errCh <- fmt.Errorf("expected a TipSet, got a %T with value %v", event, event)
-						return
-					}
-
-					for _, block := range ts.ToSlice() {
-						for _, message := range block.Messages {
-							if message.Method == msgMethod && message.From == msgSenderAddr {
-								out <- block
-								return
-							}
-						}
-					}
-				}
-			}
-
-			time.Sleep(time.Millisecond * 100)
-		}
-	}()
-
-	return out
-}
-
-func createRandomPieceInfo(t *testing.T, blockService blockservice.BlockService, n uint64) (*sectorbuilder.PieceInfo, []byte) {
-	randomBytes := createRandomBytes(t, n)
-	node := merkledag.NewRawNode(randomBytes)
-	err := blockService.AddBlock(node)
-	require.NoError(t, err)
-
-	size, err := node.Size()
-	require.NoError(t, err)
-
-	return &sectorbuilder.PieceInfo{
-		Ref:  node.Cid(),
-		Size: size,
-	}, randomBytes
-}
-
-func createRandomBytes(t *testing.T, n uint64) []byte {
-	slice := make([]byte, n)
-
-	_, err := io.ReadFull(rand.Reader, slice)
-	require.NoError(t, err)
-
-	return slice
 }
 
 func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *node.Node, minerAddr address.Address, minerOwnerAddr address.Address) {
