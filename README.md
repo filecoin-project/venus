@@ -298,6 +298,11 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Clusters
 
+Both the Test and Nightly clusters run with `FIL_USE_SMALL_SECTORS=true`, this means that the proofs system only ever seals the first 127 bytes of a sector. Because of this users connecting to the cluster must:
+
+- Set `FIL_USE_SMALL_SECTORS=true` before starting the daemon, else they risk experiencing undefined behavior.
+- Only store files that are <= 127 bytes.
+
 ### Nightly Cluster
 
 Deployed from master by CI every day at 0600 UTC. **If you want to use a cluster
