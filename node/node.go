@@ -121,14 +121,13 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	PubSub            *pubsub.PubSub
-	BlockSub          *pubsub.Subscription
-	MessageSub        *pubsub.Subscription
-	Ping              *ping.PingService
-	HelloSvc          *hello.Handler
-	RelayBootstrapper *filnet.Bootstrapper
-	Bootstrapper      *filnet.Bootstrapper
-	OnlineStore       *hamt.CborIpldStore
+	PubSub       *pubsub.PubSub
+	BlockSub     *pubsub.Subscription
+	MessageSub   *pubsub.Subscription
+	Ping         *ping.PingService
+	HelloSvc     *hello.Handler
+	Bootstrapper *filnet.Bootstrapper
+	OnlineStore  *hamt.CborIpldStore
 
 	// Data Storage Fields
 
@@ -348,14 +347,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
 	}
 
-	// Relay bootstrapper connects to relays that are always required to be connected
-	ra := nd.Repo.Config().Bootstrap.Relays
-	rpi, err := filnet.PeerAddrsToPeerInfos(ra)
-	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't parse relay addresses [%s]", ra)
-	}
-	nd.RelayBootstrapper = filnet.NewBootstrapper(rpi, nd.Host(), nd.Host().Network(), len(ra), period)
-
 	// Bootstrapper maintains connections to some subset of addresses
 	ba := nd.Repo.Config().Bootstrap.Addresses
 	bpi, err := filnet.PeerAddrsToPeerInfos(ba)
@@ -431,7 +422,6 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head())
 
 	if !node.OfflineMode {
-		node.RelayBootstrapper.Start(context.Background())
 		node.Bootstrapper.Start(context.Background())
 	}
 
@@ -578,7 +568,6 @@ func (node *Node) Stop(ctx context.Context) {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 
-	node.RelayBootstrapper.Stop()
 	node.Bootstrapper.Stop()
 
 	fmt.Println("stopping filecoin :(")
