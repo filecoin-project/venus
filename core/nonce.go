@@ -35,7 +35,7 @@ func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address addr
 		x = nonceFromMsgPool + 1
 	}
 
-	fmt.Printf("%-5s | %-35s | %-20s | foundSomethingInPool=%v, currentActorNonce=%-d, whatWeWillUse=%d\n", "gf", "      NextNonce", "", found, nonce, x)
+	fmt.Printf("%-5s | %-35s | %-20s | foundSomethingInPool=%v, currentActorNonce=%-d, whatWeWillUse=%d, numPendingInPool=%d\n", "gf", "      NextNonce", "", found, nonce, x, len(mp.Pending()))
 
 	if found && nonceFromMsgPool >= nonce {
 		nonce = nonceFromMsgPool + 1
