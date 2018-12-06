@@ -19,7 +19,7 @@ import (
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	sha256 "gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
+	"gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
@@ -161,9 +161,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		}
 		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 
-		for _, m := range next.Messages {
-			if m.Method != "" {
-				fmt.Printf("%-4s %.0s | %-35s | %-20s\n", "gf", "", "* done generating new block", m.Method)
+		if next != nil {
+			for _, m := range next.Messages {
+				if m.Method != "" {
+					fmt.Printf("%-4s %.0s | %-35s | %-20s\n", "gf", "", "* done generating new block", m.Method)
+				}
 			}
 		}
 
