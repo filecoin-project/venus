@@ -73,7 +73,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	case <-node.FirstMatchingMsgInChain(ctx, t, minerNode.ChainReader, "commitSector", minerOwnerAddr, cancelA, errCh):
 	case err = <-errCh:
 		require.NoError(err)
-	case <-time.After(120 * time.Second):
+	case <-time.After(20 * time.Second):
 		cancelA <- struct{}{}
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in **miner** node's chain", testSectorSize, minerOwnerAddr)
 	}
@@ -82,7 +82,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	case <-node.FirstMatchingMsgInChain(ctx, t, clientNode.ChainReader, "commitSector", minerOwnerAddr, cancelB, errCh):
 	case err = <-errCh:
 		require.NoError(err)
-	case <-time.After(120 * time.Second):
+	case <-time.After(20 * time.Second):
 		cancelB <- struct{}{}
 		t.Fatalf("timed out waiting for commitSector message (for sector of size=%d, from miner owner=%s) to appear in **client** node's chain", testSectorSize, minerOwnerAddr)
 	}
