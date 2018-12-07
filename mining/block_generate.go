@@ -102,7 +102,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	// Mining reward message succeeded -- side effects okay below this point.
-	
+
 	// TODO: Should we really be pruning the message pool here at all? Maybe this should happen elsewhere.
 	for i, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.
