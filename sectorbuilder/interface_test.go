@@ -67,7 +67,7 @@ func TestSectorBuilder(t *testing.T) {
 				// wait for a bit of time for the various seal() ops to complete
 				// and capture the CIDs of added pieces for comparison with the
 				// CIDS of sealed pieces
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -150,7 +150,7 @@ func TestSectorBuilder(t *testing.T) {
 				}
 
 				// realistically, this should take 15-20 seconds
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -198,7 +198,7 @@ func TestSectorBuilder(t *testing.T) {
 				sectorID, err := h.sectorBuilder.AddPiece(context.Background(), info)
 				require.NoError(t, err)
 
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 			Loop:
 				for {
 					select {
