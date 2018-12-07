@@ -16,8 +16,6 @@ import (
 
 func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -111,8 +109,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("concurrent writes", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -184,8 +180,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -223,8 +217,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
