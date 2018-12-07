@@ -16,8 +16,6 @@ import (
 
 func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -67,7 +65,7 @@ func TestSectorBuilder(t *testing.T) {
 				// wait for a bit of time for the various seal() ops to complete
 				// and capture the CIDs of added pieces for comparison with the
 				// CIDS of sealed pieces
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -111,8 +109,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("concurrent writes", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -150,7 +146,7 @@ func TestSectorBuilder(t *testing.T) {
 				}
 
 				// realistically, this should take 15-20 seconds
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 				for {
 					if piecesToSeal == 0 {
 						break
@@ -184,8 +180,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("add, seal, read (by unsealing) user piece-bytes", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
@@ -198,7 +192,7 @@ func TestSectorBuilder(t *testing.T) {
 				sectorID, err := h.sectorBuilder.AddPiece(context.Background(), info)
 				require.NoError(t, err)
 
-				timeout := time.After(300 * time.Second)
+				timeout := time.After(700 * time.Second)
 			Loop:
 				for {
 					select {
@@ -223,8 +217,6 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
-		t.Parallel()
-
 		for _, cfg := range []sectorBuilderType{golang, rust} {
 			func() {
 				h := newSectorBuilderTestHarness(context.Background(), t, cfg)
