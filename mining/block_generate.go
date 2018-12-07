@@ -96,19 +96,13 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 			log.Errorf("reward message debug, permanent error: ", e)
 		}
 		for _, e := range res.TemporaryErrors {
-			log.Errorf("reward message debug, permanent error: ", e)
+			log.Errorf("reward message debug, temporary error: ", e)
 		}
 		return nil, errors.New("mining reward message failed")
 	}
 
 	// Mining reward message succeeded -- side effects okay below this point.
-	for _, msg := range res.SuccessfulMessages {
-		mc, err := msg.Cid()
-		if err == nil {
-			w.messagePool.Remove(mc)
-		}
-	}
-
+	
 	// TODO: Should we really be pruning the message pool here at all? Maybe this should happen elsewhere.
 	for i, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.
