@@ -200,8 +200,7 @@ jobs:
   build_docker_img:
     docker:
       - image: circleci/golang:latest
-
-    resource_class: large
+    resource_class: xlarge
     steps:
       - add_ssh_keys:
           fingerprints:
