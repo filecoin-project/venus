@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/sectorbuilder"
@@ -39,7 +40,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
