@@ -11,25 +11,25 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type filecoinAPI struct {
+type plumbingAPI struct {
 	logger logging.EventLogger
 
 	msgSender *message.Sender
 }
 
-// Assert that filecoinAPI fullfills the api.Filecoin interface.
-var _ api2.Filecoin = (*filecoinAPI)(nil)
+// Assert that plumbingAPI fullfills the api.Plumbing interface.
+var _ api2.Plumbing = (*plumbingAPI)(nil)
 
 // New constructs a new instance of the API.
-func New(msgSender *message.Sender) *filecoinAPI {
-	return &filecoinAPI{
+func New(msgSender *message.Sender) *plumbingAPI {
+	return &plumbingAPI{
 		logger: logging.Logger("api2"),
 
 		msgSender: msgSender,
 	}
 }
 
-// MessageSend implements api2.Message.
-func (f *filecoinAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
-	return f.msgSender.Send(ctx, from, to, value, method, params...)
+// MessageSend implements MessageSend from api2.Message.
+func (p *plumbingAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
+	return p.msgSender.Send(ctx, from, to, value, method, params...)
 }

@@ -13,16 +13,16 @@ import (
 )
 
 type nodePaych struct {
-	api  *nodeAPI
-	API2 api2.Filecoin
+	api         *nodeAPI
+	plumbingAPI api2.Plumbing
 }
 
-func newNodePaych(api *nodeAPI, api2 api2.Filecoin) *nodePaych {
-	return &nodePaych{api: api, API2: api2}
+func newNodePaych(api *nodeAPI, plumbingAPI api2.Plumbing) *nodePaych {
+	return &nodePaych{api: api, plumbingAPI: plumbingAPI}
 }
 
 func (np *nodePaych) Create(ctx context.Context, fromAddr, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.API2.MessageSend(
+	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -106,7 +106,7 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, vouch
 		return cid.Undef, err
 	}
 
-	return np.API2.MessageSend(
+	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -117,7 +117,7 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, vouch
 }
 
 func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (cid.Cid, error) {
-	return np.API2.MessageSend(
+	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -133,7 +133,7 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, vouche
 		return cid.Undef, err
 	}
 
-	return np.API2.MessageSend(
+	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -144,7 +144,7 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, vouche
 }
 
 func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.API2.MessageSend(
+	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,

@@ -415,7 +415,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	node.Syncer = newSyncer
 	node.MessageWaiter = newMsgWaiter
 	newMsgSender := message.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
-	node.API2 = api2impl.New(newMsgSender)
+	node.PlumbingAPI = api2impl.New(newMsgSender)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)

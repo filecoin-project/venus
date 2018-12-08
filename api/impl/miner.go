@@ -14,12 +14,12 @@ import (
 )
 
 type nodeMiner struct {
-	api  *nodeAPI
-	API2 api2.Filecoin
+	api         *nodeAPI
+	plumbingAPI api2.Plumbing
 }
 
-func newNodeMiner(api *nodeAPI, api2 api2.Filecoin) *nodeMiner {
-	return &nodeMiner{api: api, API2: api2}
+func newNodeMiner(api *nodeAPI, plumbingAPI api2.Plumbing) *nodeMiner {
+	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
 }
 
 func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
@@ -42,7 +42,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledg
 }
 
 func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (cid.Cid, error) {
-	return nm.API2.MessageSend(
+	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
@@ -53,7 +53,7 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 }
 
 func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
-	return nm.API2.MessageSend(
+	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,

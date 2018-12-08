@@ -88,7 +88,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	API2          api2.Filecoin
+	PlumbingAPI   api2.Plumbing
 	MessageWaiter *message.Waiter
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -318,7 +318,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	api2 := api2impl.New(msgSender)
+	plumbingAPI := api2impl.New(msgSender)
 
 	nd := &Node{
 		blockservice:  bservice,
@@ -329,7 +329,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainReader:   chainReader,
 		Syncer:        chainSyncer,
 		PowerTable:    powerTable,
-		API2:          api2,
+		PlumbingAPI:   plumbingAPI,
 		MessageWaiter: messageWaiter,
 		Exchange:      bswap,
 		host:          peerHost,
@@ -934,7 +934,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	smsgCid, err := node.API2.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
+	smsgCid, err := node.PlumbingAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -981,7 +981,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
-			msgCid, err := node.API2.MessageSend(ctx, from, to, val, method, params...)
+			msgCid, err := node.PlumbingAPI.MessageSend(ctx, from, to, val, method, params...)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to add message to mempool")
 			}

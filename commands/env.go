@@ -11,9 +11,9 @@ import (
 
 // Env is the environment passed to commands. Implements cmds.Environment.
 type Env struct {
-	ctx  context.Context
-	api  api.API
-	API2 api2.Filecoin
+	ctx         context.Context
+	api         api.API
+	plumbingAPI api2.Plumbing
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -34,8 +34,8 @@ func GetAPI(env cmds.Environment) api.API {
 	return ce.API()
 }
 
-// GetAPI2 returns the api2.Filecoin interface from the environment.
-func GetAPI2(env cmds.Environment) api2.Filecoin {
+// GetPlumbingAPI returns the api2.Filecoin interface from the environment.
+func GetPlumbingAPI(env cmds.Environment) api2.Plumbing {
 	ce := env.(*Env)
-	return ce.API2
+	return ce.plumbingAPI
 }

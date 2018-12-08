@@ -43,9 +43,9 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	var API2 api2.Filecoin
+	var plumbingAPI api2.Plumbing
 	if node != nil {
-		API2 = node.API2
+		plumbingAPI = node.PlumbingAPI
 	}
 
 	api.actor = newNodeActor(api)
@@ -60,10 +60,10 @@ func New(node *node.Node) api.API {
 	api.id = newNodeID(api)
 	api.log = newNodeLog(api)
 	api.message = newNodeMessage(api)
-	api.miner = newNodeMiner(api, API2)
+	api.miner = newNodeMiner(api, plumbingAPI)
 	api.mining = newNodeMining(api)
 	api.mpool = newNodeMpool(api)
-	api.paych = newNodePaych(api, API2)
+	api.paych = newNodePaych(api, plumbingAPI)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)

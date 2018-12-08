@@ -66,7 +66,7 @@ var msgSendCmd = &cmds.Command{
 			method = ""
 		}
 
-		c, err := GetAPI2(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
+		c, err := GetPlumbingAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
 		if err != nil {
 			return err
 		}
