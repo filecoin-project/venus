@@ -22,7 +22,7 @@ var ErrNoDefaultFromAddress = errors.New("unable to determine a default address 
 // Topic is the network pubsub topic identifier on which new messages are announced.
 const Topic = "/fil/msgs"
 
-// Publish is a function the Sender calls to publish a message to the network.
+// PublishFunc is a function the Sender calls to publish a message to the network.
 type PublishFunc func(topic string, data []byte) error
 
 // Sender is plumbing implementation that knows how to send a message.
@@ -128,7 +128,7 @@ func GetAndMaybeSetDefaultSenderAddress(repo repo.Repo, wallet *wallet.Wallet) (
 		return addr, err
 	}
 
-	// No default is set; pick the 0th and make it the deafult.
+	// No default is set; pick the 0th and make it the default.
 	if len(wallet.Addresses()) > 0 {
 		addr := wallet.Addresses()[0]
 		newConfig := repo.Config()

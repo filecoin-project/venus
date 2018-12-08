@@ -29,6 +29,7 @@ func New(msgSender *message.Sender) *filecoinAPI {
 	}
 }
 
+// MessageSend implements api2.Message.
 func (f *filecoinAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
 	return f.msgSender.Send(ctx, from, to, value, method, params...)
 }
