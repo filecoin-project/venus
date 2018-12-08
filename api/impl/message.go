@@ -21,16 +21,6 @@ func newNodeMessage(api *nodeAPI) *nodeMessage {
 	return &nodeMessage{api: api}
 }
 
-func (api *nodeMessage) Send(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
-	nd := api.api.node
-
-	if err := setDefaultFromAddr(&from, nd); err != nil {
-		return cid.Undef, err
-	}
-
-	return nd.SendMessage(ctx, from, to, val, method, params...)
-}
-
 // Query requests information from an actor in the local state.
 // The information is based on the current heaviest tipset. Answers may change as new blocks are received.
 func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {

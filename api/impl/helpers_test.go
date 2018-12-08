@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,7 +15,7 @@ func TestSetDefaultFromAddr(t *testing.T) {
 	addr := address.Address{}
 	nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
 
-	expected, err := nd.DefaultSenderAddress()
+	expected, err := message.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
 	assert.NoError(err)
 	assert.NotEqual(expected, address.Address{})
 

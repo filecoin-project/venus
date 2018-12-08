@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -381,7 +382,7 @@ func TestNextNonce(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("account does not exist", func(t *testing.T) {
+	t.Run("account does not exist should return zero", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -399,9 +400,9 @@ func TestNextNonce(t *testing.T) {
 		noActorAddress, err := node.NewAddress() // Won't have an actor.
 		assert.NoError(err)
 
-		_, err = NextNonce(ctx, node, noActorAddress)
-		assert.Error(err)
-		assert.Contains(err.Error(), "not found")
+		n, err := message.NextNonce(ctx, node.ChainReader, node.MsgPool, noActorAddress)
+		require.NoError(err)
+		assert.Equal(uint64(0), n)
 	})
 
 	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
@@ -426,7 +427,7 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 		core.MustAdd(node.MsgPool, smsg)
 
-		nonce, err := NextNonce(ctx, node, nodeAddr)
+		nonce, err := message.NextNonce(ctx, node.ChainReader, node.MsgPool, nodeAddr)
 		assert.NoError(err)
 		assert.Equal(uint64(43), nonce)
 	})
@@ -451,7 +452,7 @@ func TestSendMessage(t *testing.T) {
 
 		assert.NoError(node.Start(ctx))
 
-		_, err = node.SendMessage(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), "foo", []byte{})
+		_, err = node.API2.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), "foo", []byte{})
 		require.NoError(err)
 
 		assert.Equal(1, len(node.MsgPool.Pending()))
@@ -477,7 +478,7 @@ func TestSendMessage(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < 20; i++ {
-				_, err = node.SendMessage(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				_, err = node.API2.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), fmt.Sprintf("%d-%d", batch, i), []byte{})
 				require.NoError(err)
 			}
 		}
@@ -502,7 +503,7 @@ func TestSendMessage(t *testing.T) {
 	})
 }
 
-func TestNewMessageWithNextNonce(t *testing.T) {
+func TestSendMessagePicksCorrectNonce(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -533,9 +534,10 @@ func TestNewMessageWithNextNonce(t *testing.T) {
 		})
 		chainForTest.SetHead(ctx, headTS)
 
-		msg, err := newMessageWithNextNonce(ctx, node, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
+		_, err = node.API2.MessageSend(ctx, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
 		require.NoError(err)
-		assert.Equal(uint64(42), uint64(msg.Nonce))
+		assert.Equal(1, len(node.MsgPool.Pending()))
+		assert.Equal(uint64(42), uint64(node.MsgPool.Pending()[0].Nonce))
 	})
 }
 
@@ -587,7 +589,7 @@ func TestDefaultMessageFromAddress(t *testing.T) {
 		// configure a default
 		n.Repo.Config().Wallet.DefaultAddress = addrA
 
-		addrB, err := n.DefaultSenderAddress()
+		addrB, err := message.GetAndMaybeSetDefaultSenderAddress(n.Repo, n.Wallet)
 		require.NoError(err)
 		require.Equal(addrA.String(), addrB.String())
 	})

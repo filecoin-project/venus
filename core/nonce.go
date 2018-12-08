@@ -16,7 +16,9 @@ import (
 // based on the state of the node (not just on the state of the actor).
 func NextNonce(ctx context.Context, st state.Tree, mp *MessagePool, address address.Address) (uint64, error) {
 	actor, err := st.GetActor(ctx, address)
-	if err != nil {
+	if state.IsActorNotFoundError(err) {
+		return 0, nil
+	} else if err != nil {
 		return 0, err
 	}
 	if actor.Code.Defined() && !actor.Code.Equals(types.AccountActorCodeCid) {

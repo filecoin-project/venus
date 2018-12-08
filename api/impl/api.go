@@ -4,6 +4,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/api2"
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
@@ -42,6 +43,10 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
+	var API2 api2.Filecoin
+	if node != nil {
+		API2 = node.API2
+	}
 
 	api.actor = newNodeActor(api)
 	api.address = newNodeAddress(api)
@@ -55,10 +60,10 @@ func New(node *node.Node) api.API {
 	api.id = newNodeID(api)
 	api.log = newNodeLog(api)
 	api.message = newNodeMessage(api)
-	api.miner = newNodeMiner(api)
+	api.miner = newNodeMiner(api, API2)
 	api.mining = newNodeMining(api)
 	api.mpool = newNodeMpool(api)
-	api.paych = newNodePaych(api)
+	api.paych = newNodePaych(api, API2)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)
