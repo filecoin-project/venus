@@ -6,7 +6,6 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -23,6 +22,9 @@ var ErrNoDefaultFromAddress = errors.New("unable to determine a default address 
 // Topic is the network pubsub topic identifier on which new messages are announced.
 const Topic = "/fil/msgs"
 
+// Publish is a function the Sender calls to publish a message to the network.
+type PublishFunc func(topic string, data []byte) error
+
 // Sender is plumbing implementation that knows how to send a message.
 type Sender struct {
 	// For getting the default address.
@@ -34,7 +36,7 @@ type Sender struct {
 	msgPool     *core.MessagePool
 
 	// To publish the new message to the network.
-	pubSub *pubsub.PubSub
+	publish PublishFunc
 
 	// Locking in send reduces the change of nonce collision.
 	l sync.Mutex
@@ -42,8 +44,8 @@ type Sender struct {
 
 // NewSender returns a new sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, msgPool *core.MessagePool, pubSub *pubsub.PubSub) *Sender {
-	return &Sender{repo: repo, wallet: wallet, chainReader: chainReader, msgPool: msgPool, pubSub: pubSub}
+func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, msgPool *core.MessagePool, publish PublishFunc) *Sender {
+	return &Sender{repo: repo, wallet: wallet, chainReader: chainReader, msgPool: msgPool, publish: publish}
 }
 
 // Send sends a message. It uses the default from address if none is given and signs the
@@ -89,7 +91,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrap(err, "failed to add message to the message pool")
 	}
 
-	if err = s.pubSub.Publish(Topic, smsgdata); err != nil {
+	if err = s.publish(Topic, smsgdata); err != nil {
 		return cid.Undef, errors.Wrap(err, "couldnt publish new message to network")
 	}
 

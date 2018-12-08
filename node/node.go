@@ -317,7 +317,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub)
+	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	api2 := api2impl.New(msgSender)
 
 	nd := &Node{
@@ -861,13 +861,7 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr address.Address, m
 
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (address.Address, error) {
-	backends := node.Wallet.Backends(wallet.DSBackendType)
-	if len(backends) == 0 {
-		return address.Address{}, fmt.Errorf("missing default ds backend")
-	}
-
-	backend := (backends[0]).(*wallet.DSBackend)
-	return backend.NewAddress()
+	return wallet.NewAddress(node.Wallet)
 }
 
 // WaitForMessage waits for a message to appear on chain.

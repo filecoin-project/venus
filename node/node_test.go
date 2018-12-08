@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -378,61 +376,8 @@ func TestMakePrivateKey(t *testing.T) {
 	assert.NotNil(goodKey)
 }
 
-func TestNextNonce(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("account does not exist should return zero", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		noActorAddress, err := node.NewAddress() // Won't have an actor.
-		assert.NoError(err)
-
-		n, err := message.NextNonce(ctx, node.ChainReader, node.MsgPool, noActorAddress)
-		require.NoError(err)
-		assert.Equal(uint64(0), n)
-	})
-
-	t.Run("account exists, largest value is in message pool", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		// TODO: does sending a message to ourselves fit the spirit of the test?
-		msg := types.NewMessage(nodeAddr, nodeAddr, 0, nil, "foo", []byte{})
-		msg.Nonce = 42
-		smsg, err := types.NewSignedMessage(*msg, node.Wallet)
-		assert.NoError(err)
-		core.MustAdd(node.MsgPool, smsg)
-
-		nonce, err := message.NextNonce(ctx, node.ChainReader, node.MsgPool, nodeAddr)
-		assert.NoError(err)
-		assert.Equal(uint64(43), nonce)
-	})
-}
-
+// Note: this is pretty redundant with message/sender_test.go but keeping it
+// as assurance the API2 was set up correctly.
 func TestSendMessage(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -458,87 +403,6 @@ func TestSendMessage(t *testing.T) {
 		assert.Equal(1, len(node.MsgPool.Pending()))
 	})
 
-	t.Run("send message avoids nonce race", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		var wg sync.WaitGroup
-
-		addTwentyMessages := func(batch int) {
-			defer wg.Done()
-			for i := 0; i < 20; i++ {
-				_, err = node.API2.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), fmt.Sprintf("%d-%d", batch, i), []byte{})
-				require.NoError(err)
-			}
-		}
-
-		// add messages concurrently
-		for i := 0; i < 3; i++ {
-			wg.Add(1)
-			go addTwentyMessages(i)
-		}
-
-		wg.Wait()
-
-		assert.Equal(60, len(node.MsgPool.Pending()))
-
-		// expect none of the messages to have the same nonce
-		nonces := map[uint64]bool{}
-		for _, message := range node.MsgPool.Pending() {
-			_, found := nonces[uint64(message.Nonce)]
-			require.False(found)
-			nonces[uint64(message.Nonce)] = true
-		}
-	})
-}
-
-func TestSendMessagePicksCorrectNonce(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("includes correct nonce", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-			consensus.ActorNonce(nodeAddr, 42),
-		)
-
-		requireResetNodeGen(require, node, tif)
-
-		assert.NoError(node.Start(ctx))
-
-		bb := types.NewBlockForTest(node.ChainReader.Head().ToSlice()[0], 1)
-		headTS := consensus.RequireNewTipSet(require, bb)
-		chainForTest, ok := node.ChainReader.(chain.Store)
-		require.True(ok)
-		chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
-			TipSet:          headTS,
-			TipSetStateRoot: bb.StateRoot,
-		})
-		chainForTest.SetHead(ctx, headTS)
-
-		_, err = node.API2.MessageSend(ctx, nodeAddr, address.NewForTestGetter()(), nil, "foo", []byte{})
-		require.NoError(err)
-		assert.Equal(1, len(node.MsgPool.Pending()))
-		assert.Equal(uint64(42), uint64(node.MsgPool.Pending()[0].Nonce))
-	})
 }
 
 func TestQueryMessage(t *testing.T) {
@@ -570,47 +434,4 @@ func TestQueryMessage(t *testing.T) {
 
 		assert.NotNil(returnValue)
 	})
-}
-
-func TestDefaultMessageFromAddress(t *testing.T) {
-	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
-		require := require.New(t)
-
-		n := MakeOfflineNode(t)
-
-		// generate a default address
-		addrA, err := n.NewAddress()
-		require.NoError(err)
-
-		// load up the wallet with a few more addresses
-		n.NewAddress()
-		n.NewAddress()
-
-		// configure a default
-		n.Repo.Config().Wallet.DefaultAddress = addrA
-
-		addrB, err := message.GetAndMaybeSetDefaultSenderAddress(n.Repo, n.Wallet)
-		require.NoError(err)
-		require.Equal(addrA.String(), addrB.String())
-	})
-
-	/*
-		t.Run("it returns an error if no default address was configured and more than one address in wallet", func(t *testing.T) {
-			require := require.New(t)
-
-			n := MakeOfflineNode(t)
-
-			// generate a few addresses
-			n.NewAddress()
-			n.NewAddress()
-			n.NewAddress()
-
-			// remove existing wallet config
-			n.Repo.Config().Wallet = &config.WalletConfig{}
-
-			_, err := n.DefaultSenderAddress()
-			require.Error(err)
-			require.Equal(ErrNoDefaultMessageFromAddress, err)
-		})
-	*/
 }
