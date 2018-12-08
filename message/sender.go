@@ -38,11 +38,11 @@ type Sender struct {
 	// To publish the new message to the network.
 	publish PublishFunc
 
-	// Locking in send reduces the change of nonce collision.
+	// Locking in send reduces the chance of nonce collision.
 	l sync.Mutex
 }
 
-// NewSender returns a new sender. There should be exactly one of these per node because
+// NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
 func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, msgPool *core.MessagePool, publish PublishFunc) *Sender {
 	return &Sender{repo: repo, wallet: wallet, chainReader: chainReader, msgPool: msgPool, publish: publish}
