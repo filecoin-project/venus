@@ -27,7 +27,7 @@ var chainCmd = &cmds.Command{
 
 var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "get heaviest tipset CIDs",
+		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		out, err := GetAPI(env).Chain().Head()
@@ -42,7 +42,7 @@ var chainHeadCmd = &cmds.Command{
 
 var chainLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "list blocks in the blockchain",
+		Tagline:          "List blocks in the blockchain",
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
 	},
 	Options: []cmdkit.Option{
