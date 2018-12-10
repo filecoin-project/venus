@@ -261,8 +261,11 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock), nil, 0)
 	assert.NoError(err)
 
-	assert.Len(pool.Pending(), 1) // This is the temporary failure.
+	// This is the temporary failure + the good message,
+	// which will be removed by the node if this block is accepted.
+	assert.Len(pool.Pending(), 2)
 	assert.Contains(pool.Pending(), smsg1)
+	assert.Contains(pool.Pending(), smsg2)
 
 	assert.Len(blk.Messages, 2) // This is the good message + the mining reward.
 
