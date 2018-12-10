@@ -105,7 +105,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	}
 
 	if cfg.ClusterTest && cfg.ClusterNightly {
-		return fmt.Errorf(`Cannot use both "--cluster-test" and "--cluster-nightly" options`)
+		return fmt.Errorf(`cannot use both "--cluster-test" and "--cluster-nightly" options`)
 	}
 
 	// Setup cluster test specific config options.

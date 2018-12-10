@@ -60,7 +60,7 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	}
 
 	if ec != 0 {
-		return nil, nil, errors.Errorf("Non-zero return from query: %d", ec)
+		return nil, nil, errors.Errorf("non-zero return from query: %d", ec)
 	}
 
 	return retVals, signature, nil

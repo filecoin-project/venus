@@ -32,7 +32,7 @@ func TestVerifyPoSt(t *testing.T) {
 		noWayMan := FakeProver{false, errors.New("Boom")}
 		res, err := IsPoStValidWithProver(noWayMan, someProof[:], challenge)
 		assert.False(res)
-		assert.Error(err, "Boom")
+		assert.Error(err, "boom")
 	})
 
 	t.Run("IsPoStValidWithProver returns false + error when the proof has the wrong length", func(t *testing.T) {

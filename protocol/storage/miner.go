@@ -222,7 +222,7 @@ func (sm *Miner) processStorageDeal(c cid.Cid) {
 	// the call is inelegant.
 	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, pi)
 	if err != nil {
-		fail("Failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
+		fail("failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
 		return
 	}
 

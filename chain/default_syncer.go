@@ -129,7 +129,7 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 		// check the cache for bad tipsets before doing anything
 		tsKey := types.NewSortedCidSet(blkCids...).String()
 
-		logSyncer.Debugf("collectChain next link: %s", tsKey)
+		logSyncer.Debugf("CollectChain next link: %s", tsKey)
 
 		if syncer.badTipSets.Has(tsKey) {
 			return nil, nil, ErrChainHasBadTipSet
@@ -212,7 +212,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 	if err != nil {
 		return err
 	}
-	logSyncer.Debugf("successfully updated store with %s", next.String())
+	logSyncer.Debugf("Successfully updated store with %s", next.String())
 
 	// TipSet is validated and added to store, now check if it is the heaviest.
 	// If it is the heaviest update the chainStore.
@@ -246,12 +246,12 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 	}
 
 	if cmp > 0 {
-		logSyncer.Debugf("new TS %s (h=%d) is new heaviest over %s (h=%d), update head", next.String(), nextH, syncer.chainStore.Head(), headH)
+		logSyncer.Debugf("New TS %s (h=%d) is new heaviest over %s (h=%d), update head", next.String(), nextH, syncer.chainStore.Head(), headH)
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
 		}
 	} else {
-		logSyncer.Debugf("new TS %s (h=%d) is not heavier than %s (h=%d), no head update", next.String(), nextH, syncer.chainStore.Head().String(), headH)
+		logSyncer.Debugf("New TS %s (h=%d) is not heavier than %s (h=%d), no head update", next.String(), nextH, syncer.chainStore.Head().String(), headH)
 	}
 
 	return nil

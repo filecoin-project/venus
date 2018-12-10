@@ -47,7 +47,7 @@ func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 	}
 
 	if ec != 0 {
-		return 0, errors.Errorf("Non-zero return code from query message: %d", ec)
+		return 0, errors.Errorf("non-zero return code from query message: %d", ec)
 	}
 	res := big.NewInt(0)
 	res.SetBytes(rets[0])
@@ -69,7 +69,7 @@ func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 	}
 
 	if ec != 0 {
-		return 0, errors.Errorf("Non-zero return code from query message: %d", ec)
+		return 0, errors.Errorf("non-zero return code from query message: %d", ec)
 	}
 	ret := big.NewInt(0).SetBytes(rets[0])
 

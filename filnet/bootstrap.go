@@ -119,7 +119,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		wg.Add(1)
 		go func() {
 			if err := b.h.Connect(ctx, pinfo); err != nil {
-				log.Warningf("Got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
+				log.Warningf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
 			}
 			wg.Done()
 		}()
@@ -128,7 +128,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			return
 		}
 	}
-	log.Warningf("Not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
+	log.Warningf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
 }
 
 func hasPID(pids []peer.ID, pid peer.ID) bool {

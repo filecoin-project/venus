@@ -90,7 +90,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	var doneWg sync.WaitGroup    // for internal use
 	var extDoneWg sync.WaitGroup // for external use
 
-	log.Debugf("scheduler starting main receive loop")
+	log.Debugf("Scheduler starting main receive loop")
 	doneWg.Add(1)
 
 	s.isStarted = true

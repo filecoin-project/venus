@@ -195,7 +195,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ticket[0] = testCase.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, ticket[:], minerAddress)
 		assert.False(r)
-		assert.Equal(err.Error(), "Couldn't get totalPower: something went wrong with the total power")
+		assert.Equal(err.Error(), "couldn't get totalPower: something went wrong with the total power")
 
 	})
 
@@ -205,7 +205,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ticket[0] = testCase.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, ticket[:], minerAddress)
 		assert.False(r)
-		assert.Equal(err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
+		assert.Equal(err.Error(), "couldn't get minerPower: something went wrong with the miner power")
 
 	})
 }
