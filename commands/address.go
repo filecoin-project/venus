@@ -80,7 +80,7 @@ var addrsLsCmd = &cmds.Command{
 
 var addrsLookupCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "miner address to find peerId for"),
+		cmdkit.StringArg("address", true, false, "Miner address to find peerId for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -105,7 +105,7 @@ var addrsLookupCmd = &cmds.Command{
 
 var balanceCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "address to get balance for"),
+		cmdkit.StringArg("address", true, false, "Address to get balance for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := address.NewFromString(req.Arguments[0])
@@ -129,7 +129,7 @@ var balanceCmd = &cmds.Command{
 
 var walletImportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.FileArg("walletFile", true, false, "file containing wallet data to import").EnableStdin(),
+		cmdkit.FileArg("walletFile", true, false, "File containing wallet data to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs, err := GetAPI(env).Address().Import(req.Context, req.Files)
@@ -149,7 +149,7 @@ var walletImportCmd = &cmds.Command{
 
 var walletExportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("addresses", true, true, "addresses of keys to export").EnableStdin(),
+		cmdkit.StringArg("addresses", true, true, "Addresses of keys to export").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addrs := make([]address.Address, len(req.Arguments))

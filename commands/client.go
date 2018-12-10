@@ -64,7 +64,7 @@ See the go-filecoin client cat command for more details.
 `,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.FileArg("file", true, false, "path to file to import").EnableStdin(),
+		cmdkit.FileArg("file", true, false, "Path to file to import").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fi, err := req.Files.NextFile()
@@ -106,10 +106,10 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 `,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "address of miner to send storage proposal"),
+		cmdkit.StringArg("miner", true, false, "Address of miner to send storage proposal"),
 		cmdkit.StringArg("data", true, false, "CID of the data to be stored"),
 		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
-		cmdkit.StringArg("duration", true, false, "time in blocks (about 30 seconds per block) to store data"),
+		cmdkit.StringArg("duration", true, false, "Time in blocks (about 30 seconds per block) to store data"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		miner, err := address.NewFromString(req.Arguments[0])

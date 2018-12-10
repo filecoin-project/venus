@@ -35,12 +35,12 @@ var createChannelCmd = &cmds.Command{
 message to be mined to get the channelID.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("target", true, false, "address of account that will redeem funds"),
-		cmdkit.StringArg("amount", true, false, "amount in FIL for the channel"),
-		cmdkit.StringArg("eol", true, false, "the block height at which the channel should expire"),
+		cmdkit.StringArg("target", true, false, "Address of account that will redeem funds"),
+		cmdkit.StringArg("amount", true, false, "Amount in FIL for the channel"),
+		cmdkit.StringArg("eol", true, false, "The block height at which the channel should expire"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send from"),
+		cmdkit.StringOption("from", "Address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -84,8 +84,8 @@ var lsCmd = &cmds.Command{
 		ShortDescription: `Queries the payment broker to find all payment channels where a given account is the payer.`,
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address for which message is sent"),
-		cmdkit.StringOption("payer", "address for which to retrieve channels (defaults to from if omitted)"),
+		cmdkit.StringOption("from", "Address for which message is sent"),
+		cmdkit.StringOption("payer", "Address for which to retrieve channels (defaults to from if omitted)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -131,11 +131,11 @@ var voucherCmd = &cmds.Command{
 		ShortDescription: `Generate a new signed payment voucher for the target of a payment channel.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("channel", true, false, "channel id of channel from which to create voucher"),
-		cmdkit.StringArg("amount", true, false, "amount in FIL of this voucher"),
+		cmdkit.StringArg("channel", true, false, "Channel id of channel from which to create voucher"),
+		cmdkit.StringArg("amount", true, false, "Amount in FIL of this voucher"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address for which to retrieve channels"),
+		cmdkit.StringOption("from", "Address for which to retrieve channels"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -173,10 +173,10 @@ var redeemCmd = &cmds.Command{
 		Tagline: "Redeem a payment voucher against a payment channel",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("voucher", true, false, "base58 encoded signed voucher"),
+		cmdkit.StringArg("voucher", true, false, "Base58 encoded signed voucher"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address of the channel target"),
+		cmdkit.StringOption("from", "Address of the channel target"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -204,10 +204,10 @@ var reclaimCmd = &cmds.Command{
 		Tagline: "Reclaim funds from an expired channel",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("channel", true, false, "id of channel from which funds are reclaimed"),
+		cmdkit.StringArg("channel", true, false, "Id of channel from which funds are reclaimed"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address of the channel creator"),
+		cmdkit.StringOption("from", "Address of the channel creator"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -241,10 +241,10 @@ var closeCmd = &cmds.Command{
 		Tagline: "Redeem a payment voucher and close the payment channel",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("voucher", true, false, "base58 encoded signed voucher"),
+		cmdkit.StringArg("voucher", true, false, "Base58 encoded signed voucher"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address of the channel target"),
+		cmdkit.StringOption("from", "Address of the channel target"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -272,12 +272,12 @@ var extendCmd = &cmds.Command{
 		Tagline: "Extend the value and lifetime of a given channel",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("channel", true, false, "id of channel to extend"),
-		cmdkit.StringArg("amount", true, false, "amount in FIL for the channel"),
-		cmdkit.StringArg("eol", true, false, "the block height at which the channel should expire"),
+		cmdkit.StringArg("channel", true, false, "Id of channel to extend"),
+		cmdkit.StringArg("amount", true, false, "Amount in FIL for the channel"),
+		cmdkit.StringArg("eol", true, false, "The block height at which the channel should expire"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address of the channel creator"),
+		cmdkit.StringOption("from", "Address of the channel creator"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])

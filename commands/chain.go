@@ -46,7 +46,7 @@ var chainLsCmd = &cmds.Command{
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("long", "l", "list blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		for raw := range GetAPI(env).Chain().Ls(req.Context) {

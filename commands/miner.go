@@ -36,7 +36,7 @@ var minerPledgeCmd = &cmds.Command{
 		ShortDescription: `Shows the number of pledged 1GB sectors for the given miner address`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "the miner address"),
+		cmdkit.StringArg("miner", true, false, "The miner address"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
@@ -64,12 +64,12 @@ message to be mined as this is required to return the address of the new miner.
 Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "the size of the pledge (in 1GB sectors) for the miner"),
-		cmdkit.StringArg("collateral", true, false, "the amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
+		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in 1GB sectors) for the miner"),
+		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send from"),
-		cmdkit.StringOption("peerid", "b58-encoded libp2p peer ID that the miner will operate"),
+		cmdkit.StringOption("from", "Address to send from"),
+		cmdkit.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
@@ -119,11 +119,11 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		ShortDescription: `Issues a new message to the network to update the miner's libp2p identity.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("address", true, false, "miner address to update peer ID for"),
-		cmdkit.StringArg("peerid", true, false, "b58-encoded libp2p peer ID that the miner will operate"),
+		cmdkit.StringArg("address", true, false, "Miner address to update peer ID for"),
+		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID that the miner will operate"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send from"),
+		cmdkit.StringOption("from", "Address to send from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddr, err := address.NewFromString(req.Arguments[0])
@@ -161,12 +161,12 @@ var minerAddAskCmd = &cmds.Command{
 		Tagline: "Add an ask to the storage market",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "the address of the miner owning the ask"),
-		cmdkit.StringArg("price", true, false, "the price in FIL of the ask"),
-		cmdkit.StringArg("expiry", true, false, "how long this ask is valid for in blocks"),
+		cmdkit.StringArg("miner", true, false, "The address of the miner owning the ask"),
+		cmdkit.StringArg("price", true, false, "The price in FIL of the ask"),
+		cmdkit.StringArg("expiry", true, false, "How long this ask is valid for in blocks"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "address to send the ask from"),
+		cmdkit.StringOption("from", "Address to send the ask from"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -224,7 +224,7 @@ var minerOwnerCmd = &cmds.Command{
 		return re.Emit(&ownerAddr)
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "the address of the miner"),
+		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Type: address.Address{},
 	Encoders: cmds.EncoderMap{
@@ -258,7 +258,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "the address of the miner"),
+		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {

@@ -32,12 +32,12 @@ var msgSendCmd = &cmds.Command{
 		Tagline: "Send a message", // This feels too generic...
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("target", true, false, "address of the actor to send the message to"),
-		cmdkit.StringArg("method", false, false, "the method to invoke on the target actor"),
+		cmdkit.StringArg("target", true, false, "Address of the actor to send the message to"),
+		cmdkit.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.IntOption("value", "value to send with message, in AttoFIL"),
-		cmdkit.StringOption("from", "address to send message from"),
+		cmdkit.IntOption("value", "Value to send with message, in AttoFIL"),
+		cmdkit.StringOption("from", "Address to send message from"),
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -91,12 +91,12 @@ var msgWaitCmd = &cmds.Command{
 		Tagline: "Wait for a message to appear in a mined block",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "the cid of the message to wait for"),
+		cmdkit.StringArg("cid", true, false, "The cid of the message to wait for"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("message", "print the whole message").WithDefault(true),
-		cmdkit.BoolOption("receipt", "print the whole message receipt").WithDefault(true),
-		cmdkit.BoolOption("return", "print the return value from the receipt").WithDefault(false),
+		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
+		cmdkit.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
+		cmdkit.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
