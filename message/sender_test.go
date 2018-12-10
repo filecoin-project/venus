@@ -1,4 +1,4 @@
-package message_test
+package message
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -54,12 +53,12 @@ func TestSend(t *testing.T) {
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
-			assert.Equal(message.Topic, topic)
+			assert.Equal(Topic, topic)
 			publishCalled = true
 			return nil
 		}
 
-		s := message.NewSender(repo, w, chainStore, msgPool, publish)
+		s := NewSender(repo, w, chainStore, msgPool, publish)
 		require.Equal(0, len(msgPool.Pending()))
 		_, err = s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(uint64(2)), "")
 		require.NoError(err)
@@ -76,7 +75,7 @@ func TestSend(t *testing.T) {
 		addr, err := wallet.NewAddress(w)
 		require.NoError(err)
 		nopPublish := func(string, []byte) error { return nil }
-		s := message.NewSender(repo, w, chainStore, msgPool, nopPublish)
+		s := NewSender(repo, w, chainStore, msgPool, nopPublish)
 
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
@@ -120,7 +119,7 @@ func TestNextNonce(t *testing.T) {
 		_, _, chainStore, msgPool := setupSendTest(require)
 
 		noActorAddress := address.NewForTestGetter()()
-		n, err := message.NextNonce(ctx, chainStore, msgPool, noActorAddress)
+		n, err := nextNonce(ctx, chainStore, msgPool, noActorAddress)
 		require.NoError(err)
 		assert.Equal(uint64(0), n)
 	})
@@ -139,7 +138,7 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 		core.MustAdd(msgPool, smsg)
 
-		nonce, err := message.NextNonce(ctx, chainStore, msgPool, addr)
+		nonce, err := nextNonce(ctx, chainStore, msgPool, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(43), nonce)
 	})
@@ -157,32 +156,50 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 		require.NoError(err)
 
 		// load up the wallet with a few more addresses
-		wallet.NewAddress(w)
-		wallet.NewAddress(w)
+		for i := 0; i < 10; i++ {
+			wallet.NewAddress(w)
+		}
 
 		// configure a default
 		repo.Config().Wallet.DefaultAddress = addrA
 
-		addrB, err := message.GetAndMaybeSetDefaultSenderAddress(repo, w)
+		addrB, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
 		require.NoError(err)
 		require.Equal(addrA.String(), addrB.String())
 	})
 
-	t.Run("sets default to first address in wallet if none configured", func(t *testing.T) {
+	t.Run("default is consistent if none configured", func(t *testing.T) {
 		require := require.New(t)
 		repo, w, _, _ := setupSendTest(require)
 
 		// generate a few addresses
-		expected, err := wallet.NewAddress(w)
-		require.NoError(err)
-		_, err = wallet.NewAddress(w)
-		require.NoError(err)
+		// load up the wallet with a few more addresses
+		addresses := []address.Address{}
+		for i := 0; i < 10; i++ {
+			a, err := wallet.NewAddress(w)
+			require.NoError(err)
+			addresses = append(addresses, a)
+		}
 
 		// remove existing wallet config
 		repo.Config().Wallet = &config.WalletConfig{}
 
-		got, err := message.GetAndMaybeSetDefaultSenderAddress(repo, w)
+		expected, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
 		require.NoError(err)
-		require.Equal(expected, got)
+		require.True(isInList(expected, addresses))
+		for i := 0; i < 30; i++ {
+			got, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
+			require.NoError(err)
+			require.Equal(expected, got)
+		}
 	})
+}
+
+func isInList(needle address.Address, haystack []address.Address) bool {
+	for _, a := range haystack {
+		if a == needle {
+			return true
+		}
+	}
+	return false
 }

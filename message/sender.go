@@ -71,7 +71,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	nonce, err := NextNonce(ctx, s.chainReader, s.msgPool, from)
+	nonce, err := nextNonce(ctx, s.chainReader, s.msgPool, from)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "couldn't get next nonce")
 	}
@@ -98,10 +98,10 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	return smsg.Cid()
 }
 
-// NextNonce returns the next nonce for the given address. It checks
+// nextNonce returns the next nonce for the given address. It checks
 // the actor's memory and also scans the message pool for any pending
 // messages.
-func NextNonce(ctx context.Context, chainReader chain.ReadStore, msgPool *core.MessagePool, address address.Address) (nonce uint64, err error) {
+func nextNonce(ctx context.Context, chainReader chain.ReadStore, msgPool *core.MessagePool, address address.Address) (nonce uint64, err error) {
 	st, err := chainReader.LatestState(ctx)
 	if err != nil {
 		return 0, err
