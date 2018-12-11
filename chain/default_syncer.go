@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -329,9 +330,15 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
 	for i, ts := range chain {
+
+		fmt.Println("HHEEEEEREEE")
 		// TODO: this "i==0" leaks EC specifics into syncer abstraction
 		// for the sake of efficiency, consider plugging up this leak.
 		if i == 0 {
+			if ts == nil {
+				fmt.Println("NIL")
+				continue
+			}
 			wts, err := syncer.widen(ctx, ts)
 			if err != nil {
 				return err

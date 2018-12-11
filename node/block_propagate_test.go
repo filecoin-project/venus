@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
@@ -51,12 +53,14 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 
 	baseTS := nodes[0].ChainReader.Head()
-	assert.NotNil(t, baseTS)
+	require.NotNil(t, baseTS)
 	nextBlk := &types.Block{
-		Parents:      baseTS.ToSortedCidSet(),
-		Height:       types.Uint64(1),
+		Parents:           baseTS.ToSortedCidSet(),
+		Height:            types.Uint64(1),
+		ParentWeightNum:   types.Uint64(10),
+		ParentWeightDenom: types.Uint64(1),
 		ParentWeight: types.Uint64(10000),
-		StateRoot:    baseTS.ToSlice()[0].StateRoot,
+		StateRoot:         baseTS.ToSlice()[0].StateRoot,
 	}
 
 	// Wait for network connection notifications to propagate
@@ -107,6 +111,9 @@ func TestChainSync(t *testing.T) {
 		ParentWeight: types.Uint64(30000),
 		StateRoot:    stateRoot,
 	}
+	nextBlk1 := consensus.NewValidTestBlockFromTipSet(baseTS, 1)
+	nextBlk2 := consensus.NewValidTestBlockFromTipSet(baseTS, 2)
+	nextBlk3 := consensus.NewValidTestBlockFromTipSet(baseTS, 3)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

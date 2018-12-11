@@ -2,7 +2,7 @@ package node
 
 import (
 	"context"
-
+	"fmt"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVRxA4J3UPQpw74dLrQ6NJkfysCA1H4GU28gVpXQt9zMU/go-libp2p-pubsub"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -23,13 +23,15 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	// Put block in storage wired to an exchange so this node and other
 	// nodes can fetch it.
-	log.Debugf("Putting block in bitswap exchange: %s", b.Cid().String())
+	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
+
 	blkCid, err := node.OnlineStore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
 
-	log.Debugf("Syncing new block: %s", b.Cid().String())
+	log.Debugf("syncing new block: %s", b.Cid().String())
+	fmt.Println("syncing new block: ", b.Cid().String())
 	if err := node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blkCid}); err != nil {
 		return err
 	}

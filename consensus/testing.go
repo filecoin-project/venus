@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -70,4 +71,25 @@ func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore b
 // HasPower always returns true.
 func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
+}
+
+// NewValidTestBlockFromTipSet aims to create a block that will
+// pass consensus.validateMining
+func NewValidTestBlockFromTipSet(baseTipSet TipSet, height int) *types.Block {
+	minerAddr := address.NewForTestGetter()()
+	postProof := proofs.PoStProof{1}
+	ticket := CreateTicket(postProof[:], minerAddr)
+
+	stateRoot := baseTipSet.ToSlice()[0].StateRoot
+	return &types.Block{
+		Miner:             minerAddr,
+		Ticket:            ticket,
+		Parents:           baseTipSet.ToSortedCidSet(),
+		Height:            types.Uint64(height),
+		Nonce:             types.Uint64(height),
+		ParentWeightNum:   types.Uint64(height * 10),
+		ParentWeightDenom: types.Uint64(1),
+		StateRoot:         stateRoot,
+		Proof:             postProof,
+	}
 }
