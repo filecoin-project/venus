@@ -121,8 +121,9 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 
 	servenv := &Env{
 		// TODO: should this be the passed in context?
-		ctx: context.Background(),
-		api: api,
+		ctx:         context.Background(),
+		api:         api,
+		plumbingAPI: node.PlumbingAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()

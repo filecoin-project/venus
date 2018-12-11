@@ -19,7 +19,7 @@ import (
 func TestNextNonce(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("account does not exist", func(t *testing.T) {
+	t.Run("account does not exist, should return zero", func(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
@@ -27,9 +27,9 @@ func TestNextNonce(t *testing.T) {
 
 		address := address.NewForTestGetter()()
 
-		_, err := NextNonce(ctx, st, mp, address)
-		assert.Error(err)
-		assert.Contains(err.Error(), "not found")
+		n, err := NextNonce(ctx, st, mp, address)
+		assert.NoError(err)
+		assert.Equal(uint64(0), n)
 	})
 
 	t.Run("account exists but wrong type", func(t *testing.T) {

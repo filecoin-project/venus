@@ -34,10 +34,8 @@ func TestMessagePropagation(t *testing.T) {
 	nd0Addr, err := nodes[0].NewAddress()
 	require.NoError(err)
 
-	msg := types.NewMessage(nd0Addr, address.NetworkAddress, 0, types.NewAttoFILFromFIL(123), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, nodes[0].Wallet)
+	_, err = nodes[0].PlumbingAPI.MessageSend(ctx, nd0Addr, address.NetworkAddress, types.NewAttoFILFromFIL(123), "")
 	require.NoError(err)
-	require.NoError(nodes[0].addNewMessage(ctx, smsg))
 
 	// Wait for message to propagate across network
 	require.NoError(th.WaitForIt(50, 100*time.Millisecond, func() (bool, error) {

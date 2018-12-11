@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/rand"
 	"os"
 	"sync"
 	"testing"
+
+	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	"github.com/filecoin-project/go-filecoin/proofs"
 
 	crypto "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	pstore "gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
@@ -300,7 +302,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 
 	wg.Add(1)
 
-	subscription, err := node.PubSub.Subscribe(MessageTopic)
+	subscription, err := node.PubSub.Subscribe(message.Topic)
 	require.NoError(err)
 
 	go func() {
@@ -361,6 +363,10 @@ func requireResetNodeGen(require *require.Assertions, node *Node, gif consensus.
 
 // resetNodeGen resets the genesis block of the input given node using the gif
 // function provided.
+// Note: this is an awful way to test the node. This function duplicates to a large
+// degree what the constructor does. It should not be in the business of replacing
+// fields on node as doing that correctly requires knowing exactly how the node is
+// created, which is bad information to need to rely on in tests.
 func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	ctx := context.Background()
 	newGenBlk, err := gif(node.CborStore(), node.Blockstore)
@@ -408,7 +414,13 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	node.Consensus = newCon
 	node.Syncer = newSyncer
 	node.MessageWaiter = newMsgWaiter
-	node.lookup = lookup.NewChainLookupService(newChainReader, node.DefaultSenderAddress, node.Blockstore)
+	newMsgSender := message.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
+	node.PlumbingAPI = api2impl.New(newMsgSender)
+
+	defaultSenderGetter := func() (address.Address, error) {
+		return message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
+	}
+	node.lookup = lookup.NewChainLookupService(newChainReader, defaultSenderGetter, node.Blockstore)
 	return nil
 }
 

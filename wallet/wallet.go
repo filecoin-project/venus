@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -229,4 +230,15 @@ func WriteWalletFile(file string, wf File) error {
 		return errors.Wrap(err, "faild to encode wallet")
 	}
 	return nil
+}
+
+// NewAddress creates a new account address on the default wallet backend.
+func NewAddress(w *Wallet) (address.Address, error) {
+	backends := w.Backends(DSBackendType)
+	if len(backends) == 0 {
+		return address.Address{}, fmt.Errorf("missing default ds backend")
+	}
+
+	backend := (backends[0]).(*DSBackend)
+	return backend.NewAddress()
 }

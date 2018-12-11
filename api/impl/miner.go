@@ -9,19 +9,21 @@ import (
 	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type nodeMiner struct {
-	api *nodeAPI
+	api         *nodeAPI
+	plumbingAPI api2.Plumbing
 }
 
-func newNodeMiner(api *nodeAPI) *nodeMiner {
-	return &nodeMiner{api: api}
+func newNodeMiner(api *nodeAPI, plumbingAPI api2.Plumbing) *nodeMiner {
+	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
 }
 
-func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
-	nd := api.api.node
+func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
+	nd := nm.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
 		return address.Address{}, err
@@ -39,8 +41,8 @@ func (api *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pled
 	return *res, nil
 }
 
-func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (cid.Cid, error) {
-	return api.api.Message().Send(
+func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (cid.Cid, error) {
+	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
@@ -50,8 +52,8 @@ func (api *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addr
 	)
 }
 
-func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
-	return api.api.Message().Send(
+func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
+	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
@@ -62,8 +64,8 @@ func (api *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Ad
 	)
 }
 
-func (api *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	bytes, _, err := api.api.Message().Query(
+func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	bytes, _, err := nm.api.Message().Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -76,8 +78,8 @@ func (api *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (
 	return address.NewFromBytes(bytes[0])
 }
 
-func (api *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := api.api.Message().Query(
+func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
+	bytes, _, err := nm.api.Message().Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -92,8 +94,8 @@ func (api *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (
 	return power, nil
 }
 
-func (api *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := api.api.Message().Query(
+func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
+	bytes, _, err := nm.api.Message().Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -108,8 +110,8 @@ func (api *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) 
 	return power, nil
 }
 
-func (api *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	bytes, _, err := api.api.Message().Query(
+func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
+	bytes, _, err := nm.api.Message().Query(
 		ctx,
 		address.Address{},
 		address.StorageMarketAddress,

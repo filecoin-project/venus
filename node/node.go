@@ -39,6 +39,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2"
+	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -72,8 +74,6 @@ var (
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 	// ErrNoMinerAddress is returned when the node is not configured to have any miner addresses.
 	ErrNoMinerAddress = errors.New("no miner addresses configured")
-	// ErrNoDefaultMessageFromAddress is returned when the node's wallet is not configured to have a default address and the wallet contains more than one address.
-	ErrNoDefaultMessageFromAddress = errors.New("could not produce a from-address for message sending")
 )
 
 type pubSubProcessorFunc func(ctx context.Context, msg *pubsub.Message) error
@@ -88,8 +88,8 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
+	PlumbingAPI   api2.Plumbing
 	MessageWaiter *message.Waiter
-	messageLock   sync.Mutex
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -317,6 +317,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
+	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
+	plumbingAPI := api2impl.New(msgSender)
+
 	nd := &Node{
 		blockservice:  bservice,
 		Blockstore:    bs,
@@ -326,6 +329,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainReader:   chainReader,
 		Syncer:        chainSyncer,
 		PowerTable:    powerTable,
+		PlumbingAPI:   plumbingAPI,
 		MessageWaiter: messageWaiter,
 		Exchange:      bswap,
 		host:          peerHost,
@@ -357,7 +361,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), minPeerThreshold, period)
 
 	// On-chain lookup service
-	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, nd.DefaultSenderAddress, bs)
+	defaultAddressGetter := func() (address.Address, error) {
+		return message.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
+	}
+	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
 	return nd, nil
 }
@@ -405,7 +412,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PubSub.Subscribe(MessageTopic)
+	msgSub, err := node.PubSub.Subscribe(message.Topic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}
@@ -852,58 +859,9 @@ func (node *Node) GetSignature(ctx context.Context, actorAddr address.Address, m
 	return export, nil
 }
 
-// NextNonce returns the next nonce for the given address. It checks
-// the actor's memory and also scans the message pool for any pending
-// messages.
-func NextNonce(ctx context.Context, node *Node, address address.Address) (nonce uint64, err error) {
-	ctx = log.Start(ctx, "Node.NextNonce")
-	defer func() {
-		log.SetTag(ctx, "nonce", nonce)
-		log.FinishWithErr(ctx, err)
-	}()
-
-	st, err := node.ChainReader.LatestState(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	nonce, err = core.NextNonce(ctx, st, node.MsgPool, address)
-	if err != nil {
-		return 0, err
-	}
-
-	return nonce, nil
-}
-
-// newMessageWithNextNonce returns a new types.Message whose
-// nonce is set to our best guess at the next appropriate value
-// (see NextNonce).
-// This function is unsafe for concurrent calling.
-// Creating multiple messages from the same actor before adding
-// them to the message pool will result
-// in duplicate nonces. Use node.SendMessage() instead.
-func newMessageWithNextNonce(ctx context.Context, node *Node, from, to address.Address, value *types.AttoFIL, method string, params []byte) (_ *types.Message, err error) {
-	ctx = log.Start(ctx, "Node.NewMessageWithNextNonce")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
-
-	nonce, err := NextNonce(ctx, node, from)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't get next nonce")
-	}
-	return types.NewMessage(from, to, nonce, value, method, params), nil
-}
-
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (address.Address, error) {
-	backends := node.Wallet.Backends(wallet.DSBackendType)
-	if len(backends) == 0 {
-		return address.Address{}, fmt.Errorf("missing default ds backend")
-	}
-
-	backend := (backends[0]).(*wallet.DSBackend)
-	return backend.NewAddress()
+	return wallet.NewAddress(node.Wallet)
 }
 
 // WaitForMessage waits for a message to appear on chain.
@@ -935,7 +893,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 		return nil, 1, errors.Wrap(err, "getting base tipset height")
 	}
 
-	fromAddr, err := node.DefaultSenderAddress()
+	fromAddr, err := message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
 	}
@@ -976,7 +934,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	smsgCid, err := node.SendMessage(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
+	smsgCid, err := node.PlumbingAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -1012,40 +970,6 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 	return r.ReplaceConfig(newConfig)
 }
 
-// DefaultSenderAddress produces a default address from which to send messages.
-func (node *Node) DefaultSenderAddress() (address.Address, error) {
-	ret, err := node.defaultWalletAddress()
-	if err != nil || ret != (address.Address{}) {
-		return ret, err
-	}
-
-	if len(node.Wallet.Addresses()) > 0 {
-		// TODO: this works for now, but is likely not a great solution.
-		// Need to figure out what better behaviour to define in regards
-		// to default addresses.
-		addr := node.Wallet.Addresses()[0]
-
-		newConfig := node.Repo.Config()
-		newConfig.Wallet.DefaultAddress = addr
-
-		if err := node.Repo.ReplaceConfig(newConfig); err != nil {
-			return address.Address{}, err
-		}
-
-		return addr, nil
-	}
-
-	return address.Address{}, ErrNoDefaultMessageFromAddress
-}
-
-func (node *Node) defaultWalletAddress() (address.Address, error) {
-	addr, err := node.Repo.Config().Get("wallet.defaultAddress")
-	if err != nil {
-		return address.Address{}, err
-	}
-	return addr.(address.Address), nil
-}
-
 // SendMessageAndWait creates a message, adds it to the mempool and waits for inclusion.
 // It will retry upto retries times, if there is a nonce error when including it.
 // It returns the deserialized results, or an error.
@@ -1057,7 +981,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
-			msgCid, err := node.SendMessage(ctx, from, to, val, method, params...)
+			msgCid, err := node.PlumbingAPI.MessageSend(ctx, from, to, val, method, params...)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to add message to mempool")
 			}
@@ -1103,34 +1027,6 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 	}
 
 	return nil, errors.Wrapf(err, "failed to send message after %d retries", retries)
-}
-
-// SendMessage is a convinent helper around adding a new message to the message pool.
-func (node *Node) SendMessage(ctx context.Context, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "invalid params")
-	}
-
-	// lock to avoid race for message nonce
-	node.messageLock.Lock()
-	defer node.messageLock.Unlock()
-
-	msg, err := newMessageWithNextNonce(ctx, node, from, to, val, method, encodedParams)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "invalid message")
-	}
-
-	smsg, err := types.NewSignedMessage(*msg, node.Wallet)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to sign message")
-	}
-
-	if err := node.addNewMessage(ctx, smsg); err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to submit message")
-	}
-
-	return smsg.Cid()
 }
 
 // MiningOwnerAddress returns the owner of the passed in mining address.
