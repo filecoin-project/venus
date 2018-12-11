@@ -3,10 +3,11 @@ package consensus_test
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
@@ -40,16 +41,18 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	cst, bstore, prover := setupCborBlockstoreProofs()
-	// TODO: get a empty parent state cid.
-	emptySt := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
-	ctx := context.Background()
-	emptyRoot, err := emptySt.Flush(ctx)
-	require.NoError(err)
-	ptv := consensus.NewTestPowerTableView(1, 5)
+	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
+		ctx := context.Background()
+		cst, bstore, prover := setupCborBlockstoreProofs()
+		ptv := consensus.NewTestPowerTableView(1, 5)
 
-	t.Run("NewValidTipSet returns a tipset + nil when valid blocks", func(t *testing.T) {
-		_, blocks, _ := setUpContextAndBlocks(emptyRoot)
+		stateTree := state.NewEmptyStateTree(cst)
+		stateRoot, err := stateTree.Flush(ctx)
+		require.NoError(err)
+
+		blocks, _, err := setUpContextAndBlocks(ctx, t, stateRoot)
+		assert.NoError(err)
+
 		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
@@ -58,6 +61,11 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	})
 
 	t.Run("NewValidTipSet returns nil + error when invalid blocks", func(t *testing.T) {
+		ctx := context.Background()
+		cst, bstore, prover := setupCborBlockstoreProofs()
+
+		// TODO: get a empty parent state cid.
+		ptv := consensus.NewTestPowerTableView(1, 5)
 		parentBlock := types.NewBlockForTest(nil, 0)
 
 		blocks := []*types.Block{
@@ -109,7 +117,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	stateRoot, err := stateTree.Flush(ctx)
 	require.NoError(err)
 
-	_, blocks, parent := setUpContextAndBlocks(stateRoot)
+	blocks, parent, _ := setUpContextAndBlocks(ctx, t, stateRoot)
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		ptv := consensus.NewTestPowerTableView(1, 5)
@@ -257,16 +265,33 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, pr
 	return cis, bs, pv
 }
 
-func setUpContextAndBlocks(parentStateRoot cid.Cid) (context.Context, []*types.Block, *types.Block) {
-	ctx := context.Background()
-	parentBlock := types.NewBlockForTest(nil, 0)
-	parentBlock.StateRoot = parentStateRoot
-	blocks := []*types.Block{
-		types.NewBlockForTest(parentBlock, 0),
-		types.NewBlockForTest(parentBlock, 0),
-		types.NewBlockForTest(parentBlock, 0),
+func setUpContextAndBlocks(ctx context.Context, t *testing.T, parentStateRoot cid.Cid) ([]*types.Block, *types.Block, error) {
+
+	newNode := node.MakeNodesUnstarted(t, 1, false, true)[0]
+	newNode.Start(ctx)
+	baseTS := newNode.ChainReader.Head()
+	if baseTS == nil {
+		return nil, nil, errors.New("could not get chain head")
 	}
-	return ctx, blocks, parentBlock
+
+	parentBlock := consensus.NewValidTestBlockFromTipSet(baseTS, 0)
+	fmt.Printf("\nNew block: miner: %s, ticket: %s, parents: %s, height: %d\n",
+		parentBlock.Miner, parentBlock.Ticket, parentBlock.Parents, parentBlock.Height)
+	parentBlock.StateRoot = parentStateRoot
+
+	err := newNode.AddNewBlock(ctx, parentBlock)
+	if err != nil {
+		return nil, nil, errors.New("could not add new block")
+	}
+
+	baseTS = newNode.ChainReader.Head()
+
+	blocks := []*types.Block{
+		consensus.NewValidTestBlockFromTipSet(baseTS, 1),
+		consensus.NewValidTestBlockFromTipSet(baseTS, 2),
+		consensus.NewValidTestBlockFromTipSet(baseTS, 3),
+	}
+	return blocks, parentBlock, nil
 }
 
 type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }
