@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/filecoin-project/go-filecoin/util/version"
 )
 
 var lineBreak = "\n"
@@ -328,6 +330,10 @@ func main() {
 
 	if len(args) == 0 {
 		log.Fatalf("Missing command")
+	}
+
+	if !version.Check(runtime.Version()) {
+		log.Fatalf("Invalid go version: %s", runtime.Version())
 	}
 
 	cmd := args[0]
