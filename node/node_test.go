@@ -168,7 +168,7 @@ func TestNodeStartMining(t *testing.T) {
 		assert.NoError(minerNode.StartMining(ctx))
 		defer minerNode.StopMining(ctx)
 		err := minerNode.StartMining(ctx)
-		assert.Error(err, "Node is already mining")
+		assert.Error(err, "node is already mining")
 	})
 
 }

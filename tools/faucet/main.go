@@ -69,13 +69,13 @@ func main() {
 
 		addr, err := address.NewFromString(target)
 		if err != nil {
-			log.Errorf("Failed to parse target address: %s %s", target, err)
+			log.Errorf("failed to parse target address: %s %s", target, err)
 			http.Error(w, fmt.Sprintf("Failed to parse target address %s %s", target, err.Error()), 400)
 			return
 		}
 
 		if readyIn, ok := addrLimiter.Ready(target); !ok {
-			log.Errorf("Limit hit for target address %s", target)
+			log.Errorf("limit hit for target address %s", target)
 			w.Header().Add("Retry-After", fmt.Sprintf("%d", int64(readyIn/time.Second)))
 			http.Error(w, fmt.Sprintf("Too Many Requests, please wait %s", readyIn), http.StatusTooManyRequests)
 			return
@@ -86,7 +86,7 @@ func main() {
 
 		resp, err := http.Post(reqStr, "application/json", nil)
 		if err != nil {
-			log.Errorf("Failed to Post request. Status: %s Error: %s", resp.Status, err)
+			log.Errorf("failed to Post request. Status: %s Error: %s", resp.Status, err)
 			http.Error(w, err.Error(), 500)
 			return
 		}
@@ -98,7 +98,7 @@ func main() {
 			return
 		}
 		if resp.StatusCode != 200 {
-			log.Errorf("Status: %s Body: %s", resp.Status, string(out))
+			log.Errorf("status: %s body: %s", resp.Status, string(out))
 			http.Error(w, "failed to send funds", 500)
 			return
 		}

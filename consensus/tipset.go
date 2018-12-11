@@ -62,13 +62,13 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 		return err
 	}
 	if uint64(b.Height) != h {
-		return errors.Errorf("Block height %d doesn't match existing tipset height %d", uint64(b.Height), h)
+		return errors.Errorf("block height %d doesn't match existing tipset height %d", uint64(b.Height), h)
 	}
 	if !b.Parents.Equals(p) {
-		return errors.Errorf("Block parents %s don't match tipset parents %s", b.Parents.String(), p.String())
+		return errors.Errorf("block parents %s don't match tipset parents %s", b.Parents.String(), p.String())
 	}
 	if uint64(b.ParentWeightNum) != wNum || uint64(b.ParentWeightDenom) != wDenom {
-		return errors.Errorf("Block parent weight num:%d denom:%d doesn't match existing tipset parent weight num:%d denom:%d", uint64(b.ParentWeightNum), uint64(b.ParentWeightDenom), wNum, wDenom)
+		return errors.Errorf("bBlock parent weight num:%d denom:%d doesn't match existing tipset parent weight num:%d denom:%d", uint64(b.ParentWeightNum), uint64(b.ParentWeightDenom), wNum, wDenom)
 	}
 
 	id := b.Cid()

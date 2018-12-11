@@ -22,7 +22,7 @@ var clientRetrievePieceCmd = &cmds.Command{
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("pid", true, false, "libp2p peer id of storage miner"),
-		cmdkit.StringArg("cid", true, false, "content identifier of piece to read"),
+		cmdkit.StringArg("cid", true, false, "Content identifier of piece to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerPeerID, err := peer.IDB58Decode(req.Arguments[0])

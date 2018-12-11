@@ -15,7 +15,7 @@ var mpoolCmd = &cmds.Command{
 		Tagline: "View the mempool of outstanding messages",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.UintOption("wait-for-count", "block until this number of messages are in the pool").WithDefault(0),
+		cmdkit.UintOption("wait-for-count", "Block until this number of messages are in the pool").WithDefault(0),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)

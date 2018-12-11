@@ -179,7 +179,7 @@ func TestMinerCreate(t *testing.T) {
 
 		op1 := d.RunSuccess("miner", "create", "--help")
 		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "<pledge>     - the size of the pledge (in 1GB sectors) for the miner")
+		assert.Contains(result1, "<pledge>     - The size of the pledge (in 1GB sectors) for the miner")
 	})
 
 	t.Run("success", func(t *testing.T) {

@@ -112,7 +112,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 			blkmsgs := blk.Messages
 			if len(blkmsgs) > 0 {
 				if blkmsgs[0].From != address.NetworkAddress {
-					log.Error("Invalid TipSet: Missing reward message!")
+					log.Error("invalid tipset: missing reward message")
 				} else {
 					blkmsgs = blkmsgs[1:]
 				}
@@ -190,7 +190,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 				// If the block height is not empty, and there is no reward message, something went really wrong
 				if len(blkmsgs) > 0 {
 					if blkmsgs[0].From != address.NetworkAddress {
-						log.Error("Invalid Tipset: Missing reward message")
+						log.Error("invalid tipset: missing reward message")
 					} else {
 						blkmsgs = blkmsgs[1:]
 					}

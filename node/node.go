@@ -479,7 +479,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 				return
 			}
 			if output.Err != nil {
-				log.Errorf("Problem mining a block: %s", output.Err.Error())
+				log.Errorf("problem mining a block: %s", output.Err.Error())
 			} else {
 				node.miningDoneWg.Add(1)
 				go func() {
@@ -503,18 +503,18 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.Ti
 			}
 			newHead, ok := ts.(consensus.TipSet)
 			if !ok {
-				log.Error("Non-TipSet published on HeaviestTipSetCh")
+				log.Error("non-tipset published on heaviest tipset channel")
 				continue
 			}
 			if len(newHead) == 0 {
-				log.Error("TipSet of size 0 published on HeaviestTipSetCh. Ignoring and waiting for a new Heaviest TipSet.")
+				log.Error("tipset of size 0 published on heaviest tipset channel. ignoring and waiting for a new heaviest tipset.")
 				continue
 			}
 
 			// When a new best TipSet is promoted we remove messages in it from the
 			// message pool (and add them back in if we have a re-org).
 			if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
-				log.Error("Error updating message pool for new TipSet:", err)
+				log.Error("error updating message pool for new tipset:", err)
 				continue
 			}
 			head = newHead
@@ -577,7 +577,7 @@ type newBlockFunc func(context.Context, *types.Block)
 
 func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	if err := node.AddNewBlock(ctx, b); err != nil {
-		log.Warningf("Error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
+		log.Warningf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
 	}
 }
 
@@ -954,7 +954,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 	// Only create a miner if we don't already have one.
 	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
-		return nil, fmt.Errorf("Can only have one miner per node")
+		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
 	ctx = log.Start(ctx, "Node.CreateMiner")

@@ -301,7 +301,7 @@ func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) err
 
 	// Add logging to debug sporadic test failure.
 	if len(ts) < 1 {
-		logStore.Error("Publishing empty tipset")
+		logStore.Error("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
 
@@ -331,7 +331,7 @@ func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts consensus.T
 
 // writeHead writes the given cid set as head to disk.
 func (store *DefaultStore) writeHead(ctx context.Context, cids types.SortedCidSet) error {
-	logStore.Debugf("writeHead %s", cids.String())
+	logStore.Debugf("WriteHead %s", cids.String())
 	val, err := json.Marshal(cids)
 	if err != nil {
 		return err

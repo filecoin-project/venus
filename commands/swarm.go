@@ -38,7 +38,7 @@ var swarmPeersCmd = &cmds.Command{
 `,
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("verbose", "v", "display all extra information"),
+		cmdkit.BoolOption("verbose", "v", "Display all extra information"),
 		cmdkit.BoolOption("streams", "Also list information about open streams for each peer"),
 		cmdkit.BoolOption("latency", "Also list information about latency to each peer"),
 	},

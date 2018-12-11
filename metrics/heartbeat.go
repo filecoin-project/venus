@@ -98,14 +98,14 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 			return
 		case <-reconTicker.C:
 			if err := hbs.Connect(ctx); err != nil {
-				log.Debugf("heartbeat service failed to connect: %s", err)
+				log.Debugf("Heartbeat service failed to connect: %s", err)
 				// failed to connect, continue reconnect loop
 				continue
 			}
 			// we connected, send heartbeats!
 			// Run will block until it fails to send a heartbeat.
 			if err := hbs.Run(ctx); err != nil {
-				log.Debugf("heartbeat run failed: %s", err)
+				log.Debugf("Heartbeat run failed: %s", err)
 				log.Warning("disconnecting from aggregator, failed to send heartbeat")
 				continue
 			}
@@ -162,7 +162,7 @@ func (hbs *HeartbeatService) Beat() Heartbeat {
 
 // Connect will connects to `hbs.Config.BeatTarget` or returns an error
 func (hbs *HeartbeatService) Connect(ctx context.Context) error {
-	log.Debugf("heartbeat service attempting to connect, targetAddress: %s", hbs.Config.BeatTarget)
+	log.Debugf("Heartbeat service attempting to connect, targetAddress: %s", hbs.Config.BeatTarget)
 	targetMaddr, err := ma.NewMultiaddr(hbs.Config.BeatTarget)
 	if err != nil {
 		return err

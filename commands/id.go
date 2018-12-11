@@ -18,7 +18,7 @@ var idCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		// TODO: ideally copy this from the `ipfs id` command
-		cmdkit.StringOption("format", "f", "specify an output format"),
+		cmdkit.StringOption("format", "f", "Specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		details, err := GetAPI(env).ID().Details()

@@ -63,7 +63,7 @@ func (ctx *Context) ReadStorage() ([]byte, error) {
 	memory, err := storage.Get(storage.Head())
 	if err != nil {
 		if err == ErrNotFound {
-			return nil, errors.NewRevertErrorf("Actor state not found at cid %s", storage.Head())
+			return nil, errors.NewRevertErrorf("actor state not found at cid %s", storage.Head())
 		}
 		return nil, err
 	}
