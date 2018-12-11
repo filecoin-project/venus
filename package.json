@@ -5,7 +5,7 @@
   },
   "gx": {
     "dvcsimport": "github.com/filecoin-project/go-filecoin",
-    "goversion": "1.10"
+    "goversion": "1.11.1"
   },
   "gxDependencies": [
     {
@@ -180,4 +180,3 @@
   "subtoolRequired": true,
   "version": "0.0.1"
 }
-
