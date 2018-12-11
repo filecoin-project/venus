@@ -1,4 +1,4 @@
-FROM golang:1.10-stretch
+FROM golang:1.11.1-stretch
 MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates file sudo clang
