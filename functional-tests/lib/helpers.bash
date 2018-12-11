@@ -3,10 +3,32 @@
 set -eo pipefail
 
 function finish {
+  local -i MAX_WAIT=60
+
   echo ""
   echo "cleaning up..."
   kill "$MN_PID" || true
   kill "$CL_PID" || true
+
+  # Force KILL after MAX_WAIT seconds if the daemons don't exit
+  (
+    sleep $MAX_WAIT && kill -9 "$MN_PID";
+    echo "Sent SIGKILL to MN, daemon failed to stop within $MAX_WAIT second at end of test";
+  ) & WAITER_MN=$!
+
+  (
+    sleep $MAX_WAIT && kill -9 "$CL_PID";
+    echo "Sent SIGKILL to CL, daemon failed to stop within $MAX_WAIT second at end of test";
+  ) & WAITER_CL=$!
+
+  # Wait for daemons to exit
+  wait "$MN_PID"
+  wait "$CL_PID"
+
+  # Kill watchers
+  kill $WAITER_MN
+  kill $WAITER_CL
+
   rm -f "${PIECE_1_PATH}"
   rm -f "${PIECE_2_PATH}"
   rm -f "${UNSEAL_PATH}"
