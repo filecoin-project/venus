@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/stretchr/testify/assert"
+
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
