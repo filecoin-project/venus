@@ -4,17 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
@@ -40,20 +37,25 @@ func TestNewExpected(t *testing.T) {
 func TestExpected_NewValidTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
+	cistore, bstore, prover := setupCborBlockstoreProofs()
+	ptv := consensus.NewTestPowerTableView(1, 5)
 
 	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
-		ctx := context.Background()
-		cst, bstore, prover := setupCborBlockstoreProofs()
-		ptv := consensus.NewTestPowerTableView(1, 5)
 
-		stateTree := state.NewEmptyStateTree(cst)
-		stateRoot, err := stateTree.Flush(ctx)
+		genesisBlock, err := consensus.InitGenesis(cistore, bstore)
 		require.NoError(err)
 
-		blocks, _, err := setUpContextAndBlocks(ctx, t, stateRoot)
-		assert.NoError(err)
+		exp := consensus.NewExpected(cistore, bstore, ptv, genesisBlock.Cid(), prover)
 
-		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
+		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
+		require.NoError(err)
+
+		blocks := []*types.Block{
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+		}
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.NoError(err)
@@ -61,11 +63,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	})
 
 	t.Run("NewValidTipSet returns nil + error when invalid blocks", func(t *testing.T) {
-		ctx := context.Background()
-		cst, bstore, prover := setupCborBlockstoreProofs()
 
-		// TODO: get a empty parent state cid.
-		ptv := consensus.NewTestPowerTableView(1, 5)
 		parentBlock := types.NewBlockForTest(nil, 0)
 
 		blocks := []*types.Block{
@@ -82,7 +80,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		}
 		blocks[0].MessageReceipts = []*types.MessageReceipt{receipt}
 
-		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.Error(err, "Foo")
@@ -97,34 +95,34 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
 
 	cistore, bstore, prover := setupCborBlockstoreProofs()
-
-	vms := testhelpers.VMStorage()
-	fakeActorCodeCid := types.AccountActorCodeCid
-	newAddressFunc := address.NewForTestGetter()
-	addr0, addr1, addr2 := newAddressFunc(), newAddressFunc(), newAddressFunc()
-	act0 := testhelpers.RequireNewAccountActor(require, types.NewAttoFILFromFIL(101))
-	act1 := testhelpers.RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
-	act2 := testhelpers.RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(0))
-
-	_, stateTree := testhelpers.RequireMakeStateTree(require, cistore, map[address.Address]*actor.Actor{
-		addr0: act0,
-		addr1: act1,
-		addr2: act2,
-	})
-	ctx := context.Background()
-	stateRoot, err := stateTree.Flush(ctx)
+	genesisBlock, err := consensus.InitGenesis(cistore, bstore)
 	require.NoError(err)
 
-	blocks, parent, _ := setUpContextAndBlocks(ctx, t, stateRoot)
-
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
-		ptv := consensus.NewTestPowerTableView(1, 5)
-		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
-		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
+
+		ptv := consensus.NewTestPowerTableView(3, 5)
+		exp := consensus.NewExpected(cistore, bstore, ptv, genesisBlock.Cid(), prover)
+
+		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
+
+		blocks := []*types.Block{
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+		}
+
+		for i, e := range blocks {
+			fmt.Printf("\nBlock %d stateRoot: %s\n", i, e.StateRoot)
+		}
+
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		require.NoError(err)
+
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
@@ -132,11 +130,22 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	})
 
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
+
 		ptv := NewFailingMinerTestPowerTableView(1, 5)
 		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
-		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{parent})
+
+		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
+
+		blocks := []*types.Block{
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
+		}
+
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		require.NoError(err)
+
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
@@ -263,35 +272,6 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, pr
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
 	pv := proofs.NewFakeProver(true, nil)
 	return cis, bs, pv
-}
-
-func setUpContextAndBlocks(ctx context.Context, t *testing.T, parentStateRoot cid.Cid) ([]*types.Block, *types.Block, error) {
-
-	newNode := node.MakeNodesUnstarted(t, 1, false, true)[0]
-	newNode.Start(ctx)
-	baseTS := newNode.ChainReader.Head()
-	if baseTS == nil {
-		return nil, nil, errors.New("could not get chain head")
-	}
-
-	parentBlock := consensus.NewValidTestBlockFromTipSet(baseTS, 0)
-	fmt.Printf("\nNew block: miner: %s, ticket: %s, parents: %s, height: %d\n",
-		parentBlock.Miner, parentBlock.Ticket, parentBlock.Parents, parentBlock.Height)
-	parentBlock.StateRoot = parentStateRoot
-
-	err := newNode.AddNewBlock(ctx, parentBlock)
-	if err != nil {
-		return nil, nil, errors.New("could not add new block")
-	}
-
-	baseTS = newNode.ChainReader.Head()
-
-	blocks := []*types.Block{
-		consensus.NewValidTestBlockFromTipSet(baseTS, 1),
-		consensus.NewValidTestBlockFromTipSet(baseTS, 2),
-		consensus.NewValidTestBlockFromTipSet(baseTS, 3),
-	}
-	return blocks, parentBlock, nil
 }
 
 type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }

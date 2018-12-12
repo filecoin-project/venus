@@ -80,7 +80,9 @@ func NewValidTestBlockFromTipSet(baseTipSet TipSet, height int) *types.Block {
 	postProof := proofs.PoStProof{1}
 	ticket := CreateTicket(postProof[:], minerAddr)
 
-	stateRoot := baseTipSet.ToSlice()[0].StateRoot
+	baseTsBlock := baseTipSet.ToSlice()[0]
+	stateRoot := baseTsBlock.StateRoot
+
 	return &types.Block{
 		Miner:             minerAddr,
 		Ticket:            ticket,

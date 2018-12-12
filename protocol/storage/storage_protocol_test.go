@@ -2,13 +2,16 @@ package storage_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"sync"
 	"testing"
 	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
-	unixfs "gx/ipfs/QmXAFxWtAB9YAMzMy9op6m95hWYu2CC5rmTsijkYL12Kvu/go-unixfs"
+	"gx/ipfs/QmXAFxWtAB9YAMzMy9op6m95hWYu2CC5rmTsijkYL12Kvu/go-unixfs"
 	dag "gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
 
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -48,21 +51,37 @@ func TestStorageProtocolBasic(t *testing.T) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the miner (and gets the miner peer key)
-	miner := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
-	client := node.NodeWithChainSeed(t, seed)
-	minerAPI := impl.New(miner)
+	minerNode := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+
+	prover := proofs.NewFakeProver(true, nil)
+	testConsensus := consensus.NewExpected(
+		minerNode.CborStore(),
+		minerNode.Blockstore,
+		&consensus.MarketView{},
+		minerNode.ChainReader.GenesisCid(),
+		prover)
+
+	chainStore := minerNode.ChainReader.(chain.Store)
+
+	testSyncer := chain.NewDefaultSyncer(minerNode.OnlineStore, minerNode.CborStore(), testConsensus, chainStore)
+	minerNode.Syncer = testSyncer
+
+	clientNode := node.NodeWithChainSeed(t, seed)
+	minerAPI := impl.New(minerNode)
+
+	// TODO: ticket is invalid
 
 	// Give the miner node the right private key, and set them up with
 	// the miner actor
-	seed.GiveKey(t, miner, 0)
-	mineraddr, minerOwnerAddr := seed.GiveMiner(t, miner, 0)
+	seed.GiveKey(t, minerNode, 0)
+	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 
-	seed.GiveKey(t, client, 1)
+	seed.GiveKey(t, clientNode, 1)
 
 	cni := NewClientNodeImpl(
-		dag.NewDAGService(client.BlockService()),
-		client.Host(),
-		client.Lookup(),
+		dag.NewDAGService(clientNode.BlockService()),
+		clientNode.Host(),
+		clientNode.Lookup(),
 		func(_ context.Context, _ address.Address, _ string, _ []byte, _ *address.Address) ([][]byte, uint8, error) {
 			// This is only used for getting the price of an ask.
 			a := &mactor.Ask{
@@ -78,19 +97,19 @@ func TestStorageProtocolBasic(t *testing.T) {
 		},
 	)
 	c := NewClient(cni)
-	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner)
+	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode)
 	assert.NoError(err)
 	_ = m
 
-	assert.NoError(miner.Start(ctx))
-	assert.NoError(client.Start(ctx))
+	assert.NoError(minerNode.Start(ctx))
+	assert.NoError(clientNode.Start(ctx))
 
-	node.ConnectNodes(t, miner, client)
+	node.ConnectNodes(t, minerNode, clientNode)
 	err = minerAPI.Mining().Start(ctx)
 	assert.NoError(err)
 	defer minerAPI.Mining().Stop(ctx)
 
-	sectorSize, err := miner.SectorBuilder().GetMaxUserBytesPerStagedSector()
+	sectorSize, err := minerNode.SectorBuilder().GetMaxUserBytesPerStagedSector()
 	require.NoError(err)
 
 	data := unixfs.NewFSNode(unixfs.TFile)
@@ -104,7 +123,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	assert.NoError(err)
 	protonode := dag.NodeWithData(raw)
 
-	assert.NoError(client.BlockService().AddBlock(protonode))
+	assert.NoError(clientNode.BlockService().AddBlock(protonode))
 
 	var foundCommit bool
 	var foundPoSt bool
@@ -112,9 +131,9 @@ func TestStorageProtocolBasic(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	old := miner.AddNewlyMinedBlock
+	old := minerNode.AddNewlyMinedBlock
 	var bCount, mCount int
-	miner.AddNewlyMinedBlock = func(ctx context.Context, blk *types.Block) {
+	minerNode.AddNewlyMinedBlock = func(ctx context.Context, blk *types.Block) {
 		bCount++
 		mCount += len(blk.Messages)
 		old(ctx, blk)
