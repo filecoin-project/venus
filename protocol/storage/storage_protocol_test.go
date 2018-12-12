@@ -50,26 +50,16 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
-	// make two nodes, one of which is the miner (and gets the miner peer key)
+	// make two nodes, one of which is the miner (and gets the miner peer key),
+	// and set up their syncers with fake provers that always mark a proof as valid.
 	minerNode := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
-
-	prover := proofs.NewFakeProver(true, nil)
-	testConsensus := consensus.NewExpected(
-		minerNode.CborStore(),
-		minerNode.Blockstore,
-		&consensus.MarketView{},
-		minerNode.ChainReader.GenesisCid(),
-		prover)
-
-	chainStore := minerNode.ChainReader.(chain.Store)
-
-	testSyncer := chain.NewDefaultSyncer(minerNode.OnlineStore, minerNode.CborStore(), testConsensus, chainStore)
-	minerNode.Syncer = testSyncer
-
-	clientNode := node.NodeWithChainSeed(t, seed)
+	minerProver := proofs.NewFakeProver(true, nil)
+	minerNode.Syncer = makeSyncerWithFakeProver(minerNode, minerProver)
 	minerAPI := impl.New(minerNode)
 
-	// TODO: ticket is invalid
+	clientNode := node.NodeWithChainSeed(t, seed)
+	clientProver := proofs.NewFakeProver(true, nil)
+	clientNode.Syncer = makeSyncerWithFakeProver(clientNode, clientProver)
 
 	// Give the miner node the right private key, and set them up with
 	// the miner actor
@@ -181,10 +171,10 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	require.True(done)
-	if waitTimeout(&wg, 120*time.Second) {
+	if waitTimeout(&wg, 60*time.Second) {
 		state, message := requireQueryDeal()
 		require.NotEqual(Failed, state, message)
-		assert.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
+		require.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
 	}
 	require.True(foundCommit, "no commitSector on chain")
 	require.True(foundPoSt, "no submitPoSt on chain")
@@ -204,6 +194,25 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	assert.True(done, "failed to finish transfer")
+}
+
+// makeSyncerWithFakerProver takes a node and a prover, and inserts chain.Syncer that uses
+// the desired prover.  Be sure to create a new prover for each node, or there will be a
+// key mismatch error
+func makeSyncerWithFakeProver(inNode *node.Node, prover proofs.Prover) chain.Syncer {
+
+	// construct the consensus for the syncer using the node values
+	newChainStore := inNode.ChainReader.(chain.Store)
+	newConsensus := consensus.NewExpected(
+		inNode.CborStore(),
+		inNode.Blockstore,
+		&consensus.MarketView{},
+		inNode.ChainReader.GenesisCid(),
+		prover)
+
+	// construct the syncer that uses the fake prover consensus
+	newSyncer := chain.NewDefaultSyncer(inNode.OnlineStore, inNode.CborStore(), newConsensus, newChainStore)
+	return newSyncer
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.

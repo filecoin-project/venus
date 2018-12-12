@@ -276,7 +276,6 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			return errors.Wrap(err, "could not test the proof's validity")
 		}
 		if !isValid {
-			log.Debugf("TODO: return error; proof is invalid.")
 			return errors.New("invalid proof")
 		}
 

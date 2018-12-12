@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -114,6 +115,7 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.Storage
 	if err != nil {
 		return &emptyRes, errors.FaultErrorWrap(err, "processing empty tipset")
 	}
+	fmt.Println("PROCESSTIPSET")
 	bh := types.NewBlockHeight(h)
 	msgFilter := make(map[string]struct{})
 
