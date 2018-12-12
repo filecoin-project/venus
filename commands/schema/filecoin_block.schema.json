@@ -75,6 +75,7 @@
         "messages",
         "nonce",
         "parents",
+        "proof",
         "stateRoot",
         "ticket"
       ],
