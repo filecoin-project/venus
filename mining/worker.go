@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -133,13 +134,16 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		return false
 	}
 	prCh := createProof(challenge, w.createPoST)
+
+	var proof proofs.PoStProof
 	var ticket []byte
 	select {
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
 		return false
-	case proof := <-prCh:
-		ticket = consensus.CreateTicket(proof, w.minerAddr)
+	case prChRead := <-prCh:
+		copy(proof[:], prChRead)
+		ticket = consensus.CreateTicket(proof[:], w.minerAddr)
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoST()
@@ -153,7 +157,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 	}
 
 	if weHaveAWinner {
-		next, err := w.Generate(ctx, base, ticket, uint64(nullBlkCount))
+		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
 		}

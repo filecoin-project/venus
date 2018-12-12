@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -19,6 +20,7 @@ import (
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet consensus.TipSet,
 	ticket types.Signature,
+	proof proofs.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
 
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
@@ -30,7 +32,9 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
 	}
 
+	wNum, wDenom, err := w.getWeight(ctx, baseTipSet)
 	weight, err := w.getWeight(ctx, baseTipSet)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "get weight")
 	}
@@ -76,14 +80,16 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	next := &types.Block{
-		Miner:           w.minerAddr,
-		Height:          types.Uint64(blockHeight),
-		Messages:        res.SuccessfulMessages,
-		MessageReceipts: receipts,
-		Parents:         baseTipSet.ToSortedCidSet(),
+		Miner:             w.minerAddr,
+		Height:            types.Uint64(blockHeight),
+		Messages:          res.SuccessfulMessages,
+		MessageReceipts:   receipts,
+		Parents:           baseTipSet.ToSortedCidSet(),
+		ParentWeightNum:   types.Uint64(wNum),
+		ParentWeightDenom: types.Uint64(wDenom),
 		ParentWeight:    types.Uint64(weight),
-		StateRoot:       newStateTreeCid,
-		Ticket:          ticket,
+		StateRoot:         newStateTreeCid,
+		Ticket:            ticket,
 	}
 
 	var rewardSuccessful bool
