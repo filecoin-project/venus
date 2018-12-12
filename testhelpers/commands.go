@@ -99,8 +99,6 @@ type TestDaemon struct {
 	cmdAddr     string
 	swarmAddr   string
 	repoDir     string
-	walletFile  string
-	walletAddr  string
 	genesisFile string
 	keyFiles    []string
 	withMiner   string
@@ -669,20 +667,6 @@ func CmdTimeout(t time.Duration) func(*TestDaemon) {
 	}
 }
 
-// WalletFile allows setting the `walletFile` config option on the daemon.
-func WalletFile(f string) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.walletFile = f
-	}
-}
-
-// WalletAddr allows setting the `walletAddr` config option on the daemon.
-func WalletAddr(a string) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.walletAddr = a
-	}
-}
-
 // KeyFile specifies a key file for this daemon to add to their wallet during init
 func KeyFile(kf string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -717,11 +701,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	td := &TestDaemon{
 
-		test:       t,
-		repoDir:    dir,
-		init:       true, // we want to init unless told otherwise
-		firstRun:   true,
-		walletFile: "",
+		test:     t,
+		repoDir:  dir,
+		init:     true, // we want to init unless told otherwise
+		firstRun: true,
 
 		cmdTimeout:  DefaultDaemonCmdTimeout,
 		genesisFile: GenesisFilePath(), // default file includes all test addresses,
@@ -743,13 +726,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	if td.genesisFile != "" {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
 	}
-	if td.walletFile != "" {
-		initopts = append(initopts, fmt.Sprintf("--walletfile=%s", td.walletFile))
-		initopts = append(initopts, "--testgenesis")
-	}
-	if td.walletAddr != "" {
-		initopts = append(initopts, fmt.Sprintf("--walletaddr=%s", td.walletAddr))
-	}
+
 	if td.withMiner != "" {
 		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
 	}

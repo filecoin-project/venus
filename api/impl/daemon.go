@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 const (
@@ -79,11 +78,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		} // else err may be set and returned as normal
 	}()
 
-	tif := consensus.InitGenesis
-
-	if cfg.UseCustomGenesis && cfg.GenesisFile != "" {
-		return fmt.Errorf("cannot use testgenesis option and genesisfile together")
-	}
+	gif := consensus.InitGenesis
 
 	var initopts []node.InitOpt
 	if cfg.PeerKeyFile != "" {
@@ -138,7 +133,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 			return err
 		}
 
-		tif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+		gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 			var blk types.Block
 
 			if err := cst.Get(ctx, genCid, &blk); err != nil {
@@ -147,38 +142,10 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 
 			return &blk, nil
 		}
-
-	case cfg.UseCustomGenesis: // Used for testing
-		nd.api.logger.Infof("initializing filecoin node with wallet file: %s\n", cfg.WalletFile)
-
-		// Load all the Address their Keys into memory
-		addressKeys, err := wallet.LoadWalletAddressAndKeysFromFile(cfg.WalletFile)
-		if err != nil {
-			return errors.Wrapf(err, "failed to load wallet file: %s", cfg.WalletFile)
-		}
-
-		// Generate a genesis function to allocate the address funds
-		var actorOps []consensus.GenOption
-		for k, v := range addressKeys {
-			actorOps = append(actorOps, consensus.ActorAccount(k.Address, k.Balance))
-
-			// load an address into nodes wallet backend
-			if k.Address.String() == cfg.WalletAddr {
-				nd.api.logger.Infof("initializing filecoin node with address: %s, balance: %s\n", k.Address.String(), k.Balance.String())
-				if err := loadAddress(k, v, rep); err != nil {
-					return err
-				}
-				// since `node.Init` will create an address, and since `node.Build` will
-				// return `ErrNoDefaultMessageFromAddress` iff len(wallet.Addresses) > 1 and
-				// wallet.defaultAddress == "" we set the default here
-				rep.Config().Wallet.DefaultAddress = k.Address
-			}
-		}
-		tif = consensus.MakeGenesisFunc(actorOps...)
 	}
 
 	// TODO: don't create the repo if this fails
-	return node.Init(ctx, rep, tif, initopts...)
+	return node.Init(ctx, rep, gif, initopts...)
 }
 
 func loadPeerKey(fname string) (crypto.PrivKey, error) {
@@ -190,35 +157,13 @@ func loadPeerKey(fname string) (crypto.PrivKey, error) {
 	return crypto.UnmarshalPrivateKey(data)
 }
 
-func loadAddress(ai wallet.TypesAddressInfo, ki types.KeyInfo, r repo.Repo) error {
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	if err != nil {
-		return err
-	}
-
-	// sanity...
-	a, err := ki.Address()
-	if err != nil {
-		return err
-	}
-
-	if a != ai.Address {
-		return fmt.Errorf("mismatch of addresses: %q != %q", a, ai.Address)
-	}
-
-	if err := backend.ImportKey(&ki); err != nil {
-		return err
-	}
-	return nil
-}
-
 // LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
 func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
 
 	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("invalid filepath or URL fort genesis file: %s", sourceURL)
+		return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
 	}
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a

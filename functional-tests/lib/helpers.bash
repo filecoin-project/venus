@@ -51,9 +51,6 @@ function init_local_daemon {
     --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
     --repodir="$1" \
     --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-    --walletfile= \
-    --walletaddr= \
-    --testgenesis=false \
     --genesisfile="$3"
 }
 
@@ -63,9 +60,6 @@ function init_cluster_daemon {
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-            --walletfile= \
-            --walletaddr= \
-            --testgenesis=false \
             --cluster-test \
             --genesisfile="http://test.kittyhawk.wtf:8020/genesis.car"
    else
@@ -73,9 +67,6 @@ function init_cluster_daemon {
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-            --walletfile= \
-            --walletaddr= \
-            --testgenesis=false \
             --cluster-nightly \
             --genesisfile="http://nightly.kittyhawk.wtf:8020/genesis.car"
     fi

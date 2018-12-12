@@ -54,17 +54,8 @@ const (
 	// WithMiner when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)
 	WithMiner = "with-miner"
 
-	// TestGenesis when set, creates a custom genesis block with pre-mined funds
-	TestGenesis = "testgenesis"
-
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
-
-	// WalletAddr is the address to store in nodes backend when '--walletfile' option is passed to init
-	WalletAddr = "walletaddr"
-
-	// WalletFile is the wallet data file; it contains addresses and private keys
-	WalletFile = "walletfile"
 
 	// ClusterTest populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters
 	ClusterTest = "cluster-test"
