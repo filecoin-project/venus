@@ -1,0 +1,47 @@
+FROM busybox:1-glibc AS filecoin
+MAINTAINER Filecoin Dev Team
+
+# Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
+ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+COPY --from=filecoin:all $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
+COPY --from=filecoin:all $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
+COPY --from=filecoin:all $SRC_DIR/bin/cluster_start /usr/local/bin/cluster_start
+COPY --from=filecoin:all $SRC_DIR/bin/node_restart /usr/local/bin/node_restart
+COPY --from=filecoin:all $SRC_DIR/gengen/gengen /usr/local/bin/gengen
+COPY --from=filecoin:all $SRC_DIR/fixtures/* /data/
+COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
+COPY --from=filecoin:all /tmp/tini /sbin/tini
+COPY --from=filecoin:all /tmp/jq /usr/local/bin/jq
+COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
+
+# This shared lib (part of glibc) doesn't seem to be included with busybox.
+COPY --from=filecoin:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
+COPY --from=filecoin:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
+COPY --from=filecoin:all /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
+COPY --from=filecoin:all $SRC_DIR/proofs/rust-proofs/target/release/libfilecoin_proofs.so /lib/libfilecoin_proofs.so
+COPY --from=filecoin:all $SRC_DIR/proofs/rust-proofs/target/release/libsector_base.so /lib/libsector_base.so
+
+# Ports for Swarm and CmdAPI
+EXPOSE 6000
+EXPOSE 3453
+
+# Create the fs-repo directory and switch to a non-privileged user.
+ENV FILECOIN_PATH /data/filecoin
+RUN mkdir -p $FILECOIN_PATH \
+&& adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
+&& chown filecoin:users $FILECOIN_PATH
+
+# There is only one bootstrapped miner
+RUN cat /data/gen.json | jq ".Miners[0].Address" > /data/minerAddr0 \
+&& cat /data/gen.json | jq ".Keys[0]" > /data/walletKey0
+
+# Expose the fs-repo as a volume.
+# start_filecoin initializes an fs-repo if none is mounted.
+# Important this happens after the USER directive so permission are correct.
+VOLUME $FILECOIN_PATH
+
+# There's an fs-repo, and initializes one if there isn't.
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/start_filecoin"]
+
+# Execute the daemon subcommand by default
+CMD ["daemon"]
