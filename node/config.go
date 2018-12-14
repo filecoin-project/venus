@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
-// OptionsFromRepo takes a repo and returns options that configure a node node
+// OptionsFromRepo takes a repo and returns options that configure a node
 // to use the given repo.
 func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 	sk, err := privKeyFromKeystore(r)
