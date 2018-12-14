@@ -96,27 +96,27 @@ func RunSuccessLines(td *TestDaemon, args ...string) []string {
 
 // TestDaemon is used to manage a Filecoin daemon instance for testing purposes.
 type TestDaemon struct {
-	cmdAddr     string
-	swarmAddr   string
-	repoDir     string
-	genesisFile string
-	keyFiles    []string
-	withMiner   string
+	cmdAddr          string
+	swarmAddr        string
+	repoDir          string
+	genesisFile      string
+	keyFiles         []string
+	withMiner        string
+	autoSealInterval string
 
 	firstRun bool
 	init     bool
-
-	// The filecoin daemon process
-	process *exec.Cmd
 
 	lk     sync.Mutex
 	Stdin  io.Writer
 	Stdout io.Reader
 	Stderr io.Reader
 
-	test *testing.T
-
-	cmdTimeout time.Duration
+	process        *exec.Cmd
+	test           *testing.T
+	cmdTimeout     time.Duration
+	defaultAddress string
+	daemonArgs     []string
 }
 
 // RepoDir returns the repo directory of the test daemon.
@@ -355,6 +355,8 @@ func (td *TestDaemon) ReadStderr() string {
 
 // Start starts up the daemon.
 func (td *TestDaemon) Start() *TestDaemon {
+	td.createNewProcess()
+
 	require.NoError(td.test, td.process.Start())
 
 	err := td.WaitForAPI()
@@ -376,7 +378,23 @@ func (td *TestDaemon) Start() *TestDaemon {
 	return td
 }
 
-// Shutdown stops the daemon.
+// Stop stops the daemon
+func (td *TestDaemon) Stop() *TestDaemon {
+	if err := td.process.Process.Signal(syscall.SIGINT); err != nil {
+		panic(err)
+	}
+	if _, err := td.process.Process.Wait(); err != nil {
+		panic(err)
+	}
+	return td
+}
+
+// Restart restarts the daemon
+func (td *TestDaemon) Restart() *TestDaemon {
+	return td.Stop().Start()
+}
+
+// Shutdown stops the daemon and deletes the repository.
 func (td *TestDaemon) Shutdown() {
 	if err := td.process.Process.Signal(syscall.SIGTERM); err != nil {
 		td.test.Errorf("Daemon Stderr:\n%s", td.ReadStderr())
@@ -478,6 +496,24 @@ func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr str
 	wg.Wait()
 
 	return &askID
+}
+
+// UpdatePeerID updates a miner's peer ID
+func (td *TestDaemon) UpdatePeerID() {
+	require := require.New(td.test)
+	assert := assert.New(td.test)
+
+	var idOutput map[string]interface{}
+	peerIDJSON := td.RunSuccess("id").ReadStdout()
+	err := json.Unmarshal([]byte(peerIDJSON), &idOutput)
+	require.NoError(err)
+	updateCidStr := td.RunSuccess("miner", "update-peerid", "--price=0", "--limit=999999", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
+	updateCid, err := cid.Parse(updateCidStr)
+	require.NoError(err)
+	assert.NotNil(updateCid)
+
+	td.RunSuccess("mining once")
+	td.WaitForMessageRequireSuccess(updateCid)
 }
 
 // WaitForMessageRequireSuccess accepts a message cid and blocks until a message with matching cid is included in a
@@ -674,6 +710,20 @@ func KeyFile(kf string) func(*TestDaemon) {
 	}
 }
 
+// DefaultAddress specifies a key file for this daemon to add to their wallet during init
+func DefaultAddress(defaultAddr string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.defaultAddress = defaultAddr
+	}
+}
+
+// AutoSealInterval specifies an interval for automatically sealing
+func AutoSealInterval(autoSealInterval string) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.autoSealInterval = autoSealInterval
+	}
+}
+
 // GenesisFile allows setting the `genesisFile` config option on the daemon.
 func GenesisFile(a string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -700,11 +750,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-		test:     t,
-		repoDir:  dir,
-		init:     true, // we want to init unless told otherwise
-		firstRun: true,
-
+		test:        t,
+		repoDir:     dir,
+		init:        true, // we want to init unless told otherwise
+		firstRun:    true,
 		cmdTimeout:  DefaultDaemonCmdTimeout,
 		genesisFile: GenesisFilePath(), // default file includes all test addresses,
 	}
@@ -718,9 +767,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	// build command options
-	initopts := []string{
-		repoDirFlag,
-	}
+	initopts := []string{repoDirFlag}
 
 	if td.genesisFile != "" {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))
@@ -728,6 +775,14 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	if td.withMiner != "" {
 		initopts = append(initopts, fmt.Sprintf("--with-miner=%s", td.withMiner))
+	}
+
+	if td.defaultAddress != "" {
+		initopts = append(initopts, fmt.Sprintf("--default-address=%s", td.defaultAddress))
+	}
+
+	if td.autoSealInterval != "" {
+		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
 	}
 
 	if td.init {
@@ -755,29 +810,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 
-	finalArgs := []string{"daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
-
-	// define filecoin daemon process
-	td.process = exec.Command(filecoinBin, finalArgs...)
-	// disable REUSEPORT, it creates problems in tests
-	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
-
-	// setup process pipes
-	td.Stdout, err = td.process.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// uncomment this and comment out the following 4 lines to output daemon stderr to os stderr
-	//td.process.Stderr = os.Stderr
-	td.Stderr, err = td.process.StderrPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	td.Stdin, err = td.process.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
+	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
 
 	return td
 }
@@ -808,4 +841,29 @@ func ProjectRoot(paths ...string) string {
 	allPaths := append([]string{gopath, "/src/github.com/filecoin-project/go-filecoin"}, paths...)
 
 	return filepath.Join(allPaths...)
+}
+
+func (td *TestDaemon) createNewProcess() {
+	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(td.daemonArgs, " "))
+
+	td.process = exec.Command(td.daemonArgs[0], td.daemonArgs[1:]...)
+	// disable REUSEPORT, it creates problems in tests
+	td.process.Env = append(os.Environ(), "IPFS_REUSEPORT=false")
+
+	// setup process pipes
+	var err error
+	td.Stdout, err = td.process.StdoutPipe()
+	if err != nil {
+		td.test.Fatal(err)
+	}
+	// uncomment this and comment out the following 4 lines to output daemon stderr to os stderr
+	//td.process.Stderr = os.Stderr
+	td.Stderr, err = td.process.StderrPipe()
+	if err != nil {
+		td.test.Fatal(err)
+	}
+	td.Stdin, err = td.process.StdinPipe()
+	if err != nil {
+		td.test.Fatal(err)
+	}
 }

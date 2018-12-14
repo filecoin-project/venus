@@ -55,6 +55,9 @@ const (
 	// WithMiner when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)
 	WithMiner = "with-miner"
 
+	// DefaultAddress when set, sets the daemons's default address to the provided address
+	DefaultAddress = "default-address"
+
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 

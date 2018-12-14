@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,10 +105,10 @@ func TestStorageProtocolBasic(t *testing.T) {
 			return [][]byte{enc}, 0, nil
 		},
 	)
-	c := NewClient(cni)
-	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, plumbingAPI)
+	c, err := NewClient(cni, clientNode.Repo.ClientDealsDatastore())
+	require.NoError(err)
+	_, err = NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.MinerDealsDatastore(), minerNode.Repo.DealsAwaitingSealDatastore(), plumbingAPI)
 	assert.NoError(err)
-	_ = m
 
 	assert.NoError(minerNode.Start(ctx))
 	assert.NoError(clientNode.Start(ctx))
@@ -173,7 +174,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 1, 150)
 	assert.NoError(err)
 	requireQueryDeal := func() (DealState, string) {
-		resp, err := c.QueryDeal(ctx, ref.Proposal)
+		resp, err := c.QueryDeal(ctx, ref.ProposalCid)
 		require.NoError(err)
 		return resp.State, resp.Message
 	}
@@ -191,7 +192,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	require.True(done)
-	if waitTimeout(&wg, 120*time.Second) {
+	if th.WaitTimeout(&wg, 120*time.Second) {
 		state, message := requireQueryDeal()
 		require.NotEqual(Failed, state, message)
 		require.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
@@ -202,7 +203,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	// Now all things should be ready
 	done = false
 	for i := 0; i < 10; i++ {
-		resp, err := c.QueryDeal(ctx, ref.Proposal)
+		resp, err := c.QueryDeal(ctx, ref.ProposalCid)
 		assert.NoError(err)
 		assert.NotEqual(Failed, resp.State, resp.Message)
 		if resp.State == Posted {
@@ -214,20 +215,4 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	assert.True(done, "failed to finish transfer")
-}
-
-// waitTimeout waits for the waitgroup for the specified max timeout.
-// Returns true if waiting timed out.
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false // completed normally
-	case <-time.After(timeout):
-		return true // timed out
-	}
 }

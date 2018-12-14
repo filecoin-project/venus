@@ -1,15 +1,17 @@
 package storage
 
 import (
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 )
 
-func TestNewDealsAwaitingSeal(t *testing.T) {
+func TestDealsAwaitingSeal(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	cid0 := newCid()
 	cid1 := newCid()
@@ -21,11 +23,38 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 
 	wantMessage := "boom"
 
+	t.Run("saveDealsAwaitingSeal saves, loadDealsAwaitingSeal loads", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		require := require.New(t)
+
+		miner := &Miner{
+			dealsAwaitingSeal: &dealsAwaitingSealStruct{
+				SectorsToDeals:    make(map[uint64][]cid.Cid),
+				SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
+				FailedSectors:     make(map[uint64]string),
+			},
+			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsAwaitingSealDatastore(),
+		}
+
+		miner.dealsAwaitingSeal.add(wantSectorID, cid0)
+
+		require.NoError(miner.saveDealsAwaitingSeal())
+		miner.dealsAwaitingSeal = &dealsAwaitingSealStruct{}
+		require.NoError(miner.loadDealsAwaitingSeal())
+
+		assert.Equal(cid0, miner.dealsAwaitingSeal.SectorsToDeals[42][0])
+	})
+
 	t.Run("add before success", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		dealsAwaitingSeal := newDealsAwaitingSeal()
+		dealsAwaitingSeal := &dealsAwaitingSealStruct{
+			SectorsToDeals:    make(map[uint64][]cid.Cid),
+			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
+			FailedSectors:     make(map[uint64]string),
+		}
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
 			assert.Equal(sector, wantSector)
@@ -44,7 +73,11 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		dealsAwaitingSeal := newDealsAwaitingSeal()
+		dealsAwaitingSeal := &dealsAwaitingSealStruct{
+			SectorsToDeals:    make(map[uint64][]cid.Cid),
+			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
+			FailedSectors:     make(map[uint64]string),
+		}
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
 			assert.Equal(sector, wantSector)
@@ -63,7 +96,11 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		dealsAwaitingSeal := newDealsAwaitingSeal()
+		dealsAwaitingSeal := &dealsAwaitingSealStruct{
+			SectorsToDeals:    make(map[uint64][]cid.Cid),
+			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
+			FailedSectors:     make(map[uint64]string),
+		}
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(message, wantMessage)
@@ -82,7 +119,11 @@ func TestNewDealsAwaitingSeal(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		dealsAwaitingSeal := newDealsAwaitingSeal()
+		dealsAwaitingSeal := &dealsAwaitingSealStruct{
+			SectorsToDeals:    make(map[uint64][]cid.Cid),
+			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
+			FailedSectors:     make(map[uint64]string),
+		}
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(message, wantMessage)
