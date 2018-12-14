@@ -30,7 +30,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false, true)[0]
+	nd := MakeNodesUnstarted(t, 1, false, true, nil)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop(context.Background())
@@ -41,7 +41,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false, true)
+	nds := MakeNodesUnstarted(t, 2, false, true, nil)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -129,7 +129,7 @@ func TestNodeInit(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	nd := MakeNodesUnstarted(t, 1, true, true)[0]
+	nd := MakeOfflineNode(t)
 
 	assert.NoError(nd.Start(ctx))
 
@@ -267,7 +267,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true, false)[0]
+	node := MakeNodesUnstarted(t, 1, true, false, nil)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
@@ -316,7 +316,7 @@ func TestGetSignature(t *testing.T) {
 		ctx := context.Background()
 		assert := assert.New(t)
 
-		nd := MakeNodesUnstarted(t, 1, true, true)[0]
+		nd := MakeOfflineNode(t)
 		nodeAddr, err := nd.NewAddress()
 		assert.NoError(err)
 
@@ -386,7 +386,7 @@ func TestSendMessage(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
+		node := MakeOfflineNode(t)
 		nodeAddr, err := node.NewAddress()
 		assert.NoError(err)
 
@@ -413,7 +413,7 @@ func TestQueryMessage(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		node := MakeNodesUnstarted(t, 1, true, true)[0]
+		node := MakeOfflineNode(t)
 		nodeAddr, err := node.NewAddress()
 		require.NoError(err)
 
