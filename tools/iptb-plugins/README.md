@@ -98,7 +98,7 @@ badger/  config.toml  keystore/  snapshots/  version  wallet/
 ```
 NOTE: arguments can be passed to nodes with any command by adding them after the `--` argument, e.g.:
 ```shell
-$> iptb init -- --genesisfile=/some/path/to/it --testgenesis=true
+$> iptb init -- --genesisfile=/some/path/to/it --cluster-nightly
 ```
 
 Start the testbed nodes:

@@ -7,7 +7,6 @@ import (
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDSBackendSimple(t *testing.T) {
@@ -96,36 +95,6 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	assert.Error(err)
 	assert.Contains("backend does not contain address", err.Error())
 
-}
-
-func TestDSBackendLoadAddressInfo(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	ds := datastore.NewMapDatastore()
-	defer ds.Close()
-
-	fs, err := NewDSBackend(ds)
-	assert.NoError(err)
-
-	t.Log("empty address list on empty datastore")
-	assert.Len(fs.Addresses(), 0)
-
-	t.Log("generate a WalletFile with 2 addresses")
-	wf, err := GenerateWalletFile(2)
-	require.NoError(err)
-
-	t.Log("load address into datastore")
-	assert.NoError(fs.ImportKey(&wf.AddressKeyPairs[0].KeyInfo))
-
-	t.Log("datastore has 1 address")
-	assert.Len(fs.Addresses(), 1)
-
-	t.Log("load address info into datastore")
-	assert.NoError(fs.ImportKey(&wf.AddressKeyPairs[1].KeyInfo))
-
-	t.Log("datastore has 2 address")
-	assert.Len(fs.Addresses(), 2)
 }
 
 func TestDSBackendParallel(t *testing.T) {

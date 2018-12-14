@@ -17,12 +17,9 @@ var initCmd = &cmds.Command{
 		Tagline: "Initialize a filecoin repo",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(WalletFile, "wallet data file: contains addresses and private keys").WithDefault(""),
-		cmdkit.StringOption(WalletAddr, "address to store in nodes backend when '--walletfile' option is passed").WithDefault(""),
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
-		cmdkit.BoolOption(TestGenesis, "when set, creates a custom genesis block with pre-mined funds"),
-		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new nodes libp2p identity"),
-		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires to run the daemon using dev mode (--dev)"),
+		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
+		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
 		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
@@ -33,17 +30,14 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		walletFile, _ := req.Options[WalletFile].(string)
-		walletAddr, _ := req.Options[WalletAddr].(string)
 		genesisFile, _ := req.Options[GenesisFile].(string)
-		customGenesis, _ := req.Options[TestGenesis].(bool)
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		clusterTest, _ := req.Options[ClusterTest].(bool)
 		clusterNightly, _ := req.Options[ClusterNightly].(bool)
 
 		var withMiner address.Address
-		if m, ok := req.Options["with-miner"].(string); ok {
+		if m, ok := req.Options[WithMiner].(string); ok {
 			var err error
 			withMiner, err = address.NewFromString(m)
 			if err != nil {
@@ -54,10 +48,7 @@ var initCmd = &cmds.Command{
 		return GetAPI(env).Daemon().Init(
 			req.Context,
 			api.RepoDir(repoDir),
-			api.WalletFile(walletFile),
-			api.WalletAddr(walletAddr),
 			api.GenesisFile(genesisFile),
-			api.UseCustomGenesis(customGenesis),
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
 			api.ClusterTest(clusterTest),

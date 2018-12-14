@@ -29,7 +29,6 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 		t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.WalletAddr(fixtures.TestAddresses[0]),
 	).Start()
 	defer d.ShutdownSuccess()
 
@@ -309,7 +308,6 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 		t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.WalletAddr(fixtures.TestAddresses[0]),
 	).Start()
 	defer d.ShutdownSuccess()
 
