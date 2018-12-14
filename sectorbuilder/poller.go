@@ -22,9 +22,9 @@ type sealStatusPoller struct {
 }
 
 // findSealedSectorMetadataFunc is the type of a function which maps a sector id
-// to either an error, nil (if sealing hasn't completed), or a *SealedSector (if
+// to either an error, nil (if sealing hasn't completed), or a *SealedSectorMetadata (if
 // sealing has completed).
-type findSealedSectorMetadataFunc = func(uint64) (*SealedSector, error)
+type findSealedSectorMetadataFunc = func(uint64) (*SealedSectorMetadata, error)
 
 // newSealStatusPoller initializes and returns an active poller.
 func newSealStatusPoller(onSealStatusCh chan SectorSealResult, f findSealedSectorMetadataFunc) *sealStatusPoller {

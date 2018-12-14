@@ -37,14 +37,18 @@ type SectorBuilder interface {
 	SealAllStagedSectors(ctx context.Context) error
 
 	// SealedSectors returns a slice of sealed sector metadata-objects.
-	SealedSectors() ([]*SealedSector, error)
+	SealedSectors() ([]*SealedSectorMetadata, error)
 
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the
-	// same channel. Values will be either a *SealedSector or an error. A
-	// *SealedSector will be sent to the returned channel only once, regardless
+	// same channel. Values will be either a *SealedSectorMetadata or an error. A
+	// *SealedSectorMetadata will be sent to the returned channel only once, regardless
 	// of the number of times SectorSealResults is called.
 	SectorSealResults() <-chan SectorSealResult
+
+	// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes
+	// which will fit into a newly-provisioned staged sector.
+	GetMaxUserBytesPerStagedSector() (uint64, error)
 
 	// Close signals that this SectorBuilder is no longer in use. SectorBuilder
 	// metadata will not be deleted when Close is called; an equivalent
@@ -63,7 +67,7 @@ type SectorSealResult struct {
 
 	// SealingResult contains the successful output of the sealing operation.
 	// Note: Either SealingResult or SealingErr may be non-nil, not both.
-	SealingResult *SealedSector
+	SealingResult *SealedSectorMetadata
 }
 
 // PieceInfo is information about a filecoin piece
@@ -72,25 +76,12 @@ type PieceInfo struct {
 	Size uint64  `json:"size"` // TODO: use BytesAmount
 }
 
-// An UnsealedSector holds a user's staged piece-bytes. A miner fills this up
-// with data and then seals it.
-type UnsealedSector struct {
-	numBytesUsed         uint64
-	maxBytes             uint64
-	pieces               []*PieceInfo
-	SectorID             uint64
-	unsealedSectorAccess string
-}
-
-// SealedSector is a sector that has been sealed by the PoRep setup process
-type SealedSector struct {
-	CommD                [32]byte
-	CommR                [32]byte // deprecated (will be removed soon)
-	CommRStar            [32]byte
-	numBytes             uint64 // deprecated (will be removed soon)
-	pieces               []*PieceInfo
-	proof                proofs.SealProof
-	sealedSectorAccess   string // deprecated (will be removed soon)
-	SectorID             uint64
-	unsealedSectorAccess string // deprecated (will be removed soon)
+// SealedSectorMetadata is a sector that has been sealed by the PoRep setup process
+type SealedSectorMetadata struct {
+	CommD     [32]byte
+	CommR     [32]byte // deprecated (will be removed soon)
+	CommRStar [32]byte
+	pieces    []*PieceInfo // deprecated (will be removed soon)
+	Proof     proofs.SealProof
+	SectorID  uint64
 }

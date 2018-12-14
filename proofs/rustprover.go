@@ -22,9 +22,8 @@ import (
 // -lproofs                                     <- Tell the linker to search for libproofs.dylib or libproofs.a in
 //                                                 the library search path.
 //
-#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/rust-proofs/target/release/ -lfilecoin_proofs -lsector_base
+#cgo LDFLAGS: -L${SRCDIR}/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/rust-proofs/target/release/ -lfilecoin_proofs
 #include "./rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
-#include "./rust-proofs/sector-base/libsector_base.h"
 */
 import "C"
 
@@ -52,61 +51,6 @@ func elapsed(what string) func() {
 	return func() {
 		log.Debugf("%s took %v\n", what, time.Since(start))
 	}
-}
-
-// Seal generates and returns a Proof of Replication along with supporting data.
-func (rp *RustProver) Seal(req SealRequest) (res SealResponse, err error) {
-	defer elapsed("Seal")()
-
-	unsealed := C.CString(req.UnsealedPath)
-	defer C.free(unsafe.Pointer(unsealed))
-
-	sealed := C.CString(req.SealedPath)
-	defer C.free(unsafe.Pointer(sealed))
-
-	proverIDCBytes := C.CBytes(req.ProverID[:])
-	defer C.free(proverIDCBytes)
-
-	sectorIDCbytes := C.CBytes(req.SectorID[:])
-	defer C.free(sectorIDCbytes)
-
-	// a mutable pointer to a SealResponse C-struct
-	resPtr := (*C.SealResponse)(unsafe.Pointer(C.seal(
-		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
-		unsealed,
-		sealed,
-		(*[31]C.uint8_t)(proverIDCBytes),
-		(*[31]C.uint8_t)(sectorIDCbytes))))
-	defer C.destroy_seal_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return SealResponse{}, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	commRSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r[0]), 32)
-	var commR [32]byte
-	copy(commR[:], commRSlice)
-
-	commDSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_d[0]), 32)
-	var commD [32]byte
-	copy(commD[:], commDSlice)
-
-	commRStarSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r_star[0]), 32)
-	var commRStar [32]byte
-	copy(commRStar[:], commRStarSlice)
-
-	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), 384)
-	var proof SealProof
-	copy(proof[:], proofSlice)
-
-	res = SealResponse{
-		CommD:     commD,
-		CommR:     commR,
-		CommRStar: commRStar,
-		Proof:     proof,
-	}
-
-	return
 }
 
 // VerifySeal returns nil if the Seal operation from which its inputs were
@@ -155,45 +99,6 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 
 	return VerifySealResponse{
 		IsValid: bool(resPtr.is_valid),
-	}, nil
-}
-
-// Unseal unseals and writes the requested number of bytes (respecting the
-// provided offset, which is relative to the unsealed sector-file) to
-// req.OutputPath. It is possible that req.NumBytes > res.NumBytesWritten.
-// If this happens, callers should truncate the file at req.OutputPath back
-// to its pre-unseal() number of bytes.
-func (rp *RustProver) Unseal(req UnsealRequest) (UnsealResponse, error) {
-	defer elapsed("Unseal")()
-
-	inPath := C.CString(req.SealedPath)
-	defer C.free(unsafe.Pointer(inPath))
-
-	outPath := C.CString(req.OutputPath)
-	defer C.free(unsafe.Pointer(outPath))
-
-	proverIDCBytes := C.CBytes(req.ProverID[:])
-	defer C.free(proverIDCBytes)
-
-	sectorIDCbytes := C.CBytes(req.SectorID[:])
-	defer C.free(sectorIDCbytes)
-
-	resPtr := (*C.GetUnsealedRangeResponse)(unsafe.Pointer(C.get_unsealed_range(
-		(*C.Box_SectorStore)(req.Storage.GetCPtr()),
-		inPath,
-		outPath,
-		C.uint64_t(req.StartOffset),
-		C.uint64_t(req.NumBytes),
-		(*[31]C.uint8_t)(proverIDCBytes),
-		(*[31]C.uint8_t)(sectorIDCbytes))))
-	defer C.destroy_get_unsealed_range_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return UnsealResponse{}, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	return UnsealResponse{
-		NumBytesWritten: uint64(resPtr.num_bytes_written),
 	}, nil
 }
 

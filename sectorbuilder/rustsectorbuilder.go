@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/prometheus/common/log"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
@@ -19,9 +20,8 @@ import (
 )
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/../proofs/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/../proofs/rust-proofs/target/release/ -lfilecoin_proofs -lsector_base
+#cgo LDFLAGS: -L${SRCDIR}/../proofs/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/../proofs/rust-proofs/target/release/ -lfilecoin_proofs
 #include "../proofs/rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
-#include "../proofs/rust-proofs/sector-base/libsector_base.h"
 
 */
 import "C"
@@ -72,7 +72,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	cMetadataDir := C.CString(cfg.MetadataDir)
 	defer C.free(unsafe.Pointer(cMetadataDir))
 
-	proverID := addressToProverID(cfg.MinerAddr)
+	proverID := AddressToProverID(cfg.MinerAddr)
 
 	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
@@ -180,7 +180,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (secto
 	return uint64(resPtr.sector_id), nil
 }
 
-func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSector, error) {
+func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {
 	resPtr := (*C.GetSealStatusResponse)(unsafe.Pointer(C.get_seal_status((*C.SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
 	defer C.destroy_get_seal_status_response(resPtr)
 
@@ -216,14 +216,13 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
 
-		return &SealedSector{
-			CommD:              commD,
-			CommR:              commR,
-			CommRStar:          commRStar,
-			pieces:             ps,
-			proof:              proof,
-			sealedSectorAccess: C.GoString(resPtr.sector_access),
-			SectorID:           sectorID,
+		return &SealedSectorMetadata{
+			CommD:     commD,
+			CommR:     commR,
+			CommRStar: commRStar,
+			pieces:    ps,
+			Proof:     proof,
+			SectorID:  sectorID,
 		}, nil
 	} else {
 		// unknown
@@ -260,7 +259,7 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 }
 
 // SealedSectors returns a slice of all sealed sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSector, error) {
+func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSectorMetadata, error) {
 	resPtr := (*C.GetSealedSectorsResponse)(unsafe.Pointer(C.get_sealed_sectors((*C.SectorBuilder)(sb.ptr))))
 	defer C.destroy_get_sealed_sectors_response(resPtr)
 
@@ -295,8 +294,8 @@ func (sb *RustSectorBuilder) destroy() {
 	sb.ptr = nil
 }
 
-func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*SealedSector, error) {
-	sectors := make([]*SealedSector, size)
+func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*SealedSectorMetadata, error) {
+	sectors := make([]*SealedSectorMetadata, size)
 	if src == nil || size == 0 {
 		return sectors, nil
 	}
@@ -326,14 +325,13 @@ func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*S
 			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
 
-		sectors[i] = &SealedSector{
-			CommD:              commD,
-			CommR:              commR,
-			CommRStar:          commRStar,
-			pieces:             ps,
-			proof:              proof,
-			sealedSectorAccess: C.GoString(secPtr.sector_access),
-			SectorID:           uint64(secPtr.sector_id),
+		sectors[i] = &SealedSectorMetadata{
+			CommD:     commD,
+			CommR:     commR,
+			CommRStar: commRStar,
+			pieces:    ps,
+			Proof:     proof,
+			SectorID:  uint64(secPtr.sector_id),
 		}
 	}
 

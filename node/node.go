@@ -138,9 +138,6 @@ type Node struct {
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
 
-	// SectorStore is used to manage staging and sealed sectors.
-	SectorStore proofs.SectorStore
-
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
 
@@ -438,13 +435,6 @@ func (node *Node) Start(ctx context.Context) error {
 }
 
 func (node *Node) setupMining(ctx context.Context) error {
-	// initialize a sector store
-	sstore := proofs.NewDiskBackedSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		sstore = proofs.NewProofTestSectorStore(node.Repo.StagingDir(), node.Repo.SealedDir())
-	}
-	node.SectorStore = sstore
-
 	// configure the underlying sector store, defaulting to the non-test version
 	sectorStoreType := proofs.Live
 	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
