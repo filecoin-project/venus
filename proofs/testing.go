@@ -16,16 +16,6 @@ func (FakeProver) GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error
 	panic("boom")
 }
 
-// Seal panics. It fulfils a requirement for the Prover interface
-func (FakeProver) Seal(SealRequest) (SealResponse, error) {
-	panic("boom")
-}
-
-// Unseal panics. It fulfils a requirement for the Prover interface
-func (FakeProver) Unseal(UnsealRequest) (UnsealResponse, error) {
-	panic("boom")
-}
-
 // VerifyPoST returns the valid of verifyPostValid and verifyPostError.
 // It fulfils a requirement for the Prover interface
 func (fp FakeProver) VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error) {

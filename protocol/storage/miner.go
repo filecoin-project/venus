@@ -245,18 +245,18 @@ type dealsAwaitingSealStruct struct {
 	// Maps from sector id to the deal cids with pieces in the sector.
 	sectorsToDeals map[uint64][]cid.Cid
 	// Maps from sector id to sector.
-	successfulSectors map[uint64]*sectorbuilder.SealedSector
+	successfulSectors map[uint64]*sectorbuilder.SealedSectorMetadata
 	// Maps from sector id to seal failure error string.
 	failedSectors map[uint64]string
 
-	onSuccess func(dealCid cid.Cid, sector *sectorbuilder.SealedSector)
+	onSuccess func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata)
 	onFail    func(dealCid cid.Cid, message string)
 }
 
 func newDealsAwaitingSeal() *dealsAwaitingSealStruct {
 	return &dealsAwaitingSealStruct{
 		sectorsToDeals:    make(map[uint64][]cid.Cid),
-		successfulSectors: make(map[uint64]*sectorbuilder.SealedSector),
+		successfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
 		failedSectors:     make(map[uint64]string),
 	}
 }
@@ -289,7 +289,7 @@ func (dealsAwaitingSeal *dealsAwaitingSealStruct) add(sectorID uint64, dealCid c
 	}
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) success(sector *sectorbuilder.SealedSector) {
+func (dealsAwaitingSeal *dealsAwaitingSealStruct) success(sector *sectorbuilder.SealedSectorMetadata) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -314,7 +314,7 @@ func (dealsAwaitingSeal *dealsAwaitingSealStruct) fail(sectorID uint64, message 
 }
 
 // OnCommitmentAddedToChain is a callback, called when a sector seal message was posted to the chain.
-func (sm *Miner) OnCommitmentAddedToChain(sector *sectorbuilder.SealedSector, err error) {
+func (sm *Miner) OnCommitmentAddedToChain(sector *sectorbuilder.SealedSectorMetadata, err error) {
 	sectorID := sector.SectorID
 	log.Debug("Miner.OnCommitmentAddedToChain")
 
@@ -329,7 +329,7 @@ func (sm *Miner) OnCommitmentAddedToChain(sector *sectorbuilder.SealedSector, er
 	sm.dealsAwaitingSeal.success(sector)
 }
 
-func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSector) {
+func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
 	sm.updateDealState(dealCid, func(resp *DealResponse) {
 		resp.State = Posted
 		resp.ProofInfo = &ProofInfo{
@@ -425,7 +425,7 @@ func generatePoSt(commRs [][32]byte, seed [32]byte) (proofs.PoStProof, []uint64,
 	return res.Proof, res.Faults, nil
 }
 
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuilder.SealedSector) {
+func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuilder.SealedSectorMetadata) {
 	// TODO: real seed generation
 	seed := [32]byte{}
 	if _, err := rand.Read(seed[:]); err != nil {
