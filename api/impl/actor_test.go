@@ -35,7 +35,7 @@ func TestActorLs(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		nd := node.MakeOfflineNode(t)
 
 		_, err := ls(ctx, nd, getActorsNoOp)
 		require.Error(err)
@@ -51,7 +51,7 @@ func TestActorLs(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		nd := node.MakeOfflineNode(t)
 
 		genBlock, err := consensus.InitGenesis(nd.CborStore(), nd.Blockstore)
 		require.NoError(err)

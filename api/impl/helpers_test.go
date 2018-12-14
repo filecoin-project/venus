@@ -13,7 +13,7 @@ func TestSetDefaultFromAddr(t *testing.T) {
 	assert := assert.New(t)
 
 	addr := address.Address{}
-	nd := node.MakeNodesUnstarted(t, 1, true, true)[0]
+	nd := node.MakeOfflineNode(t)
 
 	expected, err := message.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
 	assert.NoError(err)

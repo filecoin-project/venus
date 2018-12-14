@@ -21,7 +21,7 @@ func TestDagGet(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		_, err := api.Dag().Get(ctx, "awful")
@@ -33,7 +33,7 @@ func TestDagGet(t *testing.T) {
 		assert := assert.New(t)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*200)
 		defer cancel()
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		someCid := types.SomeCid()
@@ -46,7 +46,7 @@ func TestDagGet(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		ipldnode := types.NewBlockForTest(nil, 1234).ToNode()

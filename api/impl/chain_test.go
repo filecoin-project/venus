@@ -20,7 +20,7 @@ func TestChainHead(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
 
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		_, err := api.Chain().Head()
@@ -36,7 +36,7 @@ func TestChainHead(t *testing.T) {
 		assert := assert.New(t)
 
 		blk := types.NewBlockForTest(nil, 1)
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
 
@@ -60,7 +60,7 @@ func TestChainHead(t *testing.T) {
 		blk2 := types.NewBlockForTest(nil, 1)
 		blk3 := types.NewBlockForTest(nil, 2)
 
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
 
@@ -90,7 +90,7 @@ func TestChainLsRun(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
@@ -129,7 +129,7 @@ func TestChainLsRun(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 
 		parBlock := types.NewBlockForTest(nil, 0)
 		chlBlock := types.NewBlockForTest(parBlock, 1)

@@ -12,13 +12,13 @@ import (
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
 	"github.com/filecoin-project/go-filecoin/proofs"
 
-	crypto "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
+	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	pstore "gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
-	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	blockstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	bserv "gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	offline "gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
@@ -26,29 +26,36 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// ChainSeed is
+// ChainSeed is a generalized struct for configuring node
 type ChainSeed struct {
 	info   *gengen.RenderedGenInfo
 	cst    *hamt.CborIpldStore
 	bstore blockstore.Blockstore
 }
 
-// MakeChainSeed is
+// TestNodeOptions is a generalized struct for passing Node options around for testing
+type TestNodeOptions struct {
+	ConfigOpts  []ConfigOpt
+	GenesisFunc consensus.GenesisInitFunc
+	InitOpts    []InitOpt
+	Seed        *ChainSeed
+}
+
+// MakeChainSeed creates a chain seed struct (see above) from a given
+// genesis config
 func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	t.Helper()
 
@@ -144,7 +151,12 @@ func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
 	t.Helper()
 	var out []*Node
 	for i := 0; i < n; i++ {
-		nd := genNode(t, false, true, seed.GenesisInitFunc, nil, nil)
+		nd := genNode(t,
+			false, /* online */
+			true,  /* always a winning ticket */
+			seed.GenesisInitFunc,
+			nil, /* default init opts */
+			nil /* default config opts */)
 		out = append(out, nd)
 	}
 
@@ -154,7 +166,12 @@ func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
 // NodeWithChainSeed makes a single node with the given chain seed, and some init options
 func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
-	return genNode(t, false, false, seed.GenesisInitFunc, initopts, nil)
+	return genNode(t,
+		false, /* online */
+		false, /* validate the ticket */
+		seed.GenesisInitFunc,
+		initopts,
+		nil /* default config opts */)
 }
 
 // ConnectNodes connects two nodes together
@@ -171,12 +188,31 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 	}
 }
 
+// WithSeedAndOptions creates a new node with the provided TestNodeOptions.
+// Returns:  a node that:
+//     - is in offline mode
+//     - always has a winning ticket
+//     - uses the provided genesis init func
+//     - is initialized with tno.InitOpts
+//     - is configured with tno.ConfigOpts
+func WithSeedAndOptions(t *testing.T, tno *TestNodeOptions) *Node {
+
+	t.Helper()
+
+	return genNode(t,
+		false, /* online */
+		false, /* validate ticket */
+		tno.Seed.GenesisInitFunc,
+		tno.InitOpts,
+		tno.ConfigOpts)
+}
+
 // MakeNodesUnstartedWithGif creates a new (unstarted) nodes with an
 // InMemoryRepo initialized with the given genesis init function, applies
 // options from the InMemory Repo and returns a slice of the initialized nodes.
-func MakeNodesUnstartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, options ...func(c *Config) error) []*Node {
+func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, options []ConfigOpt) []*Node {
 	var out []*Node
-	for i := 0; i < n; i++ {
+	for i := 0; i < numNodes; i++ {
 		nd := genNode(t, offlineMode, mockMineMode, gif, nil, options)
 		out = append(out, nd)
 	}
@@ -184,26 +220,27 @@ func MakeNodesUnstartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMo
 	return out
 }
 
+// FIXME: THIS IS UNUSED EXCEPT IN COMMENTED OUT MINING TESTS
 // MakeNodeUnstartedSeed creates a new node with seeded setup.
-func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) *Node {
-	seed := MakeChainSeed(t, TestGenCfg)
-	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
-	seed.GiveKey(t, node, 0)
-	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
-	_, err := storage.NewMiner(context.Background(), minerAddr, minerOwnerAddr, node)
-	assert.NoError(t, err)
+//func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) *Node {
+//	seed := MakeChainSeed(t, TestGenCfg)
+//	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
+//	seed.GiveKey(t, node, 0)
+//	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
+//	_, err := storage.NewMiner(context.Background(), minerAddr, minerOwnerAddr, node)
+//	assert.NoError(t, err)
+//
+//	return node
+//}
 
-	return node
-}
-
-func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initopts []InitOpt, options []func(c *Config) error) *Node {
+func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initOptions []InitOpt, configOptions []ConfigOpt) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
 	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
 	err := os.Setenv("FIL_USE_SMALL_SECTORS", "true")
 	require.NoError(t, err)
-	err = Init(context.Background(), r, gif, initopts...)
+	err = Init(context.Background(), r, gif, initOptions...)
 	require.NoError(t, err)
 
 	// set a random port here so things don't break in the event we make
@@ -217,20 +254,18 @@ func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif conse
 		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 	}
 
-	opts, err := OptionsFromRepo(r)
+	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
 
-	for _, o := range options {
-		opts = append(opts, o)
-	}
+	localCfgOpts = append(localCfgOpts, configOptions...)
 
 	// enables or disables libp2p
-	opts = append(opts, func(c *Config) error {
+	localCfgOpts = append(localCfgOpts, func(c *Config) error {
 		c.OfflineMode = offlineMode
 		return nil
 	})
 
-	nd, err := New(context.Background(), opts...)
+	nd, err := New(context.Background(), localCfgOpts...)
 
 	if alwaysWinningTicket {
 		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
@@ -254,16 +289,16 @@ func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif conse
 // MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the initialized
 // nodes
-func MakeNodesUnstarted(t *testing.T, n int, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) []*Node {
-	return MakeNodesUnstartedWithGif(t, n, offlineMode, mockMineMode, consensus.InitGenesis, options...)
+func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, options []ConfigOpt) []*Node {
+	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, mockMineMode, consensus.InitGenesis, options)
 }
 
 // MakeNodesStartedWithGif creates n new (started) nodes with an
 // InMemoryRepo initialized with the given genesis init function, applies
 // options from the InMemory Repo and returns a slice of the nodes.
-func MakeNodesStartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc) []*Node {
+func MakeNodesStartedWithGif(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc) []*Node {
 	t.Helper()
-	nds := MakeNodesUnstartedWithGif(t, n, offlineMode, mockMineMode, gif)
+	nds := MakeNodesUnstartedWithGif(t, numNodes, offlineMode, mockMineMode, gif, nil)
 	for _, n := range nds {
 		require.NoError(t, n.Start(context.Background()))
 	}
@@ -272,13 +307,17 @@ func MakeNodesStartedWithGif(t *testing.T, n int, offlineMode bool, mockMineMode
 
 // MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the nodes
-func MakeNodesStarted(t *testing.T, n int, offlineMode, mockMineMode bool) []*Node {
-	return MakeNodesStartedWithGif(t, n, offlineMode, mockMineMode, consensus.InitGenesis)
+func MakeNodesStarted(t *testing.T, numNodes int, offlineMode, mockMineMode bool) []*Node {
+	return MakeNodesStartedWithGif(t, numNodes, offlineMode, mockMineMode, consensus.InitGenesis)
 }
 
 // MakeOfflineNode returns a single unstarted offline node with mocked mining.
 func MakeOfflineNode(t *testing.T) *Node {
-	return MakeNodesUnstarted(t, 1, true, true)[0]
+	return MakeNodesUnstarted(t,
+		1,    /* 1 node */
+		true, /* offline */
+		true, /* always winning ticket */
+		nil /* default config */)[0]
 }
 
 // MustCreateMinerResult contains the result of a CreateMiner command

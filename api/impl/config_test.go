@@ -17,7 +17,7 @@ func TestConfigGet(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 
 		api := New(n)
 
@@ -31,7 +31,7 @@ func TestConfigGet(t *testing.T) {
 	t.Run("failure cases fail", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		_, err := api.Config().Get("nonexistantkey")
@@ -45,6 +45,15 @@ func TestConfigGet(t *testing.T) {
 	})
 }
 
+func nodeConfigFunc() node.ConfigOpt {
+	defaultCfg := config.NewDefaultConfig()
+	return func(c *node.Config) error {
+		c.Repo.Config().Mining.AutoSealIntervalSeconds = defaultCfg.Mining.AutoSealIntervalSeconds
+		c.Repo.Config().API.Address = defaultCfg.API.Address // overwrite value set with testhelpers.GetFreePort()
+		return nil
+	}
+}
+
 func TestConfigSet(t *testing.T) {
 	t.Parallel()
 	t.Run("sets the config value", func(t *testing.T) {
@@ -54,11 +63,7 @@ func TestConfigSet(t *testing.T) {
 
 		defaultCfg := config.NewDefaultConfig()
 
-		n := node.MakeNodesUnstarted(t, 1, true, true, func(c *node.Config) error {
-			c.Repo.Config().Mining.AutoSealIntervalSeconds = defaultCfg.Mining.AutoSealIntervalSeconds
-			c.Repo.Config().API.Address = defaultCfg.API.Address // overwrite value set with testhelpers.GetFreePort()
-			return nil
-		})[0]
+		n := node.MakeNodesUnstarted(t, 1, true, true, []node.ConfigOpt{nodeConfigFunc()})[0]
 		api := New(n)
 		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
@@ -87,7 +92,7 @@ func TestConfigSet(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		// bad key
@@ -117,7 +122,7 @@ func TestConfigSet(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		n := node.MakeNodesUnstarted(t, 1, true, true)[0]
+		n := node.MakeOfflineNode(t)
 		api := New(n)
 
 		err := api.Config().Set("heartbeat.nickname", "Bad Nickname")
