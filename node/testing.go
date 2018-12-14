@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"os"
 	"sync"
@@ -233,59 +232,6 @@ func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, moc
 //	return node
 //}
 
-func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initOptions []InitOpt, configOptions []ConfigOpt) *Node {
-	r := repo.NewInMemoryRepo()
-	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-
-	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
-	err := os.Setenv("FIL_USE_SMALL_SECTORS", "true")
-	require.NoError(t, err)
-	err = Init(context.Background(), r, gif, initOptions...)
-	require.NoError(t, err)
-
-	// set a random port here so things don't break in the event we make
-	// a parallel request
-	// TODO: can we use port 0 yet?
-	port, err := th.GetFreePort()
-	require.NoError(t, err)
-	r.Config().API.Address = fmt.Sprintf(":%d", port)
-
-	if !offlineMode {
-		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
-	}
-
-	localCfgOpts, err := OptionsFromRepo(r)
-	require.NoError(t, err)
-
-	localCfgOpts = append(localCfgOpts, configOptions...)
-
-	// enables or disables libp2p
-	localCfgOpts = append(localCfgOpts, func(c *Config) error {
-		c.OfflineMode = offlineMode
-		return nil
-	})
-
-	nd, err := New(context.Background(), localCfgOpts...)
-
-	if alwaysWinningTicket {
-		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
-		newCon := consensus.NewExpected(nd.CborStore(),
-			nd.Blockstore,
-			nd.PowerTable,
-			nd.ChainReader.GenesisCid(),
-			proofs.NewFakeProver(true, nil))
-		newChainStore, ok := nd.ChainReader.(chain.Store)
-		require.True(t, ok)
-
-		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore(), newCon, newChainStore)
-		nd.Syncer = newSyncer
-		nd.Consensus = newCon
-	}
-
-	require.NoError(t, err)
-	return nd
-}
-
 // MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the initialized
 // nodes
@@ -482,6 +428,60 @@ var TestGenCfg = &gengen.GenesisCfg{
 		"10000",
 		"10000",
 	},
+}
+
+
+func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initOptions []InitOpt, configOptions []ConfigOpt) *Node {
+	r := repo.NewInMemoryRepo()
+	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+	if !offlineMode {
+		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
+	}
+
+	fmt.Println("configOpts: ", configOptions)
+	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
+	err := os.Setenv("FIL_USE_SMALL_SECTORS", "true")
+	require.NoError(t, err)
+	err = Init(context.Background(), r, gif, initOptions...)
+	require.NoError(t, err)
+
+	// set a random port here so things don't break in the event we make
+	// a parallel request
+	// TODO: can we use port 0 yet?
+	port, err := th.GetFreePort()
+	require.NoError(t, err)
+	r.Config().API.Address = fmt.Sprintf(":%d", port)
+
+	localCfgOpts, err := OptionsFromRepo(r)
+	require.NoError(t, err)
+
+	localCfgOpts = append(localCfgOpts, configOptions...)
+
+	// enables or disables libp2p
+	localCfgOpts = append(localCfgOpts, func(c *Config) error {
+		c.OfflineMode = offlineMode
+		return nil
+	})
+
+	nd, err := New(context.Background(), localCfgOpts...)
+
+	if alwaysWinningTicket {
+		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
+		newCon := consensus.NewExpected(nd.CborStore(),
+			nd.Blockstore,
+			nd.PowerTable,
+			nd.ChainReader.GenesisCid(),
+			proofs.NewFakeProver(true, nil))
+		newChainStore, ok := nd.ChainReader.(chain.Store)
+		require.True(t, ok)
+
+		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore(), newCon, newChainStore)
+		nd.Syncer = newSyncer
+		nd.Consensus = newCon
+	}
+
+	require.NoError(t, err)
+	return nd
 }
 
 func mustGenKey(seed int64) crypto.PrivKey {

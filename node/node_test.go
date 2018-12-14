@@ -368,7 +368,7 @@ func TestSendMessage(t *testing.T) {
 		tif := consensus.MakeGenesisFunc(
 			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		requireResetNodeGen(require, node, tif)
+		require.NoError(resetNodeGen(node, tif))
 
 		assert.NoError(node.Start(ctx))
 
@@ -397,8 +397,7 @@ func TestQueryMessage(t *testing.T) {
 		tif := consensus.MakeGenesisFunc(
 			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-
-		requireResetNodeGen(require, node, tif)
+		require.NoError(resetNodeGen(node, tif))
 
 		assert.NoError(node.Start(ctx))
 

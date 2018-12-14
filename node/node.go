@@ -162,10 +162,11 @@ type Node struct {
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts  []libp2p.Option
-	Repo        repo.Repo
-	OfflineMode bool
 	BlockTime   time.Duration
+	Libp2pOpts  []libp2p.Option
+	OfflineMode bool
+	Prover		proofs.RustProver
+	Repo        repo.Repo
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -195,6 +196,13 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 			panic("Libp2pOptions can only be called once")
 		}
 		nc.Libp2pOpts = opts
+		return nil
+	}
+}
+
+func Prover(prover proofs.RustProver) ConfigOpt {
+	return func(c *Config) error {
+		c.Prover = prover
 		return nil
 	}
 }
@@ -289,7 +297,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
-	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &proofs.RustProver{})
+	prover := proofs.RustProver{}
+	if  nc.Prover != prover {
+		prover = nc.Prover
+	}
+
+	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &prover)
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, consensus, chainStore)
