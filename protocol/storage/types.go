@@ -28,6 +28,9 @@ type DealProposal struct {
 	// Duration is the number of blocks to make a deal for
 	Duration uint64
 
+	// LastDuplicate is the CID of the last deal proposal with the same properties
+	LastDuplicate cid.Cid
+
 	// TODO: Payment PaymentInfo
 	// Signature types.Signature
 }

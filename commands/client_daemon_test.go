@@ -80,3 +80,24 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 	}()
 	th.WaitTimeout(&wg, 120*time.Second)
 }
+
+func TestProposeStorageDeal(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	miner := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	defer miner.ShutdownSuccess()
+
+	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	defer client.ShutdownSuccess()
+
+	miner.ConnectSuccess(client)
+
+	miner.CreateAsk(miner, fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+
+	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
+
+	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	assert.Equal(proposeDealOutput, "")
+}

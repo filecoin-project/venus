@@ -181,6 +181,7 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResp
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
+	proposalCid := cborNode.Cid()
 
 	resp := &DealResponse{
 		State:       Accepted,

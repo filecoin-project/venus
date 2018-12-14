@@ -65,7 +65,7 @@ func NewClient(nd clientNode, dealsDs repo.Datastore) (*Client, error) {
 }
 
 // ProposeDeal is
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*DealResponse, error) {
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -76,16 +76,34 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to get ask price")
 	}
 
-	// TODO: it probably makes sense to just send the ask ID to the miner,
-	// instead of just using it for price lookup. This might make it easier for
-	// the miners acceptance logic
 	proposal := &DealProposal{
-		PieceRef:   data,
-		Size:       types.NewBytesAmount(size),
-		TotalPrice: price,
-		Duration:   duration,
+		PieceRef:      data,
+		Size:          types.NewBytesAmount(size),
+		TotalPrice:    price,
+		Duration:      duration,
+		LastDuplicate: cid.Cid{},
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
+	}
+	cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cid of proposal")
+	}
+	proposalCid := cborNode.Cid()
+
+	for _, isDuplicate := smc.deals[proposalCid]; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
+		fmt.Println(proposalCid.String())
+		if allowDuplicates {
+			proposal.LastDuplicate = proposalCid
+
+			cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get cid of proposal")
+			}
+			proposalCid = cborNode.Cid()
+		} else {
+			return nil, errors.New("proposal is a duplicate of existing deal. if you would like to create a duplicate, add the --allow-duplicates flag.")
+		}
 	}
 
 	pid, err := smc.node.Lookup().GetPeerIDByMinerAddress(ctx, miner)
@@ -96,7 +114,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	s, err := smc.node.Host().NewStream(ctx, pid, makeDealProtocol)
 	if err != nil {
 		if err == multistream.ErrNotSupported {
-			return nil, errors.New("Could not establish connection with peer. Is the peer mining?")
+			return nil, errors.New("could not establish connection with peer. Is the peer mining?")
 		}
 
 		return nil, errors.Wrap(err, "failed to establish connection with the peer")
