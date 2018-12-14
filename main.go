@@ -18,7 +18,7 @@ func main() {
 	// TODO fix this in go-log 4 == INFO
 	n, err := strconv.Atoi(os.Getenv("GO_FILECOIN_LOG_LEVEL"))
 	if err != nil {
-		n = 3
+		n = 5
 	}
 
 	logging.SetAllLoggers(oldlogging.Level(n))

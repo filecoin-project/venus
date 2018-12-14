@@ -1,0 +1,14 @@
+package main
+
+import (
+//	"flag"
+	"fmt"
+	"encoding/json"
+	
+	"github.com/filecoin-project/go-filecoin/types"
+)
+
+func main() {
+	var chain []Block 
+
+}
