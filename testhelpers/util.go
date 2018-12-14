@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
@@ -81,4 +82,20 @@ func WaitForIt(count int, delay time.Duration, cb func() (bool, error)) error {
 	}
 
 	return nil
+}
+
+// WaitTimeout waits for the waitgroup for the specified max timeout.
+// Returns true if waiting timed out.
+func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		defer close(c)
+		wg.Wait()
+	}()
+	select {
+	case <-c:
+		return false // completed normally
+	case <-time.After(timeout):
+		return true // timed out
+	}
 }

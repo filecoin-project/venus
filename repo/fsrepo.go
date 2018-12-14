@@ -24,15 +24,18 @@ import (
 
 const (
 	// APIFile is the filename containing the filecoin node's api address.
-	APIFile                = "api"
-	configFilename         = "config.json"
-	tempConfigFilename     = ".config.json.temp"
-	lockFile               = "repo.lock"
-	versionFilename        = "version"
-	walletDatastorePrefix  = "wallet"
-	chainDatastorePrefix   = "chain"
-	snapshotStorePrefix    = "snapshots"
-	snapshotFilenamePrefix = "snapshot"
+	APIFile                          = "api"
+	configFilename                   = "config.json"
+	tempConfigFilename               = ".config.json.temp"
+	lockFile                         = "repo.lock"
+	versionFilename                  = "version"
+	walletDatastorePrefix            = "wallet"
+	chainDatastorePrefix             = "chain"
+	minerDealsDatastorePrefix        = "miner_deals"
+	clientDealsDatastorePrefix       = "client_deals"
+	dealsAwaitingSealDatastorePrefix = "deals_awaiting_seal"
+	snapshotStorePrefix              = "snapshots"
+	snapshotFilenamePrefix           = "snapshot"
 )
 
 // NoRepoError is returned when trying to open a repo where one does not exist
@@ -52,12 +55,15 @@ type FSRepo struct {
 	version uint
 
 	// lk protects the config file
-	lk       sync.RWMutex
-	cfg      *config.Config
-	ds       Datastore
-	keystore keystore.Keystore
-	walletDs Datastore
-	chainDs  Datastore
+	lk                  sync.RWMutex
+	cfg                 *config.Config
+	ds                  Datastore
+	keystore            keystore.Keystore
+	walletDs            Datastore
+	chainDs             Datastore
+	minerDealsDs        Datastore
+	clientDealsDs       Datastore
+	dealsAwaitingSealDs Datastore
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -126,6 +132,18 @@ func (r *FSRepo) loadFromDisk() error {
 
 	if err := r.openChainDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open chain datastore")
+	}
+
+	if err := r.openMinerDealsDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open miner deals datastore")
+	}
+
+	if err := r.openClientDealsDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open client deals datastore")
+	}
+
+	if err := r.openDealsAwaitingSealDatastore(); err != nil {
+		return errors.Wrap(err, "failed to open deals awaiting seal datastore")
 	}
 	return nil
 }
@@ -216,6 +234,21 @@ func (r *FSRepo) ChainDatastore() Datastore {
 	return r.chainDs
 }
 
+// MinerDealsDatastore returns the deals datastore for a miner.
+func (r *FSRepo) MinerDealsDatastore() Datastore {
+	return r.minerDealsDs
+}
+
+// ClientDealsDatastore returns the deals datastore for a client.
+func (r *FSRepo) ClientDealsDatastore() Datastore {
+	return r.clientDealsDs
+}
+
+// DealsAwaitingSealDatastore returns the deals awaiting seals.
+func (r *FSRepo) DealsAwaitingSealDatastore() Datastore {
+	return r.dealsAwaitingSealDs
+}
+
 // Version returns the version of the repo
 func (r *FSRepo) Version() uint {
 	return r.version
@@ -233,11 +266,23 @@ func (r *FSRepo) Close() error {
 	}
 
 	if err := r.walletDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close datastore")
+		return errors.Wrap(err, "failed to close wallet datastore")
 	}
 
 	if err := r.chainDs.Close(); err != nil {
-		return errors.Wrap(err, "failed to close datastore")
+		return errors.Wrap(err, "failed to close chain datastore")
+	}
+
+	if err := r.minerDealsDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close miner deals datastore")
+	}
+
+	if err := r.clientDealsDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close client deals datastore")
+	}
+
+	if err := r.dealsAwaitingSealDs.Close(); err != nil {
+		return errors.Wrap(err, "failed to close deals awaiting seal datastore")
 	}
 
 	if err := r.removeAPIFile(); err != nil {
@@ -347,6 +392,39 @@ func (r *FSRepo) openWalletDatastore() error {
 	}
 
 	r.walletDs = ds
+
+	return nil
+}
+
+func (r *FSRepo) openMinerDealsDatastore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, minerDealsDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.minerDealsDs = ds
+
+	return nil
+}
+
+func (r *FSRepo) openClientDealsDatastore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, clientDealsDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.clientDealsDs = ds
+
+	return nil
+}
+
+func (r *FSRepo) openDealsAwaitingSealDatastore() error {
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, dealsAwaitingSealDatastorePrefix), nil)
+	if err != nil {
+		return err
+	}
+
+	r.dealsAwaitingSealDs = ds
 
 	return nil
 }

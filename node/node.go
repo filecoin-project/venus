@@ -422,7 +422,11 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Host(),
 		node.Lookup(),
 		node.CallQueryMethod)
-	node.StorageMinerClient = storage.NewClient(cni)
+	var err error
+	node.StorageMinerClient, err = storage.NewClient(cni, node.Repo.ClientDealsDatastore())
+	if err != nil {
+		return errors.Wrap(err, "Could not make new storage client")
+	}
 
 	node.RetrievalClient = retrieval.NewClient(node)
 	node.RetrievalMiner = retrieval.NewMiner(node)
@@ -846,7 +850,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node, node.PlumbingAPI)
+	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node, node.Repo.MinerDealsDatastore(), node.Repo.DealsAwaitingSealDatastore(), node.PlumbingAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

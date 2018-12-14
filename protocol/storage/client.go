@@ -6,18 +6,21 @@ import (
 	"math/big"
 	"sync"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	ipld "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
+	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore/query"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/lookup"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,26 +32,36 @@ type clientNode interface {
 	GetAskPrice(ctx context.Context, miner address.Address, askid uint64) (*types.AttoFIL, error)
 }
 
+type clientDeal struct {
+	Miner    address.Address
+	Proposal *DealProposal
+	Response *DealResponse
+}
+
 // Client is used to make deals directly with storage miners.
 type Client struct {
-	deals   map[cid.Cid]*clientDealState
+	deals   map[cid.Cid]*clientDeal
+	dealsDs repo.Datastore
 	dealsLk sync.Mutex
 
 	node clientNode
 }
 
-type clientDealState struct {
-	miner     address.Address
-	proposal  *DealProposal
-	lastState *DealResponse
+func init() {
+	cbor.RegisterCborType(clientDeal{})
 }
 
-// NewClient creaters a new storage miner client.
-func NewClient(nd clientNode) *Client {
-	return &Client{
-		deals: make(map[cid.Cid]*clientDealState),
-		node:  nd,
+// NewClient creates a new storage client.
+func NewClient(nd clientNode, dealsDs repo.Datastore) (*Client, error) {
+	smc := &Client{
+		deals:   make(map[cid.Cid]*clientDeal),
+		node:    nd,
+		dealsDs: dealsDs,
 	}
+	if err := smc.loadDeals(); err != nil {
+		return nil, errors.Wrap(err, "failed to load client deals")
+	}
+	return smc, nil
 }
 
 // ProposeDeal is
@@ -114,18 +127,17 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal) error {
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
-	_, ok := smc.deals[resp.Proposal]
+	_, ok := smc.deals[resp.ProposalCid]
 	if ok {
-		return fmt.Errorf("deal [%s] is already in progress", resp.Proposal.String())
+		return fmt.Errorf("deal [%s] is already in progress", resp.ProposalCid.String())
 	}
 
-	smc.deals[resp.Proposal] = &clientDealState{
-		lastState: resp,
-		miner:     miner,
-		proposal:  p,
+	smc.deals[resp.ProposalCid] = &clientDeal{
+		Miner:    miner,
+		Proposal: p,
+		Response: resp,
 	}
-
-	return nil
+	return smc.saveDeal(resp.ProposalCid)
 }
 
 func (smc *Client) checkDealResponse(ctx context.Context, resp *DealResponse) error {
@@ -149,7 +161,7 @@ func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 		return address.Address{}, fmt.Errorf("no such proposal by cid: %s", c)
 	}
 
-	return st.miner, nil
+	return st.Miner, nil
 }
 
 // QueryDeal queries an in-progress proposal.
@@ -236,4 +248,39 @@ func (cni *ClientNodeImpl) GetAskPrice(ctx context.Context, maddr address.Addres
 	}
 
 	return ask.Price, nil
+}
+
+func (smc *Client) loadDeals() error {
+	res, err := smc.dealsDs.Query(query.Query{})
+	if err != nil {
+		return errors.Wrap(err, "failed to query deals from datastore")
+	}
+
+	smc.deals = make(map[cid.Cid]*clientDeal)
+
+	for entry := range res.Next() {
+		var deal clientDeal
+		if err := cbor.DecodeInto(entry.Value, &deal); err != nil {
+			return errors.Wrap(err, "failed to unmarshal deals from datastore")
+		}
+		smc.deals[deal.Response.ProposalCid] = &deal
+	}
+
+	return nil
+}
+
+func (smc *Client) saveDeal(cid cid.Cid) error {
+	deal, ok := smc.deals[cid]
+	if !ok {
+		return errors.Errorf("Could not find client deal with cid: %s", cid.String())
+	}
+	datum, err := cbor.DumpObject(deal)
+	if err != nil {
+		return errors.Wrap(err, "could not marshal storageDeal")
+	}
+	err = smc.dealsDs.Put(datastore.NewKey(cid.String()), datum)
+	if err != nil {
+		return errors.Wrap(err, "could not save client deal to disk, in-memory deals differ from persisted deals!")
+	}
+	return nil
 }

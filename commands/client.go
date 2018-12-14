@@ -142,9 +142,9 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 	Type: storage.DealResponse{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
-			fmt.Fprintf(w, "State:   %s\n", resp.State.String())    // nolint: errcheck
-			fmt.Fprintf(w, "Message: %s\n", resp.Message)           // nolint: errcheck
-			fmt.Fprintf(w, "DealID:  %s\n", resp.Proposal.String()) // nolint: errcheck
+			fmt.Fprintf(w, "State:   %s\n", resp.State.String())       // nolint: errcheck
+			fmt.Fprintf(w, "Message: %s\n", resp.Message)              // nolint: errcheck
+			fmt.Fprintf(w, "DealID:  %s\n", resp.ProposalCid.String()) // nolint: errcheck
 			return nil
 		}),
 	},

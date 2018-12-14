@@ -32,6 +32,7 @@ type DaemonInitConfig struct {
 	ClusterNightly bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
 	AutoSealIntervalSeconds uint
+	DefaultAddress          address.Address
 }
 
 // DaemonInitOpt is the signature a daemon init option has to fulfill.
@@ -83,5 +84,12 @@ func ClusterNightly(doit bool) DaemonInitOpt {
 func AutoSealIntervalSeconds(autoSealIntervalSeconds uint) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
 		dc.AutoSealIntervalSeconds = autoSealIntervalSeconds
+	}
+}
+
+// DefaultAddress sets the daemons's default address to the provided address.
+func DefaultAddress(address address.Address) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) {
+		dc.DefaultAddress = address
 	}
 }
