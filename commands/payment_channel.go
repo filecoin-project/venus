@@ -41,6 +41,8 @@ message to be mined to get the channelID.`,
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send from"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -63,7 +65,12 @@ message to be mined to get the channelID.`,
 			return ErrInvalidBlockHeight
 		}
 
-		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, target, eol, amount)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
 		if err != nil {
 			return err
 		}
@@ -177,6 +184,8 @@ var redeemCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address of the channel target"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -184,7 +193,12 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, req.Arguments[0])
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
 		if err != nil {
 			return err
 		}
@@ -208,6 +222,8 @@ var reclaimCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address of the channel creator"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -220,7 +236,12 @@ var reclaimCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, channel)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
 		if err != nil {
 			return err
 		}
@@ -245,6 +266,8 @@ var closeCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address of the channel target"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -252,7 +275,12 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, req.Arguments[0])
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
 		if err != nil {
 			return err
 		}
@@ -278,6 +306,8 @@ var extendCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address of the channel creator"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -300,7 +330,12 @@ var extendCmd = &cmds.Command{
 			return ErrInvalidBlockHeight
 		}
 
-		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, channel, eol, amount)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
 		if err != nil {
 			return err
 		}

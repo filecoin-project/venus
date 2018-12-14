@@ -45,6 +45,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	srewardMsg := &types.SignedMessage{
 		Message:   *rewardMsg,
 		Signature: nil,
+		GasPrice:  types.NewGasPrice(0),
+		GasLimit:  types.NewGasCost(0),
 	}
 
 	pending := w.messagePool.Pending()

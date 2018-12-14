@@ -34,7 +34,9 @@ func TestMessagePropagation(t *testing.T) {
 	nd0Addr, err := nodes[0].NewAddress()
 	require.NoError(err)
 
-	_, err = nodes[0].PlumbingAPI.MessageSend(ctx, nd0Addr, address.NetworkAddress, types.NewAttoFILFromFIL(123), "")
+	gasPrice := types.NewGasPrice(0)
+	gasLimit := types.NewGasCost(0)
+	_, err = nodes[0].PlumbingAPI.MessageSend(ctx, nd0Addr, address.NetworkAddress, types.NewAttoFILFromFIL(123), gasPrice, gasLimit, "")
 	require.NoError(err)
 
 	// Wait for message to propagate across network

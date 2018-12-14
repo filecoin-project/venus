@@ -21,12 +21,14 @@ func newNodePaych(api *nodeAPI, plumbingAPI api2.Plumbing) *nodePaych {
 	return &nodePaych{api: api, plumbingAPI: plumbingAPI}
 }
 
-func (np *nodePaych) Create(ctx context.Context, fromAddr, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
+func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
 	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		amount,
+		gasPrice,
+		gasLimit,
 		"createChannel",
 		target, eol,
 	)
@@ -100,7 +102,7 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 	return multibase.Encode(multibase.Base58BTC, cborVoucher)
 }
 
-func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (cid.Cid, error) {
+func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, voucherRaw string) (cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
 		return cid.Undef, err
@@ -111,23 +113,27 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, vouch
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
+		gasPrice,
+		gasLimit,
 		"redeem",
 		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
-func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (cid.Cid, error) {
+func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, channel *types.ChannelID) (cid.Cid, error) {
 	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
+		gasPrice,
+		gasLimit,
 		"reclaim",
 		channel,
 	)
 }
 
-func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, voucherRaw string) (cid.Cid, error) {
+func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, voucherRaw string) (cid.Cid, error) {
 	voucher, err := decodeVoucher(voucherRaw)
 	if err != nil {
 		return cid.Undef, err
@@ -138,17 +144,21 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, vouche
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
+		gasPrice,
+		gasLimit,
 		"close",
 		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
 	)
 }
 
-func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
+func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
 	return np.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		amount,
+		gasPrice,
+		gasLimit,
 		"extend",
 		channel, eol,
 	)

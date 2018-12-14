@@ -2,13 +2,14 @@ package commands
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/types"
 	"net"
 	"net/url"
 	"os"
 	"path/filepath"
 	"syscall"
 
-	manet "gx/ipfs/QmQVUtnrNGtCRkCMpXgpApfzQjc8FDaDVxHqWH8cnZQeh5/go-multiaddr-net"
+	"gx/ipfs/QmQVUtnrNGtCRkCMpXgpApfzQjc8FDaDVxHqWH8cnZQeh5/go-multiaddr-net"
 	ma "gx/ipfs/QmRKLtwMw131aK7ugC3G7ybpumMz78YrJe5dzneyindvG1/go-multiaddr"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
@@ -281,4 +282,29 @@ func isConnectionRefused(err error) bool {
 		return false
 	}
 	return syscallErr.Err == syscall.ECONNREFUSED
+}
+
+var priceOption = cmdkit.StringOption("price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var limitOption = cmdkit.Int64Option("limit", "Maximum number of GasUnits this message is allowed to consume")
+
+func parseGasOptions(req *cmds.Request) (gasPrice types.AttoFIL, gasCost types.GasCost, error error) {
+	priceOption := req.Options["price"]
+	if priceOption == nil {
+		return types.AttoFIL{}, types.NewGasCost(0), errors.New("price option is required")
+	}
+
+	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
+	if !ok {
+		return types.AttoFIL{}, types.NewGasCost(0), errors.New("invalid gas price (specify FIL as a decimal number)")
+	}
+
+	gasLimitInt, ok := req.Options["limit"].(int64)
+	if !ok {
+		return types.AttoFIL{}, types.NewGasCost(0), errors.New("invalid gas limit")
+	}
+	if gasLimitInt < 0 {
+		return types.AttoFIL{}, types.NewGasCost(0), errors.New("gas limit cannot be less than zero")
+	}
+
+	return *price, types.NewGasCost(gasLimitInt), nil
 }

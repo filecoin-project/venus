@@ -446,7 +446,7 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--price", "0", "--limit", "0", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(err)
 		require.NotEqual(addr, address.Address{})
@@ -466,7 +466,7 @@ func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr str
 	wg.Add(1)
 
 	go func() {
-		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, minerAddr, price, expiry)
+		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, "--price", "0", "--limit", "0", minerAddr, price, expiry)
 		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		assert.NotNil(td.test, askCid)
