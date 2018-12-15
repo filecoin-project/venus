@@ -3,8 +3,9 @@ package commands
 import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
-	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 var retrievalClientCmd = &cmds.Command{
@@ -21,11 +22,11 @@ var clientRetrievePieceCmd = &cmds.Command{
 		Tagline: "Read out piece data stored by a miner on the network",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pid", true, false, "libp2p peer id of storage miner"),
+		cmdkit.StringArg("miner", true, false, "Retrieval miner actor address"),
 		cmdkit.StringArg("cid", true, false, "Content identifier of piece to read"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		minerPeerID, err := peer.IDB58Decode(req.Arguments[0])
+		minerAddr, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
 		}
@@ -35,7 +36,7 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
-		readCloser, err := GetAPI(env).RetrievalClient().RetrievePiece(req.Context, minerPeerID, pieceCID)
+		readCloser, err := GetAPI(env).RetrievalClient().RetrievePiece(req.Context, pieceCID, minerAddr)
 		if err != nil {
 			return err
 		}
