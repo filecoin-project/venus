@@ -12,7 +12,6 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVDTbzzTwnuBwNbJdhW3u7LoBQp46bezm9yp4z1RoEepM/go-blockservice"
-	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 	"gx/ipfs/QmdURv6Sbob8TVW2tFFve9vcEWrSUgwPqeqnXyvYhLrkyd/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -32,14 +31,14 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	minerNode, clientNode, _, _ := configureMinerAndClient(t)
+	minerNode, clientNode, minerAddr, _ := configureMinerAndClient(t)
 
 	require.NoError(minerNode.StartMining(ctx))
 	defer minerNode.StopMining(ctx)
 
 	someRandomCid := types.NewCidForTestGetter()()
 
-	_, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), someRandomCid)
+	_, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), someRandomCid, minerAddr)
 	require.Error(err)
 }
 
@@ -49,7 +48,7 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	minerNode, clientNode, _, minerOwnerAddr := configureMinerAndClient(t)
+	minerNode, clientNode, minerAddr, minerOwnerAddr := configureMinerAndClient(t)
 
 	// start mining
 	require.NoError(minerNode.StartMining(ctx))
@@ -95,12 +94,12 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	}
 
 	// retrieve piece by CID and compare bytes with what we sent to miner
-	retrievedBytesA, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), pieceA.Ref)
+	retrievedBytesA, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), pieceA.Ref, minerAddr)
 	require.NoError(err)
 	require.True(bytes.Equal(bytesA, retrievedBytesA))
 
 	// retrieve/compare the second piece for good measure
-	retrievedBytesB, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), minerNode.Host().ID(), pieceB.Ref)
+	retrievedBytesB, err := retrievePieceBytes(ctx, impl.New(clientNode).RetrievalClient(), pieceB.Ref, minerAddr)
 	require.NoError(err)
 	require.True(bytes.Equal(bytesB, retrievedBytesB))
 
@@ -108,8 +107,8 @@ func TestRetrievalProtocolHappyPath(t *testing.T) {
 	require.True(len(retrievedBytesA) > 0)
 }
 
-func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient, minerPeerID peer.ID, pieceCid cid.Cid) ([]byte, error) {
-	r, err := retrievalClient.RetrievePiece(ctx, minerPeerID, pieceCid)
+func retrievePieceBytes(ctx context.Context, retrievalClient api.RetrievalClient, data cid.Cid, addr address.Address) ([]byte, error) {
+	r, err := retrievalClient.RetrievePiece(ctx, data, addr)
 	if err != nil {
 		return nil, err
 	}
