@@ -37,17 +37,29 @@ type Localfilecoin struct {
 	dir     string
 	peerid  cid.Cid
 	apiaddr multiaddr.Multiaddr
+
+	binPath string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
 
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
-		if _, err := exec.LookPath("go-filecoin"); err != nil {
-			return nil, err
+		var binPath string
+		var err error
+		var ok bool
+
+		binPath, ok = attrs["filecoin_binary"]
+		if !ok {
+			// if we don't specify a path to the binary, assume it exists in `$PATH`
+			if binPath, err = exec.LookPath("go-filecoin"); err != nil {
+				return nil, err
+			}
 		}
+
 		return &Localfilecoin{
-			dir: dir,
+			dir:     dir,
+			binPath: binPath,
 		}, nil
 	}
 }
@@ -56,7 +68,7 @@ func init() {
 
 // Init runs the node init process.
 func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
-	args = append([]string{"go-filecoin", "init"}, args...)
+	args = append([]string{l.binPath, "init"}, args...)
 	output, oerr := l.RunCmd(ctx, nil, args...)
 	if oerr != nil {
 		return nil, oerr
@@ -102,7 +114,7 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	dir := l.dir
 	repoFlag := fmt.Sprintf("--repodir=%s", l.Dir())
 	dargs := append([]string{"daemon", repoFlag}, args...)
-	cmd := exec.CommandContext(ctx, "go-filecoin", dargs...)
+	cmd := exec.CommandContext(ctx, l.binPath, dargs...)
 	cmd.Dir = dir
 
 	cmd.Env, err = l.env()
@@ -263,7 +275,7 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 		return err
 	}
 
-	output, err := l.RunCmd(ctx, nil, "go-filecoin", "swarm", "connect", swarmaddrs[0])
+	output, err := l.RunCmd(ctx, nil, l.binPath, "swarm", "connect", swarmaddrs[0])
 
 	if err != nil {
 		return err
@@ -388,7 +400,7 @@ func (l *Localfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, "go-filecoin", "id", "--format=<addrs>")
+	out, err := l.RunCmd(context.Background(), nil, l.binPath, "id", "--format=<addrs>")
 	if err != nil {
 		return nil, err
 	}
