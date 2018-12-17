@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"os/exec"
 	"reflect"
 	"testing"
 
@@ -19,10 +18,6 @@ import (
 var log = logging.Logger("iptbtester")
 
 func init() {
-	if _, err := exec.LookPath("go-filecoin"); err != nil {
-		panic("go-filecoin not in path, run `go ./build/*go install` to fix")
-	}
-
 	_, err := iptb.RegisterPlugin(iptb.IptbPlugin{
 		From:       "<builtin>",
 		NewNode:    localplugin.NewNode,
