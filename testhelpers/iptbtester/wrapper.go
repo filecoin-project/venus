@@ -37,7 +37,7 @@ func init() {
 
 // NewIPTBTestbed creates an iptb testebed of size `count`. "localfilecoin" or "dockerfilecoin" may be passed
 // for `type`.
-func NewIPTBTestbed(count int, typ, dir string) (iptb.Testbed, error) {
+func NewIPTBTestbed(count int, typ, dir string, attrs map[string]string) (iptb.Testbed, error) {
 	log.Infof("Creating IPTB Testbed. count: %d, type: %s, dir: %s", count, typ, dir)
 	tbd, err := ioutil.TempDir("", dir)
 	if err != nil {
@@ -46,7 +46,7 @@ func NewIPTBTestbed(count int, typ, dir string) (iptb.Testbed, error) {
 
 	testbed := iptb.NewTestbed(tbd)
 
-	nodeSpecs, err := iptb.BuildSpecs(testbed.Dir(), count, typ, nil)
+	nodeSpecs, err := iptb.BuildSpecs(testbed.Dir(), count, typ, attrs)
 	if err != nil {
 		return nil, err
 	}
@@ -69,9 +69,9 @@ type TestNode struct {
 
 // NewTestNodes returns `count` TestNodes, and error is returned if a failure is
 // encoundered.
-func NewTestNodes(t *testing.T, count int) ([]*TestNode, error) {
+func NewTestNodes(t *testing.T, count int, attrs map[string]string) ([]*TestNode, error) {
 	// create a testbed
-	tb, err := NewIPTBTestbed(count, "localfilecoin", "iptb-testnode")
+	tb, err := NewIPTBTestbed(count, "localfilecoin", "iptb-testnode", attrs)
 	if err != nil {
 		return nil, err
 	}
