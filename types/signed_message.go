@@ -1,12 +1,17 @@
 package types
 
 import (
+	"math/big"
+
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
+
+// GasCost represents a unit of gas consumed
+type GasCost = Uint64
 
 var (
 	// ErrMessageSigned is returned when `Sign()` is called on a signedmessage that has previously been signed
@@ -27,6 +32,8 @@ func init() {
 type SignedMessage struct {
 	Message   `json:"message"`
 	Signature Signature `json:"signature"`
+	GasPrice  AttoFIL   `json:"gasPrice"`
+	GasLimit  GasCost   `json:"gasLimit"`
 }
 
 // Unmarshal a SignedMessage from the given bytes.
@@ -85,7 +92,7 @@ func (smsg *SignedMessage) VerifySignature() bool {
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the seralized `msg` and `msg.From`
-func NewSignedMessage(msg Message, s Signer) (*SignedMessage, error) {
+func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasCost) (*SignedMessage, error) {
 	bmsg, err := msg.Marshal()
 	if err != nil {
 		return nil, err
@@ -99,5 +106,17 @@ func NewSignedMessage(msg Message, s Signer) (*SignedMessage, error) {
 	return &SignedMessage{
 		Message:   msg,
 		Signature: sig,
+		GasPrice:  gasPrice,
+		GasLimit:  gasLimit,
 	}, nil
+}
+
+// NewGasPrice constructs a gas price (in AttoFIL) from the given number.
+func NewGasPrice(price int64) AttoFIL {
+	return *NewAttoFIL(big.NewInt(price))
+}
+
+// NewGasCost constructs a new GasCost from the given number.
+func NewGasCost(cost int64) GasCost {
+	return Uint64(cost)
 }

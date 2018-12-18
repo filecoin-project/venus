@@ -153,11 +153,19 @@
               "type": "string"
             }
           ]
+        },
+        "gasPrice": {
+          "type": "string"
+        },
+        "gasLimit": {
+          "type": "string"
         }
       },
       "required": [
         "message",
-        "signature"
+        "signature",
+        "gasPrice",
+        "gasLimit"
       ],
       "type": "object"
     },

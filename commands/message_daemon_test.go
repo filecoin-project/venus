@@ -28,13 +28,16 @@ func TestMessageSend(t *testing.T) {
 		"invalid checksum",
 		"message", "send",
 		"--from", fixtures.TestAddresses[0],
+		"--price", "0", "--limit", "0",
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] with from")
 	defaultaddr := d.GetDefaultAddress()
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[0], defaultaddr,
+		"--from", fixtures.TestAddresses[0],
+		"--price", "0", "--limit", "0",
+		defaultaddr,
 	)
 
 	// t.Log("[success] default from")
@@ -43,6 +46,7 @@ func TestMessageSend(t *testing.T) {
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
 		"--from", fixtures.TestAddresses[0],
+		"--price", "0", "--limit", "0",
 		"--value=10", fixtures.TestAddresses[1],
 	)
 }
@@ -63,6 +67,7 @@ func TestMessageWait(t *testing.T) {
 		msg := d.RunSuccess(
 			"message", "send",
 			"--from", fixtures.TestAddresses[0],
+			"--price", "0", "--limit", "0",
 			"--value=10",
 			fixtures.TestAddresses[1],
 		)

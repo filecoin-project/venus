@@ -12,5 +12,5 @@ import (
 // Message is the message-related Filecoin plumbing interface.
 type Message interface {
 	// MessageSend enqueues a message in the message pool and broadcasts it to the network.
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
 }

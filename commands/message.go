@@ -38,6 +38,8 @@ var msgSendCmd = &cmds.Command{
 	Options: []cmdkit.Option{
 		cmdkit.IntOption("value", "Value to send with message, in AttoFIL"),
 		cmdkit.StringOption("from", "Address to send message from"),
+		priceOption,
+		limitOption,
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -61,12 +63,17 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
 		method, ok := req.Options["method"].(string)
 		if !ok {
 			method = ""
 		}
 
-		c, err := GetPlumbingAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), method)
+		c, err := GetPlumbingAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
 		if err != nil {
 			return err
 		}

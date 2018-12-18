@@ -22,7 +22,7 @@ func newNodeMiner(api *nodeAPI, plumbingAPI api2.Plumbing) *nodeMiner {
 	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
 }
 
-func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
+func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
 	nd := nm.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -33,7 +33,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledg
 		pid = nd.Host().ID()
 	}
 
-	res, err := nd.CreateMiner(ctx, fromAddr, pledge, pid, collateral)
+	res, err := nd.CreateMiner(ctx, fromAddr, gasPrice, gasLimit, pledge, pid, collateral)
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}
@@ -41,23 +41,27 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, pledg
 	return *res, nil
 }
 
-func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (cid.Cid, error) {
+func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, newPid peer.ID) (cid.Cid, error) {
 	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
 		nil,
+		gasPrice,
+		gasLimit,
 		"updatePeerID",
 		newPid,
 	)
 }
 
-func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
+func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
 	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
 		nil,
+		gasPrice,
+		gasLimit,
 		"addAsk",
 		price,
 		expiry,
