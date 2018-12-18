@@ -3,6 +3,7 @@ package impl
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/node"
 
@@ -45,15 +46,6 @@ func TestConfigGet(t *testing.T) {
 	})
 }
 
-func nodeConfigFunc() node.ConfigOpt {
-	defaultCfg := config.NewDefaultConfig()
-	return func(c *node.Config) error {
-		c.Repo.Config().Mining.AutoSealIntervalSeconds = defaultCfg.Mining.AutoSealIntervalSeconds
-		c.Repo.Config().API.Address = defaultCfg.API.Address // overwrite value set with testhelpers.GetFreePort()
-		return nil
-	}
-}
-
 func TestConfigSet(t *testing.T) {
 	t.Parallel()
 	t.Run("sets the config value", func(t *testing.T) {
@@ -63,7 +55,8 @@ func TestConfigSet(t *testing.T) {
 
 		defaultCfg := config.NewDefaultConfig()
 
-		n := node.MakeNodesUnstarted(t, 1, true, true, []node.ConfigOpt{nodeConfigFunc()})[0]
+		n := node.MakeOfflineNode(t)
+
 		api := New(n)
 		jsonBlob := `{"addresses": ["bootup1", "bootup2"]}`
 
@@ -80,12 +73,33 @@ func TestConfigSet(t *testing.T) {
 		// validate config write
 		cfg := n.Repo.Config()
 		assert.Equal(expected, cfg.Bootstrap)
-		assert.Equal(defaultCfg.API, cfg.API)
 		assert.Equal(defaultCfg.Datastore, cfg.Datastore)
-		assert.Equal(defaultCfg.Mining, cfg.Mining)
-		assert.Equal(&config.SwarmConfig{
-			Address: "/ip4/0.0.0.0/tcp/0",
-		}, cfg.Swarm) // default overwritten in node.MakeNodesUnstarted()
+
+		err = api.Config().Set("api.address", ":1234")
+		require.NoError(err)
+		assert.Equal(":1234", cfg.API.Address)
+
+		testAddr := address.TestAddress2.String()
+		err = api.Config().Set("mining.minerAddress", testAddr)
+		require.NoError(err)
+		assert.Equal(testAddr, cfg.Mining.MinerAddress.String())
+
+		err = api.Config().Set("wallet.defaultAddress", testAddr)
+		require.NoError(err)
+		assert.Equal(testAddr, cfg.Wallet.DefaultAddress.String())
+
+		testSwarmAddr := "/ip4/0.0.0.0/tcp/0"
+		err = api.Config().Set("datastore.path", testSwarmAddr)
+		require.NoError(err)
+		assert.Equal(testSwarmAddr, cfg.Swarm.Address)
+
+		err = api.Config().Set("heartbeat.nickname", "Nickleless")
+		require.NoError(err)
+		assert.Equal("Nickleless", cfg.Heartbeat.Nickname)
+
+		err = api.Config().Set("datastore.path", "/dev/null")
+		require.NoError(err)
+		assert.Equal("/dev/null", cfg.Datastore.Path)
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {

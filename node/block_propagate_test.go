@@ -47,7 +47,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	defer cancel()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false, true, nil)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 	connect(t, nodes[0], nodes[1])
@@ -86,7 +86,7 @@ func TestChainSync(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false, true, nil)
+	nodes := MakeNodesUnstarted(t, 2, false, true)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 

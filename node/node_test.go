@@ -12,8 +12,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -30,7 +32,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false, true, nil)[0]
+	nd := MakeNodesUnstarted(t, 1, false, true)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop(context.Background())
@@ -41,7 +43,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false, true, nil)
+	nds := MakeNodesUnstarted(t, 2, false, true)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -144,7 +146,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := MakeChainSeed(t, TestGenCfg)
-	minerNode := NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -267,7 +269,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true, false, nil)[0]
+	node := MakeNodesUnstarted(t, 1, true, false)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
@@ -410,4 +412,47 @@ func TestQueryMessage(t *testing.T) {
 
 		assert.NotNil(returnValue)
 	})
+}
+
+func repoConfig() ConfigOpt {
+	defaultCfg := config.NewDefaultConfig()
+	return func(c *Config) error {
+		// overwrite value set with testhelpers.GetFreePort()
+		c.Repo.Config().API.Address = defaultCfg.API.Address
+		return nil
+	}
+}
+
+func TestNodeConfig(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	defaultCfg := config.NewDefaultConfig()
+
+	// fake mining/always a winning ticket
+	prover := proofs.NewFakeProver(true, nil)
+	configOptions := []ConfigOpt{
+		repoConfig(),
+		ProverConfigOption(prover),
+		BlockTime(99),
+	}
+
+	initOpts := []InitOpt{AutoSealIntervalSecondsOpt(120)}
+
+	tno := TestNodeOptions{
+		ConfigOpts:  configOptions,
+		InitOpts:    initOpts,
+		OfflineMode: true,
+		GenesisFunc: consensus.InitGenesis,
+	}
+
+	n := GenNode(t, &tno)
+	cfg := n.Repo.Config()
+	//_, blockTime := n.MiningTimes()
+	//assert.Equal(99, blockTime)
+	//assert.Equal(true, n.OfflineMode)
+	assert.Equal(defaultCfg.Mining, cfg.Mining)
+	assert.Equal(&config.SwarmConfig{
+		Address: "/ip4/0.0.0.0/tcp/0",
+	}, cfg.Swarm)
 }

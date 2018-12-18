@@ -52,12 +52,12 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	// make two nodes, one of which is the miner (and gets the miner peer key),
 	// and set up their syncers with fake provers that always mark a proof as valid.
-	minerNode := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	minerNode := node.MakeNodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
 	minerProver := proofs.NewFakeProver(true, nil)
 	minerNode.Syncer = makeSyncerWithFakeProver(minerNode, minerProver)
 	minerAPI := impl.New(minerNode)
 
-	clientNode := node.NodeWithChainSeed(t, seed)
+	clientNode := node.MakeNodeWithChainSeed(t, seed)
 	clientProver := proofs.NewFakeProver(true, nil)
 	clientNode.Syncer = makeSyncerWithFakeProver(clientNode, clientProver)
 
