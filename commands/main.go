@@ -65,6 +65,7 @@ const (
 	ClusterNightly = "cluster-nightly"
 )
 
+// command object for the local cli
 var rootCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "A decentralized storage network",
@@ -118,7 +119,18 @@ TOOL COMMANDS
 	Subcommands: make(map[string]*cmds.Command),
 }
 
-// all top level commands. set during init() to avoid configuration loops.
+// command object for the daemon
+var rootCmdDaemon = &cmds.Command{
+	Subcommands: make(map[string]*cmds.Command),
+}
+
+// all top level commands, not available to daemon
+var rootSubcmdsLocal = map[string]*cmds.Command{
+	"daemon": daemonCmd,
+	"init":   initCmd,
+}
+
+// all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"actor":            actorCmd,
 	"address":          addrsCmd,
@@ -126,10 +138,8 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"chain":            chainCmd,
 	"config":           configCmd,
 	"client":           clientCmd,
-	"daemon":           daemonCmd,
 	"dag":              dagCmd,
 	"id":               idCmd,
-	"init":             initCmd,
 	"log":              logCmd,
 	"message":          msgCmd,
 	"miner":            minerCmd,
@@ -145,8 +155,13 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 }
 
 func init() {
+	for k, v := range rootSubcmdsLocal {
+		rootCmd.Subcommands[k] = v
+	}
+
 	for k, v := range rootSubcmdsDaemon {
 		rootCmd.Subcommands[k] = v
+		rootCmdDaemon.Subcommands[k] = v
 	}
 }
 
