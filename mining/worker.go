@@ -53,7 +53,7 @@ type GetStateTree func(context.Context, consensus.TipSet) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, consensus.TipSet) (uint64, uint64, error)
+type GetWeight func(context.Context, consensus.TipSet) (uint64, error)
 
 type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (consensus.ApplyMessagesResponse, error)
 

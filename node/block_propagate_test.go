@@ -53,11 +53,10 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	baseTS := nodes[0].ChainReader.Head()
 	assert.NotNil(t, baseTS)
 	nextBlk := &types.Block{
-		Parents:           baseTS.ToSortedCidSet(),
-		Height:            types.Uint64(1),
-		ParentWeightNum:   types.Uint64(10),
-		ParentWeightDenom: types.Uint64(1),
-		StateRoot:         baseTS.ToSlice()[0].StateRoot,
+		Parents:      baseTS.ToSortedCidSet(),
+		Height:       types.Uint64(1),
+		ParentWeight: types.Uint64(10000),
+		StateRoot:    baseTS.ToSlice()[0].StateRoot,
 	}
 
 	// Wait for network connection notifications to propagate
@@ -91,25 +90,22 @@ func TestChainSync(t *testing.T) {
 	baseTS := nodes[0].ChainReader.Head()
 	stateRoot := baseTS.ToSlice()[0].StateRoot
 	nextBlk1 := &types.Block{
-		Parents:           baseTS.ToSortedCidSet(),
-		Height:            types.Uint64(1),
-		ParentWeightNum:   types.Uint64(10),
-		ParentWeightDenom: types.Uint64(1),
-		StateRoot:         stateRoot,
+		Parents:      baseTS.ToSortedCidSet(),
+		Height:       types.Uint64(1),
+		ParentWeight: types.Uint64(10000),
+		StateRoot:    stateRoot,
 	}
 	nextBlk2 := &types.Block{
-		Parents:           types.NewSortedCidSet(nextBlk1.Cid()),
-		Height:            types.Uint64(2),
-		ParentWeightNum:   types.Uint64(20),
-		ParentWeightDenom: types.Uint64(1),
-		StateRoot:         stateRoot,
+		Parents:      types.NewSortedCidSet(nextBlk1.Cid()),
+		Height:       types.Uint64(2),
+		ParentWeight: types.Uint64(20000),
+		StateRoot:    stateRoot,
 	}
 	nextBlk3 := &types.Block{
-		Parents:           types.NewSortedCidSet(nextBlk2.Cid()),
-		Height:            types.Uint64(3),
-		ParentWeightNum:   types.Uint64(30),
-		ParentWeightDenom: types.Uint64(1),
-		StateRoot:         stateRoot,
+		Parents:      types.NewSortedCidSet(nextBlk2.Cid()),
+		Height:       types.Uint64(3),
+		ParentWeight: types.Uint64(30000),
+		StateRoot:    stateRoot,
 	}
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))

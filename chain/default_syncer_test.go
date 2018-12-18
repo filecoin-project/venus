@@ -738,11 +738,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 	//  w({f1b1, f2b1})   = sw + 0   + 11 * 2  = sw + 22
 	//  w({f1b2a, f1b2b}) = sw + 11  + 11 * 2  = sw + 33
 	//  w({f2b2})         = sw + 11  + 108 	   = sw + 119
-	startingWeightN, startingWeightD, err := con.Weight(ctx, baseTS, pSt)
+	startingWeight, err := con.Weight(ctx, baseTS, pSt)
 	require.NoError(err)
-	require.Equal(uint64(1), startingWeightD)
 
-	wFun := func(ts consensus.TipSet) (uint64, uint64, error) {
+	wFun := func(ts consensus.TipSet) (uint64, error) {
 		// No power-altering messages processed from here on out.
 		// And so bootstrapSt correctly retrives power table for all
 		// test blocks.
@@ -759,10 +758,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewBlocks(ctx, sharedCids)
 	require.NoError(err)
 	assertHead(assert, chain, tsShared)
-	measuredWeight, denom, err := wFun(chain.Head())
+	measuredWeight, err := wFun(chain.Head())
 	require.NoError(err)
-	require.Equal(uint64(1), denom)
-	expectedWeight := startingWeightN + uint64(22)
+	expectedWeight := startingWeight + uint64(22000)
 	assert.Equal(expectedWeight, measuredWeight)
 
 	// fork 1 is heavier than the old head.
@@ -775,10 +773,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewBlocks(ctx, f1Cids)
 	require.NoError(err)
 	assertHead(assert, chain, f1)
-	measuredWeight, denom, err = wFun(chain.Head())
+	measuredWeight, err = wFun(chain.Head())
 	require.NoError(err)
-	require.Equal(uint64(1), denom)
-	expectedWeight = startingWeightN + uint64(33)
+	expectedWeight = startingWeight + uint64(33000)
 	assert.Equal(expectedWeight, measuredWeight)
 
 	// fork 2 has heavier weight because of addr3's power even though there
@@ -790,9 +787,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewBlocks(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chain, f2)
-	measuredWeight, denom, err = wFun(chain.Head())
+	measuredWeight, err = wFun(chain.Head())
 	require.NoError(err)
-	require.Equal(uint64(1), denom)
-	expectedWeight = startingWeightN + uint64(119)
+	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(expectedWeight, measuredWeight)
 }

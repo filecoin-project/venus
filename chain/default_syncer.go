@@ -232,26 +232,15 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 		}
 	}
 
-	cmp, err := syncer.consensus.IsHeavier(ctx, next, syncer.chainStore.Head(), nextParentSt, headParentSt)
-	if err != nil {
-		return err
-	}
-	nextH, err := next.Height()
-	if err != nil {
-		return err
-	}
-	headH, err := syncer.chainStore.Head().Height()
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, syncer.chainStore.Head(), nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
 
-	if cmp > 0 {
-		logSyncer.Debugf("New TS %s (h=%d) is new heaviest over %s (h=%d), update head", next.String(), nextH, syncer.chainStore.Head(), headH)
+	if heavier {
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
 		}
-	} else {
-		logSyncer.Debugf("New TS %s (h=%d) is not heavier than %s (h=%d), no head update", next.String(), nextH, syncer.chainStore.Head().String(), headH)
 	}
 
 	return nil

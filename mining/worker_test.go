@@ -194,24 +194,24 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
 	baseBlock1 := types.Block{
-		Parents:         parents,
-		Height:          types.Uint64(100),
-		ParentWeightNum: types.Uint64(1000),
-		StateRoot:       stateRoot,
+		Parents:      parents,
+		Height:       types.Uint64(100),
+		ParentWeight: types.Uint64(1000),
+		StateRoot:    stateRoot,
 	}
 	baseBlock2 := types.Block{
-		Parents:         parents,
-		Height:          types.Uint64(100),
-		ParentWeightNum: types.Uint64(1000),
-		StateRoot:       stateRoot,
-		Nonce:           1,
+		Parents:      parents,
+		Height:       types.Uint64(100),
+		ParentWeight: types.Uint64(1000),
+		StateRoot:    stateRoot,
+		Nonce:        1,
 	}
 	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, 0)
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 1) // This is the mining reward.
 	assert.Equal(types.Uint64(101), blk.Height)
-	assert.Equal(types.Uint64(1020), blk.ParentWeightNum)
+	assert.Equal(types.Uint64(1020), blk.ParentWeight)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -288,13 +288,11 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.ApplyMessages, &consensus.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	h := types.Uint64(100)
-	wNum := types.Uint64(1000)
-	wDenom := types.Uint64(1)
+	w := types.Uint64(1000)
 	baseBlock := types.Block{
-		Height:            h,
-		ParentWeightNum:   wNum,
-		ParentWeightDenom: wDenom,
-		StateRoot:         newCid(),
+		Height:       h,
+		ParentWeight: w,
+		StateRoot:    newCid(),
 	}
 	baseTipSet := consensus.RequireNewTipSet(require, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, 0)
@@ -307,8 +305,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
-	assert.Equal(wNum+10.0, blk.ParentWeightNum)
-	assert.Equal(wDenom, blk.ParentWeightDenom)
+	assert.Equal(w+10.0, blk.ParentWeight)
 	assert.Equal(addrs[3], blk.Miner)
 }
 
@@ -387,12 +384,12 @@ func (st *StateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
-func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, uint64, error) {
-	num, den, err := ts.ParentWeight()
+func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, error) {
+	w, err := ts.ParentWeight()
 	if err != nil {
-		return uint64(0), uint64(0), err
+		return uint64(0), err
 	}
-	return num + uint64(int64(len(ts))*int64(consensus.ECV)), den, nil
+	return w + uint64(len(ts))*consensus.ECV, nil
 }
 
 func makeExplodingGetStateTree(st state.Tree) func(context.Context, consensus.TipSet) (state.Tree, error) {

@@ -35,14 +35,13 @@ func block(require *require.Assertions, height int, parentCid cid.Cid, parentWei
 	ret := []byte{1, 2}
 
 	return &types.Block{
-		Parents:           types.NewSortedCidSet(parentCid),
-		ParentWeightNum:   types.Uint64(parentWeight),
-		ParentWeightDenom: types.Uint64(uint64(1)),
-		Height:            types.Uint64(42 + uint64(height)),
-		Nonce:             7,
-		Messages:          []*types.SignedMessage{sm1},
-		StateRoot:         types.SomeCid(),
-		MessageReceipts:   []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
+		Parents:         types.NewSortedCidSet(parentCid),
+		ParentWeight:    types.Uint64(parentWeight),
+		Height:          types.Uint64(42 + uint64(height)),
+		Nonce:           7,
+		Messages:        []*types.SignedMessage{sm1},
+		StateRoot:       types.SomeCid(),
+		MessageReceipts: []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
 	}
 }
 
@@ -85,7 +84,7 @@ func TestTipSet(t *testing.T) {
 func RequireTestBlocks(t *testing.T) (*types.Block, *types.Block, *types.Block) {
 	require := require.New(t)
 
-	pW := uint64(1337)
+	pW := uint64(1337000)
 
 	b1 := block(require, 1, cid1, pW, "1")
 	b1.Ticket = []byte{0}
@@ -134,7 +133,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	b2.Parents = b1.Parents
 
 	// Invalid weight
-	b2.ParentWeightNum = types.Uint64(3)
+	b2.ParentWeight = types.Uint64(3000)
 	ts = TipSet{}
 	RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
@@ -168,7 +167,7 @@ func TestNewTipSet(t *testing.T) {
 	b1.Parents = b2.Parents
 
 	// Invalid parent weights
-	b1.ParentWeightNum = types.Uint64(3)
+	b1.ParentWeight = types.Uint64(3000)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
 	assert.Nil(ts)
@@ -202,10 +201,9 @@ func TestTipSetParents(t *testing.T) {
 func TestTipSetParentWeight(t *testing.T) {
 	assert := assert.New(t)
 	ts := RequireTestTipSet(t)
-	wNum, wDenom, err := ts.ParentWeight()
+	w, err := ts.ParentWeight()
 	assert.NoError(err)
-	assert.Equal(wNum, uint64(1337))
-	assert.Equal(wDenom, uint64(1))
+	assert.Equal(w, uint64(1337000))
 }
 
 func TestTipSetToSortedCidSet(t *testing.T) {

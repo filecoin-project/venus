@@ -53,17 +53,17 @@ func MkFakeChild(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, non
 
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
 func MkFakeChildWithCon(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, con consensus.Protocol) (*types.Block, error) {
-	wFun := func(ts consensus.TipSet) (uint64, uint64, error) {
+	wFun := func(ts consensus.TipSet) (uint64, error) {
 		return con.Weight(context.Background(), parent, nil)
 	}
 	return MkFakeChildCore(parent, genCid, stateRoot, nonce, nullBlockCount, wFun)
 }
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
-func MkFakeChildCore(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, uint64, error)) (*types.Block, error) {
+func MkFakeChildCore(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it doesn't it is assumed consensus uses a
 	// power table view that does not access the state.
-	nW, dW, err := wFun(parent)
+	w, err := wFun(parent)
 	if err != nil {
 		return nil, err
 	}
@@ -82,12 +82,11 @@ func MkFakeChildCore(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid,
 	}
 
 	return &types.Block{
-		Parents:           pIDs,
-		Height:            types.Uint64(height),
-		ParentWeightNum:   types.Uint64(nW),
-		ParentWeightDenom: types.Uint64(dW),
-		Nonce:             types.Uint64(nonce),
-		StateRoot:         stateRoot,
+		Parents:      pIDs,
+		Height:       types.Uint64(height),
+		ParentWeight: types.Uint64(w),
+		Nonce:        types.Uint64(nonce),
+		StateRoot:    stateRoot,
 	}, nil
 }
 
@@ -108,7 +107,7 @@ func RequireMkFakeChildWithCon(require *require.Assertions, parent consensus.Tip
 
 // RequireMkFakeChildCore wraps MkFakeChildCore with a requirement that
 // it does not errror.
-func RequireMkFakeChildCore(require *require.Assertions, parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, uint64, error)) *types.Block {
+func RequireMkFakeChildCore(require *require.Assertions, parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, error)) *types.Block {
 	child, err := MkFakeChildCore(parent, genCid, stateRoot, nonce, nullBlockCount, wFun)
 	require.NoError(err)
 	return child
@@ -225,7 +224,7 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 	// Sync the block.
 	c, err := cst.Put(ctx, b)
 	require.NoError(err)
-	fmt.Printf("new block parent weight num: %v, parent weight den: %v\n", b.ParentWeightNum, b.ParentWeightDenom)
+	fmt.Printf("new block parent weight: %v\n", b.ParentWeight)
 	err = syncer.HandleNewBlocks(ctx, []cid.Cid{c})
 	require.NoError(err)
 

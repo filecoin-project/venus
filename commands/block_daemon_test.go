@@ -27,10 +27,9 @@ func TestBlockDaemon(t *testing.T) {
 		output := d.RunSuccess("show", "block", minedBlockCidStr).ReadStdoutTrimNewlines()
 
 		assert.Contains(output, "Block Details")
-		assert.Contains(output, "Numerator:   0")
-		assert.Contains(output, "Denominator: 1")
-		assert.Contains(output, "Height:      1")
-		assert.Contains(output, "Nonce:       0")
+		assert.Contains(output, "Weight: 0")
+		assert.Contains(output, "Height: 1")
+		assert.Contains(output, "Nonce:  0")
 	})
 
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {
