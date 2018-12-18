@@ -47,6 +47,7 @@ type ChainSeed struct {
 
 // TestNodeOptions is a generalized struct for passing Node options around for testing
 type TestNodeOptions struct {
+	OfflineMode bool
 	ConfigOpts  []ConfigOpt
 	GenesisFunc consensus.GenesisInitFunc
 	InitOpts    []InitOpt
@@ -145,32 +146,11 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	return a
 }
 
-// NodesWithChainSeed creates some nodes using the given chain seed
-func NodesWithChainSeed(t *testing.T, n int, seed *ChainSeed) []*Node {
+// MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
+func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
-	var out []*Node
-	for i := 0; i < n; i++ {
-		nd := genNode(t,
-			false, /* online */
-			true,  /* always a winning ticket */
-			seed.GenesisInitFunc,
-			nil, /* default init opts */
-			nil /* default config opts */)
-		out = append(out, nd)
-	}
-
-	return out
-}
-
-// NodeWithChainSeed makes a single node with the given chain seed, and some init options
-func NodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
-	t.Helper()
-	return genNode(t,
-		false, /* online */
-		false, /* validate the ticket */
-		seed.GenesisInitFunc,
-		initopts,
-		nil /* default config opts */)
+	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, InitOpts: initopts}
+	return GenNode(t, &tno)
 }
 
 // ConnectNodes connects two nodes together
@@ -187,82 +167,62 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 	}
 }
 
-// WithSeedAndOptions creates a new node with the provided TestNodeOptions.
-// Returns:  a node that:
-//     - is in offline mode
-//     - always has a winning ticket
-//     - uses the provided genesis init func
-//     - is initialized with tno.InitOpts
-//     - is configured with tno.ConfigOpts
-func WithSeedAndOptions(t *testing.T, tno *TestNodeOptions) *Node {
-
-	t.Helper()
-
-	return genNode(t,
-		false, /* online */
-		false, /* validate ticket */
-		tno.Seed.GenesisInitFunc,
-		tno.InitOpts,
-		tno.ConfigOpts)
-}
-
 // MakeNodesUnstartedWithGif creates a new (unstarted) nodes with an
 // InMemoryRepo initialized with the given genesis init function, applies
 // options from the InMemory Repo and returns a slice of the initialized nodes.
-func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc, options []ConfigOpt) []*Node {
+func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif consensus.GenesisInitFunc, options []ConfigOpt) []*Node {
 	var out []*Node
+
+	tno := TestNodeOptions{
+		OfflineMode: offlineMode,
+		GenesisFunc: gif,
+		ConfigOpts:  options,
+	}
+
 	for i := 0; i < numNodes; i++ {
-		nd := genNode(t, offlineMode, mockMineMode, gif, nil, options)
+		nd := GenNode(t, &tno)
 		out = append(out, nd)
 	}
 
 	return out
 }
 
-// FIXME: THIS IS UNUSED EXCEPT IN COMMENTED OUT MINING TESTS
-// MakeNodeUnstartedSeed creates a new node with seeded setup.
-//func MakeNodeUnstartedSeed(t *testing.T, offlineMode bool, mockMineMode bool, options ...func(c *Config) error) *Node {
-//	seed := MakeChainSeed(t, TestGenCfg)
-//	node := genNode(t, offlineMode, mockMineMode, seed.GenesisInitFunc, nil, options)
-//	seed.GiveKey(t, node, 0)
-//	minerAddr, minerOwnerAddr := seed.GiveMiner(t, node, 0)
-//	_, err := storage.NewMiner(context.Background(), minerAddr, minerOwnerAddr, node)
-//	assert.NoError(t, err)
-//
-//	return node
-//}
-
 // MakeNodesUnstarted creates n new (unstarted) nodes with an InMemoryRepo,
 // applies options from the InMemoryRepo and returns a slice of the initialized
 // nodes
-func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, options []ConfigOpt) []*Node {
-	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, mockMineMode, consensus.InitGenesis, options)
+func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool) []*Node {
+	var configOpts []ConfigOpt
+
+	if mockMineMode {
+		configOpts = configureFakeProver(configOpts)
+	}
+
+	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.InitGenesis, configOpts)
 }
 
-// MakeNodesStartedWithGif creates n new (started) nodes with an
-// InMemoryRepo initialized with the given genesis init function, applies
-// options from the InMemory Repo and returns a slice of the nodes.
-func MakeNodesStartedWithGif(t *testing.T, numNodes int, offlineMode bool, mockMineMode bool, gif consensus.GenesisInitFunc) []*Node {
-	t.Helper()
-	nds := MakeNodesUnstartedWithGif(t, numNodes, offlineMode, mockMineMode, gif, nil)
+// MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
+// applies options from the InMemoryRepo and returns a slice of the nodes
+func MakeNodesStarted(t *testing.T, numNodes int, offlineMode, mockMineMode bool) []*Node {
+	var nds []*Node
+
+	var configOpts []ConfigOpt
+	if mockMineMode {
+		configOpts = configureFakeProver(configOpts)
+	}
+
+	nds = MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.InitGenesis, configOpts)
 	for _, n := range nds {
 		require.NoError(t, n.Start(context.Background()))
 	}
 	return nds
 }
 
-// MakeNodesStarted creates n new (started) nodes with an InMemoryRepo,
-// applies options from the InMemoryRepo and returns a slice of the nodes
-func MakeNodesStarted(t *testing.T, numNodes int, offlineMode, mockMineMode bool) []*Node {
-	return MakeNodesStartedWithGif(t, numNodes, offlineMode, mockMineMode, consensus.InitGenesis)
-}
-
 // MakeOfflineNode returns a single unstarted offline node with mocked mining.
 func MakeOfflineNode(t *testing.T) *Node {
-	return MakeNodesUnstarted(t,
+	return MakeNodesUnstartedWithGif(t,
 		1,    /* 1 node */
 		true, /* offline */
-		true, /* always winning ticket */
+		consensus.InitGenesis,
 		nil /* default config */)[0]
 }
 
@@ -270,6 +230,11 @@ func MakeOfflineNode(t *testing.T) *Node {
 type MustCreateMinerResult struct {
 	MinerAddress *address.Address
 	Err          error
+}
+
+func configureFakeProver(cfo []ConfigOpt) []ConfigOpt {
+	prover := proofs.NewFakeProver(true, nil)
+	return append(cfo, ProverConfigOption(prover))
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
@@ -352,7 +317,7 @@ func requireResetNodeGen(require *require.Assertions, node *Node, gif consensus.
 // degree what the constructor does. It should not be in the business of replacing
 // fields on node as doing that correctly requires knowing exactly how the node is
 // created, which is bad information to need to rely on in tests.
-func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
+func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: deadcode
 	ctx := context.Background()
 	newGenBlk, err := gif(node.CborStore(), node.Blockstore)
 	if err != nil {
@@ -430,27 +395,25 @@ var TestGenCfg = &gengen.GenesisCfg{
 	},
 }
 
-
-func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif consensus.GenesisInitFunc, initOptions []InitOpt, configOptions []ConfigOpt) *Node {
+// GenNode allows you to completely configure a node for testing.
+func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-	if !offlineMode {
+	if !tno.OfflineMode {
 		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 	}
-
-	fmt.Println("configOpts: ", configOptions)
-	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
-	err := os.Setenv("FIL_USE_SMALL_SECTORS", "true")
-	require.NoError(t, err)
-	err = Init(context.Background(), r, gif, initOptions...)
-	require.NoError(t, err)
-
 	// set a random port here so things don't break in the event we make
 	// a parallel request
 	// TODO: can we use port 0 yet?
-	port, err := th.GetFreePort()
+	port, err := testhelpers.GetFreePort()
 	require.NoError(t, err)
 	r.Config().API.Address = fmt.Sprintf(":%d", port)
+
+	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
+	err = os.Setenv("FIL_USE_SMALL_SECTORS", "true")
+	require.NoError(t, err)
+	err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)
+	require.NoError(t, err)
 
 	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
@@ -459,26 +422,11 @@ func genNode(t *testing.T, offlineMode bool, alwaysWinningTicket bool, gif conse
 
 	// enables or disables libp2p
 	localCfgOpts = append(localCfgOpts, func(c *Config) error {
-		c.OfflineMode = offlineMode
+		c.OfflineMode = tno.OfflineMode
 		return nil
 	})
 
 	nd, err := New(context.Background(), localCfgOpts...)
-
-	if alwaysWinningTicket {
-		nd.PowerTable = consensus.NewTestPowerTableView(uint64(1), uint64(1))
-		newCon := consensus.NewExpected(nd.CborStore(),
-			nd.Blockstore,
-			nd.PowerTable,
-			nd.ChainReader.GenesisCid(),
-			proofs.NewFakeProver(true, nil))
-		newChainStore, ok := nd.ChainReader.(chain.Store)
-		require.True(t, ok)
-
-		newSyncer := chain.NewDefaultSyncer(nd.OnlineStore, nd.CborStore(), newCon, newChainStore)
-		nd.Syncer = newSyncer
-		nd.Consensus = newCon
-	}
 
 	require.NoError(t, err)
 	return nd
