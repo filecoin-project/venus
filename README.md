@@ -303,6 +303,18 @@ Both the Test and Nightly clusters run with `FIL_USE_SMALL_SECTORS=true`, this m
 - Set `FIL_USE_SMALL_SECTORS=true` before starting the daemon, else they risk experiencing undefined behavior.
 - Only store files that are <= 127 bytes.
 
+To get an idea of the state of each cluster, you can visit the cluster dashboard (port 8010).
+Once the page is loaded, wait about 5 to 10 seconds for heartbeats to arrive. A healthy
+cluster should show 5 nodes with the nickname "boot".
+
+Each cluster is setup to mine a new block about every 30 seconds. If the "Last Block" column
+on the far right remains blank, or the number increments far beyond the 30 second mining time,
+this indociates that the cluster is no longer mining, or is not mining at the desired rate.
+
+Another indication that a cluster is not in a healthy state will be indicated by the background
+color of the tipset value. If all colors are the same, the nodes are in consensus. Two or more
+colors that persist may indicate that the nodes have fallen out of consensus.
+
 ### Nightly Cluster
 
 Deployed from master by CI every day at 0600 UTC. **If you want to use a cluster
