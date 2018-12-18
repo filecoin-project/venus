@@ -680,11 +680,16 @@ func (node *Node) StartMining(ctx context.Context) error {
 				if result.SealingErr != nil {
 					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
 				} else if result.SealingResult != nil {
+
+					// TODO: determine these algorithmically by simulating call and querying historical prices
+					gasPrice := types.NewGasPrice(0)
+					gasCost := types.NewGasCost(0)
+
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
-					_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", val.SectorID, val.CommR[:], val.CommD[:])
+					_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommR[:], val.CommD[:])
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -899,7 +904,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 	// Only create a miner if we don't already have one.
 	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
@@ -924,7 +929,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	smsgCid, err := node.PlumbingAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
+	smsgCid, err := node.PlumbingAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice, gasLimit, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
@@ -963,7 +968,7 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // SendMessageAndWait creates a message, adds it to the mempool and waits for inclusion.
 // It will retry upto retries times, if there is a nonce error when including it.
 // It returns the deserialized results, or an error.
-func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) (res []interface{}, err error) {
+func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) (res []interface{}, err error) {
 	for i := 0; i < int(retries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d", method, i, retries)
 
@@ -971,7 +976,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
-			msgCid, err := node.PlumbingAPI.MessageSend(ctx, from, to, val, method, params...)
+			msgCid, err := node.PlumbingAPI.MessageSend(ctx, from, to, val, gasPrice, gasLimit, method, params...)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to add message to mempool")
 			}

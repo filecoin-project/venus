@@ -168,11 +168,13 @@ function wait_mpool_size {
 
 function add_ask {
   ./go-filecoin miner add-ask "$1" "$2" "$3" \
+    --price=0 --limit=0 \
     --repodir="$4"
 }
 
 function miner_update_pid {
   ./go-filecoin miner update-peerid "$1" "$2" \
+    --price=0 --limit=0 \
     --repodir="$3"
 }
 

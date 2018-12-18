@@ -56,7 +56,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	vms := th.VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 
 	blk := &types.Block{
@@ -102,7 +102,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	})
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
@@ -111,7 +111,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
@@ -153,7 +153,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	})
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
@@ -163,7 +163,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	}
 
 	msg2 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
@@ -206,7 +206,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 
 	vms := th.VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	// corrupt the message data
 	smsg.Message.Nonce = 13
@@ -361,7 +361,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		toAddr:   act2,
 	})
 	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
 	require.NoError(err)
 	blk := &types.Block{
 		Height:    20,

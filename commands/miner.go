@@ -70,6 +70,8 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send from"),
 		cmdkit.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
@@ -98,7 +100,12 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			return ErrInvalidCollateral
 		}
 
-		addr, err := GetAPI(env).Miner().Create(req.Context, fromAddr, pledge, pid, collateral)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		addr, err := GetAPI(env).Miner().Create(req.Context, fromAddr, gasPrice, gasLimit, pledge, pid, collateral)
 		if err != nil {
 			return err
 		}
@@ -124,6 +131,8 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send from"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddr, err := address.NewFromString(req.Arguments[0])
@@ -141,7 +150,12 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return err
 		}
 
-		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, newPid)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, newPid)
 		if err != nil {
 			return err
 		}
@@ -167,6 +181,8 @@ var minerAddAskCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send the ask from"),
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -189,7 +205,12 @@ var minerAddAskCmd = &cmds.Command{
 			return fmt.Errorf("expiry must be a valid integer")
 		}
 
-		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, price, expiry)
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, price, expiry)
 		if err != nil {
 			return err
 		}

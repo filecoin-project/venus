@@ -102,7 +102,7 @@ func VMStorage() vm.StorageMap {
 func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
 	var smsgs []*types.SignedMessage
 	for _, m := range msgs {
-		sm, err := types.NewSignedMessage(*m, &s)
+		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), types.NewGasCost(0))
 		if err != nil {
 			panic(err)
 		}

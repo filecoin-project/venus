@@ -31,6 +31,6 @@ func New(msgSender *message.Sender) *PlumbingAPI {
 }
 
 // MessageSend implements MessageSend from api2.Message.
-func (p *PlumbingAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
-	return p.msgSender.Send(ctx, from, to, value, method, params...)
+func (p *PlumbingAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
+	return p.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }

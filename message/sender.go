@@ -52,7 +52,7 @@ func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStor
 // message using the wallet. This method "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
 // message to go on chain.
-func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (cid.Cid, error) {
+func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
 	// If the from address isn't set attempt to use the default address.
 	if from == (address.Address{}) {
 		ret, err := GetAndMaybeSetDefaultSenderAddress(s.repo, s.wallet)
@@ -77,7 +77,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	}
 
 	msg := types.NewMessage(from, to, nonce, value, method, encodedParams)
-	smsg, err := types.NewSignedMessage(*msg, s.wallet)
+	smsg, err := types.NewSignedMessage(*msg, s.wallet, gasPrice, gasLimit)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}

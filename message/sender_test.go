@@ -60,7 +60,7 @@ func TestSend(t *testing.T) {
 
 		s := NewSender(repo, w, chainStore, msgPool, publish)
 		require.Equal(0, len(msgPool.Pending()))
-		_, err = s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(uint64(2)), "")
+		_, err = s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(uint64(2)), types.NewGasPrice(0), types.NewGasCost(0), "")
 		require.NoError(err)
 		assert.Equal(1, len(msgPool.Pending()))
 		assert.True(publishCalled)
@@ -81,7 +81,7 @@ func TestSend(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < 20; i++ {
-				_, err := s.Send(ctx, addr, addr, types.NewZeroAttoFIL(), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				_, err := s.Send(ctx, addr, addr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasCost(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
 				require.NoError(err)
 			}
 		}
@@ -134,7 +134,7 @@ func TestNextNonce(t *testing.T) {
 
 		msg := types.NewMessage(addr, addr, 0, nil, "foo", []byte{})
 		msg.Nonce = 42
-		smsg, err := types.NewSignedMessage(*msg, w)
+		smsg, err := types.NewSignedMessage(*msg, w, types.NewGasPrice(0), types.NewGasCost(0))
 		assert.NoError(err)
 		core.MustAdd(msgPool, smsg)
 

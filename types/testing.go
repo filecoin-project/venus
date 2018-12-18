@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/ecdsa"
 	"fmt"
+
 	"github.com/stretchr/testify/assert"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -94,7 +95,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			NewAttoFILFromFIL(0),
 			s,
 			[]byte("params"))
-		smsg, err := NewSignedMessage(*msg, &ms)
+		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasCost(0))
 		if err != nil {
 			panic(err)
 		}
@@ -191,7 +192,7 @@ func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
 func SignMsgs(ms MockSigner, msgs []*Message) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(*m, &ms)
+		s, err := NewSignedMessage(*m, &ms, NewGasPrice(0), NewGasCost(0))
 		if err != nil {
 			return nil, err
 		}

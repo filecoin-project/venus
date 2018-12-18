@@ -35,6 +35,10 @@ var log = logging.Logger("/fil/storage")
 const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
 const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
+// TODO: replace this with a queries to pick reasonable gas price and limits.
+const submitPostGasPrice = 0
+const submitPostGasLimit = 100000000000
+
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr      address.Address
@@ -65,7 +69,7 @@ type node interface {
 	GetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error)
 	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
-	SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, params ...interface{}) ([]interface{}, error)
+	SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) ([]interface{}, error)
 
 	BlockService() bserv.BlockService
 	Host() host.Host
@@ -469,7 +473,11 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuil
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	_, err = sm.node.SendMessageAndWait(ctx, 10, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", proof[:])
+	// TODO: algorithmically determine appropriate values for these
+	gasPrice := types.NewGasPrice(submitPostGasPrice)
+	gasLimit := types.NewGasCost(submitPostGasLimit)
+
+	_, err = sm.node.SendMessageAndWait(ctx, 10, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

@@ -5,12 +5,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/big"
 	mrand "math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -22,11 +19,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/stretchr/testify/require"
 )
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -258,22 +257,8 @@ func RequireRandomPeerID() peer.ID {
 	return pid
 }
 
-// MustSign signs a given address with the provided mocksigner or panics if it
-// cannot.
-func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
-	var smsgs []*types.SignedMessage
-	for _, m := range msgs {
-		sm, err := types.NewSignedMessage(*m, &s)
-		if err != nil {
-			panic(err)
-		}
-		smsgs = append(smsgs, sm)
-	}
-	return smsgs
-}
-
 func mockSign(sn types.MockSigner, msg *types.Message) *types.SignedMessage {
-	return MustSign(sn, msg)[0]
+	return th.MustSign(sn, msg)[0]
 }
 
 // AddChain creates a new chain of length, beginning from blks, and adds to

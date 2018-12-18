@@ -397,7 +397,9 @@ func TestSendMessage(t *testing.T) {
 
 		assert.NoError(node.Start(ctx))
 
-		_, err = node.PlumbingAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), "foo", []byte{})
+		gasPrice := types.NewGasPrice(0)
+		gasLimit := types.NewGasCost(0)
+		_, err = node.PlumbingAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
 		require.NoError(err)
 
 		assert.Equal(1, len(node.MsgPool.Pending()))
