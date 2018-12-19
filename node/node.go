@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	actor_api_impl "github.com/filecoin-project/go-filecoin/api2/impl/actor"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -309,9 +310,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
+	actorSignatureGetter := actor_api_impl.NewSignatureGetter(chainReader)
 	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	msgWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
-	plumbingAPI := api2impl.New(msgSender, msgWaiter)
+	plumbingAPI := api2impl.New(actorSignatureGetter, msgSender, msgWaiter)
 
 	nd := &Node{
 		blockservice: bservice,

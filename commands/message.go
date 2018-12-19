@@ -116,15 +116,16 @@ var msgWaitCmd = &cmds.Command{
 		var found bool
 
 		err = GetPlumbingAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+			sig, err2 := GetPlumbingAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
+			if err2 != nil {
+				return errors.Wrap(err2, "Couldn't get signature for message")
+			}
+
 			res := waitResult{
 				Message: msg,
 				Receipt: receipt,
-				// Note: we should probably return the function signature as well.
-				// Doing so requires adding a plumbing call to get the latest state
-				// tree, or to get the state tree for a tipset, and then calling
-				// vm.GetSignature. If we had a call to get the state tree like above
-				// then the actor ls implementation and probably a number of others could
-				// move to porcelain.
+				// Signature is required to decode the output.
+				Signature: sig,
 			}
 			re.Emit(&res) // nolint: errcheck
 			found = true

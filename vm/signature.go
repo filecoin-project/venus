@@ -16,7 +16,11 @@ var (
 	ErrNoMethod = errors.New("no method in message")
 )
 
-// GetSignature returns the signature for the given actor and method.
+// GetSignature returns the signature for the given actor and method. The function signature
+// is typically used to enable a caller to decode the output of an actor method call (message).
+//
+// Note: as soon as this isn't used by anything in node this implementation can move into
+// the plumbing api package.
 func GetSignature(ctx context.Context, st state.Tree, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
 	actor, err := st.GetActor(ctx, actorAddr)
 	if err != nil {

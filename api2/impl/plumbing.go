@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
+	actor_impl "github.com/filecoin-project/go-filecoin/api2/impl/actor"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -15,21 +17,28 @@ import (
 type PlumbingAPI struct {
 	logger logging.EventLogger
 
-	msgSender *message.Sender
-	msgWaiter *message.Waiter
+	actorSignatureGetter *actor_impl.SignatureGetter
+	msgSender            *message.Sender
+	msgWaiter            *message.Waiter
 }
 
 // Assert that plumbingAPI fullfills the api.Plumbing interface.
 var _ api2.Plumbing = (*PlumbingAPI)(nil)
 
 // New constructs a new instance of the API.
-func New(msgSender *message.Sender, msgWaiter *message.Waiter) *PlumbingAPI {
+func New(actorSignatureGetter *actor_impl.SignatureGetter, msgSender *message.Sender, msgWaiter *message.Waiter) *PlumbingAPI {
 	return &PlumbingAPI{
 		logger: logging.Logger("api2"),
 
-		msgSender: msgSender,
-		msgWaiter: msgWaiter,
+		actorSignatureGetter: actorSignatureGetter,
+		msgSender:            msgSender,
+		msgWaiter:            msgWaiter,
 	}
+}
+
+// ActorGetSignature implements GetSignature from api2.Actor.
+func (p *PlumbingAPI) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+	return p.actorSignatureGetter.Get(ctx, actorAddr, method)
 }
 
 // MessageSend implements MessageSend from api2.Message.
