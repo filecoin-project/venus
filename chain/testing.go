@@ -221,13 +221,12 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 
 	// Make a partially correct block for processing.
 	baseTipSet := consensus.RequireNewTipSet(require, lastBlock)
-	// TODO:  set up FakeChildParams & pass
+
+	// TODO: does this need a MinerAddr?
 	b, err := MkFakeChild(FakeChildParams{
-		GenesisCid:     genCid,
-		StateRoot:      lastBlock.StateRoot,
-		Parent:         baseTipSet,
-		Nonce:          uint64(0),
-		NullBlockCount: uint64(0),
+		GenesisCid: genCid,
+		StateRoot:  lastBlock.StateRoot,
+		Parent:     baseTipSet,
 	})
 	require.NoError(err)
 

@@ -20,9 +20,10 @@ import (
 func TestTotal(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	power := uint64(19)
-	ctx, bs, _, st := requireMinerWithPower(t, power)
+	bs, _, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
 	require.NoError(err)
@@ -31,11 +32,12 @@ func TestTotal(t *testing.T) {
 }
 
 func TestMiner(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 	assert := assert.New(t)
 
 	power := uint64(12)
-	ctx, bs, addr, st := requireMinerWithPower(t, power)
+	bs, addr, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
 	require.NoError(err)
@@ -43,11 +45,10 @@ func TestMiner(t *testing.T) {
 	assert.Equal(power, actual)
 }
 
-func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bstore.Blockstore, address.Address, state.Tree) {
 
 	// set up genesis block with power
-	ctx := context.Background()
-	bootstrapPowerTable := &consensus.TestView{}
+	bootstrapPowerTable := consensus.NewTestPowerTableView(1, 1)
 	require := require.New(t)
 
 	r := repo.NewInMemoryRepo()
@@ -69,7 +70,7 @@ func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.
 
 	prover := proofs.NewFakeProver(true, nil)
 	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid, prover)
-	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
+	syncer, chain, cst, _ := initSyncTest(ctx, require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
 		TipSet:          genesisTS,
@@ -85,5 +86,5 @@ func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.
 
 	st, err := chain.LatestState(ctx)
 	require.NoError(err)
-	return ctx, bs, addrMine, st
+	return bs, addrMine, st
 }
