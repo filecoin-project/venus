@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -34,11 +35,15 @@ func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, co
 	return types.NewMessage(from, miner, nonce, types.NewZeroAttoFIL(), "commitSector", params), nil
 }
 
-// MakeProof creates a random proof.
-func MakeProof() []byte {
+// MakePoStProof creates a random proof.
+func MakePoStProof() proofs.PoStProof {
 	p := makeRandomBytes(192)
 	p[0] = 42
-	return p
+	var postProof proofs.PoStProof
+	for idx, elem := range p {
+		postProof[idx] = elem
+	}
+	return postProof
 }
 
 // MakeCommitment creates a random commitment.

@@ -51,11 +51,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := []*types.Block{
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-		}
+		blocks := makeSomeBlocks(pTipSet)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.NoError(err)
@@ -88,6 +84,15 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	})
 }
 
+func makeSomeBlocks(pTipSet consensus.TipSet) []*types.Block {
+	blocks := []*types.Block{
+		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("foo")),
+		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bar")),
+		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bazz")),
+	}
+	return blocks
+}
+
 // TestExpected_RunStateTransition_validateMining is concerned only with validateMining behavior.
 // Fully unit-testing RunStateTransition is difficult due to this requiring that you
 // completely set up a valid state tree with a valid matching TipSet.  RunStateTransition is tested
@@ -109,11 +114,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := []*types.Block{
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-		}
+		blocks := makeSomeBlocks(pTipSet)
 
 		for i, e := range blocks {
 			fmt.Printf("\nBlock %d stateRoot: %s\n", i, e.StateRoot)
@@ -137,10 +138,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := []*types.Block{
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-			consensus.NewValidTestBlockFromTipSet(pTipSet, 1),
-		}
+		blocks := makeSomeBlocks(pTipSet)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		require.NoError(err)

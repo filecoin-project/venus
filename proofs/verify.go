@@ -34,7 +34,6 @@ func IsPoStValidWithProver(prover Prover, proof []byte, challenge []byte) (bool,
 	if err != nil {
 		return false, errors.Wrap(err, "failed to verify PoSt")
 	}
-	// TODO: Temporary way to deal w/ this condition until proofs are updated.
 	if !res.IsValid {
 		return false, nil
 	}

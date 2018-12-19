@@ -377,6 +377,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 // PeerKeys are a list of keys for peers that can be used in testing.
 var PeerKeys = []crypto.PrivKey{
 	mustGenKey(101),
+	mustGenKey(102),
 }
 
 // TestGenCfg is a genesis configuration used for tests.
