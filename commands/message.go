@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -117,7 +118,7 @@ var msgWaitCmd = &cmds.Command{
 
 		err = GetPlumbingAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			sig, err2 := GetPlumbingAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
-			if err2 != nil {
+			if err2 != nil && err2 != signature.ErrNoMethod {
 				return errors.Wrap(err2, "Couldn't get signature for message")
 			}
 

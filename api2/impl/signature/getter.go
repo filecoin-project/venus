@@ -33,10 +33,6 @@ func NewGetter(chainReader ChainReadStore) *Getter {
 // Get returns the signature for the given actor and method. The function signature
 // is typically used to enable a caller to decode the output of an actor method call (message).
 func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	if method == "" {
-		return nil, ErrNoMethod
-	}
-
 	st, err := sg.chainReader.LatestState(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get current state tree")
@@ -52,6 +48,10 @@ func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method str
 	executable, err := st.GetBuiltinActorCode(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
+	}
+
+	if method == "" {
+		return nil, ErrNoMethod
 	}
 
 	export, ok := executable.Exports()[method]
