@@ -9,7 +9,7 @@ import (
 	inet "gx/ipfs/QmenvQQy4bFGSiHJUGupVmCRHfetg5rH3vTp9Z2f6v2KXR/go-libp2p-net"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 )
 
 var log = logging.Logger("/fil/retrieval")
