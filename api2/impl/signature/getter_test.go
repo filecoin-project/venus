@@ -1,4 +1,4 @@
-package vm_test
+package signature_test
 
 import (
 	"context"
@@ -12,7 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -20,7 +22,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetSignature(t *testing.T) {
+type fakeChainReadStore struct {
+	st state.Tree
+}
+
+func (f *fakeChainReadStore) LatestState(ctx context.Context) (state.Tree, error) {
+	return f.st, nil
+}
+
+func TestGet(t *testing.T) {
 	t.Parallel()
 
 	t.Run("succeeds if method exists", func(t *testing.T) {
@@ -43,8 +53,9 @@ func TestGetSignature(t *testing.T) {
 		_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 			addr: fakeActor,
 		})
+		getter := signature.NewGetter(&fakeChainReadStore{st})
 
-		sig, err := vm.GetSignature(ctx, st, addr, "hasReturnValue")
+		sig, err := getter.Get(ctx, addr, "hasReturnValue")
 		require.NoError(err)
 		expected := &exec.FunctionSignature{Params: []abi.Type(nil), Return: []abi.Type{abi.Address}}
 		require.Equal(expected, sig)
@@ -62,7 +73,9 @@ func TestGetSignature(t *testing.T) {
 			addr: acctActor,
 		})
 
-		_, err := vm.GetSignature(ctx, st, addr, "NoSuchMethod")
+		getter := signature.NewGetter(&fakeChainReadStore{st})
+
+		_, err := getter.Get(ctx, addr, "NoSuchMethod")
 		require.Error(err)
 	})
 
@@ -79,8 +92,10 @@ func TestGetSignature(t *testing.T) {
 			addr: acctActor,
 		})
 
-		sig, err := vm.GetSignature(ctx, st, addr, "")
-		assert.Equal(vm.ErrNoMethod, err)
+		getter := signature.NewGetter(&fakeChainReadStore{st})
+
+		sig, err := getter.Get(ctx, addr, "")
+		assert.Equal(signature.ErrNoMethod, err)
 		assert.Nil(sig)
 	})
 
@@ -103,7 +118,9 @@ func TestGetSignature(t *testing.T) {
 			addr: emptyActor,
 		})
 
-		_, err := vm.GetSignature(ctx, st, addr, "")
+		getter := signature.NewGetter(&fakeChainReadStore{st})
+
+		_, err := getter.Get(ctx, addr, "")
 		require.Error(err)
 	})
 }

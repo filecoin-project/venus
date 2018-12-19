@@ -41,7 +41,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	actor_api_impl "github.com/filecoin-project/go-filecoin/api2/impl/actor"
+	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -310,10 +310,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	actorSignatureGetter := actor_api_impl.NewSignatureGetter(chainReader)
+	sigGetter := signature.NewGetter(chainReader)
 	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	msgWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
-	plumbingAPI := api2impl.New(actorSignatureGetter, msgSender, msgWaiter)
+	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	nd := &Node{
 		blockservice: bservice,
@@ -733,11 +733,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 		return 0, errors.New("non-zero status code returned by getLastUsedSectorID")
 	}
 
-	st, err := node.ChainReader.LatestState(ctx)
-	if err != nil {
-		return 0, errors.Wrap(err, "couldnt get current state tree")
-	}
-	methodSignature, err := vm.GetSignature(ctx, st, minerAddr, "getLastUsedSectorID")
+	methodSignature, err := node.PlumbingAPI.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get method signature for getLastUsedSectorID")
 	}
@@ -951,11 +947,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 					}
 
-					st, err := node.ChainReader.LatestState(ctx)
-					if err != nil {
-						return errors.Wrap(err, "couldnt get current state tree")
-					}
-					signature, err := vm.GetSignature(context.Background(), st, smsg.Message.To, smsg.Message.Method)
+					signature, err := node.PlumbingAPI.ActorGetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
 					if err != nil {
 						return err
 					}

@@ -7,8 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/vm"
 )
 
 type nodeMessage struct {
@@ -30,12 +30,9 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	}
 
 	// get signature for return value
-	st, err := nd.ChainReader.LatestState(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "couldnt get current state tree")
-	}
-	signature, err := vm.GetSignature(ctx, st, to, method)
-	if err != nil && err != vm.ErrNoMethod {
+	sigGetter := signature.NewGetter(nd.ChainReader)
+	sig, err := sigGetter.Get(ctx, to, method)
+	if err != nil && err != signature.ErrNoMethod {
 		return nil, nil, errors.Wrap(err, "unable to determine return type")
 	}
 
@@ -55,5 +52,5 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 		return nil, nil, errors.Errorf("non-zero return from query: %d", ec)
 	}
 
-	return retVals, signature, nil
+	return retVals, sig, nil
 }

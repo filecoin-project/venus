@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	actor_api_impl "github.com/filecoin-project/go-filecoin/api2/impl/actor"
+	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
@@ -451,10 +451,10 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer
-	newActorSignatureGetter := actor_api_impl.NewSignatureGetter(newChainReader)
+	newSigGetter := signature.NewGetter(newChainReader)
 	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	newMsgSender := message.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
-	node.PlumbingAPI = api2impl.New(newActorSignatureGetter, newMsgSender, newMsgWaiter)
+	node.PlumbingAPI = api2impl.New(newSigGetter, newMsgSender, newMsgWaiter)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
