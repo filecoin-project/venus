@@ -15,7 +15,7 @@ var (
 	ErrNoMethod = errors.New("no method")
 )
 
-// ChainReadStore is the subset of chain.ReadStore that SignatureGetter needs.
+// ChainReadStore is the subset of chain.ReadStore that Getter needs.
 type ChainReadStore interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 }
@@ -25,7 +25,7 @@ type Getter struct {
 	chainReader ChainReadStore
 }
 
-// NewGetter returns a new SignatureGetter. Shocking.
+// NewGetter returns a new Getter. Shocking.
 func NewGetter(chainReader ChainReadStore) *Getter {
 	return &Getter{chainReader}
 }

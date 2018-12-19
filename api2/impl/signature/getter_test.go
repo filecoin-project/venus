@@ -120,7 +120,7 @@ func TestGet(t *testing.T) {
 
 		getter := signature.NewGetter(&fakeChainReadStore{st})
 
-		_, err := getter.Get(ctx, addr, "")
+		_, err := getter.Get(ctx, addr, "Foo")
 		require.Error(err)
 	})
 }
