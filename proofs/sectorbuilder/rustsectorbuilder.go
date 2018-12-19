@@ -277,8 +277,8 @@ func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSectorMetadata, error) {
 	return meta, nil
 }
 
-// StagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) StagedSectors() ([]*StagedSectorMetadata, error) {
+// stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
+func (sb *RustSectorBuilder) stagedSectors() ([]*stagedSectorMetadata, error) {
 	resPtr := (*C.GetStagedSectorsResponse)(unsafe.Pointer(C.get_staged_sectors((*C.SectorBuilder)(sb.ptr))))
 	defer C.destroy_get_staged_sectors_response(resPtr)
 
@@ -357,15 +357,15 @@ func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*S
 	return sectors, nil
 }
 
-func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*StagedSectorMetadata, error) {
-	sectors := make([]*StagedSectorMetadata, size)
+func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*stagedSectorMetadata, error) {
+	sectors := make([]*stagedSectorMetadata, size)
 	if src == nil || size == 0 {
 		return sectors, nil
 	}
 
 	sectorPtrs := (*[1 << 30]C.FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
-		sectors[i] = &StagedSectorMetadata{
+		sectors[i] = &stagedSectorMetadata{
 			SectorID: uint64(sectorPtrs[i].sector_id),
 		}
 	}
