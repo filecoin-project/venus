@@ -10,5 +10,5 @@ import (
 // Actor is the actor-related Filecoin plumbing interface.
 type Actor interface {
 	// ActorGetSignature returns the signature of the given actor's given method.
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
