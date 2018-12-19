@@ -50,7 +50,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector/3))
+				_, pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector/3))
 				if err != nil {
 					errs <- err
 				} else {
@@ -132,7 +132,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 5
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector))
+				_, pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector))
 				if err != nil {
 					errs <- err
 				} else {
@@ -226,5 +226,70 @@ func TestSectorBuilder(t *testing.T) {
 		sealedSectors, err := h.sectorBuilder.SealedSectors()
 		require.NoError(t, err)
 		require.Equal(t, 0, len(sealedSectors))
+	})
+
+	t.Run("sector builder resumes polling for staged sectors even after a restart", func(t *testing.T) {
+		stagingDir, err := ioutil.TempDir("", "staging")
+		if err != nil {
+			panic(err)
+		}
+
+		sealedDir, err := ioutil.TempDir("", "staging")
+		if err != nil {
+			panic(err)
+		}
+
+		hA := newSectorBuilderTestHarnessWithSectorDirectories(context.Background(), t, stagingDir, sealedDir)
+		defer hA.close()
+
+		// holds id of each sector we expect to see sealed
+		sectorIdSet := sync.Map{}
+
+		// SectorBuilder begins polling for SectorIDA seal-status
+		sectorIDA, _, errA := hA.addPiece(requireRandomBytes(t, hA.maxBytesPerSector-10))
+		require.NoError(t, errA)
+		sectorIdSet.Store(sectorIDA, true)
+
+		// create new SectorBuilder which should start with a poller pre-seeded
+		// with state from previous SectorBuilder
+		hB := newSectorBuilderTestHarnessWithSectorDirectories(context.Background(), t, stagingDir, sealedDir)
+		defer hB.close()
+
+		// second SectorBuilder begins polling for SectorIDB seal-status in
+		// addition to SectorIDA
+		sectorIDB, _, errB := hB.addPiece(requireRandomBytes(t, hB.maxBytesPerSector-50))
+		require.NoError(t, errB)
+		sectorIdSet.Store(sectorIDB, true)
+
+		// seal everything
+		hB.sectorBuilder.SealAllStagedSectors(context.Background())
+
+		timeout := time.After(120 * time.Second)
+	Loop:
+		for {
+			select {
+			case val := <-hB.sectorBuilder.SectorSealResults():
+				require.NoError(t, val.SealingErr)
+				sectorIdSet.Delete(val.SectorID)
+
+				allHaveBeenSealed := true
+
+				sectorIdSet.Range(func(key, value interface{}) bool {
+					allHaveBeenSealed = false
+					return false
+				})
+
+				if allHaveBeenSealed {
+					break Loop
+				}
+			case <-timeout:
+				break Loop
+			}
+		}
+
+		sectorIdSet.Range(func(sectorID, _ interface{}) bool {
+			t.Fatalf("expected to have sealed everything, but still waiting on %d", sectorID)
+			return false
+		})
 	})
 }

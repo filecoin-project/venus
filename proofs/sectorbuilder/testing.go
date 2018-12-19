@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"io"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -31,8 +32,8 @@ type sectorBuilderTestHarness struct {
 	t                 *testing.T
 }
 
-func newSectorBuilderTestHarness(ctx context.Context, t *testing.T) sectorBuilderTestHarness { // nolint: deadcode
-	memRepo := repo.NewInMemoryRepo()
+func newSectorBuilderTestHarnessWithSectorDirectories(ctx context.Context, t *testing.T, stagingDir, sealedDir string) sectorBuilderTestHarness { // nolint: deadcode
+	memRepo := repo.NewInMemoryRepoWithSectorDirectories(stagingDir, sealedDir)
 	blockStore := bstore.NewBlockstore(memRepo.Datastore())
 	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
 	minerAddr := address.MakeTestAddress("wombat")
@@ -67,6 +68,20 @@ func newSectorBuilderTestHarness(ctx context.Context, t *testing.T) sectorBuilde
 	}
 }
 
+func newSectorBuilderTestHarness(ctx context.Context, t *testing.T) sectorBuilderTestHarness { // nolint: deadcode
+	stagingDir, err := ioutil.TempDir("", "staging")
+	if err != nil {
+		panic(err)
+	}
+
+	sealedDir, err := ioutil.TempDir("", "staging")
+	if err != nil {
+		panic(err)
+	}
+
+	return newSectorBuilderTestHarnessWithSectorDirectories(ctx, t, stagingDir, sealedDir)
+}
+
 func (h sectorBuilderTestHarness) close() {
 	err1 := h.sectorBuilder.Close()
 	err2 := h.repo.Close()
@@ -85,18 +100,18 @@ func (h sectorBuilderTestHarness) close() {
 	}
 }
 
-func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (cid.Cid, error) {
+func (h sectorBuilderTestHarness) addPiece(pieceData []byte) (uint64, cid.Cid, error) {
 	pieceInfo, err := h.createPieceInfo(pieceData)
 	if err != nil {
-		return cid.Undef, err
+		return 0, cid.Undef, err
 	}
 
-	_, err = h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
+	sectorID, err := h.sectorBuilder.AddPiece(h.ctx, pieceInfo)
 	if err != nil {
-		return cid.Undef, err
+		return 0, cid.Undef, err
 	}
 
-	return pieceInfo.Ref, nil
+	return sectorID, pieceInfo.Ref, nil
 }
 
 func (h sectorBuilderTestHarness) createPieceInfo(pieceData []byte) (*PieceInfo, error) {
