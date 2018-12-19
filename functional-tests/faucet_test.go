@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	iptbtester "github.com/filecoin-project/go-filecoin/testhelpers/iptbtester"
 )
 
@@ -34,9 +35,12 @@ func TestFaucetSendFunds(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	iptbAttrs := make(map[string]string)
+	iptbAttrs["filecoin_binary"] = th.MustGetFilecoinBinary()
+
 	ctx := context.Background()
 
-	tns, err := iptbtester.NewTestNodes(t, 2)
+	tns, err := iptbtester.NewTestNodes(t, 2, iptbAttrs)
 	require.NoError(err)
 
 	node0 := tns[0]
