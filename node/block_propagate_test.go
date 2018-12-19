@@ -2,16 +2,18 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
 	"gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
 
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func connect(t *testing.T, nd1, nd2 *Node) {
@@ -47,19 +49,28 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	defer cancel()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false, true)
+	minerAddr, nodes := makeNodes(ctx, t, assert)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
-	connect(t, nodes[0], nodes[1])
+
+	minerNode := nodes[0]
+	clientNode := nodes[1]
+
+	connect(t, minerNode, clientNode)
 
 	baseTS := nodes[0].ChainReader.Head()
 	require.NotNil(t, baseTS)
+	proof := testhelpers.MakePoStProof()
+
 	nextBlk := &types.Block{
+		Miner:             minerAddr,
 		Parents:           baseTS.ToSortedCidSet(),
 		Height:            types.Uint64(1),
 		ParentWeightNum:   types.Uint64(10),
 		ParentWeightDenom: types.Uint64(1),
 		StateRoot:         baseTS.ToSlice()[0].StateRoot,
+		Proof:             proof,
+		Ticket:            consensus.CreateTicket(proof, minerAddr),
 	}
 
 	// Wait for network connection notifications to propagate
@@ -86,14 +97,14 @@ func TestChainSync(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nodes := MakeNodesUnstarted(t, 2, false, true)
+	minerAddr, nodes := makeNodes(ctx, t, assert)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 
 	baseTS := nodes[0].ChainReader.Head()
-	nextBlk1 := consensus.NewValidTestBlockFromTipSet(baseTS, 1)
-	nextBlk2 := consensus.NewValidTestBlockFromTipSet(baseTS, 2)
-	nextBlk3 := consensus.NewValidTestBlockFromTipSet(baseTS, 3)
+	nextBlk1 := consensus.NewValidTestBlockFromTipSet(baseTS, 1, minerAddr)
+	nextBlk2 := consensus.NewValidTestBlockFromTipSet(baseTS, 2, minerAddr)
+	nextBlk3 := consensus.NewValidTestBlockFromTipSet(baseTS, 3, minerAddr)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))
@@ -113,4 +124,16 @@ func TestChainSync(t *testing.T) {
 	}
 
 	assert.True(equal, "failed to sync chains")
+}
+
+func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions) (address.Address, []*Node) {
+	seed := MakeChainSeed(t, TestGenCfg)
+	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	seed.GiveKey(t, minerNode, 0)
+	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode)
+	assertions.NoError(err)
+	clientNode := MakeNodeWithChainSeed(t, seed)
+	nodes := []*Node{minerNode, clientNode}
+	return mineraddr, nodes
 }

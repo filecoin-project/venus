@@ -40,7 +40,8 @@ var (
 	genTS, link1, link2, link3, link4 consensus.TipSet
 
 	// utils
-	cidGetter func() cid.Cid
+	cidGetter    func() cid.Cid
+	minerAddress address.Address
 )
 
 func init() {
@@ -59,14 +60,17 @@ func init() {
 	cidGetter = types.NewCidForTestGetter()
 
 	genStateRoot = genesis.StateRoot
+	minerAddress = address.MakeTestAddress("miner")
 }
 
 // This function sets global variables according to the tests needs.  The
 // test chain's basic structure is always the same, but some tests want
 // mocked stateRoots or parent weight calculations from different consensus protocols.
 func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mockStateRoots bool) {
-	link1blk1 = RequireMkFakeChildWithCon(require, genTS, genCid, genStateRoot, uint64(0), uint64(0), con)
-	link1blk2 = RequireMkFakeChildWithCon(require, genTS, genCid, genStateRoot, uint64(1), uint64(0), con)
+	link1blk1 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
+	link1blk2 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
 	link1 = consensus.RequireNewTipSet(require, link1blk1, link1blk2)
 
 	if mockStateRoots {
@@ -74,9 +78,15 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	} else {
 		link1State = genStateRoot
 	}
-	link2blk1 = RequireMkFakeChildWithCon(require, link1, genCid, link1State, uint64(0), uint64(0), con)
-	link2blk2 = RequireMkFakeChildWithCon(require, link1, genCid, link1State, uint64(1), uint64(0), con)
-	link2blk3 = RequireMkFakeChildWithCon(require, link1, genCid, link1State, uint64(2), uint64(0), con)
+	link2blk1 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(0),
+			NullBlockCount: uint64(0), Consensus: con, MinerAddr: minerAddress})
+
+	//link2blk2 = RequireMkFakeChildWithCon(require, link1, genCid, link1State, uint64(1), uint64(0), con)
+	link2blk2 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Consensus: con, MinerAddr: minerAddress})
+	link2blk3 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(1), Consensus: con})
 	link2 = consensus.RequireNewTipSet(require, link2blk1, link2blk2, link2blk3)
 
 	if mockStateRoots {
@@ -84,7 +94,8 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	} else {
 		link2State = genStateRoot
 	}
-	link3blk1 = RequireMkFakeChildWithCon(require, link2, genCid, link2State, uint64(0), uint64(0), con)
+	link3blk1 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link2, GenesisCid: genCid, StateRoot: link2State, Consensus: con, MinerAddr: minerAddress})
 	link3 = consensus.RequireNewTipSet(require, link3blk1)
 
 	if mockStateRoots {
@@ -93,8 +104,10 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 		link3State = genStateRoot
 	}
 
-	link4blk1 = RequireMkFakeChildWithCon(require, link3, genCid, link3State, uint64(0), uint64(2), con) // 2 null blks between link 3 and 4
-	link4blk2 = RequireMkFakeChildWithCon(require, link3, genCid, link3State, uint64(1), uint64(2), con)
+	link4blk1 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, NullBlockCount: uint64(2), Consensus: con}) // 2 null blks between link 3 and 4
+	link4blk2 = RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, Nonce: uint64(1), NullBlockCount: uint64(2), Consensus: con})
 	link4 = consensus.RequireNewTipSet(require, link4blk1, link4blk2)
 
 	if mockStateRoots {
@@ -370,7 +383,8 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 	ctx := context.Background()
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
-	forkblk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
+	forkblk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot})
 	forklink1 := consensus.RequireNewTipSet(require, forkblk1)
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -400,18 +414,27 @@ func TestHeavierFork(t *testing.T) {
 	ctx := context.Background()
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
-	forklink1blk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink1blk2 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(1), uint64(0))
-	forklink1blk3 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink1blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink1blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
+	forklink1blk3 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(2)})
+
 	forklink1 := consensus.RequireNewTipSet(require, forklink1blk1, forklink1blk2, forklink1blk3)
 
-	forklink2blk1 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink2blk2 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(1), uint64(0))
-	forklink2blk3 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink2blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink2blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
+	forklink2blk3 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(2)})
 	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3)
 
-	forklink3blk1 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink3blk2 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink3blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink3blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1, forklink3blk2)
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -468,18 +491,26 @@ func TestLoadFork(t *testing.T) {
 
 	// Now sync the store with a heavier fork, forking off link1.
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
-	forklink1blk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink1blk2 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(1), uint64(0))
-	forklink1blk3 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink1blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink1blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
+	forklink1blk3 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(2)})
 	forklink1 := consensus.RequireNewTipSet(require, forklink1blk1, forklink1blk2, forklink1blk3)
 
-	forklink2blk1 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink2blk2 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(1), uint64(0))
-	forklink2blk3 := RequireMkFakeChild(require, forklink1, genCid, genStateRoot, uint64(2), uint64(0))
+	forklink2blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink2blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
+	forklink2blk3 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(2)})
 	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3)
 
-	forklink3blk1 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(0), uint64(0))
-	forklink3blk2 := RequireMkFakeChild(require, forklink2, genCid, genStateRoot, uint64(1), uint64(0))
+	forklink3blk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot})
+	forklink3blk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1, forklink3blk2)
 
 	_ = requirePutBlocks(require, cst, forklink1.ToSlice()...)
@@ -527,8 +558,10 @@ func TestSubsetParent(t *testing.T) {
 	// Sync one tipset with a parent equal to a subset of an existing
 	// tipset in the store.
 	forkbase := consensus.RequireNewTipSet(require, link2blk1, link2blk2)
-	forkblk1 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(0), uint64(0))
-	forkblk2 := RequireMkFakeChild(require, forkbase, genCid, genStateRoot, uint64(1), uint64(0))
+	forkblk1 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot})
+	forkblk2 := RequireMkFakeChild(require,
+		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
 	forkHead := requirePutBlocks(require, cst, forklink.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, forkHead)
@@ -537,7 +570,7 @@ func TestSubsetParent(t *testing.T) {
 	// Sync another tipset with a parent equal to a subset of the tipset
 	// just synced.
 	newForkbase := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
-	newForkblk := RequireMkFakeChild(require, newForkbase, genCid, genStateRoot, uint64(0), uint64(0))
+	newForkblk := RequireMkFakeChild(require, FakeChildParams{Parent: newForkbase, GenesisCid: genCid, StateRoot: genStateRoot})
 	newForklink := consensus.RequireNewTipSet(require, newForkblk)
 	newForkHead := requirePutBlocks(require, cst, newForklink.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, newForkHead)
@@ -550,7 +583,8 @@ func TestWidenChainAncestor(t *testing.T) {
 	require := require.New(t)
 	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	link2blkother := RequireMkFakeChild(require, link1, genCid, genStateRoot, uint64(27), uint64(0))
+	link2blkother := RequireMkFakeChild(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(27)})
 
 	link2intersect := consensus.RequireNewTipSet(require, link2blk1, link2blkother)
 
@@ -621,13 +655,19 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	syncer, chain, cst, con := initSyncTestWithPowerTable(require, pt)
 	ctx := context.Background()
 
-	forklink2blk1 := RequireMkFakeChildWithCon(require, link1, genCid, genStateRoot, uint64(51), uint64(0), con)
-	forklink2blk2 := RequireMkFakeChildWithCon(require, link1, genCid, genStateRoot, uint64(52), uint64(0), con)
-	forklink2blk3 := RequireMkFakeChildWithCon(require, link1, genCid, genStateRoot, uint64(53), uint64(0), con)
-	forklink2blk4 := RequireMkFakeChildWithCon(require, link1, genCid, genStateRoot, uint64(54), uint64(0), con)
+	forklink2blk1 := RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(51)})
+	forklink2blk2 := RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(52)})
+	forklink2blk3 := RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(53)})
+	forklink2blk4 := RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(54)})
+
 	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3, forklink2blk4)
 
-	forklink3blk1 := RequireMkFakeChildWithCon(require, forklink2, genCid, genStateRoot, uint64(0), uint64(0), con)
+	forklink3blk1 := RequireMkFakeChildWithCon(require,
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con})
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1)
 
 	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
@@ -748,9 +788,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 		// test blocks.
 		return con.Weight(ctx, ts, bootstrapSt)
 	}
-	f1b1 := RequireMkFakeChildCore(require, baseTS, weightDeepGenCid, bootstrapStateRoot, uint64(0), uint64(0), wFun)
+	f1b1 := RequireMkFakeChildCore(require,
+		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		wFun)
 	f1b1.Miner = addr1
-	f2b1 := RequireMkFakeChildCore(require, baseTS, weightDeepGenCid, bootstrapStateRoot, uint64(1), uint64(0), wFun)
+	f2b1 := RequireMkFakeChildCore(require,
+		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1)},
+		wFun)
 	f2b1.Miner = addr2
 	tsShared := consensus.RequireNewTipSet(require, f1b1, f2b1)
 
@@ -766,9 +810,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(expectedWeight, measuredWeight)
 
 	// fork 1 is heavier than the old head.
-	f1b2a := RequireMkFakeChildCore(require, consensus.RequireNewTipSet(require, f1b1), weightDeepGenCid, bootstrapStateRoot, uint64(0), uint64(0), wFun)
+	f1b2a := RequireMkFakeChildCore(require,
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		wFun)
 	f1b2a.Miner = addr1
-	f1b2b := RequireMkFakeChildCore(require, consensus.RequireNewTipSet(require, f1b1), weightDeepGenCid, bootstrapStateRoot, uint64(1), uint64(0), wFun)
+	f1b2b := RequireMkFakeChildCore(require,
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1)},
+		wFun)
 	f1b2b.Miner = addr2
 	f1 := consensus.RequireNewTipSet(require, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(require, cst, f1.ToSlice()...)
@@ -783,7 +831,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1.
-	f2b2 := RequireMkFakeChildCore(require, consensus.RequireNewTipSet(require, f2b1), weightDeepGenCid, bootstrapStateRoot, uint64(0), uint64(0), wFun)
+	f2b2 := RequireMkFakeChildCore(require,
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f2b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		wFun)
 	f2b2.Miner = addr3
 	f2 := consensus.RequireNewTipSet(require, f2b2)
 	f2Cids := requirePutBlocks(require, cst, f2.ToSlice()...)

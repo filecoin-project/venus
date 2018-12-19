@@ -143,7 +143,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		return false
 	case prChRead := <-prCh:
 		copy(proof[:], prChRead)
-		ticket = consensus.CreateTicket(proof[:], w.minerAddr)
+		ticket = consensus.CreateTicket(proof, w.minerAddr)
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoST()

@@ -317,7 +317,8 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// submit post
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", th.MakeProof())
+	proof := th.MakePoStProof()
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", proof[:])
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
@@ -329,7 +330,8 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.Equal(types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
 
 	// fail to submit inside the proving period
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", th.MakeProof())
+	//proof = th.MakePoStProof()
+	res, err = applyMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", proof[:])
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
 }

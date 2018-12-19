@@ -700,7 +700,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	td := &TestDaemon{
-
 		test:     t,
 		repoDir:  dir,
 		init:     true, // we want to init unless told otherwise

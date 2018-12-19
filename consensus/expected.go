@@ -73,7 +73,7 @@ type Expected struct {
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
-// NewExpected is the constructor for the Expected consenus.Protocol module.
+// NewExpected is the constructor for the Expected consensus.Protocol module.
 func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
 	return &Expected{
 		cstore:       cs,
@@ -280,7 +280,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 		}
 
 		// call create ticket, returns []byte
-		computedTicket := CreateTicket(blk.Proof[:], blk.Miner)
+		computedTicket := CreateTicket(blk.Proof, blk.Miner)
 
 		if !bytes.Equal(blk.Ticket, computedTicket) {
 			return errors.New("invalid ticket")
@@ -348,12 +348,12 @@ func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
 // CreateTicket computes a valid ticket using the supplied proof
 // []byte and the minerAddress address.Address.
 //    returns:  []byte -- the ticket.
-func CreateTicket(proof []byte, minerAddr address.Address) []byte {
+func CreateTicket(proof proofs.PoStProof, minerAddr address.Address) []byte {
 	// TODO: the ticket is supposed to be a signature, per the spec.
 	// For now to ensure that the ticket is unique to each miner mix in
 	// the miner address.
 	// https://github.com/filecoin-project/go-filecoin/issues/1054
-	buf := append(proof, minerAddr.Bytes()...)
+	buf := append(proof[:], minerAddr.Bytes()...)
 	h := sha256.Sum256(buf)
 	return h[:]
 }
