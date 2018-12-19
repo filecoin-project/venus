@@ -54,7 +54,7 @@ type TestPowerTableView struct{ minerPower, totalPower uint64 }
 
 // NewTestPowerTableView creates a test power view with the given total power
 func NewTestPowerTableView(minerPower uint64, totalPower uint64) *TestPowerTableView {
-	return &TestPowerTableView{minerPower, totalPower}
+	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower}
 }
 
 // Total always returns value that was supplied to NewTestPowerTableView.

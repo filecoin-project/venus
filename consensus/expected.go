@@ -319,7 +319,10 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 
 	lhs := &big.Int{}
 	lhs.SetBytes(ticket)
+	fmt.Println("\n ------------ ticket value:         ", lhs.String())
+
 	lhs.Mul(lhs, big.NewInt(int64(totalPower)))
+	fmt.Println(" ------------ ticket * total power: ", lhs.String())
 
 	rhs := &big.Int{}
 	rhs.Mul(big.NewInt(int64(myPower)), ticketDomain)

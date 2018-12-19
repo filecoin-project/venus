@@ -3,7 +3,6 @@ package consensus_test
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -108,17 +107,16 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 
-		ptv := consensus.NewTestPowerTableView(3, 5)
+		minerPower := uint64(1)
+		totalPower := uint64(1)
+
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower)
 		exp := consensus.NewExpected(cistore, bstore, ptv, genesisBlock.Cid(), prover)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
 		blocks := makeSomeBlocks(pTipSet)
-
-		for i, e := range blocks {
-			fmt.Printf("\nBlock %d stateRoot: %s\n", i, e.StateRoot)
-		}
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		require.NoError(err)
