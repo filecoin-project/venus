@@ -33,13 +33,13 @@ func TestGetSignature(t *testing.T) {
 		vms := vm.NewStorageMap(bs)
 
 		// Install the fake actor so we can query one of its method signatures.
-		fakeActorCodeCid := types.NewCidForTestGetter()()
-		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
+		emptyActorCodeCid := types.NewCidForTestGetter()()
+		builtin.Actors[emptyActorCodeCid] = &actor.FakeActor{}
 		defer func() {
-			delete(builtin.Actors, fakeActorCodeCid)
+			delete(builtin.Actors, emptyActorCodeCid)
 		}()
 
-		fakeActor := th.RequireNewFakeActorWithTokens(require, vms, addr, fakeActorCodeCid, types.NewAttoFILFromFIL(102))
+		fakeActor := th.RequireNewFakeActorWithTokens(require, vms, addr, emptyActorCodeCid, types.NewAttoFILFromFIL(102))
 		_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 			addr: fakeActor,
 		})
@@ -91,11 +91,11 @@ func TestGetSignature(t *testing.T) {
 		cst := hamt.NewCborStore()
 		addr := address.NewForTestGetter()()
 
-		// Install the fake actor so we can query one of its method signatures.
-		fakeActorCodeCid := types.NewCidForTestGetter()()
-		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
+		// Install the empty actor so we can query one of its method signatures.
+		emptyActorCodeCid := types.NewCidForTestGetter()()
+		builtin.Actors[emptyActorCodeCid] = &actor.FakeActor{}
 		defer func() {
-			delete(builtin.Actors, fakeActorCodeCid)
+			delete(builtin.Actors, emptyActorCodeCid)
 		}()
 		emptyActor := th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0))
 
