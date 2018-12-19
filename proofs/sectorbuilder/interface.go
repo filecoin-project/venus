@@ -39,6 +39,9 @@ type SectorBuilder interface {
 	// SealedSectors returns a slice of sealed sector metadata-objects.
 	SealedSectors() ([]*SealedSectorMetadata, error)
 
+	// StagedSectors returns a slice of staged sector metadata-objects.
+	StagedSectors() ([]*StagedSectorMetadata, error)
+
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the
 	// same channel. Values will be either a *SealedSectorMetadata or an error. A
@@ -84,4 +87,10 @@ type SealedSectorMetadata struct {
 	pieces    []*PieceInfo // deprecated (will be removed soon)
 	Proof     proofs.SealProof
 	SectorID  uint64
+}
+
+// StagedSectorMetadata is a sector into which we write user piece-data before
+// sealing. Note: SectorID is unique across all staged and sealed sectors.
+type StagedSectorMetadata struct {
+	SectorID uint64
 }
