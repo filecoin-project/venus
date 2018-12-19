@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/exec"
 )
 
@@ -30,9 +30,9 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	}
 
 	// get signature for return value
-	sigGetter := signature.NewGetter(nd.ChainReader)
+	sigGetter := mthdsigapi.NewGetter(nd.ChainReader)
 	sig, err := sigGetter.Get(ctx, to, method)
-	if err != nil && err != signature.ErrNoMethod {
+	if err != nil && err != mthdsigapi.ErrNoMethod {
 		return nil, nil, errors.Wrap(err, "unable to determine return type")
 	}
 

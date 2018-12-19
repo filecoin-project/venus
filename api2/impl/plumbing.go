@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
-	"github.com/filecoin-project/go-filecoin/api2/impl/signature"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -17,7 +17,7 @@ import (
 type PlumbingAPI struct {
 	logger logging.EventLogger
 
-	sigGetter *signature.Getter
+	sigGetter *mthdsigapi.Getter
 	msgSender *message.Sender
 	msgWaiter *message.Waiter
 }
@@ -26,7 +26,7 @@ type PlumbingAPI struct {
 var _ api2.Plumbing = (*PlumbingAPI)(nil)
 
 // New constructs a new instance of the API.
-func New(sigGetter *signature.Getter, msgSender *message.Sender, msgWaiter *message.Waiter) *PlumbingAPI {
+func New(sigGetter *mthdsigapi.Getter, msgSender *message.Sender, msgWaiter *message.Waiter) *PlumbingAPI {
 	return &PlumbingAPI{
 		logger: logging.Logger("api2"),
 
