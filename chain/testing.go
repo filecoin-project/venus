@@ -227,6 +227,7 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 		GenesisCid: genCid,
 		StateRoot:  lastBlock.StateRoot,
 		Parent:     baseTipSet,
+		MinerAddr: rewardAddress,
 	})
 	require.NoError(err)
 
