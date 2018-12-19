@@ -111,7 +111,18 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		sectorSealResults: make(chan SectorSealResult),
 	}
 
-	sb.sealStatusPoller = newSealStatusPoller(sb.sectorSealResults, sb.findSealedSectorMetadata)
+	// load staged sector metadata and use it to initialize the poller
+	metadata, err := sb.stagedSectors()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load staged sectors")
+	}
+
+	stagedSectorIDs := make([]uint64, len(metadata))
+	for idx, m := range metadata {
+		stagedSectorIDs[idx] = m.SectorID
+	}
+
+	sb.sealStatusPoller = newSealStatusPoller(stagedSectorIDs, sb.sectorSealResults, sb.findSealedSectorMetadata)
 
 	runtime.SetFinalizer(sb, func(o *RustSectorBuilder) {
 		o.destroy()

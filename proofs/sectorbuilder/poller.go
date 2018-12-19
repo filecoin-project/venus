@@ -27,11 +27,16 @@ type sealStatusPoller struct {
 type findSealedSectorMetadataFunc = func(uint64) (*SealedSectorMetadata, error)
 
 // newSealStatusPoller initializes and returns an active poller.
-func newSealStatusPoller(onSealStatusCh chan SectorSealResult, f findSealedSectorMetadataFunc) *sealStatusPoller {
+func newSealStatusPoller(idsAwaitingSeal []uint64, onSealStatusCh chan SectorSealResult, f findSealedSectorMetadataFunc) *sealStatusPoller {
 	p := &sealStatusPoller{
 		sectorsAwaitingSealLk: sync.Mutex{},
 		sectorsAwaitingSeal:   make(map[uint64]struct{}),
 		stopPollingCh:         make(chan struct{}),
+	}
+
+	// initialize the sealer with the provided sector ids
+	for _, id := range idsAwaitingSeal {
+		p.sectorsAwaitingSeal[id] = struct{}{}
 	}
 
 	go func() {
