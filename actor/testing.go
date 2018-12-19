@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -26,32 +25,16 @@ var _ exec.ExecutableActor = (*FakeActor)(nil)
 
 // FakeActorExports are the exports of the fake actor.
 var FakeActorExports = exec.Exports{
+	"hasReturnValue": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Address},
+	},
 	"returnRevertError": &exec.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
 	"goodCall": &exec.FunctionSignature{
 		Params: nil,
-		Return: nil,
-	},
-	"nestedBalance": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: nil,
-	},
-	"sendTokens": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: nil,
-	},
-	"callSendTokens": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.Address},
-		Return: nil,
-	},
-	"attemptMultiSpend1": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.Address},
-		Return: nil,
-	},
-	"attemptMultiSpend2": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.Address},
 		Return: nil,
 	},
 }
@@ -81,6 +64,11 @@ func (ma *FakeActor) Exports() exec.Exports {
 	return FakeActorExports
 }
 
+// HasReturnValue is a dummy method that does nothing.
+func (ma *FakeActor) HasReturnValue(ctx exec.VMContext) (address.Address, uint8, error) {
+	return address.Address{}, 0, nil
+}
+
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
 // revert error.
 func (ma *FakeActor) ReturnRevertError(ctx exec.VMContext) (uint8, error) {
@@ -106,55 +94,6 @@ func (ma *FakeActor) GoodCall(ctx exec.VMContext) (uint8, error) {
 		panic(err.Error())
 	}
 	return 0, nil
-}
-
-// NestedBalance sents 100 to the given address.
-func (ma *FakeActor) NestedBalance(ctx exec.VMContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, "", types.NewAttoFILFromFIL(100), nil)
-	return code, err
-}
-
-// SendTokens sends 100 to the given address.
-func (ma *FakeActor) SendTokens(ctx exec.VMContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, "", types.NewAttoFILFromFIL(100), nil)
-	return code, err
-}
-
-// CallSendTokens tells the target to invoke SendTokens to send tokens to the
-// to address (that is, it calls target.SendTokens(to)).
-func (ma *FakeActor) CallSendTokens(ctx exec.VMContext, target address.Address, to address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, "sendTokens", types.ZeroAttoFIL, []interface{}{to})
-	return code, err
-}
-
-// AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
-func (ma *FakeActor) AttemptMultiSpend1(ctx exec.VMContext, self, target address.Address) (uint8, error) {
-	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
-	}
-	// Try to double spend
-	_, code, err = ctx.Send(target, "callSendTokens", types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed second callSendTokens")
-	}
-	return code, err
-}
-
-// AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
-func (ma *FakeActor) AttemptMultiSpend2(ctx exec.VMContext, self, target address.Address) (uint8, error) {
-	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Send(target, "callSendTokens", types.ZeroAttoFIL, []interface{}{self, target})
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
-	}
-	// Try to triple spend
-	code, err = ma.SendTokens(ctx, target)
-	if code != 0 || err != nil {
-		return code, errors.FaultErrorWrap(err, "failed sendTokens")
-	}
-	return code, err
 }
 
 // MustConvertParams encodes the given params and panics if it fails to do so.

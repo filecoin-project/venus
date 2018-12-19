@@ -448,13 +448,12 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 		newGenBlk.Cid(),
 		proofs.NewFakeProver(true, nil))
 	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
-	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer
-	node.MessageWaiter = newMsgWaiter
+	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	newMsgSender := message.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
-	node.PlumbingAPI = api2impl.New(newMsgSender)
+	node.PlumbingAPI = api2impl.New(newMsgSender, newMsgWaiter)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
