@@ -190,6 +190,7 @@ func TestWaitConflicting(t *testing.T) {
 	testWaitHelp(nil, assert, waiter, sm2, false, msgApplyFail)
 }
 
+// TODO ensure it returns an error
 func TestWaitRespectsContextCancel(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
