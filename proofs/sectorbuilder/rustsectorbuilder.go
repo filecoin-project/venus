@@ -33,9 +33,10 @@ var log = logging.Logger("sectorbuilder") // nolint: deadcode
 const MaxNumStagedSectors = 1
 
 // stagedSectorMetadata is a sector into which we write user piece-data before
-// sealing. Note: sectorId is unique across all staged and sealed sectors.
+// sealing. Note: sectorID is unique across all staged and sealed sectors for a
+// miner.
 type stagedSectorMetadata struct {
-	sectorId uint64
+	sectorID uint64
 }
 
 func elapsed(what string) func() {
@@ -125,7 +126,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 
 	stagedSectorIDs := make([]uint64, len(metadata))
 	for idx, m := range metadata {
-		stagedSectorIDs[idx] = m.sectorId
+		stagedSectorIDs[idx] = m.sectorID
 	}
 
 	sb.sealStatusPoller = newSealStatusPoller(stagedSectorIDs, sb.sectorSealResults, sb.findSealedSectorMetadata)
@@ -383,7 +384,7 @@ func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*s
 	sectorPtrs := (*[1 << 30]C.FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
 		sectors[i] = &stagedSectorMetadata{
-			sectorId: uint64(sectorPtrs[i].sector_id),
+			sectorID: uint64(sectorPtrs[i].sector_id),
 		}
 	}
 
