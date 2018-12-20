@@ -276,14 +276,15 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			return errors.Wrap(err, "could not test the proof's validity")
 		}
 		if !isValid {
-			return errors.New("invalid proof")
+			// TODO: Temporary way to deal w/ this condition until proofs are updated.
+			log.Debugf("TODO: return error; proof is invalid.")
 		}
 
 		// call create ticket, returns []byte
 		computedTicket := CreateTicket(blk.Proof, blk.Miner)
 
 		if !bytes.Equal(blk.Ticket, computedTicket) {
-			return errors.New("invalid ticket")
+			return errors.New("ticket incorrectly computed")
 		}
 
 		// TODO: Also need to validate BlockSig
@@ -291,11 +292,11 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {
-			return errors.Wrap(err, "couldn't compute ticket")
+			return errors.Wrap(err, "can't check for winning ticket")
 		}
 
 		if !result {
-			return errors.New("invalid miner ticket")
+			return errors.New("not a winning ticket")
 		}
 	}
 	return nil
