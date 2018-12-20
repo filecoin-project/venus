@@ -85,9 +85,3 @@ type SealedSectorMetadata struct {
 	Proof     proofs.SealProof
 	SectorID  uint64
 }
-
-// stagedSectorMetadata is a sector into which we write user piece-data before
-// sealing. Note: SectorID is unique across all staged and sealed sectors.
-type stagedSectorMetadata struct {
-	SectorID uint64
-}
