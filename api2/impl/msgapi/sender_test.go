@@ -1,4 +1,4 @@
-package message
+package msgapi
 
 import (
 	"context"

@@ -3,7 +3,7 @@ package impl
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/message"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -20,7 +20,7 @@ func (api *nodeMpool) View(ctx context.Context, messageCount uint) ([]*types.Sig
 
 	pending := nd.MsgPool.Pending()
 	if len(pending) < int(messageCount) {
-		subscription, err := nd.PubSub.Subscribe(message.Topic)
+		subscription, err := nd.PubSub.Subscribe(msgapi.Topic)
 		if err != nil {
 			return nil, err
 		}
