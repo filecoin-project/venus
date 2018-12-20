@@ -189,7 +189,6 @@ func TestWaitConflicting(t *testing.T) {
 	testWaitHelp(nil, assert, waiter, sm2, false, msgApplyFail)
 }
 
-// TODO ensure it returns an error
 func TestWaitRespectsContextCancel(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -214,7 +213,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 
 	select {
 	case <-doneCh:
-		assert.NoError(err)
+		assert.Error(err)
 	case <-time.After(2 * time.Second):
 		assert.Fail("Wait should have returned when context was canceled")
 	}

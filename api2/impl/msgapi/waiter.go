@@ -88,7 +88,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case raw, more := <-ch:
 			if !more {
 				return emptyErr
