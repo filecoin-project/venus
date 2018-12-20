@@ -948,6 +948,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 					}
 
 					signature, err := node.PlumbingAPI.ActorGetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
+					// Note: GetSignature could fail if the To is an empty actor or a transfer. This is likely a bug.
 					if err != nil {
 						return err
 					}

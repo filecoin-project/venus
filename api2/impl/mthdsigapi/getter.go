@@ -13,6 +13,11 @@ import (
 var (
 	// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
 	ErrNoMethod = errors.New("no method")
+	// ErrNoActorImpl is returned by Get when the actor implementation doesn't exist, eg
+	// the actor address is an empty actor, an address that has received a transfer of FIL
+	// but hasn't yet been upgraded to an account actor. (The actor implementation might
+	// also genuinely be missing, which is not expected.)
+	ErrNoActorImpl = errors.New("no actor implementation")
 )
 
 // ChainReadStore is the subset of chain.ReadStore that Getter needs.
@@ -42,7 +47,7 @@ func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method str
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
 	} else if !actor.Code.Defined() {
-		return nil, fmt.Errorf("no actor implementation")
+		return nil, ErrNoActorImpl
 	}
 
 	executable, err := st.GetBuiltinActorCode(actor.Code)

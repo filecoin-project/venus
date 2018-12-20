@@ -32,7 +32,7 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	// get signature for return value
 	sigGetter := mthdsigapi.NewGetter(nd.ChainReader)
 	sig, err := sigGetter.Get(ctx, to, method)
-	if err != nil && err != mthdsigapi.ErrNoMethod {
+	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to determine return type")
 	}
 
