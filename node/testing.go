@@ -3,9 +3,10 @@ package node
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
@@ -18,7 +19,6 @@ import (
 	bserv "gx/ipfs/QmZ9PMwfBmywNgpxG7zRHKsAno76gMCBbKGBTVXbma44H7/go-blockservice"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
 	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
@@ -30,8 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
@@ -419,7 +417,7 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
 
-	localCfgOpts = append(localCfgOpts, configOptions...)
+	localCfgOpts = append(localCfgOpts, tno.ConfigOpts...)
 
 	// enables or disables libp2p
 	localCfgOpts = append(localCfgOpts, func(c *Config) error {
