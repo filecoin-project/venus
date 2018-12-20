@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"crypto/rand"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
 	"math/big"
 	"time"
@@ -35,23 +34,13 @@ func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, co
 	return types.NewMessage(from, miner, nonce, types.NewZeroAttoFIL(), "commitSector", params), nil
 }
 
-// MakePoStProof creates a random proof.
-func MakePoStProof() proofs.PoStProof {
-	p := makeRandomBytes(192)
-	p[0] = 42
-	var postProof proofs.PoStProof
-	for idx, elem := range p {
-		postProof[idx] = elem
-	}
-	return postProof
-}
-
 // MakeCommitment creates a random commitment.
 func MakeCommitment() []byte {
-	return makeRandomBytes(32)
+	return MakeRandomBytes(32)
 }
 
-func makeRandomBytes(size int) []byte {
+// MakeRandomBytes generates a randomized byte slice of size 'size'
+func MakeRandomBytes(size int) []byte {
 	comm := make([]byte, size)
 	if _, err := rand.Read(comm); err != nil {
 		panic(err)
