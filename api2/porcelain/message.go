@@ -38,7 +38,6 @@ var log = logging.Logger("porcelain") // nolint: deadcode
 //
 // Access to failures might make this a little better but really the solution is
 // to not have re-tries, eg if we had nonce lanes.
-// if send errors then it errors
 func MessageSendWithRetry(ctx context.Context, plumbing plumbing, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) (err error) {
 	for i := 0; i < int(numRetries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d, waitDuration %v", method, i, numRetries, waitDuration)

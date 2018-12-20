@@ -164,7 +164,7 @@ type Config struct {
 	Libp2pOpts  []libp2p.Option
 	Repo        repo.Repo
 	OfflineMode bool
-	blockTime   time.Duration
+	BlockTime   time.Duration
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -181,7 +181,7 @@ func OfflineMode(offlineMode bool) ConfigOpt {
 // BlockTime sets the blockTime.
 func BlockTime(blockTime time.Duration) ConfigOpt {
 	return func(c *Config) error {
-		c.blockTime = blockTime
+		c.BlockTime = blockTime
 		return nil
 	}
 }
@@ -333,7 +333,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PubSub:       fsub,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
-		blockTime:    nc.blockTime,
+		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
 
@@ -600,7 +600,7 @@ func (node *Node) GetBlockTime() time.Duration {
 	return node.blockTime
 }
 
-// SetBlockTime returns the current block time.
+// SetBlockTime sets the block time.
 func (node *Node) SetBlockTime(blockTime time.Duration) {
 	node.blockTime = blockTime
 }
