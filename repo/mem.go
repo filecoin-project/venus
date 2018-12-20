@@ -45,8 +45,9 @@ func NewInMemoryRepo() *MemRepo {
 	return NewInMemoryRepoWithSectorDirectories(stagingDir, sealedDir)
 }
 
-// NewInMemoryRepoWithDirectories makes a new instance of MemRepo configured to
-// use the provided directories as sealed and staged sector-storage.
+// NewInMemoryRepoWithSectorDirectories makes a new instance of MemRepo
+// configured to use the provided directories as sealed and staged
+// sector-storage.
 func NewInMemoryRepoWithSectorDirectories(staging, sealedDir string) *MemRepo {
 	return &MemRepo{
 		C:          config.NewDefaultConfig(),

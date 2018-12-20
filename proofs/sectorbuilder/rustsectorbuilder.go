@@ -233,7 +233,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 			CommD:     commD,
 			CommR:     commR,
 			CommRStar: commRStar,
-			pieces:    ps,
+			Pieces:    ps,
 			Proof:     proof,
 			SectorID:  sectorID,
 		}, nil
@@ -359,7 +359,7 @@ func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*S
 			CommD:     commD,
 			CommR:     commR,
 			CommRStar: commRStar,
-			pieces:    ps,
+			Pieces:    ps,
 			Proof:     proof,
 			SectorID:  uint64(secPtr.sector_id),
 		}
