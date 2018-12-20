@@ -84,7 +84,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 		from, to := newAddr(), newAddr()
 
 		fp := &fakePlumbing{assert: assert, require: require}
-		fp.actorGetSignature = fp.nopActorGetSignature
+		fp.messageSend = fp.successfulMessageSend
 		fp.messageWait = fp.unsuccessfulMessageWait
 
 		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
