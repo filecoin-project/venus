@@ -8,6 +8,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/metrics"
 )
 
 func main() {
@@ -19,6 +20,10 @@ func main() {
 	n, err := strconv.Atoi(os.Getenv("GO_FILECOIN_LOG_LEVEL"))
 	if err != nil {
 		n = 3
+	}
+
+	if os.Getenv("GO_FILECOIN_LOG_JSON") == "1" {
+		oldlogging.SetFormatter(&metrics.JSONFormatter{})
 	}
 
 	logging.SetAllLoggers(oldlogging.Level(n))

@@ -279,6 +279,7 @@ More details are in the [Filecoin Commands](https://github.com/filecoin-project/
 | `FIL_PATH`              | Use this variable to avoid setting `--repodir` flag by providing a default value.              |
 | `FIL_USE_SMALL_SECTORS` | Seal all sector data, as the proofs system only ever seals the first 127 bytes at the moment.  |
 | `GO_FILECOIN_LOG_LEVEL` | This sets the log level for stdout.                                                            |
+| `GO_FILECOIN_LOG_JSON`  | This sets the log format to json when its value is 1.                                          |
 
 ## Contributing 
 
