@@ -14,10 +14,12 @@ import (
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
+	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/node"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,6 +54,13 @@ func TestStorageProtocolBasic(t *testing.T) {
 	client := node.NodeWithChainSeed(t, seed)
 	minerAPI := impl.New(miner)
 
+	// TODO we need a principled way to construct an API that can be used both by node and by
+	// tests. It should enable selective replacement of dependencies.
+	sigGetter := mthdsigapi.NewGetter(miner.ChainReader)
+	msgSender := msgapi.NewSender(miner.Repo, miner.Wallet, miner.ChainReader, miner.MsgPool, miner.PubSub.Publish)
+	msgWaiter := msgapi.NewWaiter(miner.ChainReader, miner.Blockstore, miner.CborStore())
+	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
+
 	// Give the miner node the right private key, and set them up with
 	// the miner actor
 	seed.GiveKey(t, miner, 0)
@@ -78,7 +87,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 		},
 	)
 	c := NewClient(cni)
-	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner)
+	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner, plumbingAPI)
 	assert.NoError(err)
 	_ = m
 
@@ -126,6 +135,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 					assert.Equal(uint8(0), blk.MessageReceipts[i].ExitCode, "seal submission failed")
 					foundCommit = true
 					wg.Done()
+					break
 				}
 			}
 		}
@@ -136,6 +146,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 					assert.Equal(uint8(0), blk.MessageReceipts[i].ExitCode, "post submission failed")
 					foundPoSt = true
 					wg.Done()
+					break
 				}
 			}
 		}
