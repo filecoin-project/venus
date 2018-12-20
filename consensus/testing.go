@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -75,7 +76,7 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // NewValidTestBlockFromTipSet aims to create a block that will
 // pass consensus.validateMining
 func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr address.Address) *types.Block {
-	postProof := testhelpers.MakePoStProof()
+	postProof := MakePoStProof()
 	ticket := CreateTicket(postProof, minerAddr)
 
 	baseTsBlock := baseTipSet.ToSlice()[0]
@@ -92,4 +93,15 @@ func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr add
 		StateRoot:         stateRoot,
 		Proof:             postProof,
 	}
+}
+
+// MakePoStProof creates a random proof.
+func MakePoStProof() proofs.PoStProof {
+	p := testhelpers.MakeRandomBytes(192)
+	p[0] = 42
+	var postProof proofs.PoStProof
+	for idx, elem := range p {
+		postProof[idx] = elem
+	}
+	return postProof
 }

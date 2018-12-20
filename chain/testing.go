@@ -113,6 +113,7 @@ func MkFakeChildCore(parent consensus.TipSet,
 	}
 
 	newBlock := consensus.NewValidTestBlockFromTipSet(parent, height, minerAddress)
+
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
@@ -227,7 +228,7 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 		GenesisCid: genCid,
 		StateRoot:  lastBlock.StateRoot,
 		Parent:     baseTipSet,
-		MinerAddr: rewardAddress,
+		MinerAddr:  rewardAddress,
 	})
 	require.NoError(err)
 

@@ -296,21 +296,23 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 		return false, errors.Wrap(err, "Couldn't get totalPower")
 	}
 
-	myPower, err := ptv.Miner(ctx, st, bs, miner)
+	minerPower, err := ptv.Miner(ctx, st, bs, miner)
 	if err != nil {
 		return false, errors.Wrap(err, "Couldn't get minerPower")
 	}
 
+	return CompareTicketPower(ticket, minerPower, totalPower), nil
+}
+
+// CompareTicketPower abstracts the actual comparison logic so it can be used by some test
+// helpers
+func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower uint64) bool {
 	lhs := &big.Int{}
 	lhs.SetBytes(ticket)
-	fmt.Println("\n ------------ ticket value:         ", lhs.String())
-
 	lhs.Mul(lhs, big.NewInt(int64(totalPower)))
-	fmt.Println(" ------------ ticket * total power: ", lhs.String())
-
 	rhs := &big.Int{}
-	rhs.Mul(big.NewInt(int64(myPower)), ticketDomain)
-	return lhs.Cmp(rhs) < 0, nil
+	rhs.Mul(big.NewInt(int64(minerPower)), ticketDomain)
+	return lhs.Cmp(rhs) < 0
 }
 
 // CreateChallenge creates/recreates the block challenge for purposes of validation.

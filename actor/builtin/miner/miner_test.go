@@ -317,7 +317,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// submit post
-	proof := th.MakePoStProof()
+	proof := consensus.MakePoStProof()
 	res, err = applyMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", proof[:])
 	require.NoError(err)
 	require.NoError(res.ExecutionError)

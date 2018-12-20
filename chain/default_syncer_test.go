@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -458,6 +459,7 @@ func TestHeavierFork(t *testing.T) {
 
 // Syncer errors if blocks don't form a tipset
 func TestBlocksNotATipSet(t *testing.T) {
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -647,9 +649,10 @@ func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, b
 //
 // Therefore the syncer should set the head of the store to the union of the links..
 func TestHeaviestIsWidenedAncestor(t *testing.T) {
-	pt := &powerTableForWidenTest{}
+
 	assert := assert.New(t)
 	require := require.New(t)
+	pt := &powerTableForWidenTest{}
 	ctx := context.Background()
 	syncer, chain, cst, con := initSyncTestWithPowerTable(ctx, require, pt)
 
@@ -699,11 +702,11 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 func TestTipSetWeightDeep(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	ctx := context.Background()
+
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-
-	ctx := context.Background()
 
 	// set up genesis block with power
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
@@ -741,15 +744,19 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, weightDeepGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, weightDeepGenCid)
 	require.NoError(err)
+
 	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr1, cst, bs, weightDeepGenCid)
 	require.NoError(err)
+
 	addr2, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr2, cst, bs, weightDeepGenCid)
 	require.NoError(err)
+
 	addr3, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr3, cst, bs, weightDeepGenCid)
 	require.NoError(err)
 
 	// Now sync the chain with consensus using a MarketView.
 	prover = proofs.NewFakeProver(true, nil)
+
 	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, weightDeepGenCid, prover)
 	syncer = NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
@@ -786,13 +793,17 @@ func TestTipSetWeightDeep(t *testing.T) {
 		return con.Weight(ctx, ts, bootstrapSt)
 	}
 	f1b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b1.Miner = addr1
+	f1b1.Proof, f1b1.Ticket, err = makeWinningTicketProof(addr1, pwr1, 1000)
+	require.NoError(err)
+
 	f2b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1)},
+		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f2b1.Miner = addr2
+	f2b1.Proof, f2b1.Ticket, err = makeWinningTicketProof(addr2, pwr2, 1000)
+	require.NoError(err)
+
 	tsShared := consensus.RequireNewTipSet(require, f1b1, f2b1)
 
 	// Sync first tipset, should have weight 22 + starting
@@ -807,13 +818,17 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// fork 1 is heavier than the old head.
 	f1b2a := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b2a.Miner = addr1
+	f1b2a.Proof, f1b2a.Ticket, err = makeWinningTicketProof(addr1, pwr1, 1000)
+	require.NoError(err)
+
 	f1b2b := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1)},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f1b2b.Miner = addr2
+	f1b2b.Proof, f1b2b.Ticket, err = makeWinningTicketProof(addr2, pwr2, 1000)
+	require.NoError(err)
+
 	f1 := consensus.RequireNewTipSet(require, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(ctx, require, cst, f1.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, f1Cids)
@@ -827,9 +842,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1.
 	f2b2 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f2b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f2b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr3},
 		wFun)
-	f2b2.Miner = addr3
+
 	f2 := consensus.RequireNewTipSet(require, f2b2)
 	f2Cids := requirePutBlocks(ctx, require, cst, f2.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, f2Cids)
@@ -839,4 +854,19 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(err)
 	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(expectedWeight, measuredWeight)
+}
+
+func makeWinningTicketProof(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+	var postProof proofs.PoStProof
+	var ticket types.Signature
+
+	for i := 0; i < 300; i++ {
+		postProof = consensus.MakePoStProof()
+		ticket = consensus.CreateTicket(postProof, minerAddr)
+		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
+			return postProof, ticket, nil
+		}
+	}
+
+	return postProof, nil, errors.New("couldn't find a proof")
 }

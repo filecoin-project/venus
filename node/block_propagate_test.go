@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
@@ -60,7 +59,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 
 	baseTS := nodes[0].ChainReader.Head()
 	require.NotNil(t, baseTS)
-	proof := testhelpers.MakePoStProof()
+	proof := consensus.MakePoStProof()
 
 	nextBlk := &types.Block{
 		Miner:             minerAddr,
