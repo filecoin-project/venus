@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -112,14 +113,20 @@ var msgWaitCmd = &cmds.Command{
 		}
 
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
-		api := GetAPI(env)
 
 		var found bool
-		err = api.Message().Wait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error {
+
+		err = GetPlumbingAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+			sig, err2 := GetPlumbingAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
+			if err2 != nil && err2 != mthdsigapi.ErrNoMethod && err2 != mthdsigapi.ErrNoActorImpl {
+				return errors.Wrap(err2, "Couldn't get signature for message")
+			}
+
 			res := waitResult{
-				Message:   msg,
-				Receipt:   receipt,
-				Signature: signature,
+				Message: msg,
+				Receipt: receipt,
+				// Signature is required to decode the output.
+				Signature: sig,
 			}
 			re.Emit(&res) // nolint: errcheck
 			found = true

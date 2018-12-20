@@ -24,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -62,11 +61,10 @@ type storageDealState struct {
 	state *DealResponse
 }
 
-// node is the interface of what we actually need from the node.
-// TODO: is there a better way to do this? maybe at least a better name?
+// node is subset of node on which this protocol depends. These deps
+// are moving off of node and into the plumbing api (see PlumbingAPI). Eventually this
+// dependency on node should go away, fully replaced by the dependency on the plumbing api.
 type node interface {
-	WaitForMessage(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	GetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error)
 	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
 	SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) ([]interface{}, error)

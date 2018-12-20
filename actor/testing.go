@@ -26,6 +26,10 @@ var _ exec.ExecutableActor = (*FakeActor)(nil)
 
 // FakeActorExports are the exports of the fake actor.
 var FakeActorExports = exec.Exports{
+	"hasReturnValue": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Address},
+	},
 	"returnRevertError": &exec.FunctionSignature{
 		Params: nil,
 		Return: nil,
@@ -79,6 +83,11 @@ func (ma *FakeActor) InitializeState(storage exec.Storage, initializerData inter
 // Exports returns the list of fake actor exported functions.
 func (ma *FakeActor) Exports() exec.Exports {
 	return FakeActorExports
+}
+
+// HasReturnValue is a dummy method that does nothing.
+func (ma *FakeActor) HasReturnValue(ctx exec.VMContext) (address.Address, uint8, error) {
+	return address.Address{}, 0, nil
 }
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a

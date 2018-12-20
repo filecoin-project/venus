@@ -53,6 +53,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 //
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
+// https://github.com/filecoin-project/go-filecoin/issues/1518
 func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	var emptyErr error
 	ctx = log.Start(ctx, "Waiter.Wait")

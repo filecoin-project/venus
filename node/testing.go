@@ -9,9 +9,6 @@ import (
 	"sync"
 	"testing"
 
-	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/proofs"
-
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	pstore "gx/ipfs/QmQAGG1zxfePqj2t7bLxyN8AFccZ889DDR9Gn8kVLDrGZo/go-libp2p-peerstore"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -24,12 +21,15 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
+	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -448,13 +448,13 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error {
 		newGenBlk.Cid(),
 		proofs.NewFakeProver(true, nil))
 	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
-	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer
-	node.MessageWaiter = newMsgWaiter
+	newSigGetter := mthdsigapi.NewGetter(newChainReader)
+	newMsgWaiter := message.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	newMsgSender := message.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
-	node.PlumbingAPI = api2impl.New(newMsgSender)
+	node.PlumbingAPI = api2impl.New(newSigGetter, newMsgSender, newMsgWaiter)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)

@@ -309,31 +309,6 @@ func TestUpdateMessagePool(t *testing.T) {
 	node.Stop(ctx)
 }
 
-func TestGetSignature(t *testing.T) {
-	require := require.New(t)
-	t.Parallel()
-	t.Run("no method", func(t *testing.T) {
-		ctx := context.Background()
-		assert := assert.New(t)
-
-		nd := MakeOfflineNode(t)
-		nodeAddr, err := nd.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		requireResetNodeGen(require, nd, tif)
-
-		assert.NoError(nd.Start(ctx))
-		defer nd.Stop(ctx)
-
-		sig, err := nd.GetSignature(ctx, nodeAddr, "")
-		assert.Equal(ErrNoMethod, err)
-		assert.Nil(sig)
-	})
-}
-
 func TestOptionWithError(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

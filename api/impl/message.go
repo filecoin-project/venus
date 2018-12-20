@@ -3,14 +3,12 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type nodeMessage struct {
@@ -32,8 +30,9 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 	}
 
 	// get signature for return value
-	signature, err := nd.GetSignature(ctx, to, method)
-	if err != nil && err != node.ErrNoMethod {
+	sigGetter := mthdsigapi.NewGetter(nd.ChainReader)
+	sig, err := sigGetter.Get(ctx, to, method)
+	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to determine return type")
 	}
 
@@ -53,18 +52,5 @@ func (api *nodeMessage) Query(ctx context.Context, from, to address.Address, met
 		return nil, nil, errors.Errorf("non-zero return from query: %d", ec)
 	}
 
-	return retVals, signature, nil
-}
-
-func (api *nodeMessage) Wait(ctx context.Context, msgCid cid.Cid, cb func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt, signature *exec.FunctionSignature) error) error {
-	nd := api.api.node
-
-	return nd.WaitForMessage(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
-		signature, err := nd.GetSignature(ctx, msg.To, msg.Method)
-		if err != nil && err != node.ErrNoMethod {
-			return errors.Wrap(err, "unable to determine return type")
-		}
-
-		return cb(blk, msg, receipt, signature)
-	})
+	return retVals, sig, nil
 }

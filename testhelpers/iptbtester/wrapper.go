@@ -7,10 +7,11 @@ import (
 	"reflect"
 	"testing"
 
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/stretchr/testify/require"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -149,21 +150,24 @@ func (tn *TestNode) MustRunCmd(ctx context.Context, args ...string) (stdout, std
 	if err != nil {
 		tn.T.Fatalf("IPTB runCmd function failed: %s", err)
 	}
-	// did the command exit with nonstandard exit code?
-	if out.ExitCode() > 0 {
-		tn.T.Fatalf("TestNode command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
-	}
 
 	stdo, err := ioutil.ReadAll(out.Stdout())
 	if err != nil {
 		tn.T.Fatal("Failed to read stdout")
 	}
+	stdos := string(stdo)
 	stde, err := ioutil.ReadAll(out.Stderr())
 	if err != nil {
 		tn.T.Fatal("Failed to read stderr")
 	}
+	stdes := string(stde)
 
-	return string(stdo), string(stde)
+	// did the command exit with nonstandard exit code?
+	if out.ExitCode() > 0 {
+		tn.T.Fatalf("TestNode command: %s, exited with non-zero exitcode: %d\nStdout: %s\nStderr:%s\n", out.Args(), out.ExitCode(), stdos, stdes)
+	}
+
+	return stdos, stdes
 }
 
 // MustRunCmdJSON runs `args` against TestNode. The '--enc=json' flag is appened to the command specified by `args`,

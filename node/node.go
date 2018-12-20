@@ -41,10 +41,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/message"
@@ -68,8 +68,6 @@ var filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
 var log = logging.Logger("node") // nolint: deadcode
 
 var (
-	// ErrNoMethod is returned when processing a message that does not have a method.
-	ErrNoMethod = errors.New("no method in message")
 	// ErrNoRepo is returned when the configs repo is nil
 	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 	// ErrNoMinerAddress is returned when the node is not configured to have any miner addresses.
@@ -88,8 +86,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	PlumbingAPI   api2.Plumbing
-	MessageWaiter *message.Waiter
+	PlumbingAPI api2.Plumbing
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -300,7 +297,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if !ok {
 		return nil, errors.New("failed to cast chain.Store to chain.ReadStore")
 	}
-	messageWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
@@ -314,31 +310,32 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
+	sigGetter := mthdsigapi.NewGetter(chainReader)
 	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	plumbingAPI := api2impl.New(msgSender)
+	msgWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
+	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	nd := &Node{
-		blockservice:  bservice,
-		Blockstore:    bs,
-		cborStore:     &cstOffline,
-		OnlineStore:   &cstOnline,
-		Consensus:     consensus,
-		ChainReader:   chainReader,
-		Syncer:        chainSyncer,
-		PowerTable:    powerTable,
-		PlumbingAPI:   plumbingAPI,
-		MessageWaiter: messageWaiter,
-		Exchange:      bswap,
-		host:          peerHost,
-		MsgPool:       msgPool,
-		OfflineMode:   nc.OfflineMode,
-		PeerHost:      peerHost,
-		Ping:          pinger,
-		PubSub:        fsub,
-		Repo:          nc.Repo,
-		Wallet:        fcWallet,
-		blockTime:     nc.BlockTime,
-		Router:        router,
+		blockservice: bservice,
+		Blockstore:   bs,
+		cborStore:    &cstOffline,
+		OnlineStore:  &cstOnline,
+		Consensus:    consensus,
+		ChainReader:  chainReader,
+		Syncer:       chainSyncer,
+		PowerTable:   powerTable,
+		PlumbingAPI:  plumbingAPI,
+		Exchange:     bswap,
+		host:         peerHost,
+		MsgPool:      msgPool,
+		OfflineMode:  nc.OfflineMode,
+		PeerHost:     peerHost,
+		Ping:         pinger,
+		PubSub:       fsub,
+		Repo:         nc.Repo,
+		Wallet:       fcWallet,
+		blockTime:    nc.BlockTime,
+		Router:       router,
 	}
 
 	// Bootstrapping network peers.
@@ -736,7 +733,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 		return 0, errors.New("non-zero status code returned by getLastUsedSectorID")
 	}
 
-	methodSignature, err := node.GetSignature(ctx, minerAddr, "getLastUsedSectorID")
+	methodSignature, err := node.PlumbingAPI.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to get method signature for getLastUsedSectorID")
 	}
@@ -820,48 +817,9 @@ func (node *Node) StopMining(ctx context.Context) {
 	// TODO: stop node.StorageMiner
 }
 
-// GetSignature fetches the signature for the given method on the appropriate actor.
-func (node *Node) GetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	ctx = log.Start(ctx, "Node.GetSignature")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
-	st, err := node.ChainReader.LatestState(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load state tree")
-	}
-
-	actor, err := st.GetActor(ctx, actorAddr)
-	if err != nil || !actor.Code.Defined() {
-		return nil, errors.Wrap(err, "failed to get actor")
-	}
-
-	executable, err := st.GetBuiltinActorCode(actor.Code)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load actor code")
-	}
-
-	if method == "" {
-		// this is allowed if it is a transfer only case
-		return nil, ErrNoMethod
-	}
-
-	export, ok := executable.Exports()[method]
-	if !ok {
-		return nil, fmt.Errorf("missing export: %s", method)
-	}
-
-	return export, nil
-}
-
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (address.Address, error) {
 	return wallet.NewAddress(node.Wallet)
-}
-
-// WaitForMessage waits for a message to appear on chain.
-func (node *Node) WaitForMessage(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	return node.MessageWaiter.Wait(ctx, msgCid, cb)
 }
 
 // CallQueryMethod calls a method on an actor using the state of the heaviest
@@ -935,7 +893,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	}
 
 	var minerAddress address.Address
-	err = node.WaitForMessage(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
+	err = node.PlumbingAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
@@ -981,7 +939,7 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 				return nil, errors.Wrap(err, "failed to add message to mempool")
 			}
 
-			err = node.WaitForMessage(
+			err = node.PlumbingAPI.MessageWait(
 				ctx,
 				msgCid,
 				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
@@ -989,7 +947,8 @@ func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to
 						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
 					}
 
-					signature, err := node.GetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
+					signature, err := node.PlumbingAPI.ActorGetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
+					// Note: GetSignature could fail if the To is an empty actor or a transfer. This is likely a bug.
 					if err != nil {
 						return err
 					}

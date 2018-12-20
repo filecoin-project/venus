@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -15,22 +17,36 @@ import (
 type PlumbingAPI struct {
 	logger logging.EventLogger
 
+	sigGetter *mthdsigapi.Getter
 	msgSender *message.Sender
+	msgWaiter *message.Waiter
 }
 
 // Assert that plumbingAPI fullfills the api.Plumbing interface.
 var _ api2.Plumbing = (*PlumbingAPI)(nil)
 
 // New constructs a new instance of the API.
-func New(msgSender *message.Sender) *PlumbingAPI {
+func New(sigGetter *mthdsigapi.Getter, msgSender *message.Sender, msgWaiter *message.Waiter) *PlumbingAPI {
 	return &PlumbingAPI{
 		logger: logging.Logger("api2"),
 
+		sigGetter: sigGetter,
 		msgSender: msgSender,
+		msgWaiter: msgWaiter,
 	}
+}
+
+// ActorGetSignature implements GetSignature from api2.Actor.
+func (p *PlumbingAPI) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+	return p.sigGetter.Get(ctx, actorAddr, method)
 }
 
 // MessageSend implements MessageSend from api2.Message.
 func (p *PlumbingAPI) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
 	return p.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+}
+
+// MessageWait implements MessageWait from api2.Message.
+func (p *PlumbingAPI) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	return p.msgWaiter.Wait(ctx, msgCid, cb)
 }

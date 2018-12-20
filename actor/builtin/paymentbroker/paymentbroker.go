@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -128,7 +127,7 @@ var paymentBrokerExports = exec.Exports{
 // CreateChannel creates a new payment channel from the caller to the target.
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
-func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
+func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
 	// require that from account be an account actor to ensure nonce is a valid id
 	if !vmctx.IsFromAccountActor() {
 		return nil, errors.CodeError(Errors[ErrNonAccountActor]), Errors[ErrNonAccountActor]
@@ -186,7 +185,7 @@ func (pb *Actor) CreateChannel(vmctx *vm.Context, target address.Address, eol *t
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
 	data := createVoucherSignatureData(chid, amt)
 	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
@@ -233,7 +232,7 @@ func (pb *Actor) Redeem(vmctx *vm.Context, payer address.Address, chid *types.Ch
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(vmctx *vm.Context, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
 	data := createVoucherSignatureData(chid, amt)
 	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
@@ -284,7 +283,7 @@ func (pb *Actor) Close(vmctx *vm.Context, payer address.Address, chid *types.Cha
 
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channels lifespan.
-func (pb *Actor) Extend(vmctx *vm.Context, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
+func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
@@ -330,7 +329,7 @@ func (pb *Actor) Extend(vmctx *vm.Context, chid *types.ChannelID, eol *types.Blo
 
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
-func (pb *Actor) Reclaim(vmctx *vm.Context, chid *types.ChannelID) (uint8, error) {
+func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
@@ -371,7 +370,7 @@ func (pb *Actor) Reclaim(vmctx *vm.Context, chid *types.ChannelID) (uint8, error
 
 // Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
 // It errors if the channel doesn't exist or contains less than request amount.
-func (pb *Actor) Voucher(vmctx *vm.Context, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
+func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
@@ -427,7 +426,7 @@ func (pb *Actor) Voucher(vmctx *vm.Context, chid *types.ChannelID, amount *types
 
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
-func (pb *Actor) Ls(vmctx *vm.Context, payer address.Address) ([]byte, uint8, error) {
+func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	channels := map[string]*PaymentChannel{}
@@ -465,7 +464,7 @@ func (pb *Actor) Ls(vmctx *vm.Context, payer address.Address) ([]byte, uint8, er
 	return channelsBytes, 0, nil
 }
 
-func updateChannel(ctx *vm.Context, target address.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
+func updateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
@@ -495,7 +494,7 @@ func updateChannel(ctx *vm.Context, target address.Address, channel *PaymentChan
 	return nil
 }
 
-func reclaim(ctx context.Context, vmctx *vm.Context, byChannelID exec.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx context.Context, vmctx exec.VMContext, byChannelID exec.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
