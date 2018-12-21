@@ -73,8 +73,8 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 	return true
 }
 
-// NewValidTestBlockFromTipSet aims to create a block that will
-// pass consensus.validateMining
+// NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
+// to be correct
 func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr address.Address) *types.Block {
 	postProof := MakePoStProof()
 	ticket := CreateTicket(postProof, minerAddr)

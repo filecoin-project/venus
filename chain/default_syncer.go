@@ -320,7 +320,6 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 	// FYI the two biggest concurrency concerns at present would be addressed
 	// by locking after collectChain completes, so my hunch is this can be
 	// fixed by simply moving the lock call below collectChain.
-	logSyncer.Debugf("HandleNewBlocks: %s", types.NewSortedCidSet(blkCids...).String())
 
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()

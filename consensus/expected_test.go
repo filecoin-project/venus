@@ -145,7 +145,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
-		assert.EqualError(err, "couldn't compute ticket: Couldn't get minerPower: something went wrong with the miner power")
+		assert.EqualError(err, "can't check for winning ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
 

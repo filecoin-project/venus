@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	mrand "math/rand"
 	"testing"
@@ -116,7 +115,6 @@ func MkFakeChildCore(parent consensus.TipSet,
 	newBlock.ParentWeightNum = types.Uint64(nW)
 	newBlock.ParentWeightDenom = types.Uint64(dW)
 	newBlock.Nonce = types.Uint64(nonce)
-	newBlock.StateRoot = stateRoot
 
 	return newBlock, nil
 }
@@ -166,7 +164,17 @@ func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Stor
 // CreateMinerWithPower uses storage market functionality to mine the messages needed to create a miner, ask, bid, and deal, and then commit that deal to give the miner power.
 // If the power is nil, this method will just create the miner.
 // The returned block and nonce should be used in subsequent calls to this method.
-func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress address.Address, power uint64, cst *hamt.CborIpldStore, bs bstore.Blockstore, genCid cid.Cid) (address.Address, *types.Block, uint64, error) {
+func CreateMinerWithPower(ctx context.Context,
+	t *testing.T,
+	syncer Syncer,
+	lastBlock *types.Block,
+	sn types.MockSigner,
+	nonce uint64,
+	rewardAddress address.Address,
+	power uint64,
+	cst *hamt.CborIpldStore,
+	bs bstore.Blockstore,
+	genCid cid.Cid) (address.Address, *types.Block, uint64, error) {
 	require := require.New(t)
 
 	pledge := power
@@ -179,8 +187,10 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 	// create miner
 	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), storagemarket.MinimumCollateral(&bigIntPledge))
 	require.NoError(err)
-	fmt.Printf("create miner\n")
-	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, genCid)
+
+	ptv := consensus.NewTestPowerTableView(power, 1000)
+
+	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, ptv, genCid)
 	nonce++
 
 	require.Equal(uint8(0), b.MessageReceipts[0].ExitCode)
@@ -205,7 +215,7 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 		nonce++
 	}
 
-	b = RequireMineOnce(ctx, t, syncer, cst, bs, b, rewardAddress, msgs, genCid)
+	b = RequireMineOnce(ctx, t, syncer, cst, bs, b, rewardAddress, msgs, ptv, genCid)
 	for _, r := range b.MessageReceipts {
 		require.Equal(uint8(0), r.ExitCode)
 	}
@@ -213,22 +223,39 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 	return minerAddr, b, nonce, nil
 }
 
-// RequireMineOnce process one block and panic on error.  TODO ideally this
-// should be wired up to the block generation functionality in the mining
-// sub-package.
-func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt.CborIpldStore, bs bstore.Blockstore, lastBlock *types.Block, rewardAddress address.Address, msgs []*types.SignedMessage, genCid cid.Cid) *types.Block {
+// RequireMineOnce process one block and panic on error.
+// TODO ideally this should be wired up to the block generation functionality in the mining sub-package.
+func RequireMineOnce(ctx context.Context,
+	t *testing.T,
+	syncer Syncer,
+	cst *hamt.CborIpldStore,
+	bs bstore.Blockstore,
+	lastBlock *types.Block,
+	rewardAddress address.Address,
+	msgs []*types.SignedMessage,
+	ptv consensus.PowerTableView,
+	genCid cid.Cid) *types.Block {
 	require := require.New(t)
 
-	// Make a partially correct block for processing.
+	// Make a block for processing.
 	baseTipSet := consensus.RequireNewTipSet(require, lastBlock)
 
-	// TODO: does this need a MinerAddr?
+	// WARNING this assumes a test power table view, not a real one!!!
+	totalPower, err := ptv.Total(ctx, nil, bs)
+	require.NoError(err)
+	minerPower, err := ptv.Miner(ctx, nil, bs, rewardAddress)
+	require.NoError(err)
+	// WARNING
+
 	b, err := MkFakeChild(FakeChildParams{
 		GenesisCid: genCid,
 		StateRoot:  lastBlock.StateRoot,
 		Parent:     baseTipSet,
 		MinerAddr:  rewardAddress,
 	})
+	require.NoError(err)
+
+	b.Proof, b.Ticket, err = MakeWinningTicketProof(rewardAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	// Get the updated state root after applying messages.
@@ -251,16 +278,30 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 		b.MessageReceipts = append(b.MessageReceipts, r.Receipt)
 	}
 	b.StateRoot = newStateRoot
-	b.Miner = rewardAddress
 
 	// Sync the block.
 	c, err := cst.Put(ctx, b)
 	require.NoError(err)
-	fmt.Printf("new block parent weight num: %v, parent weight den: %v\n", b.ParentWeightNum, b.ParentWeightDenom)
 	err = syncer.HandleNewBlocks(ctx, []cid.Cid{c})
 	require.NoError(err)
 
 	return b
+}
+
+// MakeWinningTicketProof attempts to make a ticket & proof that will pass validateMining
+func MakeWinningTicketProof(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+	var postProof proofs.PoStProof
+	var ticket types.Signature
+
+	for i := 0; i < 300; i++ {
+		postProof = consensus.MakePoStProof()
+		ticket = consensus.CreateTicket(postProof, minerAddr)
+		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
+			return postProof, ticket, nil
+		}
+	}
+
+	return postProof, nil, errors.New("could not calculate a proof")
 }
 
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the
