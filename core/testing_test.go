@@ -1,5 +1,6 @@
 package core_test
 
+// FIXME: https://github.com/filecoin-project/go-filecoin/issues/1541
 /*import (
 	"context"
 	"testing"

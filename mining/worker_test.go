@@ -3,7 +3,6 @@ package mining
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"testing"
 
@@ -45,13 +44,10 @@ func Test_Mine(t *testing.T) {
 	doSomeWorkCalled := false
 	worker.createPoST = func() { doSomeWorkCalled = true }
 	go worker.Mine(ctx, tipSet, 0, outCh)
-	fmt.Printf("before mine fin\n")
 	r := <-outCh
-	fmt.Printf("after mine fin\n")
 	assert.NoError(r.Err)
 	assert.True(doSomeWorkCalled)
 	cancel()
-	fmt.Printf("finished first \n")
 	// Block generation fails.
 	ctx, cancel = context.WithCancel(context.Background())
 	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.ApplyMessages, NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)

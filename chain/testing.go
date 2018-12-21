@@ -256,8 +256,11 @@ func RequireMineOnce(ctx context.Context,
 	})
 	require.NoError(err)
 
-	b.Proof, b.Ticket, err = MakeWinningTicketProof(rewardAddress, minerPower, totalPower)
-	require.NoError(err)
+	// proofs & tickets for minerPower = 0 aren't needed
+	if minerPower > 0 {
+		b.Proof, b.Ticket, err = MakeWinningTicketProof(rewardAddress, minerPower, totalPower)
+		require.NoError(err)
+	}
 
 	// Get the updated state root after applying messages.
 	st, err := state.LoadStateTree(ctx, cst, lastBlock.StateRoot, builtin.Actors)
@@ -398,6 +401,8 @@ func getWinningMinerCount(n int, p float64) int {
 // where n = num_miners and p = 1/n.  Concretely this distribution corresponds to
 // the configuration where all miners havwe the same storage power.
 // Precondition: the starting tipset must be in the store.
+// FIXME: Unused - https://github.com/filecoin-project/go-filecoin/issues/1541
+// this function is called only in a commented-out test -- of itself -- which fails anyway.
 func AddChainBinomBlocksPerEpoch(ctx context.Context, chain Store, start []*types.Block, numMiners, length int) (consensus.TipSet, error) {
 	var cids types.SortedCidSet
 	for _, blk := range start {

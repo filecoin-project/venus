@@ -789,45 +789,28 @@ func TestTipSetWeightDeep(t *testing.T) {
 	requireHead(require, chain, calcGenTS)
 	requireTsAdded(require, chain, calcGenTS)
 
-	weightDeepGenBlk := calcGenBlk
-	//require.NoError(err)
-	//weightDeepGenBlk.StateRoot = genStateRoot
-	weightDeepGenCid := calcGenBlk.Cid()
-	//weightDeepTS := consensus.RequireNewTipSet(require, weightDeepGenBlk)
-
-	//con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid, prover)
-	//syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)  // last returned is a Repo
-
-	//genTsas := &TipSetAndState{
-	//	TipSet:          weightDeepTS,
-	//	TipSetStateRoot: weightDeepStateRoot,
-	//}
-	//RequirePutTsas(ctx, require, chain, genTsas)
-	//err = chain.SetHead(ctx, weightDeepTS) // Initialize chain store with correct genesis
-	//require.NoError(err)
-	//requireHead(require, chain, weightDeepTS)
-	//requireTsAdded(require, chain, weightDeepTS)
+	calcGenBlkCid := calcGenBlk.Cid()
 
 	// Bootstrap the storage market using a syncer with consensus using a
 	// TestView.
 	// pwr1, pwr2 = 1/100. pwr3 = 98/100.
 	pwr1, pwr2, pwr3 := uint64(10), uint64(10), uint64(980)
 
-	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, weightDeepGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, weightDeepGenCid)
+	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, calcGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
-	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr1, cst, bs, weightDeepGenCid)
+	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr1, cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
-	addr2, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr2, cst, bs, weightDeepGenCid)
+	addr2, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr2, cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
-	addr3, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr3, cst, bs, weightDeepGenCid)
+	addr3, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr3, cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
 	// Now sync the chain with consensus using a MarketView.
 	prover = proofs.NewFakeProver(true, nil)
-	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, weightDeepGenCid, prover)
+	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, calcGenBlkCid, prover)
 	syncer = NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))
@@ -863,13 +846,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 		return con.Weight(ctx, ts, bootstrapSt)
 	}
 	f1b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
+		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
 	f1b1.Proof, f1b1.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f2b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
+		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
 	f2b1.Proof, f2b1.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
 	require.NoError(err)
@@ -888,13 +871,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// fork 1 is heavier than the old head.
 	f1b2a := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
 	f1b2a.Proof, f1b2a.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f1b2b := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
 	f1b2b.Proof, f1b2b.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
 	require.NoError(err)
@@ -912,7 +895,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1.
 	f2b2 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f2b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr3},
+		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr3},
 		wFun)
 
 	f2 := consensus.RequireNewTipSet(require, f2b2)
