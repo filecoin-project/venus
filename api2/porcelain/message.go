@@ -66,6 +66,8 @@ func MessageSendWithRetry(ctx context.Context, plumbing plumbing, numRetries uin
 		} else if found {
 			return nil
 		}
+		// TODO should probably remove the old message from the message queue?
+		// TODO could keep a list of preivous message cids in case one of them shows up.
 	}
 
 	return errors.Wrapf(err, "failed to send message after waiting %v for each of %d retries ", waitDuration, numRetries)
