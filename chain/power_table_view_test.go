@@ -48,12 +48,14 @@ func TestMiner(t *testing.T) {
 func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bstore.Blockstore, address.Address, state.Tree) {
 
 	// set up genesis block with power
-	bootstrapPowerTable := consensus.NewTestPowerTableView(1, 1)
 	require := require.New(t)
 
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
+
+	// BEGIN Lifted from default_syncer_test.go
+	// set up genesis block with power
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
 	testAddress := mockSigner.Addresses[0]
@@ -62,26 +64,36 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 
-	genBlk, err := testGen(cst, bs)
+	// chain.Store
+	calcGenBlk, err := testGen(cst, bs) // flushes state
 	require.NoError(err)
-	genCid := genBlk.Cid()
-	genesisTS := consensus.RequireNewTipSet(require, genBlk)
-	genRoot := genBlk.StateRoot
+	chainDS := r.ChainDatastore()
+	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
+	// chain.Syncer
 	prover := proofs.NewFakeProver(true, nil)
-	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid, prover)
-	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
+	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, calcGenBlk.Cid(), prover)
+	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
+	// Initialize stores to contain genesis block and state
+	calcGenTS := consensus.RequireNewTipSet(require, calcGenBlk)
 	genTsas := &TipSetAndState{
-		TipSet:          genesisTS,
-		TipSetStateRoot: genRoot,
+		TipSet:          calcGenTS,
+		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
 	RequirePutTsas(ctx, require, chain, genTsas)
-	err = chain.SetHead(ctx, genesisTS) // Initialize chain store with correct genesis
+	err = chain.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
 	require.NoError(err)
-	requireHead(require, chain, genesisTS)
-	requireTsAdded(require, chain, genesisTS)
-	addrMine, _, _, err := CreateMinerWithPower(ctx, t, syncer, genBlk, mockSigner, uint64(0), mockSigner.Addresses[0], power, cst, bs, genCid)
+	requireHead(require, chain, calcGenTS)
+	requireTsAdded(require, chain, calcGenTS)
+
+	calcGenBlkCid := calcGenBlk.Cid()
+	// END Lifted from default_syncer_test.go
+
+	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, calcGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, calcGenBlkCid)
+	require.NoError(err)
+
+	addrMine, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, power, cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
 	st, err := chain.LatestState(ctx)
