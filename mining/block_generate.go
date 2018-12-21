@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -44,22 +43,14 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	blockHeight := baseHeight + nullBlockCount + 1
-	rewardMsg := types.NewMessage(address.NetworkAddress, w.minerAddr, 0, consensus.BlockRewardAmount(), "", nil)
-	srewardMsg := &types.SignedMessage{
-		Message:   *rewardMsg,
-		Signature: nil,
-		GasPrice:  types.NewGasPrice(0),
-		GasLimit:  types.NewGasCost(0),
-	}
 
 	pending := w.messagePool.Pending()
-	messages := make([]*types.SignedMessage, len(pending)+1)
-	messages[0] = srewardMsg // Reward message must come first since this is a part of the consensus rules
+	messages := make([]*types.SignedMessage, len(pending))
 
-	copy(messages[1:], core.OrderMessagesByNonce(pending))
+	copy(messages, core.OrderMessagesByNonce(pending))
 
 	vms := vm.NewStorageMap(w.blockstore)
-	res, err := w.applyMessages(ctx, messages, stateTree, vms, types.NewBlockHeight(blockHeight))
+	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerAddr, types.NewBlockHeight(blockHeight))
 	if err != nil {
 		return nil, errors.Wrap(err, "generate apply messages")
 	}
@@ -89,24 +80,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
 	}
-
-	var rewardSuccessful bool
-	for _, msg := range res.SuccessfulMessages {
-		if msg == srewardMsg {
-			rewardSuccessful = true
-		}
-	}
-	if !rewardSuccessful {
-		for _, e := range res.PermanentErrors {
-			log.Errorf("reward message debug, permanent error: ", e)
-		}
-		for _, e := range res.TemporaryErrors {
-			log.Errorf("reward message debug, temporary error: ", e)
-		}
-		return nil, errors.New("mining reward message failed")
-	}
-
-	// Mining reward message succeeded -- side effects okay below this point.
 
 	// TODO: Should we really be pruning the message pool here at all? Maybe this should happen elsewhere.
 	for i, msg := range res.PermanentFailures {

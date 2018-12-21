@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -71,12 +72,13 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
 	// chain.Syncer
+	processor := testhelpers.NewTestProcessor()
 	prover := proofs.NewFakeProver(true, nil)
-	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, calcGenBlk.Cid(), prover)
+	con := consensus.NewExpected(cst, bs, processor, &testhelpers.TestView{}, calcGenBlk.Cid(), prover)
 	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain genesis block and state
-	calcGenTS := consensus.RequireNewTipSet(require, calcGenBlk)
+	calcGenTS := testhelpers.RequireNewTipSet(require, calcGenBlk)
 	genTsas := &TipSetAndState{
 		TipSet:          calcGenTS,
 		TipSetStateRoot: calcGenBlk.StateRoot,

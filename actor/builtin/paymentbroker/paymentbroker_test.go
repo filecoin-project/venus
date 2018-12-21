@@ -55,7 +55,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	pdata := core.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.NoError(result.ExecutionError)
 
@@ -73,27 +73,6 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	assert.Equal(types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
 	assert.Equal(target, channel.Target)
 	assert.Equal(types.NewBlockHeight(10), channel.Eol)
-}
-
-func TestPaymentBrokerCreateChannelFromNonAccountActorIsAnError(t *testing.T) {
-	require := require.New(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	payee := address.NewForTestGetter()()
-	_, st, vms := requireGenesis(ctx, t, payee)
-
-	// Create a non-account actor
-	payerActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(2000))
-	payer := address.NewForTestGetter()()
-	state.MustSetActor(st, payer, payerActor)
-
-	pdata := core.MustConvertParams(payee, big.NewInt(10))
-	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
-	_, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
-
-	// expect error
-	require.Error(err)
 }
 
 func TestPaymentBrokerUpdate(t *testing.T) {
@@ -496,7 +475,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
 	}
@@ -640,7 +619,7 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 }
 
 func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.ApplicationResult, error) {
-	return consensus.ApplyMessage(sys.ctx, sys.st, sys.vms, msg, types.NewBlockHeight(height))
+	return th.ApplyTestMessage(sys.st, sys.vms, msg, types.NewBlockHeight(height))
 }
 
 func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {

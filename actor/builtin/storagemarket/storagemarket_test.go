@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -31,7 +30,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 	pid := th.RequireRandomPeerID()
 	pdata := actor.MustConvertParams(big.NewInt(10), []byte{}, pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createMiner", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Nil(result.ExecutionError)
 
@@ -64,7 +63,7 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 	pdata := actor.MustConvertParams(pledge, []byte{}, th.RequireRandomPeerID())
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, MinimumCollateral(pledge), "createMiner", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
 	assert.NoError(err)
 	require.NotNil(result.ExecutionError)
@@ -80,7 +79,7 @@ func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 	pdata := actor.MustConvertParams(big.NewInt(15000), []byte{}, th.RequireRandomPeerID())
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "createMiner", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
 	assert.NoError(err)
 	require.NotNil(result.ExecutionError)
@@ -100,13 +99,13 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	require.NoError(err)
 
 	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(big.NewInt(15), []byte{}, th.RequireRandomPeerID())
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
-	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.Equal(uint8(0), result.Receipt.ExitCode)
 	require.NoError(result.ExecutionError)
@@ -135,7 +134,7 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 	pdata := actor.MustConvertParams(big.NewInt(15), publicKey, th.RequireRandomPeerID())
 
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createMiner", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(err)
 	assert.Contains(result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
 }

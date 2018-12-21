@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -40,7 +41,7 @@ func TestChainHead(t *testing.T) {
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
 
-		chainStore.SetHead(ctx, consensus.RequireNewTipSet(require, blk))
+		chainStore.SetHead(ctx, testhelpers.RequireNewTipSet(require, blk))
 
 		api := New(n)
 		out, err := api.Chain().Head()
@@ -64,9 +65,9 @@ func TestChainHead(t *testing.T) {
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
 
-		newTipSet := consensus.RequireNewTipSet(require, blk)
-		consensus.RequireTipSetAdd(require, blk2, newTipSet)
-		consensus.RequireTipSetAdd(require, blk3, newTipSet)
+		newTipSet := testhelpers.RequireNewTipSet(require, blk)
+		testhelpers.RequireTipSetAdd(require, blk2, newTipSet)
+		testhelpers.RequireTipSetAdd(require, blk3, newTipSet)
 
 		someErr := chainStore.SetHead(ctx, newTipSet)
 		require.NoError(someErr)
@@ -98,7 +99,7 @@ func TestChainLsRun(t *testing.T) {
 		require.NoError(err)
 
 		chlBlock := types.NewBlockForTest(genBlock, 1)
-		chlTS := consensus.RequireNewTipSet(require, chlBlock)
+		chlTS := testhelpers.RequireNewTipSet(require, chlBlock)
 		err = chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 			TipSet:          chlTS,
 			TipSetStateRoot: chlBlock.StateRoot,
@@ -136,7 +137,7 @@ func TestChainLsRun(t *testing.T) {
 
 		chainStore, ok := n.ChainReader.(chain.Store)
 		require.True(ok)
-		chlTS := consensus.RequireNewTipSet(require, chlBlock)
+		chlTS := testhelpers.RequireNewTipSet(require, chlBlock)
 		err := chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 			TipSet:          chlTS,
 			TipSetStateRoot: chlBlock.StateRoot,

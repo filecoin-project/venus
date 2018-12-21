@@ -2,7 +2,7 @@ package consensus
 
 import (
 	"context"
-	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -13,16 +13,60 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// Processor is the signature of a function used to process blocks.
-type Processor func(ctx context.Context, blk *types.Block, st state.Tree, vms vm.StorageMap) ([]*ApplicationResult, error)
+// SignedMessageValidator validates incoming signed messages.
+// This validation includes things like the message signature, it's nonce, that it comes from a valid actor, etc.
+type SignedMessageValidator interface {
+	// Validate validates that the given message is ready to be processed.
+	Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error
+}
 
-// TipSetProcessor is the signature of a function used to process tipsets
-type TipSetProcessor func(ctx context.Context, ts TipSet, st state.Tree, vms vm.StorageMap) (*ProcessTipSetResponse, error)
+// BlockRewarder applies all rewards due to the miner for processing a block including block reward and gas
+type BlockRewarder interface {
+	// PayBlockReward pays out the mining reward
+	BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error
+}
 
-var (
-	// ErrIncorrectBlockReward is returned when processing a block reward higher than allowed.
-	ErrIncorrectBlockReward = xerrors.New("block reward incorrect")
-)
+// ApplicationResult contains the result of successfully applying one message.
+// ExecutionError might be set and the message can still be applied successfully.
+// See ApplyMessage() for details.
+type ApplicationResult struct {
+	Receipt        *types.MessageReceipt
+	ExecutionError error
+}
+
+// ProcessTipSetResponse records the results of successfully applied messages,
+// and the sets of successful and failed message cids.  Information of successes
+// and failues is key for helping match user messages with receipts in the case
+// of message conflicts.
+type ProcessTipSetResponse struct {
+	Results   []*ApplicationResult
+	Successes types.SortedCidSet
+	Failures  types.SortedCidSet
+}
+
+// DefaultProcessor handles all block processing.
+type DefaultProcessor struct {
+	signedMessageValidator SignedMessageValidator
+	blockRewarder          BlockRewarder
+}
+
+var _ Processor = (*DefaultProcessor)(nil)
+
+// NewDefaultProcessor creates a default processor from the given state tree and vms.
+func NewDefaultProcessor() *DefaultProcessor {
+	return &DefaultProcessor{
+		signedMessageValidator: NewDefaultMessageValidator(),
+		blockRewarder:          NewDefaultBlockRewarder(),
+	}
+}
+
+// NewConfiguredProcessor creates a default processor with custom validation and rewards.
+func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewarder) *DefaultProcessor {
+	return &DefaultProcessor{
+		signedMessageValidator: validator,
+		blockRewarder:          rewarder,
+	}
+}
 
 // ProcessBlock is the entrypoint for validating the state transitions
 // of the messages in a block. When we receive a new block from the
@@ -51,11 +95,11 @@ var (
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.StorageMap) ([]*ApplicationResult, error) {
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
 
 	bh := types.NewBlockHeight(uint64(blk.Height))
-	res, faultErr := ApplyMessages(ctx, blk.Messages, st, vms, bh)
+	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blk.Messages, blk.Miner, bh)
 	if faultErr != nil {
 		return emptyResults, faultErr
 	}
@@ -68,35 +112,6 @@ func ProcessBlock(ctx context.Context, blk *types.Block, st state.Tree, vms vm.S
 	return res.Results, nil
 }
 
-func isRewardMessage(smsg *types.SignedMessage) bool {
-	return smsg.Signature == nil && smsg.Message.From == address.NetworkAddress
-}
-
-// BlockRewardAmount returns the max FIL value miners can claim as the block reward.
-// TODO this is one of the system parameters that should be configured as part of
-// https://github.com/filecoin-project/go-filecoin/issues/884.
-func BlockRewardAmount() *types.AttoFIL {
-	return types.NewAttoFILFromFIL(1000)
-}
-
-// ApplicationResult contains the result of successfully applying one message.
-// A message can return an error and still be applied successfully.
-// See ApplyMessage() for details.
-type ApplicationResult struct {
-	Receipt        *types.MessageReceipt
-	ExecutionError error
-}
-
-// ProcessTipSetResponse records the results of successfully applied messages,
-// and the sets of successful and failed message cids.  Information of successes
-// and failues is key for helping match user messages with receipts in the case
-// of message conflicts
-type ProcessTipSetResponse struct {
-	Results   []*ApplicationResult
-	Successes types.SortedCidSet
-	Failures  types.SortedCidSet
-}
-
 // ProcessTipSet computes the state transition specified by the messages in all
 // blocks in a TipSet.  It is similar to ProcessBlock with a few key differences.
 // Most importantly ProcessTipSet relies on the precondition that each input block
@@ -106,7 +121,7 @@ type ProcessTipSetResponse struct {
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.StorageMap) (*ProcessTipSetResponse, error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (*ProcessTipSetResponse, error) {
 	var res ProcessTipSetResponse
 	var emptyRes ProcessTipSetResponse
 	h, err := ts.Height()
@@ -138,7 +153,7 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.Storage
 			// TODO is there ever a reason to try a duplicate failed message again within the same tipset?
 			msgFilter[mCid.String()] = struct{}{}
 		}
-		amRes, err := ApplyMessages(ctx, msgs, st, vms, bh)
+		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, blk.Miner, bh)
 		if err != nil {
 			return &emptyRes, err
 		}
@@ -242,11 +257,11 @@ func ProcessTipSet(ctx context.Context, ts TipSet, st state.Tree, vms vm.Storage
 //   - callees must call GetOrCreate on the cache to create a new actor that will be persisted
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
-//     actor-actor logic goes in VMContext.Send
-func ApplyMessage(ctx context.Context, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*ApplicationResult, error) {
+//     actor-actor logic goes in VMContext.Send.
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
-	r, err := attemptApplyMessage(ctx, cachedStateTree, store, msg, bh)
+	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh)
 	if err == nil {
 		err = cachedStateTree.Commit(ctx)
 		if err != nil {
@@ -262,7 +277,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, store vm.StorageMap, msg *
 	var executionError error
 	if err == errFromAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
-	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
+	} else if err == errInsufficientGas || err == errSelfSend || err == errInvalidSignature || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: megacheck
 		// Return the executionError to caller for informational purposes, but otherwise
@@ -295,6 +310,8 @@ var (
 	errNonceTooHigh        = errors.NewRevertError("nonce too high")
 	errNonceTooLow         = errors.NewRevertError("nonce too low")
 	errNonAccountActor     = errors.NewRevertError("message from non-account actor")
+	errInsufficientGas     = errors.NewRevertError("balance insufficient to cover transfer+gas")
+	errInvalidSignature    = errors.NewRevertError("invalid signature by sender over message data")
 	// TODO we'll eventually handle sending to self.
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
@@ -320,7 +337,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 		Params: params,
 	}
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, optBh)
+	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), types.NewGasCost(0), optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err
@@ -328,10 +345,10 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 
 // attemptApplyMessage encapsulates the work of trying to apply the message in order
 // to make ApplyMessage more readable. The distinction is that attemptApplyMessage
-// should deal with trying got apply the message to the state tree whereas
+// should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return nil, errFromAccountNotFound
@@ -339,9 +356,17 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}
 
-	if msg.From == msg.To {
-		// TODO: handle this
-		return nil, errSelfSend
+	// processing an external message from an empty actor upgrades it to an account actor.
+	if !fromActor.Code.Defined() {
+		err := account.UpgradeActor(fromActor)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
+		}
+	}
+
+	err = p.signedMessageValidator.Validate(ctx, msg, fromActor, bh)
+	if err != nil {
+		return nil, err
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
@@ -354,30 +379,7 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
-	// processing an exernal message from an empty actor upgrades it to an account actor.
-	if !fromActor.Code.Defined() {
-		err = account.UpgradeActor(fromActor)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
-		}
-	}
-
-	// if from actor is not an account actor revert message
-	if !fromActor.Code.Equals(types.AccountActorCodeCid) {
-		return nil, errNonAccountActor
-	}
-
-	if msg.From != address.NetworkAddress && msg.Nonce < fromActor.Nonce {
-		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
-		return nil, errNonceTooLow
-	}
-
-	if msg.From != address.NetworkAddress && msg.Nonce > fromActor.Nonce {
-		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
-		return nil, errNonceTooHigh
-	}
-
-	vmCtx := vm.NewVMContext(fromActor, toActor, msg, st, store, bh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, msg.GasPrice, msg.GasLimit, bh)
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
@@ -388,7 +390,7 @@ func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.Sto
 	}
 
 	// :( - necessary because go slices aren't covariant and we need to convert
-	// from [][]byte to []Bytes
+	// from [][]byte to []Bytes.
 	for _, b := range ret {
 		receipt.Return = append(receipt.Return, b)
 	}
@@ -409,29 +411,24 @@ type ApplyMessagesResponse struct {
 	TemporaryErrors []error
 }
 
-// ApplyMessages applies messages to a state tree.  It returns an
-// ApplyMessagesResponse which wraps the results of message application,
+// ApplyMessagesAndPayRewards begins by paying the block mining reward to the miner. It then applies messages to a state tree.
+// It returns an ApplyMessagesResponse which wraps the results of message application,
 // groupings of messages with permanent failures, temporary failures, and
 // successes, and the permanent and temporary errors raised during application.
 // ApplyMessages will return an error iff a fault message occurs.
 // Precondition: signatures of messages are checked by the caller.
-func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
+func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 
-	for i, smsg := range messages {
-		// If first message is reward message, verify it is correct.
-		// TODO: we do not enforce that first message must be reward,
-		// should we?
-		if i == 0 && isRewardMessage(smsg) {
-			if smsg.Message.Value.GreaterThan(BlockRewardAmount()) {
-				return emptyRet, ErrIncorrectBlockReward
-			}
-		} else if !smsg.VerifySignature() {
-			return emptyRet, types.ErrInvalidSignature
-		}
+	// transfer block reward to miner from network address.
+	if err := p.blockRewarder.BlockReward(ctx, st, minerAddr); err != nil {
+		return ApplyMessagesResponse{}, err
+	}
 
-		r, err := ApplyMessage(ctx, st, vms, &smsg.Message, bh)
+	// process all messages
+	for _, smsg := range messages {
+		r, err := p.ApplyMessage(ctx, st, vms, smsg, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
@@ -452,4 +449,98 @@ func ApplyMessages(ctx context.Context, messages []*types.SignedMessage, st stat
 		}
 	}
 	return ret, nil
+}
+
+// DefaultMessageValidator validates that a message coming in from the network is valid.
+type DefaultMessageValidator struct{}
+
+// NewDefaultMessageValidator creates a new DefaultMessageValidator.
+func NewDefaultMessageValidator() *DefaultMessageValidator {
+	return &DefaultMessageValidator{}
+}
+
+var _ SignedMessageValidator = (*DefaultMessageValidator)(nil)
+
+// Validate validates that the given message is ready to be processed.
+func (nmv *DefaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+	if !msg.VerifySignature() {
+		return errInvalidSignature
+	}
+
+	if msg.From == msg.To {
+		// TODO: handle this
+		return errSelfSend
+	}
+
+	// sender must be an account actor.
+	if !fromActor.Code.Equals(types.AccountActorCodeCid) {
+		return errNonAccountActor
+	}
+
+	// avoid processing messages for actors that cannot pay.
+	if !canCoverGasLimit(msg, fromActor) {
+		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)
+		return errInsufficientGas
+	}
+
+	if msg.Nonce < fromActor.Nonce {
+		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		return errNonceTooLow
+	}
+
+	if msg.Nonce > fromActor.Nonce {
+		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		return errNonceTooHigh
+	}
+
+	return nil
+}
+
+// DefaultBlockRewarder pays the block reward from the network actor to the miner.
+type DefaultBlockRewarder struct{}
+
+// NewDefaultBlockRewarder creates a new rewarder that actually pays the appropriate rewards.
+func NewDefaultBlockRewarder() *DefaultBlockRewarder {
+	return &DefaultBlockRewarder{}
+}
+
+var _ BlockRewarder = (*DefaultBlockRewarder)(nil)
+
+// BlockReward transfers the block reward from the network actor to the miner.
+func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+	cachedTree := state.NewCachedStateTree(st)
+	if err := rewardTransfer(ctx, address.NetworkAddress, minerAddr, br.BlockRewardAmount(), cachedTree); err != nil {
+		return errors.FaultErrorWrap(err, "Error attempting to pay block reward")
+	}
+	return cachedTree.Commit(ctx)
+}
+
+// BlockRewardAmount returns the max FIL value miners can claim as the block reward.
+// TODO this is one of the system parameters that should be configured as part of
+// https://github.com/filecoin-project/go-filecoin/issues/884.
+func (br *DefaultBlockRewarder) BlockRewardAmount() *types.AttoFIL {
+	return types.NewAttoFILFromFIL(1000)
+}
+
+// rewardTransfer retrieves two actors from the given addresses and attempts to transfer the given value from the balance of the first's to the second.
+func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value *types.AttoFIL, st *state.CachedTree) error {
+	fromActor, err := st.GetActor(ctx, fromAddr)
+	if err != nil {
+		return errors.FaultErrorWrap(err, "could not retrieve from actor for reward transfer.")
+	}
+
+	toActor, err := st.GetOrCreateActor(ctx, toAddr, func() (*actor.Actor, error) {
+		return &actor.Actor{}, nil
+	})
+	if err != nil {
+		return errors.FaultErrorWrap(err, "failed to get To actor")
+	}
+
+	return vm.Transfer(fromActor, toActor, value)
+}
+
+// returns true if the maximum gas charge does not exceed the actor's balance after message value has been subtracted.
+func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
+	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
+	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
 }

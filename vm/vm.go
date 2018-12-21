@@ -5,7 +5,6 @@ package vm
 
 import (
 	"context"
-
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -17,7 +16,7 @@ import (
 // will always satisfy either ShouldRevert() or IsFault().
 func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
 	deps := sendDeps{
-		transfer: transfer,
+		transfer: Transfer,
 	}
 
 	return send(ctx, deps, vmCtx)
@@ -65,7 +64,8 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 	return nil, code, err
 }
 
-func transfer(fromActor, toActor *actor.Actor, value *types.AttoFIL) error {
+// Transfer transfers the given value between two actors.
+func Transfer(fromActor, toActor *actor.Actor, value *types.AttoFIL) error {
 	if value.IsNegative() {
 		return errors.Errors[errors.ErrCannotTransferNegativeValue]
 	}

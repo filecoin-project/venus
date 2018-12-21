@@ -80,7 +80,7 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	assert, require, ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := consensus.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(require, blk2)
 
 	checkNullBlocks := 0
 	checkNullBlockMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
@@ -121,9 +121,9 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 	var checkTS consensus.TipSet
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := consensus.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(require, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
-	ts3 := consensus.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(require, blk3)
 	var head consensus.TipSet
 	headFunc := func() consensus.TipSet {
 		return head
@@ -157,9 +157,9 @@ func TestSchedulerCollect(t *testing.T) {
 	assert, require, ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := consensus.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(require, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts3 := consensus.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(require, blk3)
 	var head consensus.TipSet
 	headFunc := func() consensus.TipSet {
 		return head
@@ -250,9 +250,9 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	}
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := consensus.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(require, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
-	ts3 := consensus.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(require, blk3)
 
 	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(inTS, checkTS)

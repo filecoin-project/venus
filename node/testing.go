@@ -148,9 +148,9 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 }
 
 // MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
-func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, initopts ...InitOpt) *Node { // nolint: golint
+func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, configopts []ConfigOpt, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
-	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, InitOpts: initopts}
+	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, ConfigOpts: configopts, InitOpts: initopts}
 	return GenNode(t, &tno)
 }
 
@@ -291,12 +291,12 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		return node.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
 	cur := node.ChainReader.Head()
 	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(err)
 	require.NoError(out.Err)
-	outTS := consensus.RequireNewTipSet(require, out.NewBlock)
+	outTS := testhelpers.RequireNewTipSet(require, out.NewBlock)
 	chainStore, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 	tsas := &chain.TipSetAndState{
@@ -352,6 +352,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 	}
 	newCon := consensus.NewExpected(node.CborStore(),
 		node.Blockstore,
+		consensus.NewDefaultProcessor(),
 		node.PowerTable,
 		newGenBlk.Cid(),
 		proofs.NewFakeProver(true, nil))

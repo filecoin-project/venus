@@ -58,9 +58,10 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	powerTableView := &consensus.TestView{}
+	powerTableView := &th.TestView{}
 	con := consensus.NewExpected(cst,
 		bs,
+		th.NewTestProcessor(),
 		powerTableView,
 		params.GenesisCid,
 		proofs.NewFakeProver(true, nil))
@@ -105,12 +106,8 @@ func MkFakeChildCore(parent consensus.TipSet,
 	height := pHeight + uint64(1) + nullBlockCount
 
 	pIDs := parent.ToSortedCidSet()
-	if !stateRoot.Defined() {
-		// valid empty state transition if parent has no mes
-		stateRoot = parent.ToSlice()[0].StateRoot
-	}
 
-	newBlock := consensus.NewValidTestBlockFromTipSet(parent, height, minerAddress)
+	newBlock := th.NewValidTestBlockFromTipSet(parent, height, minerAddress)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
@@ -189,7 +186,7 @@ func CreateMinerWithPower(ctx context.Context,
 	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), storagemarket.MinimumCollateral(&bigIntPledge))
 	require.NoError(err)
 
-	ptv := consensus.NewTestPowerTableView(power, 1000)
+	ptv := th.NewTestPowerTableView(power, 1000)
 
 	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, ptv, genCid)
 	nonce++
@@ -239,7 +236,7 @@ func RequireMineOnce(ctx context.Context,
 	require := require.New(t)
 
 	// Make a block for processing.
-	baseTipSet := consensus.RequireNewTipSet(require, lastBlock)
+	baseTipSet := th.RequireNewTipSet(require, lastBlock)
 
 	// WARNING this assumes a test power table view, not a real one!!!
 	totalPower, err := ptv.Total(ctx, nil, bs)
@@ -270,7 +267,7 @@ func RequireMineOnce(ctx context.Context,
 	require.NoError(err)
 	b.Messages = append(b.Messages, msgs...)
 
-	results, err := consensus.ProcessBlock(ctx, b, st, vms)
+	results, err := th.NewTestProcessor().ProcessBlock(ctx, st, vms, b)
 	require.NoError(err)
 	err = vms.Flush()
 	require.NoError(err)
@@ -299,7 +296,7 @@ func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, tot
 	var ticket types.Signature
 
 	for i := 0; i < 1000; i++ {
-		postProof = consensus.MakeRandomPoSTProofForTest()
+		postProof = th.MakeRandomPoSTProofForTest()
 		ticket = consensus.CreateTicket(postProof, minerAddr)
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
 			return postProof, ticket, nil

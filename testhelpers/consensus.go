@@ -1,15 +1,17 @@
-package consensus
+package testhelpers
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"testing"
 )
 
 // TestView is an implementation of stateView used for testing the chain
@@ -17,7 +19,7 @@ import (
 // stores 1 byte and all miners store 0 bytes regardless of inputs.
 type TestView struct{}
 
-var _ PowerTableView = &TestView{}
+var _ consensus.PowerTableView = &TestView{}
 
 // Total always returns 1.
 func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
@@ -36,15 +38,15 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) TipSet {
-	ts, err := NewTipSet(blks...)
+func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) consensus.TipSet {
+	ts, err := consensus.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
 }
 
 // RequireTipSetAdd adds a block to the provided tipset and requires that this
 // does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts TipSet) {
+func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts consensus.TipSet) {
 	err := ts.AddBlock(blk)
 	require.NoError(err)
 }
@@ -75,9 +77,9 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr address.Address) *types.Block {
+func NewValidTestBlockFromTipSet(baseTipSet consensus.TipSet, height uint64, minerAddr address.Address) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
-	ticket := CreateTicket(postProof, minerAddr)
+	ticket := consensus.CreateTicket(postProof, minerAddr)
 
 	baseTsBlock := baseTipSet.ToSlice()[0]
 	stateRoot := baseTsBlock.StateRoot
@@ -96,11 +98,73 @@ func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr add
 
 // MakeRandomPoSTProofForTest creates a random proof.
 func MakeRandomPoSTProofForTest() proofs.PoStProof {
-	p := testhelpers.MakeRandomBytes(192)
+	p := MakeRandomBytes(192)
 	p[0] = 42
 	var postProof proofs.PoStProof
 	for idx, elem := range p {
 		postProof[idx] = elem
 	}
 	return postProof
+}
+
+// TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type TestSignedMessageValidator struct{}
+
+var _ consensus.SignedMessageValidator = (*TestSignedMessageValidator)(nil)
+
+// Validate always returns nil
+func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+	return nil
+}
+
+// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+type TestBlockRewarder struct{}
+
+var _ consensus.BlockRewarder = (*TestBlockRewarder)(nil)
+
+// BlockReward is a noop
+func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+	// do nothing to keep state root the same
+	return nil
+}
+
+// NewTestProcessor creates a processor with a test validator and test rewarder
+func NewTestProcessor() *consensus.DefaultProcessor {
+	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+}
+
+type testSigner struct{}
+
+func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return types.Signature{}, nil
+}
+
+// ApplyTestMessage sends a message directly to the vm, bypassing message validation
+func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasCost(0))
+	if err != nil {
+		panic(err)
+	}
+
+	ta := newTestApplier()
+	amr, err := ta.ApplyMessagesAndPayRewards(context.Background(), st, store, []*types.SignedMessage{smsg}, address.Address{}, bh)
+
+	if len(amr.Results) > 0 {
+		return amr.Results[0], err
+	}
+
+	return nil, err
+}
+
+// CreateAndApplyTestMessage wraps the given parameters in a message and calls ApplyTestMessage
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, params ...interface{}) (*consensus.ApplicationResult, error) {
+	t.Helper()
+
+	pdata := actor.MustConvertParams(params...)
+	msg := types.NewMessage(address.TestAddress, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
+	return ApplyTestMessage(st, vms, msg, types.NewBlockHeight(bh))
+}
+
+func newTestApplier() *consensus.DefaultProcessor {
+	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
 }

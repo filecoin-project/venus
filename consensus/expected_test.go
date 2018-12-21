@@ -3,11 +3,13 @@ package consensus_test
 import (
 	"context"
 	"encoding/hex"
+
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,8 +28,8 @@ func TestNewExpected(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore, prover := setupCborBlockstoreProofs()
-		ptv := consensus.NewTestPowerTableView(1, 5)
-		exp := consensus.NewExpected(cst, bstore, ptv, types.SomeCid(), prover)
+		ptv := testhelpers.NewTestPowerTableView(1, 5)
+		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
 		assert.NotNil(exp)
 	})
 }
@@ -36,16 +38,17 @@ func TestNewExpected(t *testing.T) {
 func TestExpected_NewValidTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
 	ctx := context.Background()
 	cistore, bstore, prover := setupCborBlockstoreProofs()
-	ptv := consensus.NewTestPowerTableView(1, 5)
+	ptv := testhelpers.NewTestPowerTableView(1, 5)
 
 	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
 
 		genesisBlock, err := consensus.InitGenesis(cistore, bstore)
 		require.NoError(err)
 
-		exp := consensus.NewExpected(cistore, bstore, ptv, genesisBlock.Cid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, genesisBlock.Cid(), prover)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -75,7 +78,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		}
 		blocks[0].MessageReceipts = []*types.MessageReceipt{receipt}
 
-		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.Error(err, "Foo")
@@ -85,9 +88,9 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 func makeSomeBlocks(pTipSet consensus.TipSet) []*types.Block {
 	blocks := []*types.Block{
-		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("foo")),
-		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bar")),
-		consensus.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bazz")),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("foo")),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bar")),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bazz")),
 	}
 	return blocks
 }
@@ -110,8 +113,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		minerPower := uint64(1)
 		totalPower := uint64(1)
 
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower)
-		exp := consensus.NewExpected(cistore, bstore, ptv, genesisBlock.Cid(), prover)
+		ptv := testhelpers.NewTestPowerTableView(minerPower, totalPower)
+		exp := consensus.NewExpected(cistore, bstore, testhelpers.NewTestProcessor(), ptv, genesisBlock.Cid(), prover)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -131,7 +134,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 
 		ptv := NewFailingMinerTestPowerTableView(1, 5)
-		exp := consensus.NewExpected(cistore, bstore, ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -180,7 +183,7 @@ func TestIsWinningTicket(t *testing.T) {
 		var st state.Tree
 
 		for _, c := range cases {
-			ptv := consensus.NewTestPowerTableView(c.myPower, c.totalPower)
+			ptv := testhelpers.NewTestPowerTableView(c.myPower, c.totalPower)
 			ticket := [sha256.Size]byte{}
 			ticket[0] = c.ticket
 			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)

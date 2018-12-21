@@ -6,12 +6,12 @@ package mining
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -55,7 +55,11 @@ type GetStateTree func(context.Context, consensus.TipSet) (state.Tree, error)
 // expressed as two uint64s comprising a rational number.
 type GetWeight func(context.Context, consensus.TipSet) (uint64, error)
 
-type miningApplier func(ctx context.Context, messages []*types.SignedMessage, st state.Tree, vms vm.StorageMap, bh *types.BlockHeight) (consensus.ApplyMessagesResponse, error)
+// A MessageApplier processes all the messages in a message pool.
+type MessageApplier interface {
+	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (consensus.ApplyMessagesResponse, error)
+}
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
@@ -67,34 +71,34 @@ type DefaultWorker struct {
 	getWeight    GetWeight
 
 	// core filecoin things
-	messagePool   *core.MessagePool
-	applyMessages miningApplier
-	powerTable    consensus.PowerTableView
-	blockstore    blockstore.Blockstore
-	cstore        *hamt.CborIpldStore
-	blockTime     time.Duration
+	messagePool *core.MessagePool
+	processor   MessageApplier
+	powerTable  consensus.PowerTableView
+	blockstore  blockstore.Blockstore
+	cstore      *hamt.CborIpldStore
+	blockTime   time.Duration
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
-	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, applyMessages, powerTable, bs, cst, miner, bt, func() {})
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
+	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, processor, powerTable, bs, cst, miner, bt, func() {})
 	w.createPoST = w.fakeCreatePoST
 	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, applyMessages miningApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		getStateTree:  getStateTree,
-		getWeight:     getWeight,
-		messagePool:   messagePool,
-		applyMessages: applyMessages,
-		powerTable:    powerTable,
-		blockstore:    bs,
-		cstore:        cst,
-		createPoST:    createPoST,
-		minerAddr:     miner,
-		blockTime:     bt,
+		getStateTree: getStateTree,
+		getWeight:    getWeight,
+		messagePool:  messagePool,
+		processor:    processor,
+		powerTable:   powerTable,
+		blockstore:   bs,
+		cstore:       cst,
+		createPoST:   createPoST,
+		minerAddr:    miner,
+		blockTime:    bt,
 	}
 }
 
