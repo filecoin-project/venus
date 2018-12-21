@@ -9,11 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 
 	"github.com/stretchr/testify/require"
 )
@@ -160,15 +159,6 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}
 
-		// make some basic assertions about the output of
-		// SectorBuilder#SealedSectors()
-		sealedSectors, err := h.SectorBuilder.SealedSectors()
-		require.NoError(t, err)
-		require.Equal(t, len(sealedSectors), 5)
-		for _, meta := range sealedSectors {
-			require.NotEqual(t, 0, len(meta.Pieces))
-		}
-
 		pieceCidSet.Range(func(key, value interface{}) bool {
 			t.Fatalf("should have removed each piece from set as they were sealed (found %s)", key)
 			return false
@@ -219,15 +209,6 @@ func TestSectorBuilder(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, hex.EncodeToString(inputBytes), hex.EncodeToString(outputBytes))
-	})
-
-	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
-		h := NewBuilder(t).Build()
-		defer h.Close()
-
-		sealedSectors, err := h.SectorBuilder.SealedSectors()
-		require.NoError(t, err)
-		require.Equal(t, 0, len(sealedSectors))
 	})
 
 	t.Run("sector builder resumes polling for staged sectors even after a restart", func(t *testing.T) {

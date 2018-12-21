@@ -44,6 +44,8 @@ const (
 	PeerID
 	// SectorID is a uint64
 	SectorID
+	// CommitmentsMap is a map of stringified sector id (uint64) to commitments
+	CommitmentsMap
 )
 
 func (t Type) String() string {
@@ -72,6 +74,8 @@ func (t Type) String() string {
 		return "peer.ID"
 	case SectorID:
 		return "uint64"
+	case CommitmentsMap:
+		return "map[string]Commitments"
 	default:
 		return "<unknown type>"
 	}
@@ -109,6 +113,8 @@ func (av *Value) String() string {
 		return av.Val.(peer.ID).String()
 	case SectorID:
 		return fmt.Sprint(av.Val.(uint64))
+	case CommitmentsMap:
+		return fmt.Sprint(av.Val.(map[string]types.Commitments))
 	default:
 		return "<unknown type>"
 	}
@@ -201,6 +207,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return leb128.FromUInt64(n), nil
+	case CommitmentsMap:
+		m, ok := av.Val.(map[string]types.Commitments)
+		if !ok {
+			return nil, &typeError{map[string]types.Commitments{}, av.Val}
+		}
+
+		return cbor.DumpObject(m)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -238,6 +251,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: PeerID, Val: v})
 		case uint64:
 			out = append(out, &Value{Type: SectorID, Val: v})
+		case map[string]types.Commitments:
+			out = append(out, &Value{Type: CommitmentsMap, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -332,6 +347,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  leb128.ToUInt64(data),
 		}, nil
+
+	case CommitmentsMap:
+		var m map[string]types.Commitments
+		if err := cbor.DecodeInto(data, &m); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  m,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -340,17 +365,18 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address:     reflect.TypeOf(address.Address{}),
-	AttoFIL:     reflect.TypeOf(&types.AttoFIL{}),
-	Bytes:       reflect.TypeOf([]byte{}),
-	BytesAmount: reflect.TypeOf(&types.BytesAmount{}),
-	ChannelID:   reflect.TypeOf(&types.ChannelID{}),
-	BlockHeight: reflect.TypeOf(&types.BlockHeight{}),
-	Integer:     reflect.TypeOf(&big.Int{}),
-	String:      reflect.TypeOf(string("")),
-	UintArray:   reflect.TypeOf([]uint64{}),
-	PeerID:      reflect.TypeOf(peer.ID("")),
-	SectorID:    reflect.TypeOf(uint64(0)),
+	Address:        reflect.TypeOf(address.Address{}),
+	AttoFIL:        reflect.TypeOf(&types.AttoFIL{}),
+	Bytes:          reflect.TypeOf([]byte{}),
+	BytesAmount:    reflect.TypeOf(&types.BytesAmount{}),
+	ChannelID:      reflect.TypeOf(&types.ChannelID{}),
+	BlockHeight:    reflect.TypeOf(&types.BlockHeight{}),
+	Integer:        reflect.TypeOf(&big.Int{}),
+	String:         reflect.TypeOf(string("")),
+	UintArray:      reflect.TypeOf([]uint64{}),
+	PeerID:         reflect.TypeOf(peer.ID("")),
+	SectorID:       reflect.TypeOf(uint64(0)),
+	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

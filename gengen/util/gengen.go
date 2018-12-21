@@ -17,14 +17,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	peer "github.com/libp2p/go-libp2p-peer"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	dag "gx/ipfs/QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG/go-merkledag"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmXd5Ti3xJAEy32mgVqZa7Un9FuZqALzM3xuc3XFWy7e3L/go-car"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	car "gx/ipfs/QmXJvCikt5h24mb57JAUjaxGxSS6THnpgx81g7Ywpv9ZNd/go-car"
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	bserv "gx/ipfs/QmZ9PMwfBmywNgpxG7zRHKsAno76gMCBbKGBTVXbma44H7/go-blockservice"
 	mh "gx/ipfs/QmerPMzPk1mJVowm8KgmoknWa4yCYvvugMPsgWmDNUvDLW/go-multihash"
@@ -265,12 +265,16 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			// which is initialized to 0 and incremented (for the first sector) to 1
 			sectorID := i + 1
 
-			commR := make([]byte, 32)
 			commD := make([]byte, 32)
+			commR := make([]byte, 32)
+			commRStar := make([]byte, 32)
+			if _, err := pnrg.Read(commD[:]); err != nil {
+				return nil, err
+			}
 			if _, err := pnrg.Read(commR[:]); err != nil {
 				return nil, err
 			}
-			if _, err := pnrg.Read(commD[:]); err != nil {
+			if _, err := pnrg.Read(commRStar[:]); err != nil {
 				return nil, err
 			}
 			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)

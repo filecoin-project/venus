@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	unixfs "gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2/porcelain"
@@ -82,6 +84,15 @@ type node interface {
 	CborStore() *hamt.CborIpldStore
 }
 
+// generatePostInput is a struct containing sector id and related commitments
+// used to generate a proof-of-spacetime
+type generatePostInput struct {
+	commD     [types.CommitmentLength]byte
+	commR     [types.CommitmentLength]byte
+	commRStar [types.CommitmentLength]byte
+	sectorID  uint64
+}
+
 // NewMiner is
 func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, plumbingAPI plumbing) (*Miner, error) {
 	sm := &Miner{
@@ -90,6 +101,7 @@ func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd
 		deals:          make(map[cid.Cid]*storageDealState),
 		plumbingAPI:    plumbingAPI,
 		node:           nd,
+		plumbingAPI:    plumbingAPI,
 	}
 	sm.dealsAwaitingSeal = newDealsAwaitingSeal()
 	sm.dealsAwaitingSeal.onSuccess = sm.onCommitSuccess
@@ -360,13 +372,54 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 // OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
 // It is used to check if we are in a new proving period and need to trigger PoSt submission.
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
-	sectors, err := sm.node.SectorBuilder().SealedSectors()
+	ctx := context.Background()
+
+	rets, code, err := sm.node.CallQueryMethod(ctx, sm.minerAddr, "getSectorCommitments", []byte{}, nil)
 	if err != nil {
-		log.Errorf("failed to get sealed sector metadata: %s", err)
+		log.Errorf("failed to call query method getSectorCommitments: %s", err)
 		return
 	}
 
-	if len(sectors) == 0 {
+	if code != 0 {
+		log.Errorf("non-zero status code from getSectorCommitments")
+		return
+	}
+
+	sig, err := sm.plumbingAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
+	if err != nil {
+		log.Errorf("failed to get signature for method getSectorCommitments: %s", err)
+		return
+	}
+
+	commitmentsVal, err := abi.Deserialize(rets[0], sig.Return[0])
+	if err != nil {
+		log.Errorf("failed to convert returned ABI value: %s", err)
+		return
+	}
+
+	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
+	if !ok {
+		log.Errorf("failed to convert returned ABI value to miner.Commitments")
+		return
+	}
+
+	var inputs []generatePostInput
+	for k, v := range commitments {
+		n, err := strconv.ParseUint(k, 10, 64)
+		if err != nil {
+			log.Errorf("failed to parse commitment sector id to uint64: %s", err)
+			return
+		}
+
+		inputs = append(inputs, generatePostInput{
+			commD:     v.CommD,
+			commR:     v.CommR,
+			commRStar: v.CommRStar,
+			sectorID:  n,
+		})
+	}
+
+	if len(inputs) == 0 {
 		// no sector sealed, nothing to do
 		return
 	}
@@ -398,7 +451,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 		if h.LessThan(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodStart
-			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, sectors)
+			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -435,16 +488,16 @@ func generatePoSt(commRs [][32]byte, seed [32]byte) (proofs.PoStProof, []uint64,
 	return res.Proof, res.Faults, nil
 }
 
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuilder.SealedSectorMetadata) {
+func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePostInput) {
 	// TODO: real seed generation
 	seed := [32]byte{}
 	if _, err := rand.Read(seed[:]); err != nil {
 		panic(err)
 	}
 
-	commRs := make([][32]byte, len(sectors))
-	for i, sector := range sectors {
-		commRs[i] = sector.CommR
+	commRs := make([][32]byte, len(inputs))
+	for i, input := range inputs {
+		commRs[i] = input.commR
 	}
 
 	proof, faults, err := generatePoSt(commRs, seed)

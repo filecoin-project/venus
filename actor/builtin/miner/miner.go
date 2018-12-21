@@ -21,14 +21,10 @@ import (
 func init() {
 	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(Ask{})
-	cbor.RegisterCborType(Commitments{})
 }
 
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
-
-// CommitmentLength is the length of a single commitment (in bytes).
-const CommitmentLength = 32
 
 // ProofLength is the length of a single proof (in bytes).
 const ProofLength = 192
@@ -97,20 +93,18 @@ type State struct {
 	Asks      []*Ask
 	NextAskID *big.Int
 
-	// Sectors maps sectorID to commR and commD, for all sectors this miner has committed.
-	LastUsedSectorID uint64
-	Sectors          map[string]*Commitments
+	// SectorCommitments maps sector id to commitments, for all sectors this
+	// miner has committed. Due to a bug in refmt, the sector id-keys need to be
+	// stringified.
+	//
+	// See also: https://github.com/polydawn/refmt/issues/35
+	LastUsedSectorID  uint64
+	SectorCommitments map[string]types.Commitments
 
 	ProvingPeriodStart *types.BlockHeight
 	LastPoSt           *types.BlockHeight
 
 	Power *big.Int
-}
-
-// Commitments are the details we need to store about a sector we are proving.
-type Commitments struct {
-	CommR [CommitmentLength]byte
-	CommD [CommitmentLength]byte
 }
 
 // NewActor returns a new miner actor
@@ -121,14 +115,14 @@ func NewActor() *actor.Actor {
 // NewState creates a miner state struct
 func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL) *State {
 	return &State{
-		Owner:         owner,
-		PeerID:        pid,
-		PublicKey:     key,
-		PledgeSectors: pledge,
-		Collateral:    collateral,
-		Sectors:       make(map[string]*Commitments),
-		Power:         big.NewInt(0),
-		NextAskID:     big.NewInt(0),
+		Owner:             owner,
+		PeerID:            pid,
+		PublicKey:         key,
+		PledgeSectors:     pledge,
+		Collateral:        collateral,
+		SectorCommitments: make(map[string]types.Commitments),
+		Power:             big.NewInt(0),
+		NextAskID:         big.NewInt(0),
 	}
 }
 
@@ -182,7 +176,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes},
 		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -212,6 +206,10 @@ var minerExports = exec.Exports{
 	"getProvingPeriodStart": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight},
+	},
+	"getSectorCommitments": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.CommitmentsMap},
 	},
 }
 
@@ -360,15 +358,36 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 	return a, 0, nil
 }
 
+// GetSectorCommitments returns all sector commitments posted by this miner.
+func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.SectorCommitments, nil
+	})
+	if err != nil {
+		return map[string]types.Commitments{}, errors.CodeError(err), err
+	}
+
+	a, ok := out.(map[string]types.Commitments)
+	if !ok {
+		return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("expected a map[string]types.Commitments, but got %T instead", out)
+	}
+
+	return a, 0, nil
+}
+
 // CommitSector adds a commitment to the specified sector
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commR, commD []byte) (uint8, error) {
-	if len(commR) != CommitmentLength {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte) (uint8, error) {
+	if len(commD) != types.CommitmentLength {
+		return 0, errors.NewRevertError("invalid sized commD")
+	}
+	if len(commR) != types.CommitmentLength {
 		return 0, errors.NewRevertError("invalid sized commR")
 	}
-	if len(commD) != CommitmentLength {
-		return 0, errors.NewRevertError("invalid sized commR")
+	if len(commRStar) != types.CommitmentLength {
+		return 0, errors.NewRevertError("invalid sized commRStar")
 	}
 	// TODO: use uint64 instead of this abomination, once refmt is fixed
 	// https://github.com/polydawn/refmt/issues/35
@@ -381,7 +400,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commR, commD 
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
-		_, ok := state.Sectors[sectorIDstr]
+		_, ok := state.SectorCommitments[sectorIDstr]
 		if ok {
 			return nil, Errors[ErrSectorCommitted]
 		}
@@ -391,14 +410,16 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commR, commD 
 		}
 		inc := big.NewInt(1)
 		state.Power = state.Power.Add(state.Power, inc)
-		comms := &Commitments{
-			CommR: [CommitmentLength]byte{},
-			CommD: [CommitmentLength]byte{},
+		comms := types.Commitments{
+			CommD:     [types.CommitmentLength]byte{},
+			CommR:     [types.CommitmentLength]byte{},
+			CommRStar: [types.CommitmentLength]byte{},
 		}
-		copy(comms.CommR[:], commR)
 		copy(comms.CommD[:], commD)
+		copy(comms.CommR[:], commR)
+		copy(comms.CommRStar[:], commRStar)
 		state.LastUsedSectorID = sectorID
-		state.Sectors[sectorIDstr] = comms
+		state.SectorCommitments[sectorIDstr] = comms
 		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", nil, []interface{}{inc})
 		if err != nil {
 			return nil, err
