@@ -261,7 +261,7 @@ func ApplyMessage(ctx context.Context, st state.Tree, store vm.StorageMap, msg *
 
 	// Reject invalid state transitions.
 	var executionError error
-	if err == errAccountNotFound || err == errNonceTooHigh {
+	if err == errFromAccountNotFound || err == errNonceTooHigh {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
 	} else if err == errSelfSend || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
@@ -292,10 +292,10 @@ func ApplyMessage(ctx context.Context, st state.Tree, store vm.StorageMap, msg *
 var (
 	// These errors are only to be used by ApplyMessage; they shouldn't be
 	// used in any other context as they are an implementation detail.
-	errAccountNotFound = errors.NewRevertError("account not found")
-	errNonceTooHigh    = errors.NewRevertError("nonce too high")
-	errNonceTooLow     = errors.NewRevertError("nonce too low")
-	errNonAccountActor = errors.NewRevertError("message from non-account actor")
+	errFromAccountNotFound = errors.NewRevertError("from (sender) account not found")
+	errNonceTooHigh        = errors.NewRevertError("nonce too high")
+	errNonceTooLow         = errors.NewRevertError("nonce too low")
+	errNonAccountActor     = errors.NewRevertError("message from non-account actor")
 	// TODO we'll eventually handle sending to self.
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
@@ -335,7 +335,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 func attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
-		return nil, errAccountNotFound
+		return nil, errFromAccountNotFound
 	} else if err != nil {
 		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}

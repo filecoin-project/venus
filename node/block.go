@@ -56,6 +56,19 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (
 	}
 	log.SetTag(ctx, "block", blk)
 
+	// // TODO debugstring
+	// cid, err := unmarshaled.Cid()
+	// if err != nil {
+	// 	log.Error("Error getting cid for new message %v", unmarshaled)
+	// } else {
+	// 	js, err := json.MarshalIndent(unmarshaled, "", "  ")
+	// 	if err != nil {
+	// 		log.Error("Error json encoding new message")
+	// 	} else {
+	// 		log.Debug("Received new message %v, contents: %v", cid, string(js))
+	// 	}
+	// }
+
 	err = node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blk.Cid()})
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")

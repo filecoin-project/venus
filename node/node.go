@@ -371,6 +371,7 @@ func (node *Node) Start(ctx context.Context) error {
 	// Only set these up, if there is a miner configured.
 	if _, err := node.MiningAddress(); err == nil {
 		if err := node.setupMining(ctx); err != nil {
+			log.Error("setup mining failed: %v", err)
 			return err
 		}
 	}
@@ -603,6 +604,16 @@ func (node *Node) GetBlockTime() time.Duration {
 // SetBlockTime sets the block time.
 func (node *Node) SetBlockTime(blockTime time.Duration) {
 	node.blockTime = blockTime
+}
+
+// StartMining starts the node mining and logs an error if it cannot start.
+// We wrap starting in this free function to ensure an error is logged.
+func StartMining(ctx context.Context, node *Node) error {
+	err := node.StartMining(ctx)
+	if err != nil {
+		log.Error("StartMining failed: could not start mining: %v", err)
+	}
+	return err
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
