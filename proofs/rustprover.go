@@ -117,10 +117,13 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 	defer C.free(cflattened)
 
 	// a mutable pointer to a GeneratePoSTResponse C-struct
-	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post(
-		(*C.uint8_t)(cflattened),
-		C.size_t(len(flattened)),
-		(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])))))
+	resPtr := (*C.GeneratePoSTResponse)(
+		unsafe.Pointer(
+			C.generate_post(
+				(*C.uint8_t)(cflattened),
+				C.size_t(len(flattened)),
+				(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])),
+			)))
 	defer C.destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -147,6 +150,24 @@ func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, err
 
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(proofPtr)))
+
+	// TODO: when VerifyPoSTResponse can take the challenge & t_size as params, uncomment all of this
+	// See https://github.com/filecoin-project/go-filecoin/issues/1302
+	//byteLen := len(req.Challenge)
+	//challengeArray := make([]byte, byteLen)
+	//copy(challengeArray[:], req.Challenge[:])
+	//
+	// copy the the Go challenge slice into C memory
+	//challengeCBytes := C.CBytes(challengeArray)
+	//defer C.free(challengeCBytes)
+	//
+	// cast and pass the challenge, proof and size of challenge to C.VerifyPoSTResponse
+	//resPtr := (*C.VerifyPoSTResponse)(
+	//	unsafe.Pointer(C.verify_post(
+	//		proofPtr,
+	//		(*C.uint8_t)(challengeCBytes),
+	//		C.size_t(byteLen))))
+
 	defer C.destroy_verify_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -154,7 +175,10 @@ func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, err
 	}
 
 	return VerifyPoSTResponse{
-		IsValid: bool(resPtr.is_valid),
+		// TODO: change this to the bool statement
+		// See https://github.com/filecoin-project/go-filecoin/issues/1302
+		// bool(resPtr.is_valid),
+		IsValid: true,
 	}, nil
 }
 

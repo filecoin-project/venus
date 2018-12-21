@@ -25,7 +25,8 @@ func IsPoStValidWithProver(prover Prover, proof []byte, challenge []byte) (bool,
 	}
 
 	req := VerifyPoSTRequest{
-		Proof: PoStProof{},
+		Challenge: challenge,
+		Proof:     PoStProof{},
 	}
 
 	copy(req.Proof[:], proof[:])
