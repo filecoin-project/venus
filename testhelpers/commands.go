@@ -488,7 +488,7 @@ func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr str
 	wg.Add(1)
 
 	go func() {
-		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, "--price", "0", "--limit", "0", minerAddr, price, expiry)
+		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, "--price", "0", "--limit", "300", minerAddr, price, expiry)
 		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
 		require.NoError(td.test, err)
 		assert.NotNil(td.test, askCid)

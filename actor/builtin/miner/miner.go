@@ -222,6 +222,10 @@ func (ma *Actor) Exports() exec.Exports {
 // AddAsk adds an ask to this miners ask list
 func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		if ctx.Message().From != state.Owner {
@@ -268,6 +272,9 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.In
 // GetAsks returns all the asks for this miner. (TODO: this isnt a great function signature, it returns the asks in a
 // serialized array. Consider doing this some other way)
 func (ma *Actor) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		var askids []uint64
@@ -294,6 +301,10 @@ func (ma *Actor) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
 
 // GetAsk returns an ask by ID
 func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		var ask *Ask
@@ -325,6 +336,10 @@ func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, erro
 
 // GetOwner returns the miners owner.
 func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.Owner, nil
@@ -343,6 +358,9 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 
 // GetLastUsedSectorID returns the last used sector id.
 func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return 0, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.LastUsedSectorID, nil
@@ -361,6 +379,10 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 
 // GetSectorCommitments returns all sector commitments posted by this miner.
 func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.SectorCommitments, nil
@@ -381,6 +403,9 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
 func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte) (uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
 	if len(commD) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commD")
 	}
@@ -439,6 +464,10 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 // GetKey returns the public key for this miner.
 func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.PublicKey, nil
@@ -457,6 +486,10 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
 func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return peer.ID(""), exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 
 	chunk, err := ctx.ReadStorage()
@@ -473,6 +506,10 @@ func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 
 // UpdatePeerID is used to update the peerID this miner is operating under.
 func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var storage State
 	_, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
@@ -493,6 +530,10 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 
 // GetPledge returns the number of pledged sectors
 func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.PledgeSectors, nil
@@ -511,6 +552,10 @@ func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // GetPower returns the amount of proven sectors for this miner.
 func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		return state.Power, nil
@@ -530,6 +575,10 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
 func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	if len(proof) != PoStProofLength {
 		return 0, errors.NewRevertError("invalid sized proof")
 	}
@@ -590,6 +639,10 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 
 // GetProvingPeriodStart returns the current ProvingPeriodStart value.
 func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	chunk, err := ctx.ReadStorage()
 	if err != nil {
 		return nil, errors.CodeError(err), err

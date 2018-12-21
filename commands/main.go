@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/types"
 	"net"
 	"net/url"
@@ -303,9 +304,9 @@ func isConnectionRefused(err error) bool {
 }
 
 var priceOption = cmdkit.StringOption("price", "Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message")
-var limitOption = cmdkit.Int64Option("limit", "Maximum number of GasUnits this message is allowed to consume")
+var limitOption = cmdkit.Uint64Option("limit", "Maximum number of GasUnits this message is allowed to consume")
 
-func parseGasOptions(req *cmds.Request) (gasPrice types.AttoFIL, gasCost types.GasUnits, error error) {
+func parseGasOptions(req *cmds.Request) (gasPrice types.AttoFIL, gasLimit types.GasUnits, error error) {
 	priceOption := req.Options["price"]
 	if priceOption == nil {
 		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("price option is required")
@@ -316,12 +317,11 @@ func parseGasOptions(req *cmds.Request) (gasPrice types.AttoFIL, gasCost types.G
 		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
-	gasLimitInt, ok := req.Options["limit"].(int64)
+	gasLimitInt, ok := req.Options["limit"].(uint64)
+
 	if !ok {
-		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("invalid gas limit")
-	}
-	if gasLimitInt < 0 {
-		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("gas limit cannot be less than zero")
+		msg := fmt.Sprintf("invalid gas limit: %s", req.Options["limit"].(string))
+		return types.AttoFIL{}, types.NewGasUnits(0), errors.New(msg)
 	}
 
 	return *price, types.NewGasUnits(gasLimitInt), nil

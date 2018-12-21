@@ -22,8 +22,11 @@ type SignedMessageValidator interface {
 
 // BlockRewarder applies all rewards due to the miner for processing a block including block reward and gas
 type BlockRewarder interface {
-	// PayBlockReward pays out the mining reward
+	// BlockReward pays out the mining reward
 	BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error
+
+	// GasReward pays gas from the sender to the miner
+	GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -258,7 +261,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send.
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight) (*ApplicationResult, error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
 	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh)
@@ -271,6 +274,13 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, err
 	} else if !errors.ShouldRevert(err) {
 		return nil, errors.NewFaultError("someone is a bad programmer: only return revert and fault errors")
+	}
+
+	if r.GasAttoFIL.IsPositive() {
+		gasError := p.blockRewarder.GasReward(ctx, st, minerAddr, msg, r.GasAttoFIL)
+		if gasError != nil {
+			return nil, errors.NewFaultError("failed to transfer gas reward to miner")
+		}
 	}
 
 	// Reject invalid state transitions.
@@ -337,7 +347,10 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 		Params: params,
 	}
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), types.NewGasUnits(0), optBh)
+	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
+	gasLimit := types.NewGasUnits(types.MaxGasUnits)
+
+	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), gasLimit, types.NewGasUnits(0), optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err
@@ -351,7 +364,10 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight) (*types.MessageReceipt, error) {
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
-		return nil, errFromAccountNotFound
+		return &types.MessageReceipt{
+			ExitCode:   errors.CodeError(err),
+			GasAttoFIL: types.ZeroAttoFIL,
+		}, errFromAccountNotFound
 	} else if err != nil {
 		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}
@@ -366,7 +382,10 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 
 	err = p.signedMessageValidator.Validate(ctx, msg, fromActor, bh)
 	if err != nil {
-		return nil, err
+		return &types.MessageReceipt{
+			ExitCode:   errors.CodeError(err),
+			GasAttoFIL: types.ZeroAttoFIL,
+		}, err
 	}
 
 	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
@@ -379,14 +398,18 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, msg.GasPrice, msg.GasLimit, bh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, msg.GasPrice, msg.GasLimit, types.NewGasUnits(0), bh)
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
 	}
 
+	// compute gas charge
+	gasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(vmCtx.GasUnits())))
+
 	receipt := &types.MessageReceipt{
-		ExitCode: exitCode,
+		ExitCode:   exitCode,
+		GasAttoFIL: gasCharge,
 	}
 
 	// :( - necessary because go slices aren't covariant and we need to convert
@@ -428,7 +451,7 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 
 	// process all messages
 	for _, smsg := range messages {
-		r, err := p.ApplyMessage(ctx, st, vms, smsg, bh)
+		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerAddr, bh)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
@@ -511,6 +534,15 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 	cachedTree := state.NewCachedStateTree(st)
 	if err := rewardTransfer(ctx, address.NetworkAddress, minerAddr, br.BlockRewardAmount(), cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay block reward")
+	}
+	return cachedTree.Commit(ctx)
+}
+
+// GasReward transfers the gas cost reward from the sender actor to the miner
+func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas *types.AttoFIL) error {
+	cachedTree := state.NewCachedStateTree(st)
+	if err := rewardTransfer(ctx, msg.From, minerAddr, gas, cachedTree); err != nil {
+		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)
 }

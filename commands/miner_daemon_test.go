@@ -2,15 +2,17 @@ package commands
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 	"io/ioutil"
 	"math/big"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/filecoin-project/go-filecoin/gengen/util"
 
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
@@ -20,8 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
@@ -196,7 +197,7 @@ func TestMinerCreate(t *testing.T) {
 
 			d1.ConnectSuccess(d)
 
-			args := []string{"miner", "create", "--from", fromAddress.String(), "--price", "0", "--limit", "0"}
+			args := []string{"miner", "create", "--from", fromAddress.String(), "--price", "0", "--limit", "300"}
 
 			if pid.Pretty() != peer.ID("").Pretty() {
 				args = append(args, "--peerid", pid.Pretty())
@@ -239,23 +240,23 @@ func TestMinerCreate(t *testing.T) {
 
 		d.RunFail("invalid peer id",
 			"miner", "create",
-			"--from", testAddr.String(), "--price", "0", "--limit", "0", "--peerid", "flarp", "1000000", "20",
+			"--from", testAddr.String(), "--price", "0", "--limit", "300", "--peerid", "flarp", "1000000", "20",
 		)
 		d.RunFail("invalid from address",
 			"miner", "create",
-			"--from", "hello", "--price", "0", "--limit", "0", "1000000", "20",
+			"--from", "hello", "--price", "0", "--limit", "300", "1000000", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--price", "0", "--limit", "0", "'-123'", "20",
+			"--from", testAddr.String(), "--price", "0", "--limit", "300", "'-123'", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--price", "0", "--limit", "0", "1f", "20",
+			"--from", testAddr.String(), "--price", "0", "--limit", "300", "1f", "20",
 		)
 		d.RunFail("invalid collateral",
 			"miner", "create",
-			"--from", testAddr.String(), "--price", "0", "--limit", "0", "100", "2f",
+			"--from", testAddr.String(), "--price", "0", "--limit", "300", "100", "2f",
 		)
 	})
 
@@ -275,7 +276,7 @@ func TestMinerCreate(t *testing.T) {
 		go func() {
 			d.RunFail("pledge must be at least",
 				"miner", "create",
-				"--from", testAddr.String(), "--price", "0", "--limit", "0", "1", "10",
+				"--from", testAddr.String(), "--price", "0", "--limit", "300", "1", "10",
 			)
 			wg.Done()
 		}()
@@ -289,37 +290,79 @@ func TestMinerCreate(t *testing.T) {
 func TestMinerAddAskSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
+
 	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 	defer d1.ShutdownSuccess()
 	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 	defer d.ShutdownSuccess()
 	d1.ConnectSuccess(d)
 	var wg sync.WaitGroup
-	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "0", "100", "20")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
 		assert.NotEqual(addr, address.Address{})
-		minerAddr = addr
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
 	d1.MineAndPropagate(time.Second, d)
 	wg.Wait()
+}
+
+func TestMinerCreateChargesGas(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	require := require.New(t)
+
+	miningMinerAddr, err := address.NewFromString(fixtures.TestMiners[0])
+	require.NoError(err)
+
+	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	defer d1.ShutdownSuccess()
+	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	defer d.ShutdownSuccess()
+	d1.ConnectSuccess(d)
+	var wg sync.WaitGroup
+
+	// make sure the FIL shows up in the MinerAccount
+	startingBalance := queryBalance(t, d, miningMinerAddr)
+
 	wg.Add(1)
 	go func() {
-		ask := d.RunSuccess("miner", "add-ask", minerAddr.String(), "20", "10",
-			"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "0",
-		)
-		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
-		require.NoError(t, err)
-		assert.NotNil(askCid)
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--price", "333", "--limit", "300", "100", "200")
+		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		assert.NoError(err)
+		assert.NotEqual(addr, address.Address{})
 		wg.Done()
 	}()
+	// ensure mining runs after the command in our goroutine
+	d1.MineAndPropagate(time.Second, d)
 	wg.Wait()
+
+	expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
+	expectedPrice := types.NewAttoFILFromFIL(333)
+	expectedGasCost := big.NewInt(100)
+	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
+	newBalance := queryBalance(t, d, miningMinerAddr)
+	assert.Equal(expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
+
+func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *types.AttoFIL {
+	output := d.RunSuccess("actor", "ls", "--enc", "json")
+	result := output.ReadStdoutTrimNewlines()
+	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
+		var a api.ActorView
+		err := json.Unmarshal(line, &a)
+		require.NoError(t, err)
+		if a.Address == actorAddr.String() {
+			return a.Balance
+		}
+	}
+	t.Fail()
+	return nil
+}
+
 func TestMinerAddAskFail(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
@@ -334,7 +377,7 @@ func TestMinerAddAskFail(t *testing.T) {
 	go func() {
 		miner := d.RunSuccess("miner", "create",
 			"--from", fixtures.TestAddresses[2],
-			"--price", "0", "--limit", "0",
+			"--price", "0", "--limit", "300",
 			"--peerid", th.RequireRandomPeerID().Pretty(),
 			"100", "20",
 		)
@@ -349,23 +392,23 @@ func TestMinerAddAskFail(t *testing.T) {
 	wg.Wait()
 	d.RunFail(
 		"invalid from address",
-		"miner", "add-ask", minerAddr.String(), "--price", "0", "--limit", "0", "20", "10",
+		"miner", "add-ask", minerAddr.String(), "--price", "0", "--limit", "300", "20", "10",
 		"--from", "hello",
 	)
 	d.RunFail(
 		"invalid miner address",
 		"miner", "add-ask", "hello", "20", "10",
-		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "0",
+		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "300",
 	)
 	d.RunFail(
 		"invalid price",
 		"miner", "add-ask", minerAddr.String(), "2f", "10",
-		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "0",
+		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "300",
 	)
 	d.RunFail(
 		"expiry must be a valid integer",
 		"miner", "add-ask", minerAddr.String(), "10", "3f",
-		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "0",
+		"--from", fixtures.TestAddresses[2], "--price", "0", "--limit", "300",
 	)
 }
 

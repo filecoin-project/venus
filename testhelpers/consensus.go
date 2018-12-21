@@ -128,6 +128,12 @@ func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, mi
 	return nil
 }
 
+// GasReward does nothing
+func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
+	// do nothing to keep state root the same
+	return nil
+}
+
 // NewTestProcessor creates a processor with a test validator and test rewarder
 func NewTestProcessor() *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
@@ -141,13 +147,30 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message validation
 func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(0))
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)
 	}
 
 	ta := newTestApplier()
-	amr, err := ta.ApplyMessagesAndPayRewards(context.Background(), st, store, []*types.SignedMessage{smsg}, address.Address{}, bh)
+	return newMessageApplier(smsg, ta, st, store, bh, address.Address{})
+}
+
+// ApplyTestMessageWithGas uses the TestBlockRewarder but the default SignedMessageValidator
+func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerAddr address.Address) (*consensus.ApplicationResult, error) {
+
+	smsg, err := types.NewSignedMessage(*msg, signer, gasPrice, gasLimit)
+	if err != nil {
+		panic(err)
+	}
+	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder())
+	return newMessageApplier(smsg, applier, st, store, bh, minerAddr)
+}
+
+func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
+	bh *types.BlockHeight, minerAddr address.Address) (*consensus.ApplicationResult, error) {
+	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerAddr, bh)
 
 	if len(amr.Results) > 0 {
 		return amr.Results[0], err
