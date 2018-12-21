@@ -8,17 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 )
 
 var (
@@ -68,10 +66,24 @@ func init() {
 // test chain's basic structure is always the same, but some tests want
 // mocked stateRoots or parent weight calculations from different consensus protocols.
 func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mockStateRoots bool) {
+
+	var err error
+	// see powerTableForWidenTest
+	minerPower := uint64(25)
+	totalPower := uint64(100)
+
 	link1blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
+	// set up tickets
+	link1blk1.Proof, link1blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link1blk2 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
+	// set up tickets
+	link1blk2.Proof, link1blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link1 = consensus.RequireNewTipSet(require, link1blk1, link1blk2)
 
 	if mockStateRoots {
@@ -82,12 +94,19 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link2blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(0),
 			NullBlockCount: uint64(0), Consensus: con, MinerAddr: minerAddress})
+	link2blk1.Proof, link2blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
 
-	//link2blk2 = RequireMkFakeChildWithCon(require, link1, genCid, link1State, uint64(1), uint64(0), con)
 	link2blk2 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Consensus: con, MinerAddr: minerAddress})
+	link2blk2.Proof, link2blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link2blk3 = RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(1), Consensus: con})
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(1), Consensus: con, MinerAddr: minerAddress})
+	link2blk3.Proof, link2blk3.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link2 = consensus.RequireNewTipSet(require, link2blk1, link2blk2, link2blk3)
 
 	if mockStateRoots {
@@ -97,6 +116,9 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	}
 	link3blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link2, GenesisCid: genCid, StateRoot: link2State, Consensus: con, MinerAddr: minerAddress})
+	link3blk1.Proof, link3blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link3 = consensus.RequireNewTipSet(require, link3blk1)
 
 	if mockStateRoots {
@@ -106,9 +128,15 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	}
 
 	link4blk1 = RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, NullBlockCount: uint64(2), Consensus: con}) // 2 null blks between link 3 and 4
+		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress}) // 2 null blks between link 3 and 4
+	link4blk1.Proof, link4blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link4blk2 = RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, Nonce: uint64(1), NullBlockCount: uint64(2), Consensus: con})
+		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, Nonce: uint64(1), NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress})
+	link4blk2.Proof, link4blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	link4 = consensus.RequireNewTipSet(require, link4blk1, link4blk2)
 
 	if mockStateRoots {
@@ -119,13 +147,14 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 }
 
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
-func loadSyncerFromRepo(ctx context.Context, require *require.Assertions, r repo.Repo) (Syncer, *hamt.CborIpldStore) {
+func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (Syncer, *hamt.CborIpldStore) {
 	powerTable := &consensus.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	prover := proofs.NewFakeProver(true, nil)
 	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
-	syncer, chain, cst, _ := initSyncTest(ctx, require, con, consensus.InitGenesis, cst, bs, r)
+	syncer, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
+	ctx := context.Background()
 	err := chain.Load(ctx)
 	require.NoError(err)
 	return syncer, cst
@@ -133,7 +162,7 @@ func loadSyncerFromRepo(ctx context.Context, require *require.Assertions, r repo
 
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(ctx context.Context, require *require.Assertions) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
+func initSyncTestDefault(require *require.Assertions) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
 	powerTable := &consensus.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -141,23 +170,24 @@ func initSyncTestDefault(ctx context.Context, require *require.Assertions) (Sync
 	prover := proofs.NewFakeProver(true, nil)
 	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
-	return initSyncTest(ctx, require, con, consensus.InitGenesis, cst, bs, r)
+	return initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 }
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestWithPowerTable(ctx context.Context, require *require.Assertions, powerTable consensus.PowerTableView) (Syncer, Store, *hamt.CborIpldStore, consensus.Protocol) {
+func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensus.PowerTableView) (Syncer, Store, *hamt.CborIpldStore, consensus.Protocol) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	prover := proofs.NewFakeProver(true, nil)
 	con := consensus.NewExpected(cst, bs, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
-	sync, chain, cst, _ := initSyncTest(ctx, require, con, consensus.InitGenesis, cst, bs, r)
+	sync, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	return sync, chain, cst, con
 }
 
-func initSyncTest(ctx context.Context, require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
+func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (Syncer, Store, *hamt.CborIpldStore, repo.Repo) {
+	ctx := context.Background()
 
 	// chain.Store
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -174,6 +204,7 @@ func initSyncTest(ctx context.Context, require *require.Assertions, con consensu
 		TipSet:          calcGenTS,
 		TipSetStateRoot: genStateRoot,
 	}
+	calcGenBlk.StateRoot = genStateRoot
 	RequirePutTsas(ctx, require, chain, genTsas)
 	err = chain.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
 	require.NoError(err)
@@ -253,7 +284,8 @@ func assertHead(assert *assert.Assertions, chain Store, head consensus.TipSet) {
 	assert.Equal(head, gotHead)
 }
 
-func requirePutBlocks(ctx context.Context, require *require.Assertions, cst *hamt.CborIpldStore, blks ...*types.Block) []cid.Cid {
+func requirePutBlocks(require *require.Assertions, cst *hamt.CborIpldStore, blks ...*types.Block) []cid.Cid {
+	ctx := context.Background()
 	var cids []cid.Cid
 	for _, blk := range blks {
 		c, err := cst.Put(ctx, blk)
@@ -269,11 +301,11 @@ func requirePutBlocks(ctx context.Context, require *require.Assertions, cst *ham
 func TestSyncOneBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 	expectedTs := consensus.RequireNewTipSet(require, link1blk1)
 
-	cids := requirePutBlocks(ctx, require, cst, link1blk1)
+	cids := requirePutBlocks(require, cst, link1blk1)
 	err := syncer.HandleNewBlocks(ctx, cids)
 	assert.NoError(err)
 
@@ -285,10 +317,10 @@ func TestSyncOneBlock(t *testing.T) {
 func TestSyncOneTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
-	cids := requirePutBlocks(ctx, require, cst, link1blk1, link1blk2)
+	cids := requirePutBlocks(require, cst, link1blk1, link1blk2)
 	err := syncer.HandleNewBlocks(ctx, cids)
 	assert.NoError(err)
 
@@ -301,11 +333,11 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 	pt := consensus.NewTestPowerTableView(1, 1)
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestWithPowerTable(require, pt)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestWithPowerTable(ctx, require, pt)
 	expTs1 := consensus.RequireNewTipSet(require, link1blk1)
 
-	cids := requirePutBlocks(ctx, require, cst, link1blk1, link1blk2)
+	cids := requirePutBlocks(require, cst, link1blk1, link1blk2)
 	err := syncer.HandleNewBlocks(ctx, []cid.Cid{cids[0]})
 	assert.NoError(err)
 
@@ -323,13 +355,13 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 func TestSyncChainTipSetByTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
-	cids1 := requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	cids2 := requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	cids3 := requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	cids4 := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
+	cids1 := requirePutBlocks(require, cst, link1.ToSlice()...)
+	cids2 := requirePutBlocks(require, cst, link2.ToSlice()...)
+	cids3 := requirePutBlocks(require, cst, link3.ToSlice()...)
+	cids4 := requirePutBlocks(require, cst, link4.ToSlice()...)
 
 	err := syncer.HandleNewBlocks(ctx, cids1)
 	assert.NoError(err)
@@ -356,13 +388,13 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 func TestSyncChainHead(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	cids4 := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link3.ToSlice()...)
+	cids4 := requirePutBlocks(require, cst, link4.ToSlice()...)
 
 	err := syncer.HandleNewBlocks(ctx, cids4)
 	assert.NoError(err)
@@ -377,20 +409,20 @@ func TestSyncChainHead(t *testing.T) {
 func TestSyncIgnoreLightFork(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
 	forkblk1 := RequireMkFakeChild(require,
 		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot})
 	forklink1 := consensus.RequireNewTipSet(require, forkblk1)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	cids4 := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link3.ToSlice()...)
+	cids4 := requirePutBlocks(require, cst, link4.ToSlice()...)
 
-	forkCids1 := requirePutBlocks(ctx, require, cst, forklink1.ToSlice()...)
+	forkCids1 := requirePutBlocks(require, cst, forklink1.ToSlice()...)
 
 	// Sync heaviest branch first.
 	err := syncer.HandleNewBlocks(ctx, cids4)
@@ -408,8 +440,8 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 func TestHeavierFork(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
 	forkbase := consensus.RequireNewTipSet(require, link2blk1)
 	forklink1blk1 := RequireMkFakeChild(require,
@@ -435,13 +467,13 @@ func TestHeavierFork(t *testing.T) {
 		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1, forklink3blk2)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	cids4 := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, forklink1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, forklink2.ToSlice()...)
-	forkHead := requirePutBlocks(ctx, require, cst, forklink3.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link3.ToSlice()...)
+	cids4 := requirePutBlocks(require, cst, link4.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink2.ToSlice()...)
+	forkHead := requirePutBlocks(require, cst, forklink3.ToSlice()...)
 
 	err := syncer.HandleNewBlocks(ctx, cids4)
 	assert.NoError(err)
@@ -459,14 +491,13 @@ func TestHeavierFork(t *testing.T) {
 
 // Syncer errors if blocks don't form a tipset
 func TestBlocksNotATipSet(t *testing.T) {
-
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
 	badCids := []cid.Cid{link1blk1.Cid(), link2blk1.Cid()}
 	err := syncer.HandleNewBlocks(ctx, badCids)
 	assert.Error(err)
@@ -479,12 +510,12 @@ func TestBlocksNotATipSet(t *testing.T) {
 func TestLoadFork(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, r := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, chain, cst, r := initSyncTestDefault(ctx, require)
 
 	// Set up chain store to have standard chain up to link2
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	cids2 := requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	cids2 := requirePutBlocks(require, cst, link2.ToSlice()...)
 	err := syncer.HandleNewBlocks(ctx, cids2)
 	require.NoError(err)
 
@@ -512,18 +543,18 @@ func TestLoadFork(t *testing.T) {
 		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1, forklink3blk2)
 
-	_ = requirePutBlocks(ctx, require, cst, forklink1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, forklink2.ToSlice()...)
-	forkHead := requirePutBlocks(ctx, require, cst, forklink3.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink2.ToSlice()...)
+	forkHead := requirePutBlocks(require, cst, forklink3.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, forkHead)
 	require.NoError(err)
 	requireHead(require, chain, forklink3)
 
 	// Shut down store, reload and wire to syncer.
-	loadSyncer, loadCst := loadSyncerFromRepo(ctx, require, r)
+	loadSyncer, loadCst := loadSyncerFromRepo(require, r)
 
 	// Test that the syncer can sync a block on the old chain
-	cids3 := requirePutBlocks(ctx, require, loadCst, link3.ToSlice()...)
+	cids3 := requirePutBlocks(require, loadCst, link3.ToSlice()...)
 	err = loadSyncer.HandleNewBlocks(ctx, cids3)
 	assert.NoError(err)
 }
@@ -545,12 +576,12 @@ func TestLoadFork(t *testing.T) {
 func TestSubsetParent(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, _, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
-	syncer, _, cst, _ := initSyncTestDefault(ctx, require)
 
 	// Set up store to have standard chain up to link2
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	cids2 := requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	cids2 := requirePutBlocks(require, cst, link2.ToSlice()...)
 	err := syncer.HandleNewBlocks(ctx, cids2)
 	require.NoError(err)
 
@@ -562,7 +593,7 @@ func TestSubsetParent(t *testing.T) {
 	forkblk2 := RequireMkFakeChild(require,
 		FakeChildParams{Parent: forkbase, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(1)})
 	forklink := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
-	forkHead := requirePutBlocks(ctx, require, cst, forklink.ToSlice()...)
+	forkHead := requirePutBlocks(require, cst, forklink.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, forkHead)
 	assert.NoError(err)
 
@@ -571,7 +602,7 @@ func TestSubsetParent(t *testing.T) {
 	newForkbase := consensus.RequireNewTipSet(require, forkblk1, forkblk2)
 	newForkblk := RequireMkFakeChild(require, FakeChildParams{Parent: newForkbase, GenesisCid: genCid, StateRoot: genStateRoot})
 	newForklink := consensus.RequireNewTipSet(require, newForkblk)
-	newForkHead := requirePutBlocks(ctx, require, cst, newForklink.ToSlice()...)
+	newForkHead := requirePutBlocks(require, cst, newForklink.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, newForkHead)
 	assert.NoError(err)
 }
@@ -580,20 +611,20 @@ func TestSubsetParent(t *testing.T) {
 func TestWidenChainAncestor(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	syncer, chain, cst, _ := initSyncTestDefault(require)
 	ctx := context.Background()
 
-	syncer, chain, cst, _ := initSyncTestDefault(ctx, require)
 	link2blkother := RequireMkFakeChild(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(27)})
 
 	link2intersect := consensus.RequireNewTipSet(require, link2blk1, link2blkother)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	cids4 := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link3.ToSlice()...)
+	cids4 := requirePutBlocks(require, cst, link4.ToSlice()...)
 
-	intersectCids := requirePutBlocks(ctx, require, cst, link2intersect.ToSlice()...)
+	intersectCids := requirePutBlocks(require, cst, link2intersect.ToSlice()...)
 
 	// Sync the subset of link2 first
 	err := syncer.HandleNewBlocks(ctx, intersectCids)
@@ -615,11 +646,11 @@ func TestWidenChainAncestor(t *testing.T) {
 type powerTableForWidenTest struct{}
 
 func (pt *powerTableForWidenTest) Total(ctx context.Context, st state.Tree, bs bstore.Blockstore) (uint64, error) {
-	return uint64(1), nil
+	return uint64(100), nil
 }
 
 func (pt *powerTableForWidenTest) Miner(ctx context.Context, st state.Tree, bs bstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+	return uint64(25), nil
 }
 
 func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, bs bstore.Blockstore, mAddr address.Address) bool {
@@ -649,38 +680,56 @@ func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, b
 //
 // Therefore the syncer should set the head of the store to the union of the links..
 func TestHeaviestIsWidenedAncestor(t *testing.T) {
-
+	pt := &powerTableForWidenTest{}
 	assert := assert.New(t)
 	require := require.New(t)
-	pt := &powerTableForWidenTest{}
+	syncer, chain, cst, con := initSyncTestWithPowerTable(require, pt)
 	ctx := context.Background()
-	syncer, chain, cst, con := initSyncTestWithPowerTable(ctx, require, pt)
 
+	minerPower := uint64(25)
+	totalPower := uint64(100)
+
+	var err error
 	forklink2blk1 := RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(51)})
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(51), MinerAddr: minerAddress})
+
+	forklink2blk1.Proof, forklink2blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	forklink2blk2 := RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(52)})
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(52), MinerAddr: minerAddress})
+	forklink2blk2.Proof, forklink2blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	forklink2blk3 := RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(53)})
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(53), MinerAddr: minerAddress})
+	forklink2blk3.Proof, forklink2blk3.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	forklink2blk4 := RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(54)})
+		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(54), MinerAddr: minerAddress})
+	forklink2blk4.Proof, forklink2blk4.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
 
 	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3, forklink2blk4)
 
 	forklink3blk1 := RequireMkFakeChildWithCon(require,
-		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con})
+		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
+	forklink3blk1.Proof, forklink3blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	require.NoError(err)
+
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1)
 
-	_ = requirePutBlocks(ctx, require, cst, link1.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link2.ToSlice()...)
-	_ = requirePutBlocks(ctx, require, cst, link3.ToSlice()...)
-	testhead := requirePutBlocks(ctx, require, cst, link4.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link1.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link2.ToSlice()...)
+	_ = requirePutBlocks(require, cst, link3.ToSlice()...)
+	testhead := requirePutBlocks(require, cst, link4.ToSlice()...)
 
-	_ = requirePutBlocks(ctx, require, cst, forklink2.ToSlice()...)
-	forkhead := requirePutBlocks(ctx, require, cst, forklink3.ToSlice()...)
+	_ = requirePutBlocks(require, cst, forklink2.ToSlice()...)
+	forkhead := requirePutBlocks(require, cst, forklink3.ToSlice()...)
 
 	// Put testhead
-	err := syncer.HandleNewBlocks(ctx, testhead)
+	err = syncer.HandleNewBlocks(ctx, testhead)
 	assert.NoError(err)
 
 	// Put forkhead
@@ -702,11 +751,11 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 func TestTipSetWeightDeep(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	ctx := context.Background()
-
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
+
+	ctx := context.Background()
 
 	// set up genesis block with power
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
@@ -717,25 +766,47 @@ func TestTipSetWeightDeep(t *testing.T) {
 		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 
-	weightDeepGenBlk, err := testGen(cst, bs)
+	// chain.Store
+	calcGenBlk, err := testGen(cst, bs) // flushes state
 	require.NoError(err)
-	weightDeepGenCid := weightDeepGenBlk.Cid()
-	weightDeepTS := consensus.RequireNewTipSet(require, weightDeepGenBlk)
-	weightDeepStateRoot := weightDeepGenBlk.StateRoot
+	chainDS := r.ChainDatastore()
+	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
+	// chain.Syncer
 	prover := proofs.NewFakeProver(true, nil)
-	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid, prover)
-	syncer, chain, cst, _ := initSyncTest(ctx, require, con, testGen, cst, bs, r)
+	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, calcGenBlk.Cid(), prover)
+	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
+	// Initialize stores to contain genesis block and state
+	calcGenTS := consensus.RequireNewTipSet(require, calcGenBlk)
 	genTsas := &TipSetAndState{
-		TipSet:          weightDeepTS,
-		TipSetStateRoot: weightDeepStateRoot,
+		TipSet:          calcGenTS,
+		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
 	RequirePutTsas(ctx, require, chain, genTsas)
-	err = chain.SetHead(ctx, weightDeepTS) // Initialize chain store with correct genesis
+	err = chain.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
 	require.NoError(err)
-	requireHead(require, chain, weightDeepTS)
-	requireTsAdded(require, chain, weightDeepTS)
+	requireHead(require, chain, calcGenTS)
+	requireTsAdded(require, chain, calcGenTS)
+
+	weightDeepGenBlk := calcGenBlk
+	//require.NoError(err)
+	//weightDeepGenBlk.StateRoot = genStateRoot
+	weightDeepGenCid := calcGenBlk.Cid()
+	//weightDeepTS := consensus.RequireNewTipSet(require, weightDeepGenBlk)
+
+	//con := consensus.NewExpected(cst, bs, &consensus.TestView{}, weightDeepGenCid, prover)
+	//syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)  // last returned is a Repo
+
+	//genTsas := &TipSetAndState{
+	//	TipSet:          weightDeepTS,
+	//	TipSetStateRoot: weightDeepStateRoot,
+	//}
+	//RequirePutTsas(ctx, require, chain, genTsas)
+	//err = chain.SetHead(ctx, weightDeepTS) // Initialize chain store with correct genesis
+	//require.NoError(err)
+	//requireHead(require, chain, weightDeepTS)
+	//requireTsAdded(require, chain, weightDeepTS)
 
 	// Bootstrap the storage market using a syncer with consensus using a
 	// TestView.
@@ -756,7 +827,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Now sync the chain with consensus using a MarketView.
 	prover = proofs.NewFakeProver(true, nil)
-
 	con = consensus.NewExpected(cst, bs, &consensus.MarketView{}, weightDeepGenCid, prover)
 	syncer = NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
@@ -795,19 +865,19 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1 := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b1.Proof, f1b1.Ticket, err = makeWinningTicketProof(addr1, pwr1, 1000)
+	f1b1.Proof, f1b1.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f2b1 := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: baseTS, GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f2b1.Proof, f2b1.Ticket, err = makeWinningTicketProof(addr2, pwr2, 1000)
+	f2b1.Proof, f2b1.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
 	require.NoError(err)
 
 	tsShared := consensus.RequireNewTipSet(require, f1b1, f2b1)
 
 	// Sync first tipset, should have weight 22 + starting
-	sharedCids := requirePutBlocks(ctx, require, cst, f1b1, f2b1)
+	sharedCids := requirePutBlocks(require, cst, f1b1, f2b1)
 	err = syncer.HandleNewBlocks(ctx, sharedCids)
 	require.NoError(err)
 	assertHead(assert, chain, tsShared)
@@ -820,17 +890,17 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = makeWinningTicketProof(addr1, pwr1, 1000)
+	f1b2a.Proof, f1b2a.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f1b2b := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: weightDeepGenCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = makeWinningTicketProof(addr2, pwr2, 1000)
+	f1b2b.Proof, f1b2b.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
 	require.NoError(err)
 
 	f1 := consensus.RequireNewTipSet(require, f1b2a, f1b2b)
-	f1Cids := requirePutBlocks(ctx, require, cst, f1.ToSlice()...)
+	f1Cids := requirePutBlocks(require, cst, f1.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, f1Cids)
 	require.NoError(err)
 	assertHead(assert, chain, f1)
@@ -846,7 +916,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		wFun)
 
 	f2 := consensus.RequireNewTipSet(require, f2b2)
-	f2Cids := requirePutBlocks(ctx, require, cst, f2.ToSlice()...)
+	f2Cids := requirePutBlocks(require, cst, f2.ToSlice()...)
 	err = syncer.HandleNewBlocks(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chain, f2)
@@ -854,19 +924,4 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(err)
 	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(expectedWeight, measuredWeight)
-}
-
-func makeWinningTicketProof(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
-	var postProof proofs.PoStProof
-	var ticket types.Signature
-
-	for i := 0; i < 300; i++ {
-		postProof = consensus.MakePoStProof()
-		ticket = consensus.CreateTicket(postProof, minerAddr)
-		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
-			return postProof, ticket, nil
-		}
-	}
-
-	return postProof, nil, errors.New("couldn't find a proof")
 }

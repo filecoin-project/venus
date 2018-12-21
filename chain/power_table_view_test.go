@@ -70,7 +70,7 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 
 	prover := proofs.NewFakeProver(true, nil)
 	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid, prover)
-	syncer, chain, cst, _ := initSyncTest(ctx, require, con, testGen, cst, bs, r)
+	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
 
 	genTsas := &TipSetAndState{
 		TipSet:          genesisTS,
