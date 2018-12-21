@@ -170,7 +170,7 @@ echo ""
 echo ""
 echo ""
 
-./go-filecoin retrieval-client retrieve-piece "${MN_PEER_ID}" "${PIECE_1_CID}" \
+./go-filecoin retrieval-client retrieve-piece "${MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" \
   --repodir="${CL_REPO_DIR}" > "${UNSEAL_PATH}"
 
 
