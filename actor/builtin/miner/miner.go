@@ -98,8 +98,9 @@ type State struct {
 	// stringified.
 	//
 	// See also: https://github.com/polydawn/refmt/issues/35
-	LastUsedSectorID  uint64
 	SectorCommitments map[string]types.Commitments
+
+	LastUsedSectorID uint64
 
 	ProvingPeriodStart *types.BlockHeight
 	LastPoSt           *types.BlockHeight
