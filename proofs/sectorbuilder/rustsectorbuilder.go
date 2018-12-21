@@ -20,8 +20,8 @@ import (
 )
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/../proofs/rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/../proofs/rust-proofs/target/release/ -lfilecoin_proofs
-#include "../proofs/rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
+#cgo LDFLAGS: -L${SRCDIR}/../rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/../rust-proofs/target/release/ -lfilecoin_proofs
+#include "../rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
 
 */
 import "C"
@@ -31,6 +31,13 @@ var log = logging.Logger("sectorbuilder") // nolint: deadcode
 // MaxNumStagedSectors configures the maximum number of staged sectors which can
 // be open and accepting data at any time.
 const MaxNumStagedSectors = 1
+
+// stagedSectorMetadata is a sector into which we write user piece-data before
+// sealing. Note: sectorID is unique across all staged and sealed sectors for a
+// miner.
+type stagedSectorMetadata struct {
+	sectorID uint64
+}
 
 func elapsed(what string) func() {
 	start := time.Now()
@@ -111,7 +118,18 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		sectorSealResults: make(chan SectorSealResult),
 	}
 
-	sb.sealStatusPoller = newSealStatusPoller(sb.sectorSealResults, sb.findSealedSectorMetadata)
+	// load staged sector metadata and use it to initialize the poller
+	metadata, err := sb.stagedSectors()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load staged sectors")
+	}
+
+	stagedSectorIDs := make([]uint64, len(metadata))
+	for idx, m := range metadata {
+		stagedSectorIDs[idx] = m.sectorID
+	}
+
+	sb.sealStatusPoller = newSealStatusPoller(stagedSectorIDs, sb.sectorSealResults, sb.findSealedSectorMetadata)
 
 	runtime.SetFinalizer(sb, func(o *RustSectorBuilder) {
 		o.destroy()
@@ -222,7 +240,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 			CommD:     commD,
 			CommR:     commR,
 			CommRStar: commRStar,
-			pieces:    ps,
+			Pieces:    ps,
 			Proof:     proof,
 			SectorID:  sectorID,
 		}, nil
@@ -270,6 +288,23 @@ func (sb *RustSectorBuilder) SealedSectors() ([]*SealedSectorMetadata, error) {
 	}
 
 	meta, err := goSealedSectorMetadata((*C.FFISealedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
+	if err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
+// stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
+func (sb *RustSectorBuilder) stagedSectors() ([]*stagedSectorMetadata, error) {
+	resPtr := (*C.GetStagedSectorsResponse)(unsafe.Pointer(C.get_staged_sectors((*C.SectorBuilder)(sb.ptr))))
+	defer C.destroy_get_staged_sectors_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	meta, err := goStagedSectorMetadata((*C.FFIStagedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
 	if err != nil {
 		return nil, err
 	}
@@ -331,9 +366,25 @@ func goSealedSectorMetadata(src *C.FFISealedSectorMetadata, size C.size_t) ([]*S
 			CommD:     commD,
 			CommR:     commR,
 			CommRStar: commRStar,
-			pieces:    ps,
+			Pieces:    ps,
 			Proof:     proof,
 			SectorID:  uint64(secPtr.sector_id),
+		}
+	}
+
+	return sectors, nil
+}
+
+func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*stagedSectorMetadata, error) {
+	sectors := make([]*stagedSectorMetadata, size)
+	if src == nil || size == 0 {
+		return sectors, nil
+	}
+
+	sectorPtrs := (*[1 << 30]C.FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
+		sectors[i] = &stagedSectorMetadata{
+			sectorID: uint64(sectorPtrs[i].sector_id),
 		}
 	}
 

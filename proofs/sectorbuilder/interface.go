@@ -81,7 +81,7 @@ type SealedSectorMetadata struct {
 	CommD     [32]byte
 	CommR     [32]byte // deprecated (will be removed soon)
 	CommRStar [32]byte
-	pieces    []*PieceInfo // deprecated (will be removed soon)
+	Pieces    []*PieceInfo // deprecated (will be removed soon)
 	Proof     proofs.SealProof
 	SectorID  uint64
 }

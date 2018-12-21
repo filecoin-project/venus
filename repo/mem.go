@@ -42,6 +42,13 @@ func NewInMemoryRepo() *MemRepo {
 		panic(err)
 	}
 
+	return NewInMemoryRepoWithSectorDirectories(stagingDir, sealedDir)
+}
+
+// NewInMemoryRepoWithSectorDirectories makes a new instance of MemRepo
+// configured to use the provided directories as sealed and staged
+// sector-storage.
+func NewInMemoryRepoWithSectorDirectories(staging, sealedDir string) *MemRepo {
 	return &MemRepo{
 		C:          config.NewDefaultConfig(),
 		D:          dss.MutexWrap(datastore.NewMapDatastore()),
@@ -49,7 +56,7 @@ func NewInMemoryRepo() *MemRepo {
 		W:          dss.MutexWrap(datastore.NewMapDatastore()),
 		Chain:      dss.MutexWrap(datastore.NewMapDatastore()),
 		version:    Version,
-		stagingDir: stagingDir,
+		stagingDir: staging,
 		sealedDir:  sealedDir,
 	}
 }

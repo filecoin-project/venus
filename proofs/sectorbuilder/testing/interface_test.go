@@ -1,4 +1,4 @@
-package sectorbuilder
+package testing
 
 import (
 	"context"
@@ -9,17 +9,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+
+	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
-		h := newSectorBuilderTestHarness(context.Background(), t)
-		defer h.close()
+		h := NewBuilder(t).Build()
+		defer h.Close()
 
 		// stringify the content identifiers to make them easily
 		// sortable later
@@ -28,11 +30,11 @@ func TestSectorBuilder(t *testing.T) {
 		errs := make(chan error)
 
 		go func() {
-			for val := range h.sectorBuilder.SectorSealResults() {
+			for val := range h.SectorBuilder.SectorSealResults() {
 				if val.SealingErr != nil {
 					errs <- val.SealingErr
 				} else if val.SealingResult != nil {
-					for _, pieceInfo := range val.SealingResult.pieces {
+					for _, pieceInfo := range val.SealingResult.Pieces {
 						sealedPieceCidCh <- pieceInfo.Ref.String()
 					}
 				}
@@ -43,14 +45,14 @@ func TestSectorBuilder(t *testing.T) {
 		for i := 0; i < autoSealsToSchedule; i++ {
 			go func(n int) {
 				time.Sleep(time.Second * time.Duration(n))
-				h.sectorBuilder.SealAllStagedSectors(context.Background())
+				h.SectorBuilder.SealAllStagedSectors(context.Background())
 			}(i)
 		}
 
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector/3))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector/3))
 				if err != nil {
 					errs <- err
 				} else {
@@ -107,8 +109,8 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("concurrent writes", func(t *testing.T) {
-		h := newSectorBuilderTestHarness(context.Background(), t)
-		defer h.close()
+		h := NewBuilder(t).Build()
+		defer h.Close()
 
 		// CIDs will be added to this map when given to the SectorBuilder and
 		// removed when the CID has been sealed into a sector.
@@ -118,11 +120,11 @@ func TestSectorBuilder(t *testing.T) {
 		errs := make(chan error)
 
 		go func() {
-			for val := range h.sectorBuilder.SectorSealResults() {
+			for val := range h.SectorBuilder.SectorSealResults() {
 				if val.SealingErr != nil {
 					errs <- val.SealingErr
 				} else if val.SealingResult != nil {
-					for _, pieceInfo := range val.SealingResult.pieces {
+					for _, pieceInfo := range val.SealingResult.Pieces {
 						done <- pieceInfo.Ref
 					}
 				}
@@ -132,7 +134,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 5
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				pieceCid, err := h.addPiece(requireRandomBytes(t, h.maxBytesPerSector))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector))
 				if err != nil {
 					errs <- err
 				} else {
@@ -160,11 +162,11 @@ func TestSectorBuilder(t *testing.T) {
 
 		// make some basic assertions about the output of
 		// SectorBuilder#SealedSectors()
-		sealedSectors, err := h.sectorBuilder.SealedSectors()
+		sealedSectors, err := h.SectorBuilder.SealedSectors()
 		require.NoError(t, err)
 		require.Equal(t, len(sealedSectors), 5)
 		for _, meta := range sealedSectors {
-			require.NotEqual(t, 0, len(meta.pieces))
+			require.NotEqual(t, 0, len(meta.Pieces))
 		}
 
 		pieceCidSet.Range(func(key, value interface{}) bool {
@@ -174,21 +176,21 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("add, seal, verify, and read user piece-bytes", func(t *testing.T) {
-		h := newSectorBuilderTestHarness(context.Background(), t)
-		defer h.close()
+		h := NewBuilder(t).Build()
+		defer h.Close()
 
-		inputBytes := requireRandomBytes(t, h.maxBytesPerSector)
-		info, err := h.createPieceInfo(inputBytes)
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
+		info, err := h.CreatePieceInfo(inputBytes)
 		require.NoError(t, err)
 
-		sectorID, err := h.sectorBuilder.AddPiece(context.Background(), info)
+		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
 		require.NoError(t, err)
 
 		timeout := time.After(700 * time.Second)
 	Loop:
 		for {
 			select {
-			case val := <-h.sectorBuilder.SectorSealResults():
+			case val := <-h.SectorBuilder.SectorSealResults():
 				require.NoError(t, val.SealingErr)
 				require.Equal(t, sectorID, val.SealingResult.SectorID)
 
@@ -197,9 +199,9 @@ func TestSectorBuilder(t *testing.T) {
 					CommR:     val.SealingResult.CommR,
 					CommRStar: val.SealingResult.CommRStar,
 					Proof:     val.SealingResult.Proof,
-					ProverID:  AddressToProverID(h.minerAddr),
-					SectorID:  SectorIDToBytes(val.SealingResult.SectorID),
-					StoreType: h.sectorStoreType,
+					ProverID:  sectorbuilder.AddressToProverID(h.MinerAddr),
+					SectorID:  sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+					StoreType: h.SectorConfig,
 				})
 				require.NoError(t, err)
 				require.True(t, res.IsValid)
@@ -210,7 +212,7 @@ func TestSectorBuilder(t *testing.T) {
 			}
 		}
 
-		reader, err := h.sectorBuilder.ReadPieceFromSealedSector(info.Ref)
+		reader, err := h.SectorBuilder.ReadPieceFromSealedSector(info.Ref)
 		require.NoError(t, err)
 
 		outputBytes, err := ioutil.ReadAll(reader)
@@ -220,11 +222,76 @@ func TestSectorBuilder(t *testing.T) {
 	})
 
 	t.Run("returns empty list of sealed sector metadata", func(t *testing.T) {
-		h := newSectorBuilderTestHarness(context.Background(), t)
-		defer h.close()
+		h := NewBuilder(t).Build()
+		defer h.Close()
 
-		sealedSectors, err := h.sectorBuilder.SealedSectors()
+		sealedSectors, err := h.SectorBuilder.SealedSectors()
 		require.NoError(t, err)
 		require.Equal(t, 0, len(sealedSectors))
+	})
+
+	t.Run("sector builder resumes polling for staged sectors even after a restart", func(t *testing.T) {
+		stagingDir, err := ioutil.TempDir("", "staging")
+		if err != nil {
+			panic(err)
+		}
+
+		sealedDir, err := ioutil.TempDir("", "staging")
+		if err != nil {
+			panic(err)
+		}
+
+		hA := NewBuilder(t).StagingDir(stagingDir).SealedDir(sealedDir).Build()
+		defer hA.Close()
+
+		// holds id of each sector we expect to see sealed
+		sectorIDSet := sync.Map{}
+
+		// SectorBuilder begins polling for SectorIDA seal-status
+		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector-10))
+		require.NoError(t, errA)
+		sectorIDSet.Store(sectorIDA, true)
+
+		// create new SectorBuilder which should start with a poller pre-seeded
+		// with state from previous SectorBuilder
+		hB := NewBuilder(t).StagingDir(stagingDir).SealedDir(sealedDir).Build()
+		defer hB.Close()
+
+		// second SectorBuilder begins polling for SectorIDB seal-status in
+		// addition to SectorIDA
+		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, hB.MaxBytesPerSector-50))
+		require.NoError(t, errB)
+		sectorIDSet.Store(sectorIDB, true)
+
+		// seal everything
+		hB.SectorBuilder.SealAllStagedSectors(context.Background())
+
+		timeout := time.After(120 * time.Second)
+	Loop:
+		for {
+			select {
+			case val := <-hB.SectorBuilder.SectorSealResults():
+				require.NoError(t, val.SealingErr)
+				sectorIDSet.Delete(val.SectorID)
+
+				allHaveBeenSealed := true
+
+				sectorIDSet.Range(func(key, value interface{}) bool {
+					allHaveBeenSealed = false
+					return false
+				})
+
+				if allHaveBeenSealed {
+					break Loop
+				}
+			case <-timeout:
+				break Loop
+			}
+		}
+
+		sectorIDSet.Range(func(sectorID, _ interface{}) bool {
+			t.Fatalf("expected to have sealed everything, but still waiting on %d", sectorID)
+			return false
+		})
 	})
 }
