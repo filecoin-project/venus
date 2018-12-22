@@ -95,6 +95,8 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrap(err, "couldnt publish new message to network")
 	}
 
+	log.Debug("MessageSend with message: %s", smsg)
+
 	return smsg.Cid()
 }
 

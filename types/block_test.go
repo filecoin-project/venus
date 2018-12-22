@@ -120,6 +120,16 @@ func TestBlockIsParentOf(t *testing.T) {
 	assert.False(t, c.IsParentOf(p))
 }
 
+func TestBlockString(t *testing.T) {
+	assert := assert.New(t)
+	var b Block
+
+	cid := b.Cid()
+
+	got := b.String()
+	assert.Contains(got, cid.String())
+}
+
 func TestBlockScore(t *testing.T) {
 	source := rand.NewSource(time.Now().UnixNano())
 

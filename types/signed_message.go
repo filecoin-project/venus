@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -88,6 +90,19 @@ func (smsg *SignedMessage) VerifySignature() bool {
 		return false
 	}
 	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
+}
+
+func (smsg *SignedMessage) String() string {
+	errStr := "(error encoding SignedMessage)"
+	cid, err := smsg.Cid()
+	if err != nil {
+		return errStr
+	}
+	js, err := json.MarshalIndent(smsg, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("SignedMessage cid=[%v]: %s", cid, string(js))
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing

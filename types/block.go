@@ -2,8 +2,11 @@ package types
 
 import (
 	"bytes"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"encoding/json"
+	"fmt"
 	"sort"
+
+	"github.com/filecoin-project/go-filecoin/proofs"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -78,6 +81,16 @@ func (b *Block) ToNode() node.Node {
 	}
 
 	return obj
+}
+
+func (b *Block) String() string {
+	errStr := "(error encoding Block)"
+	cid := b.Cid()
+	js, err := json.MarshalIndent(b, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("Block cid=[%v]: %s", cid, string(js))
 }
 
 // DecodeBlock decodes raw cbor bytes into a Block.

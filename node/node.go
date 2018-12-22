@@ -570,6 +570,7 @@ func (node *Node) Stop(ctx context.Context) {
 type newBlockFunc func(context.Context, *types.Block)
 
 func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
+	log.Debug("Got a newly mined block from the mining worker: %s", b)
 	if err := node.AddNewBlock(ctx, b); err != nil {
 		log.Warningf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
 	}
