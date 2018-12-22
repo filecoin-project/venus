@@ -114,9 +114,9 @@ var msgWaitCmd = &cmds.Command{
 
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
 
-		var found bool
-
+		found := false
 		err = GetPlumbingAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+			found = true
 			sig, err2 := GetPlumbingAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
 			if err2 != nil && err2 != mthdsigapi.ErrNoMethod && err2 != mthdsigapi.ErrNoActorImpl {
 				return errors.Wrap(err2, "Couldn't get signature for message")
@@ -129,7 +129,6 @@ var msgWaitCmd = &cmds.Command{
 				Signature: sig,
 			}
 			re.Emit(&res) // nolint: errcheck
-			found = true
 
 			return nil
 		})

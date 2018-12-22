@@ -41,7 +41,7 @@ func TestSerializeProposal(t *testing.T) {
 // cleaner. The gengen stuff helps, but its still difficult to make actor
 // method invocations
 func TestStorageProtocolBasic(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	assert := assert.New(t)
 	require := require.New(t)

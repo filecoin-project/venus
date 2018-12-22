@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -72,7 +73,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 }
 
 func (api *nodeMining) Start(ctx context.Context) error {
-	return api.api.node.StartMining(ctx)
+	return node.StartMining(ctx, api.api.node)
 }
 
 func (api *nodeMining) Stop(ctx context.Context) error {

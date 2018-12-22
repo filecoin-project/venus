@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-var log = logging.Logger("message.Waiter")
+var log = logging.Logger("messageimpl")
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
@@ -55,7 +55,6 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 // traverses the entire chain. We should use an index instead.
 // https://github.com/filecoin-project/go-filecoin/issues/1518
 func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	var emptyErr error
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
 	log.Info("Calling Waiter.Wait")
@@ -91,13 +90,15 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 			return ctx.Err()
 		case raw, more := <-ch:
 			if !more {
-				return emptyErr
+				return errors.New("wait input channel closed without finding message")
 			}
-			switch ts := raw.(type) {
+			switch raw.(type) {
 			case error:
-				log.Errorf("Waiter.Wait: %s", ts)
-				return ts
+				e := raw.(error)
+				log.Errorf("Waiter.Wait: %s", e)
+				return e
 			case consensus.TipSet:
+				ts := raw.(consensus.TipSet)
 				for _, blk := range ts {
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
@@ -114,8 +115,9 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 						}
 					}
 				}
+			default:
+				return fmt.Errorf("Unexpected type in channel: %T", raw)
 			}
-
 		}
 	}
 }

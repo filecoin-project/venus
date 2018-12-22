@@ -4,11 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var ki = MustGenerateKeyInfo(10, GenerateKeyInfoSeed())
 var mockSigner = NewMockSigner(ki)
 var newSignedMessage = NewSignedMessageForTestGetter(mockSigner)
+
+func TestSignedMessageString(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	smsg := newSignedMessage()
+	cid, err := smsg.Cid()
+	require.NoError(err)
+
+	got := smsg.String()
+	assert.Contains(got, cid.String())
+}
 
 func TestSignedMessageRecover(t *testing.T) {
 	assert := assert.New(t)

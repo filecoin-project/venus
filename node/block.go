@@ -56,6 +56,8 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (
 	}
 	log.SetTag(ctx, "block", blk)
 
+	log.Debugf("Received new block from network: %s", blk)
+
 	err = node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blk.Cid()})
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")

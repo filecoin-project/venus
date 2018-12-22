@@ -1,7 +1,9 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -55,6 +57,19 @@ func (msg *Message) Cid() (cid.Cid, error) {
 	}
 
 	return obj.Cid(), nil
+}
+
+func (msg *Message) String() string {
+	errStr := "(error encoding Message)"
+	cid, err := msg.Cid()
+	if err != nil {
+		return errStr
+	}
+	js, err := json.MarshalIndent(msg, "", "  ")
+	if err != nil {
+		return errStr
+	}
+	return fmt.Sprintf("Message cid=[%v]: %s", cid, string(js))
 }
 
 // NewMessage creates a new message.

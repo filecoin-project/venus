@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessageMarshal(t *testing.T) {
@@ -65,4 +66,25 @@ func TestMessageCid(t *testing.T) {
 	assert.NoError(err)
 
 	assert.NotEqual(c1.String(), c2.String())
+}
+
+func TestMessageString(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	addrGetter := address.NewForTestGetter()
+
+	msg := NewMessage(
+		addrGetter(),
+		addrGetter(),
+		0,
+		NewAttoFILFromFIL(999),
+		"send",
+		nil,
+	)
+
+	cid, err := msg.Cid()
+	require.NoError(err)
+
+	got := msg.String()
+	assert.Contains(got, cid.String())
 }
