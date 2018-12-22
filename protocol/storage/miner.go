@@ -22,6 +22,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api2/porcelain"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -52,7 +53,8 @@ type Miner struct {
 
 	dealsAwaitingSeal *dealsAwaitingSealStruct
 
-	node node
+	plumbingAPI plumbing
+	node        node
 }
 
 type storageDealState struct {
@@ -61,14 +63,19 @@ type storageDealState struct {
 	state *DealResponse
 }
 
+// plumbing is the subset of the plumbing API that storage.Miner needs.
+type plumbing interface {
+	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+}
+
 // node is subset of node on which this protocol depends. These deps
 // are moving off of node and into the plumbing api (see PlumbingAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the plumbing api.
 type node interface {
 	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
-	SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) ([]interface{}, error)
-
+	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
 	SectorBuilder() sectorbuilder.SectorBuilder
@@ -76,11 +83,12 @@ type node interface {
 }
 
 // NewMiner is
-func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node) (*Miner, error) {
+func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, plumbingAPI plumbing) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:      minerAddr,
 		minerOwnerAddr: minerOwnerAddr,
 		deals:          make(map[cid.Cid]*storageDealState),
+		plumbingAPI:    plumbingAPI,
 		node:           nd,
 	}
 	sm.dealsAwaitingSeal = newDealsAwaitingSeal()
@@ -475,7 +483,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, sectors []*sectorbuil
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
 	gasLimit := types.NewGasCost(submitPostGasLimit)
 
-	_, err = sm.node.SendMessageAndWait(ctx, 10, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
+	err = porcelain.MessageSendWithRetry(ctx, sm.plumbingAPI, 10 /*retries*/, sm.node.GetBlockTime() /*wait time*/, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

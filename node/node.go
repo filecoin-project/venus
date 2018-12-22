@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,18 +35,18 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
 	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/porcelain"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
-	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -311,8 +310,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	sigGetter := mthdsigapi.NewGetter(chainReader)
-	msgSender := message.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	msgWaiter := message.NewWaiter(chainReader, bs, &cstOffline)
+	msgSender := msgapi.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
+	msgWaiter := msgapi.NewWaiter(chainReader, bs, &cstOffline)
 	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	nd := &Node{
@@ -356,7 +355,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// On-chain lookup service
 	defaultAddressGetter := func() (address.Address, error) {
-		return message.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
+		return msgapi.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
 	}
 	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
@@ -406,7 +405,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PubSub.Subscribe(message.Topic)
+	msgSub, err := node.PubSub.Subscribe(msgapi.Topic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}
@@ -591,8 +590,19 @@ func (node *Node) MiningAddress() (address.Address, error) {
 // Note this is mocked behavior, in production this time is determined by how
 // long it takes to generate PoSTs.
 func (node *Node) MiningTimes() (time.Duration, time.Duration) {
-	mineDelay := node.blockTime / mining.MineDelayConversionFactor
-	return node.blockTime, mineDelay
+	mineDelay := node.GetBlockTime() / mining.MineDelayConversionFactor
+	return node.GetBlockTime(), mineDelay
+}
+
+// GetBlockTime returns the current block time.
+// TODO this should be surfaced somewhere in the plumbing API.
+func (node *Node) GetBlockTime() time.Duration {
+	return node.blockTime
+}
+
+// SetBlockTime sets the block time.
+func (node *Node) SetBlockTime(blockTime time.Duration) {
+	node.blockTime = blockTime
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -686,7 +696,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
-					_, err := node.SendMessageAndWait(node.miningCtx, 10 /* retries */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommR[:], val.CommD[:])
+					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommR[:], val.CommD[:])
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -794,7 +804,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node)
+	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node, node.PlumbingAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
@@ -846,7 +856,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 		return nil, 1, errors.Wrap(err, "getting base tipset height")
 	}
 
-	fromAddr, err := message.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
+	fromAddr, err := msgapi.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
 	}
@@ -921,66 +931,6 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 	newConfig.Mining.MinerAddress = addr
 
 	return r.ReplaceConfig(newConfig)
-}
-
-// SendMessageAndWait creates a message, adds it to the mempool and waits for inclusion.
-// It will retry upto retries times, if there is a nonce error when including it.
-// It returns the deserialized results, or an error.
-func (node *Node) SendMessageAndWait(ctx context.Context, retries uint, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) (res []interface{}, err error) {
-	for i := 0; i < int(retries); i++ {
-		log.Debugf("SendMessageAndWait (%s) retry %d/%d", method, i, retries)
-
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			msgCid, err := node.PlumbingAPI.MessageSend(ctx, from, to, val, gasPrice, gasLimit, method, params...)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to add message to mempool")
-			}
-
-			err = node.PlumbingAPI.MessageWait(
-				ctx,
-				msgCid,
-				func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
-					if receipt.ExitCode != uint8(0) {
-						return vmErrors.VMExitCodeToError(receipt.ExitCode, miner.Errors)
-					}
-
-					signature, err := node.PlumbingAPI.ActorGetSignature(context.Background(), smsg.Message.To, smsg.Message.Method)
-					// Note: GetSignature could fail if the To is an empty actor or a transfer. This is likely a bug.
-					if err != nil {
-						return err
-					}
-					retValues := make([]interface{}, len(receipt.Return))
-					for i := 0; i < len(receipt.Return); i++ {
-						val, err := abi.DecodeValues(receipt.Return[i], []abi.Type{signature.Return[i]})
-						if err != nil {
-							return err
-						}
-						retValues[i] = abi.FromValues(val)
-					}
-					return nil
-				},
-			)
-
-			if err != nil {
-				// TODO: expose nonce errors, instead of using strings.
-				// TODO: we might want to retry on other errors, add these here when needed.
-				if strings.Contains(err.Error(), "nonce too high") || strings.Contains(err.Error(), "nonce too low") {
-					log.Warningf("SendMessageAndWait: failed to send message, retrying: %s", err)
-					// cleanup message pool
-					node.MsgPool.Remove(msgCid)
-					continue
-				}
-				return nil, errors.Wrap(err, "unexpected error")
-			}
-
-			return res, nil
-		}
-	}
-
-	return nil, errors.Wrapf(err, "failed to send message after %d retries", retries)
 }
 
 // MiningOwnerAddress returns the owner of the passed in mining address.

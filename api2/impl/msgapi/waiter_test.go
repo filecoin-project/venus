@@ -1,4 +1,4 @@
-package message_test
+package msgapi
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +25,7 @@ var ki = types.MustGenerateKeyInfo(10, seed)
 var mockSigner = types.NewMockSigner(ki)
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, waiter *message.Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
 		cb = func(b *types.Block, msg *types.SignedMessage,
@@ -48,17 +47,17 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, waiter *message
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(require *require.Assertions) (*hamt.CborIpldStore, *chain.DefaultStore, *message.Waiter) {
+func setupTest(require *require.Assertions) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
 	return setupTestWithGif(require, consensus.InitGenesis)
 }
 
-func setupTestWithGif(require *require.Assertions, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.DefaultStore, *message.Waiter) {
+func setupTestWithGif(require *require.Assertions, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(err)
-	waiter := message.NewWaiter(chainStore, bs, cst)
+	waiter := NewWaiter(chainStore, bs, cst)
 	return cst, chainStore, waiter
 }
 
@@ -73,7 +72,7 @@ func TestWait(t *testing.T) {
 	testWaitNew(ctx, assert, require, cst, chainStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *message.Waiter) {
+func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
@@ -88,7 +87,7 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *r
 	testWaitHelp(nil, assert, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *message.Waiter) {
+func testWaitNew(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
@@ -121,7 +120,7 @@ func TestWaitError(t *testing.T) {
 	testWaitError(ctx, assert, require, cst, chainStore, waiter)
 }
 
-func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *message.Waiter) {
+func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	chain := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
@@ -214,7 +213,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 
 	select {
 	case <-doneCh:
-		assert.NoError(err)
+		assert.Error(err)
 	case <-time.After(2 * time.Second):
 		assert.Fail("Wait should have returned when context was canceled")
 	}
