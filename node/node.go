@@ -371,7 +371,7 @@ func (node *Node) Start(ctx context.Context) error {
 	// Only set these up, if there is a miner configured.
 	if _, err := node.MiningAddress(); err == nil {
 		if err := node.setupMining(ctx); err != nil {
-			log.Error("setup mining failed: %v", err)
+			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
 	}
