@@ -246,6 +246,7 @@ jobs:
           name: build an image of all binaries
           command: |
             docker build -t filecoin:all --target=builder .
+          no_output_timeout: 20m
 
       - run:
           name: build & push image - filecoin
