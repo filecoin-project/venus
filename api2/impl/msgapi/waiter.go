@@ -90,13 +90,15 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 			return ctx.Err()
 		case raw, more := <-ch:
 			if !more {
-				return errors.New("wait input channels closed without finding message")
+				return errors.New("wait input channel closed without finding message")
 			}
-			switch ts := raw.(type) {
+			switch raw.(type) {
 			case error:
-				log.Errorf("Waiter.Wait: %s", ts)
-				return ts
+				e := raw.(error)
+				log.Errorf("Waiter.Wait: %s", e)
+				return e
 			case consensus.TipSet:
+				ts := raw.(consensus.TipSet)
 				for _, blk := range ts {
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
@@ -113,8 +115,9 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 						}
 					}
 				}
+			default:
+				return fmt.Errorf("Unexpected type in channel: %T", raw)
 			}
-
 		}
 	}
 }
