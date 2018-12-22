@@ -131,10 +131,7 @@ var msgWaitCmd = &cmds.Command{
 			return nil
 		})
 
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	},
 	Type: waitResult{},
 	Encoders: cmds.EncoderMap{
