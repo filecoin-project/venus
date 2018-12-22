@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/lookup"
-	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"

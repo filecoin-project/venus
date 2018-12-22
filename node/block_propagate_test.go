@@ -129,7 +129,7 @@ func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions)
 	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.PlumbingAPI)
 	assertions.NoError(err)
 	clientNode := MakeNodeWithChainSeed(t, seed)
 	nodes := []*Node{minerNode, clientNode}
