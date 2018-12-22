@@ -570,7 +570,7 @@ func (node *Node) Stop(ctx context.Context) {
 type newBlockFunc func(context.Context, *types.Block)
 
 func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
-	log.Debug("Got a newly mined block from the mining worker: %s", b)
+	log.Debugf("Got a newly mined block from the mining worker: %s", b)
 	if err := node.AddNewBlock(ctx, b); err != nil {
 		log.Warningf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
 	}
@@ -612,7 +612,7 @@ func (node *Node) SetBlockTime(blockTime time.Duration) {
 func StartMining(ctx context.Context, node *Node) error {
 	err := node.StartMining(ctx)
 	if err != nil {
-		log.Error("StartMining failed: could not start mining: %v", err)
+		log.Errorf("StartMining failed: could not start mining: %v", err)
 	}
 	return err
 }

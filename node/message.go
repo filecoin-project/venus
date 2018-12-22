@@ -20,7 +20,7 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg *pubsub.Message)
 	}
 	log.SetTag(ctx, "message", unmarshaled)
 
-	log.Debug("Received new message from network: %s", unmarshaled)
+	log.Debugf("Received new message from network: %s", unmarshaled)
 
 	_, err = node.MsgPool.Add(unmarshaled)
 	return err
