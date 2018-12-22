@@ -110,7 +110,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		// We will not be able to apply this message in the future because the error was permanent.
 		// Therefore, we will remove it from the MessagePool now.
 		mc, err := msg.Cid()
-		// TODO put message in 
+		// TODO put message in
 		log.Infof("permanent ApplyMessage failure, [%s] (%s)", mc.String(), res.PermanentErrors[i])
 		// Intentionally not handling error case, since it just means we won't be able to remove from pool.
 		if err == nil {
@@ -122,7 +122,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		// We might be able to apply this message in the future because the error was temporary.
 		// Therefore, we will leave it in the MessagePool for now.
 		mc, _ := msg.Cid()
-		// TODO put message in 
+		// TODO put message in
 		log.Infof("temporary ApplyMessage failure, [%s] (%s)", mc.String(), res.TemporaryErrors[i])
 	}
 
