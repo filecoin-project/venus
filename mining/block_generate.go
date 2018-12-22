@@ -109,10 +109,9 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	for i, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.
 		// Therefore, we will remove it from the MessagePool now.
-		mc, err := msg.Cid()
-		// TODO put message in
-		log.Infof("permanent ApplyMessage failure, [%s] (%s)", mc.String(), res.PermanentErrors[i])
+		log.Infof("permanent ApplyMessage failure, [%s] (%s)", msg, res.PermanentErrors[i])
 		// Intentionally not handling error case, since it just means we won't be able to remove from pool.
+		mc, err := msg.Cid()
 		if err == nil {
 			w.messagePool.Remove(mc)
 		}
@@ -121,9 +120,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	for i, msg := range res.TemporaryFailures {
 		// We might be able to apply this message in the future because the error was temporary.
 		// Therefore, we will leave it in the MessagePool for now.
-		mc, _ := msg.Cid()
-		// TODO put message in
-		log.Infof("temporary ApplyMessage failure, [%s] (%s)", mc.String(), res.TemporaryErrors[i])
+
+		log.Infof("temporary ApplyMessage failure, [%s] (%s)", msg, res.TemporaryErrors[i])
 	}
 
 	return next, nil
