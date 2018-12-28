@@ -29,10 +29,10 @@ type Protocol interface {
 	// blocks were mined according to protocol rules (RunStateTransition does these checks).
 	NewValidTipSet(ctx context.Context, blks []*types.Block) (TipSet, error)
 	// Weight returns the weight given to the input ts by this consensus protocol.
-	Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint64, uint64, error)
+	Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint64, error)
 	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
 	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (int, error)
+	IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (bool, error)
 	// RunStateTransition returns the state resulting from applying the input ts to the parent
 	// state pSt.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts TipSet, parentTs TipSet, pSt state.Tree) (state.Tree, error)

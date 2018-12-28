@@ -113,110 +113,94 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 	return nil
 }
 
-// weight returns the EC weight of the given tipset in a format (big Rational)
-// suitable for internal use in the consensus package.
-// TODO: this implementation needs to handle precision of long chains correctly,
-// see issue #655.
-func (c *Expected) weight(ctx context.Context, ts TipSet, pSt state.Tree) (*big.Rat, error) {
-	ctx = log.Start(ctx, "Expected.weight")
+// Weight returns the EC weight of this TipSet in uint64 encoded fixed point
+// representation.
+func (c *Expected) Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint64, error) {
+	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(c.genesisCid) {
-		return big.NewRat(int64(0), int64(1)), nil
+		return uint64(0), nil
 	}
 	// Compute parent weight.
-	wNum, wDenom, err := ts.ParentWeight()
+	parentW, err := ts.ParentWeight()
 	if err != nil {
-		return nil, err
+		return uint64(0), err
 	}
-	if wDenom == uint64(0) {
-		return nil, errors.New("storage market with 0 bytes stored not handled")
-	}
-	w := big.NewRat(int64(wNum), int64(wDenom))
 
+	w, err := types.FixedToBig(parentW)
+	if err != nil {
+		return uint64(0), err
+	}
 	// Each block in the tipset adds ECV + ECPrm * miner_power to parent weight.
 	totalBytes, err := c.PwrTableView.Total(ctx, pSt, c.bstore)
 	if err != nil {
-		return nil, err
+		return uint64(0), err
 	}
-	ratECV := big.NewRat(int64(ECV), int64(1))
+	floatTotalBytes := new(big.Float).SetInt64(int64(totalBytes))
+	floatECV := new(big.Float).SetInt64(int64(ECV))
+	floatECPrM := new(big.Float).SetInt64(int64(ECPrM))
 	for _, blk := range ts.ToSlice() {
 		minerBytes, err := c.PwrTableView.Miner(ctx, pSt, c.bstore, blk.Miner)
 		if err != nil {
-			return nil, err
+			return uint64(0), err
 		}
-		wNumBlk := int64(ECPrM * minerBytes)
-		wBlk := big.NewRat(wNumBlk, int64(totalBytes)) // power added for each block
-		wBlk.Add(wBlk, ratECV)                         // constant added for each block
+		floatOwnBytes := new(big.Float).SetInt64(int64(minerBytes))
+		wBlk := new(big.Float)
+		wBlk.Quo(floatOwnBytes, floatTotalBytes)
+		wBlk.Mul(wBlk, floatECPrM) // Power addition
+		wBlk.Add(wBlk, floatECV)   // Constant addition
 		w.Add(w, wBlk)
 	}
-	return w, nil
+	return types.BigToFixed(w)
 }
 
-// Weight returns the EC weight of this TipSet
-// TODO: this implementation needs to handle precision of long chains correctly,
-// see issue #655.
-func (c *Expected) Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint64, uint64, error) {
-	w, err := c.weight(ctx, ts, pSt)
-	if err != nil {
-		return uint64(0), uint64(0), err
-	}
-	wNum := w.Num()
-	if !wNum.IsUint64() {
-		return uint64(0), uint64(0), errors.New("weight numerator cannot be repr by uint64")
-	}
-	wDenom := w.Denom()
-	if !wDenom.IsUint64() {
-		return uint64(0), uint64(0), errors.New("weight denominator cannot be repr by uint64")
-	}
-	return wNum.Uint64(), wDenom.Uint64(), nil
-}
-
-// IsHeavier returns an integer comparing two tipsets by weight.  The
-// result will be -1 if W(a) < W(b), and 1 if W(a) > W(b).  In the rare
-// case where two tipsets have the same weight, ties are broken by taking
-// the tipset with the smallest ticket.  In the event that tickets
-// are the same, IsHeavier will break ties by comparing the concatenation
-// of block cids in the tipset.
+// IsHeavier returns true if tipset a is heavier than tipset b, and false
+// vice versa.  In the rare case where two tipsets have the same weight ties
+// are broken by taking the tipset with the smallest ticket.  In the event that
+// tickets are the same, IsHeavier will break ties by comparing the
+// concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *Expected) IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (int, error) {
-	aW, err := c.weight(ctx, a, aSt)
+func (c *Expected) IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (bool, error) {
+	aW, err := c.Weight(ctx, a, aSt)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
-	bW, err := c.weight(ctx, b, bSt)
+	bW, err := c.Weight(ctx, b, bSt)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
 	// Without ties pass along the comparison.
-	cmp := aW.Cmp(bW)
-	if cmp != 0 {
-		return cmp, nil
+	if aW != bW {
+		return aW > bW, nil
 	}
 
 	// To break ties compare the min tickets.
 	aTicket, err := a.MinTicket()
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 	bTicket, err := b.MinTicket()
 	if err != nil {
-		return 0, err
+		return false, err
 	}
 
-	cmp = bytes.Compare(bTicket, aTicket)
+	cmp := bytes.Compare(bTicket, aTicket)
 	if cmp != 0 {
-		return cmp, nil
+		// a is heavier if b's ticket is greater than a's ticket.
+		return cmp == 1, nil
 	}
 
 	// Tie break on cid ids.
+	// TODO: I think this is drastically impacted by number of blocks in tipset
+	// i.e. bigger tipset is always heavier.  Not sure if this is ok, need to revist.
 	cmp = strings.Compare(a.String(), b.String())
 	if cmp == 0 {
 		// Caller is mistakenly calling on two identical tipsets.
-		return 0, ErrUnorderedTipSets
+		return false, ErrUnorderedTipSets
 	}
-	return cmp, nil
+	return cmp == 1, nil
 }
 
 // RunStateTransition is the chain transition function that goes from a

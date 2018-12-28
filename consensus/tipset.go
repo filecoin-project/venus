@@ -57,7 +57,7 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 	if err != nil {
 		return err
 	}
-	wNum, wDenom, err := ts.ParentWeight()
+	weight, err := ts.ParentWeight()
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,8 @@ func (ts TipSet) AddBlock(b *types.Block) error {
 	if !b.Parents.Equals(p) {
 		return errors.Errorf("block parents %s don't match tipset parents %s", b.Parents.String(), p.String())
 	}
-	if uint64(b.ParentWeightNum) != wNum || uint64(b.ParentWeightDenom) != wDenom {
-		return errors.Errorf("bBlock parent weight num:%d denom:%d doesn't match existing tipset parent weight num:%d denom:%d", uint64(b.ParentWeightNum), uint64(b.ParentWeightDenom), wNum, wDenom)
+	if uint64(b.ParentWeight) != weight {
+		return errors.Errorf("bBlock parent weight: %d doesn't match existing tipset parent weight: %d", uint64(b.ParentWeight), weight)
 	}
 
 	id := b.Cid()
@@ -152,10 +152,10 @@ func (ts TipSet) Parents() (types.SortedCidSet, error) {
 	return ts.ToSlice()[0].Parents, nil
 }
 
-// ParentWeight returns the tipset's ParentWeightNum and ParentWeightDen.
-func (ts TipSet) ParentWeight() (uint64, uint64, error) {
+// ParentWeight returns the tipset's ParentWeight in fixed point form.
+func (ts TipSet) ParentWeight() (uint64, error) {
 	if len(ts) == 0 {
-		return uint64(0), uint64(0), ErrEmptyTipSet
+		return uint64(0), ErrEmptyTipSet
 	}
-	return uint64(ts.ToSlice()[0].ParentWeightNum), uint64(ts.ToSlice()[0].ParentWeightDenom), nil
+	return uint64(ts.ToSlice()[0].ParentWeight), nil
 }

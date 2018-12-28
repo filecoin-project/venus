@@ -44,10 +44,7 @@
             "null"
           ]
         },
-        "parentWeightNumerator": {
-          "type": "string"
-        },
-        "parentWeightDenominator": {
+        "parentWeight": {
           "type": "string"
         },
         "proof": {

@@ -39,10 +39,10 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	getState := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
 		return getStateByKey(ctx, ts.String())
 	}
-	getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, uint64, error) {
+	getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, error) {
 		parent, err := ts.Parents()
 		if err != nil {
-			return uint64(0), uint64(0), err
+			return uint64(0), err
 		}
 		// TODO handle genesis cid more gracefully
 		if parent.Len() == 0 {
@@ -50,7 +50,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		}
 		pSt, err := getStateByKey(ctx, parent.String())
 		if err != nil {
-			return uint64(0), uint64(0), err
+			return uint64(0), err
 		}
 		return nd.Consensus.Weight(ctx, ts, pSt)
 	}

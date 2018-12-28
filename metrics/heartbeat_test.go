@@ -162,15 +162,14 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 func mustMakeTipset(t *testing.T, height types.Uint64) consensus.TipSet {
 	ts, err := consensus.NewTipSet(&types.Block{
-		Miner:             address.NewForTestGetter()(),
-		Ticket:            nil,
-		Parents:           types.SortedCidSet{},
-		ParentWeightNum:   0,
-		ParentWeightDenom: 0,
-		Height:            types.Uint64(height),
-		Nonce:             0,
-		Messages:          nil,
-		MessageReceipts:   nil,
+		Miner:           address.NewForTestGetter()(),
+		Ticket:          nil,
+		Parents:         types.SortedCidSet{},
+		ParentWeight:    0,
+		Height:          types.Uint64(height),
+		Nonce:           0,
+		Messages:        nil,
+		MessageReceipts: nil,
 	})
 	if err != nil {
 		t.Fatal(err)

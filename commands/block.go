@@ -24,7 +24,7 @@ var showCmd = &cmds.Command{
 var showBlockCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin block by its CID",
-		ShortDescription: `Prints the miner, parent weight numerator, parent weight denominator, height,
+		ShortDescription: `Prints the miner, parent weight, height,
 and nonce of a given block. If JSON encoding is specified with the --enc flag,
 all other block properties will be included as well.`,
 	},
@@ -47,16 +47,19 @@ all other block properties will be included as well.`,
 	Type: types.Block{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *types.Block) error {
-			_, err := fmt.Fprintf(w, `Block Details
-Miner:       %s
-Numerator:   %s
-Denominator: %s
-Height:      %s
-Nonce:       %s
+			wStr, err := types.FixedStr(uint64(block.ParentWeight))
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Fprintf(w, `Block Details
+Miner:  %s
+Weight: %s
+Height: %s
+Nonce:  %s
 `,
 				block.Miner,
-				strconv.FormatUint(uint64(block.ParentWeightNum), 10),
-				strconv.FormatUint(uint64(block.ParentWeightDenom), 10),
+				wStr,
 				strconv.FormatUint(uint64(block.Height), 10),
 				strconv.FormatUint(uint64(block.Nonce), 10),
 			)
