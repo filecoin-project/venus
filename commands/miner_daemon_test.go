@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 
-	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
