@@ -71,7 +71,8 @@ func newDefaultDatastoreConfig() *DatastoreConfig {
 
 // SwarmConfig holds all configuration options related to the swarm.
 type SwarmConfig struct {
-	Address string `json:"address"`
+	Address            string `json:"address"`
+	PublicRelayAddress string `json:"public_relay_address,omitempty"`
 }
 
 func newDefaultSwarmConfig() *SwarmConfig {

@@ -42,8 +42,14 @@ const (
 	// AutoSealIntervalSeconds configures the daemon to check for and seal any staged sectors on an interval.
 	AutoSealIntervalSeconds = "auto-seal-interval-seconds"
 
-	// SwarmListen is the multiaddr for this Filecoin node
-	SwarmListen = "swarmlisten"
+	// SwarmAddress is the multiaddr for this Filecoin node
+	SwarmAddress = "swarmlisten"
+
+	// SwarmPublicRelayAddress is a public address that the filecoin node
+	// will listen on if it is operating as a relay.  We use this to specify
+	// the public ip:port of a relay node that is sitting behind a static
+	// NAT mapping.
+	SwarmPublicRelayAddress = "swarmrelaypublic"
 
 	// BlockTime is the duration string of the block time the daemon will
 	// run with.  TODO: this should eventually be more explicitly grouped
@@ -67,6 +73,10 @@ const (
 
 	// ClusterNightly populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters
 	ClusterNightly = "cluster-nightly"
+
+	// IsRelay when set causes the the daemon to provide libp2p relay
+	// services allowing other filecoin nodes behind NATs to talk directly.
+	IsRelay = "is-relay"
 )
 
 // command object for the local cli

@@ -15,9 +15,10 @@ func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	cfg := r.Config()
 	cfgopts := []ConfigOpt{
-		// Libp2pOptions can only be called once, so add all options here
+		// Libp2pOptions can only be called once, so add all options here.
 		Libp2pOptions(
 			libp2p.ListenAddrStrings(cfg.Swarm.Address),
 			libp2p.Identity(sk),

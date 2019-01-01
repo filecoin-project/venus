@@ -33,10 +33,12 @@ var daemonCmd = &cmds.Command{
 		Tagline: "Start a long-running daemon process",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(SwarmListen),
-		cmdkit.BoolOption(OfflineMode),
+		cmdkit.StringOption(SwarmAddress, "multiaddress to listen on for filecoin network connections"),
+		cmdkit.StringOption(SwarmPublicRelayAddress, "public multiaddress for routing circuit relay traffic.  Necessary for relay nodes to provide this if they are not publically dialable"),
+		cmdkit.BoolOption(OfflineMode, "start the node without networking"),
 		cmdkit.BoolOption(ELStdout),
-		cmdkit.StringOption(BlockTime).WithDefault(mining.DefaultBlockTime.String()),
+		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
+		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(mining.DefaultBlockTime.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re, env)
@@ -63,8 +65,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		rep.Config().API.Address = apiAddress
 	}
 
-	if swarmAddress, ok := req.Options[SwarmListen].(string); ok && swarmAddress != "" {
+	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
 		rep.Config().Swarm.Address = swarmAddress
+	}
+
+	if publicRelayAddress, ok := req.Options[SwarmPublicRelayAddress].(string); ok && publicRelayAddress != "" {
+		rep.Config().Swarm.PublicRelayAddress = publicRelayAddress
 	}
 
 	opts, err := node.OptionsFromRepo(rep)
@@ -74,6 +80,10 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 
 	if offlineMode, ok := req.Options[OfflineMode].(bool); ok {
 		opts = append(opts, node.OfflineMode(offlineMode))
+	}
+
+	if isRelay, ok := req.Options[IsRelay].(bool); ok && isRelay {
+		opts = append(opts, node.IsRelay())
 	}
 
 	durStr, ok := req.Options[BlockTime].(string)

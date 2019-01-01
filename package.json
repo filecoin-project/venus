@@ -176,6 +176,24 @@
       "hash": "QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep",
       "name": "go-blockservice",
       "version": "1.1.20"
+    },
+    {
+      "author": "vyzo",
+      "hash": "QmXmZtMdQokSodDNvPdhDyaVRAjgybvR8dQtuMsNoWv4Lq",
+      "name": "go-libp2p-autonat",
+      "version": "1.0.5"
+    },
+    {
+      "author": "vyzo",
+      "hash": "QmWuMW6UKZMJo9bFFDwnjg8tW3AtKisMHHrXEutQdmJ19N",
+      "name": "go-libp2p-circuit",
+      "version": "2.3.8"
+    },
+    {
+      "author": "vyzo",
+      "hash": "QmRmMbeY5QC5iMsuW16wchtFt8wmYTv2suWb8t9MV8dsxm",
+      "name": "go-libp2p-autonat-svc",
+      "version": "1.0.5"
     }
   ],
   "gxVersion": "0.12.1",
