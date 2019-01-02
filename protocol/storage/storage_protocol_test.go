@@ -44,7 +44,7 @@ func TestSerializeProposal(t *testing.T) {
 // cleaner. The gengen stuff helps, but its still difficult to make actor
 // method invocations
 func TestStorageProtocolBasic(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -176,7 +176,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	require.True(done)
-	if waitTimeout(&wg, 60*time.Second) {
+	if waitTimeout(&wg, 120*time.Second) {
 		state, message := requireQueryDeal()
 		require.NotEqual(Failed, state, message)
 		require.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)

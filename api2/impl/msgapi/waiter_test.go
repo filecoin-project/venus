@@ -159,7 +159,6 @@ func TestWaitConflicting(t *testing.T) {
 
 	require.NotNil(chainStore.GenesisCid())
 
-	// TODO: do these calls need a MinerAddr?
 	b1 := chain.RequireMkFakeChild(require,
 		chain.FakeChildParams{
 			Parent: baseTS, GenesisCid: chainStore.GenesisCid(), StateRoot: baseBlock.StateRoot})

@@ -238,8 +238,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs T
 	return st, nil
 }
 
-// validateMining throws an error if any tipset's block was mined by an invalid
-// miner address.
+// validateMining checks validity of the block ticket, proof, and miner address.
+//    Returns an error if:
+//    	* any tipset's block was mined by an invalid miner address.
+//      * the block proof is invalid for the challenge
+//      * the block ticket is incorrectly computed
+//      * the block ticket fails the power check, i.e. is not a winning ticket
+//    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet, parentTs TipSet) error {
 
@@ -264,7 +269,6 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			log.Debugf("TODO: return error; proof is invalid.")
 		}
 
-		// call create ticket, returns []byte
 		computedTicket := CreateTicket(blk.Proof, blk.Miner)
 
 		if !bytes.Equal(blk.Ticket, computedTicket) {

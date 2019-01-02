@@ -75,13 +75,13 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link1blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
 	// set up tickets
-	link1blk1.Proof, link1blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link1blk1.Proof, link1blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link1blk2 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
 	// set up tickets
-	link1blk2.Proof, link1blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link1blk2.Proof, link1blk2.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link1 = consensus.RequireNewTipSet(require, link1blk1, link1blk2)
@@ -94,17 +94,17 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link2blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(0),
 			NullBlockCount: uint64(0), Consensus: con, MinerAddr: minerAddress})
-	link2blk1.Proof, link2blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link2blk1.Proof, link2blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link2blk2 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Consensus: con, MinerAddr: minerAddress})
-	link2blk2.Proof, link2blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link2blk2.Proof, link2blk2.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link2blk3 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(1), Consensus: con, MinerAddr: minerAddress})
-	link2blk3.Proof, link2blk3.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link2blk3.Proof, link2blk3.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link2 = consensus.RequireNewTipSet(require, link2blk1, link2blk2, link2blk3)
@@ -116,7 +116,7 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	}
 	link3blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link2, GenesisCid: genCid, StateRoot: link2State, Consensus: con, MinerAddr: minerAddress})
-	link3blk1.Proof, link3blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link3blk1.Proof, link3blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link3 = consensus.RequireNewTipSet(require, link3blk1)
@@ -129,12 +129,12 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 
 	link4blk1 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress}) // 2 null blks between link 3 and 4
-	link4blk1.Proof, link4blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link4blk1.Proof, link4blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link4blk2 = RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, Nonce: uint64(1), NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress})
-	link4blk2.Proof, link4blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	link4blk2.Proof, link4blk2.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	link4 = consensus.RequireNewTipSet(require, link4blk1, link4blk2)
@@ -192,6 +192,9 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 	// chain.Store
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
 	require.NoError(err)
+
+	calcGenBlk.StateRoot = genStateRoot
+
 	chainDS := r.ChainDatastore()
 	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
@@ -200,11 +203,11 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 
 	// Initialize stores to contain genesis block and state
 	calcGenTS := consensus.RequireNewTipSet(require, calcGenBlk)
+
 	genTsas := &TipSetAndState{
 		TipSet:          calcGenTS,
 		TipSetStateRoot: genStateRoot,
 	}
-	calcGenBlk.StateRoot = genStateRoot
 	RequirePutTsas(ctx, require, chain, genTsas)
 	err = chain.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
 	require.NoError(err)
@@ -693,29 +696,29 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	forklink2blk1 := RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(51), MinerAddr: minerAddress})
 
-	forklink2blk1.Proof, forklink2blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	forklink2blk1.Proof, forklink2blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	forklink2blk2 := RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(52), MinerAddr: minerAddress})
-	forklink2blk2.Proof, forklink2blk2.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	forklink2blk2.Proof, forklink2blk2.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	forklink2blk3 := RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(53), MinerAddr: minerAddress})
-	forklink2blk3.Proof, forklink2blk3.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	forklink2blk3.Proof, forklink2blk3.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	forklink2blk4 := RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(54), MinerAddr: minerAddress})
-	forklink2blk4.Proof, forklink2blk4.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	forklink2blk4.Proof, forklink2blk4.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	forklink2 := consensus.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3, forklink2blk4)
 
 	forklink3blk1 := RequireMkFakeChildWithCon(require,
 		FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
-	forklink3blk1.Proof, forklink3blk1.Ticket, err = MakeWinningTicketProof(minerAddress, minerPower, totalPower)
+	forklink3blk1.Proof, forklink3blk1.Ticket, err = MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
 	require.NoError(err)
 
 	forklink3 := consensus.RequireNewTipSet(require, forklink3blk1)
@@ -848,13 +851,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1 := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b1.Proof, f1b1.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
+	f1b1.Proof, f1b1.Ticket, err = MakeProofAndWinningTicket(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f2b1 := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f2b1.Proof, f2b1.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
+	f2b1.Proof, f2b1.Ticket, err = MakeProofAndWinningTicket(addr2, pwr2, 1000)
 	require.NoError(err)
 
 	tsShared := consensus.RequireNewTipSet(require, f1b1, f2b1)
@@ -873,13 +876,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
 		wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = MakeWinningTicketProof(addr1, pwr1, 1000)
+	f1b2a.Proof, f1b2a.Ticket, err = MakeProofAndWinningTicket(addr1, pwr1, 1000)
 	require.NoError(err)
 
 	f1b2b := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: consensus.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
 		wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = MakeWinningTicketProof(addr2, pwr2, 1000)
+	f1b2b.Proof, f1b2b.Ticket, err = MakeProofAndWinningTicket(addr2, pwr2, 1000)
 	require.NoError(err)
 
 	f1 := consensus.RequireNewTipSet(require, f1b2a, f1b2b)

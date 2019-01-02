@@ -32,7 +32,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
 	}
 
-	wNum, wDenom, err := w.getWeight(ctx, baseTipSet)
 	weight, err := w.getWeight(ctx, baseTipSet)
 
 	if err != nil {
@@ -80,16 +79,15 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	next := &types.Block{
-		Miner:             w.minerAddr,
-		Height:            types.Uint64(blockHeight),
-		Messages:          res.SuccessfulMessages,
-		MessageReceipts:   receipts,
-		Parents:           baseTipSet.ToSortedCidSet(),
-		ParentWeightNum:   types.Uint64(wNum),
-		ParentWeightDenom: types.Uint64(wDenom),
+		Miner:           w.minerAddr,
+		Height:          types.Uint64(blockHeight),
+		Messages:        res.SuccessfulMessages,
+		MessageReceipts: receipts,
+		Parents:         baseTipSet.ToSortedCidSet(),
 		ParentWeight:    types.Uint64(weight),
-		StateRoot:         newStateTreeCid,
-		Ticket:            ticket,
+		Proof:           proof,
+		StateRoot:       newStateTreeCid,
+		Ticket:          ticket,
 	}
 
 	var rewardSuccessful bool

@@ -76,27 +76,26 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
 func NewValidTestBlockFromTipSet(baseTipSet TipSet, height uint64, minerAddr address.Address) *types.Block {
-	postProof := MakePoStProof()
+	postProof := MakeRandomPoSTProofForTest()
 	ticket := CreateTicket(postProof, minerAddr)
 
 	baseTsBlock := baseTipSet.ToSlice()[0]
 	stateRoot := baseTsBlock.StateRoot
 
 	return &types.Block{
-		Miner:             minerAddr,
-		Ticket:            ticket,
-		Parents:           baseTipSet.ToSortedCidSet(),
-		Height:            types.Uint64(height),
-		Nonce:             types.Uint64(height),
-		ParentWeightNum:   types.Uint64(height * 10),
-		ParentWeightDenom: types.Uint64(1),
-		StateRoot:         stateRoot,
-		Proof:             postProof,
+		Miner:        minerAddr,
+		Ticket:       ticket,
+		Parents:      baseTipSet.ToSortedCidSet(),
+		ParentWeight: types.Uint64(10000 * height),
+		Height:       types.Uint64(height),
+		Nonce:        types.Uint64(height),
+		StateRoot:    stateRoot,
+		Proof:        postProof,
 	}
 }
 
-// MakePoStProof creates a random proof.
-func MakePoStProof() proofs.PoStProof {
+// MakeRandomPoSTProofForTest creates a random proof.
+func MakeRandomPoSTProofForTest() proofs.PoStProof {
 	p := testhelpers.MakeRandomBytes(192)
 	p[0] = 42
 	var postProof proofs.PoStProof

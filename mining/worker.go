@@ -141,13 +141,16 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
 		return false
-	case prChRead := <-prCh:
+	case prChRead, more := <-prCh:
+		if !more {
+			log.Errorf("Worker.Mine got zero value from channel prChRead")
+			return false
+		}
 		copy(proof[:], prChRead)
 		ticket = consensus.CreateTicket(proof, w.minerAddr)
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoST()
-
 	weHaveAWinner, err := consensus.IsWinningTicket(ctx, w.blockstore, w.powerTable, st, ticket, w.minerAddr)
 
 	if err != nil {

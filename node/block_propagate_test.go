@@ -59,16 +59,16 @@ func TestBlockPropTwoNodes(t *testing.T) {
 
 	baseTS := nodes[0].ChainReader.Head()
 	require.NotNil(t, baseTS)
-	proof := consensus.MakePoStProof()
+	proof := consensus.MakeRandomPoSTProofForTest()
 
 	nextBlk := &types.Block{
-		Miner:             minerAddr,
-		Parents:           baseTS.ToSortedCidSet(),
-		Height:            types.Uint64(1),
+		Miner:        minerAddr,
+		Parents:      baseTS.ToSortedCidSet(),
+		Height:       types.Uint64(1),
 		ParentWeight: types.Uint64(10000),
-		StateRoot:         baseTS.ToSlice()[0].StateRoot,
-		Proof:             proof,
-		Ticket:            consensus.CreateTicket(proof, minerAddr),
+		StateRoot:    baseTS.ToSlice()[0].StateRoot,
+		Proof:        proof,
+		Ticket:       consensus.CreateTicket(proof, minerAddr),
 	}
 
 	// Wait for network connection notifications to propagate
@@ -91,7 +91,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 	ctx := context.Background()
 	assert := assert.New(t)
 
@@ -109,7 +109,6 @@ func TestChainSync(t *testing.T) {
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk3))
 
 	connect(t, nodes[0], nodes[1])
-
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].ChainReader.Head()

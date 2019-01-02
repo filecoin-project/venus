@@ -197,11 +197,11 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:    stateRoot,
 	}
 	baseBlock2 := types.Block{
-		Parents:         parents,
-		Height:          types.Uint64(100),
+		Parents:      parents,
+		Height:       types.Uint64(100),
 		ParentWeight: types.Uint64(1000),
-		StateRoot:       stateRoot,
-		Nonce:           1,
+		StateRoot:    stateRoot,
+		Nonce:        1,
 	}
 	blk, err := worker.Generate(ctx, consensus.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, proofs.PoStProof{}, 0)
 	assert.NoError(err)
@@ -290,8 +290,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	baseBlock := types.Block{
 		Height:       h,
 		ParentWeight: w,
-		StateRoot:         newCid(),
-		Proof:             proofs.PoStProof{},
+		StateRoot:    newCid(),
+		Proof:        proofs.PoStProof{},
 	}
 	baseTipSet := consensus.RequireNewTipSet(require, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, proofs.PoStProof{}, 0)

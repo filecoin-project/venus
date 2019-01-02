@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"math/rand"
 	"os"
+	"sync"
 	"testing"
 
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
@@ -287,7 +291,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		return node.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, th.BlockTimeTest)
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
 	cur := node.ChainReader.Head()
 	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(err)
@@ -302,10 +306,6 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 	require.NoError(chainStore.PutTipSetAndState(ctx, tsas))
 	require.NoError(chainStore.SetHead(ctx, outTS))
 	return resultChan
-}
-
-func requireResetNodeGen(require *require.Assertions, node *Node, gif consensus.GenesisInitFunc) { // nolint: deadcode
-	require.NoError(resetNodeGen(node, gif))
 }
 
 // resetNodeGen resets the genesis block of the input given node using the gif

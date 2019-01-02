@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"testing"
 	"time"
 
@@ -441,10 +442,13 @@ func TestNodeConfig(t *testing.T) {
 
 	// fake mining/always a winning ticket
 	prover := proofs.NewFakeProver(true, nil)
+
+	configBlockTime := 99
+
 	configOptions := []ConfigOpt{
 		repoConfig(),
 		ProverConfigOption(prover),
-		BlockTime(99),
+		BlockTime(time.Duration(configBlockTime)),
 	}
 
 	initOpts := []InitOpt{AutoSealIntervalSecondsOpt(120)}
@@ -458,9 +462,12 @@ func TestNodeConfig(t *testing.T) {
 
 	n := GenNode(t, &tno)
 	cfg := n.Repo.Config()
-	//_, blockTime := n.MiningTimes()
-	//assert.Equal(99, blockTime)
-	//assert.Equal(true, n.OfflineMode)
+	_, blockTime := n.MiningTimes()
+
+	actualBlockTime := time.Duration(configBlockTime / mining.MineDelayConversionFactor)
+
+	assert.Equal(actualBlockTime, blockTime)
+	assert.Equal(true, n.OfflineMode)
 	assert.Equal(defaultCfg.Mining, cfg.Mining)
 	assert.Equal(&config.SwarmConfig{
 		Address: "/ip4/0.0.0.0/tcp/0",

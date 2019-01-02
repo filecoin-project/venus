@@ -84,12 +84,12 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
 func MkFakeChildCore(parent consensus.TipSet,
-					 genCid cid.Cid,
-					 stateRoot cid.Cid,
-					 nonce uint64,
-					 nullBlockCount uint64,
-					 minerAddress address.Address,
-					 wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
+	genCid cid.Cid,
+	stateRoot cid.Cid,
+	nonce uint64,
+	nullBlockCount uint64,
+	minerAddress address.Address,
+	wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it doesn't it is assumed consensus uses a
 	// power table view that does not access the state.
 	w, err := wFun(parent)
@@ -258,7 +258,7 @@ func RequireMineOnce(ctx context.Context,
 
 	// proofs & tickets for minerPower = 0 aren't needed
 	if minerPower > 0 {
-		b.Proof, b.Ticket, err = MakeWinningTicketProof(rewardAddress, minerPower, totalPower)
+		b.Proof, b.Ticket, err = MakeProofAndWinningTicket(rewardAddress, minerPower, totalPower)
 		require.NoError(err)
 	}
 
@@ -292,13 +292,14 @@ func RequireMineOnce(ctx context.Context,
 	return b
 }
 
-// MakeWinningTicketProof attempts to make a ticket & proof that will pass validateMining
-func MakeWinningTicketProof(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+// MakeProofAndWinningTicket attempts to make a proof and ticket that will pass validateMining.
+// There is a small (< 1/1000) random chance that it will fail.
+func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
 	var postProof proofs.PoStProof
 	var ticket types.Signature
 
-	for i := 0; i < 300; i++ {
-		postProof = consensus.MakePoStProof()
+	for i := 0; i < 1000; i++ {
+		postProof = consensus.MakeRandomPoSTProofForTest()
 		ticket = consensus.CreateTicket(postProof, minerAddr)
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
 			return postProof, ticket, nil
