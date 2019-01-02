@@ -11,8 +11,6 @@ import (
 	dag "gx/ipfs/QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG/go-merkledag"
 	unixfs "gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
 
-	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
@@ -20,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
 	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"

@@ -2,14 +2,13 @@ package testhelpers
 
 import (
 	"crypto/rand"
+	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"math/big"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // BlockTimeTest is the block time used by workers during testing
