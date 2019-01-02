@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 
-	"gx/ipfs/Qmc3BYVGtLs8y3p4uVpARWyo3Xk2oCBFF1AhYUVMPWgwUK/go-libp2p-pubsub"
+	"gx/ipfs/QmVRxA4J3UPQpw74dLrQ6NJkfysCA1H4GU28gVpXQt9zMU/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
