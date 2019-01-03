@@ -10,7 +10,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	dag "gx/ipfs/QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG/go-merkledag"
-	unixfs "gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
+	"gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
 
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
 	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +51,6 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
-
 	// make two nodes, one of which is the miner (and gets the miner peer key),
 	// and set up their syncers with fake provers that always mark a proof as valid.
 	configOpts := []node.ConfigOpt{node.ProverConfigOption(proofs.NewFakeProver(true, nil))}
@@ -58,6 +58,12 @@ func TestStorageProtocolBasic(t *testing.T) {
 	initOpts := []node.InitOpt{
 		node.AutoSealIntervalSecondsOpt(1),
 		node.PeerKeyOpt(node.PeerKeys[0]),
+	}
+	tno := node.TestNodeOptions{
+		Seed:        seed,
+		InitOpts:    initOpts,
+		ConfigOpts:  configOpts,
+		OfflineMode: false,
 	}
 
 	minerNode := node.MakeNodeWithChainSeed(t, seed, configOpts, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
@@ -208,6 +214,25 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	assert.True(done, "failed to finish transfer")
+}
+
+// makeSyncerWithFakerProver takes a node and a prover, and inserts chain.Syncer that uses
+// the desired prover.  Be sure to create a new prover for each node, or there will be a
+// key mismatch error
+func makeSyncerWithFakeProver(inNode *node.Node, prover proofs.Prover) chain.Syncer {
+
+	// construct the consensus for the syncer using the node values
+	newChainStore := inNode.ChainReader.(chain.Store)
+	newConsensus := consensus.NewExpected(
+		inNode.CborStore(),
+		inNode.Blockstore,
+		&consensus.MarketView{},
+		inNode.ChainReader.GenesisCid(),
+		prover)
+
+	// construct the syncer that uses the fake prover consensus
+	newSyncer := chain.NewDefaultSyncer(inNode.OnlineStore, inNode.CborStore(), newConsensus, newChainStore)
+	return newSyncer
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
