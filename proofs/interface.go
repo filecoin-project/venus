@@ -19,7 +19,8 @@ type GeneratePoSTRequest struct {
 
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
-	Proof PoStProof
+	Challenge []byte
+	Proof     PoStProof
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.

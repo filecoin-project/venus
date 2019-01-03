@@ -23,13 +23,13 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	// Put block in storage wired to an exchange so this node and other
 	// nodes can fetch it.
-	log.Debugf("Putting block in bitswap exchange: %s", b.Cid().String())
+	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
 	blkCid, err := node.OnlineStore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
 
-	log.Debugf("Syncing new block: %s", b.Cid().String())
+	log.Debugf("syncing new block: %s", b.Cid().String())
 	if err := node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blkCid}); err != nil {
 		return err
 	}

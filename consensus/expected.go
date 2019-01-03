@@ -73,7 +73,7 @@ type Expected struct {
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
-// NewExpected is the constructor for the Expected consenus.Protocol module.
+// NewExpected is the constructor for the Expected consensus.Protocol module.
 func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
 	return &Expected{
 		cstore:       cs,
@@ -238,8 +238,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs T
 	return st, nil
 }
 
-// validateMining throws an error if any tipset's block was mined by an invalid
-// miner address.
+// validateMining checks validity of the block ticket, proof, and miner address.
+//    Returns an error if:
+//    	* any tipset's block was mined by an invalid miner address.
+//      * the block proof is invalid for the challenge
+//      * the block ticket is incorrectly computed
+//      * the block ticket fails the power check, i.e. is not a winning ticket
+//    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet, parentTs TipSet) error {
 
@@ -264,21 +269,25 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			log.Debugf("TODO: return error; proof is invalid.")
 		}
 
-		// TODO: validate that the ticket is a valid signature over the hash of the proof
-		// 		return error if signature invalid.
+		computedTicket := CreateTicket(blk.Proof, blk.Miner)
+
+		if !bytes.Equal(blk.Ticket, computedTicket) {
+			return errors.New("ticket incorrectly computed")
+		}
+
 		// TODO: Also need to validate BlockSig
 
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {
-			return errors.Wrap(err, "couldn't compute ticket")
+			return errors.Wrap(err, "can't check for winning ticket")
 		}
 
-		if result {
-			return nil
+		if !result {
+			return errors.New("not a winning ticket")
 		}
 	}
-	return errors.New("miner ticket is invalid")
+	return nil
 }
 
 // IsWinningTicket fetches miner power & total power, returns true if it's a winning ticket, false if not,
@@ -292,24 +301,29 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 		return false, errors.Wrap(err, "Couldn't get totalPower")
 	}
 
-	myPower, err := ptv.Miner(ctx, st, bs, miner)
+	minerPower, err := ptv.Miner(ctx, st, bs, miner)
 	if err != nil {
 		return false, errors.Wrap(err, "Couldn't get minerPower")
 	}
 
+	return CompareTicketPower(ticket, minerPower, totalPower), nil
+}
+
+// CompareTicketPower abstracts the actual comparison logic so it can be used by some test
+// helpers
+func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower uint64) bool {
 	lhs := &big.Int{}
 	lhs.SetBytes(ticket)
 	lhs.Mul(lhs, big.NewInt(int64(totalPower)))
-
 	rhs := &big.Int{}
-	rhs.Mul(big.NewInt(int64(myPower)), ticketDomain)
-	return lhs.Cmp(rhs) < 0, nil
+	rhs.Mul(big.NewInt(int64(minerPower)), ticketDomain)
+	return lhs.Cmp(rhs) < 0
 }
 
 // CreateChallenge creates/recreates the block challenge for purposes of validation.
-//   TODO -- in general this won't work with only the base tipset, we'll potentially
-//     need some chain manager utils, similar to the State function, to sample
-//     further back in the chain.
+//   TODO -- in general this won't work with only the base tipset.
+//     We'll potentially need some chain manager utils, similar to
+//     the State function, to sample further back in the chain.
 func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
@@ -321,7 +335,21 @@ func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
 	buf = append(smallest, buf[:n]...)
 
 	h := sha256.Sum256(buf)
+	// TODO: return a length 64-length bytes slice, encode this in the type system
 	return h[:], nil
+}
+
+// CreateTicket computes a valid ticket using the supplied proof
+// []byte and the minerAddress address.Address.
+//    returns:  []byte -- the ticket.
+func CreateTicket(proof proofs.PoStProof, minerAddr address.Address) []byte {
+	// TODO: the ticket is supposed to be a signature, per the spec.
+	// For now to ensure that the ticket is unique to each miner mix in
+	// the miner address.
+	// https://github.com/filecoin-project/go-filecoin/issues/1054
+	buf := append(proof[:], minerAddr.Bytes()...)
+	h := sha256.Sum256(buf)
+	return h[:]
 }
 
 // runMessages applies the messages of all blocks within the input

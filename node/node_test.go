@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"testing"
 	"time"
 
@@ -15,8 +16,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
 	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -33,7 +36,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false, true, nil)[0]
+	nd := MakeNodesUnstarted(t, 1, false, true)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop(context.Background())
@@ -44,7 +47,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false, true, nil)
+	nds := MakeNodesUnstarted(t, 2, false, true)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -147,7 +150,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := MakeChainSeed(t, TestGenCfg)
-	minerNode := NodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
@@ -277,7 +280,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true, false, nil)[0]
+	node := MakeNodesUnstarted(t, 1, true, false)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
@@ -378,7 +381,7 @@ func TestSendMessage(t *testing.T) {
 		tif := consensus.MakeGenesisFunc(
 			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-		requireResetNodeGen(require, node, tif)
+		require.NoError(resetNodeGen(node, tif))
 
 		assert.NoError(node.Start(ctx))
 
@@ -407,8 +410,7 @@ func TestQueryMessage(t *testing.T) {
 		tif := consensus.MakeGenesisFunc(
 			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
 		)
-
-		requireResetNodeGen(require, node, tif)
+		require.NoError(resetNodeGen(node, tif))
 
 		assert.NoError(node.Start(ctx))
 
@@ -421,4 +423,53 @@ func TestQueryMessage(t *testing.T) {
 
 		assert.NotNil(returnValue)
 	})
+}
+
+func repoConfig() ConfigOpt {
+	defaultCfg := config.NewDefaultConfig()
+	return func(c *Config) error {
+		// overwrite value set with testhelpers.GetFreePort()
+		c.Repo.Config().API.Address = defaultCfg.API.Address
+		return nil
+	}
+}
+
+func TestNodeConfig(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	defaultCfg := config.NewDefaultConfig()
+
+	// fake mining/always a winning ticket
+	prover := proofs.NewFakeProver(true, nil)
+
+	configBlockTime := 99
+
+	configOptions := []ConfigOpt{
+		repoConfig(),
+		ProverConfigOption(prover),
+		BlockTime(time.Duration(configBlockTime)),
+	}
+
+	initOpts := []InitOpt{AutoSealIntervalSecondsOpt(120)}
+
+	tno := TestNodeOptions{
+		ConfigOpts:  configOptions,
+		InitOpts:    initOpts,
+		OfflineMode: true,
+		GenesisFunc: consensus.InitGenesis,
+	}
+
+	n := GenNode(t, &tno)
+	cfg := n.Repo.Config()
+	_, blockTime := n.MiningTimes()
+
+	actualBlockTime := time.Duration(configBlockTime / mining.MineDelayConversionFactor)
+
+	assert.Equal(actualBlockTime, blockTime)
+	assert.Equal(true, n.OfflineMode)
+	assert.Equal(defaultCfg.Mining, cfg.Mining)
+	assert.Equal(&config.SwarmConfig{
+		Address: "/ip4/0.0.0.0/tcp/0",
+	}, cfg.Swarm)
 }

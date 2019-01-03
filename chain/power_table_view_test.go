@@ -20,9 +20,10 @@ import (
 func TestTotal(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	power := uint64(19)
-	ctx, bs, _, st := requireMinerWithPower(t, power)
+	bs, _, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
 	require.NoError(err)
@@ -31,11 +32,12 @@ func TestTotal(t *testing.T) {
 }
 
 func TestMiner(t *testing.T) {
+	ctx := context.Background()
 	require := require.New(t)
 	assert := assert.New(t)
 
 	power := uint64(12)
-	ctx, bs, addr, st := requireMinerWithPower(t, power)
+	bs, addr, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
 	require.NoError(err)
@@ -43,16 +45,17 @@ func TestMiner(t *testing.T) {
 	assert.Equal(power, actual)
 }
 
-func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bstore.Blockstore, address.Address, state.Tree) {
 
 	// set up genesis block with power
-	ctx := context.Background()
-	bootstrapPowerTable := &consensus.TestView{}
 	require := require.New(t)
 
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
+
+	// BEGIN Lifted from default_syncer_test.go
+	// set up genesis block with power
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
 	testAddress := mockSigner.Addresses[0]
@@ -61,29 +64,39 @@ func requireMinerWithPower(t *testing.T, power uint64) (context.Context, bstore.
 		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
 	)
 
-	genBlk, err := testGen(cst, bs)
+	// chain.Store
+	calcGenBlk, err := testGen(cst, bs) // flushes state
 	require.NoError(err)
-	genCid := genBlk.Cid()
-	genesisTS := consensus.RequireNewTipSet(require, genBlk)
-	genRoot := genBlk.StateRoot
+	chainDS := r.ChainDatastore()
+	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
+	// chain.Syncer
 	prover := proofs.NewFakeProver(true, nil)
-	con := consensus.NewExpected(cst, bs, bootstrapPowerTable, genCid, prover)
-	syncer, chain, cst, _ := initSyncTest(require, con, testGen, cst, bs, r)
+	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, calcGenBlk.Cid(), prover)
+	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
+	// Initialize stores to contain genesis block and state
+	calcGenTS := consensus.RequireNewTipSet(require, calcGenBlk)
 	genTsas := &TipSetAndState{
-		TipSet:          genesisTS,
-		TipSetStateRoot: genRoot,
+		TipSet:          calcGenTS,
+		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
 	RequirePutTsas(ctx, require, chain, genTsas)
-	err = chain.SetHead(ctx, genesisTS) // Initialize chain store with correct genesis
+	err = chain.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
 	require.NoError(err)
-	requireHead(require, chain, genesisTS)
-	requireTsAdded(require, chain, genesisTS)
-	addrMine, _, _, err := CreateMinerWithPower(ctx, t, syncer, genBlk, mockSigner, uint64(0), mockSigner.Addresses[0], power, cst, bs, genCid)
+	requireHead(require, chain, calcGenTS)
+	requireTsAdded(require, chain, calcGenTS)
+
+	calcGenBlkCid := calcGenBlk.Cid()
+	// END Lifted from default_syncer_test.go
+
+	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, calcGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, calcGenBlkCid)
+	require.NoError(err)
+
+	addrMine, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, power, cst, bs, calcGenBlkCid)
 	require.NoError(err)
 
 	st, err := chain.LatestState(ctx)
 	require.NoError(err)
-	return ctx, bs, addrMine, st
+	return bs, addrMine, st
 }

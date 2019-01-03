@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -18,7 +19,6 @@ import (
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	sha256 "gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
@@ -134,17 +134,23 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		return false
 	}
 	prCh := createProof(challenge, w.createPoST)
+
+	var proof proofs.PoStProof
 	var ticket []byte
 	select {
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
 		return false
-	case proof := <-prCh:
-		ticket = createTicket(proof, w.minerAddr)
+	case prChRead, more := <-prCh:
+		if !more {
+			log.Errorf("Worker.Mine got zero value from channel prChRead")
+			return false
+		}
+		copy(proof[:], prChRead)
+		ticket = consensus.CreateTicket(proof, w.minerAddr)
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoST()
-
 	weHaveAWinner, err := consensus.IsWinningTicket(ctx, w.blockstore, w.powerTable, st, ticket, w.minerAddr)
 
 	if err != nil {
@@ -154,7 +160,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 	}
 
 	if weHaveAWinner {
-		next, err := w.Generate(ctx, base, ticket, uint64(nullBlkCount))
+		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
 		}
@@ -175,16 +181,6 @@ func createProof(challenge []byte, createPoST DoSomeWorkFunc) <-chan []byte {
 		c <- challenge
 	}()
 	return c
-}
-
-func createTicket(proof []byte, minerAddr address.Address) []byte {
-	// TODO: the ticket is supposed to be a signature, per the spec.
-	// For now to ensure that the ticket is unique to each miner mix in
-	// the miner address.
-	// https://github.com/filecoin-project/go-filecoin/issues/1054
-	buf := append(proof, minerAddr.Bytes()...)
-	h := sha256.Sum256(buf)
-	return h[:]
 }
 
 // fakeCreatePoST is the default implementation of DoSomeWorkFunc.

@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -19,6 +20,7 @@ import (
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet consensus.TipSet,
 	ticket types.Signature,
+	proof proofs.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
 
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
@@ -31,6 +33,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	weight, err := w.getWeight(ctx, baseTipSet)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "get weight")
 	}
@@ -82,6 +85,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		MessageReceipts: receipts,
 		Parents:         baseTipSet.ToSortedCidSet(),
 		ParentWeight:    types.Uint64(weight),
+		Proof:           proof,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
 	}

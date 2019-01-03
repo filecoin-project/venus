@@ -161,10 +161,11 @@ type Node struct {
 
 // Config is a helper to aid in the construction of a filecoin node.
 type Config struct {
-	Libp2pOpts  []libp2p.Option
-	Repo        repo.Repo
-	OfflineMode bool
 	BlockTime   time.Duration
+	Libp2pOpts  []libp2p.Option
+	OfflineMode bool
+	Prover      proofs.Prover
+	Repo        repo.Repo
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -194,6 +195,14 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 			panic("Libp2pOptions can only be called once")
 		}
 		nc.Libp2pOpts = opts
+		return nil
+	}
+}
+
+// ProverConfigOption returns a function that sets the prover to use in the node consensus
+func ProverConfigOption(prover proofs.Prover) ConfigOpt {
+	return func(c *Config) error {
+		c.Prover = prover
 		return nil
 	}
 }
@@ -288,10 +297,15 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
-	consensus := consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &proofs.RustProver{})
+	var nodeConsensus consensus.Protocol
+	if nc.Prover == nil {
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &proofs.RustProver{})
+	} else {
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, powerTable, genCid, nc.Prover)
+	}
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, consensus, chainStore)
+	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, nodeConsensus, chainStore)
 	chainReader, ok := chainStore.(chain.ReadStore)
 	if !ok {
 		return nil, errors.New("failed to cast chain.Store to chain.ReadStore")
@@ -319,7 +333,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Blockstore:   bs,
 		cborStore:    &cstOffline,
 		OnlineStore:  &cstOnline,
-		Consensus:    consensus,
+		Consensus:    nodeConsensus,
 		ChainReader:  chainReader,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,

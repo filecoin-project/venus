@@ -170,7 +170,8 @@ func TestGetMultipleByParent(t *testing.T) {
 	RequirePutTestChain(require, chain)
 	pk1 := genTS.String()
 	// give one parent multiple children and then query
-	newBlk := RequireMkFakeChild(require, genTS, genCid, genStateRoot, uint64(5), uint64(0))
+	newBlk := RequireMkFakeChild(require,
+		FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(5)})
 	newChild := consensus.RequireNewTipSet(require, newBlk)
 	newRoot := cidGetter()
 	newChildTsas := &TipSetAndState{

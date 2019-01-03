@@ -41,7 +41,7 @@ func TestSerializeProposal(t *testing.T) {
 // cleaner. The gengen stuff helps, but its still difficult to make actor
 // method invocations
 func TestStorageProtocolBasic(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -50,28 +50,28 @@ func TestStorageProtocolBasic(t *testing.T) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the miner (and gets the miner peer key)
-	miner := node.NodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
-	client := node.NodeWithChainSeed(t, seed)
-	minerAPI := impl.New(miner)
+	minerNode := node.MakeNodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	clientNode := node.MakeNodeWithChainSeed(t, seed)
+	minerAPI := impl.New(minerNode)
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
-	sigGetter := mthdsigapi.NewGetter(miner.ChainReader)
-	msgSender := msgapi.NewSender(miner.Repo, miner.Wallet, miner.ChainReader, miner.MsgPool, miner.PubSub.Publish)
-	msgWaiter := msgapi.NewWaiter(miner.ChainReader, miner.Blockstore, miner.CborStore())
+	sigGetter := mthdsigapi.NewGetter(minerNode.ChainReader)
+	msgSender := msgapi.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
+	msgWaiter := msgapi.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	// Give the miner node the right private key, and set them up with
 	// the miner actor
-	seed.GiveKey(t, miner, 0)
-	mineraddr, minerOwnerAddr := seed.GiveMiner(t, miner, 0)
+	seed.GiveKey(t, minerNode, 0)
+	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 
-	seed.GiveKey(t, client, 1)
+	seed.GiveKey(t, clientNode, 1)
 
 	cni := NewClientNodeImpl(
-		dag.NewDAGService(client.BlockService()),
-		client.Host(),
-		client.Lookup(),
+		dag.NewDAGService(clientNode.BlockService()),
+		clientNode.Host(),
+		clientNode.Lookup(),
 		func(_ context.Context, _ address.Address, _ string, _ []byte, _ *address.Address) ([][]byte, uint8, error) {
 			// This is only used for getting the price of an ask.
 			a := &mactor.Ask{
@@ -87,19 +87,19 @@ func TestStorageProtocolBasic(t *testing.T) {
 		},
 	)
 	c := NewClient(cni)
-	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, miner, plumbingAPI)
+	m, err := NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, plumbingAPI)
 	assert.NoError(err)
 	_ = m
 
-	assert.NoError(miner.Start(ctx))
-	assert.NoError(client.Start(ctx))
+	assert.NoError(minerNode.Start(ctx))
+	assert.NoError(clientNode.Start(ctx))
 
-	node.ConnectNodes(t, miner, client)
+	node.ConnectNodes(t, minerNode, clientNode)
 	err = minerAPI.Mining().Start(ctx)
 	assert.NoError(err)
 	defer minerAPI.Mining().Stop(ctx)
 
-	sectorSize, err := miner.SectorBuilder().GetMaxUserBytesPerStagedSector()
+	sectorSize, err := minerNode.SectorBuilder().GetMaxUserBytesPerStagedSector()
 	require.NoError(err)
 
 	data := unixfs.NewFSNode(unixfs.TFile)
@@ -113,7 +113,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	assert.NoError(err)
 	protonode := dag.NodeWithData(raw)
 
-	assert.NoError(client.BlockService().AddBlock(protonode))
+	assert.NoError(clientNode.BlockService().AddBlock(protonode))
 
 	var foundCommit bool
 	var foundPoSt bool
@@ -121,9 +121,9 @@ func TestStorageProtocolBasic(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	old := miner.AddNewlyMinedBlock
+	old := minerNode.AddNewlyMinedBlock
 	var bCount, mCount int
-	miner.AddNewlyMinedBlock = func(ctx context.Context, blk *types.Block) {
+	minerNode.AddNewlyMinedBlock = func(ctx context.Context, blk *types.Block) {
 		bCount++
 		mCount += len(blk.Messages)
 		old(ctx, blk)
@@ -176,7 +176,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	if waitTimeout(&wg, 120*time.Second) {
 		state, message := requireQueryDeal()
 		require.NotEqual(Failed, state, message)
-		assert.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
+		require.Failf("TestStorageProtocolBasic failed", "waiting for submission timed out. Saw %d blocks with %d messages while waiting", bCount, mCount)
 	}
 	require.True(foundCommit, "no commitSector on chain")
 	require.True(foundPoSt, "no submitPoSt on chain")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	mrand "math/rand"
 	"testing"
@@ -28,6 +27,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// FakeChildParams is a wrapper for all the params needed to create fake child blocks.
+type FakeChildParams struct {
+	Consensus      consensus.Protocol
+	GenesisCid     cid.Cid
+	MinerAddr      address.Address
+	Nonce          uint64
+	NullBlockCount uint64
+	Parent         consensus.TipSet
+	StateRoot      cid.Cid
+}
+
 // MkFakeChild creates a mock child block of a genesis block. If a
 // stateRootCid is non-nil it will be added to the block, otherwise
 // MkFakeChild will use the stateRoot of the parent tipset.  State roots
@@ -43,24 +53,43 @@ import (
 // and chain storing behavior, and the weight related methods of the consensus
 // interface.  They are not useful for testing the full range of consensus
 // validation, particularly message processing and mining edge cases.
-func MkFakeChild(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64) (*types.Block, error) {
+func MkFakeChild(params FakeChildParams) (*types.Block, error) {
+
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, &consensus.TestView{}, genCid, proofs.NewFakeProver(true, nil))
-	return MkFakeChildWithCon(parent, genCid, stateRoot, nonce, nullBlockCount, con)
+	powerTableView := &consensus.TestView{}
+	con := consensus.NewExpected(cst,
+		bs,
+		powerTableView,
+		params.GenesisCid,
+		proofs.NewFakeProver(true, nil))
+	params.Consensus = con
+	return MkFakeChildWithCon(params)
 }
 
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
-func MkFakeChildWithCon(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, con consensus.Protocol) (*types.Block, error) {
+func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	wFun := func(ts consensus.TipSet) (uint64, error) {
-		return con.Weight(context.Background(), parent, nil)
+		return params.Consensus.Weight(context.Background(), params.Parent, nil)
 	}
-	return MkFakeChildCore(parent, genCid, stateRoot, nonce, nullBlockCount, wFun)
+	return MkFakeChildCore(params.Parent,
+		params.GenesisCid,
+		params.StateRoot,
+		params.Nonce,
+		params.NullBlockCount,
+		params.MinerAddr,
+		wFun)
 }
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
-func MkFakeChildCore(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
+func MkFakeChildCore(parent consensus.TipSet,
+	genCid cid.Cid,
+	stateRoot cid.Cid,
+	nonce uint64,
+	nullBlockCount uint64,
+	minerAddress address.Address,
+	wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it doesn't it is assumed consensus uses a
 	// power table view that does not access the state.
 	w, err := wFun(parent)
@@ -81,44 +110,39 @@ func MkFakeChildCore(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid,
 		stateRoot = parent.ToSlice()[0].StateRoot
 	}
 
-	return &types.Block{
-		Parents:      pIDs,
-		Height:       types.Uint64(height),
-		ParentWeight: types.Uint64(w),
-		Nonce:        types.Uint64(nonce),
-		StateRoot:    stateRoot,
-	}, nil
+	newBlock := consensus.NewValidTestBlockFromTipSet(parent, height, minerAddress)
+
+	// Override fake values with our values
+	newBlock.Parents = pIDs
+	newBlock.ParentWeight = types.Uint64(w)
+	newBlock.Nonce = types.Uint64(nonce)
+	newBlock.StateRoot = stateRoot
+
+	return newBlock, nil
 }
 
 // RequireMkFakeChild wraps MkFakeChild with a testify requirement that it does not error
-func RequireMkFakeChild(require *require.Assertions, parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64) *types.Block {
-	child, err := MkFakeChild(parent, genCid, stateRoot, nonce, nullBlockCount)
+func RequireMkFakeChild(require *require.Assertions, params FakeChildParams) *types.Block {
+	child, err := MkFakeChild(params)
 	require.NoError(err)
 	return child
 }
 
 // RequireMkFakeChildWithCon wraps MkFakeChildWithCon with a requirement that
-// it does not errror.
-func RequireMkFakeChildWithCon(require *require.Assertions, parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, con consensus.Protocol) *types.Block {
-	child, err := MkFakeChildWithCon(parent, genCid, stateRoot, nonce, nullBlockCount, con)
+// it does not error.
+func RequireMkFakeChildWithCon(require *require.Assertions, params FakeChildParams) *types.Block {
+	child, err := MkFakeChildWithCon(params)
 	require.NoError(err)
 	return child
 }
 
 // RequireMkFakeChildCore wraps MkFakeChildCore with a requirement that
 // it does not errror.
-func RequireMkFakeChildCore(require *require.Assertions, parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64, wFun func(consensus.TipSet) (uint64, error)) *types.Block {
-	child, err := MkFakeChildCore(parent, genCid, stateRoot, nonce, nullBlockCount, wFun)
+func RequireMkFakeChildCore(require *require.Assertions,
+	params FakeChildParams,
+	wFun func(consensus.TipSet) (uint64, error)) *types.Block {
+	child, err := MkFakeChildCore(params.Parent, params.GenesisCid, params.StateRoot, params.Nonce, params.NullBlockCount, params.MinerAddr, wFun)
 	require.NoError(err)
-	return child
-}
-
-// MustMkFakeChild panics if MkFakeChild returns an error
-func MustMkFakeChild(parent consensus.TipSet, genCid cid.Cid, stateRoot cid.Cid, nonce uint64, nullBlockCount uint64) *types.Block {
-	child, err := MkFakeChild(parent, genCid, stateRoot, nonce, nullBlockCount)
-	if err != nil {
-		panic(err)
-	}
 	return child
 }
 
@@ -141,7 +165,17 @@ func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Stor
 // CreateMinerWithPower uses storage market functionality to mine the messages needed to create a miner, ask, bid, and deal, and then commit that deal to give the miner power.
 // If the power is nil, this method will just create the miner.
 // The returned block and nonce should be used in subsequent calls to this method.
-func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, lastBlock *types.Block, sn types.MockSigner, nonce uint64, rewardAddress address.Address, power uint64, cst *hamt.CborIpldStore, bs bstore.Blockstore, genCid cid.Cid) (address.Address, *types.Block, uint64, error) {
+func CreateMinerWithPower(ctx context.Context,
+	t *testing.T,
+	syncer Syncer,
+	lastBlock *types.Block,
+	sn types.MockSigner,
+	nonce uint64,
+	rewardAddress address.Address,
+	power uint64,
+	cst *hamt.CborIpldStore,
+	bs bstore.Blockstore,
+	genCid cid.Cid) (address.Address, *types.Block, uint64, error) {
 	require := require.New(t)
 
 	pledge := power
@@ -154,8 +188,10 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 	// create miner
 	msg, err := th.CreateMinerMessage(sn.Addresses[0], nonce, pledge, RequireRandomPeerID(), storagemarket.MinimumCollateral(&bigIntPledge))
 	require.NoError(err)
-	fmt.Printf("create miner\n")
-	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, genCid)
+
+	ptv := consensus.NewTestPowerTableView(power, 1000)
+
+	b := RequireMineOnce(ctx, t, syncer, cst, bs, lastBlock, rewardAddress, []*types.SignedMessage{mockSign(sn, msg)}, ptv, genCid)
 	nonce++
 
 	require.Equal(uint8(0), b.MessageReceipts[0].ExitCode)
@@ -180,7 +216,7 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 		nonce++
 	}
 
-	b = RequireMineOnce(ctx, t, syncer, cst, bs, b, rewardAddress, msgs, genCid)
+	b = RequireMineOnce(ctx, t, syncer, cst, bs, b, rewardAddress, msgs, ptv, genCid)
 	for _, r := range b.MessageReceipts {
 		require.Equal(uint8(0), r.ExitCode)
 	}
@@ -188,16 +224,43 @@ func CreateMinerWithPower(ctx context.Context, t *testing.T, syncer Syncer, last
 	return minerAddr, b, nonce, nil
 }
 
-// RequireMineOnce process one block and panic on error.  TODO ideally this
-// should be wired up to the block generation functionality in the mining
-// sub-package.
-func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt.CborIpldStore, bs bstore.Blockstore, lastBlock *types.Block, rewardAddress address.Address, msgs []*types.SignedMessage, genCid cid.Cid) *types.Block {
+// RequireMineOnce process one block and panic on error.
+// TODO ideally this should be wired up to the block generation functionality in the mining sub-package.
+func RequireMineOnce(ctx context.Context,
+	t *testing.T,
+	syncer Syncer,
+	cst *hamt.CborIpldStore,
+	bs bstore.Blockstore,
+	lastBlock *types.Block,
+	rewardAddress address.Address,
+	msgs []*types.SignedMessage,
+	ptv consensus.PowerTableView,
+	genCid cid.Cid) *types.Block {
 	require := require.New(t)
 
-	// Make a partially correct block for processing.
+	// Make a block for processing.
 	baseTipSet := consensus.RequireNewTipSet(require, lastBlock)
-	b, err := MkFakeChild(baseTipSet, genCid, lastBlock.StateRoot, uint64(0), uint64(0))
+
+	// WARNING this assumes a test power table view, not a real one!!!
+	totalPower, err := ptv.Total(ctx, nil, bs)
 	require.NoError(err)
+	minerPower, err := ptv.Miner(ctx, nil, bs, rewardAddress)
+	require.NoError(err)
+	// WARNING
+
+	b, err := MkFakeChild(FakeChildParams{
+		GenesisCid: genCid,
+		StateRoot:  lastBlock.StateRoot,
+		Parent:     baseTipSet,
+		MinerAddr:  rewardAddress,
+	})
+	require.NoError(err)
+
+	// proofs & tickets for minerPower = 0 aren't needed
+	if minerPower > 0 {
+		b.Proof, b.Ticket, err = MakeProofAndWinningTicket(rewardAddress, minerPower, totalPower)
+		require.NoError(err)
+	}
 
 	// Get the updated state root after applying messages.
 	st, err := state.LoadStateTree(ctx, cst, lastBlock.StateRoot, builtin.Actors)
@@ -219,16 +282,31 @@ func RequireMineOnce(ctx context.Context, t *testing.T, syncer Syncer, cst *hamt
 		b.MessageReceipts = append(b.MessageReceipts, r.Receipt)
 	}
 	b.StateRoot = newStateRoot
-	b.Miner = rewardAddress
 
 	// Sync the block.
 	c, err := cst.Put(ctx, b)
 	require.NoError(err)
-	fmt.Printf("new block parent weight: %v\n", b.ParentWeight)
 	err = syncer.HandleNewBlocks(ctx, []cid.Cid{c})
 	require.NoError(err)
 
 	return b
+}
+
+// MakeProofAndWinningTicket attempts to make a proof and ticket that will pass validateMining.
+// There is a small (< 1/1000) random chance that it will fail.
+func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+	var postProof proofs.PoStProof
+	var ticket types.Signature
+
+	for i := 0; i < 1000; i++ {
+		postProof = consensus.MakeRandomPoSTProofForTest()
+		ticket = consensus.CreateTicket(postProof, minerAddr)
+		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
+			return postProof, ticket, nil
+		}
+	}
+
+	return postProof, nil, errors.New("could not calculate a proof")
 }
 
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the
@@ -279,7 +357,13 @@ func AddChain(ctx context.Context, chain Store, start []*types.Block, length int
 	l := uint64(length)
 	var blk *types.Block
 	for i := uint64(0); i < l; i++ {
-		blk, err = MkFakeChild(ts, chain.GenesisCid(), stateRoot, i, uint64(0))
+		blk, err = MkFakeChild(FakeChildParams{
+			GenesisCid:     chain.GenesisCid(),
+			StateRoot:      stateRoot,
+			Parent:         ts,
+			Nonce:          i,
+			NullBlockCount: uint64(0),
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -318,6 +402,8 @@ func getWinningMinerCount(n int, p float64) int {
 // where n = num_miners and p = 1/n.  Concretely this distribution corresponds to
 // the configuration where all miners havwe the same storage power.
 // Precondition: the starting tipset must be in the store.
+// FIXME: Unused - https://github.com/filecoin-project/go-filecoin/issues/1541
+// this function is called only in a commented-out test -- of itself -- which fails anyway.
 func AddChainBinomBlocksPerEpoch(ctx context.Context, chain Store, start []*types.Block, numMiners, length int) (consensus.TipSet, error) {
 	var cids types.SortedCidSet
 	for _, blk := range start {
@@ -347,7 +433,13 @@ func AddChainBinomBlocksPerEpoch(ctx context.Context, chain Store, start []*type
 
 		// Construct each block.
 		for j := 0; j < nBlks; j++ {
-			blk, err := MkFakeChild(ts, chain.GenesisCid(), stateRoot, i, lastNull)
+			blk, err := MkFakeChild(FakeChildParams{
+				GenesisCid:     chain.GenesisCid(),
+				StateRoot:      stateRoot,
+				Parent:         ts,
+				Nonce:          i,
+				NullBlockCount: lastNull,
+			})
 			if err != nil {
 				return nil, err
 			}
