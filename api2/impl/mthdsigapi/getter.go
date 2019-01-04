@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 var (
@@ -35,8 +36,7 @@ func NewGetter(chainReader ChainReadStore) *Getter {
 	return &Getter{chainReader}
 }
 
-// Get returns the signature for the given actor and method. The function signature
-// is typically used to enable a caller to decode the output of an actor method call (message).
+// Get returns the signature for the given actor and method. See api description.
 func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
 	st, err := sg.chainReader.LatestState(ctx)
 	if err != nil {

@@ -48,10 +48,7 @@ func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStor
 	return &Sender{repo: repo, wallet: wallet, chainReader: chainReader, msgPool: msgPool, publish: publish}
 }
 
-// Send sends a message. It uses the default from address if none is given and signs the
-// message using the wallet. This method "sends" in the sense that it enqueues the
-// message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain.
+// Send sends a message. See api description.
 func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
 	// If the from address isn't set attempt to use the default address.
 	if from == (address.Address{}) {

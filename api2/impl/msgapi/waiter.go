@@ -37,13 +37,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 }
 
 // Wait invokes the callback when a message with the given cid appears on chain.
-// It will find the message in both the case that it is already on chain and
-// the case that it appears in a newly mined block. An error is returned if one is
-// encountered. It is possible for both an error to be returned and the callback
-// to be invoked, eg if an error was encountered trying to find the block
-// in the block history but it suddenly appears in a newly mined block. Unless
-// the context is canceled this method will block forever if the message never
-// appears on chain.
+// See api description.
 //
 // Note: this method does too much -- the callback should just receive the tipset
 // containing the message and the caller should pull the receipt out of the block
