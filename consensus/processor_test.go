@@ -1,11 +1,11 @@
-package consensus
+package consensus_test
 
 import (
 	"context"
 	"testing"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
+	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -47,11 +48,16 @@ func TestProcessBlockSuccess(t *testing.T) {
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
 
+	startingNetworkBalance := uint64(10000000)
+
 	toAddr := newAddress()
+	minerAddr := newAddress()
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: fromAct,
+		address.NetworkAddress: th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(startingNetworkBalance)),
+		minerAddr:              th.RequireNewAccountActor(require, types.ZeroAttoFIL),
+		fromAddr:               fromAct,
 	})
 
 	vms := th.VMStorage()
@@ -63,8 +69,9 @@ func TestProcessBlockSuccess(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg},
+		Miner:     minerAddr,
 	}
-	results, err := ProcessBlock(ctx, blk, st, vms)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk)
 	assert.NoError(err)
 	assert.Len(results, 1)
 
@@ -72,9 +79,13 @@ func TestProcessBlockSuccess(t *testing.T) {
 	assert.NoError(err)
 	expAct1, expAct2 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-550)), th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(550))
 	expAct1.IncNonce()
+	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
+	expectedNetworkBalance := types.NewAttoFILFromFIL(startingNetworkBalance).Sub(blockRewardAmount)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: expAct1,
-		toAddr:   expAct2,
+		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
+		minerAddr:              th.RequireNewAccountActor(require, blockRewardAmount),
+		fromAddr:               expAct1,
+		toAddr:                 expAct2,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -88,6 +99,9 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
 
+	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
+	minerAddr := newAddress()
+
 	toAddr := newAddress()
 	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
@@ -97,8 +111,9 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	fromAddr1Act := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	fromAddr2Act := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr1: fromAddr1Act,
-		fromAddr2: fromAddr2Act,
+		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
+		fromAddr1:              fromAddr1Act,
+		fromAddr2:              fromAddr2Act,
 	})
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
@@ -108,6 +123,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg1},
+		Miner:     minerAddr,
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
@@ -117,9 +133,10 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg2},
+		Miner:     minerAddr,
 	}
 
-	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st, vms)
+	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(require, blk1, blk2))
 	assert.NoError(err)
 	assert.Len(res.Results, 2)
 
@@ -128,10 +145,16 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	expAct1, expAct2, expAct3 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-550)), th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000-50)), th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(550+50))
 	expAct1.IncNonce()
 	expAct2.IncNonce()
+
+	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
+	twoBlockRewards := blockRewardAmount.Add(blockRewardAmount)
+	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr1: expAct1,
-		fromAddr2: expAct2,
-		toAddr:    expAct3,
+		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
+		minerAddr:              th.RequireNewEmptyActor(require, twoBlockRewards),
+		fromAddr1:              expAct1,
+		fromAddr2:              expAct2,
+		toAddr:                 expAct3,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -139,6 +162,10 @@ func TestProcessTipSetSuccess(t *testing.T) {
 func TestProcessTipsConflicts(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+
+	newAddress := address.NewForTestGetter()
+	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
+	minerAddr := newAddress()
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
@@ -149,7 +176,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: act1,
+		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
+		fromAddr:               act1,
 	})
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
@@ -160,6 +188,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg1},
 		Ticket:    []byte{0, 0}, // Block with smaller ticket
+		Miner:     minerAddr,
 	}
 
 	msg2 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), "", nil)
@@ -170,8 +199,9 @@ func TestProcessTipsConflicts(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg2},
 		Ticket:    []byte{1, 1},
+		Miner:     minerAddr,
 	}
-	res, err := ProcessTipSet(ctx, RequireNewTipSet(require, blk1, blk2), st, vms)
+	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(require, blk1, blk2))
 	assert.NoError(err)
 	assert.Len(res.Results, 1)
 
@@ -180,9 +210,14 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	expAct1, expAct2 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000-501)), th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(501))
 	expAct1.IncNonce()
+	blockReward := NewDefaultBlockRewarder().BlockRewardAmount()
+	twoBlockRewards := blockReward.Add(blockReward)
+	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: expAct1,
-		toAddr:   expAct2,
+		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
+		minerAddr:              th.RequireNewEmptyActor(require, twoBlockRewards),
+		fromAddr:               expAct1,
+		toAddr:                 expAct2,
 	})
 	assert.True(expStCid.Equals(gotStCid))
 }
@@ -201,7 +236,8 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: fromAct,
+		address.NetworkAddress: th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000)),
+		fromAddr:               fromAct,
 	})
 
 	vms := th.VMStorage()
@@ -216,9 +252,9 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg},
 	}
-	results, err := ProcessBlock(ctx, blk, st, vms)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk)
 	require.Nil(results)
-	assert.EqualError(err, types.ErrInvalidSignature.Error())
+	assert.EqualError(err, "apply message failed: invalid signature by sender over message data")
 }
 
 // ProcessBlock should not fail with an unsigned block reward message.
@@ -231,108 +267,33 @@ func TestProcessBlockReward(t *testing.T) {
 	cst := hamt.NewCborStore()
 
 	minerOwnerAddr := newAddress()
-	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	minerBalance := types.NewAttoFILFromFIL(10000)
+	ownerAct := th.RequireNewAccountActor(require, minerBalance)
 	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		minerOwnerAddr: ownerAct,
 		// TODO: get rid of this ugly hack as soon once we have
-		// sustainable reward message support (i.e. anything but setting
+		// sustainable reward support (i.e. anything but setting
 		// up network address in genesis with a bunch of FIL).
 		address.NetworkAddress: networkAct,
 	})
 
 	vms := th.VMStorage()
-	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, BlockRewardAmount(), "", nil)
-	sRewardMsg := &types.SignedMessage{
-		Message:   *rewardMsg,
-		Signature: nil,
-	}
-
 	blk := &types.Block{
+		Miner:     minerOwnerAddr,
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{sRewardMsg},
+		Messages:  []*types.SignedMessage{},
 	}
-	_, err := ProcessBlock(ctx, blk, st, vms)
-	assert.NoError(err)
-}
-
-func TestProcessBlockBadReward(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-
-	minerOwnerAddr := newAddress()
-	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		minerOwnerAddr: ownerAct,
-		// TODO: get rid of this ugly hack as soon once we have
-		// sustainable reward message support (i.e. anything but setting
-		// up network address in genesis with a bunch of FIL).
-		address.NetworkAddress: networkAct,
-	})
-
-	vms := th.VMStorage()
-	rewardMsg := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, types.NewAttoFILFromFIL(1001), "", nil)
-	sRewardMsg := &types.SignedMessage{
-		Message:   *rewardMsg,
-		Signature: nil,
-	}
-
-	blk := &types.Block{
-		Height:    20,
-		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{sRewardMsg},
-	}
-	ret, err := ProcessBlock(ctx, blk, st, vms)
+	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk)
+	require.NoError(err)
 	assert.Nil(ret)
-	assert.EqualError(err, ErrIncorrectBlockReward.Error())
-}
 
-func TestProcessBlockTwoRewardMsgs(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	minerOwnerActor, err := st.GetActor(ctx, minerOwnerAddr)
+	require.NoError(err)
 
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-
-	minerOwnerAddr := newAddress()
-	ownerAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		minerOwnerAddr: ownerAct,
-		// TODO: get rid of this ugly hack as soon once we have
-		// sustainable reward message support (i.e. anything but setting
-		// up network address in genesis with a bunch of FIL).
-		address.NetworkAddress: networkAct,
-	})
-
-	vms := th.VMStorage()
-	rewardMsg1 := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 0, types.NewAttoFILFromFIL(1000), "", nil)
-	sRewardMsg1 := &types.SignedMessage{
-		Message:   *rewardMsg1,
-		Signature: nil,
-	}
-
-	rewardMsg2 := types.NewMessage(address.NetworkAddress, minerOwnerAddr, 1, types.NewAttoFILFromFIL(1000), "", nil)
-	sRewardMsg2 := &types.SignedMessage{
-		Message:   *rewardMsg2,
-		Signature: nil,
-	}
-
-	blk := &types.Block{
-		Height:    20,
-		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{sRewardMsg1, sRewardMsg2},
-	}
-	ret, err := ProcessBlock(ctx, blk, st, vms)
-	assert.Nil(ret)
-	assert.EqualError(err, types.ErrInvalidSignature.Error())
+	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
+	assert.Equal(minerBalance.Add(blockRewardAmount), minerOwnerActor.Balance)
 }
 
 func TestProcessBlockVMErrors(t *testing.T) {
@@ -342,6 +303,10 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
+
+	newAddress := address.NewForTestGetter()
+	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
+	minerAddr := newAddress()
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -357,8 +322,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	act1, act2 := th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: act1,
-		toAddr:   act2,
+		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
+		fromAddr:               act1,
+		toAddr:                 act2,
 	})
 	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
@@ -367,11 +333,12 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{smsg},
+		Miner:     minerAddr,
 	}
 
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
-	results, err := ProcessBlock(ctx, blk, st, vms)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(err)
@@ -384,9 +351,12 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
 	expectedAct1.IncNonce()
+	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
 	expectedStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		fromAddr: expectedAct1,
-		toAddr:   expectedAct2,
+		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance.Sub(blockRewardAmount)),
+		minerAddr:              th.RequireNewEmptyActor(require, blockRewardAmount),
+		fromAddr:               expectedAct1,
+		toAddr:                 expectedAct2,
 	})
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
@@ -398,7 +368,6 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
 
@@ -415,7 +384,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.NoError(err)
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "getPower", badParams)
 
-	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	rct, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Empty(rct.Receipt.Return)
@@ -426,7 +395,6 @@ func TestProcessBlockParamsError(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
 
@@ -440,56 +408,119 @@ func TestProcessBlockParamsError(t *testing.T) {
 	badParams := []byte{1, 2, 3, 4, 5}
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "getPower", badParams)
 
-	rct, err := ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(0))
+	rct, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err) // No error means definitely no fault error, which is what we're especially testing here.
 
 	assert.Empty(rct.Receipt.Return)
 	assert.Contains(rct.ExecutionError.Error(), "invalid params: malformed stream")
 }
 
-func TestProcessBlockNonceTooLow(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-	vms := th.VMStorage()
+func TestApplyMessagesValidation(t *testing.T) {
+	t.Run("Errors when nonce too high", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+		newAddress := address.NewForTestGetter()
+		ctx := context.Background()
+		cst := hamt.NewCborStore()
+		vms := th.VMStorage()
+		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+		mockSigner := types.NewMockSigner(ki)
 
-	addr2, addr1 := newAddress(), newAddress()
-	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act1.Nonce = 5
-	act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, uint64(10), th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		addr1: act1,
-		addr2: act2,
+		addr1 := mockSigner.Addresses[0]
+		addr2 := newAddress()
+		act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
+		act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+		_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+			addr1: act1,
+			addr2: act2,
+		})
+		msg := types.NewMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), "", []byte{})
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+		require.NoError(err)
+
+		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
+		assert.Error(err)
+		assert.Equal("nonce too high", err.(*errors.ApplyErrorTemporary).Cause().Error())
 	})
-	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
-	assert.Error(err)
-	assert.Equal(err.(*errors.ApplyErrorPermanent).Cause(), errNonceTooLow)
-}
+	t.Run("Errors when nonce too low", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+		newAddress := address.NewForTestGetter()
+		ctx := context.Background()
+		cst := hamt.NewCborStore()
+		vms := th.VMStorage()
+		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+		mockSigner := types.NewMockSigner(ki)
 
-func TestProcessBlockNonceTooHigh(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-	vms := th.VMStorage()
+		addr1 := mockSigner.Addresses[0]
+		addr2 := newAddress()
+		act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
+		act1.Nonce = 5
+		act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, uint64(10), th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+		_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+			addr1: act1,
+			addr2: act2,
+		})
+		msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+		require.NoError(err)
 
-	addr2, addr1 := newAddress(), newAddress()
-	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
-	_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		addr1: act1,
-		addr2: act2,
+		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
+		assert.Error(err)
+		assert.Equal("nonce too low", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
-	msg := types.NewMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), "", []byte{})
 
-	_, err := ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
-	assert.Error(err)
-	assert.Equal(err.(*errors.ApplyErrorTemporary).Cause(), errNonceTooHigh)
+	t.Run("errors when specifying a gas limit in excess of balance", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(50))
+		require.NoError(err)
+
+		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, types.NewBlockHeight(0))
+		require.Error(err)
+		assert.Equal("balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
+	})
+
+	t.Run("errors when sender is not an account actor", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		_, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		addr1 := mockSigner.Addresses[0]
+		act1 := th.RequireNewFakeActor(require, th.VMStorage(), addr1, types.NewCidForTestGetter()())
+
+		ctx := context.Background()
+		err := st.SetActor(ctx, addr1, act1)
+		require.NoError(err)
+
+		msg := types.NewMessage(addr1, addr2, 0, types.ZeroAttoFIL, "", []byte{})
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(50))
+		require.NoError(err)
+
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, types.NewBlockHeight(0))
+		require.Error(err)
+		assert.Equal("message from non-account actor", err.(*errors.ApplyErrorPermanent).Cause().Error())
+	})
+
+	t.Run("errors when attempting to send to self", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		addr1, _, _, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		msg := types.NewMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), "", []byte{})
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(0))
+		require.NoError(err)
+
+		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, types.NewBlockHeight(0))
+		require.Error(err)
+		assert.Equal("cannot send to self", err.(*errors.ApplyErrorPermanent).Cause().Error())
+	})
 }
 
 // TODO fritz add more test cases that cover the intent expressed
@@ -527,14 +558,14 @@ func TestNestedSendBalance(t *testing.T) {
 	assert.NoError(err)
 	msg1 := types.NewMessage(addr0, addr1, 0, nil, "nestedBalance", params1)
 
-	_, err = ApplyMessage(ctx, st, th.VMStorage(), msg1, types.NewBlockHeight(0))
+	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg1, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(err)
 
 	expAct0 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(101))
-	expAct0.IncNonce() // because this actor has sent one message
+	expAct0.Nonce = 1
 	expAct1 := th.RequireNewFakeActorWithTokens(require, vms, addr1, fakeActorCodeCid, types.NewAttoFILFromFIL(2))
 	expAct2 := th.RequireNewFakeActorWithTokens(require, vms, addr2, fakeActorCodeCid, types.NewAttoFILFromFIL(100))
 
@@ -551,7 +582,6 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
 
@@ -577,7 +607,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err := abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(err)
 	msg := types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend1", params)
-	_, err = ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Contains(err.Error(), "second callSendTokens")
 	assert.Contains(err.Error(), "not enough balance")
@@ -586,21 +616,23 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err = abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(err)
 	msg = types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend2", params)
-	_, err = ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg, types.NewBlockHeight(0))
 	assert.Error(err)
 	assert.Contains(err.Error(), "failed sendTokens")
 	assert.Contains(err.Error(), "not enough balance")
 }
 
-func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
+func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	newAddress := address.NewForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	addr1, addr2, addr3 := newAddress(), newAddress(), newAddress()
+	ki := types.MustGenerateKeyInfo(3, types.GenerateKeyInfoSeed())
+	mockSigner := types.NewMockSigner(ki)
+
+	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
 	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
 	_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
@@ -608,12 +640,16 @@ func TestSendToNonExistantAddressThenSpendFromIt(t *testing.T) {
 
 	// send 500 from addr1 to addr2
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), "", []byte{})
-	_, err := ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	require.NoError(err)
+	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// send 250 along from addr2 to addr3
 	msg = types.NewMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), "", []byte{})
-	_, err = ApplyMessage(ctx, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	smsg, err = types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	require.NoError(err)
+	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// get all 3 actors
@@ -672,4 +708,23 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	postCid, err := st.Flush(ctx)
 	require.NoError(err)
 	assert.True(preCid.Equals(postCid))
+}
+
+func mustSetup2Actors(t *testing.T, balance1 *types.AttoFIL, balance2 *types.AttoFIL) (address.Address, *actor.Actor, address.Address, *actor.Actor, state.Tree, types.MockSigner) {
+	require := require.New(t)
+
+	cst := hamt.NewCborStore()
+	vms := th.VMStorage()
+	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
+	mockSigner := types.NewMockSigner(ki)
+
+	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
+	act1 := th.RequireNewAccountActor(require, balance1)
+	act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(), balance2)
+
+	_, st := requireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+		addr1: act1,
+		addr2: act2,
+	})
+	return addr1, act1, addr2, act2, st, mockSigner
 }

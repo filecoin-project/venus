@@ -3,10 +3,12 @@ package node
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
-	peerstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
+	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -59,7 +61,7 @@ func TestBlockPropTwoNodes(t *testing.T) {
 
 	baseTS := nodes[0].ChainReader.Head()
 	require.NotNil(t, baseTS)
-	proof := consensus.MakeRandomPoSTProofForTest()
+	proof := testhelpers.MakeRandomPoSTProofForTest()
 
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
@@ -100,9 +102,9 @@ func TestChainSync(t *testing.T) {
 	defer stopNodes(nodes)
 
 	baseTS := nodes[0].ChainReader.Head()
-	nextBlk1 := consensus.NewValidTestBlockFromTipSet(baseTS, 1, minerAddr)
-	nextBlk2 := consensus.NewValidTestBlockFromTipSet(baseTS, 2, minerAddr)
-	nextBlk3 := consensus.NewValidTestBlockFromTipSet(baseTS, 3, minerAddr)
+	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 1, minerAddr)
+	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 2, minerAddr)
+	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 3, minerAddr)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))
@@ -123,14 +125,24 @@ func TestChainSync(t *testing.T) {
 	assert.True(equal, "failed to sync chains")
 }
 
+type zeroRewarder struct{}
+
+func (r *zeroRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+	return nil
+}
+
 func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
+	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
+		PeerKeyOpt(PeerKeys[0]),
+		AutoSealIntervalSecondsOpt(1),
+	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.PlumbingAPI)
 	assertions.NoError(err)
-	clientNode := MakeNodeWithChainSeed(t, seed)
+	clientNode := MakeNodeWithChainSeed(t, seed, configOpts)
 	nodes := []*Node{minerNode, clientNode}
 	return mineraddr, nodes
 }

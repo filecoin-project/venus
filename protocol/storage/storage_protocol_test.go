@@ -50,8 +50,8 @@ func TestStorageProtocolBasic(t *testing.T) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the miner (and gets the miner peer key)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
-	clientNode := node.MakeNodeWithChainSeed(t, seed)
+	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	clientNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{})
 	minerAPI := impl.New(minerNode)
 
 	// TODO we need a principled way to construct an API that can be used both by node and by

@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"math/big"
 	"strings"
 
@@ -18,6 +16,8 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -51,6 +51,15 @@ const ECV uint64 = 10
 // TODO: the value of this constant needs motivation at the protocol level.
 const ECPrM uint64 = 100
 
+// A Processor processes all the messages in a block or tip set.
+type Processor interface {
+	// ProcessBlock processes all messages in a block.
+	ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block) ([]*ApplicationResult, error)
+
+	// ProcessTipSet processes all messages in a tip set.
+	ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (*ProcessTipSetResponse, error)
+}
+
 // Expected implements expected consensus.
 type Expected struct {
 	// PwrTableView provides miner and total power for the EC chain weight
@@ -65,6 +74,9 @@ type Expected struct {
 	// accessing the power table.
 	bstore blockstore.Blockstore
 
+	// processor is what we use to process messages and pay rewards
+	processor Processor
+
 	genesisCid cid.Cid
 
 	prover proofs.Prover
@@ -73,11 +85,12 @@ type Expected struct {
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
-// NewExpected is the constructor for the Expected consensus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
+// NewExpected is the constructor for the Expected consenus.Protocol module.
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
+		processor:    processor,
 		PwrTableView: pt,
 		genesisCid:   gCid,
 		prover:       prover,
@@ -376,7 +389,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		receipts, err := ProcessBlock(ctx, blk, cpySt, vms)
+		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
@@ -400,7 +413,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	_, err := ProcessTipSet(ctx, ts, st, vms)
+	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
 	}

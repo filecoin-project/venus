@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -56,7 +57,7 @@ func TestActorLs(t *testing.T) {
 		genBlock, err := consensus.InitGenesis(nd.CborStore(), nd.Blockstore)
 		require.NoError(err)
 		b1 := types.NewBlockForTest(genBlock, 1)
-		ts := consensus.RequireNewTipSet(require, b1)
+		ts := testhelpers.RequireNewTipSet(require, b1)
 		chainStore, ok := nd.ChainReader.(chain.Store)
 		require.True(ok)
 
@@ -65,7 +66,7 @@ func TestActorLs(t *testing.T) {
 			TipSetStateRoot: genBlock.StateRoot,
 		})
 		require.NoError(err)
-		err = chainStore.SetHead(ctx, consensus.RequireNewTipSet(require, b1))
+		err = chainStore.SetHead(ctx, testhelpers.RequireNewTipSet(require, b1))
 		require.NoError(err)
 
 		assert.NoError(nd.Start(ctx))

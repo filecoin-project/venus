@@ -2,11 +2,12 @@ package msgapi
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"sync"
 	"testing"
 	"time"
 
-	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	bserv "gx/ipfs/QmZ9PMwfBmywNgpxG7zRHKsAno76gMCBbKGBTVXbma44H7/go-blockservice"
@@ -174,7 +175,7 @@ func TestWaitConflicting(t *testing.T) {
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)
 
-	ts := consensus.RequireNewTipSet(require, b1, b2)
+	ts := testhelpers.RequireNewTipSet(require, b1, b2)
 	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,

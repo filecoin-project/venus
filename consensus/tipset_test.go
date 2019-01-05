@@ -1,12 +1,14 @@
-package consensus
+package consensus_test
 
 import (
 	"sort"
 	"testing"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	. "github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,7 +100,7 @@ func RequireTestBlocks(t *testing.T) (*types.Block, *types.Block, *types.Block) 
 func RequireTestTipSet(t *testing.T) TipSet {
 	require := require.New(t)
 	b1, b2, b3 := RequireTestBlocks(t)
-	return RequireNewTipSet(require, b1, b2, b3)
+	return testhelpers.RequireNewTipSet(require, b1, b2, b3)
 }
 
 func TestTipSetAddBlock(t *testing.T) {
@@ -108,18 +110,18 @@ func TestTipSetAddBlock(t *testing.T) {
 
 	// Add Valid
 	ts1 := TipSet{}
-	RequireTipSetAdd(require, b1, ts1)
+	testhelpers.RequireTipSetAdd(require, b1, ts1)
 	assert.Equal(1, len(ts1))
-	RequireTipSetAdd(require, b2, ts1)
-	RequireTipSetAdd(require, b3, ts1)
+	testhelpers.RequireTipSetAdd(require, b2, ts1)
+	testhelpers.RequireTipSetAdd(require, b3, ts1)
 
-	ts2 := RequireNewTipSet(require, b1, b2, b3)
+	ts2 := testhelpers.RequireNewTipSet(require, b1, b2, b3)
 	assert.Equal(ts2, ts1)
 
 	// Invalid height
 	b2.Height = 5
 	ts := TipSet{}
-	RequireTipSetAdd(require, b1, ts)
+	testhelpers.RequireTipSetAdd(require, b1, ts)
 	err := ts.AddBlock(b2)
 	assert.Error(err)
 	b2.Height = b1.Height
@@ -127,7 +129,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	// Invalid parent set
 	b2.Parents = types.NewSortedCidSet(cid1, cid2)
 	ts = TipSet{}
-	RequireTipSetAdd(require, b1, ts)
+	testhelpers.RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
 	assert.Error(err)
 	b2.Parents = b1.Parents
@@ -135,7 +137,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	// Invalid weight
 	b2.ParentWeight = types.Uint64(3000)
 	ts = TipSet{}
-	RequireTipSetAdd(require, b1, ts)
+	testhelpers.RequireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
 	assert.Error(err)
 }
@@ -253,7 +255,7 @@ func TestTipSetEquals(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ts2 := RequireNewTipSet(require, b1, b2)
+	ts2 := testhelpers.RequireNewTipSet(require, b1, b2)
 	assert.True(!ts2.Equals(ts))
 	ts2.AddBlock(b3)
 	assert.True(ts.Equals(ts2))

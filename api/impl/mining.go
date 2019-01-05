@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -55,7 +54,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nd.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.ApplyMessages, nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, blockTime)
+	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, consensus.NewDefaultProcessor(), nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, blockTime)
 
 	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)
 	if err != nil {

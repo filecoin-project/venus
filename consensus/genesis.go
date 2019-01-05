@@ -2,12 +2,6 @@ package consensus
 
 import (
 	"context"
-
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -17,6 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -168,20 +164,4 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	pbAct.Balance = types.NewAttoFILFromFIL(0)
 
 	return st.SetActor(ctx, address.PaymentBrokerAddress, pbAct)
-}
-
-// ApplyMessageDirect applies a given message directly to the given state tree and storage map.
-func ApplyMessageDirect(ctx context.Context, st state.Tree, storageMap vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) (*ApplicationResult, error) {
-	encodedParams, err := abi.ToEncodedValues(params...)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid params")
-	}
-
-	fromActor, err := st.GetActor(ctx, from)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid from actor")
-	}
-
-	message := types.NewMessage(from, to, uint64(fromActor.Nonce), value, method, encodedParams)
-	return ApplyMessage(ctx, st, storageMap, message, types.NewBlockHeight(0))
 }

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	mocknet "gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p/p2p/net/mock"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	types "github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type mockSyncCallback struct {
@@ -49,8 +49,8 @@ func TestHelloHandshake(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy1 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := th.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -104,8 +104,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := &types.Block{Nonce: 451}
 	genesisB := &types.Block{Nonce: 101}
 
-	heavy1 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := consensus.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := th.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -140,12 +140,12 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 452}
 
-	heavy1 := consensus.RequireNewTipSet(require,
+	heavy1 := th.RequireNewTipSet(require,
 		&types.Block{Nonce: 1000, Height: 2},
 		&types.Block{Nonce: 1002, Height: 2},
 		&types.Block{Nonce: 1004, Height: 2},
 	)
-	heavy2 := consensus.RequireNewTipSet(require,
+	heavy2 := th.RequireNewTipSet(require,
 		&types.Block{Nonce: 1001, Height: 3},
 		&types.Block{Nonce: 1003, Height: 3},
 		&types.Block{Nonce: 1005, Height: 3},

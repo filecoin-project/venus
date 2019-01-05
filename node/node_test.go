@@ -150,7 +150,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := MakeChainSeed(t, TestGenCfg)
-	minerNode := MakeNodeWithChainSeed(t, seed, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	minerNode := MakeNodeWithChainSeed(t, seed, []ConfigOpt{}, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.

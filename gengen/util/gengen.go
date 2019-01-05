@@ -8,6 +8,7 @@ import (
 	mrand "math/rand"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -17,13 +18,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	blockstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	dag "gx/ipfs/QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG/go-merkledag"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmXd5Ti3xJAEy32mgVqZa7Un9FuZqALzM3xuc3XFWy7e3L/go-car"
-	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	offline "gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	bserv "gx/ipfs/QmZ9PMwfBmywNgpxG7zRHKsAno76gMCBbKGBTVXbma44H7/go-blockservice"
 	mh "gx/ipfs/QmerPMzPk1mJVowm8KgmoknWa4yCYvvugMPsgWmDNUvDLW/go-multihash"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
@@ -230,7 +232,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// give collateral to account actor
-		_, err = consensus.ApplyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
+		_, err = applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
 		if err != nil {
 			return nil, err
 		}
@@ -240,16 +242,13 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		if err != nil {
 			return nil, err
 		}
-		resp, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
 		if err != nil {
 			return nil, err
 		}
-		if resp.ExecutionError != nil {
-			return nil, fmt.Errorf("failed to createMiner: %s", resp.ExecutionError)
-		}
 
 		// get miner address
-		maddr, err := address.NewFromBytes(resp.Receipt.Return[0])
+		maddr, err := address.NewFromBytes(ret[0])
 		if err != nil {
 			return nil, err
 		}
@@ -274,12 +273,9 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			if _, err := pnrg.Read(commD[:]); err != nil {
 				return nil, err
 			}
-			resp, err := consensus.ApplyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
+			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
 			if err != nil {
 				return nil, err
-			}
-			if resp.ExecutionError != nil {
-				return nil, fmt.Errorf("failed to commitSector: %s", resp.ExecutionError)
 			}
 		}
 	}
@@ -305,4 +301,64 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 	}
 
 	return info, car.WriteCar(ctx, dserv, []cid.Cid{info.GenesisCid}, out)
+}
+
+// applyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
+// This is a shortcut to allow gengen to use built-in actor functionality to alter the genesis block's state.
+// Outside genesis, direct execution of actor code is a really bad idea.
+func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) ([]types.Bytes, error) {
+	pdata := actor.MustConvertParams(params...)
+	msg := types.NewMessage(from, to, 0, value, method, pdata)
+	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), types.NewGasCost(0))
+	if err != nil {
+		return nil, err
+	}
+
+	// create new processor that doesn't reward and doesn't validate
+	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
+
+	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Address{}, types.NewBlockHeight(0))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res.Results) == 0 {
+		return nil, errors.New("GenGen message did not produce a result")
+	}
+
+	if res.Results[0].ExecutionError != nil {
+		return nil, res.Results[0].ExecutionError
+	}
+
+	return res.Results[0].Receipt.Return, nil
+}
+
+// GenGenMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type messageValidator struct{}
+
+var _ consensus.SignedMessageValidator = (*messageValidator)(nil)
+
+// Validate always returns nil
+func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+	return nil
+}
+
+// blockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+type blockRewarder struct{}
+
+var _ consensus.BlockRewarder = (*blockRewarder)(nil)
+
+// BlockReward is a noop
+func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+	// do nothing to keep state root the same
+	return nil
+}
+
+// signer doesn't actually sign because it's not actually validated
+type signer struct{}
+
+var _ types.Signer = (*signer)(nil)
+
+func (ggs *signer) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return nil, nil
 }

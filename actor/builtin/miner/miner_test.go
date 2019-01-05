@@ -40,7 +40,7 @@ func createTestMinerWith(pledge int64,
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createMiner", pdata)
 
-	result, err := consensus.ApplyMessage(context.Background(), stateTree, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
 	assert.NoError(err)
 
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
@@ -64,12 +64,12 @@ func TestAskFunctions(t *testing.T) {
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
 	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
 
-	_, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(1))
+	_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 	assert.NoError(err)
 
 	pdata = actor.MustConvertParams(big.NewInt(0))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
-	result, err := consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(2))
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(err)
 
 	var ask Ask
@@ -88,13 +88,13 @@ func TestAskFunctions(t *testing.T) {
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
-	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(3))
+	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(3))
 	assert.NoError(err)
 	assert.Equal(big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	pdata = actor.MustConvertParams(big.NewInt(1))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 4, types.NewZeroAttoFIL(), "getAsk", pdata)
-	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(4))
+	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(err)
 
 	var ask2 Ask
@@ -104,7 +104,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(uint64(1), ask2.ID.Uint64())
 
 	msg = types.NewMessage(address.TestAddress, minerAddr, 5, types.NewZeroAttoFIL(), "getAsks", nil)
-	result, err = consensus.ApplyMessage(ctx, st, vms, msg, types.NewBlockHeight(4))
+	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(err)
 	assert.NoError(result.ExecutionError)
 
@@ -191,7 +191,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 			"updatePeerID",
 			actor.MustConvertParams(th.RequireRandomPeerID()))
 
-		applyMsgResult, err := consensus.ApplyMessage(ctx, st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
+		applyMsgResult, err := th.ApplyTestMessage(st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
 		require.NoError(err)
 		require.Equal(Errors[ErrCallerUnauthorized], applyMsgResult.ExecutionError)
 		require.NotEqual(uint8(0), applyMsgResult.Receipt.ExitCode)
@@ -248,7 +248,7 @@ func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms v
 		"updatePeerID",
 		actor.MustConvertParams(newPid))
 
-	applyMsgResult, err := consensus.ApplyMessage(ctx, st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
+	applyMsgResult, err := th.ApplyTestMessage(st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
 	require.NoError(err)
 	require.NoError(applyMsgResult.ExecutionError)
 	require.Equal(uint8(0), applyMsgResult.Receipt.ExitCode)
@@ -277,20 +277,20 @@ func TestMinerCommitSector(t *testing.T) {
 	commR := th.MakeCommitment()
 	commD := th.MakeCommitment()
 
-	res, err := applyMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), commR, commD)
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), commR, commD)
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// check that the proving period matches
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart")
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart")
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	// blockheight was 3
 	require.Equal(types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
 
 	// fail because commR already exists
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(1), commR, commD)
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(1), commR, commD)
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "sector already committed")
 	require.Equal(uint8(0x23), res.Receipt.ExitCode)
@@ -305,42 +305,33 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 	// add a sector
-	res, err := applyMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), th.MakeCommitment(), th.MakeCommitment())
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), th.MakeCommitment(), th.MakeCommitment())
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// add another sector
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(2), th.MakeCommitment(), th.MakeCommitment())
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(2), th.MakeCommitment(), th.MakeCommitment())
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// submit post
-	proof := consensus.MakeRandomPoSTProofForTest()
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", proof[:])
+	proof := th.MakeRandomPoSTProofForTest()
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", proof[:])
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// check that the proving period is now the next one
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart")
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart")
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
 
 	// fail to submit inside the proving period
-	proof = consensus.MakeRandomPoSTProofForTest()
-	res, err = applyMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", proof[:])
+	proof = th.MakeRandomPoSTProofForTest()
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", proof[:])
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
-}
-
-func applyMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, params ...interface{}) (*consensus.ApplicationResult, error) {
-	t.Helper()
-
-	pdata := actor.MustConvertParams(params...)
-	nonce := core.MustGetNonce(st, address.TestAddress)
-	msg := types.NewMessage(address.TestAddress, to, nonce, types.NewAttoFILFromFIL(val), method, pdata)
-	return consensus.ApplyMessage(context.Background(), st, vms, msg, types.NewBlockHeight(bh))
 }

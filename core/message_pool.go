@@ -5,17 +5,13 @@ import (
 	"sort"
 	"sync"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
-
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
-
-var log = logging.Logger("core")
 
 // MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
 // By 'de-duplicated' we mean that insertion of a message by cid that already
@@ -109,15 +105,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 	}
 	for h > height {
 		for _, blk := range curTipSet {
-			blkmsgs := blk.Messages
-			if len(blkmsgs) > 0 {
-				if blkmsgs[0].From != address.NetworkAddress {
-					log.Error("invalid tipset: missing reward message")
-				} else {
-					blkmsgs = blkmsgs[1:]
-				}
-			}
-			msgs = append(msgs, blkmsgs...)
+			msgs = append(msgs, blk.Messages...)
 		}
 		parents, err := curTipSet.Parents()
 		if err != nil {
@@ -185,18 +173,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		for _, blk := range old {
 			// skip genesis block
 			if blk.Height > 0 {
-				blkmsgs := blk.Messages
-
-				// If the block height is not empty, and there is no reward message, something went really wrong
-				if len(blkmsgs) > 0 {
-					if blkmsgs[0].From != address.NetworkAddress {
-						log.Error("invalid tipset: missing reward message")
-					} else {
-						blkmsgs = blkmsgs[1:]
-					}
-				}
-
-				addToPool = append(addToPool, blkmsgs...)
+				addToPool = append(addToPool, blk.Messages...)
 			}
 		}
 		for _, blk := range new {

@@ -158,7 +158,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts conse
 	if err != nil {
 		return nil, err
 	}
-	res, err := consensus.ProcessTipSet(ctx, ts, st, vm.NewStorageMap(w.bs))
+	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts)
 	if err != nil {
 		return nil, err
 	}

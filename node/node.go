@@ -165,6 +165,7 @@ type Config struct {
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
 	Prover      proofs.Prover
+	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
 }
 
@@ -203,6 +204,14 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 func ProverConfigOption(prover proofs.Prover) ConfigOpt {
 	return func(c *Config) error {
 		c.Prover = prover
+		return nil
+	}
+}
+
+// RewarderConfigOption returns a function that sets the rewarder to use in the node consensus
+func RewarderConfigOption(rewarder consensus.BlockRewarder) ConfigOpt {
+	return func(c *Config) error {
+		c.Rewarder = rewarder
 		return nil
 	}
 }
@@ -297,11 +306,18 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
+	var processor consensus.Processor
+	if nc.Rewarder == nil {
+		processor = consensus.NewDefaultProcessor()
+	} else {
+		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
+	}
+
 	var nodeConsensus consensus.Protocol
 	if nc.Prover == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, powerTable, genCid, &proofs.RustProver{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustProver{})
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, powerTable, genCid, nc.Prover)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Prover)
 	}
 
 	// only the syncer gets the storage which is online connected
@@ -682,7 +698,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 			}
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, consensus.ApplyMessages, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
+		processor := consensus.NewDefaultProcessor()
+		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, processor, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
 

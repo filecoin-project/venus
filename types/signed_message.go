@@ -20,8 +20,6 @@ var (
 	ErrMessageSigned = errors.New("message already contains a signature")
 	// ErrMessageUnsigned is returned when `RecoverAddress` is called on a signedmessage that does not contain a signature
 	ErrMessageUnsigned = errors.New("message does not contain a signature")
-	// ErrInvalidSignature indicates an invalid message signature.
-	ErrInvalidSignature = errors.New("invalid signature by sender over message data")
 )
 
 func init() {
