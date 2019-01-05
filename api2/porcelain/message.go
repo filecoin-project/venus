@@ -14,8 +14,8 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
-// plumbing is the subset of the PlumbingAPI that MessageSendWithRetry uses.
-type plumbing interface {
+// mswrPlumbing is the subset of the PlumbingAPI that MessageSendWithRetry uses.
+type mswrPlumbing interface {
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
@@ -38,7 +38,7 @@ var log = logging.Logger("porcelain") // nolint: deadcode
 //
 // Access to failures might make this a little better but really the solution is
 // to not have re-tries, eg if we had nonce lanes.
-func MessageSendWithRetry(ctx context.Context, plumbing plumbing, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) (err error) {
+func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasCost, params ...interface{}) (err error) {
 	for i := 0; i < int(numRetries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d, waitDuration %v", method, i, numRetries, waitDuration)
 
