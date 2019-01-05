@@ -1,4 +1,4 @@
-package mthdsigapi_test
+package mthdsig_test
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -53,7 +53,7 @@ func TestGet(t *testing.T) {
 		_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 			addr: fakeActor,
 		})
-		getter := mthdsigapi.NewGetter(&fakeChainReadStore{st})
+		getter := mthdsig.NewGetter(&fakeChainReadStore{st})
 
 		sig, err := getter.Get(ctx, addr, "hasReturnValue")
 		require.NoError(err)
@@ -73,7 +73,7 @@ func TestGet(t *testing.T) {
 			addr: acctActor,
 		})
 
-		getter := mthdsigapi.NewGetter(&fakeChainReadStore{st})
+		getter := mthdsig.NewGetter(&fakeChainReadStore{st})
 
 		_, err := getter.Get(ctx, addr, "NoSuchMethod")
 		require.Error(err)
@@ -92,10 +92,10 @@ func TestGet(t *testing.T) {
 			addr: acctActor,
 		})
 
-		getter := mthdsigapi.NewGetter(&fakeChainReadStore{st})
+		getter := mthdsig.NewGetter(&fakeChainReadStore{st})
 
 		sig, err := getter.Get(ctx, addr, "")
-		assert.Equal(mthdsigapi.ErrNoMethod, err)
+		assert.Equal(mthdsig.ErrNoMethod, err)
 		assert.Nil(sig)
 	})
 
@@ -118,7 +118,7 @@ func TestGet(t *testing.T) {
 			addr: emptyActor,
 		})
 
-		getter := mthdsigapi.NewGetter(&fakeChainReadStore{st})
+		getter := mthdsig.NewGetter(&fakeChainReadStore{st})
 
 		_, err := getter.Get(ctx, addr, "Foo")
 		require.Error(err)

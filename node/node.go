@@ -39,8 +39,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/api2/porcelain"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -339,9 +339,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	sigGetter := mthdsigapi.NewGetter(chainReader)
-	msgSender := msgapi.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	msgWaiter := msgapi.NewWaiter(chainReader, bs, &cstOffline)
+	sigGetter := mthdsig.NewGetter(chainReader)
+	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
+	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
 	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	nd := &Node{
@@ -385,7 +385,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// On-chain lookup service
 	defaultAddressGetter := func() (address.Address, error) {
-		return msgapi.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
+		return msg.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
 	}
 	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
@@ -436,7 +436,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PubSub.Subscribe(msgapi.Topic)
+	msgSub, err := node.PubSub.Subscribe(msg.Topic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}
@@ -899,7 +899,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 		return nil, 1, errors.Wrap(err, "getting base tipset height")
 	}
 
-	fromAddr, err := msgapi.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
+	fromAddr, err := msg.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
 	if err != nil {
 		return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
 	}

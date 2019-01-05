@@ -1,4 +1,4 @@
-package msgapi
+package msg
 
 import (
 	"context"

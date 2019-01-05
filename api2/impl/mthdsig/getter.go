@@ -1,4 +1,4 @@
-package mthdsigapi
+package mthdsig
 
 import (
 	"context"

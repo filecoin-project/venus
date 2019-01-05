@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -154,9 +154,9 @@ func TestNodeStartMining(t *testing.T) {
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
-	sigGetter := mthdsigapi.NewGetter(minerNode.ChainReader)
-	msgSender := msgapi.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
-	msgWaiter := msgapi.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
+	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
+	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
+	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
 
 	seed.GiveKey(t, minerNode, 0)
