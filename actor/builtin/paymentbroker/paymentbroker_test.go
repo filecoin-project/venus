@@ -178,6 +178,58 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height"), "Error should relate to block height")
 }
 
+func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	sys := setup(t)
+
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "redeem")
+	require.NoError(err)
+
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
+}
+
+func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	sys := setup(t)
+
+	// Redeem at block height == validAt != 0.
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 4, 4, "redeem")
+	require.NoError(err)
+
+	require.Equal(uint8(0), result.Receipt.ExitCode)
+
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance)
+
+	payee := state.MustGetActor(sys.st, sys.target)
+	assert.Equal(types.NewAttoFILFromFIL(100), payee.Balance)
+
+	channel := sys.retrieveChannel(paymentBroker)
+	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
+	assert.Equal(sys.target, channel.Target)
+
+	// Redeem after block height == validAt.
+	result, err = sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 200, 0, 4, 6, "redeem")
+	require.NoError(err)
+
+	require.Equal(uint8(0), result.Receipt.ExitCode)
+
+	paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	assert.Equal(types.NewAttoFILFromFIL(800), paymentBroker.Balance)
+
+	payee = state.MustGetActor(sys.st, sys.target)
+	assert.Equal(types.NewAttoFILFromFIL(200), payee.Balance)
+
+	channel = sys.retrieveChannel(paymentBroker)
+	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(types.NewAttoFILFromFIL(200), channel.AmountRedeemed)
+	assert.Equal(sys.target, channel.Target)
+}
+
 func TestPaymentBrokerClose(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -205,18 +257,30 @@ func TestPaymentBrokerClose(t *testing.T) {
 	assert.Equal(payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(900)), payerActor.Balance)
 }
 
+func TestPaymentBrokerCloseErrorsBeforeValidAt(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	sys := setup(t)
+
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "close")
+	require.NoError(err)
+
+	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
+}
+
 func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	require := require.New(t)
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt)
+	signature, err := sys.Signature(amt, sys.defaultValidAt)
 	require.NoError(err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, ([]byte)(signature))
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, ([]byte)(signature))
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -228,13 +292,13 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt)
+	signature, err := sys.Signature(amt, sys.defaultValidAt)
 	require.NoError(err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, ([]byte)(signature))
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, ([]byte)(signature))
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -428,7 +492,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		pdata := core.MustConvertParams(sys.channelID, voucherAmount)
+		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(err)
@@ -452,7 +516,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount)
+		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt)
 		assert.NotEqual(uint8(0), exitCode)
 		assert.Contains(fmt.Sprintf("%v", err), "unknown")
 	})
@@ -462,7 +526,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(2000)
-		args := core.MustConvertParams(sys.channelID, voucherAmount)
+		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
 
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
 		res, err := sys.ApplyMessage(msg, 9)
@@ -512,14 +576,15 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 // system is a helper struct to allow for easier testing of sending various messages to the paymentbroker actor.
 // TODO: could be abstracted to be used in other actor tests.
 type system struct {
-	t             *testing.T
-	ctx           context.Context
-	payer         address.Address
-	target        address.Address
-	channelID     *types.ChannelID
-	st            state.Tree
-	vms           vm.StorageMap
-	addressGetter func() address.Address
+	t              *testing.T
+	ctx            context.Context
+	payer          address.Address
+	target         address.Address
+	defaultValidAt *types.BlockHeight
+	channelID      *types.ChannelID
+	st             state.Tree
+	vms            vm.StorageMap
+	addressGetter  func() address.Address
 }
 
 func setup(t *testing.T) system {
@@ -529,6 +594,7 @@ func setup(t *testing.T) system {
 	payer := mockSigner.Addresses[0]
 	addrGetter := address.NewForTestGetter()
 	target := addrGetter()
+	defaultValidAt := types.NewBlockHeight(uint64(0))
 	_, st, vms := requireGenesis(ctx, t, target)
 
 	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
@@ -537,19 +603,20 @@ func setup(t *testing.T) system {
 	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
 
 	return system{
-		t:             t,
-		addressGetter: addrGetter,
-		ctx:           ctx,
-		payer:         payer,
-		target:        target,
-		channelID:     channelID,
-		st:            st,
-		vms:           vms,
+		t:              t,
+		addressGetter:  addrGetter,
+		ctx:            ctx,
+		payer:          payer,
+		target:         target,
+		channelID:      channelID,
+		defaultValidAt: defaultValidAt,
+		st:             st,
+		vms:            vms,
 	}
 }
 
-func (sys *system) Signature(amt *types.AttoFIL) ([]byte, error) {
-	sig, err := SignVoucher(sys.channelID, amt, sys.payer, mockSigner)
+func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight) ([]byte, error) {
+	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, mockSigner)
 	if err != nil {
 		return nil, err
 	}
@@ -567,19 +634,29 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, nonce, "redeem", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0)
 }
 
 func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, nonce, "redeem", height)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height)
 }
 
 func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, nonce, "close", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0)
+}
+
+func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*consensus.ApplicationResult, error) {
+	sys.t.Helper()
+
+	if method != "redeem" && method != "close" {
+		sys.t.Fatalf("method %s is not a signature method", method)
+	}
+
+	return sys.applySignatureMessage(target, amtInt, types.NewBlockHeight(validAt), nonce, method, height)
 }
 
 func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
@@ -603,16 +680,16 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	return channel
 }
 
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, nonce uint64, method string, height uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	require := require.New(sys.t)
 
 	amt := types.NewAttoFILFromFIL(amtInt)
-	signature, err := sys.Signature(amt)
+	signature, err := sys.Signature(amt, validAt)
 	require.NoError(err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, signature)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
