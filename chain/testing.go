@@ -289,13 +289,12 @@ func RequireMineOnce(ctx context.Context,
 	return b
 }
 
-// MakeProofAndWinningTicket attempts to make a proof and ticket that will pass validateMining.
-// There is a small (< 1/1000) random chance that it will fail.
+// MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
 func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
 	var postProof proofs.PoStProof
 	var ticket types.Signature
 
-	for i := 0; i < 1000; i++ {
+	for {
 		postProof = th.MakeRandomPoSTProofForTest()
 		ticket = consensus.CreateTicket(postProof, minerAddr)
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
