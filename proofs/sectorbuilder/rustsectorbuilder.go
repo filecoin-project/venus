@@ -20,9 +20,8 @@ import (
 )
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/../rust-proofs/target/release -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/../rust-proofs/target/release/ -lfilecoin_proofs
-#include "../rust-proofs/filecoin-proofs/libfilecoin_proofs.h"
-
+#cgo LDFLAGS: -L${SRCDIR}/../../lib -Wl,-rpath,\$ORIGIN/lib:${SRCDIR}/lib/ -lfilecoin_proofs
+#include "../../lib/libfilecoin_proofs.h"
 */
 import "C"
 
