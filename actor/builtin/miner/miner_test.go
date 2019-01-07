@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
-	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/stretchr/testify/assert"
+	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 

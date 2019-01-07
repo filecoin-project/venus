@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/api2/porcelain"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -69,6 +70,7 @@ type storageDealState struct {
 type plumbing interface {
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -99,7 +101,6 @@ func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd
 		minerAddr:      minerAddr,
 		minerOwnerAddr: minerOwnerAddr,
 		deals:          make(map[cid.Cid]*storageDealState),
-		plumbingAPI:    plumbingAPI,
 		node:           nd,
 		plumbingAPI:    plumbingAPI,
 	}
