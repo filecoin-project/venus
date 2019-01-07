@@ -141,7 +141,7 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message validation
 func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(0))
 	if err != nil {
 		panic(err)
 	}

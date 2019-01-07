@@ -25,7 +25,7 @@ type Context struct {
 	state       *state.CachedTree
 	storageMap  StorageMap
 	gasPrice    types.AttoFIL
-	gasLimit    types.GasCost
+	gasLimit    types.GasUnits
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
@@ -34,7 +34,7 @@ type Context struct {
 var _ exec.VMContext = (*Context)(nil)
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, gp types.AttoFIL, gl types.GasCost, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, gp types.AttoFIL, gl types.GasUnits, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,

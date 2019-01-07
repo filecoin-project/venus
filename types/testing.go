@@ -95,7 +95,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			NewAttoFILFromFIL(0),
 			s,
 			[]byte("params"))
-		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasCost(0))
+		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasUnits(0))
 		if err != nil {
 			panic(err)
 		}
@@ -192,7 +192,7 @@ func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
 func SignMsgs(ms MockSigner, msgs []*Message) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(*m, &ms, NewGasPrice(0), NewGasCost(0))
+		s, err := NewSignedMessage(*m, &ms, NewGasPrice(0), NewGasUnits(0))
 		if err != nil {
 			return nil, err
 		}

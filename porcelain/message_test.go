@@ -24,13 +24,13 @@ type fakePlumbing struct {
 	msgCid  cid.Cid
 	sendCnt int
 
-	messageSend func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
+	messageSend func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	messageWait func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
 // Satisfy the plumbing API:
 
-func (fp *fakePlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
+func (fp *fakePlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return fp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
@@ -39,7 +39,7 @@ func (fp *fakePlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func
 }
 
 // Fake implementations we'll use.
-func (fp *fakePlumbing) successfulMessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
+func (fp *fakePlumbing) successfulMessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	fp.msgCid = newCid()
 	fp.sendCnt++
 	return fp.msgCid, nil
@@ -60,7 +60,7 @@ func (fp *fakePlumbing) unsuccessfulMessageWait(ctx context.Context, msgCid cid.
 
 func TestMessageSendWithRetry(t *testing.T) {
 	t.Parallel()
-	val, gasPrice, gasLimit := types.NewAttoFILFromFIL(0), types.NewGasPrice(0), types.NewGasCost(0)
+	val, gasPrice, gasLimit := types.NewAttoFILFromFIL(0), types.NewGasPrice(0), types.NewGasUnits(0)
 
 	t.Run("succeeds on first try", func(t *testing.T) {
 		require := require.New(t)

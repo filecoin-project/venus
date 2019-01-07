@@ -337,7 +337,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 		Params: params,
 	}
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), types.NewGasCost(0), optBh)
+	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), types.NewGasUnits(0), optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err

@@ -62,7 +62,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	vms := th.VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	blk := &types.Block{
@@ -117,7 +117,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	})
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
@@ -127,7 +127,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
@@ -181,7 +181,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	})
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	blk1 := &types.Block{
 		Height:    20,
@@ -192,7 +192,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	}
 
 	msg2 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	blk2 := &types.Block{
 		Height:    20,
@@ -242,7 +242,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 
 	vms := th.VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	// corrupt the message data
 	smsg.Message.Nonce = 13
@@ -327,7 +327,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		toAddr:                 act2,
 	})
 	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	blk := &types.Block{
 		Height:    20,
@@ -435,7 +435,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr2: act2,
 		})
 		msg := types.NewMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), "", []byte{})
-		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 		require.NoError(err)
 
 		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
@@ -463,7 +463,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr2: act2,
 		})
 		msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
-		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 		require.NoError(err)
 
 		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
@@ -477,7 +477,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
 		msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), "", []byte{})
-		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(50))
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		require.NoError(err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
@@ -499,7 +499,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		require.NoError(err)
 
 		msg := types.NewMessage(addr1, addr2, 0, types.ZeroAttoFIL, "", []byte{})
-		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(50))
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		require.NoError(err)
 
 		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, types.NewBlockHeight(0))
@@ -513,7 +513,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		addr1, _, _, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
 		msg := types.NewMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), "", []byte{})
-		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasCost(0))
+		smsg, err := types.NewSignedMessage(*msg, mockSigner, *types.NewAttoFILFromFIL(10), types.NewGasUnits(0))
 		require.NoError(err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
@@ -640,14 +640,14 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 
 	// send 500 from addr1 to addr2
 	msg := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), "", []byte{})
-	smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
 	require.NoError(err)
 
 	// send 250 along from addr2 to addr3
 	msg = types.NewMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), "", []byte{})
-	smsg, err = types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err = types.NewSignedMessage(*msg, mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, types.NewBlockHeight(0))
 	require.NoError(err)

@@ -22,7 +22,7 @@ func newNodeMiner(api *nodeAPI, plumbingAPI *plumbing.API) *nodeMiner {
 	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
 }
 
-func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
+func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
 	nd := nm.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -41,7 +41,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	return *res, nil
 }
 
-func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, newPid peer.ID) (cid.Cid, error) {
+func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
 	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,
@@ -54,7 +54,7 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 	)
 }
 
-func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
+func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
 	return nm.plumbingAPI.MessageSend(
 		ctx,
 		fromAddr,

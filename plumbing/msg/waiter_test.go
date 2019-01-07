@@ -147,11 +147,11 @@ func TestWaitConflicting(t *testing.T) {
 
 	// Create conflicting messages
 	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm1, err := types.NewSignedMessage(*m1, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	sm1, err := types.NewSignedMessage(*m1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	m2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm2, err := types.NewSignedMessage(*m2, &mockSigner, types.NewGasPrice(0), types.NewGasCost(0))
+	sm2, err := types.NewSignedMessage(*m2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	baseTS := chainStore.Head()

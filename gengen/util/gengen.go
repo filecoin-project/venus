@@ -313,7 +313,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) ([]types.Bytes, error) {
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(from, to, 0, value, method, pdata)
-	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), types.NewGasUnits(0))
 	if err != nil {
 		return nil, err
 	}

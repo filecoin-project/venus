@@ -68,7 +68,7 @@ type storageDealState struct {
 
 // plumbing is the subset of the plumbing API that storage.Miner needs.
 type plumbing interface {
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
@@ -535,7 +535,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 
 	// TODO: algorithmically determine appropriate values for these
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	gasLimit := types.NewGasCost(submitPostGasLimit)
+	gasLimit := types.NewGasUnits(submitPostGasLimit)
 
 	err = porcelain.MessageSendWithRetry(ctx, sm.plumbingAPI, 10 /*retries*/, sm.node.GetBlockTime() /*wait time*/, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
 	if err != nil {
