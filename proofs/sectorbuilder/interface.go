@@ -36,9 +36,6 @@ type SectorBuilder interface {
 	// SealAllStagedSectors seals any non-empty staged sectors.
 	SealAllStagedSectors(ctx context.Context) error
 
-	// SealedSectors returns a slice of sealed sector metadata-objects.
-	SealedSectors() ([]*SealedSectorMetadata, error)
-
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the
 	// same channel. Values will be either a *SealedSectorMetadata or an error. A

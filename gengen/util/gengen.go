@@ -265,15 +265,19 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			// which is initialized to 0 and incremented (for the first sector) to 1
 			sectorID := i + 1
 
-			commR := make([]byte, 32)
 			commD := make([]byte, 32)
-			if _, err := pnrg.Read(commR[:]); err != nil {
-				return nil, err
-			}
+			commR := make([]byte, 32)
+			commRStar := make([]byte, 32)
 			if _, err := pnrg.Read(commD[:]); err != nil {
 				return nil, err
 			}
-			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commR, commD)
+			if _, err := pnrg.Read(commR[:]); err != nil {
+				return nil, err
+			}
+			if _, err := pnrg.Read(commRStar[:]); err != nil {
+				return nil, err
+			}
+			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commD, commR, commRStar)
 			if err != nil {
 				return nil, err
 			}

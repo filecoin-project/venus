@@ -739,7 +739,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
-					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommR[:], val.CommD[:])
+					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:])
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -1042,4 +1042,9 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // Lookup returns the nodes lookup service.
 func (node *Node) Lookup() lookup.PeerLookupService {
 	return node.lookup
+}
+
+// ChainReadStore returns the node's chain store.
+func (node *Node) ChainReadStore() chain.ReadStore {
+	return node.ChainReader
 }
