@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ func TestSetDefaultFromAddr(t *testing.T) {
 	addr := address.Address{}
 	nd := node.MakeOfflineNode(t)
 
-	expected, err := msgapi.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
+	expected, err := msg.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
 	assert.NoError(err)
 	assert.NotEqual(expected, address.Address{})
 

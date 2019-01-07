@@ -7,8 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api2"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -17,16 +17,16 @@ import (
 type PlumbingAPI struct {
 	logger logging.EventLogger
 
-	sigGetter *mthdsigapi.Getter
-	msgSender *msgapi.Sender
-	msgWaiter *msgapi.Waiter
+	sigGetter *mthdsig.Getter
+	msgSender *msg.Sender
+	msgWaiter *msg.Waiter
 }
 
 // Assert that plumbingAPI fullfills the api.Plumbing interface.
 var _ api2.Plumbing = (*PlumbingAPI)(nil)
 
 // New constructs a new instance of the API.
-func New(sigGetter *mthdsigapi.Getter, msgSender *msgapi.Sender, msgWaiter *msgapi.Waiter) *PlumbingAPI {
+func New(sigGetter *mthdsig.Getter, msgSender *msg.Sender, msgWaiter *msg.Waiter) *PlumbingAPI {
 	return &PlumbingAPI{
 		logger: logging.Logger("api2"),
 

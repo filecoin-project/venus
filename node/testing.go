@@ -25,8 +25,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msgapi"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsigapi"
+	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
+	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
@@ -253,7 +253,7 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 
 	wg.Add(1)
 
-	subscription, err := node.PubSub.Subscribe(msgapi.Topic)
+	subscription, err := node.PubSub.Subscribe(msg.Topic)
 	require.NoError(err)
 
 	go func() {
@@ -360,13 +360,13 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 	node.ChainReader = newChainReader
 	node.Consensus = newCon
 	node.Syncer = newSyncer
-	newSigGetter := mthdsigapi.NewGetter(newChainReader)
-	newMsgWaiter := msgapi.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
-	newMsgSender := msgapi.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
+	newSigGetter := mthdsig.NewGetter(newChainReader)
+	newMsgWaiter := msg.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
+	newMsgSender := msg.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
 	node.PlumbingAPI = api2impl.New(newSigGetter, newMsgSender, newMsgWaiter)
 
 	defaultSenderGetter := func() (address.Address, error) {
-		return msgapi.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
+		return msg.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
 	}
 	node.lookup = lookup.NewChainLookupService(newChainReader, defaultSenderGetter, node.Blockstore)
 	return nil
