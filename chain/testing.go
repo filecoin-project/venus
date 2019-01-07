@@ -305,8 +305,6 @@ func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, tot
 			return postProof, ticket, nil
 		}
 	}
-
-	return postProof, nil, errors.New("could not calculate a proof")
 }
 
 // These peer.ID generators were copied from libp2p/go-testutil. We didn't bring in the
