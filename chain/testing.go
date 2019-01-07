@@ -294,6 +294,10 @@ func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, tot
 	var postProof proofs.PoStProof
 	var ticket types.Signature
 
+	if totalPower/minerPower > 100000 {
+		return postProof, ticket, errors.New("MakeProofAndWinningTicket: minerPower is too small for totalPower to generate a winning ticket")
+	}
+
 	for {
 		postProof = th.MakeRandomPoSTProofForTest()
 		ticket = consensus.CreateTicket(postProof, minerAddr)
