@@ -10,7 +10,7 @@ jobs:
       - run:
           name: Configure environment variables
           command: |
-            echo 'export PATH="/usr/local/go/bin:${HOME}/.cargo/bin:${PATH}:${HOME}/go/bin"' >> $BASH_ENV
+            echo 'export PATH="/usr/local/go/bin:${HOME}/.cargo/bin:${PATH}:${HOME}/go/bin:${HOME}/.bin"' >> $BASH_ENV
             echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
             echo 'export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
       - add_ssh_keys:
@@ -43,6 +43,12 @@ jobs:
           name: Install Rust
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y
+      - run:
+          name: Install jq
+          command: |
+            mkdir $HOME/.bin
+            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
+            chmod +x $HOME/.bin/jq
       - run:
           name: Install dependencies
           command: go run ./build/*.go smartdeps
