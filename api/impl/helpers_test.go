@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/stretchr/testify/assert"
 )
 

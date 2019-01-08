@@ -37,11 +37,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2"
-	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
-	"github.com/filecoin-project/go-filecoin/api2/porcelain"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -49,6 +44,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
@@ -85,7 +84,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	PlumbingAPI api2.Plumbing
+	PlumbingAPI *plumbing.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -342,7 +341,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	sigGetter := mthdsig.NewGetter(chainReader)
 	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
-	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
+	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter)
 
 	nd := &Node{
 		blockservice: bservice,

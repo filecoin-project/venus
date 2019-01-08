@@ -14,9 +14,9 @@ import (
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
-	api2impl "github.com/filecoin-project/go-filecoin/api2/impl"
-	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
-	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -76,7 +76,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
 	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
-	plumbingAPI := api2impl.New(sigGetter, msgSender, msgWaiter)
+	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter)
 
 	// Give the miner node the right private key, and set them up with
 	// the miner actor

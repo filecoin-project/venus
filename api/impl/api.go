@@ -4,8 +4,8 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/api2"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/plumbing"
 )
 
 type nodeAPI struct {
@@ -43,7 +43,7 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	var plumbingAPI api2.Plumbing
+	var plumbingAPI *plumbing.API
 	if node != nil {
 		plumbingAPI = node.PlumbingAPI
 	}
