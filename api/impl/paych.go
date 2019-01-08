@@ -8,16 +8,16 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2"
+	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type nodePaych struct {
 	api         *nodeAPI
-	plumbingAPI api2.Plumbing
+	plumbingAPI *plumbing.API
 }
 
-func newNodePaych(api *nodeAPI, plumbingAPI api2.Plumbing) *nodePaych {
+func newNodePaych(api *nodeAPI, plumbingAPI *plumbing.API) *nodePaych {
 	return &nodePaych{api: api, plumbingAPI: plumbingAPI}
 }
 

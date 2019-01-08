@@ -9,16 +9,16 @@ import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api2"
+	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type nodeMiner struct {
 	api         *nodeAPI
-	plumbingAPI api2.Plumbing
+	plumbingAPI *plumbing.API
 }
 
-func newNodeMiner(api *nodeAPI, plumbingAPI api2.Plumbing) *nodeMiner {
+func newNodeMiner(api *nodeAPI, plumbingAPI *plumbing.API) *nodeMiner {
 	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
 }
 
