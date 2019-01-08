@@ -278,8 +278,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			return errors.Wrap(err, "could not test the proof's validity")
 		}
 		if !isValid {
-			// TODO: Temporary way to deal w/ this condition until proofs are updated.
-			log.Debugf("TODO: return error; proof is invalid.")
+			return errors.New("invalid proof")
 		}
 
 		computedTicket := CreateTicket(blk.Proof, blk.Miner)

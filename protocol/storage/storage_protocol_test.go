@@ -9,7 +9,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	dag "gx/ipfs/QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG/go-merkledag"
-	unixfs "gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
+	"gx/ipfs/QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G/go-unixfs"
 
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/api2/impl/msg"
 	"github.com/filecoin-project/go-filecoin/api2/impl/mthdsig"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -49,10 +50,26 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
-	// make two nodes, one of which is the miner (and gets the miner peer key)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
-	clientNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{})
+	// make two nodes, one of which is the miner (and gets the miner peer key),
+	// and set up their syncers with fake provers that always mark a proof as valid.
+	configOpts := []node.ConfigOpt{node.ProverConfigOption(proofs.NewFakeProver(true, nil))}
+
+	initOpts := []node.InitOpt{
+		node.AutoSealIntervalSecondsOpt(1),
+		node.PeerKeyOpt(node.PeerKeys[0]),
+	}
+	tno := node.TestNodeOptions{
+		Seed:        seed,
+		InitOpts:    initOpts,
+		ConfigOpts:  configOpts,
+		OfflineMode: false,
+	}
+
+	minerNode := node.GenNode(t, &tno)
 	minerAPI := impl.New(minerNode)
+
+	clientProver := proofs.NewFakeProver(true, nil)
+	clientNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{node.ProverConfigOption(clientProver)})
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.

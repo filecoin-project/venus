@@ -411,7 +411,12 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
 	err = os.Setenv("FIL_USE_SMALL_SECTORS", "true")
 	require.NoError(t, err)
-	err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)
+
+	if tno.GenesisFunc != nil {
+		err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)
+	} else {
+		err = Init(context.Background(), r, tno.Seed.GenesisInitFunc, tno.InitOpts...)
+	}
 	require.NoError(t, err)
 
 	localCfgOpts, err := OptionsFromRepo(r)
