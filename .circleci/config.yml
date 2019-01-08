@@ -275,6 +275,19 @@ jobs:
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
 
+  trigger_nightly_cluster_deploy:
+    docker:
+      - image: circleci/golang:latest
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - run:
+          name: Trigger nightly deploy in go-filecoin-infra
+          command: |
+            sudo apt-get install -y curl jq
+            curl -X POST --header "Content-Type: application/json" -d '{"branch":"filecoin-nightly"}' https://circleci.com/api/v1.1/project/github/filecoin-project/go-filecoin-infra/build?circle-token=$CIRCLE_API_TOKEN
+
+
 workflows:
   version: 2
   test_all:
@@ -284,6 +297,31 @@ workflows:
       - build_docker_img:
           requires:
             - build_linux
+          filters:
+            branches:
+              only:
+                - master
+  build_nightly_cluster:
+    triggers:
+      - schedule:
+          # every day at 6:00 UTC
+          cron: "0 6 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_linux
+      - build_docker_img:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              only:
+                - master
+      - trigger_nightly_cluster_deploy:
+          requires:
+            - build_docker_image
           filters:
             branches:
               only:
