@@ -2,7 +2,6 @@ package storage_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"sync"
 	"testing"
 	"time"
@@ -66,7 +65,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 		OfflineMode: false,
 	}
 
-	minerNode := node.MakeNodeWithChainSeed(t, seed, configOpts, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	minerNode := node.GenNode(t, &tno)
 	minerAPI := impl.New(minerNode)
 
 	clientProver := proofs.NewFakeProver(true, nil)
@@ -214,25 +213,6 @@ func TestStorageProtocolBasic(t *testing.T) {
 	}
 
 	assert.True(done, "failed to finish transfer")
-}
-
-// makeSyncerWithFakerProver takes a node and a prover, and inserts chain.Syncer that uses
-// the desired prover.  Be sure to create a new prover for each node, or there will be a
-// key mismatch error
-func makeSyncerWithFakeProver(inNode *node.Node, prover proofs.Prover) chain.Syncer {
-
-	// construct the consensus for the syncer using the node values
-	newChainStore := inNode.ChainReader.(chain.Store)
-	newConsensus := consensus.NewExpected(
-		inNode.CborStore(),
-		inNode.Blockstore,
-		&consensus.MarketView{},
-		inNode.ChainReader.GenesisCid(),
-		prover)
-
-	// construct the syncer that uses the fake prover consensus
-	newSyncer := chain.NewDefaultSyncer(inNode.OnlineStore, inNode.CborStore(), newConsensus, newChainStore)
-	return newSyncer
 }
 
 // waitTimeout waits for the waitgroup for the specified max timeout.
