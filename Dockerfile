@@ -2,7 +2,7 @@ FROM golang:1.11.1-stretch AS builder
 MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates file sudo clang
-RUN curl -sSf https://static.rust-lang.org/rustup.sh | sh -
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 
 # This docker file is a modified version of
 # https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
@@ -14,6 +14,7 @@ COPY . $SRC_DIR
 
 # Build the thing.
 RUN cd $SRC_DIR \
+&& . $HOME/.cargo/env \
 && go run ./build/*go deps \
 && go run ./build/*go build \
 && go build -o ./faucet ./tools/faucet/main.go \
