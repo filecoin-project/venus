@@ -35,7 +35,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.NoError(err)
 
 	gasPrice := types.NewGasPrice(0)
-	gasLimit := types.NewGasCost(0)
+	gasLimit := types.NewGasUnits(0)
 	_, err = nodes[0].PlumbingAPI.MessageSend(ctx, nd0Addr, address.NetworkAddress, types.NewAttoFILFromFIL(123), gasPrice, gasLimit, "")
 	require.NoError(err)
 

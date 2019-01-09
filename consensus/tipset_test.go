@@ -32,7 +32,7 @@ func block(require *require.Assertions, height int, parentCid cid.Cid, parentWei
 	addrGetter := address.NewForTestGetter()
 
 	m1 := types.NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
-	sm1, err := types.NewSignedMessage(*m1, &mockSignerForTest, types.NewGasPrice(0), types.NewGasCost(0))
+	sm1, err := types.NewSignedMessage(*m1, &mockSignerForTest, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 	ret := []byte{1, 2}
 

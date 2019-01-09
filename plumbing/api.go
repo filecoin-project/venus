@@ -44,7 +44,7 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
 // message to go on chain.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 

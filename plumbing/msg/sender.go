@@ -49,7 +49,7 @@ func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStor
 }
 
 // Send sends a message. See api description.
-func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasCost, method string, params ...interface{}) (cid.Cid, error) {
+func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	// If the from address isn't set attempt to use the default address.
 	if from == (address.Address{}) {
 		ret, err := GetAndMaybeSetDefaultSenderAddress(s.repo, s.wallet)

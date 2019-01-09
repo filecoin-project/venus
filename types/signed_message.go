@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 )
 
-// GasCost represents a unit of gas consumed
-type GasCost = Uint64
+// GasUnits represents number of units of gas consumed
+type GasUnits = Uint64
 
 var (
 	// ErrMessageSigned is returned when `Sign()` is called on a signedmessage that has previously been signed
@@ -33,7 +33,7 @@ type SignedMessage struct {
 	Message   `json:"message"`
 	Signature Signature `json:"signature"`
 	GasPrice  AttoFIL   `json:"gasPrice"`
-	GasLimit  GasCost   `json:"gasLimit"`
+	GasLimit  GasUnits  `json:"gasLimit"`
 }
 
 // Unmarshal a SignedMessage from the given bytes.
@@ -105,7 +105,7 @@ func (smsg *SignedMessage) String() string {
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the seralized `msg` and `msg.From`
-func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasCost) (*SignedMessage, error) {
+func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
 	bmsg, err := msg.Marshal()
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func NewGasPrice(price int64) AttoFIL {
 	return *NewAttoFIL(big.NewInt(price))
 }
 
-// NewGasCost constructs a new GasCost from the given number.
-func NewGasCost(cost int64) GasCost {
+// NewGasUnits constructs a new GasUnits from the given number.
+func NewGasUnits(cost int64) GasUnits {
 	return Uint64(cost)
 }

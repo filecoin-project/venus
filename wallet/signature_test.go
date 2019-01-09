@@ -116,7 +116,7 @@ func TestSignMessageOk(t *testing.T) {
 	fs, addr := requireSignerAddr(require)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	assert.True(smsg.VerifySignature())
@@ -152,7 +152,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 
 	fs, addr := requireSignerAddr(require)
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	smsg.Signature[0] = smsg.Signature[0] ^ 0xFF
@@ -167,7 +167,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 	fs, addr := requireSignerAddr(require)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasCost(0))
+	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
 	smsg.Message.Nonce = types.Uint64(uint64(42))

@@ -732,7 +732,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
 					gasPrice := types.NewGasPrice(0)
-					gasCost := types.NewGasCost(0)
+					gasCost := types.NewGasUnits(0)
 
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
@@ -914,7 +914,7 @@ func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, metho
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasCost, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 	// Only create a miner if we don't already have one.
 	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
