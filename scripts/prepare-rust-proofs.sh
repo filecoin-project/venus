@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 install_precompiled() {
-  RELEASE_SHA1="$(git rev-parse @:./proofs/rust-proofs)"
-  RELEASE_NAME="rust-proofs-$(uname)"
+  RELEASE_SHA1=`git rev-parse @:./proofs/rust-proofs`
+  RELEASE_NAME="rust-proofs-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
   if [ -z $GITHUB_TOKEN ]; then
@@ -41,11 +41,7 @@ install_precompiled() {
     return 1
   fi
 
-  pushd lib
-
-  tar -xzf $RELEASE_NAME.tar.gz 
-
-  popd
+  tar -C lib -xzf lib/$RELEASE_NAME.tar.gz 
 }
 
 install_local() {
