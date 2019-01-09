@@ -140,9 +140,7 @@ func deps() {
 		cmd("go get github.com/prometheus/client_golang/prometheus"),
 		cmd("go get github.com/prometheus/client_golang/prometheus/promhttp"),
 		cmd("go get github.com/jstemmer/go-junit-report"),
-		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
-		cmdWithDir("./proofs/rust-proofs", "cargo update"),
-		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
+		cmd("./scripts/prepare-rust-proofs.sh"),
 	}
 
 	cmds = append(cmds, clearParamCacheCommands()...)
@@ -162,9 +160,7 @@ func smartdeps() {
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
 		cmd("gometalinter --install"),
-		cmdWithDir("./proofs/rust-proofs", "cargo --version"),
-		cmdWithDir("./proofs/rust-proofs", "cargo update"),
-		cmdWithDir("./proofs/rust-proofs", "cargo build --release --all"),
+		cmd("./scripts/prepare-rust-proofs.sh"),
 	}
 
 	cmds = append(cmds, clearParamCacheCommands()...)

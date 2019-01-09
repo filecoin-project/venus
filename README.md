@@ -69,6 +69,13 @@ cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 go run ./build/*.go deps
 ```
 
+You can optionally consume precompiled assets instead of compiling `rust-proofs`
+yourself by setting two environment variables:
+
+  - `GITHUB_TOKEN` - a personal access token generated on GitHub
+  - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS` - set to attempt to download a
+  precompiled release of `rust-proofs` from GitHub
+
 #### Manage Submodules Manually
 
 _If you're not editing `rust-proofs` you can skip this step, because `deps` build (above) will do it for you._
