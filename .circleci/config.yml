@@ -321,14 +321,6 @@ workflows:
       - build_docker_img:
           requires:
             - build_linux
-          filters:
-            branches:
-              only:
-                - master
       - trigger_nightly_cluster_deploy:
           requires:
-            - build_docker_image
-          filters:
-            branches:
-              only:
-                - master
+            - build_docker_img
