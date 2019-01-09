@@ -28,6 +28,16 @@ func main() {
 
 	logging.SetAllLoggers(oldlogging.Level(n))
 
+	logging.SetLogLevel("dht", "error")          // nolint: errcheck
+	logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
+	logging.SetLogLevel("heartbeat", "error")    // nolint: errcheck
+	logging.SetLogLevel("blockservice", "error") // nolint: errcheck
+	logging.SetLogLevel("peerqueue", "error")    // nolint: errcheck
+	logging.SetLogLevel("swarm", "error")        // nolint: errcheck
+	logging.SetLogLevel("swarm2", "error")       // nolint: errcheck
+	logging.SetLogLevel("basichost", "error")    // nolint: errcheck
+	logging.SetLogLevel("dht_net", "error")      // nolint: errcheck
+
 	// TODO implement help text like so:
 	// https://github.com/ipfs/go-ipfs/blob/master/core/commands/root.go#L91
 	// TODO don't panic if run without a command.
