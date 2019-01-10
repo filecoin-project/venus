@@ -41,8 +41,8 @@ type GeneratePoSTResponse struct {
 	Proof  PoStProof
 }
 
-// Prover provides an interface to the proving subsystem.
-type Prover interface {
+// Verifier provides an interface to the proving subsystem.
+type Verifier interface {
 	GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error)
 	VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)

@@ -163,7 +163,7 @@ type Config struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
-	Prover      proofs.Prover
+	Prover      proofs.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
 }
@@ -200,7 +200,7 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 }
 
 // ProverConfigOption returns a function that sets the prover to use in the node consensus
-func ProverConfigOption(prover proofs.Prover) ConfigOpt {
+func ProverConfigOption(prover proofs.Verifier) ConfigOpt {
 	return func(c *Config) error {
 		c.Prover = prover
 		return nil

@@ -1,6 +1,6 @@
 package proofs
 
-// FakeProver is a simple mock Prover for testing
+// FakeProver is a simple mock Verifier for testing
 type FakeProver struct {
 	verifyPostValid bool
 	verifyPostError error
@@ -11,18 +11,18 @@ func NewFakeProver(isValid bool, err error) FakeProver {
 	return FakeProver{isValid, err}
 }
 
-// GeneratePoST panics. It fulfils a requirement for the Prover interface
+// GeneratePoST panics. It fulfils a requirement for the Verifier interface
 func (FakeProver) GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error) {
 	panic("boom")
 }
 
 // VerifyPoST returns the valid of verifyPostValid and verifyPostError.
-// It fulfils a requirement for the Prover interface
+// It fulfils a requirement for the Verifier interface
 func (fp FakeProver) VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	return VerifyPoSTResponse{IsValid: fp.verifyPostValid}, fp.verifyPostError
 }
 
-// VerifySeal panics. It fulfils a requirement for the Prover interface
+// VerifySeal panics. It fulfils a requirement for the Verifier interface
 func (FakeProver) VerifySeal(VerifySealRequest) (VerifySealResponse, error) {
 	panic("boom")
 }

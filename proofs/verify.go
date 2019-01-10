@@ -21,7 +21,7 @@ import (
 //   faults: 	    any faults produced when creating the proof
 //   proof:   		the proof to test
 //   challengeSeed:  the challenge seed used when creating the proof
-func IsPoStValidWithProver(prover Prover, commRs [][32]byte, challengeSeed PoStChallengeSeed, faults []uint64, proof PoStProof) (bool, error) {
+func IsPoStValidWithProver(prover Verifier, commRs [][32]byte, challengeSeed PoStChallengeSeed, faults []uint64, proof PoStProof) (bool, error) {
 	req := VerifyPoSTRequest{
 		ChallengeSeed: challengeSeed,
 		CommRs:        commRs,
