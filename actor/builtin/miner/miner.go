@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -46,6 +47,8 @@ const (
 	ErrCallerUnauthorized = 37
 	// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
 	ErrInsufficientPledge = 38
+	// ErrInvalidPoSt signals that the passed in PoSt was invalid.
+	ErrInvalidPoSt = 39
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -535,6 +538,32 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 		// verify that the caller is authorized to perform update
 		if ctx.Message().From != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		// reach in to actor storage to grab comm-r for each committed sector
+		var commRs [][32]byte
+		for _, v := range state.SectorCommitments {
+			commRs = append(commRs, v.CommR)
+		}
+
+		// copy message-bytes into PoStProof slice
+		postProof := proofs.PoStProof{}
+		copy(postProof[:], proof)
+
+		// TODO: use IsPoStValidWithProver when proofs are implemented
+		req := proofs.VerifyPoSTRequest{
+			ChallengeSeed: proofs.PoStChallengeSeed{},
+			CommRs:        commRs,
+			Faults:        []uint64{},
+			Proof:         postProof,
+		}
+
+		res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
+		if err != nil {
+			return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
+		}
+		if !res.IsValid {
+			return nil, Errors[ErrInvalidPoSt]
 		}
 
 		// Check if we submitted it in time
