@@ -184,7 +184,7 @@ func TestSectorBuilder(t *testing.T) {
 				require.NoError(t, val.SealingErr)
 				require.Equal(t, sectorID, val.SealingResult.SectorID)
 
-				res, err := (&proofs.RustProver{}).VerifySeal(proofs.VerifySealRequest{
+				res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
 					CommD:     val.SealingResult.CommD,
 					CommR:     val.SealingResult.CommR,
 					CommRStar: val.SealingResult.CommRStar,

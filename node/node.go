@@ -314,7 +314,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	var nodeConsensus consensus.Protocol
 	if nc.Prover == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustProver{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
 	} else {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Prover)
 	}

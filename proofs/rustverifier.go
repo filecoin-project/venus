@@ -30,10 +30,10 @@ import "C"
 
 var log = logging.Logger("fps") // nolint: deadcode
 
-// RustProver provides an interface to rust-proofs.
-type RustProver struct{}
+// RustVerifier provides proof-verification methods.
+type RustVerifier struct{}
 
-var _ Prover = &RustProver{}
+var _ Prover = &RustVerifier{}
 
 // SnarkBytesLen is the length of the Proof of SpaceTime proof.
 const SnarkBytesLen uint = 192
@@ -62,7 +62,7 @@ func elapsed(what string) func() {
 
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
-func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
+func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
 	defer elapsed("VerifySeal")()
 
 	commDCBytes := C.CBytes(req.CommD[:])
@@ -110,7 +110,7 @@ func (rp *RustProver) VerifySeal(req VerifySealRequest) (VerifySealResponse, err
 }
 
 // GeneratePoST produces a proof-of-spacetime for the provided commitment replicas.
-func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
+func (rp *RustVerifier) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
 	defer elapsed("GeneratePoST")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
@@ -150,7 +150,7 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 }
 
 // VerifyPoST verifies that a proof-of-spacetime is valid.
-func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
 	// flattening the byte slice makes it easier to copy into the C heap

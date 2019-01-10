@@ -481,7 +481,7 @@ func generatePoSt(commRs [][32]byte, challenge proofs.PoStChallengeSeed) (proofs
 		CommRs:        commRs,
 		ChallengeSeed: challenge,
 	}
-	res, err := (&proofs.RustProver{}).GeneratePoST(req)
+	res, err := (&proofs.RustVerifier{}).GeneratePoST(req)
 	if err != nil {
 		return proofs.PoStProof{}, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
