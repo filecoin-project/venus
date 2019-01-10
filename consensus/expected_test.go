@@ -259,7 +259,7 @@ func TestCreateChallenge(t *testing.T) {
 		}
 		r, err := consensus.CreateChallengeSeed(parents, c.nullBlockCount)
 		assert.NoError(err)
-		assert.Equal(decoded, r)
+		assert.Equal(decoded, r[:])
 	}
 }
 
