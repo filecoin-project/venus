@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	block "gx/ipfs/QmWoXtvgC8inqFkAATB7cp2Dax7XBi9VDvSg9RCCZufmRk/go-block-format"
@@ -40,11 +40,11 @@ func UnmarshalStorage(raw []byte, to interface{}) error {
 func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)) (interface{}, error) {
 	chunk, err := ctx.ReadStorage()
 	if err != nil {
-		return nil, err
+		return nil, vmerrors.FaultErrorWrap(err, "Could not read actor storage")
 	}
 
 	if err := UnmarshalStorage(chunk, st); err != nil {
-		return nil, err
+		return nil, vmerrors.FaultErrorWrap(err, "Could not unmarshall actor storage")
 	}
 
 	ret, err := f()
@@ -53,7 +53,7 @@ func WithState(ctx exec.VMContext, st interface{}, f func() (interface{}, error)
 	}
 
 	if err := ctx.WriteStorage(st); err != nil {
-		return nil, err
+		return nil, vmerrors.FaultErrorWrap(err, "Could not write actor storage")
 	}
 
 	return ret, nil
