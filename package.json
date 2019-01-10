@@ -99,27 +99,27 @@
     },
     {
       "author": "why",
-      "hash": "QmUcD1XmATatKKsvYB5ZxHD9pKiE8hZLaEsygsyUR4YgLg",
+      "hash": "QmYoGLuLwTUv1SYBmsw1EVNC9MyLVUxwxzXYtKgAGHyEfw",
       "name": "go-bitswap",
-      "version": "1.1.19"
+      "version": "1.1.20"
     },
     {
       "author": "why",
-      "hash": "QmVYm5u7aHGrxA67Jxgo23bQKxbWFYvYAb76kZMnSB37TG",
+      "hash": "QmTQdH4848iTVCJmKXYyRiK72HufWTLYQQ8iN3JaQ8K1Hq",
       "name": "go-merkledag",
-      "version": "1.1.25"
-    },
-    {
-      "author": "why",
-      "hash": "QmeeZKidkDAKwyvXictWdfjMkyJv1Jh4FQCHrYX6dapC2G",
-      "name": "go-unixfs",
-      "version": "1.2.11"
-    },
-    {
-      "author": "why",
-      "hash": "QmXnYXNWzdE7rbRDtJtseXyLQmUaYD9Rfpy8snUeU6NrdJ",
-      "name": "go-path",
       "version": "1.1.26"
+    },
+    {
+      "author": "why",
+      "hash": "QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe",
+      "name": "go-unixfs",
+      "version": "1.2.12"
+    },
+    {
+      "author": "why",
+      "hash": "QmNYPETsdAu2uQ1k9q9S1jYEGURaLHV6cbYRSVFVRftpF8",
+      "name": "go-path",
+      "version": "1.1.27"
     },
     {
       "author": "whyrusleeping",
@@ -129,9 +129,9 @@
     },
     {
       "author": "why",
-      "hash": "QmXd5Ti3xJAEy32mgVqZa7Un9FuZqALzM3xuc3XFWy7e3L",
+      "hash": "QmRa5sdhUGtLptMNYSHFWcU3axEJntpKht3LngrBpuurv1",
       "name": "go-car",
-      "version": "1.1.11"
+      "version": "1.1.12"
     },
     {
       "author": "whyrusleeping",
@@ -173,9 +173,9 @@
     },
     {
       "author": "why",
-      "hash": "QmZ9PMwfBmywNgpxG7zRHKsAno76gMCBbKGBTVXbma44H7",
+      "hash": "QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep",
       "name": "go-blockservice",
-      "version": "1.1.19"
+      "version": "1.1.20"
     }
   ],
   "gxVersion": "0.12.1",
