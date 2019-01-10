@@ -28,7 +28,7 @@ func TestVerifyPoSt(t *testing.T) {
 		assert.NoError(err)
 	})
 
-	t.Run("IsPoStValidWithVerifier returns false error if the prover errors", func(t *testing.T) {
+	t.Run("IsPoStValidWithVerifier returns false error if the verifier errors", func(t *testing.T) {
 		someProof := PoStProof{0x3, 0x3, 0x3}
 		noWayMan := FakeVerifier{false, errors.New("Boom")}
 		res, err := IsPoStValidWithVerifier(noWayMan, [][32]byte{}, challengeSeed, []uint64{}, someProof)

@@ -441,13 +441,13 @@ func TestNodeConfig(t *testing.T) {
 	defaultCfg := config.NewDefaultConfig()
 
 	// fake mining/always a winning ticket
-	prover := proofs.NewFakeVerifier(true, nil)
+	verifier := proofs.NewFakeVerifier(true, nil)
 
 	configBlockTime := 99
 
 	configOptions := []ConfigOpt{
 		repoConfig(),
-		VerifierConfigOption(prover),
+		VerifierConfigOption(verifier),
 		BlockTime(time.Duration(configBlockTime)),
 	}
 

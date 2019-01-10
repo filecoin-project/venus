@@ -74,8 +74,8 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 
 	// chain.Syncer
 	processor := testhelpers.NewTestProcessor()
-	prover := proofs.NewFakeVerifier(true, nil)
-	con := consensus.NewExpected(cst, bs, processor, &testhelpers.TestView{}, calcGenBlk.Cid(), prover)
+	verifier := proofs.NewFakeVerifier(true, nil)
+	con := consensus.NewExpected(cst, bs, processor, &testhelpers.TestView{}, calcGenBlk.Cid(), verifier)
 	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain genesis block and state

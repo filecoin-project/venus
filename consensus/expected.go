@@ -86,14 +86,14 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, prover proofs.Verifier) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
 		processor:    processor,
 		PwrTableView: pt,
 		genesisCid:   gCid,
-		verifier:     prover,
+		verifier:     verifier,
 	}
 }
 

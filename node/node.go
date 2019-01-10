@@ -199,7 +199,7 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 	}
 }
 
-// VerifierConfigOption returns a function that sets the prover to use in the node consensus
+// VerifierConfigOption returns a function that sets the verifier to use in the node consensus
 func VerifierConfigOption(verifier proofs.Verifier) ConfigOpt {
 	return func(c *Config) error {
 		c.Verifier = verifier
