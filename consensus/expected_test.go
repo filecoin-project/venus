@@ -263,7 +263,7 @@ func TestCreateChallenge(t *testing.T) {
 	}
 }
 
-func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, proofs.Prover) {
+func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, proofs.Verifier) {
 	mds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(mds)
 	offl := offline.Exchange(bs)

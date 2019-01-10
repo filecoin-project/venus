@@ -33,7 +33,7 @@ var log = logging.Logger("fps") // nolint: deadcode
 // RustVerifier provides proof-verification methods.
 type RustVerifier struct{}
 
-var _ Prover = &RustVerifier{}
+var _ Verifier = &RustVerifier{}
 
 // SnarkBytesLen is the length of the Proof of SpaceTime proof.
 const SnarkBytesLen uint = 192

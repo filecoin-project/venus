@@ -79,14 +79,14 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
-	prover proofs.Prover
+	prover proofs.Verifier
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, prover proofs.Prover) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, prover proofs.Verifier) Protocol {
 	return &Expected{
 		cstore:       cs,
 		bstore:       bs,
