@@ -1,7 +1,6 @@
 package proofs
 
 import (
-	"fmt"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
@@ -14,22 +13,22 @@ import (
 //
 // returns:
 //     bool:  if this proof is valid (i.e. the validation test completed)
-//     error:  non-nil if the length is wrong or if the VerifyPoST did not complete its checking
+//     error:  non-nil if VerifyPoST did not complete its checking
 // params:
-//   prover:  the Prover to use for testing the Proof
-//   proof:   the proof to test
-//   challenge:  the challenge used for creating the block
-func IsPoStValidWithProver(prover Prover, proof []byte, challenge []byte) (bool, error) {
-	if uint(len(proof)) != SnarkBytesLen {
-		return false, fmt.Errorf("proof must be %d bytes, but is %d bytes", SnarkBytesLen, len(proof))
-	}
-
+//   prover:        the prover to use for testing the proof
+//   commRs:  	    the replica commitments that pertain to the provided proof
+//   challengeSeed: the challenge seed used when creating the proof
+//   faults: 	    any faults produced when creating the proof
+//   proof:   		the proof to test
+//   challengeSeed:  the challenge seed used when creating the proof
+func IsPoStValidWithProver(prover Prover, commRs [][32]byte, challengeSeed PoStChallengeSeed, faults []uint64, proof PoStProof) (bool, error) {
 	req := VerifyPoSTRequest{
-		Challenge: challenge,
-		Proof:     PoStProof{},
+		ChallengeSeed: challengeSeed,
+		CommRs:        commRs,
+		Faults:        faults,
+		Proof:         proof,
 	}
 
-	copy(req.Proof[:], proof[:])
 	res, err := prover.VerifyPoST(req)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to verify PoSt")

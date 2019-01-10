@@ -41,11 +41,17 @@ const SnarkBytesLen uint = 192
 // SealBytesLen is the length of the proof of Seal Proof of Replication.
 const SealBytesLen uint = 384
 
+// PoStChallengeSeedBytesLen is the number of bytes in the Proof of SpaceTime challenge seed.
+const PoStChallengeSeedBytesLen uint = 32
+
 // PoStProof is the byte representation of the Proof of SpaceTime proof
 type PoStProof [SnarkBytesLen]byte
 
 // SealProof is the byte representation of the Seal Proof of Replication
 type SealProof [SealBytesLen]byte
+
+// PoStChallengeSeed is an input to the proof-of-spacetime generation and verification methods.
+type PoStChallengeSeed [PoStChallengeSeedBytesLen]byte
 
 func elapsed(what string) func() {
 	start := time.Now()
@@ -147,28 +153,35 @@ func (rp *RustProver) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTRespons
 func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
-	proofPtr := (*[C.uint(SnarkBytesLen)]C.uint8_t)(unsafe.Pointer(&(req.Proof)[0]))
+	// flattening the byte slice makes it easier to copy into the C heap
+	flattened := make([]byte, 32*len(req.CommRs))
+	for idx, commR := range req.CommRs {
+		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
+	}
+
+	// copy bytes from Go to C heap
+	flattedCommRsCBytes := C.CBytes(flattened)
+	defer C.free(flattedCommRsCBytes)
+
+	challengeSeedCBytes := C.CBytes(req.ChallengeSeed[:])
+	defer C.free(challengeSeedCBytes)
+
+	proofCBytes := C.CBytes(req.Proof[:])
+	defer C.free(proofCBytes)
+
+	// allocate fixed-length array of uint64s in C heap
+	faultsPtr, faultsSize := cUint64s(req.Faults)
+	defer C.free(unsafe.Pointer(faultsPtr))
 
 	// a mutable pointer to a VerifyPoSTResponse C-struct
-	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(proofPtr)))
-
-	// TODO: when VerifyPoSTResponse can take the challenge & t_size as params, uncomment all of this
-	// See https://github.com/filecoin-project/go-filecoin/issues/1302
-	//byteLen := len(req.Challenge)
-	//challengeArray := make([]byte, byteLen)
-	//copy(challengeArray[:], req.Challenge[:])
-	//
-	// copy the the Go challenge slice into C memory
-	//challengeCBytes := C.CBytes(challengeArray)
-	//defer C.free(challengeCBytes)
-	//
-	// cast and pass the challenge, proof and size of challenge to C.VerifyPoSTResponse
-	//resPtr := (*C.VerifyPoSTResponse)(
-	//	unsafe.Pointer(C.verify_post(
-	//		proofPtr,
-	//		(*C.uint8_t)(challengeCBytes),
-	//		C.size_t(byteLen))))
-
+	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
+		(*C.uint8_t)(flattedCommRsCBytes),
+		C.size_t(len(flattened)),
+		(*[32]C.uint8_t)(challengeSeedCBytes),
+		(*[192]C.uint8_t)(proofCBytes),
+		faultsPtr,
+		faultsSize,
+	)))
 	defer C.destroy_verify_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -181,6 +194,24 @@ func (rp *RustProver) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, err
 		// bool(resPtr.is_valid),
 		IsValid: true,
 	}, nil
+}
+
+// cUint64s copies the contents of a slice into a C heap-allocated array and
+// returns a pointer to that array and its size. Callers are responsible for
+// freeing the pointer. If they do not do that, the array will be leaked.
+func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
+	srcCSizeT := C.size_t(len(src))
+
+	// allocate array in C heap
+	cUint64s := C.malloc(*C.sizeof_uint64_t)
+
+	// create a Go slice backed by the C-array
+	pp := (*[1 << 30]C.uint64_t)(cUint64s)
+	for i, v := range src {
+		pp[i] = C.uint64_t(v)
+	}
+
+	return (*C.uint64_t)(cUint64s), srcCSizeT
 }
 
 // goUint64s accepts a pointer to a C-allocated uint64 and a size and produces

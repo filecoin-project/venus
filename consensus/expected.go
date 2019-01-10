@@ -260,7 +260,6 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs T
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet, parentTs TipSet) error {
-
 	for _, blk := range ts.ToSlice() {
 		parentHeight, err := parentTs.Height()
 		if err != nil {
@@ -268,12 +267,12 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 		}
 
 		nullBlockCount := uint64(blk.Height) - parentHeight - 1
-		challenge, err := CreateChallenge(parentTs, nullBlockCount)
+		challengeSeed, err := CreateChallengeSeed(parentTs, nullBlockCount)
 		if err != nil {
-			return errors.Wrap(err, "couldn't create challenge")
+			return errors.Wrap(err, "couldn't create challengeSeed")
 		}
 
-		isValid, err := proofs.IsPoStValidWithProver(c.prover, blk.Proof[:], challenge)
+		isValid, err := proofs.IsPoStValidWithProver(c.prover, [][32]byte{}, challengeSeed, []uint64{}, blk.Proof)
 		if err != nil {
 			return errors.Wrap(err, "could not test the proof's validity")
 		}
@@ -332,14 +331,14 @@ func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower ui
 	return lhs.Cmp(rhs) < 0
 }
 
-// CreateChallenge creates/recreates the block challenge for purposes of validation.
+// CreateChallengeSeed creates/recreates the block challenge for purposes of validation.
 //   TODO -- in general this won't work with only the base tipset.
 //     We'll potentially need some chain manager utils, similar to
 //     the State function, to sample further back in the chain.
-func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
+func CreateChallengeSeed(parents TipSet, nullBlkCount uint64) (proofs.PoStChallengeSeed, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
-		return nil, err
+		return proofs.PoStChallengeSeed{}, err
 	}
 
 	buf := make([]byte, 4)
@@ -347,8 +346,7 @@ func CreateChallenge(parents TipSet, nullBlkCount uint64) ([]byte, error) {
 	buf = append(smallest, buf[:n]...)
 
 	h := sha256.Sum256(buf)
-	// TODO: return a length 64-length bytes slice, encode this in the type system
-	return h[:], nil
+	return h, nil
 }
 
 // CreateTicket computes a valid ticket using the supplied proof
