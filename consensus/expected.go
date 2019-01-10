@@ -79,7 +79,7 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
-	prover proofs.Verifier
+	verifier proofs.Verifier
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
@@ -93,7 +93,7 @@ func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Pro
 		processor:    processor,
 		PwrTableView: pt,
 		genesisCid:   gCid,
-		prover:       prover,
+		verifier:     prover,
 	}
 }
 
@@ -272,7 +272,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet,
 			return errors.Wrap(err, "couldn't create challengeSeed")
 		}
 
-		isValid, err := proofs.IsPoStValidWithProver(c.prover, [][32]byte{}, challengeSeed, []uint64{}, blk.Proof)
+		isValid, err := proofs.IsPoStValidWithVerifier(c.verifier, [][32]byte{}, challengeSeed, []uint64{}, blk.Proof)
 		if err != nil {
 			return errors.Wrap(err, "could not test the proof's validity")
 		}

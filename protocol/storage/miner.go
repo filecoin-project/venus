@@ -476,12 +476,12 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func generatePoSt(commRs [][32]byte, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
-	req := proofs.GeneratePoSTRequest{
+func (sm *Miner) generatePoSt(commRs [][32]byte, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
+	req := sectorbuilder.GeneratePoSTRequest{
 		CommRs:        commRs,
 		ChallengeSeed: challenge,
 	}
-	res, err := (&proofs.RustVerifier{}).GeneratePoST(req)
+	res, err := sm.node.SectorBuilder().GeneratePoST(req)
 	if err != nil {
 		return proofs.PoStProof{}, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
@@ -501,7 +501,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 		commRs[i] = input.commR
 	}
 
-	proof, faults, err := generatePoSt(commRs, seed)
+	proof, faults, err := sm.generatePoSt(commRs, seed)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return

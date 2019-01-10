@@ -47,6 +47,12 @@ type SectorBuilder interface {
 	// which will fit into a newly-provisioned staged sector.
 	GetMaxUserBytesPerStagedSector() (uint64, error)
 
+	// GeneratePoST creates a proof-of-spacetime for the replicas managed by
+	// the SectorBuilder. Its output includes the proof-of-spacetime proof which
+	// is posted to the blockchain along with any faults. The proof can be
+	// verified by the VerifyPoSt method on the Verifier interface.
+	GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error)
+
 	// Close signals that this SectorBuilder is no longer in use. SectorBuilder
 	// metadata will not be deleted when Close is called; an equivalent
 	// SectorBuilder can be created later by applying the Init function to the
@@ -81,4 +87,16 @@ type SealedSectorMetadata struct {
 	Pieces    []*PieceInfo // deprecated (will be removed soon)
 	Proof     proofs.SealProof
 	SectorID  uint64
+}
+
+// GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
+type GeneratePoSTRequest struct {
+	CommRs        [][32]byte
+	ChallengeSeed proofs.PoStChallengeSeed
+}
+
+// GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
+type GeneratePoSTResponse struct {
+	Faults []uint64
+	Proof  proofs.PoStProof
 }

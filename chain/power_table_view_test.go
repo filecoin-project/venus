@@ -2,8 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -11,9 +9,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +74,7 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 
 	// chain.Syncer
 	processor := testhelpers.NewTestProcessor()
-	prover := proofs.NewFakeProver(true, nil)
+	prover := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, &testhelpers.TestView{}, calcGenBlk.Cid(), prover)
 	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
