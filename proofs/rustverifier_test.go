@@ -12,7 +12,7 @@ import (
 func TestPoSTCycle(t *testing.T) {
 	require := require.New(t)
 
-	gres, gerr := (&RustProver{}).GeneratePoST(GeneratePoSTRequest{
+	gres, gerr := (&RustVerifier{}).GeneratePoST(GeneratePoSTRequest{
 		CommRs:        [][32]byte{createDummyCommR(), createDummyCommR()},
 		ChallengeSeed: [32]byte{},
 	})
@@ -25,13 +25,13 @@ func TestPoSTCycle(t *testing.T) {
 	require.Equal(uint64(0), gres.Faults[0])
 
 	challengeSeed := PoStChallengeSeed{1, 2, 3}
-	vres, verr := IsPoStValidWithProver(&RustProver{}, [][32]byte{}, challengeSeed, []uint64{1, 2, 999}, gres.Proof)
+	vres, verr := IsPoStValidWithProver(&RustVerifier{}, [][32]byte{}, challengeSeed, []uint64{1, 2, 999}, gres.Proof)
 	require.NoError(verr)
 	require.True(vres)
 }
 
 func TestHandlesNullFaultsPtr(t *testing.T) {
-	gres, gerr := (&RustProver{}).GeneratePoST(GeneratePoSTRequest{
+	gres, gerr := (&RustVerifier{}).GeneratePoST(GeneratePoSTRequest{
 		CommRs:        [][32]byte{},
 		ChallengeSeed: [32]byte{},
 	})
