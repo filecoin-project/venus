@@ -12,4 +12,7 @@ fixtures/genesis.car
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
-lib/*
+proofs/bin/
+proofs/include/
+proofs/lib/
+proofs/tmp/

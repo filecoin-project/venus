@@ -22,9 +22,9 @@ import (
 // -lproofs                                     <- Tell the linker to search for libproofs.dylib or libproofs.a in
 //                                                 the library search path.
 //
-#cgo darwin LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs -framework Security -lSystem -lresolv -lc -lm
-#cgo linux LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs -lutil -lutil -ldl -lrt -lpthread -lgcc_s -lc -lm -lrt -lpthread -lutil -lutil
-#include "../lib/libfilecoin_proofs.h"
+#cgo darwin LDFLAGS: -L${SRCDIR}/../proofs/lib -lfilecoin_proofs -framework Security -lSystem -lresolv -lc -lm
+#cgo linux LDFLAGS: -L${SRCDIR}/../proofs/lib -lfilecoin_proofs -lutil -lutil -ldl -lrt -lpthread -lgcc_s -lc -lm -lrt -lpthread -lutil -lutil
+#include "../proofs/include/libfilecoin_proofs.h"
 */
 import "C"
 
