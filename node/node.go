@@ -163,7 +163,7 @@ type Config struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
-	Prover      proofs.Verifier
+	Verifier    proofs.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
 }
@@ -199,10 +199,10 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 	}
 }
 
-// ProverConfigOption returns a function that sets the prover to use in the node consensus
-func ProverConfigOption(prover proofs.Verifier) ConfigOpt {
+// VerifierConfigOption returns a function that sets the prover to use in the node consensus
+func VerifierConfigOption(verifier proofs.Verifier) ConfigOpt {
 	return func(c *Config) error {
-		c.Prover = prover
+		c.Verifier = verifier
 		return nil
 	}
 }
@@ -313,10 +313,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	var nodeConsensus consensus.Protocol
-	if nc.Prover == nil {
+	if nc.Verifier == nil {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Prover)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
 	}
 
 	// only the syncer gets the storage which is online connected

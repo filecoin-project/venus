@@ -2,22 +2,23 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -152,7 +153,7 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (Syncer, *hamt
 	powerTable := &testhelpers.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	prover := proofs.NewFakeProver(true, nil)
+	prover := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, prover)
 	syncer, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	ctx := context.Background()
@@ -169,7 +170,7 @@ func initSyncTestDefault(require *require.Assertions) (Syncer, Store, *hamt.Cbor
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	prover := proofs.NewFakeProver(true, nil)
+	prover := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
 	return initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
@@ -182,7 +183,7 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	prover := proofs.NewFakeProver(true, nil)
+	prover := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, powerTable, genCid, prover)
 	requireSetTestChain(require, con, false)
 	sync, chain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
@@ -779,7 +780,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
 	// chain.Syncer
-	prover := proofs.NewFakeProver(true, nil)
+	prover := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &testhelpers.TestView{}, calcGenBlk.Cid(), prover)
 	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
@@ -815,7 +816,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(err)
 
 	// Now sync the chain with consensus using a MarketView.
-	prover = proofs.NewFakeProver(true, nil)
+	prover = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &consensus.MarketView{}, calcGenBlkCid, prover)
 	syncer = NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners

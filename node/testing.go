@@ -195,7 +195,7 @@ func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool, mockMineMo
 	var configOpts []ConfigOpt
 
 	if mockMineMode {
-		configOpts = configureFakeProver(configOpts)
+		configOpts = configureFakeVerifier(configOpts)
 	}
 
 	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.InitGenesis, configOpts)
@@ -208,7 +208,7 @@ func MakeNodesStarted(t *testing.T, numNodes int, offlineMode, mockMineMode bool
 
 	var configOpts []ConfigOpt
 	if mockMineMode {
-		configOpts = configureFakeProver(configOpts)
+		configOpts = configureFakeVerifier(configOpts)
 	}
 
 	nds = MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.InitGenesis, configOpts)
@@ -233,9 +233,9 @@ type MustCreateMinerResult struct {
 	Err          error
 }
 
-func configureFakeProver(cfo []ConfigOpt) []ConfigOpt {
-	prover := proofs.NewFakeProver(true, nil)
-	return append(cfo, ProverConfigOption(prover))
+func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
+	verifier := proofs.NewFakeVerifier(true, nil)
+	return append(cfo, VerifierConfigOption(verifier))
 }
 
 // RunCreateMiner runs create miner and then runs a given assertion with the result.
@@ -355,7 +355,7 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 		consensus.NewDefaultProcessor(),
 		node.PowerTable,
 		newGenBlk.Cid(),
-		proofs.NewFakeProver(true, nil))
+		proofs.NewFakeVerifier(true, nil))
 	newSyncer := chain.NewDefaultSyncer(node.OnlineStore, node.CborStore(), newCon, newChainStore)
 	node.ChainReader = newChainReader
 	node.Consensus = newCon

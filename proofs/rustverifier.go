@@ -109,46 +109,6 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	}, nil
 }
 
-// GeneratePoST produces a proof-of-spacetime for the provided commitment replicas.
-func (rp *RustVerifier) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
-	defer elapsed("GeneratePoST")()
-
-	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, 32*len(req.CommRs))
-	for idx, commR := range req.CommRs {
-		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
-	}
-
-	// copy the Go byte slice into C memory
-	cflattened := C.CBytes(flattened)
-	defer C.free(cflattened)
-
-	// a mutable pointer to a GeneratePoSTResponse C-struct
-	resPtr := (*C.GeneratePoSTResponse)(
-		unsafe.Pointer(
-			C.generate_post(
-				(*C.uint8_t)(cflattened),
-				C.size_t(len(flattened)),
-				(*[32]C.uint8_t)(unsafe.Pointer(&(req.ChallengeSeed)[0])),
-			)))
-	defer C.destroy_generate_post_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return GeneratePoSTResponse{}, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	// copy proof bytes back to Go from C
-
-	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), C.int(SnarkBytesLen))
-	var proof PoStProof
-	copy(proof[:], proofSlice)
-
-	return GeneratePoSTResponse{
-		Proof:  proof,
-		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
-	}, nil
-}
-
 // VerifyPoST verifies that a proof-of-spacetime is valid.
 func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
@@ -203,7 +163,7 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	srcCSizeT := C.size_t(len(src))
 
 	// allocate array in C heap
-	cUint64s := C.malloc(*C.sizeof_uint64_t)
+	cUint64s := C.malloc(srcCSizeT * C.sizeof_uint64_t)
 
 	// create a Go slice backed by the C-array
 	pp := (*[1 << 30]C.uint64_t)(cUint64s)
@@ -212,17 +172,6 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	}
 
 	return (*C.uint64_t)(cUint64s), srcCSizeT
-}
-
-// goUint64s accepts a pointer to a C-allocated uint64 and a size and produces
-// a Go-managed slice of uint64. Note that this function copies values into the
-// Go heap from C.
-func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
-	out := make([]uint64, size)
-	if src != nil {
-		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
-	}
-	return out
 }
 
 // CSectorStoreType marshals from SectorStoreType to the FFI type

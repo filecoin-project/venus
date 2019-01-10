@@ -52,7 +52,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 	// make two nodes, one of which is the miner (and gets the miner peer key),
 	// and set up their syncers with fake provers that always mark a proof as valid.
-	configOpts := []node.ConfigOpt{node.ProverConfigOption(proofs.NewFakeProver(true, nil))}
+	configOpts := []node.ConfigOpt{node.VerifierConfigOption(proofs.NewFakeVerifier(true, nil))}
 
 	initOpts := []node.InitOpt{
 		node.AutoSealIntervalSecondsOpt(1),
@@ -68,8 +68,8 @@ func TestStorageProtocolBasic(t *testing.T) {
 	minerNode := node.GenNode(t, &tno)
 	minerAPI := impl.New(minerNode)
 
-	clientProver := proofs.NewFakeProver(true, nil)
-	clientNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{node.ProverConfigOption(clientProver)})
+	clientProver := proofs.NewFakeVerifier(true, nil)
+	clientNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{node.VerifierConfigOption(clientProver)})
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.

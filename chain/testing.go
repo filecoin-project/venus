@@ -64,7 +64,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 		th.NewTestProcessor(),
 		powerTableView,
 		params.GenesisCid,
-		proofs.NewFakeProver(true, nil))
+		proofs.NewFakeVerifier(true, nil))
 	params.Consensus = con
 	return MkFakeChildWithCon(params)
 }

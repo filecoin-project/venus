@@ -11,12 +11,6 @@ type VerifySealRequest struct {
 	StoreType SectorStoreType // used to control sealing/verification performance
 }
 
-// GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
-type GeneratePoSTRequest struct {
-	CommRs        [][32]byte
-	ChallengeSeed PoStChallengeSeed
-}
-
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
 	ChallengeSeed PoStChallengeSeed
@@ -35,15 +29,8 @@ type VerifySealResponse struct {
 	IsValid bool
 }
 
-// GeneratePoSTResponse contains PoST proof and any faults that may have occurred.
-type GeneratePoSTResponse struct {
-	Faults []uint64
-	Proof  PoStProof
-}
-
 // Verifier provides an interface to the proving subsystem.
 type Verifier interface {
-	GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error)
 	VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
 }

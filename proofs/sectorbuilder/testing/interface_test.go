@@ -3,6 +3,7 @@ package testing
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"sort"
 	"sync"
@@ -274,5 +275,54 @@ func TestSectorBuilder(t *testing.T) {
 			t.Fatalf("expected to have sealed everything, but still waiting on %d", sectorID)
 			return false
 		})
+	})
+
+	t.Run("proof-of-spacetime generation and verification", func(t *testing.T) {
+		h := NewBuilder(t).Build()
+		defer h.Close()
+
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
+		info, err := h.CreatePieceInfo(inputBytes)
+		require.NoError(t, err)
+
+		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
+		require.NoError(t, err)
+
+		timeout := time.After(700 * time.Second)
+	Loop:
+		for {
+			select {
+			case val := <-h.SectorBuilder.SectorSealResults():
+				require.NoError(t, val.SealingErr)
+				require.Equal(t, sectorID, val.SealingResult.SectorID)
+
+				// TODO: This should be generates from some standard source of
+				// entropy, e.g. the blockchain
+				challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
+
+				// generate a proof-of-spacetime
+				gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
+					CommRs:        [][32]byte{val.SealingResult.CommR, val.SealingResult.CommR},
+					ChallengeSeed: challengeSeed,
+				})
+				require.NoError(t, gerr)
+
+				// TODO: Replace these hard-coded values (in rust-proofs) with an
+				// end-to-end PoST test over a small number of replica commitments
+				require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proof[0]))
+				require.Equal(t, 1, len(gres.Faults))
+				require.Equal(t, uint64(0), gres.Faults[0])
+
+				// verify the proof-of-spacetime
+				vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, [][32]byte{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
+				require.NoError(t, verr)
+				require.True(t, vres)
+
+				break Loop
+			case <-timeout:
+				t.Fail()
+				break Loop // I've always dreamt of using GOTO
+			}
+		}
 	})
 }

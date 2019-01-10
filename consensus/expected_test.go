@@ -269,7 +269,7 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, pr
 	offl := offline.Exchange(bs)
 	blkserv := blockservice.New(bs, offl)
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
-	pv := proofs.NewFakeProver(true, nil)
+	pv := proofs.NewFakeVerifier(true, nil)
 	return cis, bs, pv
 }
 
