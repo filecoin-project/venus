@@ -228,7 +228,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		copy(commRStar[:], commRStarSlice)
 
 		proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.snark_proof[0]), 384)
-		var proof [384]byte
+		var proof proofs.SealProof
 		copy(proof[:], proofSlice)
 
 		ps, err := goPieceInfos((*C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr)), resPtr.pieces_len)

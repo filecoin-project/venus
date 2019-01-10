@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"strconv"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -26,8 +25,8 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// ProofLength is the length of a single proof (in bytes).
-const ProofLength = 192
+// PoStProofLength is the length of a single proof-of-spacetime proof (in bytes).
+const PoStProofLength = 192
 
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
@@ -47,8 +46,6 @@ const (
 	ErrCallerUnauthorized = 37
 	// ErrInsufficientPledge signals insufficient pledge for what you are trying to do.
 	ErrInsufficientPledge = 38
-	// ErrInvalidPoSt signals that the passed in PoSt was invalid.
-	ErrInvalidPoSt = 39
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -59,7 +56,6 @@ var Errors = map[uint8]error{
 	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
 	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
-	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
 }
 
 // Actor is the miner actor.
@@ -530,27 +526,15 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
 func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
-	if len(proof) != ProofLength {
+	if len(proof) != PoStProofLength {
 		return 0, errors.NewRevertError("invalid sized proof")
 	}
+
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
 		if ctx.Message().From != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
-		}
-
-		// TODO: use IsPoStValidWithProver when proofs are implemented
-		req := proofs.VerifyPoSTRequest{
-			Proof: [ProofLength]byte{},
-		}
-		copy(req.Proof[:], proof)
-		res, err := (&proofs.RustProver{}).VerifyPoST(req)
-		if err != nil {
-			return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
-		}
-		if !res.IsValid {
-			return nil, Errors[ErrInvalidPoSt]
 		}
 
 		// Check if we submitted it in time

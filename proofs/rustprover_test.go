@@ -24,8 +24,8 @@ func TestPoSTCycle(t *testing.T) {
 	require.Equal(1, len(gres.Faults))
 	require.Equal(uint64(0), gres.Faults[0])
 
-	challenge := []byte("doesnt matter")
-	vres, verr := IsPoStValidWithProver(&RustProver{}, gres.Proof[:], challenge)
+	challengeSeed := PoStChallengeSeed{1, 2, 3}
+	vres, verr := IsPoStValidWithProver(&RustProver{}, [][32]byte{}, challengeSeed, []uint64{1, 2, 999}, gres.Proof)
 	require.NoError(verr)
 	require.True(vres)
 }

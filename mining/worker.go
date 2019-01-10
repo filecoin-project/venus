@@ -132,7 +132,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 		return false
 	}
 
-	challenge, err := consensus.CreateChallenge(base, uint64(nullBlkCount))
+	challenge, err := consensus.CreateChallengeSeed(base, uint64(nullBlkCount))
 	if err != nil {
 		outCh <- Output{Err: err}
 		return false
@@ -150,7 +150,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 			log.Errorf("Worker.Mine got zero value from channel prChRead")
 			return false
 		}
-		copy(proof[:], prChRead)
+		copy(proof[:], prChRead[:])
 		ticket = consensus.CreateTicket(proof, w.minerAddr)
 	}
 
@@ -177,12 +177,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlk
 }
 
 // TODO: Actually use the results of the PoST once it is implemented.
-// Currently createProof just passes the challenge value through.
-func createProof(challenge []byte, createPoST DoSomeWorkFunc) <-chan []byte {
-	c := make(chan []byte)
+// Currently createProof just passes the challenge seed through.
+func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan proofs.PoStChallengeSeed {
+	c := make(chan proofs.PoStChallengeSeed)
 	go func() {
 		createPoST() // TODO send new PoST on channel once we can create it
-		c <- challenge
+		c <- challengeSeed
 	}()
 	return c
 }

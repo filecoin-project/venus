@@ -14,13 +14,15 @@ type VerifySealRequest struct {
 // GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoSTRequest struct {
 	CommRs        [][32]byte
-	ChallengeSeed [32]byte
+	ChallengeSeed PoStChallengeSeed
 }
 
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
-	Challenge []byte
-	Proof     PoStProof
+	ChallengeSeed PoStChallengeSeed
+	CommRs        [][32]byte
+	Faults        []uint64
+	Proof         PoStProof
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.

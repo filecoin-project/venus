@@ -257,7 +257,7 @@ func TestCreateChallenge(t *testing.T) {
 			b := types.Block{Ticket: t}
 			parents.AddBlock(&b)
 		}
-		r, err := consensus.CreateChallenge(parents, c.nullBlockCount)
+		r, err := consensus.CreateChallengeSeed(parents, c.nullBlockCount)
 		assert.NoError(err)
 		assert.Equal(decoded, r)
 	}
