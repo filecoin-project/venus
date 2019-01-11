@@ -302,7 +302,7 @@ func TestSectorBuilder(t *testing.T) {
 
 				// generate a proof-of-spacetime
 				gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
-					CommRs:        [][32]byte{val.SealingResult.CommR, val.SealingResult.CommR},
+					CommRs:        []proofs.CommR{val.SealingResult.CommR, val.SealingResult.CommR},
 					ChallengeSeed: challengeSeed,
 				})
 				require.NoError(t, gerr)
@@ -314,7 +314,7 @@ func TestSectorBuilder(t *testing.T) {
 				require.Equal(t, uint64(0), gres.Faults[0])
 
 				// verify the proof-of-spacetime
-				vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, [][32]byte{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
+				vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, []proofs.CommR{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
 				require.NoError(t, verr)
 				require.True(t, vres)
 

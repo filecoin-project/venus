@@ -89,9 +89,9 @@ type node interface {
 // generatePostInput is a struct containing sector id and related commitments
 // used to generate a proof-of-spacetime
 type generatePostInput struct {
-	commD     [types.CommitmentLength]byte
-	commR     [types.CommitmentLength]byte
-	commRStar [types.CommitmentLength]byte
+	commD     proofs.CommD
+	commR     proofs.CommR
+	commRStar proofs.CommRStar
 	sectorID  uint64
 }
 
@@ -476,7 +476,7 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(commRs [][32]byte, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
+func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
 	req := sectorbuilder.GeneratePoSTRequest{
 		CommRs:        commRs,
 		ChallengeSeed: challenge,
@@ -496,7 +496,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 		panic(err)
 	}
 
-	commRs := make([][32]byte, len(inputs))
+	commRs := make([]proofs.CommR, len(inputs))
 	for i, input := range inputs {
 		commRs[i] = input.commR
 	}

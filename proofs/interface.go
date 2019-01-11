@@ -2,9 +2,9 @@ package proofs
 
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
-	CommD     [32]byte        // returned from seal
-	CommR     [32]byte        // returned from seal
-	CommRStar [32]byte        // returned from seal
+	CommD     CommD           // returned from seal
+	CommR     CommR           // returned from seal
+	CommRStar CommRStar       // returned from seal
 	Proof     SealProof       // returned from Seal
 	ProverID  [31]byte        // uniquely identifies miner
 	SectorID  [31]byte        // uniquely identifies sector
@@ -14,7 +14,7 @@ type VerifySealRequest struct {
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
 	ChallengeSeed PoStChallengeSeed
-	CommRs        [][32]byte
+	CommRs        []CommR
 	Faults        []uint64
 	Proof         PoStProof
 }

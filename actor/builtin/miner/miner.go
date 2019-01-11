@@ -381,13 +381,13 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
 func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte) (uint8, error) {
-	if len(commD) != types.CommitmentLength {
+	if len(commD) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commD")
 	}
-	if len(commR) != types.CommitmentLength {
+	if len(commR) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commR")
 	}
-	if len(commRStar) != types.CommitmentLength {
+	if len(commRStar) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commRStar")
 	}
 	// TODO: use uint64 instead of this abomination, once refmt is fixed
@@ -412,9 +412,9 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		inc := big.NewInt(1)
 		state.Power = state.Power.Add(state.Power, inc)
 		comms := types.Commitments{
-			CommD:     [types.CommitmentLength]byte{},
-			CommR:     [types.CommitmentLength]byte{},
-			CommRStar: [types.CommitmentLength]byte{},
+			CommD:     proofs.CommD{},
+			CommR:     proofs.CommR{},
+			CommRStar: proofs.CommRStar{},
 		}
 		copy(comms.CommD[:], commD)
 		copy(comms.CommR[:], commR)
@@ -542,7 +542,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 		}
 
 		// reach in to actor storage to grab comm-r for each committed sector
-		var commRs [][32]byte
+		var commRs []proofs.CommR
 		for _, v := range state.SectorCommitments {
 			commRs = append(commRs, v.CommR)
 		}

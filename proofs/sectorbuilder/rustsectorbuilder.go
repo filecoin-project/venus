@@ -216,15 +216,15 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 		return nil, nil
 	} else if resPtr.seal_status_code == C.Sealed {
 		commRSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r[0]), 32)
-		var commR [32]byte
+		var commR proofs.CommR
 		copy(commR[:], commRSlice)
 
 		commDSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_d[0]), 32)
-		var commD [32]byte
+		var commD proofs.CommD
 		copy(commD[:], commDSlice)
 
 		commRStarSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r_star[0]), 32)
-		var commRStar [32]byte
+		var commRStar proofs.CommRStar
 		copy(commRStar[:], commRStarSlice)
 
 		proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.snark_proof[0]), 384)

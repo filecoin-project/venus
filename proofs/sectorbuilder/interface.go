@@ -81,9 +81,9 @@ type PieceInfo struct {
 
 // SealedSectorMetadata is a sector that has been sealed by the PoRep setup process
 type SealedSectorMetadata struct {
-	CommD     [32]byte
-	CommR     [32]byte // deprecated (will be removed soon)
-	CommRStar [32]byte
+	CommD     proofs.CommD
+	CommR     proofs.CommR // deprecated (will be removed soon)
+	CommRStar proofs.CommRStar
 	Pieces    []*PieceInfo // deprecated (will be removed soon)
 	Proof     proofs.SealProof
 	SectorID  uint64
@@ -91,7 +91,7 @@ type SealedSectorMetadata struct {
 
 // GeneratePoSTRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoSTRequest struct {
-	CommRs        [][32]byte
+	CommRs        []proofs.CommR
 	ChallengeSeed proofs.PoStChallengeSeed
 }
 
