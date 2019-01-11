@@ -120,8 +120,8 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	}
 
 	// copy bytes from Go to C heap
-	flattedCommRsCBytes := C.CBytes(flattened)
-	defer C.free(flattedCommRsCBytes)
+	flattenedCommRsCBytes := C.CBytes(flattened)
+	defer C.free(flattenedCommRsCBytes)
 
 	challengeSeedCBytes := C.CBytes(req.ChallengeSeed[:])
 	defer C.free(challengeSeedCBytes)
@@ -135,7 +135,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
-		(*C.uint8_t)(flattedCommRsCBytes),
+		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(challengeSeedCBytes),
 		(*[192]C.uint8_t)(proofCBytes),
