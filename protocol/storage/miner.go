@@ -89,9 +89,9 @@ type node interface {
 // generatePostInput is a struct containing sector id and related commitments
 // used to generate a proof-of-spacetime
 type generatePostInput struct {
-	commD     [types.CommitmentLength]byte
-	commR     [types.CommitmentLength]byte
-	commRStar [types.CommitmentLength]byte
+	commD     proofs.CommD
+	commR     proofs.CommR
+	commRStar proofs.CommRStar
 	sectorID  uint64
 }
 
@@ -476,12 +476,12 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func generatePoSt(commRs [][32]byte, seed [32]byte) (proofs.PoStProof, []uint64, error) {
-	req := proofs.GeneratePoSTRequest{
+func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
+	req := sectorbuilder.GeneratePoSTRequest{
 		CommRs:        commRs,
-		ChallengeSeed: seed,
+		ChallengeSeed: challenge,
 	}
-	res, err := (&proofs.RustProver{}).GeneratePoST(req)
+	res, err := sm.node.SectorBuilder().GeneratePoST(req)
 	if err != nil {
 		return proofs.PoStProof{}, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
@@ -491,17 +491,17 @@ func generatePoSt(commRs [][32]byte, seed [32]byte) (proofs.PoStProof, []uint64,
 
 func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePostInput) {
 	// TODO: real seed generation
-	seed := [32]byte{}
+	seed := proofs.PoStChallengeSeed{}
 	if _, err := rand.Read(seed[:]); err != nil {
 		panic(err)
 	}
 
-	commRs := make([][32]byte, len(inputs))
+	commRs := make([]proofs.CommR, len(inputs))
 	for i, input := range inputs {
 		commRs[i] = input.commR
 	}
 
-	proof, faults, err := generatePoSt(commRs, seed)
+	proof, faults, err := sm.generatePoSt(commRs, seed)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return

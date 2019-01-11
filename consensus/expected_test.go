@@ -27,9 +27,9 @@ import (
 func TestNewExpected(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("a new Expected can be created", func(t *testing.T) {
-		cst, bstore, prover := setupCborBlockstoreProofs()
+		cst, bstore, verifier := setupCborBlockstoreProofs()
 		ptv := testhelpers.NewTestPowerTableView(1, 5)
-		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), verifier)
 		assert.NotNil(exp)
 	})
 }
@@ -40,7 +40,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	require := require.New(t)
 
 	ctx := context.Background()
-	cistore, bstore, prover := setupCborBlockstoreProofs()
+	cistore, bstore, verifier := setupCborBlockstoreProofs()
 	ptv := testhelpers.NewTestPowerTableView(1, 5)
 
 	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		genesisBlock, err := consensus.InitGenesis(cistore, bstore)
 		require.NoError(err)
 
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, genesisBlock.Cid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, genesisBlock.Cid(), verifier)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -78,7 +78,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		}
 		blocks[0].MessageReceipts = []*types.MessageReceipt{receipt}
 
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), verifier)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.Error(err, "Foo")
@@ -104,7 +104,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	cistore, bstore, prover := setupCborBlockstoreProofs()
+	cistore, bstore, verifier := setupCborBlockstoreProofs()
 	genesisBlock, err := consensus.InitGenesis(cistore, bstore)
 	require.NoError(err)
 
@@ -114,7 +114,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		totalPower := uint64(1)
 
 		ptv := testhelpers.NewTestPowerTableView(minerPower, totalPower)
-		exp := consensus.NewExpected(cistore, bstore, testhelpers.NewTestProcessor(), ptv, genesisBlock.Cid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, testhelpers.NewTestProcessor(), ptv, genesisBlock.Cid(), verifier)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -134,7 +134,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 
 		ptv := NewFailingMinerTestPowerTableView(1, 5)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), prover)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), verifier)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
@@ -257,19 +257,19 @@ func TestCreateChallenge(t *testing.T) {
 			b := types.Block{Ticket: t}
 			parents.AddBlock(&b)
 		}
-		r, err := consensus.CreateChallenge(parents, c.nullBlockCount)
+		r, err := consensus.CreateChallengeSeed(parents, c.nullBlockCount)
 		assert.NoError(err)
-		assert.Equal(decoded, r)
+		assert.Equal(decoded, r[:])
 	}
 }
 
-func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, proofs.Prover) {
+func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, proofs.Verifier) {
 	mds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(mds)
 	offl := offline.Exchange(bs)
 	blkserv := blockservice.New(bs, offl)
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
-	pv := proofs.NewFakeProver(true, nil)
+	pv := proofs.NewFakeVerifier(true, nil)
 	return cis, bs, pv
 }
 

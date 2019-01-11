@@ -2,8 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
@@ -15,7 +13,9 @@ import (
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,7 +25,7 @@ func initStoreTest(ctx context.Context, require *require.Assertions) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, proofs.NewFakeProver(true, nil))
+	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, proofs.NewFakeVerifier(true, nil))
 	initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	requireSetTestChain(require, con, true)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -132,9 +133,9 @@ func TestCBOREncodeState(t *testing.T) {
 	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(), types.NewZeroAttoFIL())
 
 	state.SectorCommitments["1"] = types.Commitments{
-		CommD:     [32]byte{},
-		CommR:     [32]byte{},
-		CommRStar: [32]byte{},
+		CommD:     proofs.CommD{},
+		CommR:     proofs.CommR{},
+		CommRStar: proofs.CommRStar{},
 	}
 
 	_, err := actor.MarshalStorage(state)

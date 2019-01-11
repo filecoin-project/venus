@@ -1,28 +1,23 @@
 package proofs
 
-// FakeProver is a simple mock Prover for testing
-type FakeProver struct {
+// FakeVerifier is a simple mock Verifier for testing
+type FakeVerifier struct {
 	verifyPostValid bool
 	verifyPostError error
 }
 
-// NewFakeProver creates a new FakeProver struct
-func NewFakeProver(isValid bool, err error) FakeProver {
-	return FakeProver{isValid, err}
-}
-
-// GeneratePoST panics. It fulfils a requirement for the Prover interface
-func (FakeProver) GeneratePoST(GeneratePoSTRequest) (GeneratePoSTResponse, error) {
-	panic("boom")
+// NewFakeVerifier creates a new FakeVerifier struct
+func NewFakeVerifier(isValid bool, err error) FakeVerifier {
+	return FakeVerifier{isValid, err}
 }
 
 // VerifyPoST returns the valid of verifyPostValid and verifyPostError.
-// It fulfils a requirement for the Prover interface
-func (fp FakeProver) VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+// It fulfils a requirement for the Verifier interface
+func (fp FakeVerifier) VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	return VerifyPoSTResponse{IsValid: fp.verifyPostValid}, fp.verifyPostError
 }
 
-// VerifySeal panics. It fulfils a requirement for the Prover interface
-func (FakeProver) VerifySeal(VerifySealRequest) (VerifySealResponse, error) {
+// VerifySeal panics. It fulfils a requirement for the Verifier interface
+func (FakeVerifier) VerifySeal(VerifySealRequest) (VerifySealResponse, error) {
 	panic("boom")
 }

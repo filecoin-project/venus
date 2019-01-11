@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"strconv"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
@@ -26,8 +26,8 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// ProofLength is the length of a single proof (in bytes).
-const ProofLength = 192
+// PoStProofLength is the length of a single proof-of-spacetime proof (in bytes).
+const PoStProofLength = 192
 
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
@@ -381,13 +381,13 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 // The sector must not already be committed
 // 'size' is the total number of bytes stored in the sector
 func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte) (uint8, error) {
-	if len(commD) != types.CommitmentLength {
+	if len(commD) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commD")
 	}
-	if len(commR) != types.CommitmentLength {
+	if len(commR) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commR")
 	}
-	if len(commRStar) != types.CommitmentLength {
+	if len(commRStar) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commRStar")
 	}
 	// TODO: use uint64 instead of this abomination, once refmt is fixed
@@ -412,9 +412,9 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		inc := big.NewInt(1)
 		state.Power = state.Power.Add(state.Power, inc)
 		comms := types.Commitments{
-			CommD:     [types.CommitmentLength]byte{},
-			CommR:     [types.CommitmentLength]byte{},
-			CommRStar: [types.CommitmentLength]byte{},
+			CommD:     proofs.CommD{},
+			CommR:     proofs.CommR{},
+			CommRStar: proofs.CommRStar{},
 		}
 		copy(comms.CommD[:], commD)
 		copy(comms.CommR[:], commR)
@@ -530,9 +530,10 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
 func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
-	if len(proof) != ProofLength {
+	if len(proof) != PoStProofLength {
 		return 0, errors.NewRevertError("invalid sized proof")
 	}
+
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
@@ -540,12 +541,25 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
+		// reach in to actor storage to grab comm-r for each committed sector
+		var commRs []proofs.CommR
+		for _, v := range state.SectorCommitments {
+			commRs = append(commRs, v.CommR)
+		}
+
+		// copy message-bytes into PoStProof slice
+		postProof := proofs.PoStProof{}
+		copy(postProof[:], proof)
+
 		// TODO: use IsPoStValidWithProver when proofs are implemented
 		req := proofs.VerifyPoSTRequest{
-			Proof: [ProofLength]byte{},
+			ChallengeSeed: proofs.PoStChallengeSeed{},
+			CommRs:        commRs,
+			Faults:        []uint64{},
+			Proof:         postProof,
 		}
-		copy(req.Proof[:], proof)
-		res, err := (&proofs.RustProver{}).VerifyPoST(req)
+
+		res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
 		if err != nil {
 			return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 		}
