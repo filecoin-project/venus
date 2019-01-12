@@ -38,6 +38,9 @@ jobs:
           command: |
             curl -O https://dl.google.com/go/go1.11.1.darwin-amd64.pkg && \
             sudo installer -pkg go1.11.1.darwin-amd64.pkg -target /
+      - run:
+          name: Install pkg-config
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
       - run: go version
       - run:
           name: Install Rust
