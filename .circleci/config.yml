@@ -110,6 +110,9 @@ jobs:
     resource_class: xlarge
     steps:
       - run:
+          name: Set /usr/local permissions
+          command: sudo chown -R circleci:staff /usr/local
+      - run:
           name: Configure environment variables
           command: |
             echo 'export PATH="${HOME}/.cargo/bin:${PATH}"' >> $BASH_ENV
