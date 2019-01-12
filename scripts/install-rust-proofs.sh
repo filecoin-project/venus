@@ -34,20 +34,18 @@ install_precompiled() {
       "$RELEASE_URL"
   `
 
-  mkdir -p proofs/tmp/
-
-  curl --output proofs/tmp/$RELEASE_NAME.tar.gz "$ASSET_URL"
+  curl --output /tmp/$RELEASE_NAME.tar.gz "$ASSET_URL"
 
   if [ $? -ne "0" ]; then
     echo "asset failed to be downloaded"
     return 1
   fi
 
-  tar -C proofs -xzf proofs/tmp/$RELEASE_NAME.tar.gz 
+  tar -C /usr/local -xzf /tmp/$RELEASE_NAME.tar.gz
 }
 
 install_local() {
-  git submodule update --init --recursive 
+  git submodule update --init --recursive
 
   pushd proofs/rust-proofs
 
@@ -57,13 +55,10 @@ install_local() {
 
   popd
 
-  mkdir -p proofs/bin
-  mkdir -p proofs/include
-  mkdir -p proofs/lib
-
-  cp proofs/rust-proofs/target/release/paramcache proofs/bin/
-  cp proofs/rust-proofs/filecoin-proofs/libfilecoin_proofs.h proofs/include/
-  cp proofs/rust-proofs/target/release/libfilecoin_proofs.a proofs/lib/
+  cp proofs/rust-proofs/target/release/paramcache /usr/local/bin/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.h /usr/local/include/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.a /usr/local/lib/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.pc /usr/local/lib/pkgconfig/
 }
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then

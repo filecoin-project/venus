@@ -19,11 +19,8 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
-/*
-#cgo darwin LDFLAGS: -L${SRCDIR}/../../proofs/lib -lfilecoin_proofs -framework Security -lSystem -lresolv -lc -lm
-#cgo linux LDFLAGS: -L${SRCDIR}/../../proofs/lib -lfilecoin_proofs -lutil -lutil -ldl -lrt -lpthread -lgcc_s -lc -lm -lrt -lpthread -lutil -lutil
-#include "../../proofs/include/libfilecoin_proofs.h"
-*/
+// #cgo pkg-config: libfilecoin_proofs
+// #include "libfilecoin_proofs.h"
 import "C"
 
 var log = logging.Logger("sectorbuilder") // nolint: deadcode
