@@ -9,6 +9,7 @@ import (
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	xerrors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -656,13 +657,17 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			commRs = append(commRs, v.CommR)
 		}
 
+		// this challenge seed must match the seed used as input to the
+		// proof-generation operation
+		challengeSeed := sha256.Sum256(state.ProvingPeriodStart.Bytes())
+
 		// copy message-bytes into PoStProof slice
 		postProof := proofs.PoStProof{}
 		copy(postProof[:], proof)
 
 		// TODO: use IsPoStValidWithProver when proofs are implemented
 		req := proofs.VerifyPoSTRequest{
-			ChallengeSeed: proofs.PoStChallengeSeed{},
+			ChallengeSeed: challengeSeed,
 			CommRs:        commRs,
 			Faults:        []uint64{},
 			Proof:         postProof,
