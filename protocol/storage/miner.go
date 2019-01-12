@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 
@@ -20,6 +18,7 @@ import (
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	ipld "gx/ipfs/QmcKKBwfz6FyQdHR2jsXrrF6XeSBXYL86anmWNewpFpoF5/go-ipld-format"
+	"gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore/query"
@@ -613,8 +612,9 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
-// It is used to check if we are in a new proving period and need to trigger PoSt submission.
+// OnNewHeaviestTipSet is a callback called by node, every time the the latest
+// head is updated. It is used to check if we are in a new proving period and
+// need to trigger PoSt submission.
 func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	ctx := context.Background()
 
@@ -641,24 +641,19 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		return
 	}
 
-	var inputs []generatePostInput
-	for k, v := range commitments {
-		n, err := strconv.ParseUint(k, 10, 64)
-		if err != nil {
-			log.Errorf("failed to parse commitment sector id to uint64: %s", err)
-			return
-		}
-
-		inputs = append(inputs, generatePostInput{
-			commD:     v.CommD,
-			commR:     v.CommR,
-			commRStar: v.CommRStar,
-			sectorID:  n,
-		})
+	var commRs []proofs.CommR
+	for _, v := range commitments {
+		commRs = append(commRs, v.CommR)
 	}
 
-	if len(inputs) == 0 {
+	if len(commRs) == 0 {
 		// no sector sealed, nothing to do
+		return
+	}
+
+	challengeSeed, err := sm.provingPeriodPoStChallengeSeed()
+	if err != nil {
+		log.Errorf("failed to generate PoSt challenge seed: %s", err)
 		return
 	}
 
@@ -689,7 +684,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		if h.LessThan(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodStart
-			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, inputs)
+			go sm.generateAndSubmitPoSt(provingPeriodStart, provingPeriodEnd, challengeSeed, commRs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -712,41 +707,31 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 	return types.NewBlockHeightFromBytes(res[0]), nil
 }
 
-// generatePoSt creates the required PoSt, given a list of sector ids and
-// matching seeds. It returns the Snark Proof for the PoSt, and a list of
-// sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
-	req := sectorbuilder.GeneratePoSTRequest{
-		CommRs:        commRs,
-		ChallengeSeed: challenge,
-	}
-	res, err := sm.node.SectorBuilder().GeneratePoST(req)
+// provingPeriodPoStChallengeSeed produces the proof-of-spacetime
+// seed for the miner's current proving period.
+func (sm *Miner) provingPeriodPoStChallengeSeed() (proofs.PoStChallengeSeed, error) {
+	height, err := sm.getProvingPeriodStart()
 	if err != nil {
-		return proofs.PoStProof{}, nil, errors.Wrap(err, "failed to generate PoSt")
+		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "failed to get miner proving period start block height")
 	}
 
-	return res.Proof, res.Faults, nil
+	return sha256.Sum256(height.Bytes()), nil
 }
 
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePostInput) {
-	// TODO: real seed generation
-	seed := proofs.PoStChallengeSeed{}
-	if _, err := rand.Read(seed[:]); err != nil {
-		panic(err)
+// generateAndSubmitPoSt generates a proof-of-spacetime and adds the
+// corresponding submitPoSt message to the node's message pool.
+func (sm *Miner) generateAndSubmitPoSt(provingPeriodStart, provingPeriodEnd *types.BlockHeight, challengeSeed proofs.PoStChallengeSeed, commRs []proofs.CommR) {
+	req := sectorbuilder.GeneratePoSTRequest{
+		CommRs:        commRs,
+		ChallengeSeed: challengeSeed,
 	}
-
-	commRs := make([]proofs.CommR, len(inputs))
-	for i, input := range inputs {
-		commRs[i] = input.commR
-	}
-
-	proof, faults, err := sm.generatePoSt(commRs, seed)
+	res, err := sm.node.SectorBuilder().GeneratePoST(req)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return
 	}
-	if len(faults) != 0 {
-		log.Warningf("some faults when generating PoSt: %v", faults)
+	if len(res.Faults) != 0 {
+		log.Warningf("some faults when generating PoSt: %v", res.Faults)
 		// TODO: proper fault handling
 	}
 
@@ -756,15 +741,16 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 		// TODO: what should happen in this case?
 		return
 	}
-	if height.LessThan(start) {
+
+	if height.LessThan(provingPeriodStart) {
 		// TODO: what to do here? not sure this can happen, maybe through reordering?
-		log.Errorf("PoSt generation time took negative block time: %s < %s", height, start)
+		log.Errorf("PoSt generation time took negative block time: %s < %s", height, provingPeriodStart)
 		return
 	}
 
-	if height.GreaterEqual(end) {
+	if height.GreaterEqual(provingPeriodEnd) {
 		// TODO: we are too late, figure out faults and decide if we want to still submit
-		log.Errorf("PoSt generation was too slow height=%s end=%s", height, end)
+		log.Errorf("PoSt generation was too slow height=%s provingPeriodEnd=%s", height, provingPeriodEnd)
 		return
 	}
 
@@ -776,7 +762,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
 	gasLimit := types.NewGasUnits(submitPostGasLimit)
 
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", proof[:])
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", res.Proof[:])
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return
