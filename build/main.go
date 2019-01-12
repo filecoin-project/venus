@@ -118,6 +118,8 @@ func clearParamCacheCommands() []command {
 
 // deps installs all dependencies
 func deps() {
+	runCmd(cmd("pkg-config --version"))
+
 	log.Println("Installing dependencies...")
 
 	cmds := []command{
@@ -151,6 +153,8 @@ func deps() {
 
 // smartdeps avoids fetching from the network
 func smartdeps() {
+	runCmd(cmd("pkg-config --version"))
+
 	log.Println("Installing dependencies...")
 
 	// commands we need to run
