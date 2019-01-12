@@ -55,6 +55,8 @@ install_local() {
 
   popd
 
+  mkdir -p /usr/local/lib/pkgconfig
+
   cp proofs/rust-proofs/target/release/paramcache /usr/local/bin/
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.h /usr/local/include/
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.a /usr/local/lib/
