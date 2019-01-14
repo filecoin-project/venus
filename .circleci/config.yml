@@ -113,7 +113,7 @@ jobs:
     resource_class: xlarge
     steps:
       - run:
-          name: Set /usr/local permissions
+          name: Own /usr/local so rust-proofs libs/bins can be installed there
           command: sudo chown -R circleci:staff /usr/local
       - run:
           name: Configure environment variables
