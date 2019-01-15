@@ -47,6 +47,8 @@ type Client struct {
 	node clientNode
 }
 
+const noDuplicates = "no duplicates"
+
 func init() {
 	cbor.RegisterCborType(clientDeal{})
 }
@@ -81,7 +83,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		Size:          types.NewBytesAmount(size),
 		TotalPrice:    price,
 		Duration:      duration,
-		LastDuplicate: cid.Cid{},
+		LastDuplicate: noDuplicates,
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
 	}
@@ -92,9 +94,8 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposalCid := cborNode.Cid()
 
 	for _, isDuplicate := smc.deals[proposalCid]; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		fmt.Println(proposalCid.String())
 		if allowDuplicates {
-			proposal.LastDuplicate = proposalCid
+			proposal.LastDuplicate = proposalCid.String()
 
 			cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
 			if err != nil {
@@ -102,7 +103,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 			}
 			proposalCid = cborNode.Cid()
 		} else {
-			return nil, errors.New("proposal is a duplicate of existing deal. if you would like to create a duplicate, add the --allow-duplicates flag.")
+			return nil, errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag")
 		}
 	}
 

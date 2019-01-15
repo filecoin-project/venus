@@ -85,19 +85,33 @@ func TestProposeStorageDeal(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	miner := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	miner := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+	).Start()
 	defer miner.ShutdownSuccess()
 
-	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()
 
+	miner.UpdatePeerID()
+
 	miner.ConnectSuccess(client)
+
+	miner.RunSuccess("mining start")
 
 	miner.CreateAsk(miner, fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
 
-	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
-	assert.Equal(proposeDealOutput, "")
+	t.Run("propose a duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
+		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
+	})
+
+	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
+		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
+		assert.Equal(proposeDealOutput, "Error: proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag")
+	})
 }

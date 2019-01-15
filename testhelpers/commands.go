@@ -62,7 +62,7 @@ func (o *Output) ReadStderr() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
-	return string(o.stderr)
+	return strings.Trim(string(o.stderr), "\n")
 }
 
 // ReadStdout returns a string representation of the stdout output.
