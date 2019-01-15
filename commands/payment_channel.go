@@ -143,9 +143,15 @@ var voucherCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address for which to retrieve channels"),
+		cmdkit.StringOption("validat", "Smallest block height at which target can redeem"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			return err
+		}
+
+		validAt, err := optionalBlockHeight(req.Options["validat"])
 		if err != nil {
 			return err
 		}
@@ -160,7 +166,7 @@ var voucherCmd = &cmds.Command{
 			return ErrInvalidAmount
 		}
 
-		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount)
+		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount, validAt)
 		if err != nil {
 			return err
 		}

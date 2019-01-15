@@ -36,10 +36,13 @@ const (
 	ErrAlreadyWithdrawn = 41
 	// ErrInvalidSignature indicates the signature is invalid.
 	ErrInvalidSignature = 42
+	//ErrTooEarly indicates that the block height is too low to satisfy a voucher
+	ErrTooEarly = 43
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
+	ErrTooEarly:                 errors.NewCodedRevertError(ErrTooEarly, "block height too low to redeem voucher"),
 	ErrNonAccountActor:          errors.NewCodedRevertError(ErrNonAccountActor, "Only account actors may create payment channels"),
 	ErrDuplicateChannel:         errors.NewCodedRevertError(ErrDuplicateChannel, "Duplicate create channel attempt"),
 	ErrEolTooLow:                errors.NewCodedRevertError(ErrEolTooLow, "payment channel eol may not be decreased"),
@@ -67,15 +70,16 @@ type PaymentChannel struct {
 
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
-	Channel   types.ChannelID `json:"channel"`
-	Payer     address.Address `json:"payer"`
-	Target    address.Address `json:"target"`
-	Amount    types.AttoFIL   `json:"amount"`
-	Signature types.Signature `json:"signature"`
+	Channel   types.ChannelID   `json:"channel"`
+	Payer     address.Address   `json:"payer"`
+	Target    address.Address   `json:"target"`
+	Amount    types.AttoFIL     `json:"amount"`
+	ValidAt   types.BlockHeight `json:"valid_at"`
+	Signature types.Signature   `json:"signature"`
 }
 
 // Actor provides a mechanism for off chain payments.
-// It allows the creation of payment Channels that hold funds for a target account
+// It allows the creation of payment channels that hold funds for a target account
 // and permits that account to withdraw funds only with a voucher signed by the
 // channel's creator.
 type Actor struct{}
@@ -95,7 +99,7 @@ var _ exec.ExecutableActor = (*Actor)(nil)
 
 var paymentBrokerExports = exec.Exports{
 	"close": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
 		Return: nil,
 	},
 	"createChannel": &exec.FunctionSignature{
@@ -115,11 +119,11 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"redeem": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
 		Return: nil,
 	},
 	"voucher": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.AttoFIL},
+		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight},
 		Return: []abi.Type{abi.Bytes},
 	},
 }
@@ -185,8 +189,8 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
-	data := createVoucherSignatureData(chid, amt)
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
+	data := createVoucherSignatureData(chid, amt, validAt)
 	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
@@ -211,7 +215,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt)
+		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
 		if err != nil {
 			return err
 		}
@@ -232,8 +236,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, sig []byte) (uint8, error) {
-	data := createVoucherSignatureData(chid, amt)
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
+	data := createVoucherSignatureData(chid, amt, validAt)
 	if !types.IsValidSignature(data, payer, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
@@ -256,7 +260,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt)
+		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
 		if err != nil {
 			return err
 		}
@@ -282,7 +286,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 }
 
 // Extend can be used by the owner of a channel to add more funds to it and
-// extend the Channels lifespan.
+// extend the Channel's lifespan.
 func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
@@ -368,9 +372,12 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 	return 0, nil
 }
 
-// Voucher takes a channel id and amount creates a new unsigned PaymentVoucher against the given channel.
-// It errors if the channel doesn't exist or contains less than request amount.
-func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL) ([]byte, uint8, error) {
+// Voucher takes a channel id and amount creates a new unsigned PaymentVoucher
+// against the given channel.  It also takes a block height parameter "validAt"
+// enforcing that the voucher is not reclaimed until the given block height
+// Voucher errors if the channel doesn't exist or contains less than request
+// amount.
+func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) ([]byte, uint8, error) {
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
@@ -403,6 +410,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 			Payer:   vmctx.Message().From,
 			Target:  channel.Target,
 			Amount:  *amount,
+			ValidAt: *validAt,
 		}
 
 		return nil
@@ -464,9 +472,13 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 	return channelsBytes, 0, nil
 }
 
-func updateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL) error {
+func updateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight) error {
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
+	}
+
+	if ctx.BlockHeight().LessThan(validAt) {
+		return Errors[ErrTooEarly]
 	}
 
 	if ctx.BlockHeight().GreaterEqual(channel.Eol) {
@@ -520,16 +532,18 @@ func reclaim(ctx context.Context, vmctx exec.VMContext, byChannelID exec.Lookup,
 const separator = 0x0
 
 // SignVoucher creates the signature for the given combination of
-// channel, amount and from address.
-// It does so by sign the following bytes: (channelID | 0x0 | amount)
-func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, addr address.Address, signer types.Signer) (types.Signature, error) {
-	data := createVoucherSignatureData(channelID, amount)
+// channel, amount, validAt (earliest block height for redeem) and from address.
+// It does so by signing the following bytes: (channelID | 0x0 | amount | 0x0 | validAt)
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, signer types.Signer) (types.Signature, error) {
+	data := createVoucherSignatureData(channelID, amount, validAt)
 	return signer.SignBytes(data, addr)
 }
 
-func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL) []byte {
+func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) []byte {
 	data := append(channelID.Bytes(), separator)
-	return append(data, amount.Bytes()...)
+	data = append(data, amount.Bytes()...)
+	data = append(data, separator)
+	return append(data, validAt.Bytes()...)
 }
 
 func withPayerChannels(ctx context.Context, storage exec.Storage, payer address.Address, f func(exec.Lookup) error) error {

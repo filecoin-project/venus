@@ -65,7 +65,7 @@ func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address
 	return channels, nil
 }
 
-func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, amount *types.AttoFIL) (string, error) {
+func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) (string, error) {
 	nd := np.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
@@ -77,7 +77,7 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"voucher",
-		channel, amount,
+		channel, amount, validAt,
 	)
 	if err != nil {
 		return "", err
@@ -88,7 +88,7 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		return "", err
 	}
 
-	sig, err := paymentbroker.SignVoucher(channel, amount, fromAddr, nd.Wallet)
+	sig, err := paymentbroker.SignVoucher(channel, amount, validAt, fromAddr, nd.Wallet)
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +116,7 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 		gasPrice,
 		gasLimit,
 		"redeem",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
+		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)
 }
 
@@ -147,7 +147,7 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		gasPrice,
 		gasLimit,
 		"close",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, []byte(voucher.Signature),
+		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)
 }
 

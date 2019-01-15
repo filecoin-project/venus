@@ -169,12 +169,46 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 		d.ConnectSuccess(targetDaemon)
 
-		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer)
+		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(0))
 
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
 
 		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID.String(), target.String()), ls)
+	})
+}
+
+func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+
+	payer, err := address.NewFromString(fixtures.TestAddresses[0])
+	require.NoError(err)
+	target, err := address.NewFromString(fixtures.TestAddresses[1])
+	require.NoError(err)
+
+	eol := types.NewBlockHeight(20)
+	amt := types.NewAttoFILFromFIL(10000)
+
+	targetDaemon := th.NewDaemon(
+		t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+	).Start()
+	defer targetDaemon.ShutdownSuccess()
+
+	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
+		assert := assert.New(t)
+
+		d.ConnectSuccess(targetDaemon)
+
+		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(8))
+
+		// Wait for the voucher message to be processed.
+		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+
+		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
+		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID.String(), target.String()), ls)
 	})
 }
 
@@ -202,7 +236,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		d.ConnectSuccess(targetDaemon)
 
 		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(10), &payer)
+		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(10), &payer, uint64(0))
 
 		// target redeems the voucher (on-chain)
 		mustRedeemVoucher(t, targetDaemon, voucher, &target)
@@ -345,7 +379,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 func mustCreateVoucher(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, fromAddress *address.Address) paymentbroker.PaymentVoucher {
 	require := require.New(t)
 
-	voucherString := createVoucherStr(t, d, channelID, amount, fromAddress)
+	voucherString := createVoucherStr(t, d, channelID, amount, fromAddress, uint64(0))
 
 	_, cborVoucher, err := multibase.Decode(voucherString)
 	require.NoError(err)
@@ -357,9 +391,9 @@ func mustCreateVoucher(t *testing.T, d *th.TestDaemon, channelID *types.ChannelI
 	return voucher
 }
 
-func createVoucherStr(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *address.Address) string {
+func createVoucherStr(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *address.Address, validAt uint64) string {
 	args := []string{"paych", "voucher", channelID.String(), amount.String()}
-	args = append(args, "--from", payerAddress.String())
+	args = append(args, "--from", payerAddress.String(), "--validat", fmt.Sprintf("%d", validAt))
 
 	return th.RunSuccessFirstLine(d, args...)
 }
