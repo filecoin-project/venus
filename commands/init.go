@@ -20,6 +20,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires running the daemon using dev mode (--dev)"),
+		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
 		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
@@ -45,6 +46,15 @@ var initCmd = &cmds.Command{
 			}
 		}
 
+		var defaultAddress address.Address
+		if m, ok := req.Options[DefaultAddress].(string); ok {
+			var err error
+			defaultAddress, err = address.NewFromString(m)
+			if err != nil {
+				return err
+			}
+		}
+
 		return GetAPI(env).Daemon().Init(
 			req.Context,
 			api.RepoDir(repoDir),
@@ -54,6 +64,7 @@ var initCmd = &cmds.Command{
 			api.ClusterTest(clusterTest),
 			api.ClusterNightly(clusterNightly),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
+			api.DefaultAddress(defaultAddress),
 		)
 	},
 	Encoders: cmds.EncoderMap{
