@@ -280,6 +280,11 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+      - run:
+          name: create & push git tag
+          command: |
+            git tag -f -a cluster-nightly -m "$(date -uIseconds)"
+            git push -q https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git cluster-nightly
 
   trigger_nightly_cluster_deploy:
     docker:
