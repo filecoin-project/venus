@@ -38,6 +38,9 @@ jobs:
           command: |
             curl -O https://dl.google.com/go/go1.11.1.darwin-amd64.pkg && \
             sudo installer -pkg go1.11.1.darwin-amd64.pkg -target /
+      - run:
+          name: Install pkg-config
+          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
       - run: go version
       - run:
           name: Install Rust
@@ -109,6 +112,9 @@ jobs:
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     steps:
+      - run:
+          name: Own /usr/local so rust-proofs libs/bins can be installed there
+          command: sudo chown -R circleci:staff /usr/local
       - run:
           name: Configure environment variables
           command: |

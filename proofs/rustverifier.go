@@ -8,24 +8,8 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
-/*
-// explanation of LDFLAGS
-//
-// -L${SRCDIR}/rust-proofs/target/release       <- Location of the compiled Rust artifacts.
-//
-// -Wl,xxx                                      <- Pass xxx as an option to the linker. If option contains commas,
-//                                                 it is split into multiple options at the commas.
-//
-// -rpath,${SRCDIR}/rust-proofs/target/release/ <- Location of the runtime library search path (for dynamically-
-//                                                 linked libraries).
-//
-// -lproofs                                     <- Tell the linker to search for libproofs.dylib or libproofs.a in
-//                                                 the library search path.
-//
-#cgo darwin LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs -framework Security -lSystem -lresolv -lc -lm
-#cgo linux LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs -lutil -lutil -ldl -lrt -lpthread -lgcc_s -lc -lm -lrt -lpthread -lutil -lutil
-#include "../lib/libfilecoin_proofs.h"
-*/
+// #cgo pkg-config: libfilecoin_proofs
+// #include "libfilecoin_proofs.h"
 import "C"
 
 var log = logging.Logger("fps") // nolint: deadcode

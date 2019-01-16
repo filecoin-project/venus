@@ -50,6 +50,9 @@ Filecoin can run on most Linux and MacOS systems. Windows is not yet supported.
 #### Install Go and Rust
 
   - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.11.2. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - go-filecoin also needs `pkg-config` to handle generating linker flags
+  	- Linux devs are good to go
+  	- Mac OS devs can install through brew `brew install pkg-config`
   - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule.
 
 #### Clone

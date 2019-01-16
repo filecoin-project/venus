@@ -112,16 +112,17 @@ func clearParamCacheCommands() []command {
 
 	return []command{
 		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
-		cmd("./proofs/rust-proofs/target/release/paramcache"),
+		cmd("paramcache"),
 	}
 }
 
 // deps installs all dependencies
 func deps() {
+	runCmd(cmd("pkg-config --version"))
+
 	log.Println("Installing dependencies...")
 
 	cmds := []command{
-		cmd("git submodule update --init"),
 		cmd("go get github.com/whyrusleeping/gx"),
 		cmd("go get github.com/whyrusleeping/gx-go"),
 		cmd("gx install"),
@@ -140,7 +141,7 @@ func deps() {
 		cmd("go get github.com/prometheus/client_golang/prometheus"),
 		cmd("go get github.com/prometheus/client_golang/prometheus/promhttp"),
 		cmd("go get github.com/jstemmer/go-junit-report"),
-		cmd("./scripts/prepare-rust-proofs.sh"),
+		cmd("./scripts/install-rust-proofs.sh"),
 	}
 
 	cmds = append(cmds, clearParamCacheCommands()...)
@@ -152,15 +153,16 @@ func deps() {
 
 // smartdeps avoids fetching from the network
 func smartdeps() {
+	runCmd(cmd("pkg-config --version"))
+
 	log.Println("Installing dependencies...")
 
 	// commands we need to run
 	cmds := []command{
-		cmd("git submodule update --init"),
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
 		cmd("gometalinter --install"),
-		cmd("./scripts/prepare-rust-proofs.sh"),
+		cmd("./scripts/install-rust-proofs.sh"),
 	}
 
 	cmds = append(cmds, clearParamCacheCommands()...)
