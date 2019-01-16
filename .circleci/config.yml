@@ -218,12 +218,33 @@ jobs:
 
       - run:
           name: Create linux bundle
-          command: ./build-linux.sh && tar -zcvf filecoin.tar.gz filecoin
+          command: ./build-linux.sh && tar -zcvf "filecoin-linux.tar.gz" filecoin && ls -al
       - store_artifacts:
-          path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
-          destination: filecoin.tar.gz
+          path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin-linux.tar.gz"
+          destination: filecoin-linux.tar.gz
       - store_test_results:
           path: test-results
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - "filecoin-linux.tar.gz"
+
+  publish_release:
+    docker:
+      - image: circleci/golang:latest
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: "."
+      - run:
+          name: list linux bundle
+          command: |
+            ls -al filecoin-*.tar.gz
 
   build_docker_img:
     docker:
@@ -322,6 +343,14 @@ workflows:
             branches:
               only:
                 - master
+      - publish_release:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              only:
+                # - master
+                - /^chore\/create-releases/
   build_nightly_cluster:
     triggers:
       - schedule:
