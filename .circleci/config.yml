@@ -346,6 +346,7 @@ workflows:
       - publish_release:
           requires:
             - build_linux
+            - build_macos
           filters:
             branches:
               only:
