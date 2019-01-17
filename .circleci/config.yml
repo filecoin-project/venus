@@ -98,12 +98,16 @@ jobs:
 
       - run:
           name: Create macos bundle
-          command: ./build-macos.sh && tar -zcvf filecoin.tar.gz filecoin
+          command: ./build-macos.sh && tar -zcvf filecoin-darwin.tar.gz filecoin
       - store_artifacts:
-          path: "~/go/src/github.com/filecoin-project/go-filecoin/filecoin.tar.gz"
-          destination: filecoin.tar.gz
+          path: "~/go/src/github.com/filecoin-project/go-filecoin/filecoin-darwin.tar.gz"
+          destination: filecoin-darwin.tar.gz
       - store_test_results:
           path: test-results
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - "filecoin-darwin.tar.gz"
 
   build_linux:
     docker:
