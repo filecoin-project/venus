@@ -99,6 +99,14 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
+	if cfg.DefaultAddress != (address.Address{}) {
+		newConfig := rep.Config()
+		newConfig.Wallet.DefaultAddress = cfg.DefaultAddress
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
 	if cfg.ClusterTest && cfg.ClusterNightly {
 		return fmt.Errorf(`cannot use both "--cluster-test" and "--cluster-nightly" options`)
 	}

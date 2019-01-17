@@ -41,7 +41,7 @@ type DealResponse struct {
 	Message string
 
 	// Proposal is the cid of the StorageDealProposal object this response is for
-	Proposal cid.Cid
+	ProposalCid cid.Cid
 
 	// ProofInfo is a collection of information needed to convince the client that
 	// the miner has sealed the data into a sector.
