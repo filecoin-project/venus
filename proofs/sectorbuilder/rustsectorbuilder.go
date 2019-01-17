@@ -321,7 +321,7 @@ func (sb *RustSectorBuilder) GeneratePoST(req GeneratePoSTRequest) (GeneratePoST
 	challengeSeedPtr := unsafe.Pointer(&(req.ChallengeSeed)[0])
 
 	// a mutable pointer to a GeneratePoSTResponse C-struct
-	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post((*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
+	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post((*C.SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
 	defer C.destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
