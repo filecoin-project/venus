@@ -42,7 +42,7 @@ func TestNoDaemonNoHang(t *testing.T) {
 	require.NoError(os.Rename(path.Join(repoDir, "repo.lock"), path.Join(repoDir, "repo.lock.backup")))
 
 	// shut down the daemon
-	d.ShutdownSuccess()
+	d.Stop()
 
 	// put the lock files back
 	require.NoError(os.Rename(path.Join(repoDir, "api.backup"), path.Join(repoDir, "api")))
