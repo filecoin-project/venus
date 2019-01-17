@@ -54,7 +54,7 @@ func TestPersistId(t *testing.T) {
 
 	// get the id and kill it
 	id1 := d1.GetID()
-	d1.ShutdownSuccess()
+	d1.Stop()
 
 	// restart the daemon
 	d2 := th.NewDaemon(t, th.ShouldInit(false), th.RepoDir(dir)).Start()
