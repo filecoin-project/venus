@@ -289,6 +289,8 @@ jobs:
       - run:
           name: create & push git tag
           command: |
+            git config user.email dev-helper@filecoin.io
+            git config user.name filecoin-helper
             git tag -f -a cluster-nightly -m "$(date -uIseconds)"
             git push -q https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git cluster-nightly
 
