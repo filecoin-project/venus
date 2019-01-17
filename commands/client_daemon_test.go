@@ -1,11 +1,13 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +83,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 	th.WaitTimeout(&wg, 120*time.Second)
 }
 
-func TestProposeStorageDeal(t *testing.T) {
+func TestDuplicateDeals(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -112,6 +114,11 @@ func TestProposeStorageDeal(t *testing.T) {
 
 	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
 		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-		assert.Equal(proposeDealOutput, "Error: proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag")
+		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
+		assert.Equal(expectedError, proposeDealOutput)
+	})
+
+	t.Run("propose another duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
+		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
 	})
 }

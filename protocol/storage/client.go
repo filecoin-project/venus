@@ -24,6 +24,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+const (
+	_ = iota
+	_
+	// ErrDupicateDeal indicates that a deal being proposed is a duplicate of an existing deal
+	ErrDupicateDeal
+)
+
+// Errors map error codes to revert errors this actor may return.
+var Errors = map[uint8]error{
+	ErrDupicateDeal: errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag"),
+}
+
 // TODO: this really should not be an interface fulfilled by the node.
 type clientNode interface {
 	GetFileSize(context.Context, cid.Cid) (uint64, error)
@@ -46,8 +58,6 @@ type Client struct {
 
 	node clientNode
 }
-
-const noDuplicates = "no duplicates"
 
 func init() {
 	cbor.RegisterCborType(clientDeal{})
@@ -83,7 +93,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		Size:          types.NewBytesAmount(size),
 		TotalPrice:    price,
 		Duration:      duration,
-		LastDuplicate: noDuplicates,
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
 	}
@@ -93,18 +102,19 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 	proposalCid := cborNode.Cid()
 
-	for _, isDuplicate := smc.deals[proposalCid]; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		if allowDuplicates {
-			proposal.LastDuplicate = proposalCid.String()
+	_, isDuplicate := smc.deals[proposalCid]
+	if isDuplicate && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
 
-			cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get cid of proposal")
-			}
-			proposalCid = cborNode.Cid()
-		} else {
-			return nil, errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag")
+	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
+		proposal.LastDuplicate = proposalCid.String()
+
+		cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get cid of proposal")
 		}
+		proposalCid = cborNode.Cid()
 	}
 
 	pid, err := smc.node.Lookup().GetPeerIDByMinerAddress(ctx, miner)
