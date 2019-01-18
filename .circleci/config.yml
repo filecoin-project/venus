@@ -288,6 +288,9 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+      # The -f flag is require to override the local tag (may exist from previous runs or during checkout)
+      # and the force flag on push is required as we are going to be overrride the tag which is not allowed by default
+      # We currently create annotated flags to keep track of the timestamp when the tag was created
       - run:
           name: create & push git tag
           command: |
