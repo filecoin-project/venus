@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -92,7 +92,7 @@ func TestDuplicateDeals(t *testing.T) {
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 	).Start()
-	defer miner.ShutdownSuccess()
+	defer miner.Shutdown()
 
 	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()
@@ -110,15 +110,12 @@ func TestDuplicateDeals(t *testing.T) {
 
 	t.Run("propose a duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
 		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
+		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
 	})
 
 	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
 		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
 		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
 		assert.Equal(expectedError, proposeDealOutput)
-	})
-
-	t.Run("propose another duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
-		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
 	})
 }

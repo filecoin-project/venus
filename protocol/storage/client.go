@@ -88,10 +88,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	proposal := &DealProposal{
-		PieceRef:      data,
-		Size:          types.NewBytesAmount(size),
-		TotalPrice:    price,
-		Duration:      duration,
+		PieceRef:   data,
+		Size:       types.NewBytesAmount(size),
+		TotalPrice: price,
+		Duration:   duration,
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
 	}
