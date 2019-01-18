@@ -33,7 +33,6 @@ func TestSignedMessageRecover(t *testing.T) {
 	addr, err := smsg.RecoverAddress(&mockRecoverer)
 	assert.NoError(err)
 	assert.Equal(mockSigner.Addresses[0], addr)
-
 }
 
 func TestSignedMessageMarshal(t *testing.T) {
@@ -53,6 +52,8 @@ func TestSignedMessageMarshal(t *testing.T) {
 	assert.Equal(smsg.Value, smsgBack.Value)
 	assert.Equal(smsg.Method, smsgBack.Method)
 	assert.Equal(smsg.Params, smsgBack.Params)
+	assert.Equal(smsg.GasPrice, smsgBack.GasPrice)
+	assert.Equal(smsg.GasLimit, smsgBack.GasLimit)
 	assert.Equal(smsg.Signature, smsgBack.Signature)
 }
 

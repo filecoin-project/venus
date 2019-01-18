@@ -3,7 +3,6 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -11,13 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
-
-// GasUnits represents number of units of gas consumed
-type GasUnits = Uint64
-
-// MaxGasUnits is a convenience value for when we want to guarantee a direct message does not fail due
-//    to lack of gas
-const MaxGasUnits = ^uint64(0)
 
 var (
 	// ErrMessageSigned is returned when `Sign()` is called on a signedmessage that has previously been signed
@@ -34,10 +26,8 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	Message   `json:"message"`
+	NetworkMessage
 	Signature Signature `json:"signature"`
-	GasPrice  AttoFIL   `json:"gasPrice"`
-	GasLimit  GasUnits  `json:"gasLimit"`
 }
 
 // Unmarshal a SignedMessage from the given bytes.
@@ -67,7 +57,7 @@ func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) 
 		return address.Address{}, ErrMessageUnsigned
 	}
 
-	bmsg, err := smsg.Message.Marshal()
+	bmsg, err := smsg.NetworkMessage.Marshal()
 	if err != nil {
 		return address.Address{}, err
 	}
@@ -86,12 +76,12 @@ func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) 
 // VerifySignature returns true iff the signature over the message as calculated
 // from EC recover matches the message sender address.
 func (smsg *SignedMessage) VerifySignature() bool {
-	bmsg, err := smsg.Message.Marshal()
+	bmsg, err := smsg.NetworkMessage.Marshal()
 	if err != nil {
 		log.Infof("invalid signature: %s", err)
 		return false
 	}
-	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
+	return IsValidSignature(bmsg, smsg.From, smsg.Signature)
 }
 
 func (smsg *SignedMessage) String() string {
@@ -110,7 +100,9 @@ func (smsg *SignedMessage) String() string {
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the seralized `msg` and `msg.From`
 func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	bmsg, err := msg.Marshal()
+	networkMsg := NewNetworkMessage(msg, gasPrice, gasLimit)
+
+	bmsg, err := networkMsg.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -121,19 +113,7 @@ func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits
 	}
 
 	return &SignedMessage{
-		Message:   msg,
-		Signature: sig,
-		GasPrice:  gasPrice,
-		GasLimit:  gasLimit,
+		NetworkMessage: *networkMsg,
+		Signature:     sig,
 	}, nil
-}
-
-// NewGasPrice constructs a gas price (in AttoFIL) from the given number.
-func NewGasPrice(price int64) AttoFIL {
-	return *NewAttoFIL(big.NewInt(price))
-}
-
-// NewGasUnits constructs a new GasUnits from the given number.
-func NewGasUnits(cost uint64) GasUnits {
-	return Uint64(cost)
 }
