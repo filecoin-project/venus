@@ -17,7 +17,6 @@ type nodeAPI struct {
 	block           *nodeBlock
 	bootstrap       *nodeBootstrap
 	chain           *nodeChain
-	config          *nodeConfig
 	client          *nodeClient
 	daemon          *nodeDaemon
 	dag             *nodeDag
@@ -53,7 +52,6 @@ func New(node *node.Node) api.API {
 	api.block = newNodeBlock(api)
 	api.bootstrap = newNodeBootstrap(api)
 	api.chain = newNodeChain(api)
-	api.config = newNodeConfig(api)
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.dag = newNodeDag(api)
@@ -90,10 +88,6 @@ func (api *nodeAPI) Bootstrap() api.Bootstrap {
 
 func (api *nodeAPI) Chain() api.Chain {
 	return api.chain
-}
-
-func (api *nodeAPI) Config() api.Config {
-	return api.config
 }
 
 func (api *nodeAPI) Client() api.Client {

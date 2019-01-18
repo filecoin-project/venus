@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -341,7 +342,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	sigGetter := mthdsig.NewGetter(chainReader)
 	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
-	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter)
+	config := cfg.NewConfig(nc.Repo)
+	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter, config)
 
 	nd := &Node{
 		blockservice: bservice,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,16 +21,18 @@ type API struct {
 	sigGetter *mthdsig.Getter
 	msgSender *msg.Sender
 	msgWaiter *msg.Waiter
+	config    *cfg.Config
 }
 
 // New constructs a new instance of the API.
-func New(sigGetter *mthdsig.Getter, msgSender *msg.Sender, msgWaiter *msg.Waiter) *API {
+func New(sigGetter *mthdsig.Getter, msgSender *msg.Sender, msgWaiter *msg.Waiter, cfg *cfg.Config) *API {
 	return &API{
 		logger: logging.Logger("api2"),
 
 		sigGetter: sigGetter,
 		msgSender: msgSender,
 		msgWaiter: msgWaiter,
+		config:    cfg,
 	}
 }
 
@@ -55,4 +58,20 @@ func (api *API) MessageSend(ctx context.Context, from, to address.Address, value
 // to appear on chain.
 func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
+}
+
+// ConfigSet sets the given parameters at the given path in the local config.
+// The given path may be either a single field name, or a dotted path to a field.
+// The JSON value may be either a single value or a whole data structure to be replace.
+// For example:
+// ConfigSet("datastore.path", "dev/null") and ConfigSet("datastore", "{\"path\":\"dev/null\"}")
+// are the same operation.
+func (api *API) ConfigSet(dottedPath string, paramJSON string) error {
+	return api.config.Set(dottedPath, paramJSON)
+}
+
+// ConfigGet gets config parameters from the given path.
+// The path may be either a single field name, or a dotted path to a field.
+func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
+	return api.config.Get(dottedPath)
 }

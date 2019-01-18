@@ -76,7 +76,7 @@ $ go-filecoin config bootstrap
 		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		api := GetAPI(env).Config()
+		api := GetPlumbingAPI(env)
 		key := req.Arguments[0]
 		var value string
 
@@ -89,12 +89,12 @@ $ go-filecoin config bootstrap
 		}
 
 		if value != "" {
-			err := api.Set(key, value)
+			err := api.ConfigSet(key, value)
 			if err != nil {
 				return err
 			}
 		}
-		res, err := api.Get(key)
+		res, err := api.ConfigGet(key)
 		if err != nil {
 			return err
 		}
