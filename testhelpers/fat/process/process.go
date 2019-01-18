@@ -8,6 +8,7 @@ import (
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -41,6 +42,7 @@ func init() {
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
 	Core testbedi.Core
+	Log  logging.EventLogger
 	// TODO this should be a method on IPTB
 	IsAlve bool
 	ctx    context.Context
@@ -51,6 +53,7 @@ func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
 	return &Filecoin{
 		Core:   c,
 		IsAlve: false,
+		Log:    logging.Logger(fmt.Sprintf("Process:%s", c.String())),
 		ctx:    ctx,
 	}
 }
