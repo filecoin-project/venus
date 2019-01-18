@@ -98,7 +98,7 @@ jobs:
 
       - run:
           name: Create macos bundle
-          command: ./build-bundle.sh
+          command: ./scripts/build-bundle.sh
       - store_artifacts:
           path: "~/go/src/github.com/filecoin-project/go-filecoin/filecoin-Darwin.tar.gz"
           destination: filecoin-Darwin.tar.gz
@@ -223,7 +223,7 @@ jobs:
 
       - run:
           name: Create linux bundle
-          command: ./build-bundle.sh
+          command: ./scripts/build-bundle.sh
       - store_artifacts:
           path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin-Linux.tar.gz"
           destination: filecoin-Linux.tar.gz
@@ -244,12 +244,15 @@ jobs:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
       - setup_remote_docker:
           docker_layer_caching: true
+      - checkout
       - attach_workspace:
           at: "."
       - run:
           name: list bundle
           command: |
-            ls -al filecoin-*.tar.gz
+            ls -al
+            ./scripts/publish-release.sh
+
 
   build_docker_img:
     docker:
