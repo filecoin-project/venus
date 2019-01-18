@@ -102,16 +102,12 @@ func runCapture(name string) string {
 	return strings.Trim(string(output), lineBreak)
 }
 
-// clearParamCacheCommands clears the groth parameter cache used when sealing a
-// sector to ensure consistent builds
-func clearParamCacheCommands() []command {
-	cachepath := os.Getenv("FILECOIN_PARAMETER_CACHE")
-	if cachepath == "" {
-		cachepath = "/tmp/filecoin-proof-parameters"
-	}
-
+// hydrateParamCache hydrates the groth parameter cache used when sealing a
+// sector to ensure consistent test runs. If the cache is hydrated lazily (the
+// first time that seal runs), a test could take longer than expected and time
+// out.
+func hydrateParamCache() []command {
 	return []command{
-		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
 		cmd("./proofs/bin/paramcache"),
 	}
 }
@@ -144,7 +140,7 @@ func deps() {
 		cmd("./scripts/install-rust-proofs.sh"),
 	}
 
-	cmds = append(cmds, clearParamCacheCommands()...)
+	cmds = append(cmds, hydrateParamCache()...)
 
 	for _, c := range cmds {
 		runCmd(c)
@@ -165,7 +161,7 @@ func smartdeps() {
 		cmd("./scripts/install-rust-proofs.sh"),
 	}
 
-	cmds = append(cmds, clearParamCacheCommands()...)
+	cmds = append(cmds, hydrateParamCache()...)
 
 	// packages we need to install
 	pkgs := []string{
