@@ -12,3 +12,7 @@ fixtures/genesis.car
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
+proofs/bin/paramcache
+proofs/include/libfilecoin_proofs.h
+proofs/lib/libfilecoin_proofs.a
+proofs/lib/pkgconfig/libfilecoin_proofs.pc
