@@ -26,12 +26,11 @@ import (
 
 const (
 	_ = iota
-	_
 	// ErrDupicateDeal indicates that a deal being proposed is a duplicate of an existing deal
 	ErrDupicateDeal
 )
 
-// Errors map error codes to revert errors this actor may return.
+// Errors map error codes to messages
 var Errors = map[uint8]error{
 	ErrDupicateDeal: errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag"),
 }
