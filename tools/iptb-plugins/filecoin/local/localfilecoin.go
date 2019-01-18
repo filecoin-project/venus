@@ -43,8 +43,13 @@ var DefaultLogLevel = "3"
 var DefaultUseSmallSectors = "false"
 
 var (
-	AttrFilecoinBinary  = "filecoinBinary"
-	AttrLogLevel        = "logLevel"
+	// AttrFilecoinBinary is the key used to set which binary to use in the plugin through NewNode attrs
+	AttrFilecoinBinary = "filecoinBinary"
+
+	// AttrLogLevel is the key used to set the log level through NewNode attrs
+	AttrLogLevel = "logLevel"
+
+	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
 	AttrUseSmallSectors = "useSmallSectors"
 )
 

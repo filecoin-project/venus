@@ -56,7 +56,10 @@ var DefaultLogLevel = "3"
 var DefaultUseSmallSectors = "false"
 
 var (
-	AttrLogLevel        = "logLevel"
+	// AttrLogLevel is the key used to set the log level through NewNode attrs
+	AttrLogLevel = "logLevel"
+
+	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
 	AttrUseSmallSectors = "useSmallSectors"
 )
 

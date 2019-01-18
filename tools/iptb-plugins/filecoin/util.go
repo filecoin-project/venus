@@ -107,6 +107,8 @@ func GetAPIAddrFromRepo(dir string) (multiaddr.Multiaddr, error) {
 	return maddr, nil
 }
 
+// UpdateOrAppendEnv will look through an array of strings for the environment key
+// updating if it is found, or appending to the end if not.
 func UpdateOrAppendEnv(envs []string, key, value string) []string {
 	entry := fmt.Sprintf("%s=%s", key, value)
 
