@@ -29,8 +29,24 @@ var PluginName = "localfilecoin"
 
 var log = logging.Logger(PluginName)
 
-var ErrIsAlive = errors.New("node is already running") // nolint: golint
+// ErrIsAlive will be returned by Start if the node is already running
+var ErrIsAlive = errors.New("node is already running")
 var errTimeout = errors.New("timeout")
+
+// DefaultFilecoinBinary is the name or full path of the binary that will be used
+var DefaultFilecoinBinary = "go-filecoin"
+
+// DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
+var DefaultLogLevel = "3"
+
+// DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
+var DefaultUseSmallSectors = "false"
+
+var (
+	AttrFilecoinBinary  = "filecoinBinary"
+	AttrLogLevel        = "logLevel"
+	AttrUseSmallSectors = "useSmallSectors"
+)
 
 // Localfilecoin represents a filecoin node
 type Localfilecoin struct {
@@ -38,28 +54,46 @@ type Localfilecoin struct {
 	peerid  cid.Cid
 	apiaddr multiaddr.Multiaddr
 
-	binPath string
+	binPath         string
+	logLevel        string
+	useSmallSectors string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
 
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
-		var binPath string
-		var err error
-		var ok bool
+		var (
+			err error
 
-		binPath, ok = attrs["filecoin_binary"]
-		if !ok {
-			// if we don't specify a path to the binary, assume it exists in `$PATH`
-			if binPath, err = exec.LookPath("go-filecoin"); err != nil {
+			binPath         = ""
+			logLevel        = DefaultLogLevel
+			useSmallSectors = DefaultUseSmallSectors
+		)
+
+		if v, ok := attrs[AttrFilecoinBinary]; ok {
+			binPath = v
+		}
+
+		if v, ok := attrs[AttrLogLevel]; ok {
+			logLevel = v
+		}
+
+		if v, ok := attrs[AttrUseSmallSectors]; ok {
+			useSmallSectors = v
+		}
+
+		if len(binPath) == 0 {
+			if binPath, err = exec.LookPath(DefaultFilecoinBinary); err != nil {
 				return nil, err
 			}
 		}
 
 		return &Localfilecoin{
-			dir:     dir,
-			binPath: binPath,
+			dir:             dir,
+			binPath:         binPath,
+			logLevel:        logLevel,
+			useSmallSectors: useSmallSectors,
 		}, nil
 	}
 }
