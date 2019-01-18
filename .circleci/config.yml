@@ -96,8 +96,7 @@ jobs:
           name: Test
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            go run ./build/*.go test -v -covermode=atomic -coverprofile=coverage.txt  2>&1 | \
-            tee test-results/go-test-suite/go-test.out
+            go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out
 
       - run:
           name: Create macos bundle
@@ -207,9 +206,7 @@ jobs:
           name: Test
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            go run ./build/*.go test -v -covermode=atomic -coverprofile=coverage.txt  2>&1 | \
-            tee test-results/go-test-suite/go-test.out &&
-            bash <(curl -s https://codecov.io/bash)
+            go run ./build/*.go test -v  2>&1 | tee test-results/go-test-suite/go-test.out
 
       - run:
           name: Functional Tests
