@@ -106,7 +106,13 @@ func (e *Environment) NewProcess(ctx context.Context, processType string, attrs 
 		return nil, err
 	}
 
-	p := NewFilecoinProcess(ctx, c)
+	// We require a slightly more extended core interface
+	fc, ok := c.(IPTBCoreExt)
+	if !ok {
+		return nil, fmt.Errorf("%s does not implement the extended IPTB.Core interface IPTBCoreExt", processType)
+	}
+
+	p := NewFilecoinProcess(ctx, fc)
 	e.addProcess(p)
 	return p, nil
 }

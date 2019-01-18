@@ -1,6 +1,7 @@
 package pluginmockfilecoin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -15,6 +16,9 @@ var PluginName = "mockfilecoin"
 // Mockfilecoin is a mock structure used for testing things that use go-filecoin iptb plugins
 type Mockfilecoin struct {
 	dir string
+
+	stderr bytes.Buffer
+	stdout bytes.Buffer
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -52,6 +56,13 @@ func (m *Mockfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...stri
 	} else if args[0] == "ldjson" {
 		// return ldjson objects
 		return iptbutil.NewOutput(args, []byte("{\"key\":\"value1\"}\n{\"key\":\"value2\"}\n"), []byte{}, 0, nil), nil
+	} else if args[0] == "add-to-daemonstderr" {
+		for _, arg := range args[1:] {
+			m.stderr.WriteString(arg)
+			m.stderr.WriteByte('\n')
+		}
+
+		return iptbutil.NewOutput(args, []byte{}, []byte{}, 0, nil), nil
 	}
 	return nil, errors.New(`invalid mock args, can only be one of: "", "json", or "ldjson"`)
 }
