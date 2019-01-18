@@ -41,7 +41,11 @@ install_precompiled() {
     return 1
   fi
 
-  tar -C /usr/local -xzf /tmp/$RELEASE_NAME.tar.gz
+  mkdir -p proofs/bin
+  mkdir -p proofs/include
+  mkdir -p proofs/lib/pkgconfig
+
+  tar -C proofs -xzf /tmp/$RELEASE_NAME.tar.gz
 }
 
 install_local() {
@@ -55,12 +59,14 @@ install_local() {
 
   popd
 
-  mkdir -p /usr/local/lib/pkgconfig
+  mkdir -p proofs/bin
+  mkdir -p proofs/include
+  mkdir -p proofs/lib/pkgconfig
 
-  cp proofs/rust-proofs/target/release/paramcache /usr/local/bin/
-  cp proofs/rust-proofs/target/release/libfilecoin_proofs.h /usr/local/include/
-  cp proofs/rust-proofs/target/release/libfilecoin_proofs.a /usr/local/lib/
-  cp proofs/rust-proofs/target/release/libfilecoin_proofs.pc /usr/local/lib/pkgconfig/
+  cp proofs/rust-proofs/target/release/paramcache ./proofs/bin/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.h ./proofs/include/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.a ./proofs/lib/
+  cp proofs/rust-proofs/target/release/libfilecoin_proofs.pc ./proofs/lib/pkgconfig/
 }
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then

@@ -19,8 +19,9 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
-// #cgo pkg-config: libfilecoin_proofs
-// #include "libfilecoin_proofs.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libfilecoin_proofs.pc
+// #include "../include/libfilecoin_proofs.h"
 import "C"
 
 var log = logging.Logger("sectorbuilder") // nolint: deadcode
