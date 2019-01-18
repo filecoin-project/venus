@@ -9,8 +9,6 @@ import (
 
 	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 
-	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -156,10 +154,11 @@ func TestNodeStartMining(t *testing.T) {
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
+	msgQueryer := msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore)
 	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	config := pbConfig.NewConfig(minerNode.Repo)
-	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter, config)
+	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -395,36 +394,6 @@ func TestSendMessage(t *testing.T) {
 		assert.Equal(1, len(node.MsgPool.Pending()))
 	})
 
-}
-
-func TestQueryMessage(t *testing.T) {
-	t.Parallel()
-
-	t.Run("can contact payment broker", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-		ctx := context.Background()
-
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		require.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		require.NoError(resetNodeGen(node, tif))
-
-		assert.NoError(node.Start(ctx))
-
-		args, err := abi.ToEncodedValues(nodeAddr)
-		require.NoError(err)
-
-		returnValue, exitCode, err := node.CallQueryMethod(ctx, address.PaymentBrokerAddress, "ls", args, nil)
-		require.NoError(err)
-		require.Equal(uint8(0), exitCode)
-
-		assert.NotNil(returnValue)
-	})
 }
 
 func repoConfig() ConfigOpt {

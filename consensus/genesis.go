@@ -2,6 +2,9 @@ package consensus
 
 import (
 	"context"
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -11,8 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -34,6 +35,7 @@ func init() {
 type Config struct {
 	accounts map[address.Address]*types.AttoFIL
 	nonces   map[address.Address]uint64
+	actors   map[address.Address]*actor.Actor
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -55,11 +57,20 @@ func ActorNonce(addr address.Address, nonce uint64) GenOption {
 	}
 }
 
+// AddActor returns a config option that sets an arbitrary actor.
+func AddActor(addr address.Address, actor *actor.Actor) GenOption {
+	return func(gc *Config) error {
+		gc.actors[addr] = actor
+		return nil
+	}
+}
+
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
 		accounts: make(map[address.Address]*types.AttoFIL),
 		nonces:   make(map[address.Address]uint64),
+		actors:   make(map[address.Address]*actor.Actor),
 	}
 }
 
@@ -100,6 +111,12 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, bs blockst
 		}
 		if err := SetupDefaultActors(ctx, st, storageMap); err != nil {
 			return nil, err
+		}
+		// Now add any other actors configured.
+		for addr, a := range genCfg.actors {
+			if err := st.SetActor(ctx, addr, a); err != nil {
+				return nil, err
+			}
 		}
 
 		c, err := st.Flush(ctx)

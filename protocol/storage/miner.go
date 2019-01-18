@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/util/convert"
 	"math/big"
 	"math/rand"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 
 	inet "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
 	unixfs "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs"
@@ -77,6 +78,7 @@ type storageDeal struct {
 
 // plumbing is the subset of the plumbing API that storage.Miner needs.
 type plumbing interface {
+	MessageQuery(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
@@ -86,7 +88,6 @@ type plumbing interface {
 // are moving off of node and into the plumbing api (see PlumbingAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the plumbing api.
 type node interface {
-	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
@@ -447,7 +448,7 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	ctx := context.Background()
 
-	rets, code, err := sm.node.CallQueryMethod(ctx, sm.minerAddr, "getSectorCommitments", []byte{}, nil)
+	rets, code, err := sm.plumbingAPI.MessageQuery(ctx, sm.minerAddr, "getSectorCommitments", []byte{}, nil)
 	if err != nil {
 		log.Errorf("failed to call query method getSectorCommitments: %s", err)
 		return
@@ -534,7 +535,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, code, err := sm.node.CallQueryMethod(context.Background(), sm.minerAddr, "getProvingPeriodStart", []byte{}, nil)
+	res, code, err := sm.plumbingAPI.MessageQuery(context.Background(), sm.minerAddr, "getProvingPeriodStart", []byte{}, nil)
 	if err != nil {
 		return nil, err
 	}

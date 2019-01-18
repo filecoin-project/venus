@@ -362,10 +362,11 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 	node.Consensus = newCon
 	node.Syncer = newSyncer
 	newSigGetter := mthdsig.NewGetter(newChainReader)
+	newMsgQueryer := msg.NewQueryer(node.Repo, node.Wallet, node.ChainReader, node.CborStore(), node.Blockstore)
 	newMsgWaiter := msg.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	newMsgSender := msg.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
 	config := cfg.NewConfig(node.Repo)
-	node.PlumbingAPI = plumbing.New(newSigGetter, newMsgSender, newMsgWaiter, config)
+	node.PlumbingAPI = plumbing.New(newSigGetter, newMsgQueryer, newMsgSender, newMsgWaiter, config)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return msg.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)

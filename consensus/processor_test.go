@@ -538,7 +538,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 	})
 }
 
-// TODO fritz add more test cases that cover the intent expressed
+// TODO add more test cases that cover the intent expressed
 // in ApplyMessage's comments.
 
 func TestNestedSendBalance(t *testing.T) {

@@ -18,21 +18,23 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	sigGetter *mthdsig.Getter
-	msgSender *msg.Sender
-	msgWaiter *msg.Waiter
-	config    *cfg.Config
+	sigGetter  *mthdsig.Getter
+	msgQueryer *msg.Queryer
+	msgSender  *msg.Sender
+	msgWaiter  *msg.Waiter
+	config     *cfg.Config
 }
 
 // New constructs a new instance of the API.
-func New(sigGetter *mthdsig.Getter, msgSender *msg.Sender, msgWaiter *msg.Waiter, cfg *cfg.Config) *API {
+func New(sigGetter *mthdsig.Getter, msgQueryer *msg.Queryer, msgSender *msg.Sender, msgWaiter *msg.Waiter, cfg *cfg.Config) *API {
 	return &API{
-		logger: logging.Logger("api2"),
+		logger: logging.Logger("porcelain"),
 
-		sigGetter: sigGetter,
-		msgSender: msgSender,
-		msgWaiter: msgWaiter,
-		config:    cfg,
+		sigGetter:  sigGetter,
+		msgQueryer: msgQueryer,
+		msgSender:  msgSender,
+		msgWaiter:  msgWaiter,
+		config:     cfg,
 	}
 }
 
@@ -41,6 +43,13 @@ func New(sigGetter *mthdsig.Getter, msgSender *msg.Sender, msgWaiter *msg.Waiter
 // output of an actor method call (message).
 func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
 	return api.sigGetter.Get(ctx, actorAddr, method)
+}
+
+// MessageQuery calls an actor's method using the most recent chain state. It is read-only,
+// it does not change any state. It is use to interrogate actor state. The caller address
+// is optional; if not provided, an address will be chosen from the node's wallet.
+func (api *API) MessageQuery(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) (_ [][]byte, _ uint8, err error) {
+	return api.msgQueryer.Query(ctx, to, method, args, optFrom)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
