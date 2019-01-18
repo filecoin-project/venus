@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 
 	imp "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs/importer"
 	uio "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs/io"
@@ -80,8 +81,8 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 
 			// TODO: at some point, we will need to check that the miners are actually part of the storage market
 			// for now, its impossible for them not to be.
-
-			ret, _, err := nd.CallQueryMethod(ctx, addr, "getAsks", nil, nil)
+			queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+			ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsks", nil)
 			if err != nil {
 				return err
 			}
@@ -98,7 +99,7 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 					return err
 				}
 
-				ret, _, err := nd.CallQueryMethod(ctx, addr, "getAsk", encodedParams, nil)
+				ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsk", encodedParams)
 				if err != nil {
 					return err
 				}

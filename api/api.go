@@ -13,7 +13,6 @@ type API interface {
 	Dag() Dag
 	ID() ID
 	Log() Log
-	Message() Message
 	Miner() Miner
 	Mining() Mining
 	Mpool() Mpool

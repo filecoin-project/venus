@@ -783,17 +783,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, retCode, err := node.PlumbingAPI.MessageQuery(ctx, minerAddr, "getLastUsedSectorID", []byte{}, nil)
+	rets, methodSignature, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID", []byte{})
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
-	}
-	if retCode != 0 {
-		return 0, errors.New("non-zero status code returned by getLastUsedSectorID")
-	}
-
-	methodSignature, err := node.PlumbingAPI.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to get method signature for getLastUsedSectorID")
 	}
 
 	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
@@ -947,12 +939,9 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, code, err := node.PlumbingAPI.MessageQuery(ctx, miningAddr, "getOwner", nil, nil)
+	res, _, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner", nil)
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to getOwner")
-	}
-	if code != 0 {
-		return address.Address{}, fmt.Errorf("failed to getOwner from the miner: exitCode = %d", code)
 	}
 
 	return address.NewFromBytes(res[0])

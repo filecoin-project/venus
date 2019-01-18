@@ -23,7 +23,7 @@ type commonDeps struct {
 	cst        *hamt.CborIpldStore
 }
 
-func requireCommonDeps(require *require.Assertions) *commonDeps {
+func requireCommonDeps(require *require.Assertions) *commonDeps { //nolint: deadcode
 	return requireCommonDepsWithGif(require, consensus.InitGenesis)
 }
 

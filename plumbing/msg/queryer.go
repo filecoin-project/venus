@@ -5,17 +5,20 @@ import (
 
 	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/pkg/errors"
 )
 
 // Queryer knows how to send read-only messages for querying actor state.
@@ -36,32 +39,50 @@ func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadSto
 	return &Queryer{repo, wallet, chainReader, cst, bs}
 }
 
-// Query sends a read-only message to an actor. 
-func (q *Queryer) Query(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) (_ [][]byte, _ uint8, err error) {
+// Query sends a read-only message to an actor.
+func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	if optFrom == (address.Address{}) {
+		from, err := GetAndMaybeSetDefaultSenderAddress(q.repo, q.wallet)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "failed to retrieve default sender address")
+		}
+		optFrom = from
+	}
+
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "couldnt encode message params")
+	}
+
+	// We return the method signature so callers know how to decode the return value.
+	// Probably would be better to do the decoding here since we are after all accepting
+	// golang types.
+	sigGetter := mthdsig.NewGetter(q.chainReader)
+	sig, err := sigGetter.Get(ctx, to, method)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "unable to determine return type")
+	}
+
 	headTs := q.chainReader.Head()
 	tsas, err := q.chainReader.GetTipSetAndState(ctx, headTs.String())
 	if err != nil {
-		return nil, 1, errors.Wrap(err, "failed to retrieve state")
+		return nil, nil, errors.Wrap(err, "couldnt get latest state root")
 	}
 	st, err := state.LoadStateTree(ctx, q.cst, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
-		return nil, 1, errors.Wrap(err, "failed to retrieve state")
+		return nil, nil, errors.Wrap(err, "could load tree for latest state root")
 	}
 	h, err := headTs.Height()
 	if err != nil {
-		return nil, 1, errors.Wrap(err, "getting base tipset height")
-	}
-
-	var fromAddr address.Address
-	if optFrom != nil {
-		fromAddr = *optFrom
-	} else {
-		fromAddr, err = GetAndMaybeSetDefaultSenderAddress(q.repo, q.wallet)
-		if err != nil {
-			return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
-		}
+		return nil, nil, errors.Wrap(err, "couldnt get base tipset height")
 	}
 
 	vms := vm.NewStorageMap(q.bs)
-	return consensus.CallQueryMethod(ctx, st, vms, to, method, args, fromAddr, types.NewBlockHeight(h))
+	r, ec, err := consensus.CallQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "querymethod returned an error")
+	} else if ec != 0 {
+		return nil, nil, errors.Errorf("querymethod returned a non-zero error code %d", ec)
+	}
+	return r, sig, nil
 }

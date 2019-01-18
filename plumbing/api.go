@@ -46,10 +46,10 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 }
 
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
-// it does not change any state. It is use to interrogate actor state. The caller address
+// it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) (_ [][]byte, _ uint8, err error) {
-	return api.msgQueryer.Query(ctx, to, method, args, optFrom)
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the

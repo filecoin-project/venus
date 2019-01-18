@@ -47,11 +47,10 @@ func TestQuery(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
 
 		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
-		returnValue, exitCode, err := queryer.Query(ctx, fakeActorAddr, "hasReturnValue", []byte{}, &fromAddr)
+		returnValue, funcSig, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(err)
-		require.Equal(uint8(0), exitCode)
 		require.NotNil(returnValue)
-		v, err := abi.Deserialize(returnValue[0], abi.Address)
+		v, err := abi.Deserialize(returnValue[0], funcSig.Return[0])
 		require.NoError(err)
 		_, ok := v.Val.(address.Address)
 		require.True(ok)

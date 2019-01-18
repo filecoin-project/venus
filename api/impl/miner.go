@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -69,7 +70,9 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 }
 
 func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	bytes, _, err := nm.api.Message().Query(
+	nd := nm.api.node
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	bytes, _, err := queryer.Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -83,7 +86,9 @@ func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (a
 }
 
 func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.api.Message().Query(
+	nd := nm.api.node
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	bytes, _, err := queryer.Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -99,7 +104,9 @@ func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*
 }
 
 func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.api.Message().Query(
+	nd := nm.api.node
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	bytes, _, err := queryer.Query(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -115,7 +122,9 @@ func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (
 }
 
 func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	bytes, _, err := nm.api.Message().Query(
+	nd := nm.api.node
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	bytes, _, err := queryer.Query(
 		ctx,
 		address.Address{},
 		address.StorageMarketAddress,
