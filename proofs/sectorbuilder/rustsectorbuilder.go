@@ -19,8 +19,9 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
-// #cgo pkg-config: libfilecoin_proofs
-// #include "libfilecoin_proofs.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libfilecoin_proofs.pc
+// #include "../include/libfilecoin_proofs.h"
 import "C"
 
 var log = logging.Logger("sectorbuilder") // nolint: deadcode
@@ -321,7 +322,7 @@ func (sb *RustSectorBuilder) GeneratePoST(req GeneratePoSTRequest) (GeneratePoST
 	challengeSeedPtr := unsafe.Pointer(&(req.ChallengeSeed)[0])
 
 	// a mutable pointer to a GeneratePoSTResponse C-struct
-	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post((*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
+	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post((*C.SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
 	defer C.destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
