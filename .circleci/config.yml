@@ -113,9 +113,6 @@ jobs:
     resource_class: xlarge
     steps:
       - run:
-          name: Own /usr/local so rust-proofs libs/bins can be installed there
-          command: sudo chown -R circleci:staff /usr/local
-      - run:
           name: Configure environment variables
           command: |
             echo 'export PATH="${HOME}/.cargo/bin:${PATH}"' >> $BASH_ENV
