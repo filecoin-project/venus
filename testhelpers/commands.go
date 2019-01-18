@@ -429,6 +429,8 @@ func (td *TestDaemon) ShutdownSuccess() {
 
 	assert.NotContains(td.test, filteredStdErr, "CRITICAL")
 	assert.NotContains(td.test, filteredStdErr, "ERROR")
+
+	_ = os.RemoveAll(td.repoDir)
 }
 
 // ShutdownEasy stops the daemon using `SIGINT`.
@@ -437,6 +439,8 @@ func (td *TestDaemon) ShutdownEasy() {
 	assert.NoError(td.test, err)
 	tdOut := td.ReadStderr()
 	assert.NoError(td.test, err, tdOut)
+
+	_ = os.RemoveAll(td.repoDir)
 }
 
 // WaitForAPI polls if the API on the daemon is available, and blocks until
