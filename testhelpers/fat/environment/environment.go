@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+
 	iptb "github.com/ipfs/iptb/testbed"
 
 	"github.com/filecoin-project/go-filecoin/testhelpers/fat/process"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
 // Environment is a structure which contains a set of filecoin processes
