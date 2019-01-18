@@ -40,16 +40,18 @@ func init() {
 
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
-	core testbedi.Core
-	ctx  context.Context
+	Core testbedi.Core
+	// TODO this should be a method on IPTB
+	IsAlve bool
+	ctx    context.Context
 }
 
-// NewFilecoinProcess returns a pointer to a Filecoin process of type `t`, create its
-// repo under dir `d`, and wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, t, d string, c testbedi.Core) *Filecoin {
+// NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
+func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
 	return &Filecoin{
-		core: c,
-		ctx:  ctx,
+		Core:   c,
+		IsAlve: false,
+		ctx:    ctx,
 	}
 }
 
@@ -58,7 +60,7 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if ctx == nil {
 		ctx = f.ctx
 	}
-	out, err := f.core.RunCmd(ctx, stdin, args...)
+	out, err := f.Core.RunCmd(ctx, stdin, args...)
 	if err != nil {
 		return nil, err
 	}

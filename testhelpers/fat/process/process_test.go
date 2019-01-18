@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"testing"
 
+	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
-	iptb "github.com/ipfs/iptb/testbed"
 )
 
 // must register all filecoin iptb plugins
@@ -53,7 +53,7 @@ func TestRunCmds(t *testing.T) {
 	c, err := ns.Load()
 	assert.NoError(err)
 
-	mfc := NewFilecoinProcess(ctx, mockplugin.PluginName, dir, c)
+	mfc := NewFilecoinProcess(ctx, c)
 
 	t.Run("test RunCmdWithStdin", func(t *testing.T) {
 		out, err := mfc.RunCmdWithStdin(ctx, nil, "")
