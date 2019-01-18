@@ -112,7 +112,7 @@ func clearParamCacheCommands() []command {
 
 	return []command{
 		cmd(fmt.Sprintf("rm -rf %s", cachepath)),
-		cmd("paramcache"),
+		cmd("./proofs/bin/paramcache"),
 	}
 }
 
