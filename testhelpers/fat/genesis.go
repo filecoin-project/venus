@@ -1,4 +1,4 @@
-package environment
+package fat
 
 import (
 	"encoding/json"

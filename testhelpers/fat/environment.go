@@ -1,4 +1,4 @@
-package environment
+package fat
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	iptb "github.com/ipfs/iptb/testbed"
-
-	"github.com/filecoin-project/go-filecoin/testhelpers/fat/process"
 )
 
 // Environment is a structure which contains a set of filecoin processes
@@ -19,12 +17,12 @@ type Environment struct {
 	Location string
 
 	GenesisFile *GenesisInfo
-	GenesisNode *process.Filecoin
+	GenesisNode *Filecoin
 
 	Log logging.EventLogger
 
 	procMu    sync.Mutex
-	processes []*process.Filecoin
+	processes []*Filecoin
 }
 
 // NewEnvironment creates a new Environment and genesis file for the environment.
@@ -42,18 +40,18 @@ func NewEnvironment(location string) (*Environment, error) {
 		Location:    location,
 		GenesisFile: gf,
 		Log:         logging.Logger("environment"),
-		processes:   make([]*process.Filecoin, 0),
+		processes:   make([]*Filecoin, 0),
 	}, nil
 }
 
-func (e *Environment) addProcess(p *process.Filecoin) {
+func (e *Environment) addProcess(p *Filecoin) {
 	e.procMu.Lock()
 	defer e.procMu.Unlock()
 
 	e.processes = append(e.processes, p)
 }
 
-func (e *Environment) removeProcess(p *process.Filecoin) {
+func (e *Environment) removeProcess(p *Filecoin) {
 	e.procMu.Lock()
 	defer e.procMu.Unlock()
 
@@ -67,7 +65,7 @@ func (e *Environment) removeProcess(p *process.Filecoin) {
 }
 
 // Processes returns the managed by the environment.
-func (e *Environment) Processes() []*process.Filecoin {
+func (e *Environment) Processes() []*Filecoin {
 	e.procMu.Lock()
 	defer e.procMu.Unlock()
 
@@ -82,7 +80,7 @@ func (e *Environment) Teardown(ctx context.Context) error {
 
 	e.Log.Info("Teardown environment")
 	for _, p := range e.processes {
-		if err := p.Core.Stop(ctx); err != nil {
+		if err := p.core.Stop(ctx); err != nil {
 			return err
 		}
 	}
@@ -91,7 +89,7 @@ func (e *Environment) Teardown(ctx context.Context) error {
 }
 
 // NewProcess creates a new Filecoin process of type `processType`, with attributes `attrs`.
-func (e *Environment) NewProcess(ctx context.Context, processType string, attrs map[string]string) (*process.Filecoin, error) {
+func (e *Environment) NewProcess(ctx context.Context, processType string, attrs map[string]string) (*Filecoin, error) {
 	ns := iptb.NodeSpec{
 		Type:  processType,
 		Dir:   fmt.Sprintf("%s/%d", e.Location, len(e.processes)),
@@ -108,31 +106,31 @@ func (e *Environment) NewProcess(ctx context.Context, processType string, attrs 
 		return nil, err
 	}
 
-	p := process.NewFilecoinProcess(ctx, c)
+	p := NewFilecoinProcess(ctx, c)
 	e.addProcess(p)
 	return p, nil
 }
 
 // TeardownProcess stops process `p`, and cleans up the location the process was running in.
-func (e *Environment) TeardownProcess(ctx context.Context, p *process.Filecoin) error {
-	e.Log.Infof("Teardown process: %s", p.Core.String())
-	if err := p.Core.Stop(ctx); err != nil {
+func (e *Environment) TeardownProcess(ctx context.Context, p *Filecoin) error {
+	e.Log.Infof("Teardown process: %s", p.core.String())
+	if err := p.core.Stop(ctx); err != nil {
 		return err
 	}
 
 	// remove the provess from the process list
 	e.removeProcess(p)
-	return os.RemoveAll(p.Core.Dir())
+	return os.RemoveAll(p.core.Dir())
 }
 
 // ConnectProcess connects process `p` to all other processes in the environment.
-func (e *Environment) ConnectProcess(ctx context.Context, p *process.Filecoin) error {
-	e.Log.Infof("Connect process: %s", p.Core.String())
+func (e *Environment) ConnectProcess(ctx context.Context, p *Filecoin) error {
+	e.Log.Infof("Connect process: %s", p.core.String())
 	if !p.IsAlve {
 		return fmt.Errorf("process is not running, cannot connect to environment")
 	}
 	for _, p := range e.processes {
-		if err := p.Core.Connect(ctx, p.Core); err != nil {
+		if err := p.core.Connect(ctx, p.core); err != nil {
 			return err
 		}
 	}

@@ -1,4 +1,4 @@
-package process
+package fat
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func init() {
 
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
-	Core testbedi.Core
+	core testbedi.Core
 	Log  logging.EventLogger
 	// TODO this should be a method on IPTB
 	IsAlve bool
@@ -51,7 +51,7 @@ type Filecoin struct {
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
 func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
 	return &Filecoin{
-		Core:   c,
+		core:   c,
 		IsAlve: false,
 		Log:    logging.Logger(fmt.Sprintf("Process:%s", c.String())),
 		ctx:    ctx,
@@ -63,7 +63,7 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if ctx == nil {
 		ctx = f.ctx
 	}
-	out, err := f.Core.RunCmd(ctx, stdin, args...)
+	out, err := f.core.RunCmd(ctx, stdin, args...)
 	if err != nil {
 		return nil, err
 	}

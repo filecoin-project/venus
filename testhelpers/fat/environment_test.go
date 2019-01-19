@@ -1,4 +1,4 @@
-package environment
+package fat
 
 import (
 	"context"
@@ -69,13 +69,13 @@ func TestProcessCreateAndTeardown(t *testing.T) {
 	assert.Equal(1, len(env.Processes()))
 
 	// did we create the process dir correctly?
-	_, err = os.Stat(p.Core.Dir())
+	_, err = os.Stat(p.core.Dir())
 	assert.NoError(err)
 
 	assert.NoError(env.TeardownProcess(ctx, p))
 	assert.Equal(0, len(env.Processes()))
 
 	// did we teardown the process correctly?
-	_, existsErr := os.Stat(p.Core.Dir())
+	_, existsErr := os.Stat(p.core.Dir())
 	assert.True(os.IsNotExist(existsErr))
 }
