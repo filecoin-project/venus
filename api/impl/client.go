@@ -5,7 +5,6 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 
 	imp "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs/importer"
@@ -93,13 +92,7 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 			}
 
 			for _, id := range asksIds {
-				// encode the parameters
-				encodedParams, err := abi.ToEncodedValues(big.NewInt(int64(id)))
-				if err != nil {
-					return err
-				}
-
-				ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsk", encodedParams)
+				ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsk", big.NewInt(int64(id)))
 				if err != nil {
 					return err
 				}
