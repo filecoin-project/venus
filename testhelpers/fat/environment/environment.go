@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
@@ -22,6 +23,7 @@ type Environment struct {
 
 	Log logging.EventLogger
 
+	procMu    sync.Mutex
 	processes []*process.Filecoin
 }
 
@@ -44,14 +46,40 @@ func NewEnvironment(location string) (*Environment, error) {
 	}, nil
 }
 
+func (e *Environment) addProcess(p *process.Filecoin) {
+	e.procMu.Lock()
+	defer e.procMu.Unlock()
+
+	e.processes = append(e.processes, p)
+}
+
+func (e *Environment) removeProcess(p *process.Filecoin) {
+	e.procMu.Lock()
+	defer e.procMu.Unlock()
+
+	for i, n := range e.processes {
+		if n == p {
+			e.processes = append(e.processes[:i], e.processes[i+1:]...)
+			return
+		}
+	}
+
+}
+
 // Processes returns the managed by the environment.
 func (e *Environment) Processes() []*process.Filecoin {
+	e.procMu.Lock()
+	defer e.procMu.Unlock()
+
 	return e.processes
 }
 
 // Teardown stops all processes managed by the environment and cleans up the
 // location the environment was running in.
 func (e *Environment) Teardown(ctx context.Context) error {
+	e.procMu.Lock()
+	defer e.procMu.Unlock()
+
 	e.Log.Info("Teardown environment")
 	for _, p := range e.processes {
 		if err := p.Core.Stop(ctx); err != nil {
@@ -80,7 +108,9 @@ func (e *Environment) NewProcess(ctx context.Context, processType string, attrs 
 		return nil, err
 	}
 
-	return process.NewFilecoinProcess(ctx, c), nil
+	p := process.NewFilecoinProcess(ctx, c)
+	e.addProcess(p)
+	return p, nil
 }
 
 // TeardownProcess stops process `p`, and cleans up the location the process was running in.
@@ -89,6 +119,9 @@ func (e *Environment) TeardownProcess(ctx context.Context, p *process.Filecoin) 
 	if err := p.Core.Stop(ctx); err != nil {
 		return err
 	}
+
+	// remove the provess from the process list
+	e.removeProcess(p)
 	return os.RemoveAll(p.Core.Dir())
 }
 
