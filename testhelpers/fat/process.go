@@ -58,6 +58,31 @@ func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
 	}
 }
 
+// InitDaemon initializes the filecoin daemon process.
+func (f *Filecoin) InitDaemon(ctx context.Context, args ...string) (testbedi.Output, error) {
+	return f.core.Init(ctx, args...)
+}
+
+// StartDaemon starts the filecoin daemon process.
+func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (testbedi.Output, error) {
+	out, err := f.core.Start(ctx, wait, args...)
+	if err != nil {
+		return nil, err
+	}
+	f.IsAlve = true
+	return out, nil
+}
+
+// StopDaemon stops the filecoin daemon process.
+func (f *Filecoin) StopDaemon(ctx context.Context) error {
+	if err := f.core.Stop(ctx); err != nil {
+		// TODO this may break the `IsAlive` parameter
+		return err
+	}
+	f.IsAlve = false
+	return nil
+}
+
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
 func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	if ctx == nil {
