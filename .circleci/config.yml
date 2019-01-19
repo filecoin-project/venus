@@ -361,6 +361,36 @@ workflows:
     jobs:
       - build_macos
 
+  build_and_publish_release:
+    jobs:
+      - build_macos:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
+      - build_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
+      - publish_release:
+          requires:
+            - build_linux
+            - build_macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
+
   build_nightly_cluster:
     triggers:
       - schedule:
