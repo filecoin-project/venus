@@ -939,7 +939,7 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, _, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner", nil)
+	res, _, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner")
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to getOwner")
 	}
