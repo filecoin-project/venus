@@ -10,9 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/util/convert"
-
 	inet "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
 	unixfs "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -37,7 +34,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
 var log = logging.Logger("/fil/storage")
@@ -448,7 +447,7 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	ctx := context.Background()
 
-	rets, sig, err := sm.plumbingAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments", []byte{})
+	rets, sig, err := sm.plumbingAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments")
 	if err != nil {
 		log.Errorf("failed to call query method getSectorCommitments: %s", err)
 		return
