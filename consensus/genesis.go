@@ -58,7 +58,9 @@ func ActorNonce(addr address.Address, nonce uint64) GenOption {
 	}
 }
 
-// AddActor returns a config option that sets an arbitrary actor.
+// AddActor returns a config option that sets an arbitrary actor. You
+// will need to set the mapping from the actor's codecid to implementation
+// in builtin.Actors if it is not there already.
 func AddActor(addr address.Address, actor *actor.Actor) GenOption {
 	return func(gc *Config) error {
 		gc.actors[addr] = actor

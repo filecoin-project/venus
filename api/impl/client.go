@@ -82,7 +82,7 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 			// TODO: at some point, we will need to check that the miners are actually part of the storage market
 			// for now, its impossible for them not to be.
 			queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-			ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsks", nil)
+			ret, _, err := queryer.Query(ctx, (address.Address{}), addr, "getAsks")
 			if err != nil {
 				return err
 			}

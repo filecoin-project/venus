@@ -524,7 +524,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, _, err := sm.plumbingAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart", []byte{})
+	res, _, err := sm.plumbingAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart")
 	if err != nil {
 		return nil, err
 	}
