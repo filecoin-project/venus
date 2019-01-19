@@ -783,7 +783,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID", []byte{})
+	rets, methodSignature, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
 	}
