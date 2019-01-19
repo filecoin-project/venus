@@ -96,8 +96,7 @@ jobs:
           name: Test
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            go run ./build/*.go test -v -covermode=atomic -coverprofile=coverage.txt  2>&1 | \
-            tee test-results/go-test-suite/go-test.out
+            go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out
 
       - run:
           name: Create macos bundle
@@ -207,9 +206,7 @@ jobs:
           name: Test
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            go run ./build/*.go test -v -covermode=atomic -coverprofile=coverage.txt  2>&1 | \
-            tee test-results/go-test-suite/go-test.out &&
-            bash <(curl -s https://codecov.io/bash)
+            go run ./build/*.go test -v  2>&1 | tee test-results/go-test-suite/go-test.out
 
       - run:
           name: Functional Tests
@@ -288,13 +285,16 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+      # The -f flag is require to override the local tag (may exist from previous runs or during checkout)
+      # and the force flag on push is required as we are going to be overrride the tag which is not allowed by default
+      # We currently create annotated flags to keep track of the timestamp when the tag was created
       - run:
           name: create & push git tag
           command: |
             git config user.email dev-helper@filecoin.io
             git config user.name filecoin-helper
             git tag -f -a cluster-nightly -m "$(date -uIseconds)"
-            git push -q https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git cluster-nightly
+            git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git cluster-nightly
 
   trigger_nightly_cluster_deploy:
     docker:
