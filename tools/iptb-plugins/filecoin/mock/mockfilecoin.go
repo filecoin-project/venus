@@ -14,29 +14,32 @@ var PluginName = "mockfilecoin"
 
 // Mockfilecoin is a mock structure used for testing things that use go-filecoin iptb plugins
 type Mockfilecoin struct {
+	dir string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
 
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
-		return &Mockfilecoin{}, nil
+		return &Mockfilecoin{
+			dir: dir,
+		}, nil
 	}
 }
 
 // Init is not implemented
 func (m *Mockfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
-	panic("not implemented")
+	return nil, nil
 }
 
 // Start is not implemented
 func (m *Mockfilecoin) Start(ctx context.Context, wait bool, args ...string) (testbedi.Output, error) {
-	panic("not implemented")
+	return nil, nil
 }
 
 // Stop is not implemented
 func (m *Mockfilecoin) Stop(ctx context.Context) error {
-	panic("not implemented")
+	return nil
 }
 
 // RunCmd will return "string" for args "", json for args "json", and ldjson for args "ldjson"
@@ -55,7 +58,7 @@ func (m *Mockfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...stri
 
 // Connect is not implemented
 func (m *Mockfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
-	panic("not implemented")
+	return nil
 }
 
 // Shell is not implemented
@@ -65,7 +68,7 @@ func (m *Mockfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 // Dir is not implemented
 func (m *Mockfilecoin) Dir() string {
-	panic("not implemented")
+	return m.dir
 }
 
 // Type is not implemented
@@ -75,7 +78,7 @@ func (m *Mockfilecoin) Type() string {
 
 // String is not implemented
 func (m *Mockfilecoin) String() string {
-	panic("not implemented")
+	return "mockNode"
 }
 
 // PeerID is not implemented

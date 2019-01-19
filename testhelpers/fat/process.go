@@ -1,4 +1,4 @@
-package process
+package fat
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -41,16 +42,45 @@ func init() {
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
 	core testbedi.Core
-	ctx  context.Context
+	Log  logging.EventLogger
+	// TODO this should be a method on IPTB
+	IsAlve bool
+	ctx    context.Context
 }
 
-// NewFilecoinProcess returns a pointer to a Filecoin process of type `t`, create its
-// repo under dir `d`, and wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, t, d string, c testbedi.Core) *Filecoin {
+// NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
+func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
 	return &Filecoin{
-		core: c,
-		ctx:  ctx,
+		core:   c,
+		IsAlve: false,
+		Log:    logging.Logger(fmt.Sprintf("Process:%s", c.String())),
+		ctx:    ctx,
 	}
+}
+
+// InitDaemon initializes the filecoin daemon process.
+func (f *Filecoin) InitDaemon(ctx context.Context, args ...string) (testbedi.Output, error) {
+	return f.core.Init(ctx, args...)
+}
+
+// StartDaemon starts the filecoin daemon process.
+func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (testbedi.Output, error) {
+	out, err := f.core.Start(ctx, wait, args...)
+	if err != nil {
+		return nil, err
+	}
+	f.IsAlve = true
+	return out, nil
+}
+
+// StopDaemon stops the filecoin daemon process.
+func (f *Filecoin) StopDaemon(ctx context.Context) error {
+	if err := f.core.Stop(ctx); err != nil {
+		// TODO this may break the `IsAlive` parameter
+		return err
+	}
+	f.IsAlve = false
+	return nil
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
