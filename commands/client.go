@@ -112,7 +112,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.StringArg("duration", true, false, "Time in blocks (about 30 seconds per block) to store data"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.BoolOption("allow-duplicates", "allows duplicate proposals to be created. unless this flag is set, you will not be able to make more than one deal per piece per miner. this protection exists to prevent erroneous duplicate deals."),
+		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
