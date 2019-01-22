@@ -52,8 +52,8 @@ var DefaultDockerVolumePrefix = ""
 // DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
 var DefaultLogLevel = "3"
 
-// DefaultLogJson is the value that will be used for GO_FILECOIN_LOG_JSON
-var DefaultLogJson = "false"
+// DefaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
+var DefaultLogJSON = "false"
 
 // DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
 var DefaultUseSmallSectors = "false"
@@ -62,8 +62,8 @@ var (
 	// AttrLogLevel is the key used to set the log level through NewNode attrs
 	AttrLogLevel = "logLevel"
 
-	// AttrLogJson is the key used to set the node to output json logs
-	AttrLogJson = "logJson"
+	// AttrLogJSON is the key used to set the node to output json logs
+	AttrLogJSON = "logJSON"
 
 	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
 	AttrUseSmallSectors = "useSmallSectors"
@@ -83,7 +83,7 @@ type Dockerfilecoin struct {
 	swarmaddr    multiaddr.Multiaddr
 
 	logLevel        string
-	logJson         string
+	logJSON         string
 	useSmallSectors string
 }
 
@@ -97,7 +97,7 @@ func init() {
 		dockerEntry := DefaultDockerEntryPoint
 		dockerVolumePrefix := DefaultDockerVolumePrefix
 		logLevel := DefaultLogLevel
-		logJson := DefaultLogJson
+		logJSON := DefaultLogJSON
 		useSmallSectors := DefaultUseSmallSectors
 
 		// the dockerid file is present once the container has started the daemon process,
@@ -146,8 +146,8 @@ func init() {
 			useSmallSectors = v
 		}
 
-		if v, ok := attrs[AttrLogJson]; ok {
-			logJson = v
+		if v, ok := attrs[AttrLogJSON]; ok {
+			logJSON = v
 		}
 
 		return &Dockerfilecoin{
@@ -159,7 +159,7 @@ func init() {
 			VolumePrefix: dockerVolumePrefix,
 
 			logLevel:        logLevel,
-			logJson:         logJson,
+			logJSON:         logJSON,
 			useSmallSectors: useSmallSectors,
 
 			dir:       dir,
@@ -404,7 +404,7 @@ func (l *Dockerfilecoin) env() ([]string, error) {
 	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", "/data/filecoin")
 	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_USE_SMALL_SECTORS", l.useSmallSectors)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
-	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJson)
+	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 
 	return envs, nil
 }
