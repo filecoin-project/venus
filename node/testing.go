@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -363,7 +364,8 @@ func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: 
 	newSigGetter := mthdsig.NewGetter(newChainReader)
 	newMsgWaiter := msg.NewWaiter(newChainReader, node.Blockstore, node.CborStore())
 	newMsgSender := msg.NewSender(node.Repo, node.Wallet, node.ChainReader, node.MsgPool, node.PubSub.Publish)
-	node.PlumbingAPI = plumbing.New(newSigGetter, newMsgSender, newMsgWaiter)
+	config := cfg.NewConfig(node.Repo)
+	node.PlumbingAPI = plumbing.New(newSigGetter, newMsgSender, newMsgWaiter, config)
 
 	defaultSenderGetter := func() (address.Address, error) {
 		return msg.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)

@@ -8,7 +8,6 @@ type API interface {
 	Block() Block
 	Bootstrap() Bootstrap
 	Chain() Chain
-	Config() Config
 	Client() Client
 	Daemon() Daemon
 	Dag() Dag

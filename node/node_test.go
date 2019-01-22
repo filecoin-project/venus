@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -157,7 +158,8 @@ func TestNodeStartMining(t *testing.T) {
 	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
 	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
-	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter)
+	config := pbConfig.NewConfig(minerNode.Repo)
+	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter, config)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
