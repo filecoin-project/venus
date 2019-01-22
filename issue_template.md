@@ -1,3 +1,9 @@
+---
+title: '[testprefix]'
+labels: candidate
+assignees: ''
+---
+
 ### Description
 
 ### Acceptance criteria
