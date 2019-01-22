@@ -17,4 +17,7 @@ type MessageReceipt struct {
 	// This can be non-empty even in the case of error (e.g., to provide
 	// programmatically readable detail about errors).
 	Return []Bytes `json:"return"`
+
+	// GasAttoFIL Charge is the actual amount of FIL transferred from the sender to the miner for processing the message
+	GasAttoFIL *AttoFIL `json:"gasAttoFIL"`
 }

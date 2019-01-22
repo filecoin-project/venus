@@ -26,6 +26,7 @@ type Context struct {
 	storageMap  StorageMap
 	gasPrice    types.AttoFIL
 	gasLimit    types.GasUnits
+	gasUnits    types.GasUnits
 	blockHeight *types.BlockHeight
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
@@ -34,13 +35,14 @@ type Context struct {
 var _ exec.VMContext = (*Context)(nil)
 
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, gp types.AttoFIL, gl types.GasUnits, bh *types.BlockHeight) *Context {
+func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, gp types.AttoFIL, gl types.GasUnits, initialGasUnits types.GasUnits, bh *types.BlockHeight) *Context {
 	return &Context{
 		from:        from,
 		to:          to,
 		message:     msg,
 		state:       st,
 		storageMap:  store,
+		gasUnits:    initialGasUnits,
 		blockHeight: bh,
 		gasPrice:    gp,
 		gasLimit:    gl,
@@ -76,6 +78,22 @@ func (ctx *Context) ReadStorage() ([]byte, error) {
 	copy(out, memory)
 
 	return out, nil
+}
+
+// Charge attempts to add the given cost to the accrued gas cost of this transaction
+func (ctx *Context) Charge(cost types.GasUnits) error {
+	if ctx.gasUnits+cost > ctx.gasLimit {
+		ctx.gasUnits = ctx.gasLimit
+		return errors.NewRevertError("gas cost exceeds gas limit")
+	}
+
+	ctx.gasUnits += cost
+	return nil
+}
+
+// GasUnits retrieves the gas cost so far
+func (ctx *Context) GasUnits() types.GasUnits {
+	return ctx.gasUnits
 }
 
 // WriteStorage writes to the storage of the associated to actor.
@@ -137,7 +155,11 @@ func (ctx *Context) Send(to address.Address, method string, value *types.AttoFIL
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storageMap, ctx.gasPrice, ctx.gasLimit, ctx.blockHeight)
+	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storageMap, ctx.gasPrice, ctx.gasLimit, ctx.gasUnits, ctx.blockHeight)
+
+	// transfer cost (succeed or fail) back to outer context
+	defer func() { ctx.gasUnits = innerCtx.GasUnits() }()
+
 	out, ret, err := deps.Send(context.Background(), innerCtx)
 	if err != nil {
 		return nil, ret, err

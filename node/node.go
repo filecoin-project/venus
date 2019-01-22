@@ -738,13 +738,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
 					gasPrice := types.NewGasPrice(0)
-					gasCost := types.NewGasUnits(0)
+					gasUnits := types.NewGasUnits(types.MaxGasUnits)
 
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
-					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasCost, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:])
+					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasUnits, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:])
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue

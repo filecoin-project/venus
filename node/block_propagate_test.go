@@ -131,6 +131,10 @@ func (r *zeroRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr
 	return nil
 }
 
+func (r *zeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
+	return nil
+}
+
 func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}

@@ -24,6 +24,8 @@ const (
 	ErrDanglingPointer = 34
 	// ErrStaleHead indicates that an actor attempted to commit over a stale chunk
 	ErrStaleHead = 35
+	// ErrInsufficientGas indicates that an actor did not have sufficient gas to run a message
+	ErrInsufficientGas = 36
 )
 
 // Errors map error codes to revert errors this actor may return
@@ -71,6 +73,7 @@ type VMContext interface {
 	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
+	Charge(cost types.GasUnits) error
 
 	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 

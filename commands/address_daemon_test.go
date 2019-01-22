@@ -77,7 +77,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 		"miner", "update-peerid",
 		"--from", addr,
 		"--price", "0",
-		"--limit", "0",
+		"--limit", "100",
 		minerAddr,
 		minerPidForUpdate.Pretty(),
 	)

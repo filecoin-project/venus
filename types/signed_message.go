@@ -15,6 +15,10 @@ import (
 // GasUnits represents number of units of gas consumed
 type GasUnits = Uint64
 
+// MaxGasUnits is a convenience value for when we want to guarantee a direct message does not fail due
+//    to lack of gas
+const MaxGasUnits = ^uint64(0)
+
 var (
 	// ErrMessageSigned is returned when `Sign()` is called on a signedmessage that has previously been signed
 	ErrMessageSigned = errors.New("message already contains a signature")
@@ -130,6 +134,6 @@ func NewGasPrice(price int64) AttoFIL {
 }
 
 // NewGasUnits constructs a new GasUnits from the given number.
-func NewGasUnits(cost int64) GasUnits {
+func NewGasUnits(cost uint64) GasUnits {
 	return Uint64(cost)
 }

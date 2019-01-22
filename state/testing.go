@@ -110,7 +110,7 @@ func (m *MockStateTree) Debug() {
 func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error) {
 	a, ok := m.BuiltinActors[c]
 	if !ok {
-		return nil, fmt.Errorf("unknown actor: %s", c)
+		return nil, fmt.Errorf("unknown actor: %v", c.String())
 	}
 
 	return a, nil
