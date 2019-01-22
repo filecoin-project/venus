@@ -53,8 +53,8 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 	return imp.BuildDagFromReader(ds, spl)
 }
 
-func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64) (*storage.DealResponse, error) {
-	return api.api.node.StorageMinerClient.ProposeDeal(ctx, miner, data, askid, duration)
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64, allowDuplicates bool) (*storage.DealResponse, error) {
+	return api.api.node.StorageMinerClient.ProposeDeal(ctx, miner, data, askid, duration, allowDuplicates)
 }
 
 func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error) {

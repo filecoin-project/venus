@@ -22,7 +22,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 )
+
+const (
+	_ = iota
+	// ErrDupicateDeal indicates that a deal being proposed is a duplicate of an existing deal
+	ErrDupicateDeal
+)
+
+// Errors map error codes to messages
+var Errors = map[uint8]error{
+	ErrDupicateDeal: errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag"),
+}
 
 // TODO: this really should not be an interface fulfilled by the node.
 type clientNode interface {
@@ -65,7 +77,7 @@ func NewClient(nd clientNode, dealsDs repo.Datastore) (*Client, error) {
 }
 
 // ProposeDeal is
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64) (*DealResponse, error) {
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*DealResponse, error) {
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -76,9 +88,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to get ask price")
 	}
 
-	// TODO: it probably makes sense to just send the ask ID to the miner,
-	// instead of just using it for price lookup. This might make it easier for
-	// the miners acceptance logic
 	proposal := &DealProposal{
 		PieceRef:   data,
 		Size:       types.NewBytesAmount(size),
@@ -86,6 +95,24 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		Duration:   duration,
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
+	}
+	proposalCid, err := convert.ToCid(proposal)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cid of proposal")
+	}
+
+	_, isDuplicate := smc.deals[proposalCid]
+	if isDuplicate && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
+
+	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
+		proposal.LastDuplicate = proposalCid.String()
+
+		proposalCid, err = convert.ToCid(proposal)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get cid of proposal")
+		}
 	}
 
 	pid, err := smc.node.Lookup().GetPeerIDByMinerAddress(ctx, miner)
@@ -96,7 +123,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	s, err := smc.node.Host().NewStream(ctx, pid, makeDealProtocol)
 	if err != nil {
 		if err == multistream.ErrNotSupported {
-			return nil, errors.New("Could not establish connection with peer. Is the peer mining?")
+			return nil, errors.New("could not establish connection with peer. Is the peer mining?")
 		}
 
 		return nil, errors.Wrap(err, "failed to establish connection with the peer")

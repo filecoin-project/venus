@@ -27,7 +27,7 @@ type Ask struct {
 type Client interface {
 	Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error)
 	ImportData(ctx context.Context, data io.Reader) (ipld.Node, error)
-	ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, ask uint64, duration uint64) (*storage.DealResponse, error)
+	ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, ask uint64, duration uint64, allowDuplicates bool) (*storage.DealResponse, error)
 	QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error)
 	ListAsks(ctx context.Context) (<-chan Ask, error)
 }

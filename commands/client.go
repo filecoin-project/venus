@@ -111,7 +111,12 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		cmdkit.StringArg("ask", true, false, "ID of ask for which to propose a deal"),
 		cmdkit.StringArg("duration", true, false, "Time in blocks (about 30 seconds per block) to store data"),
 	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption("allow-duplicates", "Allows duplicate proposals to be created. Unless this flag is set, you will not be able to make more than one deal per piece per miner. This protection exists to prevent erroneous duplicate deals."),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		allowDuplicates, _ := req.Options["allow-duplicates"].(bool)
+
 		miner, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -132,7 +137,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			return err
 		}
 
-		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration)
+		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
 		if err != nil {
 			return err
 		}

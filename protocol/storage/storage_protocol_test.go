@@ -173,7 +173,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 		}
 	}
 
-	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 1, 150)
+	ref, err := c.ProposeDeal(ctx, mineraddr, protonode.Cid(), 1, 150, false)
 	assert.NoError(err)
 	requireQueryDeal := func() (DealState, string) {
 		resp, err := c.QueryDeal(ctx, ref.ProposalCid)
