@@ -1,9 +1,8 @@
 ---
-title: '[testprefix]'
+title: 'test title'
 labels: candidate
-assignees: ''
+assignees: mishmosh
 ---
-
 ### Description
 
 ### Acceptance criteria
