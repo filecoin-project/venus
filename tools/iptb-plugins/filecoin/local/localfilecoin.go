@@ -42,12 +42,18 @@ var DefaultLogLevel = "3"
 // DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
 var DefaultUseSmallSectors = "false"
 
+// DefaultLogJson is the value that will be used for GO_FILECOIN_LOG_JSON
+var DefaultLogJson = "false"
+
 var (
 	// AttrFilecoinBinary is the key used to set which binary to use in the plugin through NewNode attrs
 	AttrFilecoinBinary = "filecoinBinary"
 
 	// AttrLogLevel is the key used to set the log level through NewNode attrs
 	AttrLogLevel = "logLevel"
+
+	// AttrLogJson is the key used to set the node to output json logs
+	AttrLogJson = "logJson"
 
 	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
 	AttrUseSmallSectors = "useSmallSectors"
@@ -61,6 +67,7 @@ type Localfilecoin struct {
 
 	binPath         string
 	logLevel        string
+	logJson         string
 	useSmallSectors string
 }
 
@@ -73,6 +80,7 @@ func init() {
 
 			binPath         = ""
 			logLevel        = DefaultLogLevel
+			logJson         = DefaultLogJson
 			useSmallSectors = DefaultUseSmallSectors
 		)
 
@@ -88,6 +96,10 @@ func init() {
 			useSmallSectors = v
 		}
 
+		if v, ok := attrs[AttrLogJson]; ok {
+			logJson = v
+		}
+
 		if len(binPath) == 0 {
 			if binPath, err = exec.LookPath(DefaultFilecoinBinary); err != nil {
 				return nil, err
@@ -98,6 +110,7 @@ func init() {
 			dir:             dir,
 			binPath:         binPath,
 			logLevel:        logLevel,
+			logJson:         logJson,
 			useSmallSectors: useSmallSectors,
 		}, nil
 	}
