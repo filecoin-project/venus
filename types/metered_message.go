@@ -14,30 +14,30 @@ type GasUnits = Uint64
 const MaxGasUnits = ^uint64(0)
 
 func init() {
-	cbor.RegisterCborType(NetworkMessage{})
+	cbor.RegisterCborType(MeteredMessage{})
 }
 
-// NetworkMessage contains a message and its associated gas price and gas limit
-type NetworkMessage struct {
-	Message
+// MeteredMessage contains a message and its associated gas price and gas limit
+type MeteredMessage struct {
+	Message           `json:"message"`
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
 }
 
 // Unmarshal a message from the given bytes.
-func (msg *NetworkMessage) Unmarshal(b []byte) error {
+func (msg *MeteredMessage) Unmarshal(b []byte) error {
 	return cbor.DecodeInto(b, msg)
 }
 
 // Marshal the message into bytes.
-func (msg *NetworkMessage) Marshal() ([]byte, error) {
+func (msg *MeteredMessage) Marshal() ([]byte, error) {
 	return cbor.DumpObject(msg)
 }
 
-// NewNetworkMessage accepts a message `msg`, a gas price `gasPrice` and a `gasLimit`.
+// NewMeteredMessage accepts a message `msg`, a gas price `gasPrice` and a `gasLimit`.
 // It returns a network message with the message, gas price and gas limit included.
-func NewNetworkMessage(msg Message, gasPrice AttoFIL, gasLimit GasUnits) (*NetworkMessage) {
-	return &NetworkMessage{
+func NewMeteredMessage(msg Message, gasPrice AttoFIL, gasLimit GasUnits) *MeteredMessage {
+	return &MeteredMessage{
 		Message:  msg,
 		GasPrice: gasPrice,
 		GasLimit: gasLimit,

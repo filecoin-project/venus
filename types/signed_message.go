@@ -26,7 +26,7 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	NetworkMessage
+	MeteredMessage      `json:"meteredMessage"`
 	Signature Signature `json:"signature"`
 }
 
@@ -57,7 +57,7 @@ func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) 
 		return address.Address{}, ErrMessageUnsigned
 	}
 
-	bmsg, err := smsg.NetworkMessage.Marshal()
+	bmsg, err := smsg.MeteredMessage.Marshal()
 	if err != nil {
 		return address.Address{}, err
 	}
@@ -76,7 +76,7 @@ func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) 
 // VerifySignature returns true iff the signature over the message as calculated
 // from EC recover matches the message sender address.
 func (smsg *SignedMessage) VerifySignature() bool {
-	bmsg, err := smsg.NetworkMessage.Marshal()
+	bmsg, err := smsg.MeteredMessage.Marshal()
 	if err != nil {
 		log.Infof("invalid signature: %s", err)
 		return false
@@ -100,9 +100,9 @@ func (smsg *SignedMessage) String() string {
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the seralized `msg` and `msg.From`
 func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	networkMsg := NewNetworkMessage(msg, gasPrice, gasLimit)
+	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
 
-	bmsg, err := networkMsg.Marshal()
+	bmsg, err := meteredMsg.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits
 	}
 
 	return &SignedMessage{
-		NetworkMessage: *networkMsg,
-		Signature:     sig,
+		MeteredMessage: *meteredMsg,
+		Signature:      sig,
 	}, nil
 }
