@@ -107,6 +107,10 @@ var storageMarketExports = exec.Exports{
 // CreateMiner creates a new miner with the a pledge of the given amount of sectors. The
 // miners collateral is set by the value in the message.
 func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
+	if err := vmctx.Charge(100); err != nil {
+		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		if pledge.Cmp(MinimumPledge) < 0 {
@@ -153,6 +157,10 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing or willful removal). The delta is in number of sectors.
 func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, error) {
+	if err := vmctx.Charge(100); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		miner := vmctx.Message().From
@@ -184,6 +192,10 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, erro
 
 // GetTotalStorage returns the total amount of proven storage in the system.
 func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error) {
+	if err := vmctx.Charge(100); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		return state.TotalCommittedStorage, nil

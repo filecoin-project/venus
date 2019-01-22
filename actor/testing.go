@@ -30,6 +30,10 @@ var FakeActorExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
+	"chargeGasAndRevertError": &exec.FunctionSignature{
+		Params: nil,
+		Return: nil,
+	},
 	"returnRevertError": &exec.FunctionSignature{
 		Params: nil,
 		Return: nil,
@@ -56,6 +60,10 @@ var FakeActorExports = exec.Exports{
 	},
 	"attemptMultiSpend2": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.Address},
+		Return: nil,
+	},
+	"runsAnotherMessage": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
 }
@@ -87,7 +95,19 @@ func (ma *FakeActor) Exports() exec.Exports {
 
 // HasReturnValue is a dummy method that does nothing.
 func (ma *FakeActor) HasReturnValue(ctx exec.VMContext) (address.Address, uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
 	return address.Address{}, 0, nil
+}
+
+// ChargeGasAndRevertError simply charges gas and returns a revert error
+func (ma *FakeActor) ChargeGasAndRevertError(ctx exec.VMContext) (uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		panic("Unexpected error charging gas")
+	}
+	return 1, errors.NewRevertError("boom")
 }
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
@@ -163,6 +183,15 @@ func (ma *FakeActor) AttemptMultiSpend2(ctx exec.VMContext, self, target address
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed sendTokens")
 	}
+	return code, err
+}
+
+// RunsAnotherMessage sends a message
+func (ma *FakeActor) RunsAnotherMessage(ctx exec.VMContext, target address.Address) (uint8, error) {
+	if err := ctx.Charge(100); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+	_, code, err := ctx.Send(target, "hasReturnValue", types.ZeroAttoFIL, []interface{}{})
 	return code, err
 }
 

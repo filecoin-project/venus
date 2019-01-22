@@ -313,7 +313,9 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) ([]types.Bytes, error) {
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(from, to, 0, value, method, pdata)
-	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), types.NewGasUnits(0))
+	// this should never fail due to lack of gas since gas doesn't have meaning here
+	gasLimit := types.NewGasUnits(types.MaxGasUnits)
+	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), gasLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +356,11 @@ var _ consensus.BlockRewarder = (*blockRewarder)(nil)
 
 // BlockReward is a noop
 func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
-	// do nothing to keep state root the same
+	return nil
+}
+
+// GasReward is a noop
+func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
 	return nil
 }
 

@@ -2,12 +2,13 @@ package testhelpers
 
 import (
 	"context"
+	"math/big"
+
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
-	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -101,7 +102,8 @@ func VMStorage() vm.StorageMap {
 func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
 	var smsgs []*types.SignedMessage
 	for _, m := range msgs {
-		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), types.NewGasUnits(0))
+		gasLimit := types.NewGasUnits(999)
+		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), gasLimit)
 		if err != nil {
 			panic(err)
 		}

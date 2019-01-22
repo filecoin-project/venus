@@ -85,6 +85,7 @@ func main() {
 	}
 	info, err := gengen.GenGenesisCar(cfg, outfile, *seed)
 	if err != nil {
+		fmt.Println("ERROR", err)
 		panic(err)
 	}
 
