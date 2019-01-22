@@ -1,8 +1,3 @@
----
-title: 'test title'
-labels: candidate
-assignees: mishmosh
----
 ### Description
 
 ### Acceptance criteria
