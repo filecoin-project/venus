@@ -32,6 +32,9 @@ const (
 	ErrDupicateDeal
 )
 
+const dealsDatastorePrefix = "deals"
+const clientDatastorePrefix = "client"
+
 // Errors map error codes to messages
 var Errors = map[uint8]error{
 	ErrDupicateDeal: errors.New("proposal is a duplicate of existing deal; if you would like to create a duplicate, add the --allow-duplicates flag"),
@@ -280,7 +283,9 @@ func (cni *ClientNodeImpl) GetAskPrice(ctx context.Context, maddr address.Addres
 }
 
 func (smc *Client) loadDeals() error {
-	res, err := smc.dealsDs.Query(query.Query{})
+	res, err := smc.dealsDs.Query(query.Query{
+		Prefix: "deals/client",
+	})
 	if err != nil {
 		return errors.Wrap(err, "failed to query deals from datastore")
 	}
@@ -307,7 +312,8 @@ func (smc *Client) saveDeal(cid cid.Cid) error {
 	if err != nil {
 		return errors.Wrap(err, "could not marshal storageDeal")
 	}
-	err = smc.dealsDs.Put(datastore.NewKey(cid.String()), datum)
+	key := datastore.KeyWithNamespaces([]string{dealsDatastorePrefix, clientDatastorePrefix, cid.String()})
+	err = smc.dealsDs.Put(key, datum)
 	if err != nil {
 		return errors.Wrap(err, "could not save client deal to disk, in-memory deals differ from persisted deals!")
 	}
