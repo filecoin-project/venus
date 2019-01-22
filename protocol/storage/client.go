@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
 const (
@@ -95,11 +96,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		//Payment:    PaymentInfo{},
 		//Signature:  nil, // TODO: sign this
 	}
-	cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
+	proposalCid, err := convert.ToCid(proposal)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
-	proposalCid := cborNode.Cid()
 
 	_, isDuplicate := smc.deals[proposalCid]
 	if isDuplicate && !allowDuplicates {
@@ -109,11 +109,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
 		proposal.LastDuplicate = proposalCid.String()
 
-		cborNode, err := cbor.WrapObject(proposal, types.DefaultHashFunction, -1)
+		proposalCid, err = convert.ToCid(proposal)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get cid of proposal")
 		}
-		proposalCid = cborNode.Cid()
 	}
 
 	pid, err := smc.node.Lookup().GetPeerIDByMinerAddress(ctx, miner)
