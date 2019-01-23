@@ -46,7 +46,8 @@ const (
 	},
 	"mining": {
 		"minerAddress": "",
-		"autoSealIntervalSeconds": 120
+		"autoSealIntervalSeconds": 120,
+		"storagePrice": "0"
 	},
 	"wallet": {
 		"defaultAddress": ""

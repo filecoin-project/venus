@@ -12,6 +12,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Config is an in memory representation of the filecoin configuration file
@@ -101,12 +102,14 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 type MiningConfig struct {
 	MinerAddress            address.Address `json:"minerAddress"`
 	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
+	StoragePrice            *types.AttoFIL  `json:"storagePrice"`
 }
 
 func newDefaultMiningConfig() *MiningConfig {
 	return &MiningConfig{
 		MinerAddress:            address.Address{},
 		AutoSealIntervalSeconds: 120,
+		StoragePrice:            types.NewZeroAttoFIL(),
 	}
 }
 

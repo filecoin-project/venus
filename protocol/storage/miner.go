@@ -67,6 +67,9 @@ type Miner struct {
 
 	plumbingAPI plumbing
 	node        node
+
+	proposalAcceptor func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error)
+	proposalRejector func(ctx context.Context, m *Miner, p *DealProposal, reason string) (*DealResponse, error)
 }
 
 type storageDeal struct {
@@ -80,6 +83,7 @@ type plumbing interface {
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
+	ConfigGet(dottedPath string) (interface{}, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -117,6 +121,8 @@ func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd
 		dealsDs:             dealsDs,
 		dealsAwaitingSealDs: dealsAwaitingSealDs,
 		node:                nd,
+		proposalAcceptor:    acceptProposal,
+		proposalRejector:    rejectProposal,
 	}
 
 	if err := sm.loadDealsAwaitingSeal(); err != nil {
@@ -164,13 +170,24 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, p *DealProposal) (*
 	//       and also check that the payment info is valid.
 	//       A valid payment info contains enough funds to *us* to cover the totalprice
 
-	// TODO: decide if we want to accept this thingy
+	storagePrice, err := sm.plumbingAPI.ConfigGet("mining.storagePrice")
+	if err != nil {
+		return nil, err
+	}
+	storagePriceAF, ok := storagePrice.(*types.AttoFIL)
+	if !ok {
+		return nil, errors.New("Could not retrieve storagePrice from config")
+	}
+	if p.TotalPrice.LessThan(storagePriceAF) {
+		return sm.proposalRejector(ctx, sm, p,
+			fmt.Sprintf("proposed price %s is less that miner's current asking price: %s", p.TotalPrice, storagePriceAF))
+	}
 
 	// Payment is valid, everything else checks out, let's accept this proposal
-	return sm.acceptProposal(ctx, p)
+	return sm.proposalAcceptor(ctx, sm, p)
 }
 
-func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResponse, error) {
+func acceptProposal(ctx context.Context, sm *Miner, p *DealProposal) (*DealResponse, error) {
 	if sm.node.SectorBuilder() == nil {
 		return nil, errors.New("Mining disabled, can not process proposal")
 	}
@@ -201,6 +218,33 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *DealProposal) (*DealResp
 
 	// TODO: use some sort of nicer scheduler
 	go sm.processStorageDeal(proposalCid)
+
+	return resp, nil
+}
+
+func rejectProposal(ctx context.Context, sm *Miner, p *DealProposal, reason string) (*DealResponse, error) {
+	proposalCid, err := convert.ToCid(p)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cid of proposal")
+	}
+
+	resp := &DealResponse{
+		State:       Rejected,
+		ProposalCid: proposalCid,
+		Message:     reason,
+		Signature:   types.Signature("signaturrreee"),
+	}
+
+	sm.dealsLk.Lock()
+	defer sm.dealsLk.Unlock()
+
+	sm.deals[proposalCid] = &storageDeal{
+		Proposal: p,
+		Response: resp,
+	}
+	if err := sm.saveDeal(proposalCid); err != nil {
+		return nil, errors.Wrap(err, "failed to save miner deal")
+	}
 
 	return resp, nil
 }

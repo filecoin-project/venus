@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
@@ -35,12 +35,13 @@ func TestMinerHelp(t *testing.T) {
 		t.Parallel()
 
 		expected := []string{
-			"miner add-ask <miner> <price> <expiry> - Add an ask to the storage market",
-			"miner create <pledge> <collateral>     - Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
-			"miner owner <miner>                    - Show the actor address of <miner>",
-			"miner pledge <miner>                   - View number of pledged 1GB sectors for <miner>",
-			"miner power <miner>                    - Get the power of a miner versus the total storage market power",
-			"miner update-peerid <address> <peerid> - Change the libp2p identity that a miner is operating",
+			"miner add-ask <miner> <price> <expiry>  - DEPRECATED: Use set-price",
+			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+			"miner owner <miner>                     - Show the actor address of <miner>",
+			"miner pledge <miner>                    - View number of pledged 1GB sectors for <miner>",
+			"miner power <miner>                     - Get the power of a miner versus the total storage market power",
+			"miner set-price <storageprice> <expiry> - Set the minimum price for storage",
+			"miner update-peerid <address> <peerid>  - Change the libp2p identity that a miner is operating",
 		}
 
 		result := runHelpSuccess(t, "miner", "--help")
@@ -63,7 +64,7 @@ func TestMinerHelp(t *testing.T) {
 	t.Run("add-ask --help shows add-ask help", func(t *testing.T) {
 		t.Parallel()
 		result := runHelpSuccess(t, "miner", "add-ask", "--help")
-		assert.Contains(result, " Add an ask to the storage market")
+		assert.Contains(result, "DEPRECATED: Use set-price")
 	})
 
 	t.Run("owner --help shows owner help", func(t *testing.T) {
@@ -285,6 +286,23 @@ func TestMinerCreate(t *testing.T) {
 		d1.MineAndPropagate(time.Second, d)
 		wg.Wait()
 	})
+}
+
+func TestMinerSetPrice(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0]), th.DefaultAddress(fixtures.TestAddresses[0])).Start()
+	defer d1.Shutdown()
+
+	d1.RunSuccess("mining", "start")
+
+	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--price", "0", "--limit", "300")
+	assert.Contains(setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+
+	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
+
+	assert.Equal(`"62"`, configuredPrice.ReadStdoutTrimNewlines())
 }
 
 func TestMinerAddAskSuccess(t *testing.T) {
