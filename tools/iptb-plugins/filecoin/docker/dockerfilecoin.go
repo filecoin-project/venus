@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -47,6 +49,26 @@ var DefaultDockerEntryPoint = []string{"/usr/local/bin/go-filecoin"}
 // is usful wrt permissions
 var DefaultDockerVolumePrefix = ""
 
+// DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
+var DefaultLogLevel = "3"
+
+// DefaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
+var DefaultLogJSON = "false"
+
+// DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
+var DefaultUseSmallSectors = "false"
+
+var (
+	// AttrLogLevel is the key used to set the log level through NewNode attrs
+	AttrLogLevel = "logLevel"
+
+	// AttrLogJSON is the key used to set the node to output json logs
+	AttrLogJSON = "logJSON"
+
+	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
+	AttrUseSmallSectors = "useSmallSectors"
+)
+
 // Dockerfilecoin represents attributes of a dockerized filecoin node.
 type Dockerfilecoin struct {
 	Image        string
@@ -59,6 +81,10 @@ type Dockerfilecoin struct {
 	peerid       cid.Cid
 	apiaddr      multiaddr.Multiaddr
 	swarmaddr    multiaddr.Multiaddr
+
+	logLevel        string
+	logJSON         string
+	useSmallSectors string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -70,6 +96,9 @@ func init() {
 		dockerUser := DefaultDockerUser
 		dockerEntry := DefaultDockerEntryPoint
 		dockerVolumePrefix := DefaultDockerVolumePrefix
+		logLevel := DefaultLogLevel
+		logJSON := DefaultLogJSON
+		useSmallSectors := DefaultUseSmallSectors
 
 		// the dockerid file is present once the container has started the daemon process,
 		// iptb uses the dockerid file to keep track of the containers its running
@@ -109,6 +138,18 @@ func init() {
 			dockerVolumePrefix = v
 		}
 
+		if v, ok := attrs[AttrLogLevel]; ok {
+			logLevel = v
+		}
+
+		if v, ok := attrs[AttrUseSmallSectors]; ok {
+			useSmallSectors = v
+		}
+
+		if v, ok := attrs[AttrLogJSON]; ok {
+			logJSON = v
+		}
+
 		return &Dockerfilecoin{
 			EntryPoint:   dockerEntry,
 			Host:         dockerHost,
@@ -116,6 +157,10 @@ func init() {
 			Image:        dockerImage,
 			User:         dockerUser,
 			VolumePrefix: dockerVolumePrefix,
+
+			logLevel:        logLevel,
+			logJSON:         logJSON,
+			useSmallSectors: useSmallSectors,
 
 			dir:       dir,
 			apiaddr:   apiaddr,
@@ -139,12 +184,17 @@ func (l *Dockerfilecoin) Init(ctx context.Context, args ...string) (testbedi.Out
 	cmds := []string{"init"}
 	cmds = append(cmds, args...)
 
+	envs, err := l.env()
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := cli.ContainerCreate(ctx,
 		&container.Config{
 			Entrypoint: l.EntryPoint,
 			User:       l.User,
 			Image:      l.Image,
-			Env:        []string{"FIL_PATH=/data/filecoin"},
+			Env:        envs,
 			Cmd:        cmds,
 			Tty:        false,
 		},
@@ -223,13 +273,18 @@ func (l *Dockerfilecoin) Start(ctx context.Context, wait bool, args ...string) (
 	cmds := []string{"daemon"}
 	cmds = append(cmds, args...)
 
+	envs, err := l.env()
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the container, first command needs to be daemon, now we have an ID for it
 	resp, err := cli.ContainerCreate(ctx,
 		&container.Config{
 			Entrypoint:   l.EntryPoint,
 			User:         l.User,
 			Image:        l.Image,
-			Env:          []string{"FIL_PATH=/data/filecoin"},
+			Env:          envs,
 			Cmd:          cmds,
 			Tty:          false,
 			AttachStdout: true,
@@ -341,6 +396,17 @@ func (l *Dockerfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 		}
 	}
 	return nil
+}
+
+func (l *Dockerfilecoin) env() ([]string, error) {
+	envs := os.Environ()
+
+	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", "/data/filecoin")
+	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_USE_SMALL_SECTORS", l.useSmallSectors)
+	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
+	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
+
+	return envs, nil
 }
 
 // Shell starts a shell in the context of a node.

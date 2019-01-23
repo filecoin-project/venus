@@ -15,6 +15,8 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
+	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
 
 func (l *Localfilecoin) isAlive() (bool, error) {
@@ -49,16 +51,13 @@ func (l *Localfilecoin) getPID() (int, error) {
 
 func (l *Localfilecoin) env() ([]string, error) {
 	envs := os.Environ()
-	filecoinpath := "FIL_PATH=" + l.dir
 
-	for i, e := range envs {
-		if strings.HasPrefix(e, "FIL_PATH=") {
-			envs[i] = filecoinpath
-			return envs, nil
-		}
-	}
+	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", l.dir)
+	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_USE_SMALL_SECTORS", l.useSmallSectors)
+	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
+	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 
-	return append(envs, filecoinpath), nil
+	return envs, nil
 }
 
 func (l *Localfilecoin) signalAndWait(p *os.Process, waitch <-chan struct{}, signal os.Signal, t time.Duration) error {

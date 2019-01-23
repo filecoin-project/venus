@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
@@ -104,4 +105,19 @@ func GetAPIAddrFromRepo(dir string) (multiaddr.Multiaddr, error) {
 	}
 
 	return maddr, nil
+}
+
+// UpdateOrAppendEnv will look through an array of strings for the environment key
+// updating if it is found, or appending to the end if not.
+func UpdateOrAppendEnv(envs []string, key, value string) []string {
+	entry := fmt.Sprintf("%s=%s", key, value)
+
+	for i, e := range envs {
+		if strings.HasPrefix(e, key+"=") {
+			envs[i] = entry
+			return envs
+		}
+	}
+
+	return append(envs, entry)
 }
