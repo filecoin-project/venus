@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -45,7 +46,8 @@ func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address
 		payerAddr = fromAddr
 	}
 
-	values, _, err := np.api.Message().Query(
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	values, _, err := queryer.Query(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -72,7 +74,8 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		return "", err
 	}
 
-	values, _, err := np.api.Message().Query(
+	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
+	values, _, err := queryer.Query(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,

@@ -2,20 +2,17 @@ package msg
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/testhelpers"
+
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
-	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,17 +46,13 @@ type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
 func setupTest(require *require.Assertions) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
-	return setupTestWithGif(require, consensus.InitGenesis)
+	d := requireCommonDeps(require)
+	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
 
 func setupTestWithGif(require *require.Assertions, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
-	r := repo.NewInMemoryRepo()
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
-	require.NoError(err)
-	waiter := NewWaiter(chainStore, bs, cst)
-	return cst, chainStore, waiter
+	d := requireCommonDepsWithGif(require, gif)
+	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
 
 func TestWait(t *testing.T) {

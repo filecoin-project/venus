@@ -14,6 +14,7 @@ import (
 	mactor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api/impl"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -77,10 +78,11 @@ func TestStorageProtocolBasic(t *testing.T) {
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
+	msgQueryer := msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore)
 	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	config := cfg.NewConfig(minerNode.Repo)
-	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter, config)
+	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
 
 	// Give the miner node the right private key, and set them up with
 	// the miner actor
@@ -93,7 +95,7 @@ func TestStorageProtocolBasic(t *testing.T) {
 		dag.NewDAGService(clientNode.BlockService()),
 		clientNode.Host(),
 		clientNode.Lookup(),
-		func(_ context.Context, _ address.Address, _ string, _ []byte, _ *address.Address) ([][]byte, uint8, error) {
+		func(_ context.Context, _, _ address.Address, _ string, _ ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 			// This is only used for getting the price of an ask.
 			a := &mactor.Ask{
 				Price: types.NewAttoFILFromFIL(50),
@@ -101,10 +103,10 @@ func TestStorageProtocolBasic(t *testing.T) {
 
 			enc, err := cbor.DumpObject(a)
 			if err != nil {
-				return nil, 0, err
+				return nil, nil, err
 			}
 
-			return [][]byte{enc}, 0, nil
+			return [][]byte{enc}, nil, nil
 		},
 	)
 	c, err := NewClient(cni, clientNode.Repo.ClientDealsDatastore())

@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	hamt "gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
-	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,20 +19,8 @@ import (
 )
 
 func setupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
-	r := repo.NewInMemoryRepo()
-
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	chainStore, err := chain.Init(context.Background(), r, bs, cst, consensus.InitGenesis)
-	require.NoError(err)
-
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	require.NoError(err)
-	wallet := wallet.New(backend)
-
-	msgPool := core.NewMessagePool()
-
-	return r, wallet, chainStore, msgPool
+	d := requireCommonDeps(require)
+	return d.repo, d.wallet, d.chainStore, core.NewMessagePool()
 }
 
 func TestSend(t *testing.T) {

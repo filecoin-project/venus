@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/util/convert"
 	"math/big"
 	"math/rand"
 	"strconv"
@@ -36,7 +34,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
 var log = logging.Logger("/fil/storage")
@@ -77,6 +77,7 @@ type storageDeal struct {
 
 // plumbing is the subset of the plumbing API that storage.Miner needs.
 type plumbing interface {
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
@@ -86,7 +87,6 @@ type plumbing interface {
 // are moving off of node and into the plumbing api (see PlumbingAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the plumbing api.
 type node interface {
-	CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) ([][]byte, uint8, error)
 	BlockHeight() (*types.BlockHeight, error)
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
@@ -447,20 +447,9 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	ctx := context.Background()
 
-	rets, code, err := sm.node.CallQueryMethod(ctx, sm.minerAddr, "getSectorCommitments", []byte{}, nil)
+	rets, sig, err := sm.plumbingAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments")
 	if err != nil {
 		log.Errorf("failed to call query method getSectorCommitments: %s", err)
-		return
-	}
-
-	if code != 0 {
-		log.Errorf("non-zero status code from getSectorCommitments")
-		return
-	}
-
-	sig, err := sm.plumbingAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
-	if err != nil {
-		log.Errorf("failed to get signature for method getSectorCommitments: %s", err)
 		return
 	}
 
@@ -534,12 +523,9 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, code, err := sm.node.CallQueryMethod(context.Background(), sm.minerAddr, "getProvingPeriodStart", []byte{}, nil)
+	res, _, err := sm.plumbingAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart")
 	if err != nil {
 		return nil, err
-	}
-	if code != 0 {
-		return nil, fmt.Errorf("exitCode %d != 0", code)
 	}
 
 	return types.NewBlockHeightFromBytes(res[0]), nil

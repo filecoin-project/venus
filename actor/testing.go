@@ -42,6 +42,10 @@ var FakeActorExports = exec.Exports{
 		Params: nil,
 		Return: nil,
 	},
+	"nonZeroExitCode": &exec.FunctionSignature{
+		Params: nil,
+		Return: nil,
+	},
 	"nestedBalance": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
@@ -135,6 +139,11 @@ func (ma *FakeActor) GoodCall(ctx exec.VMContext) (uint8, error) {
 		panic(err.Error())
 	}
 	return 0, nil
+}
+
+// NonZeroExitCode returns a nonzero exit code but no error.
+func (ma *FakeActor) NonZeroExitCode(ctx exec.VMContext) (uint8, error) {
+	return 42, nil
 }
 
 // NestedBalance sents 100 to the given address.

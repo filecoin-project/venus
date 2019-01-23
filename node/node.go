@@ -57,7 +57,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -340,10 +339,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	sigGetter := mthdsig.NewGetter(chainReader)
+	msgQueryer := msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs)
 	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
 	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
 	config := cfg.NewConfig(nc.Repo)
-	plumbingAPI := plumbing.New(sigGetter, msgSender, msgWaiter, config)
+	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
 
 	nd := &Node{
 		blockservice: bservice,
@@ -423,7 +423,7 @@ func (node *Node) Start(ctx context.Context) error {
 		dag.NewDAGService(node.BlockService()),
 		node.Host(),
 		node.Lookup(),
-		node.CallQueryMethod)
+		node.PlumbingAPI.MessageQuery)
 	var err error
 	node.StorageMinerClient, err = storage.NewClient(cni, node.Repo.ClientDealsDatastore())
 	if err != nil {
@@ -783,17 +783,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, retCode, err := node.CallQueryMethod(ctx, minerAddr, "getLastUsedSectorID", []byte{}, nil)
+	rets, methodSignature, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
-	}
-	if retCode != 0 {
-		return 0, errors.New("non-zero status code returned by getLastUsedSectorID")
-	}
-
-	methodSignature, err := node.PlumbingAPI.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to get method signature for getLastUsedSectorID")
 	}
 
 	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
@@ -880,43 +872,6 @@ func (node *Node) NewAddress() (address.Address, error) {
 	return wallet.NewAddress(node.Wallet)
 }
 
-// CallQueryMethod calls a method on an actor using the state of the heaviest
-// tipset. It doesn't make any changes to the state/blockchain. It is useful
-// for interrogating actor state. The caller address is optional; if not
-// provided, an address will be chosen from the node's wallet.
-func (node *Node) CallQueryMethod(ctx context.Context, to address.Address, method string, args []byte, optFrom *address.Address) (_ [][]byte, _ uint8, err error) {
-	ctx = log.Start(ctx, "Node.CallQueryMethod")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
-
-	headTs := node.ChainReader.Head()
-	tsas, err := node.ChainReader.GetTipSetAndState(ctx, headTs.String())
-	if err != nil {
-		return nil, 1, errors.Wrap(err, "failed to retrieve state")
-	}
-	st, err := state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
-	if err != nil {
-		return nil, 1, errors.Wrap(err, "failed to retrieve state")
-	}
-	h, err := headTs.Height()
-	if err != nil {
-		return nil, 1, errors.Wrap(err, "getting base tipset height")
-	}
-
-	fromAddr, err := msg.GetAndMaybeSetDefaultSenderAddress(node.Repo, node.Wallet)
-	if err != nil {
-		return nil, 1, errors.Wrap(err, "failed to retrieve default sender address")
-	}
-
-	if optFrom != nil {
-		fromAddr = *optFrom
-	}
-
-	vms := vm.NewStorageMap(node.Blockstore)
-	return consensus.CallQueryMethod(ctx, st, vms, to, method, args, fromAddr, types.NewBlockHeight(h))
-}
-
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
@@ -984,12 +939,9 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, code, err := node.CallQueryMethod(ctx, miningAddr, "getOwner", nil, nil)
+	res, _, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner")
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to getOwner")
-	}
-	if code != 0 {
-		return address.Address{}, fmt.Errorf("failed to getOwner from the miner: exitCode = %d", code)
 	}
 
 	return address.NewFromBytes(res[0])

@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -229,7 +230,7 @@ type ClientNodeImpl struct {
 	queryFn chainQueryFunc
 }
 
-type chainQueryFunc func(context.Context, address.Address, string, []byte, *address.Address) ([][]byte, uint8, error)
+type chainQueryFunc func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 
 // NewClientNodeImpl constructs a ClientNodeImpl
 func NewClientNodeImpl(ds ipld.DAGService, host host.Host, lookup lookup.PeerLookupService, queryFn chainQueryFunc) *ClientNodeImpl {
@@ -263,7 +264,7 @@ func (cni *ClientNodeImpl) GetAskPrice(ctx context.Context, maddr address.Addres
 		return nil, err
 	}
 
-	ret, _, err := cni.queryFn(ctx, maddr, "getAsk", args, nil)
+	ret, _, err := cni.queryFn(ctx, (address.Address{}), maddr, "getAsk", args)
 	if err != nil {
 		return nil, err
 	}
