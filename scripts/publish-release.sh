@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RELEASE_TAG="${CIRCLE_SHA1:0:16}"
+RELEASE_TAG="${CIRCLE_TAG}"
 
 # make sure we have a token set, api requests won't work otherwise
 if [ -z $GITHUB_TOKEN ]; then
