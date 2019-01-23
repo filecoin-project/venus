@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/iptb/testbed/interfaces"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
+	fatutil "github.com/filecoin-project/go-filecoin/testhelpers/fat/fatutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -46,6 +47,8 @@ type Filecoin struct {
 	// TODO this should be a method on IPTB
 	IsAlve bool
 	ctx    context.Context
+
+	lastCmdOutput testbedi.Output
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
@@ -83,6 +86,10 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 	return nil
 }
 
+func (f *Filecoin) DumpLastOutput(w io.Writer) {
+	fatutil.DumpOutput(w, f.lastCmdOutput)
+}
+
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
 func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	if ctx == nil {
@@ -92,6 +99,8 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if err != nil {
 		return nil, err
 	}
+
+	f.lastCmdOutput = out
 	return out, nil
 }
 
