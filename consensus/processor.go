@@ -289,7 +289,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
 	} else if err == errInsufficientGas || err == errSelfSend || err == errInvalidSignature || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
-	} else if err != nil { // nolint: megacheck
+	} else if err != nil { // nolint: staticcheck
 		// Return the executionError to caller for informational purposes, but otherwise
 		// do nothing. All other vm errors are ok: the state was rolled back
 		// above but we applied the message successfully. This intentionally

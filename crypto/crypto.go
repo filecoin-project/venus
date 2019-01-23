@@ -32,8 +32,8 @@ import (
 )
 
 var ( // nolint: deadcode
-	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16) // nolint: megacheck
-	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))                                                    // nolint: varcheck
+	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16) // nolint: varcheck, staticcheck
+	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))                                                    // nolint: varcheck, staticcheck
 )
 
 // BytesToECDSA creates a private key with the given D value.

@@ -86,7 +86,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 			if !more {
 				return errors.New("wait input channel closed without finding message")
 			}
-			switch raw.(type) {
+			switch raw.(type) { // nolint: staticcheck
 			case error:
 				e := raw.(error)
 				log.Errorf("Waiter.Wait: %s", e)
@@ -110,7 +110,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 					}
 				}
 			default:
-				return fmt.Errorf("Unexpected type in channel: %T", raw)
+				return fmt.Errorf("unexpected type in channel: %T", raw)
 			}
 		}
 	}
