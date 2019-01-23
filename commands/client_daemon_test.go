@@ -19,9 +19,10 @@ func TestListAsks(t *testing.T) {
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 	).Start()
-	defer minerDaemon.ShutdownSuccess()
+	defer minerDaemon.Shutdown()
 
-	minerDaemon.CreateAsk(minerDaemon, fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	minerDaemon.RunSuccess("mining start")
+	minerDaemon.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 
 	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
 	assert.Equal(fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
@@ -43,12 +44,12 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 	).Start()
 	defer clientDaemon.ShutdownSuccess()
 
-	minerDaemon.UpdatePeerID()
 	minerDaemon.RunSuccess("mining", "start")
+	minerDaemon.UpdatePeerID()
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	minerDaemon.CreateAsk(minerDaemon, fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	minerDaemon.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
@@ -81,13 +82,12 @@ func TestDuplicateDeals(t *testing.T) {
 	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()
 
+	miner.RunSuccess("mining start")
 	miner.UpdatePeerID()
 
 	miner.ConnectSuccess(client)
 
-	miner.RunSuccess("mining start")
-
-	miner.CreateAsk(miner, fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
@@ -102,4 +102,46 @@ func TestDuplicateDeals(t *testing.T) {
 		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
 		assert.Equal(expectedError, proposeDealOutput)
 	})
+}
+
+func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	miner1 := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+	).Start()
+	defer miner1.Shutdown()
+
+	miner2 := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		th.DefaultAddress(fixtures.TestAddresses[1]),
+	).Start()
+	defer miner2.Shutdown()
+
+	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
+	defer client.ShutdownSuccess()
+
+	miner1.RunSuccess("mining start")
+	miner1.UpdatePeerID()
+
+	miner1.ConnectSuccess(client)
+	miner2.ConnectSuccess(client)
+
+	miner2Addr := miner2.CreateMinerAddr(miner1, fixtures.TestAddresses[1])
+	miner2.UpdatePeerID()
+
+	miner2.RunSuccess("mining start")
+
+	miner1.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner2.CreateAsk(miner2Addr.String(), fixtures.TestAddresses[1], "20", "10")
+
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+
+	firstDeal := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	assert.Contains(firstDeal, "accepted")
+	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
+	assert.Contains(secondDeal, "accepted")
 }

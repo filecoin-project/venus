@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"os"
 	"os/exec"
@@ -468,41 +467,28 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--price", "0", "--limit", "0", "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--price", "0", "--limit", "100", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(err)
 		require.NotEqual(addr, address.Address{})
 		minerAddr = addr
 		wg.Done()
 	}()
-	peer.MineAndPropagate(time.Second, td)
 	wg.Wait()
 
 	return minerAddr
 }
 
-// CreateAsk adds an ask from the
-func (td *TestDaemon) CreateAsk(peer *TestDaemon, minerAddr string, fromAddr string, price string, expiry string) *big.Int {
-	var askID big.Int
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, "--price", "0", "--limit", "300", minerAddr, price, expiry)
-		askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
-		require.NoError(td.test, err)
-		assert.NotNil(td.test, askCid)
-		rcpt := td.WaitForMessageRequireSuccess(askCid)
-		askID.SetBytes(rcpt.Return[0])
-		wg.Done()
-	}()
-	peer.MineAndPropagate(time.Second, td)
-	wg.Wait()
-
-	return &askID
+// CreateAsk creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain
+func (td *TestDaemon) CreateAsk(minerAddr string, fromAddr string, price string, expiry string) {
+	ask := td.RunSuccess("miner", "add-ask", "--from", fromAddr, "--price", "0", "--limit", "300", minerAddr, price, expiry)
+	askCid, err := cid.Parse(strings.Trim(ask.ReadStdout(), "\n"))
+	require.NoError(td.test, err)
+	assert.NotNil(td.test, askCid)
+	td.WaitForMessageRequireSuccess(askCid)
 }
 
-// UpdatePeerID updates a miner's peer ID
+// UpdatePeerID updates a currently mining miner's peer ID
 func (td *TestDaemon) UpdatePeerID() {
 	require := require.New(td.test)
 	assert := assert.New(td.test)
@@ -516,7 +502,6 @@ func (td *TestDaemon) UpdatePeerID() {
 	require.NoError(err)
 	assert.NotNil(updateCid)
 
-	td.RunSuccess("mining once")
 	td.WaitForMessageRequireSuccess(updateCid)
 }
 
