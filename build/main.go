@@ -247,8 +247,7 @@ func lint(packages ...string) {
 	slowLinters := []string{
 		"--deadline=10m",
 		"--enable=unconvert",
-		"--enable=gosimple",
-		"--enable=megacheck",
+		"--enable=staticcheck",
 		"--enable=varcheck",
 		"--enable=structcheck",
 		"--enable=deadcode",
