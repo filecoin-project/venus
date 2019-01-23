@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/commands"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	iptbtester "github.com/filecoin-project/go-filecoin/testhelpers/iptbtester"
 )
@@ -25,10 +26,6 @@ func init() {
 	if _, err := os.Stat(faucetBinary); os.IsNotExist(err) {
 		panic("faucet not found, run `go run build/*.go build` to fix")
 	}
-}
-
-type addressResult struct {
-	Address string
 }
 
 func TestFaucetSendFunds(t *testing.T) {
@@ -79,13 +76,13 @@ func TestFaucetSendFunds(t *testing.T) {
 	defer faucetcancel()
 
 	// Get address for target node
-	var targetAddr addressResult
+	var targetAddr commands.AddressLsResult
 	node1.MustRunCmdJSON(ctx, &targetAddr, "go-filecoin", "wallet", "addrs", "ls")
 
 	// Start Tests
 
 	// Make request for funds
-	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr.Address)
+	msgcid := MustSendFundsFaucet(t, "localhost:9797", targetAddr.Addresses[0])
 
 	// Wait around for message to appear
 	msgctx, msgcancel := context.WithTimeout(context.Background(), blockTime*3)
@@ -94,7 +91,7 @@ func TestFaucetSendFunds(t *testing.T) {
 
 	// Read wallet balance
 	var balanceStr string
-	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Address)
+	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0])
 	balance, err := strconv.ParseInt(balanceStr, 10, 64)
 	require.NoError(err)
 

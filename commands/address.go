@@ -38,6 +38,11 @@ type addressResult struct {
 	Address string
 }
 
+// AddressLsResult is the result of running the address list command.
+type AddressLsResult struct {
+	Addresses []string
+}
+
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		addr, err := GetAPI(env).Address().Addrs().New(req.Context)
@@ -62,18 +67,23 @@ var addrsLsCmd = &cmds.Command{
 			return err
 		}
 
+		var alr AddressLsResult
 		for _, addr := range addrs {
-			if err := re.Emit(&addressResult{addr.String()}); err != nil {
-				return err
-			}
+			alr.Addresses = append(alr.Addresses, addr.String())
 		}
-		return nil
+
+		return re.Emit(&alr)
 	},
-	Type: &addressResult{},
+	Type: &AddressLsResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr *addressResult) error {
-			_, err := fmt.Fprintln(w, addr.Address)
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
+			for _, addr := range addrs.Addresses {
+				_, err := fmt.Fprintln(w, addr)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}),
 	},
 }
@@ -137,14 +147,30 @@ var walletImportCmd = &cmds.Command{
 			return err
 		}
 
-		for _, a := range addrs {
-			if err := re.Emit(a); err != nil {
-				return err
-			}
+		var alr AddressLsResult
+		for _, addr := range addrs {
+			alr.Addresses = append(alr.Addresses, addr.String())
 		}
-		return nil
+
+		return re.Emit(&alr)
 	},
-	Type: address.Address{},
+	Type: &AddressLsResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addrs *AddressLsResult) error {
+			for _, addr := range addrs.Addresses {
+				_, err := fmt.Fprintln(w, addr)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+	},
+}
+
+// WalletExportResult is the resut of running the wallet export command.
+type WalletExportResult struct {
+	KeyInfo []*types.KeyInfo
 }
 
 var walletExportCmd = &cmds.Command{
@@ -165,12 +191,26 @@ var walletExportCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		for _, ki := range kis {
-			if err := re.Emit(ki); err != nil {
-				return err
-			}
-		}
-		return nil
+
+		var klr WalletExportResult
+		klr.KeyInfo = append(klr.KeyInfo, kis...)
+
+		return re.Emit(klr)
 	},
-	Type: types.KeyInfo{},
+	Type: &WalletExportResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *WalletExportResult) error {
+			for _, k := range klr.KeyInfo {
+				a, err := k.Address()
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%x\nCurve:\t\t%s\n\n", a.String(), k.PrivateKey, k.Curve)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+	},
 }
