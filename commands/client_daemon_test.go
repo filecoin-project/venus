@@ -2,15 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"strings"
-	"sync"
-	"testing"
-	"time"
-
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func TestListAsks(t *testing.T) {
@@ -31,15 +28,14 @@ func TestListAsks(t *testing.T) {
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
-	t.Skip("Temporarily skipped to be fixed in subsequent refactor work")
-
+	assert := assert.New(t)
 	minerDaemon := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 		th.AutoSealInterval("1"),
 	).Start()
-	defer minerDaemon.ShutdownSuccess()
+	defer minerDaemon.Shutdown()
 
 	clientDaemon := th.NewDaemon(t,
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
@@ -68,19 +64,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		for {
-			queryDealOutput := clientDaemon.RunSuccess("client", "query-storage-deal", dealCid).ReadStdout()
-			if strings.Contains(queryDealOutput, "posted") {
-				wg.Done()
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
-	th.WaitTimeout(&wg, 120*time.Second)
+	assert.NotEmpty(clientDaemon.RunSuccess("client", "query-storage-deal", dealCid).ReadStdout())
 }
 
 func TestDuplicateDeals(t *testing.T) {
