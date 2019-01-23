@@ -44,22 +44,24 @@ func startNodes(t *testing.T, nds []*Node) {
 	}
 }
 
-func TestBlockPropTwoNodes(t *testing.T) {
+func TestBlockPropsManyNodes(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
 
-	minerAddr, nodes := makeNodes(ctx, t, assert)
+	numNodes := 4
+	minerAddr, nodes := makeNodes(ctx, t, assert, numNodes)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 
 	minerNode := nodes[0]
-	clientNode := nodes[1]
 
-	connect(t, minerNode, clientNode)
+	connect(t, minerNode, nodes[1])
+	connect(t, nodes[1], nodes[2])
+	connect(t, nodes[2], nodes[3])
 
-	baseTS := nodes[0].ChainReader.Head()
+	baseTS := minerNode.ChainReader.Head()
 	require.NotNil(t, baseTS)
 	proof := testhelpers.MakeRandomPoSTProofForTest()
 
@@ -74,30 +76,32 @@ func TestBlockPropTwoNodes(t *testing.T) {
 	}
 
 	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 75)
+	time.Sleep(time.Millisecond * 300)
 
-	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk))
+	assert.NoError(minerNode.AddNewBlock(ctx, nextBlk))
 
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].ChainReader.Head()
-		assert.NotNil(t, otherHead)
-		equal = otherHead.ToSlice()[0].Cid().Equals(nextBlk.Cid())
-		if equal {
-			break
+		for j := 1; j < numNodes; j++ {
+			otherHead := nodes[j].ChainReader.Head()
+			assert.NotNil(t, otherHead)
+			equal = otherHead.ToSlice()[0].Cid().Equals(nextBlk.Cid())
+			if equal {
+				break
+			}
+			time.Sleep(time.Millisecond * 20)
 		}
-		time.Sleep(time.Millisecond * 20)
 	}
 
 	assert.True(equal, "failed to sync chains")
+
 }
 
 func TestChainSync(t *testing.T) {
-	//t.Parallel()
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	minerAddr, nodes := makeNodes(ctx, t, assert)
+	minerAddr, nodes := makeNodes(ctx, t, assert, 2)
 	startNodes(t, nodes)
 	defer stopNodes(nodes)
 
@@ -135,7 +139,8 @@ func (r *zeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr a
 	return nil
 }
 
-func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions) (address.Address, []*Node) {
+// makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
+func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
 	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
@@ -146,7 +151,15 @@ func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.MinerDealsDatastore(), minerNode.Repo.DealsAwaitingSealDatastore(), minerNode.PlumbingAPI)
 	assertions.NoError(err)
-	clientNode := MakeNodeWithChainSeed(t, seed, configOpts)
-	nodes := []*Node{minerNode, clientNode}
+
+	nodes := []*Node{minerNode}
+
+	nodeLimit := 1
+	if numNodes > 2 {
+		nodeLimit = numNodes
+	}
+	for i := 0; i < nodeLimit; i++ {
+		nodes = append(nodes, MakeNodeWithChainSeed(t, seed, configOpts))
+	}
 	return mineraddr, nodes
 }
