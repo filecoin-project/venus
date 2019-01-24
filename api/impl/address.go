@@ -140,9 +140,9 @@ func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
 		switch err {
 		case io.EOF:
 			return kinfos, nil
+		case nil: // noop
 		default:
 			return nil, err
-		case nil:
 		}
 
 		var ki types.KeyInfo

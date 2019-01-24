@@ -106,7 +106,7 @@ func (f *Filecoin) RunCmdJSONWithStdin(ctx context.Context, stdin io.Reader, v i
 
 	// check command exit code
 	if out.ExitCode() > 0 {
-		return fmt.Errorf("Filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
 	}
 
 	dec := json.NewDecoder(out.Stdout())
@@ -126,7 +126,7 @@ func (f *Filecoin) RunCmdLDJSONWithStdin(ctx context.Context, stdin io.Reader, a
 
 	// check command exit code
 	if out.ExitCode() > 0 {
-		return nil, fmt.Errorf("Filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+		return nil, fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
 	}
 
 	return json.NewDecoder(out.Stdout()), nil

@@ -82,10 +82,9 @@ func (h *Handler) handleNewStream(s net.Stream) {
 		log.Error("bad genesis, disconnecting from peer")
 		s.Conn().Close() // nolint: errcheck
 		return
+	case nil: // ok, noop
 	default:
 		log.Error(err)
-	case nil:
-		// ok
 	}
 }
 
