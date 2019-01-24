@@ -267,7 +267,7 @@ Start with issues labelled [E-good-first-issue](https://github.com/filecoin-proj
 Continued adventures are found in label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted) (but not Good First Issue). These are thornier but important problems that we'd love to have help solving.
 
 To pick up an issue:
-* Assign it to yourself
+* Comment on the issue asking for it to be assinged to you. If you are already a repo collaborator you can assign it to yourself.
 * Ask for any clarifications via the issue, pinging in the [community chat](https://github.com/filecoin-project/community#chat) on matrix/slack if needed
 * Liberally file issues for anything that is unclear, missing, or not working when it comes to process, documentation, or features. Filing issues helps us answer your questions and also make it easier for others who come after you. Win-win :)
 
