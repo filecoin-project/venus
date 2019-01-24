@@ -313,7 +313,6 @@ workflows:
   version: 2
   test_all:
     jobs:
-      - build_macos
       - build_linux
       - build_docker_img:
           requires:
@@ -322,6 +321,19 @@ workflows:
             branches:
               only:
                 - master
+
+  build_nightly_osx:
+    triggers:
+      - schedule:
+          # every day at 6:00 UTC
+          cron: "0 6 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_macos
+
   build_nightly_cluster:
     triggers:
       - schedule:
