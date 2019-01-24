@@ -262,7 +262,7 @@ Presently (Q4'18) the minimum bar is:
   message because someone might merge for you.
 
 ## Good First Issues
-* Take a look at issues labelled [E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue). They are intended to have well-structured problem statements, pointers to the right areas of the code base, and clear acceptance criteria. 
+Start with issues labelled [E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue). They are intended to have well-structured problem statements, pointers to the right areas of the code base, and clear acceptance criteria. 
 
 Continued adventures are found in label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-helped-wanted) (but not Good First Issue). These are thornier but important problems that we'd love to have help solving.
 
