@@ -49,7 +49,17 @@ Filecoin can build and run on most Linux and MacOS systems. Windows is not yet s
   - go-filecoin also needs `pkg-config` to handle generating linker flags
   	- Linux devs are good to go
   	- Mac OS devs can install through brew `brew install pkg-config`
-  - You'll also need [Rust](https://www.rust-lang.org/) (v1.29.0 or later) to build the `rust-proofs` submodule (optional).
+  - If you want to build rust-proofs from source (instead of using the 
+    precompiled libfilecoin_proofs library), you'll need 
+    [Rust](https://www.rust-lang.org/) (v1.29.0 or later).
+  - Due to our use of cgo, you'll need a C compiler to build go-filecoin whether 
+    you're using a prebuilt libfilecoin_proofs (our cgo-compatible rust-proofs
+    library) or building it yourself from source. If you want to use GCC (e.g. 
+    `export CC=gcc`) when building go-filecoin, you will need to use version 
+    7.4.0 or higher. 
+  - You must have libclang on you linker search path in order to build 
+    rust-proofs from source. You can satisfy this requirement in most
+    environments by installing Clang using your favorite package manager.
 
 #### Clone Repository
 
