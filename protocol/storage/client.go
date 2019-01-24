@@ -175,10 +175,10 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *DealResponse) er
 		return fmt.Errorf("deal rejected: %s", resp.Message)
 	case Failed:
 		return fmt.Errorf("deal failed: %s", resp.Message)
-	default:
-		return fmt.Errorf("invalid proposal response: %s", resp.State)
 	case Accepted:
 		return nil
+	default:
+		return fmt.Errorf("invalid proposal response: %s", resp.State)
 	}
 }
 
