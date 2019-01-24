@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// Output represent the output of a command ran
+// Output represent the output of a command run
 type Output struct {
 	Args     []string
 	ExitCode int
