@@ -19,7 +19,7 @@ func TestListAsks(t *testing.T) {
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 	).Start()
-	defer minerDaemon.Shutdown()
+	defer minerDaemon.ShutdownSuccess()
 
 	minerDaemon.RunSuccess("mining start")
 	minerDaemon.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
@@ -36,7 +36,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 		th.AutoSealInterval("1"),
 	).Start()
-	defer minerDaemon.Shutdown()
+	defer minerDaemon.ShutdownSuccess()
 
 	clientDaemon := th.NewDaemon(t,
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
@@ -77,7 +77,7 @@ func TestDuplicateDeals(t *testing.T) {
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 	).Start()
-	defer miner.Shutdown()
+	defer miner.ShutdownSuccess()
 
 	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()
@@ -113,13 +113,13 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 	).Start()
-	defer miner1.Shutdown()
+	defer miner1.ShutdownSuccess()
 
 	miner2 := th.NewDaemon(t,
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
 		th.DefaultAddress(fixtures.TestAddresses[1]),
 	).Start()
-	defer miner2.Shutdown()
+	defer miner2.ShutdownSuccess()
 
 	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
 	defer client.ShutdownSuccess()

@@ -293,7 +293,7 @@ func TestMinerSetPrice(t *testing.T) {
 	assert := assert.New(t)
 
 	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0]), th.DefaultAddress(fixtures.TestAddresses[0])).Start()
-	defer d1.Shutdown()
+	defer d1.ShutdownSuccess()
 
 	d1.RunSuccess("mining", "start")
 
