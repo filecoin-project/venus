@@ -11,14 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	net "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
-	crypto "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
-	libp2p "gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p"
+	"gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
+	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
+	"gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -126,6 +127,9 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	expHeight := types.Uint64(444)
 	expTs := mustMakeTipset(t, expHeight)
 
+	addr, err := address.NewFromString(fixtures.TestAddresses[0])
+	require.NoError(err)
+
 	// The handle method will run the assertions for the test
 	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(s net.Stream) {
 		defer s.Close()
@@ -137,6 +141,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		assert.Equal(expTs.String(), hb.Head)
 		assert.Equal(uint64(444), hb.Height)
 		assert.Equal("BobHoblaw", hb.Nickname)
+		assert.Equal(addr, hb.MinerAddress)
 		cancel()
 	})
 
@@ -151,6 +156,9 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		func() consensus.TipSet {
 			return expTs
 		},
+		WithMinerAddressGetter(func() address.Address {
+			return addr
+		}),
 	)
 
 	require.NoError(hbs.Connect(ctx))

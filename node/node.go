@@ -461,7 +461,18 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Bootstrapper.Start(context.Background())
 	}
 
-	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head)
+	mag := func() address.Address {
+		addr, err := node.MiningAddress()
+		// the only error MiningAddress() returns is ErrNoMinerAddress.
+		// if there is no configured miner address, simply send a zero
+		// address across the wire.
+		if err != nil {
+			return address.Address{}
+		}
+
+		return addr
+	}
+	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
 	go hbs.Start(ctx)
 	return nil
 }
