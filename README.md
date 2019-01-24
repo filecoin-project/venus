@@ -11,6 +11,7 @@
 - [What is Filecoin?](#what-is-filecoin)
 - [Install](#install)
   - [System Requirements](#system-requirements)
+  - [Install from Release Binary](#install-from-release-binary)
   - [Install from Source](#install-from-source)
     - [Install Go and Rust](#install-go-and-rust)
     - [Clone Repository](#clone-repository)
@@ -38,6 +39,11 @@ Filecoin is a decentralized storage network that turns the world’s unused stor
   [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started).
 - To **build** `go-filecoin` from source for development, keep following this README.
 
+### Install from Release Binary
+
+  - We host prebuilt binaries for Linux and OSX at [Releases](https://github.com/filecoin-project/go-filecoin/releases/). Log in with Github.
+  - Follow the remaining steps in [Start running Filecoin](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started#start-running-filecoin)
+
 ### System Requirements
 Filecoin can build and run on most Linux and MacOS systems. Windows is not yet supported.
 
@@ -49,10 +55,10 @@ Filecoin can build and run on most Linux and MacOS systems. Windows is not yet s
   - go-filecoin also needs `pkg-config` to handle generating linker flags
   	- Linux devs are good to go
   	- Mac OS devs can install through brew `brew install pkg-config`
-  - If you want to build rust-proofs from source (instead of using the 
-    precompiled libfilecoin_proofs library), you'll need 
+  - If you want to build rust-proofs from source (instead of using the
+    precompiled libfilecoin_proofs library), you'll need
     [Rust](https://www.rust-lang.org/) (v1.29.0 or later).
-  - Due to our use of cgo, you'll need a C compiler to build go-filecoin whether 
+  - Due to our use of cgo, you'll need a C compiler to build go-filecoin whether
     you're using a prebuilt libfilecoin_proofs (our cgo-compatible rust-proofs
     library) or building it yourself from source. If you want to use GCC (e.g.
     `export CC=gcc`) when building go-filecoin, you will need to use version
@@ -70,14 +76,14 @@ git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.c
 
 #### Install Dependencies
 
-`go-filecoin` depends on some proofs code written in Rust, housed in the 
+`go-filecoin` depends on some proofs code written in Rust, housed in the
 [rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. If you're not
 planning to edit the proofs, you can fetch pre-compiled assets for your build rather than compiling them locally.
 
 To do so, set these two environment variables before fetching dependencies:
   - `GITHUB_TOKEN` - a personal access token generated on GitHub
   - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS=1`
-  
+
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
 
@@ -125,7 +131,7 @@ Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be pass
 
 #### Manage Submodules Manually (optional)
 
-If you're editing `rust-proofs`, you need to manage the submodule manually. If you're *not* editing `rust-proofs` you can relax: 
+If you're editing `rust-proofs`, you need to manage the submodule manually. If you're *not* editing `rust-proofs` you can relax:
 `deps` build (above) will do it for you. You may need to run `deps` again after pulling master if the submodule is
 updated by someone else (it will appear modified in `git status`).
 
@@ -179,7 +185,7 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 ## Networks
 
 See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/Networks) in the wiki for a description of
-developer Filecoin networks and instructions for connecting your nodes to them. 
+developer Filecoin networks and instructions for connecting your nodes to them.
 
 #
 
