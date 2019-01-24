@@ -8,12 +8,13 @@ import (
 	"time"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	net "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
+	"gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
 	pstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 )
@@ -36,6 +37,9 @@ type Heartbeat struct {
 	// TODO: add when implemented
 	// Syncing is `true` iff the node is currently syncing its chain with the network.
 	// Syncing bool
+
+	// Address of this node's active miner. Can be empty - will return the zero address
+	MinerAddress address.Address
 }
 
 // HeartbeatService is responsible for sending heartbeats.
@@ -46,17 +50,41 @@ type HeartbeatService struct {
 	// A function that returns the heaviest tipset
 	HeadGetter func() consensus.TipSet
 
+	// A function that returns the miner's address
+	MinerAddressGetter func() address.Address
+
 	streamMu sync.Mutex
 	stream   net.Stream
 }
 
-// NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() consensus.TipSet) *HeartbeatService {
-	return &HeartbeatService{
-		Host:       h,
-		Config:     hbc,
-		HeadGetter: hg,
+// HeartbeatServiceOption is the type of the heartbeat service's functional options.
+type HeartbeatServiceOption func(service *HeartbeatService)
+
+// WithMinerAddressGetter returns an option that can be used to set the miner address getter.
+func WithMinerAddressGetter(ag func() address.Address) HeartbeatServiceOption {
+	return func(service *HeartbeatService) {
+		service.MinerAddressGetter = ag
 	}
+}
+
+func defaultMinerAddressGetter() address.Address {
+	return address.Address{}
+}
+
+// NewHeartbeatService returns a HeartbeatService
+func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() consensus.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
+	srv := &HeartbeatService{
+		Host:               h,
+		Config:             hbc,
+		HeadGetter:         hg,
+		MinerAddressGetter: defaultMinerAddressGetter,
+	}
+
+	for _, option := range options {
+		option(srv)
+	}
+
+	return srv
 }
 
 // Stream returns the HeartbeatService stream. Safe for concurrent access.
@@ -153,10 +181,12 @@ func (hbs *HeartbeatService) Beat() Heartbeat {
 	if err != nil {
 		log.Warningf("heartbeat service failed to get chain height: %s", err)
 	}
+	addr := hbs.MinerAddressGetter()
 	return Heartbeat{
-		Head:     tipset,
-		Height:   height,
-		Nickname: nick,
+		Head:         tipset,
+		Height:       height,
+		Nickname:     nick,
+		MinerAddress: addr,
 	}
 }
 
