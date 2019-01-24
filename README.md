@@ -45,7 +45,7 @@ Filecoin can build and run on most Linux and MacOS systems. Windows is not yet s
 
 #### Install Go and Rust
 
-  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.11.2. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.  
+  - The build process for go-filecoin requires at least [Go](https://golang.org/doc/install) version 1.11.2. If you're setting up Go for the first time, we recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
   - go-filecoin also needs `pkg-config` to handle generating linker flags
   	- Linux devs are good to go
   	- Mac OS devs can install through brew `brew install pkg-config`
@@ -54,10 +54,10 @@ Filecoin can build and run on most Linux and MacOS systems. Windows is not yet s
     [Rust](https://www.rust-lang.org/) (v1.29.0 or later).
   - Due to our use of cgo, you'll need a C compiler to build go-filecoin whether 
     you're using a prebuilt libfilecoin_proofs (our cgo-compatible rust-proofs
-    library) or building it yourself from source. If you want to use GCC (e.g. 
-    `export CC=gcc`) when building go-filecoin, you will need to use version 
-    7.4.0 or higher. 
-  - You must have libclang on you linker search path in order to build 
+    library) or building it yourself from source. If you want to use GCC (e.g.
+    `export CC=gcc`) when building go-filecoin, you will need to use version
+    7.4.0 or higher.
+  - You must have libclang on you linker search path in order to build
     rust-proofs from source. You can satisfy this requirement in most
     environments by installing Clang using your favorite package manager.
 
@@ -160,7 +160,7 @@ To see a full list of commands, run `go-filecoin --help`.
 
 The [`localfilecoin` IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
 
-## Contributing 
+## Contributing
 
 We ❤️ all our contributors; this project wouldn’t be what it is without you! If you want to help out, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -170,7 +170,7 @@ Here are a few places to get help and connect with the Filecoin community:
 - [Documentation Wiki](https://github.com/filecoin-project/go-filecoin/wiki) — for tutorials, troubleshooting, and FAQs
 - #fil-dev on [Filecoin Project Slack](https://filecoinproject.slack.com/messages/CEHHJNJS3/) or [Matrix/Riot](https://riot.im/app/#/room/#fil-dev:matrix.org) - for live help and some dev discussions
 - [Filecoin Community Forum](https://discuss.filecoin.io) - for talking about design decisions, use cases, implementation advice, and longer-running conversations
-- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md). 
+- [GitHub issues](https://github.com/filecoin-project/go-filecoin/issues) - for now, use only to report bugs, and view or contribute to ongoing development. PRs welcome! Please see [our contributing guidelines](CONTRIBUTING.md).
 
 Looking for even more? See the full rundown at [filecoin-project/community](https://github.com/filecoin-project/community).
 
