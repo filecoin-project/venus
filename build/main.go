@@ -139,6 +139,7 @@ func deps() {
 		cmd("go get github.com/jstemmer/go-junit-report"),
 		cmd("go get github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-proofs.sh"),
+		cmd("./scripts/install-bls-signatures.sh"),
 	}
 
 	cmds = append(cmds, hydrateParamCache()...)
@@ -160,6 +161,7 @@ func smartdeps() {
 		cmd("gx-go rewrite"),
 		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-proofs.sh"),
+		cmd("./scripts/install-bls-signatures.sh"),
 	}
 
 	cmds = append(cmds, hydrateParamCache()...)
