@@ -18,6 +18,7 @@ document. Filecoin, including go-filecoin and all related modules, follows the
 * [Profiling](#profiling)
 * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 * [Pull Requests](#pull-requests)
+* [Good First Issues](#good-first-issues)
 * [Gotchas](#gotchas)
 
 ## Developer Do's and Don'ts
@@ -260,8 +261,15 @@ Presently (Q4'18) the minimum bar is:
   the commit message, squash ahead of time and provide a nice commit
   message because someone might merge for you.
 
-## Where should I start?
-* Take a look at issues labelled [E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue) or [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-helped-wanted).
+## Good First Issues
+* Take a look at issues labelled [E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue). They are intended to have well-structured problem statements, pointers to the right areas of the code base, and clear acceptance criteria. 
+
+Continued adventures are found in label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-helped-wanted) (but not Good First Issue). These are thornier but important problems that we'd love to have help solving.
+
+To pick up an issue:
+* Assign it to yourself
+* Ask for any clarifications via the issue, pinging in the [community chat](https://github.com/filecoin-project/community#chat) on matrix/slack if needed
+* Liberally file issues for anything that is unclear, missing, or not working when it comes to process, documentation, or features. Filing issues helps us answer your questions and also make it easier for others who come after you. Win-win :)
 
 ## Gotchas
 * Equality
