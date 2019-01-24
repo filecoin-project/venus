@@ -64,7 +64,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	defer cancel()
 
 	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx)
+	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
 
 	// Merge historical and new block Channels.
 	go func() {
@@ -91,8 +91,8 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 				e := raw.(error)
 				log.Errorf("Waiter.Wait: %s", e)
 				return e
-			case consensus.TipSet:
-				ts := raw.(consensus.TipSet)
+			case types.TipSet:
+				ts := raw.(types.TipSet)
 				for _, blk := range ts {
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
@@ -120,7 +120,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // input tipset.  This can differ from the message's receipt as stored in its
 // parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts consensus.TipSet) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	blks := ts.ToSlice()
@@ -152,7 +152,18 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts conse
 	if err != nil {
 		return nil, err
 	}
-	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts)
+
+	tsHeight, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	tsBlockHeight := types.NewBlockHeight(tsHeight)
+	ancestors, err := chain.GetRecentAncestors(ctx, tsas.TipSet, w.chainReader, tsBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, ancestors)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +188,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts conse
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func msgIndexOfTipSet(msgCid cid.Cid, ts consensus.TipSet, fails types.SortedCidSet) (int, error) {
+func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet) (int, error) {
 	blks := ts.ToSlice()
 	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet

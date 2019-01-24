@@ -331,7 +331,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	// create new processor that doesn't reward and doesn't validate
 	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
 
-	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Address{}, types.NewBlockHeight(0))
+	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Address{}, types.NewBlockHeight(0), nil)
 	if err != nil {
 		return nil, err
 	}

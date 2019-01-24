@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service
@@ -48,7 +48,7 @@ type HeartbeatService struct {
 	Config *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
-	HeadGetter func() consensus.TipSet
+	HeadGetter func() types.TipSet
 
 	// A function that returns the miner's address
 	MinerAddressGetter func() address.Address
@@ -72,7 +72,7 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() consensus.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() types.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
 		Config:             hbc,

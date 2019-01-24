@@ -614,14 +614,14 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 
 }
 
-func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head consensus.TipSet) {
+func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet) {
 	for {
 		select {
 		case ts, ok := <-node.HeaviestTipSetCh:
 			if !ok {
 				return
 			}
-			newHead, ok := ts.(consensus.TipSet)
+			newHead, ok := ts.(types.TipSet)
 			if !ok {
 				log.Error("non-tipset published on heaviest tipset channel")
 				continue
@@ -772,10 +772,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 			}
 			return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 		}
-		getState := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
+		getState := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
 			return getStateFromKey(ctx, ts.String())
 		}
-		getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, error) {
+		getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
 			parent, err := ts.Parents()
 			if err != nil {
 				return uint64(0), err
@@ -790,8 +790,11 @@ func (node *Node) StartMining(ctx context.Context) error {
 			}
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
+		getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+		}
 		processor := consensus.NewDefaultProcessor()
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, processor, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
+		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
 

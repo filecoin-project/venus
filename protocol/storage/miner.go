@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -502,7 +501,7 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 
 // OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
 // It is used to check if we are in a new proving period and need to trigger PoSt submission.
-func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
+func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	ctx := context.Background()
 
 	rets, sig, err := sm.porcelainAPI.MessageQuery(

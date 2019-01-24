@@ -45,7 +45,16 @@ func TestVMContextStorage(t *testing.T) {
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(err)
-	vmCtx := NewVMContext(nil, to, msg, cstate, vms, NewGasTracker(), types.NewBlockHeight(0))
+	vmCtxParams := NewContextParams{
+		From:        nil,
+		To:          to,
+		Message:     msg,
+		State:       cstate,
+		StorageMap:  vms,
+		GasTracker:  NewGasTracker(),
+		BlockHeight: types.NewBlockHeight(0),
+	}
+	vmCtx := NewVMContext(vmCtxParams)
 
 	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
 	assert.NoError(err)
@@ -56,8 +65,8 @@ func TestVMContextStorage(t *testing.T) {
 	// make sure we can read it back
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(err)
-
-	storage, err := NewVMContext(nil, toActorBack, msg, cstate, vms, NewGasTracker(), types.NewBlockHeight(0)).ReadStorage()
+	vmCtxParams.To = toActorBack
+	storage, err := NewVMContext(vmCtxParams).ReadStorage()
 	assert.NoError(err)
 	assert.Equal(storage, node.RawData())
 }
@@ -77,6 +86,16 @@ func TestVMContextSendFailures(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
 
+	vmCtxParams := NewContextParams{
+		From:        actor1,
+		To:          actor2,
+		Message:     newMsg(),
+		State:       tree,
+		StorageMap:  vms,
+		GasTracker:  NewGasTracker(),
+		BlockHeight: types.NewBlockHeight(0),
+	}
+
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -88,7 +107,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -114,7 +133,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -144,8 +163,8 @@ func TestVMContextSendFailures(t *testing.T) {
 				return nil, nil
 			},
 		}
-
-		ctx := NewVMContext(actor1, actor2, msg, tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		vmCtxParams.Message = msg
+		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
@@ -176,7 +195,8 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		vmCtxParams.Message = newMsg()
+		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -212,7 +232,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -228,7 +248,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		vmctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
+		vmctx := NewVMContext(vmCtxParams)
 		addr, err := vmctx.AddressForNewActor()
 
 		require.NoError(err)
@@ -259,10 +279,17 @@ func TestVMContextIsAccountActor(t *testing.T) {
 
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)
-	ctx := NewVMContext(accountActor, nil, nil, nil, vms, NewGasTracker(), nil)
+	vmCtxParams := NewContextParams{
+		From:       accountActor,
+		StorageMap: vms,
+		GasTracker: NewGasTracker(),
+	}
+
+	ctx := NewVMContext(vmCtxParams)
 	assert.True(ctx.IsFromAccountActor())
 
 	nonAccountActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
-	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, NewGasTracker(), nil)
+	vmCtxParams.From = nonAccountActor
+	ctx = NewVMContext(vmCtxParams)
 	assert.False(ctx.IsFromAccountActor())
 }

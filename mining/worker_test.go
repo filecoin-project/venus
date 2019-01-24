@@ -32,13 +32,16 @@ func Test_Mine(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
+	}
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
 	}
 
 	// Success case. TODO: this case isn't testing much.  Testing w.Mine
 	// further needs a lot more attention.
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
 
 	outCh := make(chan Output)
 	doSomeWorkCalled := false
@@ -50,7 +53,7 @@ func Test_Mine(t *testing.T) {
 	cancel()
 	// Block generation fails.
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
+	worker = NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
@@ -62,11 +65,11 @@ func Test_Mine(t *testing.T) {
 
 	// Sent empty tipset
 	ctx, cancel = context.WithCancel(context.Background())
-	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
+	worker = NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
 	outCh = make(chan Output)
 	doSomeWorkCalled = false
 	worker.createPoST = func() { doSomeWorkCalled = true }
-	input := consensus.TipSet{}
+	input := types.TipSet{}
 	go worker.Mine(ctx, input, 0, outCh)
 	r = <-outCh
 	assert.Error(r.Err)
@@ -162,7 +165,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
-	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0))
+	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
 
 	assert.Len(res.PermanentFailures, 2)
 	assert.Contains(res.PermanentFailures, smsg3)
@@ -184,10 +187,13 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	ctx := context.Background()
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, th.NewTestProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -221,10 +227,13 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -278,10 +287,13 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
 
-	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
@@ -314,10 +326,13 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
-	getStateTree := func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	assert.Len(pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -342,8 +357,10 @@ func TestGenerateError(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 
 	st, pool, addrs, cst, bs := sharedSetup(t)
-
-	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+	worker := NewDefaultWorker(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, consensus.NewDefaultProcessor(), &th.TestView{}, bs, cst, addrs[3], th.BlockTimeTest)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
@@ -383,7 +400,7 @@ func (st *StateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
-func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, error) {
+func getWeightTest(c context.Context, ts types.TipSet) (uint64, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
 		return uint64(0), err
@@ -391,8 +408,8 @@ func getWeightTest(c context.Context, ts consensus.TipSet) (uint64, error) {
 	return w + uint64(len(ts))*consensus.ECV, nil
 }
 
-func makeExplodingGetStateTree(st state.Tree) func(context.Context, consensus.TipSet) (state.Tree, error) {
-	return func(c context.Context, ts consensus.TipSet) (state.Tree, error) {
+func makeExplodingGetStateTree(st state.Tree) func(context.Context, types.TipSet) (state.Tree, error) {
+	return func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		stt := WrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (cid.Cid, error) {
 			return cid.Undef, errors.New("boom no flush")

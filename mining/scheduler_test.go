@@ -5,19 +5,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestUtils(t *testing.T) (*assert.Assertions, *require.Assertions, consensus.TipSet) {
+func newTestUtils(t *testing.T) (*assert.Assertions, *require.Assertions, types.TipSet) {
 	assert := assert.New(t)
 	require := require.New(t)
 	baseBlock := &types.Block{StateRoot: types.SomeCid()}
 
-	ts := consensus.TipSet{baseBlock.Cid().String(): baseBlock}
+	ts := types.TipSet{baseBlock.Cid().String(): baseBlock}
 	return assert, require, ts
 }
 
@@ -38,14 +37,14 @@ func TestSchedulerPassesValue(t *testing.T) {
 	assert, _, ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(ctx, c) // individual run ctx splits off from mining ctx
 		assert.Equal(inTS, ts)
 		outCh <- Output{}
 		return true
 	}
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
@@ -60,11 +59,11 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 	assert, _, _ := newTestUtils(t)
 	ctx := context.Background()
 
-	nothingMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	nothingMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		outCh <- Output{}
 		return false
 	}
-	nilHeadFunc := func() consensus.TipSet {
+	nilHeadFunc := func() types.TipSet {
 		return nil
 	}
 	worker := NewTestWorkerWithDeps(nothingMine)
@@ -83,7 +82,7 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	ts2 := th.RequireNewTipSet(require, blk2)
 
 	checkNullBlocks := 0
-	checkNullBlockMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	checkNullBlockMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		select {
 		case <-ctx.Done():
 			return false
@@ -93,8 +92,8 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 		outCh <- Output{}
 		return false
 	}
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
 	worker := NewTestWorkerWithDeps(checkNullBlockMine)
@@ -118,18 +117,18 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 func TestSchedulerPassesManyValues(t *testing.T) {
 	assert, require, ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	var checkTS consensus.TipSet
+	var checkTS types.TipSet
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts2 := th.RequireNewTipSet(require, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
 	ts3 := th.RequireNewTipSet(require, blk3)
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
 
-	checkValsMine := func(c context.Context, ts consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	checkValsMine := func(c context.Context, ts types.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(ts, checkTS)
 		outCh <- Output{}
 		return false
@@ -160,11 +159,11 @@ func TestSchedulerCollect(t *testing.T) {
 	ts2 := th.RequireNewTipSet(require, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts3 := th.RequireNewTipSet(require, blk3)
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(inTS, ts3)
 		outCh <- Output{}
 		return false
@@ -192,13 +191,13 @@ func TestCannotInterruptMiner(t *testing.T) {
 	blk1 := ts1.ToSlice()[0]
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 0}
 	ts2 := consensus.RequireNewTipSet(require, blk2)
-	blockingMine := func(c context.Context, ts consensus.TipSet, nBC int, outCh chan<- Output) {
+	blockingMine := func(c context.Context, ts types.TipSet, nBC int, outCh chan<- Output) {
 		time.Sleep(th.BlockTimeTest)
 		assert.Equal(ts, ts1)
 		outCh <- Output{NewBlock: blk1}
 	}
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
 	worker := NewTestWorkerWithDeps(blockingMine)
@@ -218,11 +217,11 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	// Test that canceling the mining context stops mining, cancels
 	// the inner context, and closes the output channel.
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
-	shouldCancelMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	shouldCancelMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		mineTimer := time.NewTimer(th.BlockTimeTest)
 		select {
 		case <-mineTimer.C:
@@ -243,9 +242,9 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	assert, require, ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	var checkTS consensus.TipSet
-	var head consensus.TipSet
-	headFunc := func() consensus.TipSet {
+	var checkTS types.TipSet
+	var head types.TipSet
+	headFunc := func() types.TipSet {
 		return head
 	}
 	// make tipsets with progressively higher heights
@@ -254,7 +253,7 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
 	ts3 := th.RequireNewTipSet(require, blk3)
 
-	checkValsMine := func(c context.Context, inTS consensus.TipSet, nBC int, outCh chan<- Output) bool {
+	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(inTS, checkTS)
 		outCh <- Output{}
 		return false

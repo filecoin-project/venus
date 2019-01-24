@@ -44,21 +44,25 @@ func NewOutput(b *types.Block, e error) Output {
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool
+	Mine(runCtx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, consensus.TipSet) (state.Tree, error)
+type GetStateTree func(context.Context, types.TipSet) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, consensus.TipSet) (uint64, error)
+type GetWeight func(context.Context, types.TipSet) (uint64, error)
+
+// GetAncestors is a function that returns the necessary ancestor chain to
+// process the input tipset.
+type GetAncestors func(context.Context, types.TipSet, *types.BlockHeight) ([]types.TipSet, error)
 
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
 // DefaultWorker runs a mining job.
@@ -69,6 +73,7 @@ type DefaultWorker struct {
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
+	getAncestors GetAncestors
 
 	// core filecoin things
 	messagePool *core.MessagePool
@@ -80,17 +85,18 @@ type DefaultWorker struct {
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
-	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, processor, powerTable, bs, cst, miner, bt, func() {})
+func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, getAncestors GetAncestors, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
+	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, getAncestors, processor, powerTable, bs, cst, miner, bt, func() {})
 	w.createPoST = w.fakeCreatePoST
 	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, getAncestors GetAncestors, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree: getStateTree,
 		getWeight:    getWeight,
+		getAncestors: getAncestors,
 		messagePool:  messagePool,
 		processor:    processor,
 		powerTable:   powerTable,
@@ -109,7 +115,7 @@ type DoSomeWorkFunc func()
 
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)

@@ -16,6 +16,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -43,21 +44,31 @@ var (
 	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
 )
 
+// TODO none of these parameters are chosen correctly
+// with respect to analysis under a security model:
+// https://github.com/filecoin-project/go-filecoin/issues/1846
+
 // ECV is the constant V defined in the EC spec.
-// TODO: the value of V needs motivation at the protocol design level.
 const ECV uint64 = 10
 
 // ECPrM is the power ratio magnitude defined in the EC spec.
-// TODO: the value of this constant needs motivation at the protocol level.
 const ECPrM uint64 = 100
+
+// LookBackParameter is the protocol parameter defining how many blocks in the
+// past to look back to sample randomness values.
+const LookBackParameter = 3
+
+// AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
+// to process all state transitions.
+var AncestorRoundsNeeded = miner.ProvingPeriodBlocks.Add(miner.GracePeriodBlocks)
 
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessBlock processes all messages in a block.
-	ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block) ([]*ApplicationResult, error)
+	ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // Expected implements expected consensus.
@@ -101,13 +112,13 @@ func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Pro
 // to be valid. It operates by validating each block and further checking that
 // this tipset contains only blocks with the same heights, parent weights,
 // and parent sets.
-func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (TipSet, error) {
+func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (types.TipSet, error) {
 	for _, blk := range blks {
 		if err := c.validateBlockStructure(ctx, blk); err != nil {
 			return nil, err
 		}
 	}
-	return NewTipSet(blks...)
+	return types.NewTipSet(blks...)
 }
 
 // ValidateBlockStructure verifies that this block, on its own, is structurally and
@@ -128,7 +139,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
-func (c *Expected) Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint64, error) {
+func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(c.genesisCid) {
@@ -174,7 +185,7 @@ func (c *Expected) Weight(ctx context.Context, ts TipSet, pSt state.Tree) (uint6
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *Expected) IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tree) (bool, error) {
+func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt state.Tree) (bool, error) {
 	aW, err := c.Weight(ctx, a, aSt)
 	if err != nil {
 		return false, err
@@ -220,8 +231,8 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b TipSet, aSt, bSt state.Tr
 // starting state and a tipset to a new state.  It errors if the tipset was not
 // mined according to the EC rules, or if running the messages in the tipset
 // results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs TipSet, pSt state.Tree) (state.Tree, error) {
-	err := c.validateMining(ctx, pSt, ts, parentTs)
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, pSt state.Tree) (state.Tree, error) {
+	err := c.validateMining(ctx, pSt, ts, ancestors[0])
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +251,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs T
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err := c.runMessages(ctx, pSt, vms, ts)
+	st, err := c.runMessages(ctx, pSt, vms, ts, ancestors)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +270,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts TipSet, parentTs T
 //      * the block ticket fails the power check, i.e. is not a winning ticket
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts TipSet, parentTs TipSet) error {
+func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
 	for _, blk := range ts.ToSlice() {
 		parentHeight, err := parentTs.Height()
 		if err != nil {
@@ -335,7 +346,7 @@ func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower ui
 //   TODO -- in general this won't work with only the base tipset.
 //     We'll potentially need some chain manager utils, similar to
 //     the State function, to sample further back in the chain.
-func CreateChallengeSeed(parents TipSet, nullBlkCount uint64) (proofs.PoStChallengeSeed, error) {
+func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (proofs.PoStChallengeSeed, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
 		return proofs.PoStChallengeSeed{}, err
@@ -370,7 +381,7 @@ func CreateTicket(proof proofs.PoStProof, minerAddr address.Address) []byte {
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: order blocks in the tipset by ticket
@@ -386,7 +397,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk)
+		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, ancestors)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
@@ -410,7 +421,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts)
+	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
 	}

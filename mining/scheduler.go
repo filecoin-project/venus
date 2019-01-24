@@ -39,7 +39,7 @@ import (
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Scheduler is the mining interface consumers use. When you Start() the
@@ -65,7 +65,7 @@ type timingScheduler struct {
 	mineDelay time.Duration
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
-	pollHeadFunc func() consensus.TipSet
+	pollHeadFunc func() types.TipSet
 
 	isStarted bool
 }
@@ -97,7 +97,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	go func() {
 		defer doneWg.Done()
 		nullBlkCount := 0
-		var prevBase consensus.TipSet
+		var prevBase types.TipSet
 		var prevWon bool
 		for {
 			select {
@@ -150,7 +150,7 @@ func (s *timingScheduler) IsStarted() bool {
 // nextNullBlkCount determines how many null blocks should be mined on top of
 // the current base tipset, currBase, given the previous base, prevBase and the
 // previous number of null blocks mined on the previous base, prevNullBlkCount.
-func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase consensus.TipSet) int {
+func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int {
 	// We haven't mined on this base before, start with 0 null blocks.
 	if prevBase == nil {
 		return 0
@@ -164,7 +164,7 @@ func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase consensus.TipSet)
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, md time.Duration, f func() consensus.TipSet) Scheduler {
+func NewScheduler(w Worker, md time.Duration, f func() types.TipSet) Scheduler {
 	return &timingScheduler{worker: w, mineDelay: md, pollHeadFunc: f}
 }
 
@@ -174,8 +174,8 @@ func NewScheduler(w Worker, md time.Duration, f func() consensus.TipSet) Schedul
 // It makes a polling function that simply returns the provided tipset.
 // Then the scheduler takes this polling function, and the worker and the
 // mining duration
-func MineOnce(ctx context.Context, w Worker, md time.Duration, ts consensus.TipSet) (Output, error) {
-	pollHeadFunc := func() consensus.TipSet {
+func MineOnce(ctx context.Context, w Worker, md time.Duration, ts types.TipSet) (Output, error) {
+	pollHeadFunc := func() types.TipSet {
 		return ts
 	}
 	s := NewScheduler(w, md, pollHeadFunc)

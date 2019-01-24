@@ -38,15 +38,15 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) consensus.TipSet {
-	ts, err := consensus.NewTipSet(blks...)
+func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.TipSet {
+	ts, err := types.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
 }
 
 // RequireTipSetAdd adds a block to the provided tipset and requires that this
 // does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts consensus.TipSet) {
+func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
 	err := ts.AddBlock(blk)
 	require.NoError(err)
 }
@@ -77,7 +77,7 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet consensus.TipSet, height uint64, minerAddr address.Address) *types.Block {
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, height uint64, minerAddr address.Address) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
 	ticket := consensus.CreateTicket(postProof, minerAddr)
 
@@ -170,7 +170,7 @@ func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Mess
 
 func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
 	bh *types.BlockHeight, minerAddr address.Address) (*consensus.ApplicationResult, error) {
-	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerAddr, bh)
+	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerAddr, bh, nil)
 
 	if len(amr.Results) > 0 {
 		return amr.Results[0], err

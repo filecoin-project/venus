@@ -1,16 +1,14 @@
-package consensus
+package types
 
 import (
 	"bytes"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Tip is what expected consensus needs from a Block. For now it *is* a
 // Block.
-type Tip = types.Block
+type Tip = Block
 
 // TipSet is a set of Tips, blocks at the same height with the same parent set,
 // keyed by Cid string.
@@ -23,7 +21,7 @@ var (
 
 // NewTipSet returns a TipSet wrapping the input blocks.
 // PRECONDITION: all blocks are the same height and have the same parent set.
-func NewTipSet(blks ...*types.Block) (TipSet, error) {
+func NewTipSet(blks ...*Block) (TipSet, error) {
 	if len(blks) == 0 {
 		return nil, errors.New("Cannot create tipset: no blocks")
 	}
@@ -38,7 +36,7 @@ func NewTipSet(blks ...*types.Block) (TipSet, error) {
 
 // AddBlock adds the provided block to this tipset.
 // PRECONDITION: this block has the same height parent set as other members of ts.
-func (ts TipSet) AddBlock(b *types.Block) error {
+func (ts TipSet) AddBlock(b *Block) error {
 	if len(ts) == 0 {
 		id := b.Cid()
 		ts[id.String()] = b
@@ -97,8 +95,8 @@ func (ts TipSet) Equals(ts2 TipSet) bool {
 
 // ToSortedCidSet returns a SortedCidSet containing the Cids in the
 // TipSet.
-func (ts TipSet) ToSortedCidSet() types.SortedCidSet {
-	s := types.SortedCidSet{}
+func (ts TipSet) ToSortedCidSet() SortedCidSet {
+	s := SortedCidSet{}
 	for _, b := range ts {
 		s.Add(b.Cid())
 	}
@@ -107,8 +105,8 @@ func (ts TipSet) ToSortedCidSet() types.SortedCidSet {
 
 // ToSlice returns the slice of *Block containing the tipset's blocks.
 // Sorted.
-func (ts TipSet) ToSlice() []*types.Block {
-	sl := make([]*types.Block, len(ts))
+func (ts TipSet) ToSlice() []*Block {
+	sl := make([]*Block, len(ts))
 	var i int
 	for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
 		sl[i] = ts[it.Value().String()]
@@ -118,7 +116,7 @@ func (ts TipSet) ToSlice() []*types.Block {
 }
 
 // MinTicket returns the smallest ticket of all blocks in the tipset.
-func (ts TipSet) MinTicket() (types.Signature, error) {
+func (ts TipSet) MinTicket() (Signature, error) {
 	if len(ts) == 0 {
 		return nil, ErrEmptyTipSet
 	}
@@ -141,9 +139,9 @@ func (ts TipSet) Height() (uint64, error) {
 }
 
 // Parents returns the parents of a tipset.
-func (ts TipSet) Parents() (types.SortedCidSet, error) {
+func (ts TipSet) Parents() (SortedCidSet, error) {
 	if len(ts) == 0 {
-		return types.SortedCidSet{}, ErrEmptyTipSet
+		return SortedCidSet{}, ErrEmptyTipSet
 	}
 	return ts.ToSlice()[0].Parents, nil
 }

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
@@ -74,8 +73,8 @@ func NewMessagePool() *MessagePool {
 
 // getParentTips returns the parent tipset of the provided tipset
 // TODO msgPool should have access to a chain store that can just look this up...
-func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts consensus.TipSet) (consensus.TipSet, error) {
-	newTipSet := consensus.TipSet{}
+func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts types.TipSet) (types.TipSet, error) {
+	newTipSet := types.TipSet{}
 	parents, err := ts.Parents()
 	if err != nil {
 		return nil, err
@@ -97,7 +96,7 @@ func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts consensu
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet consensus.TipSet, height uint64) ([]*types.SignedMessage, consensus.TipSet, error) {
+func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet types.TipSet, height uint64) ([]*types.SignedMessage, types.TipSet, error) {
 	var msgs []*types.SignedMessage
 	h, err := curTipSet.Height()
 	if err != nil {
@@ -117,7 +116,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 		default:
 			nextTipSet, err := getParentTipSet(ctx, store, curTipSet)
 			if err != nil {
-				return []*types.SignedMessage{}, consensus.TipSet{}, err
+				return []*types.SignedMessage{}, types.TipSet{}, err
 			}
 			curTipSet = nextTipSet
 			h, err = curTipSet.Height()
@@ -139,7 +138,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new consensus.TipSet) error {
+func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new types.TipSet) error {
 	// Strategy: walk head-of-chain pointers old and new back until they are at the same
 	// height, then walk back in lockstep to find the common ancesetor.
 

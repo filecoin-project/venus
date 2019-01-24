@@ -255,7 +255,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(genCid, chain.GenesisCid())
 }
 
-func assertSetHead(assert *assert.Assertions, chain Store, ts consensus.TipSet) {
+func assertSetHead(assert *assert.Assertions, chain Store, ts types.TipSet) {
 	ctx := context.Background()
 	err := chain.SetHead(ctx, ts)
 	assert.NoError(err)
@@ -347,7 +347,7 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(assert, chain, link2)
 	assertSetHead(assert, chain, link1)
 	assertSetHead(assert, chain, genTS)
-	heads := []consensus.TipSet{genTS, link1, link2, link3, link4, link3,
+	heads := []types.TipSet{genTS, link1, link2, link3, link4, link3,
 		link2, link1, genTS}
 
 	// Heads arrive in the expected order
@@ -376,13 +376,13 @@ func TestBlockHistory(t *testing.T) {
 	assertSetHead(assert, chain, genTS) // set the genesis block
 
 	assertSetHead(assert, chain, link4)
-	historyCh := chain.BlockHistory(ctx)
+	historyCh := chain.BlockHistory(ctx, chain.Head())
 
-	assert.Equal(link4, ((<-historyCh).(consensus.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(consensus.TipSet)))
-	assert.Equal(link2, ((<-historyCh).(consensus.TipSet)))
-	assert.Equal(link1, ((<-historyCh).(consensus.TipSet)))
-	assert.Equal(genTS, ((<-historyCh).(consensus.TipSet)))
+	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
+	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
+	assert.Equal(link2, ((<-historyCh).(types.TipSet)))
+	assert.Equal(link1, ((<-historyCh).(types.TipSet)))
+	assert.Equal(genTS, ((<-historyCh).(types.TipSet)))
 
 	ts, more := <-historyCh
 	assert.Equal(nil, ts)     // Genesis block has no parent.
@@ -399,10 +399,10 @@ func TestBlockHistoryCancel(t *testing.T) {
 	assertSetHead(assert, chain, genTS) // set the genesis block
 
 	assertSetHead(assert, chain, link4)
-	historyCh := chain.BlockHistory(ctx)
+	historyCh := chain.BlockHistory(ctx, chain.Head())
 
-	assert.Equal(link4, ((<-historyCh).(consensus.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(consensus.TipSet)))
+	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
+	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
 	cancel()
 	time.Sleep(10 * time.Millisecond)
 
@@ -433,11 +433,11 @@ func TestUnknownBlockRetrievalError(t *testing.T) {
 
 	// parBlock is not known to the chain, which causes the timeout
 	var innerErr error
-	for raw := range chainStore.BlockHistory(ctx) {
+	for raw := range chainStore.BlockHistory(ctx, chainStore.Head()) {
 		switch v := raw.(type) {
 		case error:
 			innerErr = v
-		case consensus.TipSet:
+		case types.TipSet:
 			// ignore
 		default:
 			require.FailNow("invalid element in ls", v)

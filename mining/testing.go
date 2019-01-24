@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -40,12 +41,12 @@ func (s *MockScheduler) IsStarted() bool {
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFunc func(context.Context, consensus.TipSet, int, chan<- Output) bool
+	WorkFunc func(context.Context, types.TipSet, int, chan<- Output) bool
 }
 
 // Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
-func (w *TestWorker) Mine(ctx context.Context, ts consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func (w *TestWorker) Mine(ctx context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
 	if w.WorkFunc == nil {
 		panic("must set MutableTestWorker's WorkFunc before calling Work")
 	}
@@ -54,7 +55,7 @@ func (w *TestWorker) Mine(ctx context.Context, ts consensus.TipSet, nullBlkCount
 
 // NewTestWorkerWithDeps creates a worker that calls the provided input
 // function when Mine() is called.
-func NewTestWorkerWithDeps(f func(context.Context, consensus.TipSet, int, chan<- Output) bool) *TestWorker {
+func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, int, chan<- Output) bool) *TestWorker {
 	return &TestWorker{
 		WorkFunc: f,
 	}
@@ -62,8 +63,8 @@ func NewTestWorkerWithDeps(f func(context.Context, consensus.TipSet, int, chan<-
 
 // MakeEchoMine returns a test worker function that itself returns the first
 // block of the input tipset as output.
-func MakeEchoMine(require *require.Assertions) func(context.Context, consensus.TipSet, int, chan<- Output) bool {
-	echoMine := func(c context.Context, ts consensus.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func MakeEchoMine(require *require.Assertions) func(context.Context, types.TipSet, int, chan<- Output) bool {
+	echoMine := func(c context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
 		require.NotEqual(0, len(ts))
 		b := ts.ToSlice()[0]
 		select {

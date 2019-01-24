@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -27,10 +26,10 @@ func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []cid.Cid, h uint64) {
 }
 
 type mockHeaviestGetter struct {
-	heaviest consensus.TipSet
+	heaviest types.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() consensus.TipSet {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() types.TipSet {
 	return mhg.heaviest
 }
 
