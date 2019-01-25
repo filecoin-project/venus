@@ -19,7 +19,7 @@ func init() {
 
 // MeteredMessage contains a message and its associated gas price and gas limit
 type MeteredMessage struct {
-	Message           `json:"message"`
+	Message  `json:"message"`
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
 }

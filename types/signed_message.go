@@ -26,8 +26,8 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	MeteredMessage      `json:"meteredMessage"`
-	Signature Signature `json:"signature"`
+	MeteredMessage `json:"meteredMessage"`
+	Signature      Signature `json:"signature"`
 }
 
 // Unmarshal a SignedMessage from the given bytes.
