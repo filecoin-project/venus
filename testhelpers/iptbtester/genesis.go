@@ -91,7 +91,7 @@ func MustImportGenesisMiner(tn *TestNode, gi *GenesisInfo) {
 	tn.MustRunCmdJSON(ctx, &id, "go-filecoin", "id")
 
 	// Update miner
-	tn.MustRunCmd(ctx, "go-filecoin", "miner", "update-peerid", "--from="+gi.WalletAddress, "--price=0", "--limit=0", gi.MinerAddress, id.ID)
+	tn.MustRunCmd(ctx, "go-filecoin", "miner", "update-peerid", "--from="+gi.WalletAddress, "--price=0", "--limit=300", gi.MinerAddress, id.ID)
 }
 
 // MustInitWithGenesis init TestNode, passing in the `--genesisfile` flag, by calling MustInit

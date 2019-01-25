@@ -25,7 +25,7 @@ func TestMpool(t *testing.T) {
 
 		d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "0",
+			"--price", "0", "--limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
 		)
 
@@ -55,7 +55,7 @@ func TestMpool(t *testing.T) {
 
 		d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "0",
+			"--price", "0", "--limit", "300",
 			"--value=10", fixtures.TestAddresses[1],
 		)
 
@@ -63,7 +63,7 @@ func TestMpool(t *testing.T) {
 
 		d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "0",
+			"--price", "0", "--limit", "300",
 			"--value=10", fixtures.TestAddresses[1],
 		)
 
@@ -71,7 +71,7 @@ func TestMpool(t *testing.T) {
 
 		d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "0",
+			"--price", "0", "--limit", "300",
 			"--value=10", fixtures.TestAddresses[1],
 		)
 
