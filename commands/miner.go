@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"io"
 	"math/big"
 	"strconv"
@@ -26,6 +27,7 @@ var minerCmd = &cmds.Command{
 		"owner":         minerOwnerCmd,
 		"pledge":        minerPledgeCmd,
 		"power":         minerPowerCmd,
+		"set-price":     minerSetPriceCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
 	},
 }
@@ -120,6 +122,84 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 }
 
+var minerSetPriceCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Set the minimum price for storage",
+		ShortDescription: `Sets the mining.minimumPrice in config and creates a new ask for the given price.
+This command waits for the ask to be mined.`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("storageprice", true, false, "The new price of storage per sector in FIL"),
+		cmdkit.StringArg("expiry", true, false, "How long this ask is valid for in blocks"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("from", "Address to send from"),
+		cmdkit.StringOption("miner", "The address of the miner owning the ask"),
+		priceOption,
+		limitOption,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		price, ok := types.NewAttoFILFromFILString(req.Arguments[0])
+		if !ok {
+			return ErrInvalidPrice
+		}
+
+		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			return err
+		}
+
+		var minerAddr address.Address
+		if req.Options["miner"] != nil {
+			minerAddr, err = address.NewFromString(req.Options["miner"].(string))
+			if err != nil {
+				return errors.Wrap(err, "miner must be an address")
+			}
+		}
+
+		expiry, ok := big.NewInt(0).SetString(req.Arguments[1], 10)
+		if !ok {
+			return fmt.Errorf("expiry must be a valid integer")
+		}
+
+		gasPrice, gasLimit, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		res, err := porcelain.MinerSetPrice(
+			req.Context,
+			GetPlumbingAPI(env),
+			fromAddr,
+			minerAddr,
+			gasPrice,
+			gasLimit,
+			price,
+			expiry)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(res)
+	},
+	Type: porcelain.MinerSetPriceResponse{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerSetPriceResponse) error {
+
+			_, err := fmt.Fprintf(w, `Set price for miner %s to %s.
+Published ask, cid: %s.
+Ask confirmed on chain in block: %s.
+`,
+				res.MinerAddr.String(),
+				res.Price.String(),
+				res.AddAskCid.String(),
+				res.BlockCid.String(),
+			)
+			return err
+		}),
+	},
+}
+
 var minerUpdatePeerIDCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "Change the libp2p identity that a miner is operating",
@@ -172,7 +252,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 
 var minerAddAskCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Add an ask to the storage market",
+		Tagline: "DEPRECATED: Use set-price",
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The address of the miner owning the ask"),

@@ -34,7 +34,7 @@ func GetAPI(env cmds.Environment) api.API {
 	return ce.API()
 }
 
-// GetPlumbingAPI returns the api2.Filecoin interface from the environment.
+// GetPlumbingAPI returns the plumbing.API interface from the environment.
 func GetPlumbingAPI(env cmds.Environment) *plumbing.API {
 	ce := env.(*Env)
 	return ce.plumbingAPI
