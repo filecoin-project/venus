@@ -42,8 +42,7 @@ function free_port {
 
 function import_private_key {
   ./go-filecoin wallet import ./fixtures/"$1".key \
-    --repodir="$2" \
-    | jq -r ""
+    --repodir="$2"
 }
 
 function init_local_daemon {
