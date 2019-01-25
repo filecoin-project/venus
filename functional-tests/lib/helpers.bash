@@ -136,7 +136,7 @@ function wait_for_message_in_chain_by_method_and_sender {
     __hodl=""
     for blk in $__chain
     do
-        __hodl=$(echo "$blk" | jq ".[].messages[].message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
+        __hodl=$(echo "$blk" | jq ".[].messages[].meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
         if [ ! -z "$__hodl" ]; then
           break
         fi
