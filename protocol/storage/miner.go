@@ -63,7 +63,7 @@ type Miner struct {
 	postInProcessLk sync.Mutex
 	postInProcess   *types.BlockHeight
 
-	dealsAwaitingSeal   *dealsAwaitingSealStruct
+	dealsAwaitingSeal *dealsAwaitingSealStruct
 
 	plumbingAPI plumbing
 	node        node
