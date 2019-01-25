@@ -696,7 +696,7 @@ func getFileSize(ctx context.Context, c cid.Cid, dserv ipld.DAGService) (uint64,
 
 func (sm *Miner) loadDeals() error {
 	res, err := sm.dealsDs.Query(query.Query{
-		Prefix: minerDatastorePrefix,
+		Prefix: "/" + minerDatastorePrefix,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to query deals from datastore")

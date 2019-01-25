@@ -283,7 +283,7 @@ func (cni *ClientNodeImpl) GetAskPrice(ctx context.Context, maddr address.Addres
 
 func (smc *Client) loadDeals() error {
 	res, err := smc.dealsDs.Query(query.Query{
-		Prefix: clientDatastorePrefix,
+		Prefix: "/" + clientDatastorePrefix,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to query deals from datastore")
