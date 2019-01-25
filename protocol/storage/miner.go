@@ -47,9 +47,8 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 const submitPostGasPrice = 0
 const submitPostGasLimit = 100000000000
 
-const dealsNamespace = "deals"
-const minerNamespace = "miner"
-const dealsAwatingSealNamespace = "dealsAwaitingSeal"
+const minerDatastorePrefix = "miner"
+const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
 // Miner represents a storage miner.
 type Miner struct {
@@ -368,7 +367,7 @@ func (sm *Miner) loadDealsAwaitingSeal() error {
 		FailedSectors:     make(map[uint64]string),
 	}
 
-	key := datastore.KeyWithNamespaces([]string{dealsNamespace, dealsAwatingSealNamespace})
+	key := datastore.KeyWithNamespaces([]string{dealsAwatingSealDatastorePrefix})
 	result, notFound := sm.dealsDs.Get(key)
 	if notFound == nil {
 		if err := json.Unmarshal(result, &sm.dealsAwaitingSeal); err != nil {
@@ -384,7 +383,7 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 	if err != nil {
 		return errors.Wrap(err, "Could not marshal dealsAwaitingSeal")
 	}
-	key := datastore.KeyWithNamespaces([]string{dealsNamespace, dealsAwatingSealNamespace})
+	key := datastore.KeyWithNamespaces([]string{dealsAwatingSealDatastorePrefix})
 	err = sm.dealsDs.Put(key, marshalledDealsAwaitingSeal)
 	if err != nil {
 		return errors.Wrap(err, "could not save deal awaiting seal record to disk, in-memory deals differ from persisted deals!")
@@ -697,7 +696,7 @@ func getFileSize(ctx context.Context, c cid.Cid, dserv ipld.DAGService) (uint64,
 
 func (sm *Miner) loadDeals() error {
 	res, err := sm.dealsDs.Query(query.Query{
-		Prefix: "deals/miner",
+		Prefix: minerDatastorePrefix,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to query deals from datastore")
@@ -721,7 +720,7 @@ func (sm *Miner) saveDeal(proposalCid cid.Cid) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not marshal storageDeal")
 	}
-	key := datastore.KeyWithNamespaces([]string{dealsNamespace, minerNamespace, proposalCid.String()})
+	key := datastore.KeyWithNamespaces([]string{minerDatastorePrefix, proposalCid.String()})
 	err = sm.dealsDs.Put(key, marshalledDeal)
 	if err != nil {
 		return errors.Wrap(err, "could not save client storage deal")
