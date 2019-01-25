@@ -607,7 +607,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 		return
 	}
 	if len(faults) != 0 {
-		log.Errorf("some faults when generating PoSt: %v", faults)
+		log.Warningf("some faults when generating PoSt: %v", faults)
 		// TODO: proper fault handling
 	}
 

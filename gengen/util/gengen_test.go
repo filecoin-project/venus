@@ -42,7 +42,7 @@ func TestGenGenLoading(t *testing.T) {
 	assert.NoError(fi.Close())
 
 	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-	defer td.Shutdown()
+	defer td.ShutdownSuccess()
 
 	o := td.Run("actor", "ls").AssertSuccess()
 
