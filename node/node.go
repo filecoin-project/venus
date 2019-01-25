@@ -9,17 +9,20 @@ import (
 	"sync"
 	"time"
 
+	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	dht "gx/ipfs/QmNoNExMdWrYSPZDiJJTVmxSh6uKLN26xYVzbLzBLedRcv/go-libp2p-kad-dht"
 	dhtopts "gx/ipfs/QmNoNExMdWrYSPZDiJJTVmxSh6uKLN26xYVzbLzBLedRcv/go-libp2p-kad-dht/opts"
 	"gx/ipfs/QmP2g3VxmC7g7fyRJDj1VJ72KHZbJ9UW24YjSWEj1XTb4H/go-ipfs-exchange-interface"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	autonatsvc "gx/ipfs/QmRmMbeY5QC5iMsuW16wchtFt8wmYTv2suWb8t9MV8dsxm/go-libp2p-autonat-svc"
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	dag "gx/ipfs/QmTQdH4848iTVCJmKXYyRiK72HufWTLYQQ8iN3JaQ8K1Hq/go-merkledag"
 	routing "gx/ipfs/QmTiRqrF5zkdZyrdsL5qndG1UbeWi8k8N2pYxCtXWrahR2/go-libp2p-routing"
 	"gx/ipfs/QmVRxA4J3UPQpw74dLrQ6NJkfysCA1H4GU28gVpXQt9zMU/go-libp2p-pubsub"
 	offroute "gx/ipfs/QmVZ6cQXHoTQja4oo9GhhHZi7dThi4x98mRKgGtKnTy37u/go-ipfs-routing/offline"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	circuit "gx/ipfs/QmWuMW6UKZMJo9bFFDwnjg8tW3AtKisMHHrXEutQdmJ19N/go-libp2p-circuit"
 	libp2ppeer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
@@ -166,6 +169,7 @@ type Config struct {
 	Verifier    proofs.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
+	IsRelay     bool
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -175,6 +179,14 @@ type ConfigOpt func(*Config) error
 func OfflineMode(offlineMode bool) ConfigOpt {
 	return func(c *Config) error {
 		c.OfflineMode = offlineMode
+		return nil
+	}
+}
+
+// IsRelay configures node to act as a libp2p relay.
+func IsRelay() ConfigOpt {
+	return func(c *Config) error {
+		c.IsRelay = true
 		return nil
 	}
 }
@@ -248,6 +260,57 @@ func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 	return c, nil
 }
 
+// buildHost determines if we are publically dialable.  If so use public
+// address, if not configure node to announce relay address.
+func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.IpfsRouting, error)) (host.Host, error) {
+	// Node must build a host acting as a libp2p relay.  Additionally it
+	// runs the autoNAT service which allows other nodes to check for their
+	// own dialability by having this node attempt to dial them.
+	makeDHTRightType := func(h host.Host) (routing.PeerRouting, error) {
+		return makeDHT(h)
+	}
+
+	if nc.IsRelay {
+		cfg := nc.Repo.Config()
+		publicAddr, err := ma.NewMultiaddr(cfg.Swarm.PublicRelayAddress)
+		if err != nil {
+			return nil, err
+		}
+		publicAddrFactory := func(lc *libp2p.Config) error {
+			lc.AddrsFactory = func(addrs []ma.Multiaddr) []ma.Multiaddr {
+				if cfg.Swarm.PublicRelayAddress == "" {
+					return addrs
+				}
+				return append(addrs, publicAddr)
+			}
+			return nil
+		}
+		relayHost, err := libp2p.New(
+			ctx,
+			libp2p.EnableRelay(circuit.OptHop),
+			libp2p.EnableAutoRelay(),
+			libp2p.Routing(makeDHTRightType),
+			publicAddrFactory,
+			libp2p.ChainOptions(nc.Libp2pOpts...),
+		)
+		if err != nil {
+			return nil, err
+		}
+		// Set up autoNATService as a streamhandler on the host.
+		_, err = autonatsvc.NewAutoNATService(ctx, relayHost)
+		if err != nil {
+			return nil, err
+		}
+		return relayHost, nil
+	}
+	return libp2p.New(
+		ctx,
+		libp2p.EnableAutoRelay(),
+		libp2p.Routing(makeDHTRightType),
+		libp2p.ChainOptions(nc.Libp2pOpts...),
+	)
+}
+
 // Build instantiates a filecoin Node from the settings specified in the config.
 func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if nc.Repo == nil {
@@ -258,36 +321,36 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	validator := blankValidator{}
 
-	var innerHost host.Host
+	var peerHost host.Host
 	var router routing.IpfsRouting
 
 	if !nc.OfflineMode {
-		h, err := libp2p.New(ctx, libp2p.DisableRelay(), libp2p.ChainOptions(nc.Libp2pOpts...))
+		makeDHT := func(h host.Host) (routing.IpfsRouting, error) {
+			r, err := dht.New(
+				ctx,
+				h,
+				dhtopts.Datastore(nc.Repo.Datastore()),
+				dhtopts.NamespacedValidator("v", validator),
+				dhtopts.Protocols(filecoinDHTProtocol),
+			)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to setup routing")
+			}
+			router = r
+			return r, err
+		}
+		var err error
+		peerHost, err = nc.buildHost(ctx, makeDHT)
 		if err != nil {
 			return nil, err
 		}
-		r, err := dht.New(
-			ctx, h,
-			dhtopts.Datastore(nc.Repo.Datastore()),
-			dhtopts.NamespacedValidator("v", validator),
-			dhtopts.Protocols(filecoinDHTProtocol),
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to setup routing")
-		}
-
-		innerHost = h
-		router = r
 	} else {
-		innerHost = noopLibP2PHost{}
 		router = offroute.NewOfflineRouter(nc.Repo.Datastore(), validator)
+		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
 	}
 
 	// set up pinger
-	pinger := ping.NewPingService(innerHost)
-
-	// use the DHT for routing information
-	peerHost := rhost.Wrap(innerHost, router)
+	pinger := ping.NewPingService(peerHost)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)

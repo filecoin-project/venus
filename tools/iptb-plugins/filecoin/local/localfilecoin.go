@@ -133,10 +133,6 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	lcfg := icfg.(*config.Config)
 
-	if err := lcfg.Set("bootstrap.addresses", "[]"); err != nil {
-		return nil, err
-	}
-
 	if err := lcfg.Set("api.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func TestPing2Nodes(t *testing.T) {
 	defer d2.ShutdownSuccess()
 
 	t.Log("[failure] not connected")
-	d1.RunFail("failed to dial",
+	d1.RunFail("failed to find any peer in table",
 		"ping", "--count=2", d2.GetID(),
 	)
 
