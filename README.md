@@ -28,14 +28,14 @@
 - [License](#license)
 
 ## What is Filecoin?
-Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/1.-How-Filecoin-Works) for more.
+Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/How-Filecoin-Works) for more.
 
 ## Install
 
 👋 Welcome to Go Filecoin!
 
 - To **run** `go-filecoin` for mining, storing or other exploring, jump straight to
-  [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started).
+  [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started).
 - To **build** `go-filecoin` from source for development, keep following this README.
 
 ### System Requirements
@@ -120,7 +120,7 @@ go run ./build/*.go all
 
 Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
 
-**If you have problems with the build, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/8.-Troubleshooting-&-FAQ) Wiki page.**
+**If you have problems with the build, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/Troubleshooting-&-FAQ) Wiki page.**
 
 
 #### Manage Submodules Manually (optional)
@@ -146,10 +146,10 @@ Note that updating the `rust-proofs` submodule in this way will require a commit
 
 ## Usage
 
-The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started) wiki page contains
+The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started) wiki page contains
 a simple sequence to get your Filecoin node up and running and connected to a cluster.
 
-The [Commands](https://github.com/filecoin-project/go-filecoin/wiki/7.-Commands) page contains further detail about
+The [Commands](https://github.com/filecoin-project/go-filecoin/wiki/Commands) page contains further detail about
 specific commands and environment variables, as well as scripts for for setting up a miner and making a deal.
 
 To see a full list of commands, run `go-filecoin --help`.
@@ -178,7 +178,7 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Networks
 
-See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/10.-Networks) in the wiki for a description of
+See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/Networks) in the wiki for a description of
 developer Filecoin networks and instructions for connecting your nodes to them. 
 
 #
