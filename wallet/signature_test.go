@@ -132,14 +132,15 @@ func TestBadFrom(t *testing.T) {
 	require.NoError(err)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
+	meteredMsg := types.NewMeteredMessage(*msg, types.NewGasPrice(0), types.NewGasUnits(0))
 	// Can't use NewSignedMessage constructor as it always signs with msg.From.
-	bmsg, err := msg.Marshal()
+	bmsg, err := meteredMsg.Marshal()
 	require.NoError(err)
 	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
 	require.NoError(err)
 	smsg := &types.SignedMessage{
-		Message:   *msg,
-		Signature: sig,
+		MeteredMessage: *meteredMsg,
+		Signature:      sig,
 	}
 
 	assert.False(smsg.VerifySignature())
