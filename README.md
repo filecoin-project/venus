@@ -176,54 +176,10 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 #
 
-## Clusters
+## Networks
 
-Both the Test and Nightly clusters run with `FIL_USE_SMALL_SECTORS=true`, this means that the proofs system only ever seals the first 127 bytes of a sector. Because of this users connecting to the cluster must:
-
-- Set `FIL_USE_SMALL_SECTORS=true` before starting the daemon, else they risk experiencing undefined behavior.
-- Only store files that are <= 127 bytes.
-
-To get an idea of the state of each cluster, you can visit the cluster dashboard (port 8010).
-Once the page is loaded, wait about 5 to 10 seconds for heartbeats to arrive. A healthy
-cluster should show 5 nodes with the nickname "boot".
-
-Each cluster is setup to mine a new block about every 30 seconds. If the "Last Block" column
-on the far right remains blank, or the number increments far beyond the 30 second mining time,
-this indociates that the cluster is no longer mining, or is not mining at the desired rate.
-
-Another indication that a cluster is not in a healthy state will be indicated by the background
-color of the tipset value. If all colors are the same, the nodes are in consensus. Two or more
-colors that persist may indicate that the nodes have fallen out of consensus.
-
-### Nightly Cluster
-
-Deployed from master by CI every day at 0600 UTC. **If you want to use a cluster
-you should probably be using this one.**
-
-- Faucet: http://nightly.kittyhawk.wtf:9797/
-- Dashboard: http://nightly.kittyhawk.wtf:8010/
-- Genesis File: http://nightly.kittyhawk.wtf:8020/genesis.car
-- Block explorer: http://nightly.kittyhawk.wtf:8000/
-- Prometheus Endpoint: http://nightly.kittyhawk.wtf:9082/metrics
-- Connected Nodes PeerID's: http://nightly.kittyhawk.wtf:9082/nodes
-
-The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started) wiki page contains
-instructions for connecting to the nightly cluster.
-
-### Test Cluster (for Infra)
-
-Deployed via CI by tagging a commit with `redeploy_test_cluster`. **This cluster
-is for people working on infra. You should probably avoid it unless that describes you.**
-
-- Faucet: http://test.kittyhawk.wtf:9797/
-- Dashboard: http://test.kittyhawk.wtf:8010/
-- Genesis File: http://test.kittyhawk.wtf:8020/genesis.car
-- Block explorer: http://test.kittyhawk.wtf:8000/
-- Prometheus Endpoint: http://test.kittyhawk.wtf:9082/metrics
-- Connected Nodes PeerID's: http://test.kittyhawk.wtf:9082/nodes
-
-To connect, follow the instructions in [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/2.-Getting-Started),
-but replace `nightly.kittyhawk.wtf` with `test.kittyhawk.wtf`.
+See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/10.-Networks) in the wiki for a description of
+developer Filecoin networks and instructions for connecting your nodes to them. 
 
 #
 
