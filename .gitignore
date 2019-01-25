@@ -3,7 +3,6 @@ go-filecoin
 *.coverprofile
 *.out
 *.so
-filecoin
 gengen/gengen
 gengen/gensetup
 fixtures/*.key

@@ -137,6 +137,7 @@ func deps() {
 		cmd("go get github.com/prometheus/client_golang/prometheus"),
 		cmd("go get github.com/prometheus/client_golang/prometheus/promhttp"),
 		cmd("go get github.com/jstemmer/go-junit-report"),
+		cmd("go get github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-proofs.sh"),
 	}
 
@@ -180,6 +181,7 @@ func smartdeps() {
 		"github.com/prometheus/client_golang/prometheus/promhttp",
 		"github.com/prometheus/client_golang/prometheus",
 		"github.com/jstemmer/go-junit-report",
+		"github.com/pmezard/go-difflib/difflib",
 	}
 
 	gopath := os.Getenv("GOPATH")

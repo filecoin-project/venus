@@ -40,19 +40,35 @@ func init() {
 	}
 }
 
+// IPTBCoreExt is an extended interface of the iptb.Core. It defines additional requirement.
+type IPTBCoreExt interface {
+	testbedi.Core
+
+	// StderrReader is require to gather daemon logs during action execution
+	StderrReader() (io.ReadCloser, error)
+}
+
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
-	core testbedi.Core
+	core IPTBCoreExt
 	Log  logging.EventLogger
 	// TODO this should be a method on IPTB
 	IsAlve bool
 	ctx    context.Context
 
 	lastCmdOutput testbedi.Output
+
+	stderr io.ReadCloser
+
+	lpCtx    context.Context
+	lpCancel context.CancelFunc
+	lpErr    error
+	lp       *fatutil.LinePuller
+	ir       fatutil.IntervalRecorder
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, c testbedi.Core) *Filecoin {
+func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt) *Filecoin {
 	return &Filecoin{
 		core:   c,
 		IsAlve: false,
@@ -72,7 +88,13 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 	if err != nil {
 		return nil, err
 	}
+
 	f.IsAlve = true
+
+	if err := f.setupStderrCapturing(); err != nil {
+		return nil, err
+	}
+
 	return out, nil
 }
 
@@ -82,8 +104,9 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 		// TODO this may break the `IsAlive` parameter
 		return err
 	}
+
 	f.IsAlve = false
-	return nil
+	return f.teardownStderrCapturing()
 }
 
 // DumpLastOutput writes all the output (args, exit-code, error, stderr, stdout) of the last ran

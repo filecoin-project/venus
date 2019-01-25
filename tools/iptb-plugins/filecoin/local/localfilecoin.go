@@ -385,16 +385,6 @@ func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// StderrReader returns a reader to the nodes stderr.
-func (l *Localfilecoin) StderrReader() (io.ReadCloser, error) {
-	return l.readerFor("daemon.stdout")
-}
-
-// StdoutReader returns a reader to the nodes stdout.
-func (l *Localfilecoin) StdoutReader() (io.ReadCloser, error) {
-	return l.readerFor("daemon.stdout")
-}
-
 // Dir returns the directory the node is using.
 func (l *Localfilecoin) Dir() string {
 	return l.dir

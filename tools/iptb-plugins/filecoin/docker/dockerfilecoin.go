@@ -424,16 +424,6 @@ func (l *Dockerfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// StderrReader returns a reader to the nodes stderr.
-func (l *Dockerfilecoin) StderrReader() (io.ReadCloser, error) {
-	panic("NYI")
-}
-
-// StdoutReader returns a reader to the nodes stdout.
-func (l *Dockerfilecoin) StdoutReader() (io.ReadCloser, error) {
-	panic("NYI")
-}
-
 // Dir returns the directory the node is using.
 func (l *Dockerfilecoin) Dir() string {
 	return l.dir

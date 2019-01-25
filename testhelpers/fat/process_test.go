@@ -53,7 +53,10 @@ func TestRunCmds(t *testing.T) {
 	c, err := ns.Load()
 	assert.NoError(err)
 
-	mfc := NewFilecoinProcess(ctx, c)
+	fc, ok := c.(IPTBCoreExt)
+	require.True(ok)
+
+	mfc := NewFilecoinProcess(ctx, fc)
 
 	t.Run("test RunCmdWithStdin", func(t *testing.T) {
 		out, err := mfc.RunCmdWithStdin(ctx, nil, "")
