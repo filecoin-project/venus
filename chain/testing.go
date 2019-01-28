@@ -206,7 +206,7 @@ func CreateMinerWithPower(ctx context.Context,
 	// commit sector (thus adding power to miner and recording in storage market).
 	msgs := make([]*types.SignedMessage, power)
 	for i := 0; uint64(i) < power; i++ {
-		msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment())
+		msg, err = th.CommitSectorMessage(minerAddr, sn.Addresses[0], nonce, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(proofs.SealBytesLen)))
 		require.NoError(err)
 		msgs[i] = mockSign(sn, msg)
 		sectorID++

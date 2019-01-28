@@ -2,13 +2,14 @@ package testhelpers
 
 import (
 	"crypto/rand"
-	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	"math/big"
 	"time"
 
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // BlockTimeTest is the block time used by workers during testing
@@ -25,8 +26,8 @@ func CreateMinerMessage(from address.Address, nonce uint64, pledge uint64, pid p
 }
 
 // CommitSectorMessage creates a message to commit a sector.
-func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, commD, commR, commRStar []byte) (*types.Message, error) {
-	params, err := abi.ToEncodedValues(sectorID, commD, commR, commRStar)
+func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, commD, commR, commRStar, proof []byte) (*types.Message, error) {
+	params, err := abi.ToEncodedValues(sectorID, commD, commR, commRStar, proof)
 	if err != nil {
 		return nil, err
 	}

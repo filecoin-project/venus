@@ -177,7 +177,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.Bytes},
 		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -399,10 +399,9 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 	return a, 0, nil
 }
 
-// CommitSector adds a commitment to the specified sector
-// The sector must not already be committed
-// 'size' is the total number of bytes stored in the sector
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte) (uint8, error) {
+// CommitSector adds a commitment to the specified sector. The sector must not
+// already be committed.
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar, proof []byte) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
