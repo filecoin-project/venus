@@ -1,0 +1,56 @@
+package fat
+
+import (
+	"fmt"
+	"math/big"
+
+	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+
+	"github.com/filecoin-project/go-filecoin/address"
+)
+
+// ActionOption is used to pass optional arguments to actions.
+// Thought it's not necessary, we use function options to enforce
+// coding standards not not passing string options directly into
+// the actions.
+type ActionOption func() []string
+
+// AOPrice provides the `--price=<fil>` option to actions
+func AOPrice(price *big.Float) ActionOption {
+	sPrice := price.String()
+	return func() []string {
+		return []string{"--price", sPrice}
+	}
+}
+
+// AOLimit provides the `--limit=<uint64>` option to actions
+func AOLimit(limit uint64) ActionOption {
+	sLimit := fmt.Sprintf("%d", limit)
+	return func() []string {
+		return []string{"--limit", sLimit}
+	}
+}
+
+// AOFromAddr provides the `--from=<addr>` option to actions
+func AOFromAddr(fromAddr address.Address) ActionOption {
+	sFromAddr := fromAddr.String()
+	return func() []string {
+		return []string{"--from", sFromAddr}
+	}
+}
+
+// AOMinerAddr provides the `--miner=<addr>` option to actions
+func AOMinerAddr(minerAddr address.Address) ActionOption {
+	sMinerAddr := minerAddr.String()
+	return func() []string {
+		return []string{"--miner", sMinerAddr}
+	}
+}
+
+// AOPeerid provides the `--peerid=<peerid>` option to actions
+func AOPeerid(pid peer.ID) ActionOption {
+	sPid := pid.Pretty()
+	return func() []string {
+		return []string{"--peerid", sPid}
+	}
+}
