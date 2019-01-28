@@ -10,20 +10,12 @@ func TestBLSSigningAndVerification(t *testing.T) {
 	assert := assert.New(t)
 
 	// generate private keys
-	fooPrivateKeyResponse, _ := PrivateKeyGenerate()
-	fooPrivateKey := fooPrivateKeyResponse.privateKey
-	barPrivateKeyResponse, _ := PrivateKeyGenerate()
-	barPrivateKey := barPrivateKeyResponse.privateKey
+	fooPrivateKey := PrivateKeyGenerate()
+	barPrivateKey := PrivateKeyGenerate()
 
 	// get the public keys for the private keys
-	fooPublicKeyResponse, _ := PrivateKeyPublicKey(PrivateKeyPublicKeyRequest{
-		privateKey: fooPrivateKey,
-	})
-	fooPublicKey := fooPublicKeyResponse.publicKey
-	barPublicKeyResponse, _ := PrivateKeyPublicKey(PrivateKeyPublicKeyRequest{
-		privateKey: barPrivateKey,
-	})
-	barPublicKey := barPublicKeyResponse.publicKey
+	fooPublicKey := PrivateKeyPublicKey(fooPrivateKey)
+	barPublicKey := PrivateKeyPublicKey(barPrivateKey)
 
 	// make messages to sign with the keys
 	var fooMessage Message
@@ -32,56 +24,22 @@ func TestBLSSigningAndVerification(t *testing.T) {
 	copy(barMessage[:], "hello bar")
 
 	// calculate the digests of the messages
-	fooHashResponse, _ := Hash(HashRequest{
-		message: fooMessage,
-	})
-	fooDigest := fooHashResponse.digest
-	barHashResponse, _ := Hash(HashRequest{
-		message: barMessage,
-	})
-	barDigest := barHashResponse.digest
+	fooDigest := Hash(fooMessage)
+	barDigest := Hash(barMessage)
 
 	// get the signature when signing the messages with the private keys
-	fooSignatureResponse, _ := PrivateKeySign(PrivateKeySignRequest{
-		privateKey: fooPrivateKey,
-		message:    fooMessage,
-	})
-	fooSignature := fooSignatureResponse.signature
-	barSignatureResponse, _ := PrivateKeySign(PrivateKeySignRequest{
-		privateKey: barPrivateKey,
-		message:    barMessage,
-	})
-	barSignature := barSignatureResponse.signature
+	fooSignature := PrivateKeySign(fooPrivateKey, fooMessage)
+	barSignature := PrivateKeySign(barPrivateKey, barMessage)
 
 	// assert the foo message was signed with the foo key
-	fooValidVerifyResponse, _ := Verify(VerifyRequest{
-		signature:  fooSignature,
-		digests:    []Digest{fooDigest},
-		publicKeys: []PublicKey{fooPublicKey},
-	})
-	assert.True(fooValidVerifyResponse.result)
+	assert.True(Verify(fooSignature, []Digest{fooDigest}, []PublicKey{fooPublicKey}))
 
 	// assert the bar message was signed with the bar key
-	barValidVerifyResponse, _ := Verify(VerifyRequest{
-		signature:  barSignature,
-		digests:    []Digest{barDigest},
-		publicKeys: []PublicKey{barPublicKey},
-	})
-	assert.True(barValidVerifyResponse.result)
+	assert.True(Verify(barSignature, []Digest{barDigest}, []PublicKey{barPublicKey}))
 
 	// assert the foo message was not signed by the bar key
-	fooInvalidVerifyResponse, _ := Verify(VerifyRequest{
-		signature:  fooSignature,
-		digests:    []Digest{fooDigest},
-		publicKeys: []PublicKey{barPublicKey},
-	})
-	assert.False(fooInvalidVerifyResponse.result)
+	assert.False(Verify(fooSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
 
 	// assert the bar message was not signed by the foo key
-	barInvalidVerifyResponse, _ := Verify(VerifyRequest{
-		signature:  barSignature,
-		digests:    []Digest{barDigest},
-		publicKeys: []PublicKey{fooPublicKey},
-	})
-	assert.False(barInvalidVerifyResponse.result)
+	assert.False(Verify(barSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
 }

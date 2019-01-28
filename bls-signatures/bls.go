@@ -10,11 +10,12 @@ import (
 import "C"
 
 // Hash computes the digest of a message
-func Hash(req HashRequest) (HashResponse, error) {
+func Hash(message Message) Digest {
 	// prep request
-	cMessage := C.CBytes(req.message)
+	cMessage := C.CBytes(message)
 	cMessagePtr := (*C.uchar)(cMessage)
-	cMessageLen := C.size_t(len(req.message))
+	cMessageLen := C.size_t(len(message))
+	defer C.free(cMessage)
 
 	// call method
 	resPtr := (*C.HashResponse)(unsafe.Pointer(C.hash(cMessagePtr, cMessageLen)))
@@ -25,26 +26,24 @@ func Hash(req HashRequest) (HashResponse, error) {
 	digestSlice := C.GoBytes(unsafe.Pointer(&resPtr.digest), DigestBytes)
 	copy(digest[:], digestSlice)
 
-	return HashResponse{
-		digest: digest,
-	}, nil
+	return digest
 }
 
 // Verify verifies that a signature is the aggregated signature of digests - pubkeys
-func Verify(req VerifyRequest) (VerifyResponse, error) {
+func Verify(signature Signature, digests []Digest, publicKeys []PublicKey) bool {
 	// prep data
-	flattenedDigests := make([]byte, DigestBytes*len(req.digests))
-	for idx, digest := range req.digests {
+	flattenedDigests := make([]byte, DigestBytes*len(digests))
+	for idx, digest := range digests {
 		copy(flattenedDigests[(DigestBytes*idx):(DigestBytes*(1+idx))], digest[:])
 	}
 
-	flattenedPublicKeys := make([]byte, PublicKeyBytes*len(req.publicKeys))
-	for idx, publicKey := range req.publicKeys {
+	flattenedPublicKeys := make([]byte, PublicKeyBytes*len(publicKeys))
+	for idx, publicKey := range publicKeys {
 		copy(flattenedPublicKeys[(PublicKeyBytes*idx):(PublicKeyBytes*(1+idx))], publicKey[:])
 	}
 
 	// prep request
-	cSignature := C.CBytes(req.signature[:])
+	cSignature := C.CBytes(signature[:])
 	cSignaturePtr := (*C.uchar)(cSignature)
 	defer C.free(cSignature)
 
@@ -69,16 +68,14 @@ func Verify(req VerifyRequest) (VerifyResponse, error) {
 		result = true
 	}
 
-	return VerifyResponse{
-		result: result,
-	}, nil
+	return result
 }
 
 // Aggregate aggregates signatures together into a new signature
-func Aggregate(req AggregateRequest) (AggregateResponse, error) {
+func Aggregate(signatures []Signature) Signature {
 	// prep data
-	flattenedSignatures := make([]byte, SignatureBytes*len(req.signatures))
-	for idx, sig := range req.signatures {
+	flattenedSignatures := make([]byte, SignatureBytes*len(signatures))
+	for idx, sig := range signatures {
 		copy(flattenedSignatures[(SignatureBytes*idx):(SignatureBytes*(1+idx))], sig[:])
 	}
 
@@ -97,13 +94,11 @@ func Aggregate(req AggregateRequest) (AggregateResponse, error) {
 	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes)
 	copy(signature[:], signatureSlice)
 
-	return AggregateResponse{
-		signature: signature,
-	}, nil
+	return signature
 }
 
 // PrivateKeyGenerate generates a private key
-func PrivateKeyGenerate() (PrivateKeyGenerateResponse, error) {
+func PrivateKeyGenerate() PrivateKey {
 	// call method
 	resPtr := (*C.PrivateKeyGenerateResponse)(unsafe.Pointer(C.private_key_generate()))
 	defer C.destroy_private_key_generate_response(resPtr)
@@ -113,21 +108,19 @@ func PrivateKeyGenerate() (PrivateKeyGenerateResponse, error) {
 	privateKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.private_key), PrivateKeyBytes)
 	copy(privateKey[:], privateKeySlice)
 
-	return PrivateKeyGenerateResponse{
-		privateKey: privateKey,
-	}, nil
+	return privateKey
 }
 
 // PrivateKeySign signs a message
-func PrivateKeySign(req PrivateKeySignRequest) (PrivateKeySignResponse, error) {
+func PrivateKeySign(privateKey PrivateKey, message Message) Signature {
 	// prep request
-	cPrivateKey := C.CBytes(req.privateKey[:])
+	cPrivateKey := C.CBytes(privateKey[:])
 	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 	defer C.free(cPrivateKey)
 
-	cMessage := C.CBytes(req.message)
+	cMessage := C.CBytes(message)
 	cMessagePtr := (*C.uchar)(cMessage)
-	cMessageLen := C.size_t(len(req.message))
+	cMessageLen := C.size_t(len(message))
 	defer C.free(cMessage)
 
 	// call method
@@ -139,15 +132,13 @@ func PrivateKeySign(req PrivateKeySignRequest) (PrivateKeySignResponse, error) {
 	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes)
 	copy(signature[:], signatureSlice)
 
-	return PrivateKeySignResponse{
-		signature: signature,
-	}, nil
+	return signature
 }
 
 // PrivateKeyPublicKey gets the public key for a private key
-func PrivateKeyPublicKey(req PrivateKeyPublicKeyRequest) (PrivateKeyPublicKeyResponse, error) {
+func PrivateKeyPublicKey(privateKey PrivateKey) PublicKey {
 	// prep request
-	cPrivateKey := C.CBytes(req.privateKey[:])
+	cPrivateKey := C.CBytes(privateKey[:])
 	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 	defer C.free(cPrivateKey)
 
@@ -160,7 +151,5 @@ func PrivateKeyPublicKey(req PrivateKeyPublicKeyRequest) (PrivateKeyPublicKeyRes
 	publicKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.public_key), PublicKeyBytes)
 	copy(publicKey[:], publicKeySlice)
 
-	return PrivateKeyPublicKeyResponse{
-		publicKey: publicKey,
-	}, nil
+	return publicKey
 }
