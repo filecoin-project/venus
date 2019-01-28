@@ -141,7 +141,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 				SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
 				FailedSectors:     make(map[uint64]string),
 			},
-			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsAwaitingSealDatastore(),
+			dealsDs: repo.NewInMemoryRepo().DealsDatastore(),
 		}
 
 		miner.dealsAwaitingSeal.add(wantSectorID, cid0)

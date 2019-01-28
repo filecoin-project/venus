@@ -35,14 +35,8 @@ type Repo interface {
 	// ChainDatastore is a specific storage solution, only used to store already validated chain data.
 	ChainDatastore() Datastore
 
-	// MinerDealsDatastore holds deals data.
-	MinerDealsDatastore() Datastore
-
-	// ClientDealsDatastore holds deals data.
-	ClientDealsDatastore() Datastore
-
-	// DealsAwaitingSealDatastore holds deals awaiting seal data.
-	DealsAwaitingSealDatastore() Datastore
+	// DealsDatastore holds deals data.
+	DealsDatastore() Datastore
 
 	// SetAPIAddr sets the address of the running API.
 	SetAPIAddr(string) error

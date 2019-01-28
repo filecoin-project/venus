@@ -16,19 +16,17 @@ import (
 // implementation of the Repo interface.
 type MemRepo struct {
 	// lk guards the config
-	lk                  sync.RWMutex
-	C                   *config.Config
-	D                   Datastore
-	Ks                  keystore.Keystore
-	W                   Datastore
-	Chain               Datastore
-	MinerDealsDs        Datastore
-	ClientDealsDs       Datastore
-	DealsAwaitingSealDs Datastore
-	version             uint
-	apiAddress          string
-	stagingDir          string
-	sealedDir           string
+	lk         sync.RWMutex
+	C          *config.Config
+	D          Datastore
+	Ks         keystore.Keystore
+	W          Datastore
+	Chain      Datastore
+	DealsDs    Datastore
+	version    uint
+	apiAddress string
+	stagingDir string
+	sealedDir  string
 }
 
 var _ Repo = (*MemRepo)(nil)
@@ -53,17 +51,15 @@ func NewInMemoryRepo() *MemRepo {
 // sector-storage.
 func NewInMemoryRepoWithSectorDirectories(staging, sealedDir string) *MemRepo {
 	return &MemRepo{
-		C:                   config.NewDefaultConfig(),
-		D:                   dss.MutexWrap(datastore.NewMapDatastore()),
-		Ks:                  keystore.MutexWrap(keystore.NewMemKeystore()),
-		W:                   dss.MutexWrap(datastore.NewMapDatastore()),
-		Chain:               dss.MutexWrap(datastore.NewMapDatastore()),
-		MinerDealsDs:        dss.MutexWrap(datastore.NewMapDatastore()),
-		ClientDealsDs:       dss.MutexWrap(datastore.NewMapDatastore()),
-		DealsAwaitingSealDs: dss.MutexWrap(datastore.NewMapDatastore()),
-		version:             Version,
-		stagingDir:          staging,
-		sealedDir:           sealedDir,
+		C:          config.NewDefaultConfig(),
+		D:          dss.MutexWrap(datastore.NewMapDatastore()),
+		Ks:         keystore.MutexWrap(keystore.NewMemKeystore()),
+		W:          dss.MutexWrap(datastore.NewMapDatastore()),
+		Chain:      dss.MutexWrap(datastore.NewMapDatastore()),
+		DealsDs:    dss.MutexWrap(datastore.NewMapDatastore()),
+		version:    Version,
+		stagingDir: staging,
+		sealedDir:  sealedDir,
 	}
 }
 
@@ -105,19 +101,9 @@ func (mr *MemRepo) ChainDatastore() Datastore {
 	return mr.Chain
 }
 
-// MinerDealsDatastore returns the deals datastore for miners.
-func (mr *MemRepo) MinerDealsDatastore() Datastore {
-	return mr.MinerDealsDs
-}
-
-// ClientDealsDatastore returns the deals datastore for miners.
-func (mr *MemRepo) ClientDealsDatastore() Datastore {
-	return mr.ClientDealsDs
-}
-
-// DealsAwaitingSealDatastore returns the deals awaiting seal datastore.
-func (mr *MemRepo) DealsAwaitingSealDatastore() Datastore {
-	return mr.DealsAwaitingSealDs
+// DealsDatastore returns the deals datastore for miners.
+func (mr *MemRepo) DealsDatastore() Datastore {
+	return mr.DealsDs
 }
 
 // Version returns the version of the repo.

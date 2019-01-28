@@ -47,7 +47,8 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 const submitPostGasPrice = 0
 const submitPostGasLimit = 100000000000
 
-const dealsAwatingSeal = "dealsAwaitingSeal"
+const minerDatastorePrefix = "miner"
+const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
 // Miner represents a storage miner.
 type Miner struct {
@@ -62,8 +63,7 @@ type Miner struct {
 	postInProcessLk sync.Mutex
 	postInProcess   *types.BlockHeight
 
-	dealsAwaitingSealDs repo.Datastore
-	dealsAwaitingSeal   *dealsAwaitingSealStruct
+	dealsAwaitingSeal *dealsAwaitingSealStruct
 
 	plumbingAPI plumbing
 	node        node
@@ -112,17 +112,16 @@ func init() {
 }
 
 // NewMiner is
-func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, dealsAwaitingSealDs repo.Datastore, plumbingAPI plumbing) (*Miner, error) {
+func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, plumbingAPI plumbing) (*Miner, error) {
 	sm := &Miner{
-		minerAddr:           minerAddr,
-		minerOwnerAddr:      minerOwnerAddr,
-		deals:               make(map[cid.Cid]*storageDeal),
-		plumbingAPI:         plumbingAPI,
-		dealsDs:             dealsDs,
-		dealsAwaitingSealDs: dealsAwaitingSealDs,
-		node:                nd,
-		proposalAcceptor:    acceptProposal,
-		proposalRejector:    rejectProposal,
+		minerAddr:        minerAddr,
+		minerOwnerAddr:   minerOwnerAddr,
+		deals:            make(map[cid.Cid]*storageDeal),
+		plumbingAPI:      plumbingAPI,
+		dealsDs:          dealsDs,
+		node:             nd,
+		proposalAcceptor: acceptProposal,
+		proposalRejector: rejectProposal,
 	}
 
 	if err := sm.loadDealsAwaitingSeal(); err != nil {
@@ -368,7 +367,8 @@ func (sm *Miner) loadDealsAwaitingSeal() error {
 		FailedSectors:     make(map[uint64]string),
 	}
 
-	result, notFound := sm.dealsAwaitingSealDs.Get(datastore.NewKey(dealsAwatingSeal))
+	key := datastore.KeyWithNamespaces([]string{dealsAwatingSealDatastorePrefix})
+	result, notFound := sm.dealsDs.Get(key)
 	if notFound == nil {
 		if err := json.Unmarshal(result, &sm.dealsAwaitingSeal); err != nil {
 			return errors.Wrap(err, "failed to unmarshal deals awaiting seal from datastore")
@@ -383,7 +383,8 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 	if err != nil {
 		return errors.Wrap(err, "Could not marshal dealsAwaitingSeal")
 	}
-	err = sm.dealsAwaitingSealDs.Put(datastore.NewKey(dealsAwatingSeal), marshalledDealsAwaitingSeal)
+	key := datastore.KeyWithNamespaces([]string{dealsAwatingSealDatastorePrefix})
+	err = sm.dealsDs.Put(key, marshalledDealsAwaitingSeal)
 	if err != nil {
 		return errors.Wrap(err, "could not save deal awaiting seal record to disk, in-memory deals differ from persisted deals!")
 	}
@@ -694,7 +695,9 @@ func getFileSize(ctx context.Context, c cid.Cid, dserv ipld.DAGService) (uint64,
 }
 
 func (sm *Miner) loadDeals() error {
-	res, err := sm.dealsDs.Query(query.Query{})
+	res, err := sm.dealsDs.Query(query.Query{
+		Prefix: "/" + minerDatastorePrefix,
+	})
 	if err != nil {
 		return errors.Wrap(err, "failed to query deals from datastore")
 	}
@@ -717,7 +720,8 @@ func (sm *Miner) saveDeal(proposalCid cid.Cid) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not marshal storageDeal")
 	}
-	err = sm.dealsDs.Put(datastore.NewKey(proposalCid.String()), marshalledDeal)
+	key := datastore.KeyWithNamespaces([]string{minerDatastorePrefix, proposalCid.String()})
+	err = sm.dealsDs.Put(key, marshalledDeal)
 	if err != nil {
 		return errors.Wrap(err, "could not save client storage deal")
 	}
