@@ -808,7 +808,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
 					gasPrice := types.NewGasPrice(0)
-					gasUnits := types.NewGasUnits(types.MaxGasUnits)
+					gasUnits := types.BlockGasLimit
 
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,

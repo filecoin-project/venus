@@ -45,7 +45,7 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
 // TODO: replace this with a queries to pick reasonable gas price and limits.
 const submitPostGasPrice = 0
-const submitPostGasLimit = 100000000000
+const submitPostGasLimit = 300
 
 const minerDatastorePrefix = "miner"
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
