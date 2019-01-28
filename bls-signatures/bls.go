@@ -46,6 +46,7 @@ func Verify(req VerifyRequest) (VerifyResponse, error) {
 	// prep request
 	cSignature := C.CBytes(req.signature[:])
 	cSignaturePtr := (*C.uchar)(cSignature)
+	defer C.free(cSignature)
 
 	cFlattenedDigests := C.CBytes(flattenedDigests)
 	cFlattenedDigestsPtr := (*C.uint8_t)(cFlattenedDigests)
@@ -122,9 +123,12 @@ func PrivateKeySign(req PrivateKeySignRequest) (PrivateKeySignResponse, error) {
 	// prep request
 	cPrivateKey := C.CBytes(req.privateKey[:])
 	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
+	defer C.free(cPrivateKey)
+
 	cMessage := C.CBytes(req.message)
 	cMessagePtr := (*C.uchar)(cMessage)
 	cMessageLen := C.size_t(len(req.message))
+	defer C.free(cMessage)
 
 	// call method
 	resPtr := (*C.PrivateKeySignResponse)(unsafe.Pointer(C.private_key_sign(cPrivateKeyPtr, cMessagePtr, cMessageLen)))
@@ -145,6 +149,7 @@ func PrivateKeyPublicKey(req PrivateKeyPublicKeyRequest) (PrivateKeyPublicKeyRes
 	// prep request
 	cPrivateKey := C.CBytes(req.privateKey[:])
 	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
+	defer C.free(cPrivateKey)
 
 	// call method
 	resPtr := (*C.PrivateKeyPublicKeyResponse)(unsafe.Pointer(C.private_key_public_key(cPrivateKeyPtr)))
