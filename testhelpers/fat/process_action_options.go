@@ -54,3 +54,10 @@ func AOPeerid(pid peer.ID) ActionOption {
 		return []string{"--peerid", sPid}
 	}
 }
+
+// AOFormat provides the `--format=<format>` option to actions
+func AOFormat(format string) ActionOption {
+	return func() []string {
+		return []string{"--format", format}
+	}
+}
