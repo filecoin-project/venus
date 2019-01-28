@@ -11,10 +11,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -22,12 +22,12 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
 	"gx/ipfs/QmRa5sdhUGtLptMNYSHFWcU3axEJntpKht3LngrBpuurv1/go-car"
-	blockstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	dag "gx/ipfs/QmTQdH4848iTVCJmKXYyRiK72HufWTLYQQ8iN3JaQ8K1Hq/go-merkledag"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
-	offline "gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
+	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	mh "gx/ipfs/QmerPMzPk1mJVowm8KgmoknWa4yCYvvugMPsgWmDNUvDLW/go-multihash"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 )
@@ -211,85 +211,164 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 	ctx := context.Background()
 
 	for _, m := range miners {
-		addr, err := keys[m.Owner].Address()
+		ownerAddr, err := keys[m.Owner].Address()
 		if err != nil {
 			return nil, err
 		}
 
-		var pid peer.ID
-		if m.PeerID != "" {
-			p, err := peer.IDB58Decode(m.PeerID)
-			if err != nil {
-				return nil, err
-			}
-			pid = p
-		} else {
-			// this is just deterministically deriving from the owner
-			h, err := mh.Sum(addr.Bytes(), mh.SHA2_256, -1)
-			if err != nil {
-				return nil, err
-			}
-			pid = peer.ID(h)
-		}
-
-		// give collateral to account actor
-		_, err = applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
+		ownerPubKey, err := keys[m.Owner].PublicKey()
 		if err != nil {
 			return nil, err
 		}
 
-		// create miner
-		pubkey, err := keys[m.Owner].PublicKey()
-		if err != nil {
-			return nil, err
-		}
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
-		if err != nil {
-			return nil, err
+		cfg := minerCfg{
+			minerPidStr: m.PeerID,
+			minerPower:  m.Power,
+			ownerAddr:   ownerAddr,
+			ownerPubKey: ownerPubKey,
 		}
 
-		// get miner address
-		maddr, err := address.NewFromBytes(ret[0])
+		minerAddr, err := createMiner(ctx, pnrg, st, sm, cfg)
 		if err != nil {
 			return nil, err
 		}
 
 		minfos = append(minfos, RenderedMinerInfo{
-			Address: maddr,
+			Address: minerAddr,
 			Owner:   m.Owner,
 			Power:   m.Power,
 		})
-
-		// commit sector to add power
-		for i := uint64(0); i < m.Power; i++ {
-			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
-			// which is initialized to 0 and incremented (for the first sector) to 1
-			sectorID := i + 1
-
-			commD := make([]byte, 32)
-			commR := make([]byte, 32)
-			commRStar := make([]byte, 32)
-			sealProof := make([]byte, proofs.SealBytesLen)
-			if _, err := pnrg.Read(commD[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(commR[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(commRStar[:]); err != nil {
-				return nil, err
-			}
-			if _, err := pnrg.Read(sealProof[:]); err != nil {
-				return nil, err
-			}
-			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commD, commR, commRStar, sealProof)
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	return minfos, nil
+}
+
+type minerCfg struct {
+	minerPidStr string
+	minerPower  uint64
+	ownerAddr   address.Address
+	ownerPubKey []byte
+}
+
+// createMiner interprets minerCfg into a new miner in the provided state tree.
+func createMiner(ctx context.Context, pnrg io.Reader, st state.Tree, sm vm.StorageMap, cfg minerCfg) (address.Address, error) {
+	var pid peer.ID
+	if cfg.minerPidStr != "" {
+		p, err := peer.IDB58Decode(cfg.minerPidStr)
+		if err != nil {
+			return address.Address{}, errors.Wrap(err, "failed to B58-decode peer id string")
+		}
+
+		pid = p
+	} else {
+		// this is just deterministically deriving from the ownerAddr
+		h, err := mh.Sum(cfg.ownerAddr.Bytes(), mh.SHA2_256, -1)
+		if err != nil {
+			return address.Address{}, errors.Wrap(err, "failed to compute checksum")
+		}
+
+		pid = peer.ID(h)
+	}
+
+	// give collateral to account actor
+	_, err := applyMessageDirect(ctx, st, sm, address.NetworkAddress, cfg.ownerAddr, types.NewAttoFILFromFIL(100000), "")
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to transfer FIL to miner owner")
+	}
+
+	// create miner in state tree
+	ret, err := applyMessageDirect(ctx, st, sm, cfg.ownerAddr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), cfg.ownerPubKey, pid)
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to apply createMiner message")
+	}
+
+	// get miner address
+	minerAddr, err := address.NewFromBytes(ret[0])
+	if err != nil {
+		return address.Address{}, errors.Wrap(err, "failed to synthesize address from bytes")
+	}
+
+	if bestowPower(ctx, pnrg, st, sm, minerAddr, cfg.minerPower) != nil {
+		return address.Address{}, errors.Wrap(err, "failed to bestow power to miner")
+	}
+
+	return minerAddr, nil
+}
+
+// bestowPower adds randomly-generated, invalid commitments to the referenced
+// miner, updating the power table accordingly. This function has been split
+// out of createMiner to make that function more readable.
+func bestowPower(ctx context.Context, pnrg io.Reader, st state.Tree, sm vm.StorageMap, minerAddr address.Address, power uint64) error {
+	if power == 0 {
+		return nil
+	}
+
+	// use address to get actor from state tree
+	minerActor, err := st.GetActor(ctx, minerAddr)
+	if err != nil {
+		return err
+	}
+
+	// create new actor storage
+	minerActorStorage := sm.NewStorage(minerAddr, minerActor)
+	if err != nil {
+		return errors.Wrap(err, "failed to load State-bytes by cid")
+	}
+
+	// load actor State object from storage
+	minerActorStateBytes, err := minerActorStorage.Get(minerActor.Head)
+	if err != nil {
+		return errors.Wrap(err, "failed to get actor storage")
+	}
+
+	minerActorState := miner.State{}
+	err = actor.UnmarshalStorage(minerActorStateBytes, &minerActorState)
+	if err != nil {
+		return errors.Wrap(err, "couldn't unmarshal actor storage to State struct")
+	}
+
+	// commit sector to add power
+	for i := uint64(0); i < power; i++ {
+		// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
+		// which is initialized to 0 and incremented (for the first sector) to 1
+		sectorID := i + 1
+
+		// TODO: use uint64 instead of this abomination, once refmt is fixed
+		// https://github.com/polydawn/refmt/issues/35
+		sectorIDstr := strconv.FormatUint(sectorID, 10)
+
+		minerActorState.SectorCommitments[sectorIDstr] = randCommitments(pnrg)
+		minerActorState.Power = minerActorState.Power.Add(minerActorState.Power, big.NewInt(1))
+		minerActorState.ProvingPeriodStart = types.NewBlockHeight(0)
+		minerActorState.LastUsedSectorID = sectorID
+	}
+
+	// put the updated State into miner actor's storage
+	updatedActorStateCid, err := minerActorStorage.Put(minerActorState)
+	if err != nil {
+		return errors.Wrap(err, "couldn't save new miner actor state to storage")
+	}
+
+	// commit to backing data store
+	err = minerActorStorage.Commit(updatedActorStateCid, minerActor.Head)
+	if err != nil {
+		return errors.Wrap(err, "couldn't commit new miner state")
+	}
+
+	// update state tree such that it uses new actor (and its state)
+	err = st.SetActor(ctx, minerAddr, minerActor)
+	if err != nil {
+		return errors.Wrap(err, "couldn't set updated actor into state tree")
+	}
+
+	// increment power table entry for the miner whose commitments we
+	// just created
+	_, err = applyMessageDirect(ctx, st, sm, minerAddr, address.StorageMarketAddress, types.NewAttoFILFromFIL(0), "updatePower", big.NewInt(int64(power)))
+	if err != nil {
+		return errors.Wrap(err, "failed to apply updatePower message to state tree")
+	}
+
+	return nil
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
@@ -376,4 +455,22 @@ var _ types.Signer = (*signer)(nil)
 
 func (ggs *signer) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return nil, nil
+}
+
+func randCommitments(pnrg io.Reader) (comms types.Commitments) {
+	rdErr := "failed to read from RNG"
+
+	if _, err := pnrg.Read(comms.CommD[:]); err != nil {
+		panic(rdErr)
+	}
+
+	if _, err := pnrg.Read(comms.CommR[:]); err != nil {
+		panic(rdErr)
+	}
+
+	if _, err := pnrg.Read(comms.CommRStar[:]); err != nil {
+		panic(rdErr)
+	}
+
+	return
 }
