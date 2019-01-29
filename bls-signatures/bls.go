@@ -13,9 +13,9 @@ import "C"
 func Hash(message Message) Digest {
 	// prep request
 	cMessage := C.CBytes(message)
+	defer C.free(cMessage)
 	cMessagePtr := (*C.uchar)(cMessage)
 	cMessageLen := C.size_t(len(message))
-	defer C.free(cMessage)
 
 	// call method
 	resPtr := (*C.HashResponse)(unsafe.Pointer(C.hash(cMessagePtr, cMessageLen)))
@@ -44,18 +44,18 @@ func Verify(signature Signature, digests []Digest, publicKeys []PublicKey) bool 
 
 	// prep request
 	cSignature := C.CBytes(signature[:])
-	cSignaturePtr := (*C.uchar)(cSignature)
 	defer C.free(cSignature)
+	cSignaturePtr := (*C.uchar)(cSignature)
 
 	cFlattenedDigests := C.CBytes(flattenedDigests)
+	defer C.free(cFlattenedDigests)
 	cFlattenedDigestsPtr := (*C.uint8_t)(cFlattenedDigests)
 	cFlattenedDigestsLen := C.size_t(len(flattenedDigests))
-	defer C.free(cFlattenedDigests)
 
 	cFlattenedPublicKeys := C.CBytes(flattenedPublicKeys)
+	defer C.free(cFlattenedPublicKeys)
 	cFlattenedPublicKeysPtr := (*C.uint8_t)(cFlattenedPublicKeys)
 	cFlattenedPublicKeysLen := C.size_t(len(flattenedPublicKeys))
-	defer C.free(cFlattenedPublicKeys)
 
 	// call method
 	resPtr := (*C.VerifyResponse)(unsafe.Pointer(C.verify(cSignaturePtr, cFlattenedDigestsPtr, cFlattenedDigestsLen, cFlattenedPublicKeysPtr, cFlattenedPublicKeysLen)))
@@ -81,9 +81,9 @@ func Aggregate(signatures []Signature) Signature {
 
 	// prep request
 	cFlattenedSignatures := C.CBytes(flattenedSignatures)
+	defer C.free(cFlattenedSignatures)
 	cFlattenedSignaturesPtr := (*C.uint8_t)(cFlattenedSignatures)
 	cFlattenedSignaturesLen := C.size_t(len(flattenedSignatures))
-	defer C.free(cFlattenedSignatures)
 
 	// call method
 	resPtr := (*C.AggregateResponse)(unsafe.Pointer(C.aggregate(cFlattenedSignaturesPtr, cFlattenedSignaturesLen)))
@@ -115,13 +115,13 @@ func PrivateKeyGenerate() PrivateKey {
 func PrivateKeySign(privateKey PrivateKey, message Message) Signature {
 	// prep request
 	cPrivateKey := C.CBytes(privateKey[:])
-	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 	defer C.free(cPrivateKey)
+	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 
 	cMessage := C.CBytes(message)
+	defer C.free(cMessage)
 	cMessagePtr := (*C.uchar)(cMessage)
 	cMessageLen := C.size_t(len(message))
-	defer C.free(cMessage)
 
 	// call method
 	resPtr := (*C.PrivateKeySignResponse)(unsafe.Pointer(C.private_key_sign(cPrivateKeyPtr, cMessagePtr, cMessageLen)))
@@ -139,8 +139,8 @@ func PrivateKeySign(privateKey PrivateKey, message Message) Signature {
 func PrivateKeyPublicKey(privateKey PrivateKey) PublicKey {
 	// prep request
 	cPrivateKey := C.CBytes(privateKey[:])
-	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 	defer C.free(cPrivateKey)
+	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 
 	// call method
 	resPtr := (*C.PrivateKeyPublicKeyResponse)(unsafe.Pointer(C.private_key_public_key(cPrivateKeyPtr)))
