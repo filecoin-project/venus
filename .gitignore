@@ -16,3 +16,6 @@ proofs/bin/paramcache
 proofs/include/libfilecoin_proofs.h
 proofs/lib/libfilecoin_proofs.a
 proofs/lib/pkgconfig/libfilecoin_proofs.pc
+bls-signatures/include/libbls_signatures.h
+bls-signatures/lib/libbls_signatures.a
+bls-signatures/lib/pkgconfig/libbls_signatures.pc
