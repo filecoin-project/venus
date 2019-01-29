@@ -61,14 +61,7 @@ func Verify(signature Signature, digests []Digest, publicKeys []PublicKey) bool 
 	resPtr := (*C.VerifyResponse)(unsafe.Pointer(C.verify(cSignaturePtr, cFlattenedDigestsPtr, cFlattenedDigestsLen, cFlattenedPublicKeysPtr, cFlattenedPublicKeysLen)))
 	defer C.destroy_verify_response(resPtr)
 
-	// prep response
-	var result = false
-
-	if resPtr.result > 0 {
-		result = true
-	}
-
-	return result
+	return resPtr.result > 0
 }
 
 // Aggregate aggregates signatures together into a new signature

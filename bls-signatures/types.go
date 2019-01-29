@@ -21,7 +21,7 @@ type PrivateKey [PrivateKeyBytes]byte
 // PublicKey is a compressed affine
 type PublicKey [PublicKeyBytes]byte
 
-// Message is a byte array
+// Message is a byte slice
 type Message []byte
 
 // Digest is a compressed affine
