@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -41,6 +42,7 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address to send message from"),
 		priceOption,
 		limitOption,
+		previewOption,
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -64,7 +66,7 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -74,16 +76,25 @@ var msgSendCmd = &cmds.Command{
 			method = ""
 		}
 
+		if preview {
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(req.Context, fromAddr, target, method)
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+		}
+
 		c, err := GetPorcelainAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
 		if err != nil {
 			return err
 		}
-		return re.Emit(c)
+
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }

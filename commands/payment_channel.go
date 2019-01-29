@@ -3,8 +3,8 @@ package commands
 import (
 	"fmt"
 	"io"
+	"strconv"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
@@ -43,6 +43,7 @@ message to be mined to get the channelID.`,
 		cmdkit.StringOption("from", "Address to send from"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -65,9 +66,17 @@ message to be mined to get the channelID.`,
 			return ErrInvalidBlockHeight
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetAPI(env).Paych().PreviewCreate(req.Context, fromAddr, target, eol, amount)
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
 		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
@@ -75,12 +84,12 @@ message to be mined to get the channelID.`,
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }
@@ -192,6 +201,7 @@ var redeemCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel target"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -199,9 +209,17 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetAPI(env).Paych().PreviewRedeem(req.Context, fromAddr, req.Arguments[0])
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
 		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -209,12 +227,12 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }
@@ -230,6 +248,7 @@ var reclaimCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel creator"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -242,9 +261,17 @@ var reclaimCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetAPI(env).Paych().PreviewReclaim(req.Context, fromAddr, channel)
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
 		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
@@ -252,13 +279,12 @@ var reclaimCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }
@@ -274,6 +300,7 @@ var closeCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel target"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -281,9 +308,17 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetAPI(env).Paych().PreviewClose(req.Context, fromAddr, req.Arguments[0])
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
 		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -291,12 +326,12 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }
@@ -314,6 +349,7 @@ var extendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel creator"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -336,9 +372,17 @@ var extendCmd = &cmds.Command{
 			return ErrInvalidBlockHeight
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetAPI(env).Paych().PreviewExtend(req.Context, fromAddr, channel, eol, amount)
+			if err != nil {
+				return err
+			}
+			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
 		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
@@ -346,13 +390,12 @@ var extendCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(c.String())
 	},
-	Type: cid.Undef,
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
+			_, err := w.Write([]byte(res))
+			return err
 		}),
 	},
 }
