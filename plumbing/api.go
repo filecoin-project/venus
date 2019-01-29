@@ -24,22 +24,24 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	sigGetter  *mthdsig.Getter
-	msgQueryer *msg.Queryer
-	msgSender  *msg.Sender
-	msgWaiter  *msg.Waiter
-	config     *cfg.Config
-	chain      *chn.Reader
+	sigGetter    *mthdsig.Getter
+	msgPreviewer *msg.Previewer
+	msgQueryer   *msg.Queryer
+	msgSender    *msg.Sender
+	msgWaiter    *msg.Waiter
+	config       *cfg.Config
+	chain        *chn.Reader
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	SigGetter  *mthdsig.Getter
-	MsgQueryer *msg.Queryer
-	MsgSender  *msg.Sender
-	MsgWaiter  *msg.Waiter
-	Config     *cfg.Config
-	Chain      *chn.Reader
+	SigGetter    *mthdsig.Getter
+	MsgPreviewer *msg.Previewer
+	MsgQueryer   *msg.Queryer
+	MsgSender    *msg.Sender
+	MsgWaiter    *msg.Waiter
+	Config       *cfg.Config
+	Chain        *chn.Reader
 }
 
 // New constructs a new instance of the API.
@@ -47,12 +49,13 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		sigGetter:  deps.SigGetter,
-		msgQueryer: deps.MsgQueryer,
-		msgSender:  deps.MsgSender,
-		msgWaiter:  deps.MsgWaiter,
-		config:     deps.Config,
-		chain:      deps.Chain,
+		sigGetter:    deps.SigGetter,
+		msgPreviewer: deps.MsgPreviewer,
+		msgQueryer:   deps.MsgQueryer,
+		msgSender:    deps.MsgSender,
+		msgWaiter:    deps.MsgWaiter,
+		config:       deps.Config,
+		chain:        deps.Chain,
 	}
 }
 
@@ -68,6 +71,12 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 // is optional; if not provided, an address will be chosen from the node's wallet.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
+}
+
+// MessagePreview previews the Gas cost of a message by running it locally on the client and
+// recording the amount of Gas used.
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
