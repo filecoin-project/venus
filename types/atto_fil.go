@@ -154,6 +154,20 @@ func (z *AttoFIL) MulBigInt(x *big.Int) *AttoFIL {
 	return &AttoFIL{val: newVal}
 }
 
+// DivCeil returns the minimum number of times this value can be divided into smaller amounts
+// such that none of the smaller amounts are greater than the given divisor.
+// Equal to ceil(z/y) if AttoFIL could be fractional.
+// If y is zero a panic will occur.
+func (z *AttoFIL) DivCeil(y *AttoFIL) *AttoFIL {
+	value, remainder := big.NewInt(0).DivMod(z.val, y.val, big.NewInt(0))
+
+	if remainder.Cmp(big.NewInt(0)) == 0 {
+		return NewAttoFIL(value)
+	}
+
+	return NewAttoFIL(big.NewInt(0).Add(value, big.NewInt(1)))
+}
+
 // Equal returns true if z = y
 func (z *AttoFIL) Equal(y *AttoFIL) bool {
 	ensureZeroAmounts(&z, &y)

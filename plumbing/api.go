@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -27,18 +28,30 @@ type API struct {
 	msgSender  *msg.Sender
 	msgWaiter  *msg.Waiter
 	config     *cfg.Config
+	chain      *chn.Lser
+}
+
+// APIDeps contains all the API's dependencies
+type APIDeps struct {
+	SigGetter  *mthdsig.Getter
+	MsgQueryer *msg.Queryer
+	MsgSender  *msg.Sender
+	MsgWaiter  *msg.Waiter
+	Config     *cfg.Config
+	Chain      *chn.Lser
 }
 
 // New constructs a new instance of the API.
-func New(sigGetter *mthdsig.Getter, msgQueryer *msg.Queryer, msgSender *msg.Sender, msgWaiter *msg.Waiter, cfg *cfg.Config) *API {
+func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		sigGetter:  sigGetter,
-		msgQueryer: msgQueryer,
-		msgSender:  msgSender,
-		msgWaiter:  msgWaiter,
-		config:     cfg,
+		sigGetter:  deps.SigGetter,
+		msgQueryer: deps.MsgQueryer,
+		msgSender:  deps.MsgSender,
+		msgWaiter:  deps.MsgWaiter,
+		config:     deps.Config,
+		chain:      deps.Chain,
 	}
 }
 
@@ -87,4 +100,9 @@ func (api *API) ConfigSet(dottedPath string, paramJSON string) error {
 // The path may be either a single field name, or a dotted path to a field.
 func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
+}
+
+// ChainLs returns a channel of tipsets from head to genesis
+func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
+	return api.chain.Ls(ctx)
 }

@@ -7,8 +7,12 @@ import (
 	"testing"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -16,80 +20,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type minerTestPlumbing struct {
-	config  *cfg.Config
-	assert  *assert.Assertions
-	require *require.Assertions
-
-	msgCid   cid.Cid
-	blockCid cid.Cid
-
-	failGet  bool
-	failSet  bool
-	failSend bool
-	failWait bool
-
-	messageSend func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-}
-
-func newMinerTestPlumbing(assert *assert.Assertions, require *require.Assertions) *minerTestPlumbing {
-	return &minerTestPlumbing{
-		config:  cfg.NewConfig(repo.NewInMemoryRepo()),
-		assert:  assert,
-		require: require,
-	}
-}
-
-func (mtp *minerTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	if mtp.failSend {
-		return cid.Cid{}, errors.New("Test error in MessageSend")
-	}
-
-	if mtp.messageSend != nil {
-		cid, err := mtp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
-		mtp.msgCid = cid
-		return cid, err
-	}
-
-	mtp.msgCid = types.NewCidForTestGetter()()
-	return mtp.msgCid, nil
-}
-
-// calls back immediately
-func (mtp *minerTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	if mtp.failWait {
-		return errors.New("Test error in MessageWait")
-	}
-
-	mtp.require.True(msgCid.Equals(mtp.msgCid))
-
-	block := &types.Block{
-		Nonce: 393,
-	}
-	mtp.blockCid = block.Cid()
-
-	// call back
-	cb(block, &types.SignedMessage{}, &types.MessageReceipt{ExitCode: 0, Return: []types.Bytes{}})
-
-	return nil
-}
-
-func (mtp *minerTestPlumbing) ConfigSet(dottedKey string, jsonString string) error {
-	if mtp.failSet {
-		return errors.New("Test error in ConfigSet")
-	}
-
-	return mtp.config.Set(dottedKey, jsonString)
-}
-
-func (mtp *minerTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
-	if mtp.failGet {
-		return nil, errors.New("Test error in ConfigGet")
-	}
-
-	return mtp.config.Get(dottedPath)
-}
 
 func TestMinerSetPrice(t *testing.T) {
 	t.Run("reports error when get miner address fails", func(t *testing.T) {
@@ -257,4 +187,146 @@ func TestMinerSetPrice(t *testing.T) {
 		assert.Equal(messageCid, res.AddAskCid)
 		assert.Equal(plumbing.blockCid, res.BlockCid)
 	})
+}
+
+func TestMinerGetOwnerAddress(t *testing.T) {
+	assert := assert.New(t)
+
+	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
+	assert.NoError(err)
+	assert.Equal(address.TestAddress, addr)
+}
+
+func TestMinerGetPeerID(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	id, err := MinerGetPeerID(context.Background(), &minerGetPeerIDPlumbing{}, address.TestAddress2)
+	require.NoError(err)
+
+	expected := requirePeerID()
+	require.NoError(err)
+	assert.Equal(expected, id)
+}
+
+func TestMinerGetAsk(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ask, err := MinerGetAsk(context.Background(), &minerGetAskPlumbing{}, address.TestAddress2, 4)
+	require.NoError(err)
+
+	assert.Equal(types.NewAttoFILFromFIL(32), ask.Price)
+	assert.Equal(types.NewBlockHeight(41), ask.Expiry)
+	assert.Equal(big.NewInt(4), ask.ID)
+}
+
+type minerGetOwnerPlumbing struct{}
+
+func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return [][]byte{address.TestAddress.Bytes()}, nil, nil
+}
+
+type minerGetPeerIDPlumbing struct{}
+
+func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+
+	peerID := requirePeerID()
+	return [][]byte{[]byte(peerID)}, nil, nil
+}
+
+type minerGetAskPlumbing struct{}
+
+func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	out, err := cbor.DumpObject(miner.Ask{
+		Price:  types.NewAttoFILFromFIL(32),
+		Expiry: types.NewBlockHeight(41),
+		ID:     big.NewInt(4),
+	})
+	if err != nil {
+		panic("Could not encode ask")
+	}
+	return [][]byte{out}, nil, nil
+}
+
+func requirePeerID() peer.ID {
+	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
+	if err != nil {
+		panic("Could not create peer id")
+	}
+	return id
+}
+
+type minerTestPlumbing struct {
+	config  *cfg.Config
+	assert  *assert.Assertions
+	require *require.Assertions
+
+	msgCid   cid.Cid
+	blockCid cid.Cid
+
+	failGet  bool
+	failSet  bool
+	failSend bool
+	failWait bool
+
+	messageSend func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+}
+
+func newMinerTestPlumbing(assert *assert.Assertions, require *require.Assertions) *minerTestPlumbing {
+	return &minerTestPlumbing{
+		config:  cfg.NewConfig(repo.NewInMemoryRepo()),
+		assert:  assert,
+		require: require,
+	}
+}
+
+func (mtp *minerTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	if mtp.failSend {
+		return cid.Cid{}, errors.New("Test error in MessageSend")
+	}
+
+	if mtp.messageSend != nil {
+		cid, err := mtp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+		mtp.msgCid = cid
+		return cid, err
+	}
+
+	mtp.msgCid = types.NewCidForTestGetter()()
+	return mtp.msgCid, nil
+}
+
+// calls back immediately
+func (mtp *minerTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	if mtp.failWait {
+		return errors.New("Test error in MessageWait")
+	}
+
+	mtp.require.True(msgCid.Equals(mtp.msgCid))
+
+	block := &types.Block{
+		Nonce: 393,
+	}
+	mtp.blockCid = block.Cid()
+
+	// call back
+	cb(block, &types.SignedMessage{}, &types.MessageReceipt{ExitCode: 0, Return: []types.Bytes{}})
+
+	return nil
+}
+
+func (mtp *minerTestPlumbing) ConfigSet(dottedKey string, jsonString string) error {
+	if mtp.failSet {
+		return errors.New("Test error in ConfigSet")
+	}
+
+	return mtp.config.Set(dottedKey, jsonString)
+}
+
+func (mtp *minerTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	if mtp.failGet {
+		return nil, errors.New("Test error in ConfigGet")
+	}
+
+	return mtp.config.Get(dottedPath)
 }
