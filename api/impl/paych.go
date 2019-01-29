@@ -35,6 +35,16 @@ func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
+func (np *nodePaych) PreviewCreate(ctx context.Context, fromAddr address.Address, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (types.GasUnits, error) {
+	return np.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		"createChannel",
+		target, eol,
+	)
+}
+
 func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := np.api.node
 
@@ -118,6 +128,21 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
+func (np *nodePaych) PreviewRedeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error) {
+	voucher, err := decodeVoucher(voucherRaw)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	return np.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		"redeem",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+	)
+}
+
 func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
 	return np.porcelainAPI.MessageSend(
 		ctx,
@@ -126,6 +151,16 @@ func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasP
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
+		"reclaim",
+		channel,
+	)
+}
+
+func (np *nodePaych) PreviewReclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (types.GasUnits, error) {
+	return np.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
 		"reclaim",
 		channel,
 	)
@@ -144,6 +179,21 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
+		"close",
+		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+	)
+}
+
+func (np *nodePaych) PreviewClose(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error) {
+	voucher, err := decodeVoucher(voucherRaw)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	return np.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
 		"close",
 		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)

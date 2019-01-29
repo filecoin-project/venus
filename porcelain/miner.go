@@ -19,6 +19,7 @@ import (
 
 // mspPlumbing is the subset of the plumbing.API that MinerSetPrice uses.
 type mspPlumbing interface {
+	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ConfigSet(dottedKey string, jsonString string) error
@@ -123,4 +124,38 @@ func MinerGetPeerID(ctx context.Context, plumbing mgoaPlumbing, minerAddr addres
 		return peer.ID(""), errors.Wrap(err, "could not decode to peer.ID from message-bytes")
 	}
 	return pid, nil
+}
+
+// PreviewMinerSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
+// This method accepts all the same arguments as MinerSetPrice.
+func PreviewMinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
+	// get miner address if not provided
+	if miner.Empty() {
+		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
+		if err != nil {
+			return types.NewGasUnits(0), errors.Wrap(err, "Could not get miner address in config")
+		}
+		minerAddr, ok := minerValue.(address.Address)
+		if !ok {
+			return types.NewGasUnits(0), errors.Wrap(err, "Configured miner is not an address")
+		}
+		miner = minerAddr
+	}
+
+	// set price
+	jsonPrice, err := json.Marshal(price)
+	if err != nil {
+		return types.NewGasUnits(0), errors.New("Could not marshal price")
+	}
+	if err := plumbing.ConfigSet("mining.storagePrice", string(jsonPrice)); err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	// create ask
+	usedGas, err := plumbing.MessagePreview(ctx, from, miner, "addAsk", price, expiry)
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "couldn't preview message")
+	}
+
+	return usedGas, nil
 }

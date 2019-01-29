@@ -404,12 +404,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:      chn.New(chainReader),
-		Config:     cfg.NewConfig(nc.Repo),
-		SigGetter:  mthdsig.NewGetter(chainReader),
-		MsgQueryer: msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
-		MsgSender:  msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
-		MsgWaiter:  msg.NewWaiter(chainReader, bs, &cstOffline),
+		Chain:        chn.New(chainReader),
+		Config:       cfg.NewConfig(nc.Repo),
+		SigGetter:    mthdsig.NewGetter(chainReader),
+		MsgPreviewer: msg.NewPreviewer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
+		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
 	}))
 
 	nd := &Node{
@@ -1009,6 +1010,36 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	err = node.setupMining(ctx)
 
 	return &minerAddress, err
+}
+
+// PreviewCreateMiner calculates the amount of Gas that will be used in creating a miner.
+// This method accepts all the same arguments as CreateMiner.
+func (node *Node) PreviewCreateMiner(ctx context.Context, accountAddr address.Address, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ types.GasUnits, err error) {
+	// Only create a miner if we don't already have one.
+	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
+		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
+	}
+
+	ctx = log.Start(ctx, "Node.CreateMiner")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
+	// TODO: make this more streamlined in the wallet
+	backend, err := node.Wallet.Find(accountAddr)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+	info, err := backend.GetKeyInfo(accountAddr)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+	pubkey, err := info.PublicKey()
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	return node.PlumbingAPI.MessagePreview(ctx, accountAddr, address.StorageMarketAddress, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 }
 
 func (node *Node) saveMinerAddressToConfig(addr address.Address) error {

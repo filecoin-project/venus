@@ -42,6 +42,25 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	return *res, nil
 }
 
+func (nm *nodeMiner) PreviewCreate(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (types.GasUnits, error) {
+	nd := nm.api.node
+
+	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	if pid == "" {
+		pid = nd.Host().ID()
+	}
+
+	res, err := nd.PreviewCreateMiner(ctx, fromAddr, pledge, pid, collateral)
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
+	}
+
+	return res, nil
+}
+
 func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
 	return nm.porcelainAPI.MessageSend(
 		ctx,
@@ -55,6 +74,16 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 	)
 }
 
+func (nm *nodeMiner) PreviewUpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (types.GasUnits, error) {
+	return nm.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		minerAddr,
+		"updatePeerID",
+		newPid,
+	)
+}
+
 func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
 	return nm.porcelainAPI.MessageSend(
 		ctx,
@@ -63,6 +92,17 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 		nil,
 		gasPrice,
 		gasLimit,
+		"addAsk",
+		price,
+		expiry,
+	)
+}
+
+func (nm *nodeMiner) PreviewAddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
+	return nm.plumbingAPI.MessagePreview(
+		ctx,
+		fromAddr,
+		minerAddr,
 		"addAsk",
 		price,
 		expiry,
