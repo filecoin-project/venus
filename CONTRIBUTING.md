@@ -6,8 +6,6 @@ The following is a set of guidelines for contributing to the Filecoin
 Project. Feel free to propose changes, as this is a living
 document.
 
-To get a sense of what we’ve been working on recently, you might like to check out [recently closed PRs](https://github.com/filecoin-project/go-filecoin/pulls?q=is%3Apr+is%3Aclosed).
-
 Filecoin, including go-filecoin and all related modules, follows the
 [Filecoin Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -36,7 +34,7 @@ Here at `go-filecoin`, there’s always a lot of work to do. There are many ways
 
 - **Write code:** Once you've read this contributing guide, check out [Good First Issues](#good-first-issues) for well-prepared starter issues.
 
-- **Improve or write documentation:** You can add feedback to [#1689](https://github.com/filecoin-project/go-filecoin/issues/1689), or submit a PR with proposed changes.
+- **Improve or write documentation:** Docs currently live in the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki). You can add feedback to [#1689](https://github.com/filecoin-project/go-filecoin/issues/1689), or submit a PR with proposed changes (process coming soon).
 
 - **New ideas:** Open a thread on the [Discussion Board](https://discuss.filecoin.io/).
 
@@ -44,52 +42,52 @@ Here at `go-filecoin`, there’s always a lot of work to do. There are many ways
 
 ## What should I know before getting started?
 
+### Design Before Code
+- Write down design intent before writing code, and subject it to constructive feedback.
+- Major changes should have a [Design Doc](designdocs.md).
+- For minor changes, file an issue for your change if it doesn't yet have one, and outline your implementation plan on the issue.
+
 ### Pull Requests
 
-- PRs should modify no more than 400 lines or 8 files. If a larger PR is unavoidable, break it into clearly scoped commits. It is ok if individual commits do not build when making the PR. Only squashed commits are required to build.
+- Try to keep PRs small, no more than 400 lines or 8 files.
 - Always squash commits.
-- [TODO: rewrite to assume no write access] Anyone is free to merge, but we prefer to let the creator merge because they have most context. Creators: if you really care about the commit message, squash ahead of time and provide a nice commit
-  message because someone might merge for you.
+- For now, you'll need to request write access (via chat) to create a PR because CircleCI doesn't play well with private branches. Once we open source this repo, forking is preferred.
+- Committers should merge their own PRs after Approval, because they have the most context.
 
 ### Code Reviews
 
+`go-filecoin` requires 2 approvals for all PRs, with at least one of {@phritz, @acruikshank, @whyrusleeping}. If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged.
+
 We use the following conventions for code reviews:
 
-- By default, code review comments are advisory: the reviewee should consider them but doesn't _have_ to respond or address them.
-- Comments that start with "BLOCKING" must be addressed and responded
-  to. If a reviewer makes a blocking comment but does not block merging (by marking the review "Add Comments" or "Approve") then the reviewee can merge if the issue is addressed.
-  - *Example: reviewer points out an off by one error in a blocking comment, but Approves the PR. Reviewee must fix the error, but the reviewer trusts you to do that and you can merge without further review once it is fixed.*
-- If a reviewer makes a blocking comment while blocking merge
-  ("Request Changes"), don't merge until they approve.
-  - *Example: the whole design of an abstraction is wrong and reviewer wants to see it*
-    *reworked.*
+- "Approve" means approval. If there are comments and approval, it is expected that you'll address the comments before merging. Ask for clarification if you're not sure.
+  - *Example: reviewer points out an off by one error in a blocking comment, but Approves the PR. Reviewee must fix the error, but the reviewer trusts you to do that.*
+- "Request Changes" means you don't have approval, and the reviewer wants another look.
+  - *Example: the whole design of an abstraction is wrong and reviewer wants to see it reworked.*
+  
+- [There is a proposal in progress to invert BLOCKING, to match most contributors' expectations.] By default, code review comments are advisory: the reviewee should consider them but doesn't _have_ to respond or address them. Comments that start with "BLOCKING" must be addressed and responded to. If a reviewer makes a blocking comment but does not block merging (by marking the review "Add Comments" or "Approve") then the reviewee can merge if the issue is addressed.
 
-**Approvals:** `go-filecoin` requires 2 approvals for all PRs, with at least one of {@phritz, @whyrusleeping, @dignifiedquire}. If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged.
 
 #### Code Reviewer Responsibilities:
 
-**Avoid lengthy design discussions in PR reviews** unless the
-reviewee asks for it. Prefer to merge and spin out an issue for
-discussion if the conversation snowballs, and then follow up on the
-process failure that led to needing a big design discussion in a PR.
+**Avoid lengthy design discussions in PR reviews,** since major design questions should be addressed during the [Design Before Code](#design-before-code) step. If the conversation snowballs, prefer to merge and spin out an issue for discussion, and then follow up on the process failure that led to needing a big design discussion in a PR.
 
 ### Developer Do's and Don'ts
 
-- **DO write down design intent before writing code, and subject it to constructive feedback.** Major changes should have a [designdoc](designdocs.md). For minor changes, a good issue description may suffice.
 - **DO be aware of patterns from closely related systems.** It often makes sense to draw patterns from more established, closely related platforms than to derive them from first principles. For example, we draw heavily on patterns in IPFS for things like configuration, commands, and persistence. Similarly, we draw on patterns in Ethereum for message processing. 
 - **DO NOT create technical debt.** Half-completed features give us a false sense of progress.
-  - Example: you add a cache for something. To prevent the cache
+  - *Example: you add a cache for something. To prevent the cache
     from becoming a DOS vector, it requires the addition of a tricky
     replacement policy. You are tempted to defer that work
     because there is a lot else to do. "Do not create technical debt"
     means you should implement the replacement policy along with the cache,
-    and not defer that work into the future.
+    and not defer that work into the future.*
 * **DO NOT add dependencies on `Node` or add more implementation to `Node`**: The 
   `Node` has become a god object and a dependency of convenience. Abstractions
   should not take a `Node` as a dependency: they should take the narrower
   set of things they actually need. Building blocks should not go on `Node`;
   they should go into separate, smaller abstractions that depend on the 
-  narrow set of things they actually need. [More detail in this issue](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
+  narrow set of things they actually need. [More detail in #1223](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
 
 ## Good First Issues
 
@@ -97,7 +95,7 @@ Ready to begin? Here are well-prepared starter issues ([E-good-first-issue](http
 
 To pick up an issue:
 
-1. **Assign** it to yourself
+1. **Assign** it to yourself.
 2. **Ask** for any clarifications via the issue, pinging in [community chat](https://github.com/filecoin-project/community#chat) as needed.
 3. **Create a PR** with your changes, following the [Pull Request and Code Review guidelines]().
 
@@ -110,26 +108,24 @@ For continued adventures, search for issues with the label [E-help-wanted](https
 The overarching concern is safety of the user: do not give the user an
 incorrect view of the world.
 
-* If an error is likely a function of an input, discard the input.
-* If an error could be transient, attempt to continue making progress.
-* If an error appears to be permanent or we have inconsistent internal state, error out to the top level
-  and exit cleanly if possible. 
 * **DO NOT INTENTIONALLY CRASH THE NODE**. Don't panic() if you can exit cleanly. panic()ing stops the node
   from doing useful work that might be unrelated to the error and does not give subsystems an opportunity to
   clean up, thus potentially creating additional problems. 
+  * If an error is likely a function of an input, discard the input.
+  * If an error could be transient, attempt to continue making progress.
+  * If an error appears to be permanent or we have inconsistent internal state, error out to the top level
+  and exit cleanly if possible. 
 
 We should log an ERROR only in truly unexpected conditions
 that should not happen and that a dev should go look at.
 
 #### Testing
 
-- All code must be unit tested.
+- All new code should be accompanied by unit tests (except commands, which should be daemon tested). Prefer focussed unit tests to integration tests for thorough validation of behaviour. Existing code is not necessarily a good model, here.
 - Prefer to test the output/contracts.
 - Daemon tests (integration tests that run a node and send it commands):
-  - Daemon tests are not a substitute for unit tests: the foo command implementation should be unit tested in the `foo_test.go` file
   - Daemon tests should test integration, not comprehensive functionality
   - Daemon tests should validate that their responses conform to a JSON schema
-  - Daemon tests for foo go into `foo_daemon_test.go` (so `foo.go` should have *both* `foo_test.go` and `foo_daemon_test.go`)
 
 #### Profiling
 
