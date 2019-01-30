@@ -42,6 +42,8 @@ Here at `go-filecoin`, there’s always a lot of work to do. There are many ways
 
 ## What should I know before getting started?
 
+Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the code.
+
 ### Design Before Code
 - Write down design intent before writing code, and subject it to constructive feedback.
 - Major changes should have a [Design Doc](designdocs.md).

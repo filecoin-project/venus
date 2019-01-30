@@ -170,6 +170,8 @@ The [`localfilecoin` IPTB plugin](https://github.com/filecoin-project/go-filecoi
 
 We ❤️ all our contributors; this project wouldn’t be what it is without you! If you want to help out, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the code.
+
 ## Community
 
 Here are a few places to get help and connect with the Filecoin community:
