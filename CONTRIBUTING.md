@@ -1,4 +1,4 @@
-# Contributor guidelines
+# Contributing Guidelines
 
 ​:+1::tada: First off, thanks for taking the time to contribute! :tada::+1:
 
@@ -173,11 +173,7 @@ There are always exceptions, but generally:
    * `Warning`: noteworthy but not completely unexpected
    * `Error`: a truly unexpected condition that should not happen in Real Life and that a dev should go look at
 * Protocol messages are nouns (eg, `DealQuery`, `DealResponse`). Handlers are verbs (eg, `QueryDeal`).
-* Do not put implementation inline in command functions. Command
-   implementation should be minimal, calling out functionality that
-   exists elsewhere (but NOT on the node). Commands implementation is
-   an important API which gets muddled when implementation happens
-   inline in command functions.
+* Do not put implementation in commands. Commands should call out to functionality elsewhere, in a pattern borrowed from [Git Internals: Plumbing and Porcelain](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain).
 
 We use the following import ordering.
 ```
