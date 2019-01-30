@@ -61,3 +61,32 @@ func AOFormat(format string) ActionOption {
 		return []string{"--format", format}
 	}
 }
+
+// AOCount provides the `--count=<uint>` option to actions
+func AOCount(count uint) ActionOption {
+	sCount := fmt.Sprintf("%d", count)
+	return func() []string {
+		return []string{"--count", sCount}
+	}
+}
+
+// AOVerbose provides the `--verbose` option to actions
+func AOVerbose() ActionOption {
+	return func() []string {
+		return []string{"--verbose"}
+	}
+}
+
+// AOStreams provides the `--streams` option to actions
+func AOStreams() ActionOption {
+	return func() []string {
+		return []string{"--streams"}
+	}
+}
+
+// AOLatency provides the `--Latency` option to actions
+func AOLatency() ActionOption {
+	return func() []string {
+		return []string{"--latency"}
+	}
+}
