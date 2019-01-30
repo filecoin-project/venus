@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/iptb/testbed/interfaces"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
-	fatutil "github.com/filecoin-project/go-filecoin/testhelpers/fat/fatutil"
+	fatutil "github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
