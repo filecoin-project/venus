@@ -7,7 +7,10 @@ import (
 	"time"
 
 	pstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
+	offroute "gx/ipfs/QmVZ6cQXHoTQja4oo9GhhHZi7dThi4x98mRKgGtKnTy37u/go-ipfs-routing/offline"
 	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+
+	"github.com/filecoin-project/go-filecoin/repo"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -17,23 +20,29 @@ func panicConnect(context.Context, pstore.PeerInfo) error { panic("shouldn't be 
 func nopPeers() []peer.ID                                 { return []peer.ID{} }
 func panicPeers() []peer.ID                               { panic("shouldn't be called") }
 
+type blankValidator struct{}
+
+func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
+
 func TestBootstrapperStartAndStop(t *testing.T) {
 	assert := assert.New(t)
 	fakeHost := &fakeHost{ConnectImpl: nopConnect}
 	fakeDialer := &fakeDialer{PeersImpl: nopPeers}
+	fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 
 	// Check that Start() causes Bootstrap() to be periodically called and
 	// that canceling the context causes it to stop being called. Do this
 	// by stubbing out Bootstrap to keep a count of the number of times it
 	// is called and to cancel its context after several calls.
-	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, 0, 200*time.Millisecond)
+	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, fakeRouter, 0, 200*time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// protects callCount
 	var lk sync.Mutex
 	callCount := 0
-	b.Bootstrap = func([]peer.ID) {
+	b.Bootstrap = func(context.Context, []peer.ID) {
 		lk.Lock()
 		defer lk.Unlock()
 		callCount++
@@ -59,10 +68,12 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		assert := assert.New(t)
 		fakeHost := &fakeHost{ConnectImpl: panicConnect}
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
+		ctx := context.Background()
 
-		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, 1, time.Minute)
+		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, fakeRouter, 1, time.Minute)
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
-		assert.NotPanics(func() { b.bootstrap(currentPeers) })
+		assert.NotPanics(func() { b.bootstrap(ctx, currentPeers) })
 	})
 
 	var lk sync.Mutex
@@ -81,15 +92,16 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		connectCount = 0
 		lk.Unlock()
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 
 		bootstrapPeers := []pstore.PeerInfo{
 			{ID: requireRandPeerID(t)},
 			{ID: requireRandPeerID(t)},
 		}
-		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, 3, time.Minute)
+		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, fakeRouter, 3, time.Minute)
 		b.ctx = context.Background()
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
-		b.bootstrap(currentPeers)
+		b.bootstrap(b.ctx, currentPeers)
 		time.Sleep(20 * time.Millisecond)
 		lk.Lock()
 		assert.Equal(2, connectCount)
@@ -103,16 +115,17 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		connectCount = 0
 		lk.Unlock()
 		fakeDialer := &fakeDialer{PeersImpl: panicPeers}
+		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 
 		connectedPeerID := requireRandPeerID(t)
 		bootstrapPeers := []pstore.PeerInfo{
 			{ID: connectedPeerID},
 		}
 
-		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, 2, time.Minute) // Need 2 bootstrap peers.
+		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, fakeRouter, 2, time.Minute) // Need 2 bootstrap peers.
 		b.ctx = context.Background()
 		currentPeers := []peer.ID{connectedPeerID} // Have 1, which is the bootstrap peer.
-		b.bootstrap(currentPeers)
+		b.bootstrap(b.ctx, currentPeers)
 		time.Sleep(20 * time.Millisecond)
 		lk.Lock()
 		assert.Equal(0, connectCount)

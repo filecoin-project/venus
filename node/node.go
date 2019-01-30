@@ -445,7 +445,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
-	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), minPeerThreshold, period)
+	nd.Bootstrapper = filnet.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Router, minPeerThreshold, period)
 
 	// On-chain lookup service
 	defaultAddressGetter := func() (address.Address, error) {
