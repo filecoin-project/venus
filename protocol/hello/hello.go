@@ -79,7 +79,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Error("bad genesis, disconnecting from peer")
+		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
@@ -93,8 +93,6 @@ var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
-		log.Errorf("their genesis cid: %s", msg.GenesisHash.String())
-		log.Errorf("our genesis cid: %s", h.genesis.String())
 		return ErrBadGenesis
 	}
 
