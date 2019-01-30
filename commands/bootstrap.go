@@ -8,7 +8,8 @@ import (
 	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 )
 
-type bootstrapResult struct {
+// BootstrapLsResult is the result of the bootstrap listing command.
+type BootstrapLsResult struct {
 	Peers []string
 }
 
@@ -28,12 +29,12 @@ var bootstrapLsCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&bootstrapResult{peers})
+		return re.Emit(&BootstrapLsResult{peers})
 	},
-	Type: &bootstrapResult{},
+	Type: &BootstrapLsResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, br *bootstrapResult) error {
-			_, err := fmt.Fprintln(w, br.Peers)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, br *BootstrapLsResult) error {
+			_, err := fmt.Fprintln(w, br)
 			return err
 		}),
 	},
