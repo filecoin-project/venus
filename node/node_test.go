@@ -157,7 +157,8 @@ func TestNodeStartMining(t *testing.T) {
 	// tests. It should enable selective replacement of dependencies.
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
 		SigGetter:  mthdsig.NewGetter(minerNode.ChainReader),
-		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgPreviewer: msg.NewPreviewer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgSender:  msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
 		MsgWaiter:  msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
 		Config:     pbConfig.NewConfig(minerNode.Repo),
