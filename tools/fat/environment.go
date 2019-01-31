@@ -2,143 +2,62 @@ package fat
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"sync"
+	"errors"
+	"io"
 
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
-	iptb "github.com/ipfs/iptb/testbed"
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
-// Environment is a structure which contains a set of filecoin processes
-// and globally shared resources.
-type Environment struct {
-	Location string
+// ErrNoGenesisMiner is returned by GenesisMiner if the environment does not
+// support providing a genesis miner.
+var ErrNoGenesisMiner = errors.New("GenesisMiner not supported")
 
-	GenesisFile *GenesisInfo
-	GenesisNode *Filecoin
+// GenesisMiner contains the required information to setup a node as a genesis
+// node.
+type GenesisMiner struct {
+	// Address is the address of the miner on chain
+	Address address.Address
 
-	Log logging.EventLogger
-
-	procMu    sync.Mutex
-	processes []*Filecoin
+	// Owner is the private key of the wallet which is assoiated with the miner
+	Owner io.Reader
 }
 
-// NewEnvironment creates a new Environment and genesis file for the environment.
-func NewEnvironment(location string) (*Environment, error) {
-	gf, err := GenerateGenesis(10000000, location)
-	if err != nil {
-		return nil, err
-	}
+// Environment defines the interface common among all environments that the
+// FAT lib can work across. It helps smooth out the differences by providing
+// a common ground to work from
+type Environment interface {
+	// GenesisCar returns a location to the genesis.car file. This can be
+	// either an absolute path to a file on disk, or more commonly an http(s)
+	// url.
+	GenesisCar() string
 
-	if err := os.MkdirAll(location, 0775); err != nil {
-		return nil, err
-	}
+	// GenesisMiner returns a structure which contains all the required
+	// information to load the existing miner that is defined in the
+	// genesis block. An ErrNoGenesisMiner may be returned if the environment
+	// does not support providing genesis miner information.
+	GenesisMiner() (*GenesisMiner, error)
 
-	return &Environment{
-		Location:    location,
-		GenesisFile: gf,
-		Log:         logging.Logger("environment"),
-		processes:   make([]*Filecoin, 0),
-	}, nil
-}
+	// Log returns a logger for the environment
+	Log() logging.EventLogger
 
-func (e *Environment) addProcess(p *Filecoin) {
-	e.procMu.Lock()
-	defer e.procMu.Unlock()
+	// NewProcess makes a new process for the environment. This doesn't
+	// always mean a new filecoin node though, NewProcess for some
+	// environments may create a Filecoin process that interacts with
+	// an already running filecoin node, and supplied the API multiaddr
+	// as options.
+	NewProcess(context.Context, string, map[string]string) (*Filecoin, error)
 
-	e.processes = append(e.processes, p)
-}
+	// Processes returns a slice of all processes the environment knows
+	// about.
+	Processes() []*Filecoin
 
-func (e *Environment) removeProcess(p *Filecoin) {
-	e.procMu.Lock()
-	defer e.procMu.Unlock()
+	// Teardown runs anything that the environment may need to do to
+	// be nice to the the execution area of this code.
+	Teardown(context.Context) error
 
-	for i, n := range e.processes {
-		if n == p {
-			e.processes = append(e.processes[:i], e.processes[i+1:]...)
-			return
-		}
-	}
-
-}
-
-// Processes returns the managed by the environment.
-func (e *Environment) Processes() []*Filecoin {
-	e.procMu.Lock()
-	defer e.procMu.Unlock()
-
-	return e.processes
-}
-
-// Teardown stops all processes managed by the environment and cleans up the
-// location the environment was running in.
-func (e *Environment) Teardown(ctx context.Context) error {
-	e.procMu.Lock()
-	defer e.procMu.Unlock()
-
-	e.Log.Info("Teardown environment")
-	for _, p := range e.processes {
-		if err := p.core.Stop(ctx); err != nil {
-			return err
-		}
-	}
-
-	return os.RemoveAll(e.Location)
-}
-
-// NewProcess creates a new Filecoin process of type `processType`, with attributes `attrs`.
-func (e *Environment) NewProcess(ctx context.Context, processType string, attrs map[string]string) (*Filecoin, error) {
-	ns := iptb.NodeSpec{
-		Type:  processType,
-		Dir:   fmt.Sprintf("%s/%d", e.Location, len(e.processes)),
-		Attrs: attrs,
-	}
-	e.Log.Infof("New Process type: %s, dir: %s", processType, ns.Dir)
-
-	if err := os.MkdirAll(ns.Dir, 0775); err != nil {
-		return nil, err
-	}
-
-	c, err := ns.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	// We require a slightly more extended core interface
-	fc, ok := c.(IPTBCoreExt)
-	if !ok {
-		return nil, fmt.Errorf("%s does not implement the extended IPTB.Core interface IPTBCoreExt", processType)
-	}
-
-	p := NewFilecoinProcess(ctx, fc)
-	e.addProcess(p)
-	return p, nil
-}
-
-// TeardownProcess stops process `p`, and cleans up the location the process was running in.
-func (e *Environment) TeardownProcess(ctx context.Context, p *Filecoin) error {
-	e.Log.Infof("Teardown process: %s", p.core.String())
-	if err := p.core.Stop(ctx); err != nil {
-		return err
-	}
-
-	// remove the provess from the process list
-	e.removeProcess(p)
-	return os.RemoveAll(p.core.Dir())
-}
-
-// ConnectProcess connects process `p` to all other processes in the environment.
-func (e *Environment) ConnectProcess(ctx context.Context, p *Filecoin) error {
-	e.Log.Infof("Connect process: %s", p.core.String())
-	if !p.IsAlve {
-		return fmt.Errorf("process is not running, cannot connect to environment")
-	}
-	for _, p := range e.processes {
-		if err := p.core.Connect(ctx, p.core); err != nil {
-			return err
-		}
-	}
-	return nil
+	// TeardownProcess runs anything that the environment may need to do
+	// to remove a process from the environment in a clean way.
+	TeardownProcess(context.Context, *Filecoin) error
 }
