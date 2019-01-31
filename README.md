@@ -153,7 +153,7 @@ Note that updating the `rust-proofs` submodule in this way will require a commit
 ## Usage
 
 The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started) wiki page contains
-a simple sequence to get your Filecoin node up and running and connected to a cluster.
+a simple sequence to get your Filecoin node up and running and connected to a devnet.
 
 The [Commands](https://github.com/filecoin-project/go-filecoin/wiki/Commands) page contains further detail about
 specific commands and environment variables, as well as scripts for for setting up a miner and making a deal.

@@ -333,10 +333,10 @@ jobs:
           command: |
             git config user.email dev-helper@filecoin.io
             git config user.name filecoin-helper
-            git tag -f -a cluster-nightly -m "$(date -uIseconds)"
-            git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git cluster-nightly
+            git tag -f -a devnet-nightly -m "$(date -uIseconds)"
+            git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git devnet-nightly
 
-  trigger_nightly_cluster_deploy:
+  trigger_nightly_devnet_deploy:
     docker:
       - image: circleci/golang:latest
     resource_class: small
@@ -404,7 +404,7 @@ workflows:
               only:
                 - /^\d+\.\d+\.\d+$/
 
-  build_nightly_cluster:
+  build_nightly_devnet:
     triggers:
       - schedule:
           # every day at 6:00 UTC
@@ -418,6 +418,6 @@ workflows:
       - build_docker_img:
           requires:
             - build_linux
-      - trigger_nightly_cluster_deploy:
+      - trigger_nightly_devnet_deploy:
           requires:
             - build_docker_img
