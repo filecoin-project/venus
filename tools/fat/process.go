@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	fatutil "github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
@@ -50,11 +52,12 @@ type IPTBCoreExt interface {
 
 // Filecoin represents a wrapper around the iptb Core interface.
 type Filecoin struct {
+	PeerID peer.ID
+
+	Log logging.EventLogger
+
 	core IPTBCoreExt
-	Log  logging.EventLogger
-	// TODO this should be a method on IPTB
-	IsAlve bool
-	ctx    context.Context
+	ctx  context.Context
 
 	lastCmdOutput testbedi.Output
 
@@ -70,10 +73,9 @@ type Filecoin struct {
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
 func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt) *Filecoin {
 	return &Filecoin{
-		core:   c,
-		IsAlve: false,
-		Log:    logging.Logger(fmt.Sprintf("Process:%s", c.String())),
-		ctx:    ctx,
+		core: c,
+		Log:  logging.Logger(fmt.Sprintf("%s", c.String())),
+		ctx:  ctx,
 	}
 }
 
@@ -89,9 +91,17 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 		return nil, err
 	}
 
-	f.IsAlve = true
-
 	if err := f.setupStderrCapturing(); err != nil {
+		return nil, err
+	}
+
+	idinfo, err := f.ID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	f.PeerID, err = peer.IDFromString(strings.Trim(idinfo.ID, `"`))
+	if err != nil {
 		return nil, err
 	}
 
@@ -105,7 +115,6 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 		return err
 	}
 
-	f.IsAlve = false
 	return f.teardownStderrCapturing()
 }
 
@@ -126,6 +135,7 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if ctx == nil {
 		ctx = f.ctx
 	}
+	f.Log.Infof("RunCmd: %s", args)
 	out, err := f.core.RunCmd(ctx, stdin, args...)
 	if err != nil {
 		return nil, err
