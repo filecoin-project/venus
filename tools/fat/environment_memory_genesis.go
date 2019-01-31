@@ -229,11 +229,11 @@ func (e *EnvironmentMemoryGenesis) buildGenesis(funds *big.Int) error {
 	}
 
 	if len(info.Keys) == 0 {
-		return fmt.Errorf("No key was generated")
+		return fmt.Errorf("no key was generated")
 	}
 
 	if len(info.Miners) == 0 {
-		return fmt.Errorf("No miner was generated")
+		return fmt.Errorf("no miner was generated")
 	}
 
 	e.genesisCar = genbuffer.Bytes()
