@@ -3,6 +3,7 @@ package fat
 import (
 	"context"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"testing"
 
@@ -36,18 +37,19 @@ func TestEnvironmentSetupAndTeardown(t *testing.T) {
 	require.NoError(err)
 	defer os.RemoveAll(testDir)
 
-	env, err := NewEnvironment(testDir)
+	env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir)
+	localenv := env.(*EnvironmentMemoryGenesis)
 	assert.NoError(err)
 	assert.NotNil(env)
-	assert.Equal(testDir, env.Location)
+	assert.Equal(testDir, localenv.location)
 
 	// did we create the dir correctly?
-	_, err = os.Stat(env.Location)
+	_, err = os.Stat(localenv.location)
 	assert.NoError(err)
 
 	// did we teardown correctly?
 	assert.NoError(env.Teardown(ctx))
-	_, existsErr := os.Stat(env.Location)
+	_, existsErr := os.Stat(localenv.location)
 	assert.True(os.IsNotExist(existsErr))
 }
 
@@ -60,7 +62,7 @@ func TestProcessCreateAndTeardown(t *testing.T) {
 	require.NoError(err)
 	defer os.RemoveAll(testDir)
 
-	env, err := NewEnvironment(testDir)
+	env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir)
 	require.NoError(err)
 
 	p, err := env.NewProcess(ctx, mockplugin.PluginName, nil)
