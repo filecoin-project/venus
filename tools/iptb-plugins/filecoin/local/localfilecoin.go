@@ -200,8 +200,10 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	if err := ioutil.WriteFile(filepath.Join(dir, "daemon.pid"), []byte(fmt.Sprint(pid)), 0666); err != nil {
 		return nil, err
 	}
-	if err := filecoin.WaitOnAPI(l); err != nil {
-		return nil, err
+	if wait {
+		if err := filecoin.WaitOnAPI(l); err != nil {
+			return nil, err
+		}
 	}
 	return iptbutil.NewOutput(dargs, []byte{}, []byte{}, 0, err), nil
 }

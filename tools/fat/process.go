@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
@@ -74,7 +73,7 @@ type Filecoin struct {
 func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt) *Filecoin {
 	return &Filecoin{
 		core: c,
-		Log:  logging.Logger(fmt.Sprintf("%s", c.String())),
+		Log:  logging.Logger(c.String()),
 		ctx:  ctx,
 	}
 }
@@ -100,7 +99,7 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 		return nil, err
 	}
 
-	f.PeerID, err = peer.IDFromString(strings.Trim(idinfo.ID, `"`))
+	f.PeerID, err = peer.IDB58Decode(idinfo.ID)
 	if err != nil {
 		return nil, err
 	}
