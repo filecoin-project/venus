@@ -156,3 +156,101 @@ needs more thought, but we are considering moving more inter-module communicatio
 (More content coming here)
 
 A few functional tests have some bash scripts orchestrating complex test setups.
+
+## Filesystem storage
+The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to 
+run a `go-filecoin daemon`, typically at `$HOME/.filecoin`. The repo does not include client data 
+stored by storage miners, which is held instead in the sector base. The repo does 
+include a JSON config file with preferences on how the daemon should operate, several key value 
+datastores holding data important to the internal services, and the keystore which holds private 
+key data for encryption.
+
+### JSON Config
+The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the
+`go-filecoin config` command. Users can also edit the file directly at their own peril.
+
+### Datastores
+The key value datastores in the repo include persisted data from a variety of systems within 
+Filecoin. Most of them hold CBOR encoded data keyed on CID, however this varies. 
+The key value stores include the badger, chain, deals, and wallet directories under $HOME/.filecoin.
+
+The purpose of these directories is:
+- Badger is a general purpose datastore currently only holding the genesis key, but in the future,
+almost all our datastores should be merged into this one.
+- Chain is where the local copy of the blockchain is stored.
+- Deals is where the miner and client store persisted information on open deals for data storage, 
+essentially who is storing what data, for what fee and which sectors have been sealed.
+- Wallet is where the user’s Filecoin wallet information is stored.
+
+### Keystore
+The keystore contains the binary encoded peer key for interacting securely over the network. 
+This data lives in a file at `$HOME/.filecoin/keystore/self`.
+
+## Dependencies
+Dependencies in Go-Filecoin are managed by [gx](https://github.com/whyrusleeping/gx), a 
+content-addressed dependency manager. You’ll notice that the hash of a dependency’s content appears
+in the import path. Almost all runtime dependencies are managed by gx (mostly being other
+Protocol Labs-sponsored projects). 
+
+The `gx-go` manages a package.json file. In order to be imported by gx, a package needs to be 
+“gxed”. See the [gx-go repo](https://github.com/whyrusleeping/gx-go) for details about preparing a 
+package for gxing and importing it into the project. If you want to depend on a package whos author 
+has not gxed it, we can fork it and gx our fork.
+
+Gx came about before Go modules, which aim to solve many of the same problems. The IPFS project 
+and go-filecoin [may migrate to Go modules](https://github.com/ipfs/go-ipfs/issues/5850) 
+in the future.
+
+## Patterns
+The project makes heavy use of or is moving towards a few key design patterns, explained here.
+
+### Plumbing and porcelain
+The plumbing and porcelain pattern is 
+[borrowed from Git](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain).
+Plumbing and porcelain form the API to the internal [core services](#core-services), and will 
+replace the `api` package.
+
+*Plumbing* is the small set of public building blocks of queries and operations that protocols, 
+clients and humans want to use with a Filecoin node. These are things like `MessageSend`, `GetHead`,
+`GetBlockTime`, etc. By fundamental, we mean that it doesn't make sense to expose anything lower 
+level. The bar for adding new plumbing is high. It is very important, for testing and sanity, that
+plumbing methods be implemented in terms of their narrowest actual dependencies on core services,
+and that they not depend on Node or another god object.
+
+The plumbing API is defined by its implementation in 
+[plumbing/api.go](https://github.com/filecoin-project/go-filecoin/blob/master/plumbing/api.go).
+Consumers of plumbing (re-)define the subset of plumbing on which they depend, which is an idiomatic
+Go pattern (see below). Implementations of plumbing live in their own concisely named packages under 
+[plumbing](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing).
+
+*Porcelain* are calls on top of the plumbing API. A porcelain call is a useful composition of 
+plumbing calls and is implemented in terms of calls to plumbing. An example of a porcelain call 
+is `CreateMiner == MessageSend + MessageWait + ConfigUpdate`. The bar is low for creation of 
+porcelain calls. Porcelain calls should define the subset of the plumbing interface on which they 
+depend for ease of testing.
+
+Porcelain lives in a single 
+[porcelain](https://github.com/filecoin-project/go-filecoin/blob/master/porcelain/) package. 
+Porcelain calls are free functions that take the plumbing interface as an argument. The call 
+defines the subset of the plumbing interface that it needs, which can be easily faked in testing.
+
+We are in the [process of refactoring](https://github.com/filecoin-project/go-filecoin/issues/1469)
+all protocols to depend only on porcelain, plumbing and other core APIs, instead of on the Node.
+
+### Consumer-defined interfaces
+Go interfaces generally belong in the package that *uses* values of the interface type, not the 
+package that implements those values. This embraces 
+[Postel's law](https://en.wikipedia.org/wiki/Robustness_principle), reducing direct 
+dependencies between packages and making themeasier to test. 
+It isolates small changes to small parts of the code.
+
+Note that this is quite different to the more common 
+pattern in object-oriented languages, where interfaces are defined near their implementations.
+Our implementation of [plumbing and porcelain](#plumbing-and-porcelain) embraces this pattern,
+and we are adopting it more broadly.
+
+This idiom is unfortunately hidden away in a 
+[wiki page about code review](https://github.com/golang/go/wiki/CodeReviewComments#interfaces).
+See also Dave Cheney on [SOLID Go Design](https://dave.cheney.net/2016/08/20/solid-go-design)
+
+
