@@ -51,7 +51,7 @@ func (c *ChainLookupService) GetPeerIDByMinerAddress(ctx context.Context, minerA
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	retValue, retCode, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, addr, nil)
+	retValue, _, retCode, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, "getPeerID", []byte{}, addr, nil)
 	if err != nil {
 		return peer.ID(""), errors.Wrapf(err, "failed to query local state tree(from %s, miner %s)", addr.String(), minerAddr.String())
 	}

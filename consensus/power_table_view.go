@@ -41,7 +41,7 @@ var _ PowerTableView = &MarketView{}
 // This should be increased for v1.
 func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Address{}, nil)
+	rets, _, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Address{}, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -63,7 +63,7 @@ func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 // should probably be increased for v1.
 func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Address{}, nil)
+	rets, _, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Address{}, nil)
 	if err != nil {
 		return 0, err
 	}

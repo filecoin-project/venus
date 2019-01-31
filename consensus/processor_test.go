@@ -772,7 +772,7 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	args1, err := abi.ToEncodedValues(addr2)
 	assert.NoError(err)
 
-	_, exitCode, err := CallQueryMethod(ctx, st, vms, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
+	_, _, exitCode, err := CallQueryMethod(ctx, st, vms, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
 	require.Equal(uint8(0), exitCode)
 	require.NoError(err)
 

@@ -318,10 +318,10 @@ var (
 // CallQueryMethod calls a method on an actor in the given state tree. It does
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
-func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
+func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, types.GasUnits, uint8, error) {
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
-		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
+		return nil, types.NewGasUnits(0), 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
 	}
 
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
@@ -341,45 +341,8 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
 	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, gasTracker, optBh)
-	return vm.Send(ctx, vmCtx)
-}
-
-// PreviewQueryMethod calls a method on an actor in the given state tree to calculate
-// the amount of gas it will use. This method accepts all the same arguments as
-// CallQueryMethod.
-func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
-	toActor, err := st.GetOrCreateActor(ctx, to, func() (*actor.Actor, error) {
-		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
-		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
-		// actor to collect any balance that may be transferred.
-		return &actor.Actor{}, nil
-	})
-	if err != nil {
-		return types.NewGasUnits(0), errors.FaultErrorWrap(err, "failed to get To actor")
-	}
-
-	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
-	cachedSt := state.NewCachedStateTree(st)
-
-	msg := &types.Message{
-		From:   from,
-		To:     to,
-		Nonce:  0,
-		Value:  nil,
-		Method: method,
-		Params: params,
-	}
-
-	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
-	gasLimit := types.NewGasUnits(types.MaxGasUnits)
-
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), gasLimit, types.NewGasUnits(0), optBh)
-	_, _, err = vm.Send(ctx, vmCtx)
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	return vmCtx.GasUnits(), nil
+	res, exitCode, err := vm.Send(ctx, vmCtx)
+	return res, vmCtx.GasUnits(), exitCode, err
 }
 
 // attemptApplyMessage encapsulates the work of trying to apply the message in order

@@ -67,7 +67,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	vms := vm.NewStorageMap(p.bs)
-	usedGas, err := consensus.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	_, usedGas, _, err := consensus.CallQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "query method returned an error")
 	}

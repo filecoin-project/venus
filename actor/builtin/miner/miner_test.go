@@ -268,7 +268,7 @@ func callQueryMethodSuccess(method string,
 	vms vm.StorageMap,
 	fromAddr address.Address,
 	minerAddr address.Address) [][]byte {
-	res, code, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
+	res, _, code, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
 	return res
