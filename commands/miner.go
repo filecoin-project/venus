@@ -258,7 +258,13 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Miner().PreviewUpdatePeerID(req.Context, fromAddr, minerAddr, newPid)
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				minerAddr,
+				"updatePeerID",
+				newPid,
+			)
 			if err != nil {
 				return err
 			}
@@ -323,7 +329,14 @@ var minerAddAskCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Miner().PreviewAddAsk(req.Context, fromAddr, minerAddr, price, expiry)
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				minerAddr,
+				"addAsk",
+				price,
+				expiry,
+			)
 			if err != nil {
 				return err
 			}

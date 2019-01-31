@@ -72,7 +72,13 @@ message to be mined to get the channelID.`,
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Paych().PreviewCreate(req.Context, fromAddr, target, eol, amount)
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"createChannel",
+				target, eol,
+			)
 			if err != nil {
 				return err
 			}
@@ -267,7 +273,13 @@ var reclaimCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Paych().PreviewReclaim(req.Context, fromAddr, channel)
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"reclaim",
+				channel,
+			)
 			if err != nil {
 				return err
 			}
@@ -378,7 +390,13 @@ var extendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Paych().PreviewExtend(req.Context, fromAddr, channel, eol, amount)
+			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"extend",
+				channel, eol,
+			)
 			if err != nil {
 				return err
 			}

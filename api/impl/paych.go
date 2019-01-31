@@ -35,16 +35,6 @@ func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
-func (np *nodePaych) PreviewCreate(ctx context.Context, fromAddr address.Address, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (types.GasUnits, error) {
-	return np.plumbingAPI.MessagePreview(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		"createChannel",
-		target, eol,
-	)
-}
-
 func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := np.api.node
 
@@ -151,16 +141,6 @@ func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasP
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
-		"reclaim",
-		channel,
-	)
-}
-
-func (np *nodePaych) PreviewReclaim(ctx context.Context, fromAddr address.Address, channel *types.ChannelID) (types.GasUnits, error) {
-	return np.plumbingAPI.MessagePreview(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
 		"reclaim",
 		channel,
 	)

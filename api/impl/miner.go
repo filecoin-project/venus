@@ -74,16 +74,6 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 	)
 }
 
-func (nm *nodeMiner) PreviewUpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, newPid peer.ID) (types.GasUnits, error) {
-	return nm.plumbingAPI.MessagePreview(
-		ctx,
-		fromAddr,
-		minerAddr,
-		"updatePeerID",
-		newPid,
-	)
-}
-
 func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
 	return nm.porcelainAPI.MessageSend(
 		ctx,
@@ -92,17 +82,6 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 		nil,
 		gasPrice,
 		gasLimit,
-		"addAsk",
-		price,
-		expiry,
-	)
-}
-
-func (nm *nodeMiner) PreviewAddAsk(ctx context.Context, fromAddr, minerAddr address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
-	return nm.plumbingAPI.MessagePreview(
-		ctx,
-		fromAddr,
-		minerAddr,
 		"addAsk",
 		price,
 		expiry,
