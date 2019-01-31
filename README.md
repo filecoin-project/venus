@@ -23,7 +23,7 @@
    - [Helpful Environment Variables](#helpful-environment-variables)
    - [Advanced Usage](#advanced-usage)
      - [Run Multiple Nodes with IPTB](#run-multiple-nodes-with-iptb)
-- [Clusters](#clusters)
+- [Developer Networks](#developer-networks)
 - [Contributing](#contributing)
 - [Community](#community)
 - [License](#license)
@@ -182,10 +182,10 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 #
 
-## Networks
+## Developer Networks
 
-See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/Networks) in the wiki for a description of
-developer Filecoin networks and instructions for connecting your nodes to them.
+There are currently 2 developer networks (aka devnets) available for development and testing. Both are subject to _**frequent downtimes and breaking changes**_. See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/Networks) in the wiki for a description of
+these developer networks and instructions for connecting your nodes to them.
 
 #
 
