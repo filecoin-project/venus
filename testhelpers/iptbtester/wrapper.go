@@ -114,7 +114,7 @@ func (tn *TestNode) MustInit(ctx context.Context, args ...string) *TestNode {
 // and exitcode > 0.
 func (tn *TestNode) MustStart(ctx context.Context, args ...string) *TestNode {
 	tn.T.Logf("TestNode[%s] Start with args: %s", tn.String(), args)
-	out, err := tn.Start(ctx, false, args...)
+	out, err := tn.Start(ctx, true, args...)
 	if err != nil {
 		tn.T.Fatalf("IPTB start function failed: %s", err)
 	}
