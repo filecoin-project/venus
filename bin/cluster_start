@@ -1,5 +1,4 @@
 #!/bin/sh
-set -x
 
 echo "in cluster_start"
 grep -qs "minerAddress" /var/local/filecoin/config.json /dev/null 2>&1
