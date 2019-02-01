@@ -14,10 +14,10 @@ import (
 )
 
 // SignedMessageValidator validates incoming signed messages.
-// This validation includes things like the message signature, it's nonce, that it comes from a valid actor, etc.
+// This also includes other validations limited to the scope of the message and its fromActor
 type SignedMessageValidator interface {
 	// Validate validates that the given message is ready to be processed.
-	Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error
+	Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error
 }
 
 // BlockRewarder applies all rewards due to the miner for processing a block including block reward and gas
@@ -39,7 +39,7 @@ type ApplicationResult struct {
 
 // ProcessTipSetResponse records the results of successfully applied messages,
 // and the sets of successful and failed message cids.  Information of successes
-// and failues is key for helping match user messages with receipts in the case
+// and failures is key for helping match user messages with receipts in the case
 // of message conflicts.
 type ProcessTipSetResponse struct {
 	Results   []*ApplicationResult
@@ -261,10 +261,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //   - ApplyMessage and VMContext.Send() are the only things that should call
 //     Send() -- all the user-actor logic goes in ApplyMessage and all the
 //     actor-actor logic goes in VMContext.Send.
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (*ApplicationResult, error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
-	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh)
+	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh, gasTracker)
 	if err == nil {
 		err = cachedStateTree.Commit(ctx)
 		if err != nil {
@@ -285,9 +285,9 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 
 	// Reject invalid state transitions.
 	var executionError error
-	if err == errFromAccountNotFound || err == errNonceTooHigh {
+	if isTemporaryError(err) {
 		return nil, errors.ApplyErrorTemporaryWrapf(err, "apply message failed")
-	} else if err == errInsufficientGas || err == errSelfSend || err == errInvalidSignature || err == errNonceTooLow || err == errNonAccountActor || err == errors.Errors[errors.ErrCannotTransferNegativeValue] {
+	} else if isPermanentError(err) {
 		return nil, errors.ApplyErrorPermanentWrapf(err, "apply message failed")
 	} else if err != nil { // nolint: staticcheck
 		// Return the executionError to caller for informational purposes, but otherwise
@@ -316,12 +316,14 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 var (
 	// These errors are only to be used by ApplyMessage; they shouldn't be
 	// used in any other context as they are an implementation detail.
-	errFromAccountNotFound = errors.NewRevertError("from (sender) account not found")
-	errNonceTooHigh        = errors.NewRevertError("nonce too high")
-	errNonceTooLow         = errors.NewRevertError("nonce too low")
-	errNonAccountActor     = errors.NewRevertError("message from non-account actor")
-	errInsufficientGas     = errors.NewRevertError("balance insufficient to cover transfer+gas")
-	errInvalidSignature    = errors.NewRevertError("invalid signature by sender over message data")
+	errFromAccountNotFound       = errors.NewRevertError("from (sender) account not found")
+	errGasAboveBlockLimit        = errors.NewRevertError("message gas limit above block gas limit")
+	errGasTooHighForCurrentBlock = errors.NewRevertError("message gas limit too high for current block")
+	errNonceTooHigh              = errors.NewRevertError("nonce too high")
+	errNonceTooLow               = errors.NewRevertError("nonce too low")
+	errNonAccountActor           = errors.NewRevertError("message from non-account actor")
+	errInsufficientGas           = errors.NewRevertError("balance insufficient to cover transfer+gas")
+	errInvalidSignature          = errors.NewRevertError("invalid signature by sender over message data")
 	// TODO we'll eventually handle sending to self.
 	errSelfSend = errors.NewRevertError("cannot send to self")
 )
@@ -348,9 +350,10 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
-	gasLimit := types.NewGasUnits(types.MaxGasUnits)
+	gasTracker := vm.NewGasTracker()
+	gasTracker.MsgGasLimit = types.BlockGasLimit
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, types.NewGasPrice(0), gasLimit, types.NewGasUnits(0), optBh)
+	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, gasTracker, optBh)
 	ret, retCode, err := vm.Send(ctx, vmCtx)
 
 	return ret, retCode, err
@@ -361,7 +364,15 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 // should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight) (*types.MessageReceipt, error) {
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker) (*types.MessageReceipt, error) {
+	gasTracker.ResetForNewMessage(msg.MeteredMessage)
+	if err := blockGasLimitError(gasTracker); err != nil {
+		return &types.MessageReceipt{
+			ExitCode:   errors.CodeError(err),
+			GasAttoFIL: types.ZeroAttoFIL,
+		}, err
+	}
+
 	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return &types.MessageReceipt{
@@ -380,7 +391,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}
 	}
 
-	err = p.signedMessageValidator.Validate(ctx, msg, fromActor, bh)
+	err = p.signedMessageValidator.Validate(ctx, msg, fromActor)
 	if err != nil {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -398,7 +409,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, msg.GasPrice, msg.GasLimit, types.NewGasUnits(0), bh)
+	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, gasTracker, bh)
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
@@ -449,9 +460,11 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 		return ApplyMessagesResponse{}, err
 	}
 
+	gasTracker := vm.NewGasTracker()
+
 	// process all messages
 	for _, smsg := range messages {
-		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerAddr, bh)
+		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerAddr, bh, gasTracker)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):
@@ -459,11 +472,9 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 		case errors.IsApplyErrorPermanent(err):
 			ret.PermanentFailures = append(ret.PermanentFailures, smsg)
 			ret.PermanentErrors = append(ret.PermanentErrors, err)
-			continue
 		case errors.IsApplyErrorTemporary(err):
 			ret.TemporaryFailures = append(ret.TemporaryFailures, smsg)
 			ret.TemporaryErrors = append(ret.TemporaryErrors, err)
-			continue
 		case err != nil:
 			panic("someone is a bad programmer: error is neither fault, perm or temp")
 		default:
@@ -485,13 +496,12 @@ func NewDefaultMessageValidator() *DefaultMessageValidator {
 var _ SignedMessageValidator = (*DefaultMessageValidator)(nil)
 
 // Validate validates that the given message is ready to be processed.
-func (nmv *DefaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+func (nmv *DefaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	if !msg.VerifySignature() {
 		return errInvalidSignature
 	}
 
 	if msg.From == msg.To {
-		// TODO: handle this
 		return errSelfSend
 	}
 
@@ -575,4 +585,29 @@ func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value
 func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
 	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
+}
+
+func blockGasLimitError(gasTracker *vm.GasTracker) error {
+	if gasTracker.GasAboveBlockLimit() {
+		return errGasAboveBlockLimit
+	} else if gasTracker.GasTooHighForCurrentBlock() {
+		return errGasTooHighForCurrentBlock
+	}
+	return nil
+}
+
+func isTemporaryError(err error) bool {
+	return err == errFromAccountNotFound ||
+		err == errNonceTooHigh ||
+		err == errGasTooHighForCurrentBlock
+}
+
+func isPermanentError(err error) bool {
+	return err == errInsufficientGas ||
+		err == errSelfSend ||
+		err == errInvalidSignature ||
+		err == errNonceTooLow ||
+		err == errNonAccountActor ||
+		err == errors.Errors[errors.ErrCannotTransferNegativeValue] ||
+		err == errGasAboveBlockLimit
 }

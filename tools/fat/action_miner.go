@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -39,16 +39,13 @@ func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *t
 func (f *Filecoin) MinerUpdatePeerid(ctx context.Context, minerAddr address.Address, pid peer.ID, options ...ActionOption) (cid.Cid, error) {
 	var out cid.Cid
 
-	sMinerAddr := minerAddr.String()
-	sPid := pid.Pretty()
-
 	args := []string{"go-filecoin", "miner", "update-peerid"}
 
 	for _, option := range options {
 		args = append(args, option()...)
 	}
 
-	args = append(args, sMinerAddr, sPid)
+	args = append(args, minerAddr.String(), pid.Pretty())
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return cid.Undef, err

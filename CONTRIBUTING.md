@@ -42,6 +42,8 @@ Here at `go-filecoin`, there’s always a lot of work to do. There are many ways
 
 ## What should I know before getting started?
 
+Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the code.
+
 ### Design Before Code
 - Write down design intent before writing code, and subject it to constructive feedback.
 - Major changes should have a [Design Doc](designdocs.md).
@@ -72,6 +74,8 @@ We use the following conventions for code reviews:
 
 **Avoid lengthy design discussions in PR reviews,** since major design questions should be addressed during the [Design Before Code](#design-before-code) step. If the conversation snowballs, prefer to merge and spin out an issue for discussion, and then follow up on the process failure that led to needing a big design discussion in a PR.
 
+It is considered helpful to add blocking comments to PRs that introduce protocol changes that do not appear in the [spec](#the-spec).
+
 ### Developer Do's and Don'ts
 
 - **DO be aware of patterns from closely related systems.** It often makes sense to draw patterns from more established, closely related platforms than to derive them from first principles. For example, we draw heavily on patterns in IPFS for things like configuration, commands, and persistence. Similarly, we draw on patterns in Ethereum for message processing. 
@@ -97,7 +101,8 @@ To pick up an issue:
 
 1. **Assign** it to yourself.
 2. **Ask** for any clarifications via the issue, pinging in [community chat](https://github.com/filecoin-project/community#chat) as needed.
-3. **Create a PR** with your changes, following the [Pull Request and Code Review guidelines]().
+3. For issues labeled `PROTOCOL BREAKING` see [the spec section](#the-spec) for additional instructions.
+4. **Create a PR** with your changes, following the [Pull Request and Code Review guidelines]().
 
 For continued adventures, search for issues with the label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted). These are slightly thornier problems that are also reasonably well-prepared.
 
@@ -208,7 +213,26 @@ import (
 
 #### The Spec
 
-The Filecoin Specification (https://github.com/filecoin-project/specs) must be in sync with the code. 
+The [Filecoin Specification](https://github.com/filecoin-project/specs) must be in sync with the code.
+
+We have some light process in place to keep the go-filecoin implementation from getting out of sync with the spec.
+Most tasks are performed by the [spec shepherd](https://github.com/filecoin-project/pm/pull/107).  The following are the tasks all contributors should be aware of.
+
+##### Filing / triaging go-filecoin issues
+A `protocol change` is a modification to go-filecoin that breaks interoperability with the current version of go-filecoin.
+When filing issues that involve a protocol change please flag this issue with the `PROTOCOL BREAKING` label and identify the breaking changes in the `Protocol Changes` section of the issue template.
+If you do not know if an issue involves a protocol change you should just leave this section blank.
+Protocol changes will be added during the triage process.
+
+##### Picking up issues
+When picking up an issue with items in the `Protocol Changes` section it is your responsibility to dig into the relevant sections of the spec.
+If the spec does not have the information necessary for a developer to implement this issue it is your responsibility to file an issue, or better yet, a PR in the specs repo.
+In other words the `PROTOCOL BREAKING` label **implies an additional acceptance criterion**, that **all protocol changes are documented in the spec**.
+You can go ahead and implement in parallel, but note that your PR will be blocked from merging until the spec reflects this protocol change.
+If a change requires enough work to warrant multiple PRs and all this work is blocked on a spec PR merging it is encouraged to submit these PRs to a branch other than master.
+Then once the spec PR is merged this branch can be merged with master.
+If at any point the change to the spec seems too onerous, for example if you would have to write multiple pages or a completely new section, reach out to the spec shepherd who will clarify your responsibilities and potentially move the spec work to a separate issue.
+The spec shepherd may choose to overrule blocking on the spec based on relative priorities of the spec and go-filecoin projects.
 
 #### What is the bar for inclusion in master?
 

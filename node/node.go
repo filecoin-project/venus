@@ -719,11 +719,7 @@ func (node *Node) SetBlockTime(blockTime time.Duration) {
 // StartMining starts the node mining and logs an error if it cannot start.
 // We wrap starting in this free function to ensure an error is logged.
 func StartMining(ctx context.Context, node *Node) error {
-	err := node.StartMining(ctx)
-	if err != nil {
-		log.Errorf("StartMining failed: could not start mining: %v", err)
-	}
-	return err
+	return node.StartMining(ctx)
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -812,7 +808,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
 					gasPrice := types.NewGasPrice(0)
-					gasUnits := types.NewGasUnits(types.MaxGasUnits)
+					gasUnits := types.BlockGasLimit
 
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,

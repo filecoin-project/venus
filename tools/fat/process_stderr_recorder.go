@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	fatutil "github.com/filecoin-project/go-filecoin/testhelpers/fat/fatutil"
+	fatutil "github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
 )
 
 // setupStderrCpaturing opens a reader to the filcoin process to read the stderr
