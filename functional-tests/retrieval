@@ -100,14 +100,24 @@ MN_PEER_ID=$(get_peer_id "${MN_REPO_DIR}")
 #CL_PEER_ID=$(get_peer_id "${CL_REPO_DIR}")
 
 echo ""
-echo "update miner's libp2p identity to match its node's..."
-MINER_UPDATE_PID_MSG_CID=$(miner_update_pid "${MN_MINER_FIL_ADDR}" "${MN_PEER_ID}" "${MN_REPO_DIR}")
-MINER_ADD_ASK_MSG_CID=$(add_ask "${MN_MINER_FIL_ADDR}" 10 10000 "${MN_REPO_DIR}")
-
-echo ""
 echo "connecting daemons..."
 swarm_connect "$(get_first_address "${CL_REPO_DIR}")" "${MN_REPO_DIR}"
 swarm_connect "$(get_first_address "${MN_REPO_DIR}")" "${CL_REPO_DIR}"
+
+echo "update miner's libp2p identity to match its node's..."
+MINER_UPDATE_PID_MSG_CID=$(miner_update_pid "${MN_MINER_FIL_ADDR}" "${MN_PEER_ID}" "${MN_REPO_DIR}")
+
+echo ""
+echo "miner mines a block (to include the updated peer id)..."
+mine_once "${MN_REPO_DIR}"
+
+echo ""
+echo "miner node starts mining..."
+./go-filecoin mining start \
+  --repodir="$MN_REPO_DIR" \
+
+echo ""
+MINER_ADD_ASK_MSG_CID=$(set_price "${MN_MINER_FIL_ADDR}" 10 10000 "${MN_REPO_DIR}")
 
 echo ""
 echo ""
@@ -118,27 +128,14 @@ echo ""
 echo ""
 
 echo ""
-echo "miner mines a block (to include commitSector message)..."
-mine_once "${MN_REPO_DIR}"
-
-echo ""
-echo "miner node starts mining..."
-./go-filecoin mining start \
-  --repodir="$MN_REPO_DIR" \
-
-echo ""
 echo "use process substitution, waiting until messages are in blockchain..."
 fork_message_wait 104 "${MINER_UPDATE_PID_MSG_CID}" "${MN_REPO_DIR}"
 fork_message_wait 105 "${MINER_UPDATE_PID_MSG_CID}" "${CL_REPO_DIR}"
-fork_message_wait 106 "${MINER_ADD_ASK_MSG_CID}" "${MN_REPO_DIR}"
-fork_message_wait 107 "${MINER_ADD_ASK_MSG_CID}" "${CL_REPO_DIR}"
 
 echo ""
 echo "block until miner peer id-update message appears in chains..."
 join 104
 join 105
-join 106
-join 107
 
 echo ""
 echo "client imports piece 1..."

@@ -165,8 +165,9 @@ function wait_mpool_size {
     --repodir="$2"
 }
 
-function add_ask {
-  ./go-filecoin miner add-ask "$1" "$2" "$3" \
+function set_price {
+  ./go-filecoin miner set-price "$2" "$3" \
+   --miner="$1" \
     --price=0 --limit=300 \
     --repodir="$4"
 }
