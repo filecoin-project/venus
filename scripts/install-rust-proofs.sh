@@ -49,6 +49,12 @@ install_precompiled() {
 }
 
 install_local() {
+  if ! [ -x "$(command -v cargo)" ] ; then
+    echo 'Error: cargo is not installed.'
+    echo 'Install Rust toolchain to resolve this problem.'
+    exit 1
+  fi
+
   git submodule update --init --recursive
 
   pushd proofs/rust-proofs
