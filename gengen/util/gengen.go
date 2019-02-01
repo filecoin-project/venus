@@ -319,7 +319,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(from, to, 0, value, method, pdata)
 	// this should never fail due to lack of gas since gas doesn't have meaning here
-	gasLimit := types.NewGasUnits(types.MaxGasUnits)
+	gasLimit := types.BlockGasLimit
 	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), gasLimit)
 	if err != nil {
 		return nil, err
@@ -350,7 +350,7 @@ type messageValidator struct{}
 var _ consensus.SignedMessageValidator = (*messageValidator)(nil)
 
 // Validate always returns nil
-func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 

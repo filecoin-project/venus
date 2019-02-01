@@ -45,7 +45,7 @@ func TestVMContextStorage(t *testing.T) {
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(err)
-	vmCtx := NewVMContext(nil, to, msg, cstate, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+	vmCtx := NewVMContext(nil, to, msg, cstate, vms, NewGasTracker(), types.NewBlockHeight(0))
 
 	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
 	assert.NoError(err)
@@ -57,7 +57,7 @@ func TestVMContextStorage(t *testing.T) {
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(err)
 
-	storage, err := NewVMContext(nil, toActorBack, msg, cstate, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0)).ReadStorage()
+	storage, err := NewVMContext(nil, toActorBack, msg, cstate, vms, NewGasTracker(), types.NewBlockHeight(0)).ReadStorage()
 	assert.NoError(err)
 	assert.Equal(storage, node.RawData())
 }
@@ -88,7 +88,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -114,7 +114,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -145,7 +145,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, msg, tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, msg, tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
@@ -176,7 +176,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -212,7 +212,7 @@ func TestVMContextSendFailures(t *testing.T) {
 			},
 		}
 
-		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		ctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		ctx.deps = deps
 
 		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
@@ -228,7 +228,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		vmctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+		vmctx := NewVMContext(actor1, actor2, newMsg(), tree, vms, NewGasTracker(), types.NewBlockHeight(0))
 		addr, err := vmctx.AddressForNewActor()
 
 		require.NoError(err)
@@ -259,10 +259,10 @@ func TestVMContextIsAccountActor(t *testing.T) {
 
 	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
 	require.NoError(err)
-	ctx := NewVMContext(accountActor, nil, nil, nil, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), nil)
+	ctx := NewVMContext(accountActor, nil, nil, nil, vms, NewGasTracker(), nil)
 	assert.True(ctx.IsFromAccountActor())
 
 	nonAccountActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
-	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), nil)
+	ctx = NewVMContext(nonAccountActor, nil, nil, nil, vms, NewGasTracker(), nil)
 	assert.False(ctx.IsFromAccountActor())
 }
