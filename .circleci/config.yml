@@ -325,6 +325,16 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+
+  trigger_nightly_devnet_deploy:
+    docker:
+      - image: circleci/golang:latest
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      # The first checkout, trigger_nightly_devnet_deploy has a dependency on docker_build_img and build_linux, so
+      # the lateast successful build will be the same HEAD
+      - checkout
       # The -f flag is require to override the local tag (may exist from previous runs or during checkout)
       # and the force flag on push is required as we are going to be overrride the tag which is not allowed by default
       # We currently create annotated flags to keep track of the timestamp when the tag was created
@@ -335,13 +345,6 @@ jobs:
             git config user.name filecoin-helper
             git tag -f -a devnet-nightly -m "$(date -uIseconds)"
             git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git devnet-nightly
-
-  trigger_nightly_devnet_deploy:
-    docker:
-      - image: circleci/golang:latest
-    resource_class: small
-    steps:
-      - setup_remote_docker
       - run:
           name: Trigger nightly deploy in go-filecoin-infra
           command: |
