@@ -81,7 +81,7 @@ git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.c
 planning to edit the proofs, you can fetch pre-compiled assets for your build rather than compiling them locally.
 
 To do so, set these two environment variables before fetching dependencies:
-  - `GITHUB_TOKEN` - a personal access token generated on GitHub
+  - `GITHUB_TOKEN` - a personal access token generated on GitHub (requires only the `repo` scope)
   - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS=1`
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
