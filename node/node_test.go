@@ -18,6 +18,7 @@ import (
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -159,10 +160,11 @@ func TestNodeStartMining(t *testing.T) {
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	config := pbConfig.NewConfig(minerNode.Repo)
 	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
+	porcelainAPI := porcelain.New(plumbingAPI)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), plumbingAPI)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 
 	assert.NoError(minerNode.Start(ctx))
@@ -388,7 +390,7 @@ func TestSendMessage(t *testing.T) {
 
 		gasPrice := types.NewGasPrice(0)
 		gasLimit := types.NewGasUnits(0)
-		_, err = node.PlumbingAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
+		_, err = node.PorcelainAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
 		require.NoError(err)
 
 		assert.Equal(1, len(node.MsgPool.Pending()))

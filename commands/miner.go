@@ -2,10 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 	"io"
 	"math/big"
 	"strconv"
+
+	"github.com/filecoin-project/go-filecoin/porcelain"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -169,7 +170,7 @@ This command waits for the ask to be mined.`,
 
 		res, err := porcelain.MinerSetPrice(
 			req.Context,
-			GetPlumbingAPI(env),
+			GetPorcelainAPI(env),
 			fromAddr,
 			minerAddr,
 			gasPrice,

@@ -9,18 +9,18 @@ import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type nodeMiner struct {
-	api         *nodeAPI
-	plumbingAPI *plumbing.API
+	api          *nodeAPI
+	porcelainAPI *porcelain.API
 }
 
-func newNodeMiner(api *nodeAPI, plumbingAPI *plumbing.API) *nodeMiner {
-	return &nodeMiner{api: api, plumbingAPI: plumbingAPI}
+func newNodeMiner(api *nodeAPI, porcelainAPI *porcelain.API) *nodeMiner {
+	return &nodeMiner{api: api, porcelainAPI: porcelainAPI}
 }
 
 func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (address.Address, error) {
@@ -43,7 +43,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 }
 
 func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
-	return nm.plumbingAPI.MessageSend(
+	return nm.porcelainAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,
@@ -56,7 +56,7 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 }
 
 func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
-	return nm.plumbingAPI.MessageSend(
+	return nm.porcelainAPI.MessageSend(
 		ctx,
 		fromAddr,
 		minerAddr,

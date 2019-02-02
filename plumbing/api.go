@@ -14,7 +14,10 @@ import (
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
-// to implement protocols and user/network-facing features.
+// to implement protocols and user/network-facing features. You probably should
+// depend on the higher level porcelain.API instead of this api, as it includes
+// these calls in addition to higher level convenience calls to make them more
+// ergonomic.
 type API struct {
 	logger logging.EventLogger
 

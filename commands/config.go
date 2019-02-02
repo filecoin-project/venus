@@ -76,7 +76,7 @@ $ go-filecoin config bootstrap
 		cmdkit.StringArg("value", false, false, "Optionally, a value with which to set the config entry"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		api := GetPlumbingAPI(env)
+		api := GetPorcelainAPI(env)
 		key := req.Arguments[0]
 		var value string
 

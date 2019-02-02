@@ -2,47 +2,41 @@ package storage
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"testing"
+
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 )
 
-type minerTestPlumbing struct {
+type minerTestPorcelain struct {
 	config *cfg.Config
 }
 
-func newMinerTestPlumbing() *minerTestPlumbing {
-	return &minerTestPlumbing{
+func newminerTestPorcelain() *minerTestPorcelain {
+	return &minerTestPorcelain{
 		config: cfg.NewConfig(repo.NewInMemoryRepo()),
 	}
 }
 
-func (mtp *minerTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	return [][]byte{}, nil, nil
-}
-
-func (mtp *minerTestPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
-	return nil, nil
-}
-
-func (mtp *minerTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return cid.Cid{}, nil
-}
-
-// calls back immediately
-func (mtp *minerTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (mtp *minerTestPorcelain) MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error {
 	return nil
 }
 
-func (mtp *minerTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return [][]byte{}, nil, nil
+}
+
+func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error) {
 	return mtp.config.Get(dottedPath)
 }
 
@@ -54,9 +48,9 @@ func TestReceiveStorageProposal(t *testing.T) {
 		accepted := false
 		rejected := false
 
-		plumbingAPI := newMinerTestPlumbing()
+		porcelainAPI := newminerTestPorcelain()
 		miner := Miner{
-			plumbingAPI: plumbingAPI,
+			porcelainAPI: porcelainAPI,
 			proposalAcceptor: func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error) {
 				accepted = true
 				return &DealResponse{}, nil
@@ -68,7 +62,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		}
 
 		// configure storage price
-		plumbingAPI.config.Set("mining.storagePrice", `"50"`)
+		porcelainAPI.config.Set("mining.storagePrice", `"50"`)
 
 		proposal := &DealProposal{
 			TotalPrice: types.NewAttoFILFromFIL(75),
@@ -88,9 +82,9 @@ func TestReceiveStorageProposal(t *testing.T) {
 		accepted := false
 		rejected := false
 
-		plumbingAPI := newMinerTestPlumbing()
+		porcelainAPI := newminerTestPorcelain()
 		miner := Miner{
-			plumbingAPI: plumbingAPI,
+			porcelainAPI: porcelainAPI,
 			proposalAcceptor: func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error) {
 				accepted = true
 				return &DealResponse{}, nil
@@ -102,7 +96,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		}
 
 		// configure storage price
-		plumbingAPI.config.Set("mining.storagePrice", `"50"`)
+		porcelainAPI.config.Set("mining.storagePrice", `"50"`)
 
 		proposal := &DealProposal{
 			TotalPrice: types.NewAttoFILFromFIL(25),
