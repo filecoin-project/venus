@@ -367,37 +367,6 @@ func TestMakePrivateKey(t *testing.T) {
 	assert.NotNil(goodKey)
 }
 
-// Note: this is pretty redundant with message/sender_test.go but keeping it
-// as assurance the API2 was set up correctly.
-func TestSendMessage(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("send message adds to pool", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		require.NoError(resetNodeGen(node, tif))
-
-		assert.NoError(node.Start(ctx))
-
-		gasPrice := types.NewGasPrice(0)
-		gasLimit := types.NewGasUnits(0)
-		_, err = node.PorcelainAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
-		require.NoError(err)
-
-		assert.Equal(1, len(node.MsgPool.Pending()))
-	})
-
-}
-
 func repoConfig() ConfigOpt {
 	defaultCfg := config.NewDefaultConfig()
 	return func(c *Config) error {
