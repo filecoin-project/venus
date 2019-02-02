@@ -9,6 +9,7 @@ import (
 
 	"gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -424,4 +425,43 @@ func TestNodeConfig(t *testing.T) {
 	assert.Equal(&config.SwarmConfig{
 		Address: "/ip4/0.0.0.0/tcp/0",
 	}, cfg.Swarm)
+}
+
+func TestNode_GenerateNewKeyInfo(t *testing.T) {
+	tnode := MakeNodesUnstarted(t, 1, true, true)[0]
+	ki, err := tnode.GenerateNewKeyInfo()
+	require.NoError(t, err)
+	assert.NotNil(t, ki)
+	pkey, err := ki.PublicKey()
+	require.NoError(t, err)
+	assert.NotNil(t, pkey)
+	addr, err := ki.Address()
+	require.NoError(t, err)
+	assert.NotNil(t, addr)
+}
+
+func TestNode_GetMinerOwnerPubKey(t *testing.T) {
+	ctx := context.Background()
+	seed := MakeChainSeed(t, TestGenCfg)
+	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
+	tnode := MakeNodeWithChainSeed(t, seed, configOpts,
+		PeerKeyOpt(PeerKeys[0]),
+		AutoSealIntervalSecondsOpt(1),
+	)
+	seed.GiveKey(t, tnode, 0)
+	mineraddr, minerOwnerAddr := seed.GiveMiner(t, tnode, 0)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PlumbingAPI)
+	assert.NoError(t, err)
+
+	// it hasn't yet been saved to the MinerConfig; simulates incomplete CreateMiner, or no miner for the node
+	pkey, err := tnode.GetMinerOwnerPubKey()
+	assert.NoError(t, err)
+	assert.Nil(t, pkey)
+
+	err = tnode.saveMinerConfig(minerOwnerAddr, address.Address{})
+	assert.NoError(t, err)
+
+	pkey, err = tnode.GetMinerOwnerPubKey()
+	assert.NoError(t, err)
+	assert.NotNil(t, pkey)
 }

@@ -759,6 +759,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	}
 
 	minerOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
+	// minerSigningAddress, err = node.MinerSigningAddress(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
@@ -795,6 +796,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
 		}
 		processor := consensus.NewDefaultProcessor()
+		// add signingAddr and signer to params
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
@@ -994,19 +996,12 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		log.FinishWithErr(ctx, err)
 	}()
 
-	// TODO: make this more streamlined in the wallet
-	backend, err := node.Wallet.Find(accountAddr)
+	pubKey, err := node.GetMinerOwnerPubKey()
 	if err != nil {
 		return nil, err
 	}
-	info, err := backend.GetKeyInfo(accountAddr)
-	if err != nil {
-		return nil, err
-	}
-	pubkey, err := info.PublicKey()
-	if err != nil {
-		return nil, err
-	}
+	smsgCid, err := node.PorcelainAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice,
+		gasLimit, "createMiner", big.NewInt(int64(pledge)), pubKey, pid)
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
@@ -1037,7 +1032,17 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	err = node.saveMinerAddressToConfig(minerAddress)
+	signingInfo, err := node.GenerateNewKeyInfo()
+	if err != nil {
+		return &minerAddress, err
+	}
+
+	signerAddr, err := signingInfo.Address()
+	if err != nil {
+		return &minerAddress, err
+	}
+
+	err = node.saveMinerConfig(minerAddress, signerAddr)
 	if err != nil {
 		return &minerAddress, err
 	}
@@ -1047,11 +1052,12 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	return &minerAddress, err
 }
 
-func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
+// TODO: change to "saveNewMinerConfig" and make minerAddr and minerSigningAddr the params
+func (node *Node) saveMinerConfig(ownerAddr address.Address, signerAddr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
-	newConfig.Mining.MinerAddress = addr
-
+	newConfig.Mining.MinerAddress = ownerAddr
+	newConfig.Mining.SignerAddress = signerAddr
 	return r.ReplaceConfig(newConfig)
 }
 
@@ -1071,6 +1077,12 @@ func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Add
 	return address.NewFromBytes(res[0])
 }
 
+// MiningSignerAddress returns the signing address for the miner actor to sign blocks and tickets
+func (node *Node) MiningSignerAddress() address.Address {
+	r := node.Repo
+	return r.Config().Mining.SignerAddress
+}
+
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	head := node.ChainReader.Head()
@@ -1082,6 +1094,52 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 		return nil, err
 	}
 	return types.NewBlockHeight(height), nil
+}
+
+// GetMinerOwnerPubKey gets the miner owner public key
+func (node *Node) GetMinerOwnerPubKey() ([]byte, error) {
+	// TODO: make this more streamlined in the wallet
+	r := node.Repo
+	addr := r.Config().Mining.MinerAddress
+
+	// this is expected if there is no miner
+	if (addr == address.Address{}) || !node.Wallet.HasAddress(addr) {
+		return nil, nil
+	}
+
+	backend, err := node.Wallet.Find(addr)
+	if err != nil {
+		return nil, err
+	}
+	info, err := backend.GetKeyInfo(addr)
+	if err != nil {
+		return nil, err
+	}
+	pubkey, err := info.PublicKey()
+	if err != nil {
+		return nil, err
+	}
+	return pubkey, nil
+}
+
+// GenerateNewKeyInfo creates a new key pair for a node
+func (node *Node) GenerateNewKeyInfo() (*types.KeyInfo, error) {
+	// TODO: make this more streamlined in the wallet
+	newAddr, err := node.NewAddress()
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+
+	backend, err := node.Wallet.Find(newAddr)
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+
+	info, err := backend.GetKeyInfo(newAddr)
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+	return info, nil
 }
 
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s *pubsub.Subscription, sname string) {

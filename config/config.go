@@ -101,6 +101,7 @@ func newDefaultBootstrapConfig() *BootstrapConfig {
 // MiningConfig holds all configuration options related to mining.
 type MiningConfig struct {
 	MinerAddress            address.Address `json:"minerAddress"`
+	SignerAddress           address.Address `json:"signerAddress"`
 	AutoSealIntervalSeconds uint            `json:"autoSealIntervalSeconds"`
 	StoragePrice            *types.AttoFIL  `json:"storagePrice"`
 }
