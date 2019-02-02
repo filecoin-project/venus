@@ -84,7 +84,7 @@ type porcelainAPI interface {
 }
 
 // node is subset of node on which this protocol depends. These deps
-// are moving off of node and into the porcelain api (see PlumbingAPI). Eventually this
+// are moving off of node and into the porcelain api (see porcelainAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the porcelain api.
 type node interface {
 	BlockHeight() (*types.BlockHeight, error)
