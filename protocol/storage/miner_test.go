@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
- 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
