@@ -98,7 +98,7 @@ func (smsg *SignedMessage) String() string {
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
-// a signature derived from the seralized `msg` and `msg.From`
+// a signature derived from the serialized `msg` and `msg.From`
 func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
 	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
 

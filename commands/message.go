@@ -88,7 +88,8 @@ var msgSendCmd = &cmds.Command{
 	},
 }
 
-type waitResult struct {
+// WaitResult is the result of a message wait call.
+type WaitResult struct {
 	Message   *types.SignedMessage
 	Receipt   *types.MessageReceipt
 	Signature *exec.FunctionSignature
@@ -122,7 +123,7 @@ var msgWaitCmd = &cmds.Command{
 				return errors.Wrap(err2, "Couldn't get signature for message")
 			}
 
-			res := waitResult{
+			res := WaitResult{
 				Message: msg,
 				Receipt: receipt,
 				// Signature is required to decode the output.
@@ -138,9 +139,9 @@ var msgWaitCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: waitResult{},
+	Type: WaitResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *waitResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *WaitResult) error {
 			messageOpt, _ := req.Options["message"].(bool)
 			receiptOpt, _ := req.Options["receipt"].(bool)
 			returnOpt, _ := req.Options["return"].(bool)

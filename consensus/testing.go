@@ -78,7 +78,7 @@ type TestSignedMessageValidator struct{}
 var _ SignedMessageValidator = (*TestSignedMessageValidator)(nil)
 
 // Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 
@@ -100,7 +100,7 @@ func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 }
 
 // NewTestProcessor creates a processor with a test validator and test rewarder
-func NewTestProcessor() Processor {
+func NewTestProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
 		signedMessageValidator: &TestSignedMessageValidator{},
 		blockRewarder:          &TestBlockRewarder{},

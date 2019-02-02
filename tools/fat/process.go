@@ -53,6 +53,9 @@ type IPTBCoreExt interface {
 type Filecoin struct {
 	PeerID peer.ID
 
+	initOpts   []ProcessInitOption
+	daemonOpts []ProcessDaemonOption
+
 	Log logging.EventLogger
 
 	core IPTBCoreExt
@@ -70,11 +73,13 @@ type Filecoin struct {
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt) *Filecoin {
+func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt, eo EnvironmentOpts) *Filecoin {
 	return &Filecoin{
-		core: c,
-		Log:  logging.Logger(c.String()),
-		ctx:  ctx,
+		core:       c,
+		Log:        logging.Logger(c.String()),
+		ctx:        ctx,
+		initOpts:   eo.InitOpts,
+		daemonOpts: eo.DaemonOpts,
 	}
 }
 

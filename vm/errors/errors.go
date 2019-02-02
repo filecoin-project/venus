@@ -154,7 +154,7 @@ func IsApplyErrorPermanent(err error) bool {
 	return ok && re.IsPermanent()
 }
 
-// ApplyErrorPermanent is an error indicaiting a permanent failure.
+// ApplyErrorPermanent is an error indicating a permanent failure.
 type ApplyErrorPermanent struct {
 	err error
 	msg string

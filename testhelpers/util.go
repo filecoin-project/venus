@@ -44,22 +44,32 @@ func GetGoPath() (string, error) {
 
 // MustGetFilecoinBinary returns the path where the filecoin binary will be if it has been built and panics otherwise.
 func MustGetFilecoinBinary() string {
-	gopath, err := GetGoPath()
+	path, err := GetFilecoinBinary()
 	if err != nil {
 		panic(err)
+	}
+
+	return path
+}
+
+// GetFilecoinBinary returns the path where the filecoin binary will be if it has been built
+func GetFilecoinBinary() (string, error) {
+	gopath, err := GetGoPath()
+	if err != nil {
+		return "", err
 	}
 
 	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
 	_, err = os.Stat(bin)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	if os.IsNotExist(err) {
-		panic("You are missing the filecoin binary...try building'")
+		return "", err
 	}
 
-	return bin
+	return bin, nil
 }
 
 // WaitForIt waits until the given callback returns true.

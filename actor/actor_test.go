@@ -107,7 +107,7 @@ func NewMockActor(list exec.Exports) *MockActor {
 
 func makeCtx(method string) exec.VMContext {
 	addrGetter := address.NewForTestGetter()
-	return vm.NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil, nil, *types.ZeroAttoFIL, types.NewGasUnits(0), types.NewGasUnits(0), types.NewBlockHeight(0))
+	return vm.NewVMContext(nil, nil, types.NewMessage(addrGetter(), addrGetter(), 0, nil, method, nil), nil, nil, vm.NewGasTracker(), types.NewBlockHeight(0))
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
