@@ -97,7 +97,7 @@ func (e *EnvironmentMemoryGenesis) Log() logging.EventLogger {
 
 // NewProcess builds a iptb process of the given type and options passed. The
 // process is tracked by the environment and returned.
-func (e *EnvironmentMemoryGenesis) NewProcess(ctx context.Context, processType string, options map[string]string) (*Filecoin, error) {
+func (e *EnvironmentMemoryGenesis) NewProcess(ctx context.Context, processType string, options map[string]string, eo EnvironmentOpts) (*Filecoin, error) {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
@@ -124,7 +124,7 @@ func (e *EnvironmentMemoryGenesis) NewProcess(ctx context.Context, processType s
 		return nil, fmt.Errorf("%s does not implement the extended IPTB.Core interface IPTBCoreExt", processType)
 	}
 
-	p := NewFilecoinProcess(ctx, fc)
+	p := NewFilecoinProcess(ctx, fc, eo)
 	e.processes = append(e.processes, p)
 	return p, nil
 }

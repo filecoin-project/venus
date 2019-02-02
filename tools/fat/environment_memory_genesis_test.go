@@ -66,7 +66,7 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir)
 		require.NoError(err)
 
-		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil)
+		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, EnvironmentOpts{})
 		assert.NoError(err)
 		assert.NotNil(p)
 		assert.Equal(1, len(env.Processes()))
