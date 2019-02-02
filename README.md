@@ -98,14 +98,14 @@ go run ./build/*.go deps
 # First, build the binary...
 go run ./build/*.go build
 
+# Install go-filecoin to ${GOPATH}/bin
+go run ./build/*.go install
+
 # Then, run the tests.
 go run ./build/*.go test
 
 # Build and test can be combined!
 go run ./build/*.go best
-
-# Install go-filecoin to ${GOPATH}/bin
-go run ./build/*.go install
 ```
 
 Other handy build commands include:
