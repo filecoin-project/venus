@@ -57,7 +57,6 @@ var Errors = map[uint8]error{
 
 func init() {
 	cbor.RegisterCborType(PaymentChannel{})
-	cbor.RegisterCborType(PaymentVoucher{})
 }
 
 // PaymentChannel records the intent to pay funds to a target account.
@@ -66,16 +65,6 @@ type PaymentChannel struct {
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
 	Eol            *types.BlockHeight `json:"eol"`
-}
-
-// PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
-type PaymentVoucher struct {
-	Channel   types.ChannelID   `json:"channel"`
-	Payer     address.Address   `json:"payer"`
-	Target    address.Address   `json:"target"`
-	Amount    types.AttoFIL     `json:"amount"`
-	ValidAt   types.BlockHeight `json:"valid_at"`
-	Signature types.Signature   `json:"signature"`
 }
 
 // Actor provides a mechanism for off chain payments.
