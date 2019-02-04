@@ -64,8 +64,36 @@ Blockchain blocks are stored in block service blocks, but are not the same thing
 
 ## Architecture overview
 
-(Diagram goes here)
-
+```
+           ┌─────────────────────────────────────┐
+           │                                     │
+  Network  │  network (gossipsub, bitswap, etc.) │                 | | \/
+           │                                     │                 |_| /\
+           └─────▲────────────▲────────────▲─────┘
+                 │            │            │           ┌────────────────────────────┐
+           ┌─────▼────┐ ┌─────▼─────┐ ┌────▼─────┐     │                            │
+           │          │ │           │ │          │     │    Commands / REST API     │
+Protocols  │ Storage  │ │  Mining   │ │Retrieval │     │                            │
+           │ Protocol │ │ Protocol  │ │ Protocol │     └────────────────────────────┘
+           │          │ │           │ │          │                    │
+           └──────────┘ └───────────┘ └──────────┘                    │
+                 │            │             │                         │
+                 └──────────┬─┴─────────────┴───────────┐             │
+                            ▼                           ▼             ▼
+           ┌────────────────────────────────┐ ┌───────────────────┬─────────────────┐
+ Internal  │            Core API            │ │     Porcelain     │     Plumbing    │
+      API  │                                │ ├───────────────────┘                 │
+           └────────────────────────────────┘ └─────────────────────────────────────┘
+                            │                                    │
+                  ┌─────────┴────┬──────────────┬──────────────┬─┴────────────┐
+                  ▼              ▼              ▼              ▼              ▼
+           ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
+           │            │ │            │ │            │ │            │ │            │
+     Core  │  Message   │ │   Chain    │ │ Processor  │ │   Block    │ │   Wallet   │
+           │    Pool    │ │   Store    │ │            │ │  Service   │ │            │
+           │            │ │            │ │            │ │            │ │            │
+           └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘
+```
 ## A tour of the code
 
 ### History–the Node object
@@ -167,6 +195,109 @@ Much in mining package, but also a bunch in the node implementation.
 
 More detail on the individual protocols is coming soon.
 
+### Actors
+
+Actors are Filecoin’s notion of smart contracts. 
+They are not true smart contracts—with bytecode running on a VM—but instead implemented in Go. 
+It is expected that other implementations will match the behaviour of the Go actors exactly. 
+An ABI describes how inputs and outputs to the VM are encoded. 
+Future work will replace this implementation with a “real” VM.
+
+The [Actor](https://github.com/filecoin-project/go-filecoin/blob/master/actor/actor.go) struct is the base implementation of actors, with fields common to all of them.
+
+- `Code` is a CID identifying the actor code, but since these actors are implemented in Go, is actually some fixed bytes acting as an identifier. 
+This identifier selects the kind of actor implementation when a message is sent to its address.
+- `Head` is the CID  of this actor instance’s state.
+- `Nonce` is a counter of #messages received *from* that actor. 
+It is only set for account actors (the actors from which external parties send messages); messages between actors in the VM don’t use the nonce.
+- `Balance` is FIL balance the actor controls. 
+
+Some actors are singletons (e.g. the storage market) but others have multiple instances (e.g. storage miners). 
+A storage miner actor exists for each miner in the Filesystem network. 
+Their structs share the same code CID so they have the same behavior, but have distinct head state CIDs and balance. 
+Each actor instance exists at an address in the state tree. An address is the hash of the actor’s public key.
+
+The [account](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/account) actor doesn’t have any special behavior or state other than a balance. 
+Everyone who wants to send messages (transactions) has an account actor, and it is from this actor’s address that they send messages.
+
+Every storage miner has an instance of a [miner](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/miner) actor. 
+The miner actor plays a role in the storage protocol, for example it pledges space and collateral for storage, posts proofs of storage, etc. 
+A miner actor’s state is located in the state tree at its address; the value found there is an Actor structure. 
+The head CID in the actor structure points to that miner’s state instance (encoded).
+
+Other built-in actors include the [payment broker](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/paymentbroken), 
+which provides a mechanism for off-chain payments via payment channels, 
+and the [storage market](https://github.com/filecoin-project/go-filecoin/blob/master/actor/storagemarket), 
+which starts miners and tracks total storage (aka “power”). 
+These are both singletons.
+
+Actors declare a list of exported methods with ABI types. 
+Method implementations typically load the state tree, perform some query or mutation, then return a value or an error. 
+
+### The state tree
+
+Blockchain state is represented in the [state tree](https://github.com/filecoin-project/go-filecoin/blob/master/state/tree.go), 
+which contains the state of all actors. 
+The state tree is a map of address to (encoded) actor structs. 
+The state tree interface exposes getting and setting actors at addresses, and iterating actors. 
+The underlying data structure is a [Hash array-mapped trie](https://en.wikipedia.org/wiki/Hash_array_mapped_trie). 
+A HAMT is also often used to store actor state, eg when the actor wants to store a large map.
+
+The canonical binary encoding used by Filecoin is [CBOR](http://cbor.io/). In Go, structs are CBOR-encoded by reflection. 
+The ABI uses a separate inner encoding, which is manual. 
+
+### Messages and state transitions
+
+Filecoin state transitions are driven by messages sent to actors; these are our “transactions”. 
+A message is a method invocation on an actor. 
+A message has sender and recipient addresses, and optional parameters such as an amount of filecoin to transfer, a method name, and parameters.
+
+Messages from the same actor go on chain in nonce order. 
+Note that the nonce is only really used by account actors (representing external entities such as humans). 
+The nonce guards against replay of messages entering the VM for execution, but is not used for messages between actors during an external message’s execution. 
+
+Driving a state transition means invoking an actor method. 
+One invokes a method on an actor by sending it a message. 
+To send a message the message is created, signed, added to your local node’s message pool broadcast on the network to other nodes, 
+which will add it to their message pool too. 
+Some node will then mine a block and possibly include your message. 
+In Filecoin, it is essential to remember that sending the message does not mean it has gone on chain or that its outcome has been reflected in the state tree. 
+Sending means the message is available to be mined into a block. 
+You must wait for the message to be included in a block to see its effect.
+
+Read-only methods, or query messages, are the mechanism by which actor state can be inspected. 
+These messages are executed locally against a read only version of the state tree of the head of the chain. 
+They never leave the node, they are not broadcast. 
+The plumbing API exposes `MessageSend` and `MessageQuery` for these two cases. 
+
+The [processor](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/processor.go) is the 
+entry point for making and validating state transitions represented by the messages. 
+It is modelled Ethereum’s message processing system. 
+The processor manages the application of messages to the state tree from the prior block/s. 
+It loads the actor from which a message came, check signatures, 
+then loads the actor and state to which a message is addressed and passes the message to the VM for execution. 
+
+The [vm](https://github.com/filecoin-project/go-filecoin/blob/master/vm) package has the low level detail of calling actor methods. 
+A [VM context](https://github.com/filecoin-project/go-filecoin/blob/master/vm/context.go) defines the world visible from an actor implementation while executing, 
+
+### Consensus
+
+Filecoin uses a consensus algorithm called [expected consensus](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/expected.go). 
+Unlike proof-of-work schemes, expected-consensus is a proof-of-stake model, where probability of mining a block in each round (30 seconds) 
+is proportional to amount of storage a miner has committed to the network. 
+Each round, miners are elected through a probabilistic but private mechanism akin to rolling independent, private, but verifiable dice. 
+The expected number of winners in each round is one, but it could be zero or more than one miner. 
+If a miner is elected, they have the right to mine a block in that round.
+
+Given the probabilistic nature of mining new blocks, more than one block may be mined in any given round. 
+Hence, a new block might have more than one parent block. 
+The parents form a set, which we call a [tipset](https://github.com/filecoin-project/go-filecoin/blob/master/consensus/tipset.go). 
+All the blocks in a tipset are at the same height and share the same parents. 
+Tipsets contain one or more blocks. 
+A null block count indicates the absence of any blocks mined in a previous round. 
+Subsequent blocks are built upon *all* of the tipset; 
+there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
+
 ### Network layer
 
 Filecoin relies on [libp2p](https://libp2p.io/) for all its networking, such as peer discovery, NAT discovery, and circuit relay. 
@@ -182,12 +313,6 @@ The node starts up all the components, connects them as needed, and waits.
 Protocols (goroutines) communicate through custom channels. 
 This architecture needs more thought, but we are considering moving more inter-module communication to use iterators (c.f. those in Java). 
 An event bus might also be a good pattern for some cases, though.
-
-### Testing
-
-(More content coming here)
-
-A few functional tests have some bash scripts orchestrating complex test setups.
 
 ## Filesystem storage
 
@@ -220,6 +345,12 @@ essentially who is storing what data, for what fee and which sectors have been s
 
 The keystore contains the binary encoded peer key for interacting securely over the network. 
 This data lives in a file at `$HOME/.filecoin/keystore/self`.
+
+## Testing
+
+(More content coming here)
+
+A few functional tests have some bash scripts orchestrating complex test setups.
 
 ## Dependencies
 
