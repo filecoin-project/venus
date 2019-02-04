@@ -104,10 +104,7 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 		return nil, err
 	}
 
-	f.PeerID, err = peer.IDB58Decode(idinfo.ID)
-	if err != nil {
-		return nil, err
-	}
+	f.PeerID = idinfo.ID
 
 	return out, nil
 }

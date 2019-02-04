@@ -51,7 +51,7 @@ var idCmd = &cmds.Command{
 
 func idFormatSubstitute(format string, val *api.IDDetails) string {
 	output := format
-	output = strings.Replace(output, "<id>", val.ID, -1)
+	output = strings.Replace(output, "<id>", val.ID.Pretty(), -1)
 	output = strings.Replace(output, "<aver>", val.AgentVersion, -1)
 	output = strings.Replace(output, "<pver>", val.ProtocolVersion, -1)
 	output = strings.Replace(output, "<pubkey>", val.PublicKey, -1)

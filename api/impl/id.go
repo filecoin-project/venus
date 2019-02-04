@@ -17,7 +17,7 @@ func newNodeID(api *nodeAPI) *nodeID {
 // Details, returns detailed information about the underlying node.
 func (a *nodeID) Details() (*api.IDDetails, error) {
 	host := a.api.node.Host()
-	hostID := host.ID().Pretty()
+	hostID := host.ID()
 	addrs := host.Addrs()
 
 	details := api.IDDetails{
@@ -27,7 +27,7 @@ func (a *nodeID) Details() (*api.IDDetails, error) {
 	}
 
 	for i, addr := range addrs {
-		details.Addresses[i] = fmt.Sprintf("%s/ipfs/%s", addr, hostID)
+		details.Addresses[i] = fmt.Sprintf("%s/ipfs/%s", addr, hostID.Pretty())
 	}
 
 	return &details, nil

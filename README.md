@@ -101,7 +101,7 @@ go run ./build/*.go deps
 # First, build the binary...
 go run ./build/*.go build
 
-# Install go-filecoin to ${GOPATH}/bin
+# Install go-filecoin to ${GOPATH}/bin (necessary for tests)
 go run ./build/*.go install
 
 # Then, run the tests.
