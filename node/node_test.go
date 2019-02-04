@@ -452,7 +452,7 @@ func TestNode_GetMinerOwnerPubKey(t *testing.T) {
 	)
 	seed.GiveKey(t, tnode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, tnode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PlumbingAPI)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PorcelainAPI)
 	assert.NoError(t, err)
 
 	// it hasn't yet been saved to the MinerConfig; simulates incomplete CreateMiner, or no miner for the node

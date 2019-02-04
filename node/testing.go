@@ -16,21 +16,16 @@ import (
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/lookup"
-	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/stretchr/testify/require"
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -240,10 +235,7 @@ func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
 // created, which is bad information to need to rely on in tests.
 func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: deadcode
 	ctx := context.Background()
-	newGenBlk, err := gif(node.CborStore(), node.Blockstore)
-	if err != nil {
-		return err
-	}
+
 	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
 		return getStateFromKey(ctx, ts.String())
 	}
