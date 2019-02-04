@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
@@ -17,16 +16,17 @@ import (
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -232,39 +232,17 @@ func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
 	return append(cfo, VerifierConfigOption(verifier))
 }
 
-// RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint64, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
-	resultChan := make(chan MustCreateMinerResult)
-	require := require.New(t)
-
-	if !node.ChainReader.GenesisCid().Defined() {
-		panic("must initialize with genesis block first")
-	}
-
+// resetNodeGen resets the genesis block of the input given node using the gif
+// function provided.
+// Note: this is an awful way to test the node. This function duplicates to a large
+// degree what the constructor does. It should not be in the business of replacing
+// fields on node as doing that correctly requires knowing exactly how the node is
+// created, which is bad information to need to rely on in tests.
+func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: deadcode
 	ctx := context.Background()
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-
-	subscription, err := node.PubSub.Subscribe(msg.Topic)
-	require.NoError(err)
-
-	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, types.NewGasPrice(0), types.NewGasUnits(0), pledge, pid, &collateral)
-		resultChan <- MustCreateMinerResult{MinerAddress: minerAddr, Err: err}
-		wg.Done()
-	}()
-
-	// wait for create miner call to put a message in the pool
-	_, err = subscription.Next(ctx)
-	require.NoError(err)
-	getStateFromKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
-		tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
-		if err != nil {
-			return nil, err
-		}
-		return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
+	newGenBlk, err := gif(node.CborStore(), node.Blockstore)
+	if err != nil {
+		return err
 	}
 	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
 		return getStateFromKey(ctx, ts.String())
@@ -299,9 +277,8 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		TipSet:          outTS,
 		TipSetStateRoot: out.NewBlock.StateRoot,
 	}
-	require.NoError(chainStore.PutTipSetAndState(ctx, tsas))
-	require.NoError(chainStore.SetHead(ctx, outTS))
-	return resultChan
+	node.lookup = lookup.NewChainLookupService(newChainReader, defaultSenderGetter, node.Blockstore)
+	return nil
 }
 
 // PeerKeys are a list of keys for peers that can be used in testing.

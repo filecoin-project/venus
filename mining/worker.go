@@ -8,6 +8,11 @@ import (
 	"context"
 	"time"
 
+	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
+	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -15,11 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 )
 
 var log = logging.Logger("mining")
@@ -67,9 +67,10 @@ type MessageApplier interface {
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
-	createPoST DoSomeWorkFunc  // TODO: rename createPoSTFunc
-	minerAddr  address.Address // TODO: needs to be a key in the near future
-
+	createPoSTFunc  DoSomeWorkFunc
+	minerAddr       address.Address // TODO: needs to be a key in the near future
+	blockSignerAddr address.Address
+	blockSigner     types.Signer
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
@@ -85,14 +86,52 @@ type DefaultWorker struct {
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, getAncestors GetAncestors, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration) *DefaultWorker {
-	w := NewDefaultWorkerWithDeps(messagePool, getStateTree, getWeight, getAncestors, processor, powerTable, bs, cst, miner, bt, func() {})
-	w.createPoST = w.fakeCreatePoST
+func NewDefaultWorker(messagePool *core.MessagePool,
+	getStateTree GetStateTree,
+	getWeight GetWeight,
+	getAncestors GetAncestors,
+	processor MessageApplier,
+	powerTable consensus.PowerTableView,
+	bs blockstore.Blockstore,
+	cst *hamt.CborIpldStore,
+	miner address.Address,
+	blockSignerAddr address.Address,
+	blockSigner types.Signer,
+	bt time.Duration) *DefaultWorker {
+
+	w := NewDefaultWorkerWithDeps(messagePool,
+		getStateTree,
+		getWeight,
+		getAncestors,
+		processor,
+		powerTable,
+		bs,
+		cst,
+		miner,
+		blockSignerAddr,
+		blockSigner,
+		bt,
+		func() {})
+	// TODO: create real PoST.
+	// https://github.com/filecoin-project/go-filecoin/issues/1791
+	w.createPoSTFunc = w.fakeCreatePoST
 	return w
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetStateTree, getWeight GetWeight, getAncestors GetAncestors, processor MessageApplier, powerTable consensus.PowerTableView, bs blockstore.Blockstore, cst *hamt.CborIpldStore, miner address.Address, bt time.Duration, createPoST DoSomeWorkFunc) *DefaultWorker {
+func NewDefaultWorkerWithDeps(messagePool *core.MessagePool,
+	getStateTree GetStateTree,
+	getWeight GetWeight,
+	getAncestors GetAncestors,
+	processor MessageApplier,
+	powerTable consensus.PowerTableView,
+	bs blockstore.Blockstore,
+	cst *hamt.CborIpldStore,
+	miner address.Address,
+	blockSignerAddr address.Address,
+	blockSigner types.Signer,
+	bt time.Duration,
+	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		getStateTree: getStateTree,
 		getWeight:    getWeight,
@@ -102,9 +141,11 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool, getStateTree GetSta
 		powerTable:   powerTable,
 		blockstore:   bs,
 		cstore:       cst,
-		createPoST:   createPoST,
+		createPoSTFunc:  createPoST,
 		minerAddr:    miner,
 		blockTime:    bt,
+		blockSignerAddr: blockSignerAddr,
+		blockSigner:     blockSigner,
 	}
 }
 
@@ -143,7 +184,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 		outCh <- Output{Err: err}
 		return false
 	}
-	prCh := createProof(challenge, w.createPoST)
+	prCh := createProof(challenge, w.createPoSTFunc)
 
 	var proof proofs.PoStProof
 	var ticket []byte
@@ -160,7 +201,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 		ticket = consensus.CreateTicket(proof, w.minerAddr)
 	}
 
-	// TODO: Test the interplay of isWinningTicket() and createPoST()
+	// TODO: Test the interplay of isWinningTicket() and createPoSTFunc()
+	// https://github.com/filecoin-project/go-filecoin/issues/1791
 	weHaveAWinner, err := consensus.IsWinningTicket(ctx, w.blockstore, w.powerTable, st, ticket, w.minerAddr)
 
 	if err != nil {
@@ -187,7 +229,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan proofs.PoStChallengeSeed {
 	c := make(chan proofs.PoStChallengeSeed)
 	go func() {
-		createPoST() // TODO send new PoST on channel once we can create it
+		// TODO send new PoST on channel once we can create it
+		//  https://github.com/filecoin-project/go-filecoin/issues/1791
+		createPoST()
 		c <- challengeSeed
 	}()
 	return c

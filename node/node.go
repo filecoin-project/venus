@@ -759,7 +759,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	}
 
 	minerOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
-	// minerSigningAddress, err = node.MinerSigningAddress(ctx)
+	minerSigningAddress := node.MiningSignerAddress()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
@@ -797,7 +797,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 		processor := consensus.NewDefaultProcessor()
 		// add signingAddr and signer to params
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable, node.Blockstore, node.CborStore(), minerAddr, blockTime)
+		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
+			node.Blockstore, node.CborStore(), minerAddr, minerSigningAddress, node.Wallet, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
 
@@ -1052,7 +1053,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	return &minerAddress, err
 }
 
-// TODO: change to "saveNewMinerConfig" and make minerAddr and minerSigningAddr the params
+// saveMinerConfig updates the Node Mining config with the MinerAddress and the SignerAddress.
 func (node *Node) saveMinerConfig(ownerAddr address.Address, signerAddr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
@@ -1061,7 +1062,7 @@ func (node *Node) saveMinerConfig(ownerAddr address.Address, signerAddr address.
 	return r.ReplaceConfig(newConfig)
 }
 
-// MiningOwnerAddress returns the owner of the passed in mining address.
+// MiningOwnerAddress returns the owner of miningAddr.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
 	res, _, err := node.PorcelainAPI.MessageQuery(

@@ -432,9 +432,11 @@ func TestNode_GenerateNewKeyInfo(t *testing.T) {
 	ki, err := tnode.GenerateNewKeyInfo()
 	require.NoError(t, err)
 	assert.NotNil(t, ki)
+
 	pkey, err := ki.PublicKey()
 	require.NoError(t, err)
 	assert.NotNil(t, pkey)
+
 	addr, err := ki.Address()
 	require.NoError(t, err)
 	assert.NotNil(t, addr)
