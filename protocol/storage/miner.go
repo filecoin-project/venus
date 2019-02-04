@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
+	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var log = logging.Logger("/fil/storage")
@@ -79,8 +80,17 @@ type storageDeal struct {
 // porcelainAPI is the subset of the porcelain API that storage.Miner needs.
 type porcelainAPI interface {
 	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQueryWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessagePreviewWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
+
+	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
+
+	WalletAddresses() []address.Address
+	WalletFind(address address.Address) (w.Backend, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -487,7 +497,12 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	ctx := context.Background()
 
-	rets, sig, err := sm.porcelainAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments")
+	rets, sig, err := sm.porcelainAPI.MessageQueryWithDefaultAddress(
+		ctx,
+		address.Address{},
+		sm.minerAddr,
+		"getSectorCommitments",
+	)
 	if err != nil {
 		log.Errorf("failed to call query method getSectorCommitments: %s", err)
 		return
@@ -563,7 +578,12 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, _, err := sm.porcelainAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart")
+	res, _, err := sm.porcelainAPI.MessageQueryWithDefaultAddress(
+		context.Background(),
+		address.Address{},
+		sm.minerAddr,
+		"getProvingPeriodStart",
+	)
 	if err != nil {
 		return nil, err
 	}

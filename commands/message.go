@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -77,14 +78,28 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPlumbingAPI(env).MessagePreview(req.Context, fromAddr, target, method)
+			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+				req.Context,
+				GetPlumbingAPI(env),
+				fromAddr,
+				target,
+				method,
+			)
 			if err != nil {
 				return err
 			}
 			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			target,
+			types.NewAttoFILFromFIL(uint64(val)),
+			gasPrice,
+			gasLimit,
+			method,
+		)
 		if err != nil {
 			return err
 		}

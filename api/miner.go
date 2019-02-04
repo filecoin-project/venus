@@ -20,6 +20,4 @@ type Miner interface {
 	GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error)
 	GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error)
 	GetTotalPower(ctx context.Context) (*big.Int, error)
-
-	PreviewCreate(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (types.GasUnits, error)
 }

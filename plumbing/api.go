@@ -5,6 +5,8 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -13,7 +15,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing/network"
+	"github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/types"
+	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -31,6 +36,8 @@ type API struct {
 	msgWaiter    *msg.Waiter
 	config       *cfg.Config
 	chain        *chn.Reader
+	network      *network.Network
+	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
@@ -42,6 +49,8 @@ type APIDeps struct {
 	MsgWaiter    *msg.Waiter
 	Config       *cfg.Config
 	Chain        *chn.Reader
+	Network      *network.Network
+	Wallet       *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -56,6 +65,8 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		config:       deps.Config,
 		chain:        deps.Chain,
+		network:      deps.Network,
+		wallet:       deps.Wallet,
 	}
 }
 
@@ -125,4 +136,24 @@ func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 // BlockGet gets a block by CID
 func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	return api.chain.BlockGet(ctx, id)
+}
+
+// UtilGetPeerId gets the current peer id from Util
+func (api *API) NetworkGetPeerId() peer.ID {
+	return api.network.GetPeerId()
+}
+
+// WalletAddresses gets addresses from the wallet
+func (api *API) WalletAddresses() []address.Address {
+	return api.wallet.Addresses()
+}
+
+// WalletFind finds addresses on the wallet
+func (api *API) WalletFind(address address.Address) (w.Backend, error) {
+	return api.wallet.Find(address)
+}
+
+// WalletNewAddress generates a new wallet address
+func (api *API) WalletNewAddress() (address.Address, error) {
+	return api.wallet.NewAddress()
 }

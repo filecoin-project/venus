@@ -23,8 +23,9 @@ func newNodePaych(api *nodeAPI, porcelainAPI *porcelain.API) *nodePaych {
 }
 
 func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		amount,
@@ -46,9 +47,9 @@ func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address
 		payerAddr = fromAddr
 	}
 
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	values, _, err := queryer.Query(
+	values, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"ls",
@@ -74,9 +75,9 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		return "", err
 	}
 
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	values, _, err := queryer.Query(
+	values, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"voucher",
@@ -106,8 +107,9 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 		return cid.Undef, err
 	}
 
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
@@ -124,8 +126,9 @@ func (np *nodePaych) PreviewRedeem(ctx context.Context, fromAddr address.Address
 		return types.NewGasUnits(0), err
 	}
 
-	return np.plumbingAPI.MessagePreview(
+	return porcelain.MessagePreviewWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"redeem",
@@ -134,8 +137,9 @@ func (np *nodePaych) PreviewRedeem(ctx context.Context, fromAddr address.Address
 }
 
 func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
@@ -152,8 +156,9 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		return cid.Undef, err
 	}
 
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		types.NewAttoFILFromFIL(0),
@@ -170,8 +175,9 @@ func (np *nodePaych) PreviewClose(ctx context.Context, fromAddr address.Address,
 		return types.NewGasUnits(0), err
 	}
 
-	return np.plumbingAPI.MessagePreview(
+	return porcelain.MessagePreviewWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"close",
@@ -180,8 +186,9 @@ func (np *nodePaych) PreviewClose(ctx context.Context, fromAddr address.Address,
 }
 
 func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		np.plumbingAPI,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		amount,

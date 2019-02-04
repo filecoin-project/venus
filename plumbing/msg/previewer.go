@@ -39,14 +39,6 @@ func NewPreviewer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadS
 
 // Preview sends a read-only message to an actor.
 func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
-	if optFrom == (address.Address{}) {
-		from, err := GetAndMaybeSetDefaultSenderAddress(p.repo, p.wallet)
-		if err != nil {
-			return types.NewGasUnits(0), errors.Wrap(err, "failed to retrieve default sender address")
-		}
-		optFrom = from
-	}
-
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt encode message params")

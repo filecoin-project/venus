@@ -108,7 +108,14 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Miner().PreviewCreate(req.Context, fromAddr, pledge, pid, collateral)
+			usedGas, err := porcelain.MinerPreviewCreate(
+				req.Context,
+				GetPlumbingAPI(env),
+				fromAddr,
+				pledge,
+				pid,
+				collateral,
+			)
 			if err != nil {
 				return err
 			}
@@ -258,8 +265,9 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
 				req.Context,
+				GetPlumbingAPI(env),
 				fromAddr,
 				minerAddr,
 				"updatePeerID",
@@ -329,8 +337,9 @@ var minerAddAskCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPlumbingAPI(env).MessagePreview(
+			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
 				req.Context,
+				GetPlumbingAPI(env),
 				fromAddr,
 				minerAddr,
 				"addAsk",

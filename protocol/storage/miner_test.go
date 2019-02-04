@@ -6,29 +6,61 @@ import (
 	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	offroute "gx/ipfs/QmVZ6cQXHoTQja4oo9GhhHZi7dThi4x98mRKgGtKnTy37u/go-ipfs-routing/offline"
+	rhost "gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p/p2p/host/routed"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/network"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	w "github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type minerTestPorcelain struct {
-	config *cfg.Config
+	config  *cfg.Config
+	network *network.Network
+	wallet  *w.Wallet
 }
 
 func newminerTestPorcelain() *minerTestPorcelain {
+	repo := repo.NewInMemoryRepo()
+
+	router := offroute.NewOfflineRouter(repo.Datastore(), network.BlankValidator{})
+	peerHost := rhost.Wrap(network.NoopLibP2PHost{}, router)
+	network := network.NewNetwork(peerHost)
+
+	walletBackend, _ := w.NewDSBackend(repo.WalletDatastore())
+
 	return &minerTestPorcelain{
-		config: cfg.NewConfig(repo.NewInMemoryRepo()),
+		config: cfg.NewConfig(repo),
+		network: network,
+		wallet: w.New(walletBackend),
 	}
 }
 
 func (mtp *minerTestPorcelain) MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error {
 	return nil
+}
+
+func (mtp *minerTestPlumbing) MessagePreview(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+	return types.NewGasUnits(0), nil
+}
+
+func (mtp *minerTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return [][]byte{}, nil, nil
+}
+
+func (mtp *minerTestPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	return nil, nil
+}
+
+func (mtp *minerTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	return cid.Cid{}, nil
 }
 
 func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
@@ -37,6 +69,18 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 
 func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error) {
 	return mtp.config.Get(dottedPath)
+}
+
+func (mtp *minerTestPlumbing) ConfigSet(dottedKey string, jsonString string) error {
+	return mtp.config.Set(dottedKey, jsonString)
+}
+
+func (mtp *minerTestPlumbing) WalletAddresses() []address.Address {
+	return mtp.wallet.Addresses()
+}
+
+func (mtp *minerTestPlumbing) WalletFind(address address.Address) (w.Backend, error) {
+	return mtp.wallet.Find(address)
 }
 
 func TestReceiveStorageProposal(t *testing.T) {

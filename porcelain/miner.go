@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -10,20 +11,29 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
+	"github.com/filecoin-project/go-filecoin/exec"
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
+	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // mspPlumbing is the subset of the plumbing.API that MinerSetPrice uses.
 type mspPlumbing interface {
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+
 	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
+
+	NetworkGetPeerId() peer.ID
+
+	WalletAddresses() []address.Address
+	WalletFind(address address.Address) (w.Backend, error)
 }
 
 // MinerSetPriceResponse collects relevant stats from the set price process
@@ -32,6 +42,57 @@ type MinerSetPriceResponse struct {
 	MinerAddr address.Address
 	AddAskCid cid.Cid
 	BlockCid  cid.Cid
+}
+
+// MinerPreviewCreate previews the Gas cost of creating a miner
+func MinerPreviewCreate(ctx context.Context, plumbing mspPlumbing, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (usedGas types.GasUnits, err error) {
+	if fromAddr == (address.Address{}) {
+		fromAddr, err = GetAndMaybeSetDefaultSenderAddress(plumbing)
+		if (err != nil) {
+			return types.NewGasUnits(0), err
+		}
+	}
+
+	if pid == "" {
+		pid = plumbing.NetworkGetPeerId()
+	}
+
+	if _, err := plumbing.ConfigGet("mining.minerAddress"); err != nil {
+		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
+	}
+
+	ctx = log.Start(ctx, "Node.CreateMiner")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
+	backend, err := plumbing.WalletFind(fromAddr)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+	info, err := backend.GetKeyInfo(fromAddr)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+	pubkey, err := info.PublicKey()
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	usedGas, err = plumbing.MessagePreview(
+		ctx,
+		fromAddr,
+		address.StorageMarketAddress,
+		"createMiner",
+		big.NewInt(int64(pledge)),
+		pubkey,
+		pid,
+	)
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
+	}
+
+	return usedGas, nil
 }
 
 // MinerSetPrice configures the price of storage, then sends an ask advertising that price and waits for it to be mined.
@@ -66,7 +127,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 	}
 
 	// create ask
-	res.AddAskCid, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "addAsk", price, expiry)
+	res.AddAskCid, err = MessageSendWithDefaultAddress(ctx, plumbing, from, res.MinerAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "addAsk", price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}
@@ -152,7 +213,15 @@ func PreviewMinerSetPrice(ctx context.Context, plumbing mspPlumbing, from addres
 	}
 
 	// create ask
-	usedGas, err := plumbing.MessagePreview(ctx, from, miner, "addAsk", price, expiry)
+	usedGas, err := MessagePreviewWithDefaultAddress(
+		ctx,
+		plumbing,
+		from,
+		miner,
+		"addAsk",
+		price,
+		expiry,
+	)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldn't preview message")
 	}

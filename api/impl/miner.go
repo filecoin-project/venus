@@ -9,7 +9,7 @@ import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
+	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -42,28 +42,10 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	return *res, nil
 }
 
-func (nm *nodeMiner) PreviewCreate(ctx context.Context, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (types.GasUnits, error) {
-	nd := nm.api.node
-
-	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	if pid == "" {
-		pid = nd.Host().ID()
-	}
-
-	res, err := nd.PreviewCreateMiner(ctx, fromAddr, pledge, pid, collateral)
-	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
-	}
-
-	return res, nil
-}
-
 func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
-	return nm.porcelainAPI.MessageSend(
+	return nm.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		fromAddr,
 		minerAddr,
 		nil,
@@ -75,8 +57,9 @@ func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr addre
 }
 
 func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
-	return nm.porcelainAPI.MessageSend(
+	return nm.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		fromAddr,
 		minerAddr,
 		nil,
@@ -89,10 +72,9 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 }
 
 func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	nd := nm.api.node
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	bytes, _, err := queryer.Query(
+	bytes, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		address.Address{},
 		minerAddr,
 		"getOwner",
@@ -105,10 +87,9 @@ func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (a
 }
 
 func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	nd := nm.api.node
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	bytes, _, err := queryer.Query(
+	bytes, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		address.Address{},
 		minerAddr,
 		"getPower",
@@ -123,10 +104,9 @@ func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*
 }
 
 func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	nd := nm.api.node
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	bytes, _, err := queryer.Query(
+	bytes, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		address.Address{},
 		minerAddr,
 		"getPledge",
@@ -141,10 +121,9 @@ func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (
 }
 
 func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	nd := nm.api.node
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	bytes, _, err := queryer.Query(
+	bytes, _, err := porcelain.MessageQueryWithDefaultAddress(
 		ctx,
+		nm.plumbingAPI,
 		address.Address{},
 		address.StorageMarketAddress,
 		"getTotalStorage",

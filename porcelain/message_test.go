@@ -1,4 +1,4 @@
-package porcelain_test
+package porcelain
 
 import (
 	"context"
@@ -8,7 +8,9 @@ import (
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +20,9 @@ var newCid = types.NewCidForTestGetter()
 var newAddr = address.NewForTestGetter()
 
 type fakePlumbing struct {
+	config *cfg.Config
+	wallet *wallet.Wallet
+
 	assert  *assert.Assertions
 	require *require.Assertions
 
@@ -30,12 +35,36 @@ type fakePlumbing struct {
 
 // Satisfy the plumbing API:
 
+func (fp *fakePlumbing) MessageQuery(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return nil, nil, nil
+}
+
+func (fp *fakePlumbing) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+	return types.NewGasUnits(0), nil
+}
+
 func (fp *fakePlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return fp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
 func (fp *fakePlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return fp.messageWait(ctx, msgCid, cb)
+}
+
+func (fp *fakePlumbing) ConfigSet(dottedKey string, jsonString string) error {
+	return fp.config.Set(dottedKey, jsonString)
+}
+
+func (fp *fakePlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	return fp.config.Get(dottedPath)
+}
+
+func (fp *fakePlumbing) WalletAddresses() []address.Address {
+	return fp.wallet.Addresses()
+}
+
+func (fp *fakePlumbing) WalletNewAddress() (address.Address, error) {
+	return fp.wallet.NewAddress()
 }
 
 // Fake implementations we'll use.
@@ -72,7 +101,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 		fp.messageSend = fp.successfulMessageSend
 		fp.messageWait = fp.successfulMessageWait
 
-		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.NoError(err)
 		assert.Equal(1, fp.sendCnt)
 	})
@@ -87,7 +116,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 		fp.messageSend = fp.successfulMessageSend
 		fp.messageWait = fp.unsuccessfulMessageWait
 
-		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.NoError(err)
 		assert.Equal(10, fp.sendCnt)
 	})
@@ -108,8 +137,59 @@ func TestMessageSendWithRetry(t *testing.T) {
 			return nil
 		}
 
-		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.Error(err)
 		assert.Equal(1, fp.sendCnt)
 	})
+}
+
+func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
+	t.Parallel()
+
+	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		fp := newMinerTestPlumbing(assert, require)
+
+		addrA, err := fp.WalletNewAddress()
+		require.NoError(err)
+		fp.ConfigSet("wallet.defaultAddress", addrA.String())
+
+		addrB, err := GetAndMaybeSetDefaultSenderAddress(fp)
+		require.NoError(err)
+		require.Equal(addrA.String(), addrB.String())
+	})
+
+	t.Run("default is consistent if none configured", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		fp := newMinerTestPlumbing(assert, require)
+
+		addresses := []address.Address{}
+		for i := 0; i < 10; i++ {
+			a, err := fp.WalletNewAddress()
+			require.NoError(err)
+			addresses = append(addresses, a)
+		}
+
+		expected, err := GetAndMaybeSetDefaultSenderAddress(fp)
+		require.NoError(err)
+		require.True(isInList(expected, addresses))
+		for i := 0; i < 30; i++ {
+			got, err := GetAndMaybeSetDefaultSenderAddress(fp)
+			require.NoError(err)
+			require.Equal(expected, got)
+		}
+	})
+}
+
+func isInList(needle address.Address, haystack []address.Address) bool {
+	for _, a := range haystack {
+		if a == needle {
+			return true
+		}
+	}
+	return false
 }
