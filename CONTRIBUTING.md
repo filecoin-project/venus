@@ -51,7 +51,7 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 ### Pull Requests
 
-- Try to keep PRs small, no more than 400 lines or 8 files.
+- Try to keep PRs small, no more than 400 lines or 8 files excluding new test code.
 - Always squash commits.
 - For now, you'll need to request write access (via chat) to create a PR because CircleCI doesn't play well with private branches. Once we open source this repo, forking is preferred.
 - Committers should merge their own PRs after Approval, because they have the most context.
