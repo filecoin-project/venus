@@ -18,6 +18,7 @@ import (
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -159,10 +160,11 @@ func TestNodeStartMining(t *testing.T) {
 	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
 	config := pbConfig.NewConfig(minerNode.Repo)
 	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
+	porcelainAPI := porcelain.New(plumbingAPI)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), plumbingAPI)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 
 	assert.NoError(minerNode.Start(ctx))
@@ -363,37 +365,6 @@ func TestMakePrivateKey(t *testing.T) {
 	goodKey, err := makePrivateKey(4096)
 	assert.NoError(err)
 	assert.NotNil(goodKey)
-}
-
-// Note: this is pretty redundant with message/sender_test.go but keeping it
-// as assurance the API2 was set up correctly.
-func TestSendMessage(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("send message adds to pool", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		require.NoError(resetNodeGen(node, tif))
-
-		assert.NoError(node.Start(ctx))
-
-		gasPrice := types.NewGasPrice(0)
-		gasLimit := types.NewGasUnits(0)
-		_, err = node.PlumbingAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
-		require.NoError(err)
-
-		assert.Equal(1, len(node.MsgPool.Pending()))
-	})
-
 }
 
 func repoConfig() ConfigOpt {

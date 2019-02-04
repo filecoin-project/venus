@@ -2,6 +2,7 @@ package plumbing
 
 import (
 	"context"
+
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
@@ -14,7 +15,10 @@ import (
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
-// to implement protocols and user/network-facing features.
+// to implement protocols and user/network-facing features. You probably should
+// depend on the higher level porcelain.API instead of this api, as it includes
+// these calls in addition to higher level convenience calls to make them more
+// ergonomic.
 type API struct {
 	logger logging.EventLogger
 
