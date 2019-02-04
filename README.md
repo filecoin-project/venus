@@ -31,6 +31,9 @@
 ## What is Filecoin?
 Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/How-Filecoin-Works) for more.
 
+**WARNING**: `go-filecoin` is a work in progress and is not ready for production use.
+See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/KNOWN_ISSUES.md) for an outline of known vulnerabilities.
+
 ## Install
 
 👋 Welcome to Go Filecoin!
