@@ -11,13 +11,24 @@ import (
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the
-// plumbing api, to be used to build user facing features and protocols. Note that porcelain.API
-// embeds the plumbing.API, so plumbing calls are available directly through this struct. That
-// way consumers only have to take one dependency and they can selectively mock things out
-// at whatever level is appropriate.
+// plumbing api, to be used to build user facing features and protocols.
 //
-// It is a feature that API delegates to free functions for implementation. This enables each
-// implementation to depend on the specific narrow set of plumbing that it uses.
+// The porcelain.API provides porcelain calls **as well as the plumbing calls**.
+// This is because most consumers depend on a combination of porcelain and plumbing
+// calls. Flattening both apis into a single implementation enables consumers to take
+// a single dependency and not have to know which api a call comes from. The mechanism
+// is embedding: the plumbing implementation is embedded in the porcelain implementation, making
+// all the embedded type (plumbing) calls available on the embedder type (porcelain).
+// Providing a single implementation on which to depend also enables consumers to choose
+// at what level to mock out their dependencies: low (plumbing) or high (porcelain).
+// We ensure that porcelain calls only depend on the narrow subset of the plumbing api
+// on which they depend by implementing them in free functions that take their specific
+// subset of the plumbing.api. The porcelain.API delegates porcelain calls to these
+// free functions.
+//
+// If you are implementing a user facing feature or a protocol this is probably the implementation
+// you should depend on. Define the subset of it that you use in an interface in your package
+// take this implementation as a dependency.
 type API struct {
 	*plumbing.API
 }
