@@ -24,7 +24,7 @@ func TestSend(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		repo, w, chainStore, msgPool := SetupSendTest(require)
+		repo, w, chainStore, msgPool := setupSendTest(require)
 		addr, err := wallet.NewAddress(w)
 		require.NoError(err)
 
@@ -48,7 +48,7 @@ func TestSend(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		repo, w, chainStore, msgPool := SetupSendTest(require)
+		repo, w, chainStore, msgPool := setupSendTest(require)
 		addr, err := wallet.NewAddress(w)
 		require.NoError(err)
 		nopPublish := func(string, []byte) error { return nil }
@@ -93,7 +93,7 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		_, _, chainStore, msgPool := SetupSendTest(require)
+		_, _, chainStore, msgPool := setupSendTest(require)
 
 		noActorAddress := address.NewForTestGetter()()
 		n, err := nextNonce(ctx, chainStore, msgPool, noActorAddress)
@@ -105,7 +105,7 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		_, w, chainStore, msgPool := SetupSendTest(require)
+		_, w, chainStore, msgPool := setupSendTest(require)
 		addr, err := wallet.NewAddress(w)
 		require.NoError(err)
 
@@ -121,7 +121,7 @@ func TestNextNonce(t *testing.T) {
 	})
 }
 
-func SetupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
+func setupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
 	d := requireCommonDeps(require)
 	return d.repo, d.wallet, d.chainStore, core.NewMessagePool()
 }

@@ -37,9 +37,9 @@ func newminerTestPorcelain() *minerTestPorcelain {
 	walletBackend, _ := w.NewDSBackend(repo.WalletDatastore())
 
 	return &minerTestPorcelain{
-		config: cfg.NewConfig(repo),
+		config:  cfg.NewConfig(repo),
 		network: network,
-		wallet: w.New(walletBackend),
+		wallet:  w.New(walletBackend),
 	}
 }
 

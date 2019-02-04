@@ -11,7 +11,6 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
-	"github.com/filecoin-project/go-filecoin/exec"
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -30,7 +29,7 @@ type mspPlumbing interface {
 	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
 
-	NetworkGetPeerId() peer.ID
+	NetworkGetPeerID() peer.ID
 
 	WalletAddresses() []address.Address
 	WalletFind(address address.Address) (w.Backend, error)
@@ -48,13 +47,13 @@ type MinerSetPriceResponse struct {
 func MinerPreviewCreate(ctx context.Context, plumbing mspPlumbing, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (usedGas types.GasUnits, err error) {
 	if fromAddr == (address.Address{}) {
 		fromAddr, err = GetAndMaybeSetDefaultSenderAddress(plumbing)
-		if (err != nil) {
+		if err != nil {
 			return types.NewGasUnits(0), err
 		}
 	}
 
 	if pid == "" {
-		pid = plumbing.NetworkGetPeerId()
+		pid = plumbing.NetworkGetPeerID()
 	}
 
 	if _, err := plumbing.ConfigGet("mining.minerAddress"); err != nil {
