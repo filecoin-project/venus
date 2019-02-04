@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"sync"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -15,7 +14,6 @@ import (
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore/query"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -262,12 +260,7 @@ func (cni *ClientNodeImpl) Lookup() lookup.PeerLookupService {
 
 // GetAskPrice returns the price of the ask referenced by 'askid' on miner 'maddr'
 func (cni *ClientNodeImpl) GetAskPrice(ctx context.Context, maddr address.Address, askid uint64) (*types.AttoFIL, error) {
-	args, err := abi.ToEncodedValues(big.NewInt(0).SetUint64(askid))
-	if err != nil {
-		return nil, err
-	}
-
-	ret, _, err := cni.queryFn(ctx, (address.Address{}), maddr, "getAsk", args)
+	ret, _, err := cni.queryFn(ctx, (address.Address{}), maddr, "getAsk", askid)
 	if err != nil {
 		return nil, err
 	}
