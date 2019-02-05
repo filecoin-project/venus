@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -78,9 +77,8 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				target,
 				method,

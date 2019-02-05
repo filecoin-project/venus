@@ -44,7 +44,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/filnet"
 	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/metrics"
@@ -454,7 +453,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// On-chain lookup service
 	defaultAddressGetter := func() (address.Address, error) {
-		return porcelain.GetAndMaybeSetDefaultSenderAddress(plumbingAPI)
+		return nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
 	}
 	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
@@ -831,8 +830,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 					err := porcelain.MessageSendWithRetry(
 						node.miningCtx,
 						node.PorcelainAPI,
-						10 /* retries */,
-						node.GetBlockTime() /* wait per retry */,
+						10,                  /* retries */
+						node.GetBlockTime(), /* wait per retry */
 						minerOwnerAddr,
 						minerAddr,
 						nil,

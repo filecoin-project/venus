@@ -161,15 +161,15 @@ func TestNodeStartMining(t *testing.T) {
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		SigGetter:  mthdsig.NewGetter(minerNode.ChainReader),
+		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		MsgPreviewer: msg.NewPreviewer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:  msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
-		MsgWaiter:  msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
-		Config:     pbConfig.NewConfig(minerNode.Repo),
-		Chain:      chn.New(minerNode.ChainReader),
-		Network:    network.NewNetWork(minerNode.Host()),
-		Wallet:     wallet.NewWallet(w.New(walletBackend)),
+		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgSender:    msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
+		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
+		Config:       pbConfig.NewConfig(minerNode.Repo),
+		Chain:        chn.New(minerNode.ChainReader),
+		Network:      network.NewNetwork(minerNode.Host()),
+		Wallet:       wallet.NewWallet(w.New(walletBackend)),
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 

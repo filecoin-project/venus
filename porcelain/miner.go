@@ -19,34 +19,26 @@ import (
 	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
-// mspPlumbing is the subset of the plumbing.API that MinerSetPrice uses.
-type mspPlumbing interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+// mpcPlumbing is the subset of the plumbing.API that MinerPreviewCreate uses.
+type mpcPlumbing interface {
 	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-
-	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
-
 	NetworkGetPeerID() peer.ID
-
-	WalletAddresses() []address.Address
 	WalletFind(address address.Address) (w.Backend, error)
-}
-
-// MinerSetPriceResponse collects relevant stats from the set price process
-type MinerSetPriceResponse struct {
-	Price     *types.AttoFIL
-	MinerAddr address.Address
-	AddAskCid cid.Cid
-	BlockCid  cid.Cid
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
-func MinerPreviewCreate(ctx context.Context, plumbing mspPlumbing, fromAddr address.Address, pledge uint64, pid peer.ID, collateral *types.AttoFIL) (usedGas types.GasUnits, err error) {
+func MinerPreviewCreate(
+	ctx context.Context,
+	plumbing mpcPlumbing,
+	fromAddr address.Address,
+	pledge uint64,
+	pid peer.ID,
+	collateral *types.AttoFIL,
+) (usedGas types.GasUnits, err error) {
 	if fromAddr == (address.Address{}) {
-		fromAddr, err = GetAndMaybeSetDefaultSenderAddress(plumbing)
+		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
 		if err != nil {
 			return types.NewGasUnits(0), err
 		}
@@ -94,6 +86,22 @@ func MinerPreviewCreate(ctx context.Context, plumbing mspPlumbing, fromAddr addr
 	return usedGas, nil
 }
 
+// mspPlumbing is the subset of the plumbing.API that MinerSetPrice uses.
+type mspPlumbing interface {
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	ConfigSet(dottedKey string, jsonString string) error
+	ConfigGet(dottedPath string) (interface{}, error)
+}
+
+// MinerSetPriceResponse collects relevant stats from the set price process
+type MinerSetPriceResponse struct {
+	Price     *types.AttoFIL
+	MinerAddr address.Address
+	AddAskCid cid.Cid
+	BlockCid  cid.Cid
+}
+
 // MinerSetPrice configures the price of storage, then sends an ask advertising that price and waits for it to be mined.
 // If minerAddr is empty, the default miner will be used.
 // This method is non-transactional in the sense that it will set the price whether or not it creates the ask successfully.
@@ -126,7 +134,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 	}
 
 	// create ask
-	res.AddAskCid, err = MessageSendWithDefaultAddress(ctx, plumbing, from, res.MinerAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "addAsk", price, expiry)
+	res.AddAskCid, err = plumbing.MessageSendWithDefaultAddress(ctx, from, res.MinerAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "addAsk", price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}
@@ -143,6 +151,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 	return res, err
 }
 
+// mgoaPlumbing is the subset of the plumbing.API that MinerGetOwnerAddress uses.
 type mgoaPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 }
@@ -157,8 +166,13 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaPlumbing, minerAddr 
 	return address.NewFromBytes(res[0])
 }
 
+// mgaPlumbing is the subset of the plumbing.API that MinerGetAsk uses.
+type mgaPlumbing interface {
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+}
+
 // MinerGetAsk queries for an ask of the given miner
-func MinerGetAsk(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
+func MinerGetAsk(ctx context.Context, plumbing mgaPlumbing, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
 	ret, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getAsk", big.NewInt(int64(askID)))
 	if err != nil {
 		return minerActor.Ask{}, err
@@ -172,8 +186,13 @@ func MinerGetAsk(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.A
 	return ask, nil
 }
 
+// mgpidPlumbing is the subset of the plumbing.API that MinerGetPeerID uses.
+type mgpidPlumbing interface {
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+}
+
 // MinerGetPeerID queries for the peer id of the given miner
-func MinerGetPeerID(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.Address) (peer.ID, error) {
+func MinerGetPeerID(ctx context.Context, plumbing mgpidPlumbing, minerAddr address.Address) (peer.ID, error) {
 	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getPeerID")
 	if err != nil {
 		return "", err
@@ -186,9 +205,16 @@ func MinerGetPeerID(ctx context.Context, plumbing mgoaPlumbing, minerAddr addres
 	return pid, nil
 }
 
-// PreviewMinerSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
+// mpspPlumbing is the subset of the plumbing.API that MinerPreviewSetPrice uses.
+type mpspPlumbing interface {
+	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
+	ConfigSet(dottedKey string, jsonString string) error
+	ConfigGet(dottedPath string) (interface{}, error)
+}
+
+// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
 // This method accepts all the same arguments as MinerSetPrice.
-func PreviewMinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
+func MinerPreviewSetPrice(ctx context.Context, plumbing mpspPlumbing, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
 	// get miner address if not provided
 	if miner.Empty() {
 		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
@@ -212,9 +238,8 @@ func PreviewMinerSetPrice(ctx context.Context, plumbing mspPlumbing, from addres
 	}
 
 	// create ask
-	usedGas, err := MessagePreviewWithDefaultAddress(
+	usedGas, err := plumbing.MessagePreviewWithDefaultAddress(
 		ctx,
-		plumbing,
 		from,
 		miner,
 		"addAsk",

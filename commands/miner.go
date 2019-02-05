@@ -12,7 +12,6 @@ import (
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -108,9 +107,8 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 		}
 
 		if preview {
-			usedGas, err := porcelain.MinerPreviewCreate(
+			usedGas, err := GetPorcelainAPI(env).MinerPreviewCreate(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				pledge,
 				pid,
@@ -184,9 +182,8 @@ This command waits for the ask to be mined.`,
 		}
 
 		if preview {
-			usedGas, err := porcelain.PreviewMinerSetPrice(
+			usedGas, err := GetPorcelainAPI(env).MinerPreviewSetPrice(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				minerAddr,
 				price,
@@ -197,9 +194,8 @@ This command waits for the ask to be mined.`,
 			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
 		}
 
-		res, err := porcelain.MinerSetPrice(
+		res, err := GetPorcelainAPI(env).MinerSetPrice(
 			req.Context,
-			GetPorcelainAPI(env),
 			fromAddr,
 			minerAddr,
 			gasPrice,
@@ -265,9 +261,8 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				minerAddr,
 				"updatePeerID",
@@ -337,9 +332,8 @@ var minerAddAskCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				minerAddr,
 				"addAsk",

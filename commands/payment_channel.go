@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -73,9 +72,8 @@ message to be mined to get the channelID.`,
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				address.PaymentBrokerAddress,
 				"createChannel",
@@ -275,9 +273,8 @@ var reclaimCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				address.PaymentBrokerAddress,
 				"reclaim",
@@ -393,9 +390,8 @@ var extendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := porcelain.MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
 				req.Context,
-				GetPlumbingAPI(env),
 				fromAddr,
 				address.PaymentBrokerAddress,
 				"extend",

@@ -8,7 +8,7 @@ import (
 
 func setDefaultFromAddr(fromAddr *address.Address, nd *node.Node) error {
 	if *fromAddr == (address.Address{}) {
-		ret, err := porcelain.GetAndMaybeSetDefaultSenderAddress(nd.PlumbingAPI)
+		ret, err := nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
 		if (err != nil && err == porcelain.ErrNoDefaultFromAddress) || ret == (address.Address{}) {
 			return ErrCouldNotDefaultFromAddress
 		}

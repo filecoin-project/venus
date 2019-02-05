@@ -5,10 +5,12 @@ import (
 	"math/big"
 	"time"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -53,8 +55,79 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 
 // MessageSendWithRetry sends a message and retries if it does not appear on chain. See implementation
 // for more details.
-func (a *API) MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error) {
+func (a *API) MessageSendWithRetry(
+	ctx context.Context,
+	numRetries uint,
+	waitDuration time.Duration,
+	from,
+	to address.Address,
+	val *types.AttoFIL,
+	method string,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+	params ...interface{},
+) (err error) {
 	return MessageSendWithRetry(ctx, a, numRetries, waitDuration, from, to, val, method, gasPrice, gasLimit, params...)
+}
+
+// MessagePreviewWithDefaultAddress calls MessagePreview but with a default from
+// address if none is provided
+func (a *API) MessagePreviewWithDefaultAddress(
+	ctx context.Context,
+	from,
+	to address.Address,
+	method string,
+	params ...interface{},
+) (types.GasUnits, error) {
+	return MessagePreviewWithDefaultAddress(ctx, a, from, to, method, params...)
+}
+
+// MessageQueryWithDefaultAddress calls MessageQuery but with a default from
+// address if none is provided
+func (a *API) MessageQueryWithDefaultAddress(
+	ctx context.Context,
+	from,
+	to address.Address,
+	method string,
+	params ...interface{},
+) ([][]byte, *exec.FunctionSignature, error) {
+	return MessageQueryWithDefaultAddress(ctx, a, from, to, method, params...)
+}
+
+// MessageSendWithDefaultAddress calls MessageSend but with a default from
+// address if none is provided
+func (a *API) MessageSendWithDefaultAddress(
+	ctx context.Context,
+	from,
+	to address.Address,
+	value *types.AttoFIL,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+	method string,
+	params ...interface{},
+) (cid.Cid, error) {
+	return MessageSendWithDefaultAddress(
+		ctx,
+		a,
+		from,
+		to,
+		value,
+		gasPrice,
+		gasLimit,
+		method,
+		params...,
+	)
+}
+
+// MinerPreviewCreate previews the Gas cost of creating a miner
+func (a *API) MinerPreviewCreate(
+	ctx context.Context,
+	fromAddr address.Address,
+	pledge uint64,
+	pid peer.ID,
+	collateral *types.AttoFIL,
+) (usedGas types.GasUnits, err error) {
+	return MinerPreviewCreate(ctx, a, fromAddr, pledge, pid, collateral)
 }
 
 // MinerGetAsk queries for an ask of the given miner
@@ -75,4 +148,23 @@ func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (pe
 // MinerSetPrice configures the price of storage. See implementation for details.
 func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
 	return MinerSetPrice(ctx, a, from, miner, gasPrice, gasLimit, price, expiry)
+}
+
+// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
+// This method accepts all the same arguments as MinerSetPrice.
+func (a *API) MinerPreviewSetPrice(
+	ctx context.Context,
+	from address.Address,
+	miner address.Address,
+	price *types.AttoFIL,
+	expiry *big.Int,
+) (types.GasUnits, error) {
+	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
+}
+
+// GetAndMaybeSetDefaultSenderAddress returns a default address from which to
+// send messsages. If none is set it picks the first address in the wallet and
+// sets it as the default in the config.
+func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
+	return GetAndMaybeSetDefaultSenderAddress(a)
 }

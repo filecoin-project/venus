@@ -50,6 +50,13 @@ const submitPostGasLimit = 300
 const minerDatastorePrefix = "miner"
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
+type minerPorcelain interface {
+	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedPath string, paramJSON string) error
+	MessageQueryWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error)
+}
+
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr      address.Address
@@ -65,7 +72,7 @@ type Miner struct {
 
 	dealsAwaitingSeal *dealsAwaitingSealStruct
 
-	porcelainAPI porcelainAPI
+	porcelainAPI minerPorcelain
 	node         node
 
 	proposalAcceptor func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error)
