@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -401,12 +402,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	sigGetter := mthdsig.NewGetter(chainReader)
-	msgQueryer := msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs)
-	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
-	config := cfg.NewConfig(nc.Repo)
-	PorcelainAPI := porcelain.New(plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config))
+	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
+		Chain:      chn.New(chainReader),
+		Config:     cfg.NewConfig(nc.Repo),
+		SigGetter:  mthdsig.NewGetter(chainReader),
+		MsgQueryer: msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgSender:  msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
+		MsgWaiter:  msg.NewWaiter(chainReader, bs, &cstOffline),
+	}))
 
 	nd := &Node{
 		blockservice: bservice,
@@ -482,13 +485,9 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
 
-	cni := storage.NewClientNodeImpl(
-		dag.NewDAGService(node.BlockService()),
-		node.Host(),
-		node.Lookup(),
-		node.PorcelainAPI.MessageQuery)
+	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host())
 	var err error
-	node.StorageMinerClient, err = storage.NewClient(cni, node.Repo.DealsDatastore())
+	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI, node.Repo.DealsDatastore())
 	if err != nil {
 		return errors.Wrap(err, "Could not make new storage client")
 	}

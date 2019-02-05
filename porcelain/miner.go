@@ -6,10 +6,13 @@ import (
 	"math/big"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -77,4 +80,47 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 		return nil
 	})
 	return res, err
+}
+
+type mgoaPlumbing interface {
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+}
+
+// MinerGetOwnerAddress queries for the owner address of the given miner
+func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.Address) (address.Address, error) {
+	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getOwner")
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return address.NewFromBytes(res[0])
+}
+
+// MinerGetAsk queries for an ask of the given miner
+func MinerGetAsk(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
+	ret, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getAsk", big.NewInt(int64(askID)))
+	if err != nil {
+		return minerActor.Ask{}, err
+	}
+
+	var ask minerActor.Ask
+	if err := cbor.DecodeInto(ret[0], &ask); err != nil {
+		return minerActor.Ask{}, err
+	}
+
+	return ask, nil
+}
+
+// MinerGetPeerID queries for the peer id of the given miner
+func MinerGetPeerID(ctx context.Context, plumbing mgoaPlumbing, minerAddr address.Address) (peer.ID, error) {
+	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getPeerID")
+	if err != nil {
+		return "", err
+	}
+
+	pid, err := peer.IDFromBytes(res[0])
+	if err != nil {
+		return peer.ID(""), errors.Wrap(err, "could not decode to peer.ID from message-bytes")
+	}
+	return pid, nil
 }
