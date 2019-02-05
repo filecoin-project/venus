@@ -18,10 +18,8 @@ func TestBLSSigningAndVerification(t *testing.T) {
 	barPublicKey := PrivateKeyPublicKey(barPrivateKey)
 
 	// make messages to sign with the keys
-	var fooMessage Message
-	copy(fooMessage[:], "hello foo")
-	var barMessage Message
-	copy(barMessage[:], "hello bar")
+	fooMessage := Message("hello foo")
+	barMessage := Message("hello bar!")
 
 	// calculate the digests of the messages
 	fooDigest := Hash(fooMessage)
@@ -40,6 +38,8 @@ func TestBLSSigningAndVerification(t *testing.T) {
 	// assert the foo message was not signed by the bar key
 	assert.False(Verify(fooSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
 
-	// assert the bar message was not signed by the foo key
+	// assert the bar/foo message was not signed by the foo/bar key
 	assert.False(Verify(barSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
+	assert.False(Verify(barSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
+	assert.False(Verify(fooSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
 }
