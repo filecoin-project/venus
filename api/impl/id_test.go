@@ -3,9 +3,9 @@ package impl
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/api"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	ci "gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
 	peer "gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	libp2p "gx/ipfs/QmYxivS34F2M2n44WQQnRHGAKS8aoRUxwGpi9wk4Cdn4Jf/go-libp2p"
@@ -73,7 +74,9 @@ func TestIdOutput(t *testing.T) {
 	assert.EqualValues(expectedPeerID, actualOut.ID)
 
 	// Should have expected swarmAddress
-	assert.Contains(actualOut.Addresses[0], fmt.Sprintf("%s/ipfs/%s", expectedSwarm, expectedPeerID.Pretty()))
+	expectedAddr, err := ma.NewMultiaddr(fmt.Sprintf("%s/ipfs/%s", expectedSwarm, expectedPeerID.Pretty()))
+	assert.NoError(err)
+	assert.Equal(actualOut.Addresses[0], expectedAddr)
 }
 
 func TestJSONRoundTrip(t *testing.T) {
@@ -84,8 +87,10 @@ func TestJSONRoundTrip(t *testing.T) {
 	id, err := peer.IDB58Decode("QmV6guChs1SU6W9838XrWSSW2WeiDt4WjzB7Dz5HFFeLkG")
 	require.NoError(err)
 
+	addr, err := ma.NewMultiaddr("/tcp/80")
+	require.NoError(err)
 	idd := api.IDDetails{
-		Addresses:       []string{"address"},
+		Addresses:       []ma.Multiaddr{addr},
 		ID:              id,
 		AgentVersion:    "1",
 		ProtocolVersion: "1",

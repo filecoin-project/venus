@@ -3,12 +3,14 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
+
+	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 )
 
 // IDDetails is a collection of information about a node.
 type IDDetails struct {
-	Addresses       []string
+	Addresses       []ma.Multiaddr
 	ID              peer.ID
 	AgentVersion    string
 	ProtocolVersion string
@@ -24,9 +26,15 @@ type ID interface {
 
 // MarshalJSON implements json.Marshaler
 func (idd IDDetails) MarshalJSON() ([]byte, error) {
-	v := map[string]interface{}{
-		"Addresses": idd.Addresses,
+	addressStrings := make([]string, len(idd.Addresses))
+	for i, addr := range idd.Addresses {
+		addressStrings[i] = addr.String()
 	}
+
+	v := map[string]interface{}{
+		"Addresses": addressStrings,
+	}
+
 	if idd.ID != "" {
 		v["ID"] = idd.ID.Pretty()
 	}
@@ -52,8 +60,17 @@ func (idd *IDDetails) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if err := decode(v, "Addresses", &idd.Addresses); err != nil {
+	var addresses []string
+	if err := decode(v, "Addresses", &addresses); err != nil {
 		return err
+	}
+	idd.Addresses = make([]ma.Multiaddr, len(addresses))
+	for i, addr := range addresses {
+		a, err := ma.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+		idd.Addresses[i] = a
 	}
 
 	var id string
