@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/api"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -73,4 +74,29 @@ func TestIdOutput(t *testing.T) {
 
 	// Should have expected swarmAddress
 	assert.Contains(actualOut.Addresses[0], fmt.Sprintf("%s/ipfs/%s", expectedSwarm, expectedPeerID.Pretty()))
+}
+
+func TestJSONRoundTrip(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	require := require.New(t)
+
+	id, err := peer.IDB58Decode("QmV6guChs1SU6W9838XrWSSW2WeiDt4WjzB7Dz5HFFeLkG")
+	require.NoError(err)
+
+	idd := api.IDDetails{
+		Addresses:       []string{"address"},
+		ID:              id,
+		AgentVersion:    "1",
+		ProtocolVersion: "1",
+		PublicKey:       []byte{1, 2, 3, 4, 5, 6, 7, 8},
+	}
+	json, err := idd.MarshalJSON()
+	assert.NoError(err)
+
+	decoded := api.IDDetails{}
+	err = decoded.UnmarshalJSON(json)
+	assert.NoError(err)
+
+	assert.Equal(idd, decoded)
 }
