@@ -10,11 +10,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process
-func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *types.AttoFIL, options ...ActionOption) (address.Address, error) {
+func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *big.Int, options ...ActionOption) (address.Address, error) {
 	var out address.Address
 
 	sPledge := fmt.Sprintf("%d", pledge)

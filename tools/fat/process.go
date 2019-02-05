@@ -139,7 +139,7 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if ctx == nil {
 		ctx = f.ctx
 	}
-	f.Log.Infof("RunCmd: %s", args)
+	f.Log.Infof("RunCmd: %s %s", f.core.Dir(), args)
 	out, err := f.core.RunCmd(ctx, stdin, args...)
 	if err != nil {
 		return nil, err
