@@ -115,21 +115,6 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
-func (np *nodePaych) PreviewRedeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error) {
-	voucher, err := decodeVoucher(voucherRaw)
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	return np.porcelainAPI.MessagePreviewWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		"redeem",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-	)
-}
-
 func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
 	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
@@ -156,21 +141,6 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
-		"close",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-	)
-}
-
-func (np *nodePaych) PreviewClose(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error) {
-	voucher, err := decodeVoucher(voucherRaw)
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	return np.porcelainAPI.MessagePreviewWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
 		"close",
 		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)

@@ -5,8 +5,10 @@ import (
 	"io"
 	"strconv"
 
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/QmekxXDhCxCJRNuzmHreuaT3BsuJcsjcXWNrtV9C8DRHtd/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -221,7 +223,24 @@ var redeemCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Paych().PreviewRedeem(req.Context, fromAddr, req.Arguments[0])
+			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+			if err != nil {
+				return err
+			}
+
+			var voucher paymentbroker.PaymentVoucher
+			err = cbor.DecodeInto(cborVoucher, &voucher)
+			if err != nil {
+				return err
+			}
+
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"redeem",
+				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+			)
 			if err != nil {
 				return err
 			}
@@ -326,7 +345,24 @@ var closeCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetAPI(env).Paych().PreviewClose(req.Context, fromAddr, req.Arguments[0])
+			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+			if err != nil {
+				return err
+			}
+
+			var voucher paymentbroker.PaymentVoucher
+			err = cbor.DecodeInto(cborVoucher, &voucher)
+			if err != nil {
+				return err
+			}
+
+			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"close",
+				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+			)
 			if err != nil {
 				return err
 			}

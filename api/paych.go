@@ -19,7 +19,4 @@ type Paych interface {
 	Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error)
 	Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error)
 	Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error)
-
-	PreviewRedeem(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error)
-	PreviewClose(ctx context.Context, fromAddr address.Address, voucherRaw string) (types.GasUnits, error)
 }
