@@ -5,7 +5,6 @@ package api
 type API interface {
 	Actor() Actor
 	Address() Address
-	Block() Block
 	Chain() Chain
 	Client() Client
 	Daemon() Daemon
