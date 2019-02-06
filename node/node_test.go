@@ -20,13 +20,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/network"
-	"github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
-	w "github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-filecoin/wallet"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -156,7 +155,7 @@ func TestNodeStartMining(t *testing.T) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	minerNode := MakeNodeWithChainSeed(t, seed, []ConfigOpt{}, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
-	walletBackend, _ := w.NewDSBackend(minerNode.Repo.WalletDatastore())
+	walletBackend, _ := wallet.NewDSBackend(minerNode.Repo.WalletDatastore())
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
@@ -169,7 +168,7 @@ func TestNodeStartMining(t *testing.T) {
 		Config:       pbConfig.NewConfig(minerNode.Repo),
 		Chain:        chn.New(minerNode.ChainReader),
 		Network:      network.NewNetwork(minerNode.Host()),
-		Wallet:       wallet.NewWallet(w.New(walletBackend)),
+		Wallet:       wallet.New(walletBackend),
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 

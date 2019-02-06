@@ -15,9 +15,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/network"
-	"github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/types"
-	w "github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -148,11 +147,11 @@ func (api *API) WalletAddresses() []address.Address {
 }
 
 // WalletFind finds addresses on the wallet
-func (api *API) WalletFind(address address.Address) (w.Backend, error) {
+func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
 	return api.wallet.Find(address)
 }
 
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress() (address.Address, error) {
-	return api.wallet.NewAddress()
+	return wallet.NewAddress(api.wallet)
 }

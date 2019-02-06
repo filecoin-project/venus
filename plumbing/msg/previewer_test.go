@@ -37,7 +37,7 @@ func TestPreview(t *testing.T) {
 		// The genesis init function we give below will install the fake actor at
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
-		// setup/teardown through geneisus helpers.
+		// setup/teardown through genesis helpers.
 		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 		defer func() {
 			delete(builtin.Actors, fakeActorCodeCid)

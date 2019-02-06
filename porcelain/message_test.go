@@ -9,10 +9,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
-	w "github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,11 +121,11 @@ type fakeGetAndMaybeSetDefaultSenderAddressPlumbing struct {
 
 func newFakeGetAndMaybeSetDefaultSenderAddressPlumbing(require *require.Assertions) *fakeGetAndMaybeSetDefaultSenderAddressPlumbing {
 	repo := repo.NewInMemoryRepo()
-	backend, err := w.NewDSBackend(repo.WalletDatastore())
+	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	require.NoError(err)
 	return &fakeGetAndMaybeSetDefaultSenderAddressPlumbing{
 		config: cfg.NewConfig(repo),
-		wallet: wallet.NewWallet(w.New(backend)),
+		wallet: wallet.New(backend),
 	}
 }
 
@@ -143,7 +142,7 @@ func (fgamsdsap *fakeGetAndMaybeSetDefaultSenderAddressPlumbing) WalletAddresses
 }
 
 func (fgamsdsap *fakeGetAndMaybeSetDefaultSenderAddressPlumbing) WalletNewAddress() (address.Address, error) {
-	return fgamsdsap.wallet.NewAddress()
+	return wallet.NewAddress(fgamsdsap.wallet)
 }
 
 func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {

@@ -54,7 +54,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/network"
-	pwallet "github.com/filecoin-project/go-filecoin/plumbing/wallet"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -409,7 +408,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
 		Network:      network.NewNetwork(peerHost),
-		Wallet:       pwallet.NewWallet(fcWallet),
+		Wallet:       fcWallet,
 	}))
 
 	nd := &Node{
@@ -826,7 +825,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
-					// TODO: what is the right number of retries?
 					err := porcelain.MessageSendWithRetry(
 						node.miningCtx,
 						node.PorcelainAPI,
