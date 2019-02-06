@@ -21,9 +21,13 @@ type cpPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ChainLs(ctx context.Context) <-chan interface{}
+	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
 
 // CreatePaymentsParams structures all the parameters for the CreatePayments command. All values are required.
+// The first payment will be valid at PaymentStart+PaymentInterval. Payment voucher will be created for every
+// PaymentInterval after that until PaymentStart+Duration is reached.
+// ChannelExpiry is when the channel closes and must be after the final payment is valid.
 type CreatePaymentsParams struct {
 	// From is the address of the payer.
 	From address.Address
@@ -175,6 +179,12 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePay
 	if err := cbor.DecodeInto(ret[0], &voucher); err != nil {
 		return err
 	}
+
+	sig, err := paymentbroker.SignVoucher(&voucher.Channel, amount, validAt, voucher.Payer, plumbing)
+	if err != nil {
+		return err
+	}
+	voucher.Signature = sig
 
 	response.Vouchers = append(response.Vouchers, &voucher)
 	return nil

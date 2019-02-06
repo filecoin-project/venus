@@ -103,6 +103,10 @@ func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan interface{}
 	return out
 }
 
+func (ptp *paymentsTestPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return []byte("signature"), nil
+}
+
 func validPaymentsConfig() CreatePaymentsParams {
 	addresses := address.NewForTestGetter()
 	from := addresses()
@@ -147,18 +151,23 @@ func TestCreatePayments(t *testing.T) {
 		require.True(ok)
 
 		for i := 0; i < 9; i++ {
-			assert.Equal(*types.NewChannelID(channelID), paymentResponse.Vouchers[i].Channel)
-			assert.Equal(config.From, paymentResponse.Vouchers[i].Payer)
-			assert.Equal(config.To, paymentResponse.Vouchers[i].Target)
-			assert.Equal(*types.NewBlockHeight(startingBlock + config.PaymentInterval*uint64(i+1)), paymentResponse.Vouchers[i].ValidAt)
-			assert.Equal(*expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), paymentResponse.Vouchers[i].Amount)
+			voucher := paymentResponse.Vouchers[i]
+			assert.Equal(*types.NewChannelID(channelID), voucher.Channel)
+			assert.Equal(config.From, voucher.Payer)
+			assert.Equal(config.To, voucher.Target)
+			assert.Equal(*types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
+			assert.Equal(*expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
+
+			// voucher signature should be what is returned by SignBytes
+
+			sig := types.Signature([]byte("signature"))
+			assert.Equal(sig, voucher.Signature)
 		}
 
 		// last payment should be for the full amount
 		assert.Equal(*types.NewChannelID(channelID), paymentResponse.Vouchers[9].Channel)
 		assert.Equal(config.From, paymentResponse.Vouchers[9].Payer)
 		assert.Equal(config.To, paymentResponse.Vouchers[9].Target)
-		assert.Equal(*types.NewBlockHeight(startingBlock + config.PaymentInterval*uint64(10)), paymentResponse.Vouchers[9].ValidAt)
 		assert.Equal(config.Value, paymentResponse.Vouchers[9].Amount)
 	})
 

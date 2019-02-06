@@ -45,8 +45,8 @@ const (
 	// VoucherInterval defines how many block pass before creating a new voucher
 	VoucherInterval = 1000
 
-	// ChannelExpiryBuffer defines how long the channel remains open past the last voucher
-	ChannelExpiryBuffer = 2000
+	// ChannelExpiryInterval defines how long the channel remains open past the last voucher
+	ChannelExpiryInterval = 2000
 
 	// CreateChannelGasPrice is the gas price of the message used to create the payment channel
 	CreateChannelGasPrice = 0
@@ -62,9 +62,9 @@ type clientNode interface {
 }
 
 type clientPorcelainAPI interface {
-	ConfigGet(dottedPath string) (interface{}, error)
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
@@ -124,13 +124,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	from, err := smc.api.ConfigGet("wallet.defaultAddress")
+	fromAddress, err := smc.api.GetAndMaybeSetDefaultSenderAddress()
 	if err != nil {
 		return nil, err
-	}
-	fromAddress, ok := from.(address.Address)
-	if !ok || fromAddress.Empty() {
-		return nil, errors.New("Default wallet address is not set correctly")
 	}
 
 	minerOwner, err := smc.api.MinerGetOwnerAddress(ctx, miner)
@@ -159,7 +155,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		Value:           *price.MulBigInt(big.NewInt(int64(size * duration))),
 		Duration:        duration,
 		PaymentInterval: VoucherInterval,
-		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryBuffer)),
+		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
 		GasPrice:        *types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
 		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
 	})
@@ -168,7 +164,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	proposal.Payment.Channel = cpResp.Channel
-	proposal.Payment.ChannelMsgCid = cpResp.ChannelMsgCid.String()
+	proposal.Payment.PayChActor = address.PaymentBrokerAddress
+	proposal.Payment.Payer = fromAddress
+	proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
 	proposal.Payment.Vouchers = cpResp.Vouchers
 
 	// send proposal
