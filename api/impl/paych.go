@@ -2,9 +2,9 @@ package impl
 
 import (
 	"context"
+
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
-	"gx/ipfs/QmekxXDhCxCJRNuzmHreuaT3BsuJcsjcXWNrtV9C8DRHtd/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -97,16 +97,11 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 	}
 	voucher.Signature = sig
 
-	cborVoucher, err := cbor.DumpObject(voucher)
-	if err != nil {
-		return "", err
-	}
-
-	return multibase.Encode(multibase.Base58BTC, cborVoucher)
+	return voucher.Encode()
 }
 
 func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
-	voucher, err := decodeVoucher(voucherRaw)
+	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -137,7 +132,7 @@ func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasP
 }
 
 func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
-	voucher, err := decodeVoucher(voucherRaw)
+	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -165,19 +160,4 @@ func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPr
 		"extend",
 		channel, eol,
 	)
-}
-
-func decodeVoucher(voucherRaw string) (*paymentbroker.PaymentVoucher, error) {
-	_, cborVoucher, err := multibase.Decode(voucherRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	var voucher paymentbroker.PaymentVoucher
-	err = cbor.DecodeInto(cborVoucher, &voucher)
-	if err != nil {
-		return nil, err
-	}
-
-	return &voucher, nil
 }
