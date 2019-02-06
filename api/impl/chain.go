@@ -1,7 +1,6 @@
 package impl
 
 import (
-	"context"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -28,8 +27,4 @@ func (api *nodeChain) Head() ([]cid.Cid, error) {
 	}
 
 	return out.ToSlice(), nil
-}
-
-func (api *nodeChain) Ls(ctx context.Context) <-chan interface{} {
-	return api.api.node.ChainReader.BlockHistory(ctx)
 }
