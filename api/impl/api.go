@@ -15,7 +15,6 @@ type nodeAPI struct {
 	actor           *nodeActor
 	address         *nodeAddress
 	block           *nodeBlock
-	bootstrap       *nodeBootstrap
 	chain           *nodeChain
 	client          *nodeClient
 	daemon          *nodeDaemon
@@ -49,7 +48,6 @@ func New(node *node.Node) api.API {
 	api.actor = newNodeActor(api)
 	api.address = newNodeAddress(api)
 	api.block = newNodeBlock(api)
-	api.bootstrap = newNodeBootstrap(api)
 	api.chain = newNodeChain(api)
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
@@ -78,10 +76,6 @@ func (api *nodeAPI) Address() api.Address {
 
 func (api *nodeAPI) Block() api.Block {
 	return api.block
-}
-
-func (api *nodeAPI) Bootstrap() api.Bootstrap {
-	return api.bootstrap
 }
 
 func (api *nodeAPI) Chain() api.Chain {
