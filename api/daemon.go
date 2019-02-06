@@ -26,10 +26,10 @@ type DaemonInitConfig struct {
 	PeerKeyFile string
 	// WithMiner, if set, sets the config value for the local miner to this address.
 	WithMiner address.Address
-	// ClusterTest, if set, sets the config to enable bootstrapping to the test cluster.
-	ClusterTest bool
-	// ClusterNightly, if set, sets the config to enable bootstrapping to the nightly cluster.
-	ClusterNightly bool
+	// DevnetTest, if set, sets the config to enable bootstrapping to the test devnet.
+	DevnetTest bool
+	// DevnetNightly, if set, sets the config to enable bootstrapping to the nightly devnet.
+	DevnetNightly bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
 	AutoSealIntervalSeconds uint
 	DefaultAddress          address.Address
@@ -66,17 +66,17 @@ func WithMiner(miner address.Address) DaemonInitOpt {
 	}
 }
 
-// ClusterTest sets the ClusterTest option.
-func ClusterTest(doit bool) DaemonInitOpt {
+// DevnetTest sets the DevnetTest option.
+func DevnetTest(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
-		dc.ClusterTest = doit
+		dc.DevnetTest = doit
 	}
 }
 
-// ClusterNightly sets the ClusterNightly option.
-func ClusterNightly(doit bool) DaemonInitOpt {
+// DevnetNightly sets the DevnetNightly option.
+func DevnetNightly(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
-		dc.ClusterNightly = doit
+		dc.DevnetNightly = doit
 	}
 }
 

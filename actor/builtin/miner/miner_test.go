@@ -85,6 +85,13 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(1, len(minerStorage.Asks))
 	assert.Equal(uint64(1), minerStorage.NextAskID.Uint64())
 
+	// Look for an ask that doesn't exist
+	pdata = actor.MustConvertParams(big.NewInt(3453))
+	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
+	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
+	assert.Equal(Errors[ErrAskNotFound], result.ExecutionError)
+	assert.NoError(err)
+
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)

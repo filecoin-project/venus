@@ -69,7 +69,7 @@ func TestIdOutput(t *testing.T) {
 	assert.NoError(err)
 
 	// We should have the expected peerID
-	assert.EqualValues(expectedPeerID.Pretty(), actualOut.ID)
+	assert.EqualValues(expectedPeerID, actualOut.ID)
 
 	// Should have expected swarmAddress
 	assert.Contains(actualOut.Addresses[0], fmt.Sprintf("%s/ipfs/%s", expectedSwarm, expectedPeerID.Pretty()))

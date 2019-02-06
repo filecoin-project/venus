@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 type nodeAPI struct {
@@ -41,9 +41,9 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	var plumbingAPI *plumbing.API
+	var porcelainAPI *porcelain.API
 	if node != nil {
-		plumbingAPI = node.PlumbingAPI
+		porcelainAPI = node.PorcelainAPI
 	}
 
 	api.actor = newNodeActor(api)
@@ -56,10 +56,10 @@ func New(node *node.Node) api.API {
 	api.dag = newNodeDag(api)
 	api.id = newNodeID(api)
 	api.log = newNodeLog(api)
-	api.miner = newNodeMiner(api, plumbingAPI)
+	api.miner = newNodeMiner(api, porcelainAPI)
 	api.mining = newNodeMining(api)
 	api.mpool = newNodeMpool(api)
-	api.paych = newNodePaych(api, plumbingAPI)
+	api.paych = newNodePaych(api, porcelainAPI)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
@@ -9,10 +10,30 @@ import (
 )
 
 func init() {
+	cbor.RegisterCborType(PaymentInfo{})
 	cbor.RegisterCborType(DealProposal{})
 	cbor.RegisterCborType(DealResponse{})
 	cbor.RegisterCborType(ProofInfo{})
 	cbor.RegisterCborType(queryRequest{})
+}
+
+// PaymentInfo contains all the payment related information for a storage deal.
+type PaymentInfo struct {
+	// PayChActor is the address of the payment channel actor
+	// that will be used to facilitate payments
+	PayChActor address.Address
+
+	// Channel is the ID of the specific channel the client will
+	// use to pay the miner. It must already have sufficient funds locked up
+	Channel *types.ChannelID
+
+	// ChannelMsgCid is the B58 encoded CID of the message used to create the channel (so the miner can wait for it).
+	ChannelMsgCid string
+
+	// Vouchers is a set of payments from the client to the miner that can be
+	// cashed out contingent on the agreed upon data being provably within a
+	// live sector in the miners control on-chain
+	Vouchers []*paymentbroker.PaymentVoucher
 }
 
 // DealProposal is the information sent over the wire, when a client proposes a deal to a miner.
@@ -35,7 +56,11 @@ type DealProposal struct {
 	// MinerAddress is the address of the storage miner in the deal proposal
 	MinerAddress address.Address
 
-	// TODO: Payment PaymentInfo
+	// Payment is a reference to the mechanism that the proposer
+	// will use to pay the miner. It should be verifiable by the
+	// miner using on-chain information.
+	Payment PaymentInfo
+
 	// Signature types.Signature
 }
 

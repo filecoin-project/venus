@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -87,7 +88,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	PlumbingAPI *plumbing.API
+	PorcelainAPI *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -401,12 +402,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	sigGetter := mthdsig.NewGetter(chainReader)
-	msgQueryer := msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs)
-	msgSender := msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish)
-	msgWaiter := msg.NewWaiter(chainReader, bs, &cstOffline)
-	config := cfg.NewConfig(nc.Repo)
-	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
+	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
+		Chain:      chn.New(chainReader),
+		Config:     cfg.NewConfig(nc.Repo),
+		SigGetter:  mthdsig.NewGetter(chainReader),
+		MsgQueryer: msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgSender:  msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
+		MsgWaiter:  msg.NewWaiter(chainReader, bs, &cstOffline),
+	}))
 
 	nd := &Node{
 		blockservice: bservice,
@@ -417,7 +420,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainReader:  chainReader,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
-		PlumbingAPI:  plumbingAPI,
+		PorcelainAPI: PorcelainAPI,
 		Exchange:     bswap,
 		host:         peerHost,
 		MsgPool:      msgPool,
@@ -482,13 +485,9 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
 
-	cni := storage.NewClientNodeImpl(
-		dag.NewDAGService(node.BlockService()),
-		node.Host(),
-		node.Lookup(),
-		node.PlumbingAPI.MessageQuery)
+	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host())
 	var err error
-	node.StorageMinerClient, err = storage.NewClient(cni, node.Repo.DealsDatastore())
+	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI, node.Repo.DealsDatastore())
 	if err != nil {
 		return errors.Wrap(err, "Could not make new storage client")
 	}
@@ -814,7 +813,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
 					// TODO: what is the right number of retries?
-					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PlumbingAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasUnits, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:], val.Proof[:])
+					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PorcelainAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasUnits, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:], val.Proof[:])
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -853,7 +852,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID")
+	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
 	}
@@ -914,7 +913,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PlumbingAPI)
+	miner, err := storage.NewMiner(ctx, minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
@@ -970,13 +969,13 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	smsgCid, err := node.PlumbingAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice, gasLimit, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
+	smsgCid, err := node.PorcelainAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice, gasLimit, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
 	if err != nil {
 		return nil, err
 	}
 
 	var minerAddress address.Address
-	err = node.PlumbingAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
+	err = node.PorcelainAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
@@ -1009,7 +1008,7 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, _, err := node.PlumbingAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner")
+	res, _, err := node.PorcelainAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner")
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to getOwner")
 	}

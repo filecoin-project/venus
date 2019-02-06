@@ -31,6 +31,9 @@
 ## What is Filecoin?
 Filecoin is a decentralized storage network that turns the world’s unused storage into an algorithmic market, creating a permanent, decentralized future for the web. **Miners** earn the native protocol token (also called “filecoin”) by providing data storage and/or retrieval. **Clients** pay miners to store or distribute data and to retrieve it. Check out [How Filecoin Works](https://github.com/filecoin-project/go-filecoin/wiki/How-Filecoin-Works) for more.
 
+**WARNING**: `go-filecoin` is a work in progress and is not ready for production use.
+See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/KNOWN_ISSUES.md) for an outline of known vulnerabilities.
+
 ## Install
 
 👋 Welcome to Go Filecoin!
@@ -82,10 +85,11 @@ planning to edit the proofs, you can fetch pre-compiled assets for your build ra
 
 To do so:
   - Export these two environment variables before fetching dependencies:
-    - `GITHUB_TOKEN` - a [personal access token generated on GitHub](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
+    - `GITHUB_TOKEN` - a personal access token [from GitHub](https://github.com/settings/tokens) with `repo` scope
     - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS=1`
   - Make sure `curl` and `jq` are installed in your system.
-  - You will still need `rust`/`cargo` to install bls-signatures.
+  - You will still need `rust`/`cargo` to install bls-signatures (until #1759 is resolved).
+
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:
@@ -101,14 +105,14 @@ go run ./build/*.go deps
 # First, build the binary...
 go run ./build/*.go build
 
+# Install go-filecoin to ${GOPATH}/bin (necessary for tests)
+go run ./build/*.go install
+
 # Then, run the tests.
 go run ./build/*.go test
 
 # Build and test can be combined!
 go run ./build/*.go best
-
-# Install go-filecoin to ${GOPATH}/bin
-go run ./build/*.go install
 ```
 
 Other handy build commands include:
@@ -156,7 +160,7 @@ Note that updating the `rust-proofs` submodule in this way will require a commit
 ## Usage
 
 The [Getting Started](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started) wiki page contains
-a simple sequence to get your Filecoin node up and running and connected to a cluster.
+a simple sequence to get your Filecoin node up and running and connected to a devnet.
 
 The [Commands](https://github.com/filecoin-project/go-filecoin/wiki/Commands) page contains further detail about
 specific commands and environment variables, as well as scripts for for setting up a miner and making a deal.

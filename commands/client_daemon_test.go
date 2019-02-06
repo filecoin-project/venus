@@ -145,3 +145,39 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
 	assert.Contains(secondDeal, "accepted")
 }
+
+func TestVoucherPersistenceAndPayments(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	miner := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+	).Start()
+	defer miner.ShutdownSuccess()
+
+	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
+	defer client.ShutdownSuccess()
+
+	miner.RunSuccess("mining start")
+	miner.UpdatePeerID()
+
+	miner.ConnectSuccess(client)
+
+	miner.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+
+	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "3000").ReadStdoutTrimNewlines()
+
+	splitOnSpace := strings.Split(proposeDealOutput, " ")
+
+	dealCid := splitOnSpace[len(splitOnSpace)-1]
+
+	result := client.RunSuccess("client", "payments", dealCid).ReadStdoutTrimNewlines()
+
+	assert.Contains(result, "Channel\tAmount\tValidAt\tEncoded Voucher")
+	assert.Contains(result, "0\t240000\t1002")
+	assert.Contains(result, "0\t480000\t2002")
+	assert.Contains(result, "0\t720000\t3002")
+}

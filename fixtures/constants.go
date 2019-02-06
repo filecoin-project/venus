@@ -106,7 +106,7 @@ func KeyFilePaths() []string {
 	return res
 }
 
-// test cluster addrs
+// test devnet addrs
 const (
 	testFilecoinBootstrap0 string = "/dns4/test.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
 	testFilecoinBootstrap1 string = "/dns4/test.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
@@ -115,7 +115,7 @@ const (
 	testFilecoinBootstrap4 string = "/dns4/test.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
-// nightly cluster addrs
+// nightly devnet addrs
 const (
 	nightlyFilecoinBootstrap0 string = "/dns4/nightly.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
 	nightlyFilecoinBootstrap1 string = "/dns4/nightly.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
@@ -124,9 +124,9 @@ const (
 	nightlyFilecoinBootstrap4 string = "/dns4/nightly.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
-// ClusterTestBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
-// test cluster.
-var ClusterTestBootstrapAddrs = []string{
+// DevnetTestBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// test devnet.
+var DevnetTestBootstrapAddrs = []string{
 	testFilecoinBootstrap0,
 	testFilecoinBootstrap1,
 	testFilecoinBootstrap2,
@@ -134,9 +134,9 @@ var ClusterTestBootstrapAddrs = []string{
 	testFilecoinBootstrap4,
 }
 
-// ClusterNightlyBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
-// nightly cluster
-var ClusterNightlyBootstrapAddrs = []string{
+// DevnetNightlyBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
+// nightly devnet
+var DevnetNightlyBootstrapAddrs = []string{
 	nightlyFilecoinBootstrap0,
 	nightlyFilecoinBootstrap1,
 	nightlyFilecoinBootstrap2,
