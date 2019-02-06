@@ -434,7 +434,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, _, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -471,7 +471,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(err)
 
-		returnValue, _, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(err)
 		assert.Equal(uint8(0), exitCode)
 
@@ -516,7 +516,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		_, _, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt)
+		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt)
 		assert.NotEqual(uint8(0), exitCode)
 		assert.Contains(fmt.Sprintf("%v", err), "unknown")
 	})
@@ -623,7 +623,7 @@ func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight) ([]
 	return ([]byte)(sig), nil
 }
 
-func (sys *system) CallQueryMethod(method string, height uint64, params ...interface{}) ([][]byte, types.GasUnits, uint8, error) {
+func (sys *system) CallQueryMethod(method string, height uint64, params ...interface{}) ([][]byte, uint8, error) {
 	sys.t.Helper()
 
 	args := core.MustConvertParams(params...)
@@ -667,7 +667,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(err)
 
-	returnValue, _, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(err)
 	assert.Equal(uint8(0), exitCode)
 
@@ -704,7 +704,7 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := core.MustConvertParams(payer)
-	values, _, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
 	require.Zero(ec)
 	require.NoError(err)
 

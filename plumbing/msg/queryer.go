@@ -70,7 +70,7 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	}
 
 	vms := vm.NewStorageMap(q.bs)
-	r, _, ec, err := consensus.CallQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	r, ec, err := consensus.CallQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "querymethod returned an error")
 	} else if ec != 0 {
