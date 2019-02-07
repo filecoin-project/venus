@@ -230,9 +230,9 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 // Specific intentions include:
 //   - fault errors: immediately return to the caller no matter what
 //   - nonce too low: permanently unapplyable (don't include, revert changes, discard)
-// TODO: if we have a re-order of the chain the message with nonce too low could
-//       become applyable. Except that we already have a message with that nonce.
-//       Maybe give this more careful consideration?
+//   	-- if we have a re-order of the chain the message with nonce too low could
+//       become applyable, but having two of the same message with the same nonce is
+//       nonce-sensical
 //   - nonce too high: temporarily unapplyable (don't include, revert, keep in pool)
 //   - sender account exists but insufficient funds: successfully applied
 //       (include it in the block but revert its changes). This an explicit choice
@@ -240,8 +240,6 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //       replayable).
 //   - sender account does not exist: temporarily unapplyable (don't include, revert,
 //       keep in pool). There could be an account-creating message forthcoming.
-//       (TODO this is only true while we don't have nonce checking; nonce checking
-//       will cover this case in the future)
 //   - send to self: permanently unapplyable (don't include in a block, revert changes,
 //       discard)
 //   - transfer negative value: permanently unapplyable (as above)
@@ -250,17 +248,6 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-// for example squintinig at this perhaps:
-//   - ApplyMessage creates a read-through cache of the state tree
-//   - it loads the to and from actor into the cache
-//   - changes should accumulate in the actor in callees
-//   - nothing deeper than this method has direct access to the state tree
-//   - no callee should get a different pointer to the to/from actors
-//       (we assume the pointer we have accumulates all the changes)
-//   - callees must call GetOrCreate on the cache to create a new actor that will be persisted
-//   - ApplyMessage and VMContext.Send() are the only things that should call
-//     Send() -- all the user-actor logic goes in ApplyMessage and all the
-//     actor-actor logic goes in VMContext.Send.
 func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
