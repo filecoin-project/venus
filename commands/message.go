@@ -74,7 +74,7 @@ var msgSendCmd = &cmds.Command{
 			method = ""
 		}
 
-		c, err := GetPlumbingAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
+		c, err := GetPorcelainAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,8 @@ var msgSendCmd = &cmds.Command{
 	},
 }
 
-type waitResult struct {
+// WaitResult is the result of a message wait call.
+type WaitResult struct {
 	Message   *types.SignedMessage
 	Receipt   *types.MessageReceipt
 	Signature *exec.FunctionSignature
@@ -115,14 +116,14 @@ var msgWaitCmd = &cmds.Command{
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
 
 		found := false
-		err = GetPlumbingAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		err = GetPorcelainAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
-			sig, err2 := GetPlumbingAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
+			sig, err2 := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
 			if err2 != nil && err2 != mthdsig.ErrNoMethod && err2 != mthdsig.ErrNoActorImpl {
 				return errors.Wrap(err2, "Couldn't get signature for message")
 			}
 
-			res := waitResult{
+			res := WaitResult{
 				Message: msg,
 				Receipt: receipt,
 				// Signature is required to decode the output.
@@ -138,9 +139,9 @@ var msgWaitCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: waitResult{},
+	Type: WaitResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *waitResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *WaitResult) error {
 			messageOpt, _ := req.Options["message"].(bool)
 			receiptOpt, _ := req.Options["receipt"].(bool)
 			returnOpt, _ := req.Options["return"].(bool)

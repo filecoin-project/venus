@@ -6,19 +6,38 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/address"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializeProposal(t *testing.T) {
+	require := require.New(t)
+
 	t.Parallel()
 
+	ag := address.NewForTestGetter()
+	cg := types.NewCidForTestGetter()
 	p := &DealProposal{}
 	p.Size = types.NewBytesAmount(5)
+	p.Payment.ChannelMsgCid = cg().String()
+	p.Payment.Channel = types.NewChannelID(4)
+	voucher := &paymentbroker.PaymentVoucher{
+		Channel:   *types.NewChannelID(4),
+		Payer:     ag(),
+		Target:    ag(),
+		Amount:    *types.NewAttoFILFromFIL(3),
+		ValidAt:   *types.NewBlockHeight(3),
+		Signature: types.Signature{},
+	}
+	p.Payment.Vouchers = []*paymentbroker.PaymentVoucher{voucher}
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
-	_, err := cbor.DumpObject(p)
-	if err != nil {
-		t.Fatal(err)
-	}
+	chunk, err := cbor.DumpObject(p)
+	require.NoError(err)
+
+	err = cbor.DecodeInto(chunk, &DealProposal{})
+	require.NoError(err)
 }

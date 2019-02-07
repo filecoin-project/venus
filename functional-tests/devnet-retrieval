@@ -13,15 +13,15 @@ export FILECOIN_PROOFS_FAST_DELAY_SECONDS=1
 AUTO_SEAL_INTERVAL_SECONDS="0"
 
 if [[ "$1" = "test" ]]; then
-    echo "Running Retrieval Test Against Test Cluster"
+    echo "Running Retrieval Test Against Test Devnet"
     CLUSTER="test"
     FAUCET_ADDR="http://test.kittyhawk.wtf:9797/tap"
 elif [[ "$1" = "nightly" ]]; then
-    echo "Running Retrieval Test Against Nightly Cluster"
+    echo "Running Retrieval Test Against Nightly Devnet"
     CLUSTER="nightly"
     FAUCET_ADDR="http://nightly.kittyhawk.wtf:9797/tap"
 else
-    echo "must provide first argument of either 'test' or 'nightly' for desired cluster"
+    echo "must provide first argument of either 'test' or 'nightly' for desired devnet"
     exit 1
 fi
 
@@ -68,8 +68,8 @@ CL_SWARM_PORT=$(free_port)
 
 echo ""
 echo "initializing daemons..."
-init_cluster_daemon "${MN_REPO_DIR}" "${MN_CMDAPI_PORT}"
-init_cluster_daemon "${CL_REPO_DIR}" "${CL_CMDAPI_PORT}"
+init_devnet_daemon "${MN_REPO_DIR}" "${MN_CMDAPI_PORT}"
+init_devnet_daemon "${CL_REPO_DIR}" "${CL_CMDAPI_PORT}"
 
 echo ""
 echo "start daemons..."
@@ -85,7 +85,7 @@ echo "get default wallet addresses..."
 MN_MINER_OWNER_FIL_ADDR=$(./go-filecoin wallet addrs ls --repodir="${MN_REPO_DIR}")
 
 echo ""
-echo "connecting to ${CLUSTER} cluster..."
+echo "connecting to ${CLUSTER} devnet..."
 wait_for_peers "${MN_REPO_DIR}"
 wait_for_peers "${CL_REPO_DIR}"
 

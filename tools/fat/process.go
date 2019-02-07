@@ -53,6 +53,9 @@ type IPTBCoreExt interface {
 type Filecoin struct {
 	PeerID peer.ID
 
+	initOpts   []ProcessInitOption
+	daemonOpts []ProcessDaemonOption
+
 	Log logging.EventLogger
 
 	core IPTBCoreExt
@@ -70,11 +73,13 @@ type Filecoin struct {
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt) *Filecoin {
+func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt, eo EnvironmentOpts) *Filecoin {
 	return &Filecoin{
-		core: c,
-		Log:  logging.Logger(c.String()),
-		ctx:  ctx,
+		core:       c,
+		Log:        logging.Logger(c.String()),
+		ctx:        ctx,
+		initOpts:   eo.InitOpts,
+		daemonOpts: eo.DaemonOpts,
 	}
 }
 
@@ -99,10 +104,7 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 		return nil, err
 	}
 
-	f.PeerID, err = peer.IDB58Decode(idinfo.ID)
-	if err != nil {
-		return nil, err
-	}
+	f.PeerID = idinfo.ID
 
 	return out, nil
 }
@@ -134,7 +136,7 @@ func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ..
 	if ctx == nil {
 		ctx = f.ctx
 	}
-	f.Log.Infof("RunCmd: %s", args)
+	f.Log.Infof("RunCmd: %s %s", f.core.Dir(), args)
 	out, err := f.core.RunCmd(ctx, stdin, args...)
 	if err != nil {
 		return nil, err

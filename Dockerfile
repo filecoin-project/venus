@@ -50,7 +50,7 @@ MAINTAINER Filecoin Dev Team
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
 COPY --from=builder $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
 COPY --from=builder $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
-COPY --from=builder $SRC_DIR/bin/cluster_start /usr/local/bin/cluster_start
+COPY --from=builder $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
 COPY --from=builder $SRC_DIR/bin/node_restart /usr/local/bin/node_restart
 COPY --from=builder $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=builder $SRC_DIR/fixtures/* /data/

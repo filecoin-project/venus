@@ -21,9 +21,6 @@ var log = logging.Logger("bootstrap")
 // connects to a random subset of the bootstrap peers. It does not use peer routing
 // to discover new peers. To stop a Bootstrapper cancel the context passed in Start()
 // or call Stop().
-//
-// Code loosely modeled on go-ipfs/core/bootstrap.go, take a look there for inspiration
-// if you're adding new features.
 type Bootstrapper struct {
 	// Config
 	// MinPeerThreshold is the number of connections it attempts to maintain.

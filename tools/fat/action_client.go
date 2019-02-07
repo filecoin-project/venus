@@ -25,8 +25,8 @@ func (f *Filecoin) ClientCat(ctx context.Context, cid cid.Cid) (io.ReadCloser, e
 	return out.Stdout(), err
 }
 
-// ClientImportData runs the client import data command against the filecoin process.
-func (f *Filecoin) ClientImportData(ctx context.Context, data files.File) (cid.Cid, error) {
+// ClientImport runs the client import data command against the filecoin process.
+func (f *Filecoin) ClientImport(ctx context.Context, data files.File) (cid.Cid, error) {
 	var out cid.Cid
 	if err := f.RunCmdJSONWithStdin(ctx, data, &out, "go-filecoin", "client", "import"); err != nil {
 		return cid.Undef, err

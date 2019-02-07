@@ -16,8 +16,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -153,16 +155,19 @@ func TestNodeStartMining(t *testing.T) {
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
-	sigGetter := mthdsig.NewGetter(minerNode.ChainReader)
-	msgQueryer := msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore)
-	msgSender := msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish)
-	msgWaiter := msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore())
-	config := pbConfig.NewConfig(minerNode.Repo)
-	plumbingAPI := plumbing.New(sigGetter, msgQueryer, msgSender, msgWaiter, config)
+	plumbingAPI := plumbing.New(&plumbing.APIDeps{
+		SigGetter:  mthdsig.NewGetter(minerNode.ChainReader),
+		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgSender:  msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
+		MsgWaiter:  msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
+		Config:     pbConfig.NewConfig(minerNode.Repo),
+		Chain:      chn.New(minerNode.ChainReader),
+	})
+	porcelainAPI := porcelain.New(plumbingAPI)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), plumbingAPI)
+	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 
 	assert.NoError(minerNode.Start(ctx))
@@ -363,37 +368,6 @@ func TestMakePrivateKey(t *testing.T) {
 	goodKey, err := makePrivateKey(4096)
 	assert.NoError(err)
 	assert.NotNil(goodKey)
-}
-
-// Note: this is pretty redundant with message/sender_test.go but keeping it
-// as assurance the API2 was set up correctly.
-func TestSendMessage(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("send message adds to pool", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		node := MakeOfflineNode(t)
-		nodeAddr, err := node.NewAddress()
-		assert.NoError(err)
-
-		tif := consensus.MakeGenesisFunc(
-			consensus.ActorAccount(nodeAddr, types.NewAttoFILFromFIL(10000)),
-		)
-		require.NoError(resetNodeGen(node, tif))
-
-		assert.NoError(node.Start(ctx))
-
-		gasPrice := types.NewGasPrice(0)
-		gasLimit := types.NewGasUnits(0)
-		_, err = node.PlumbingAPI.MessageSend(ctx, nodeAddr, nodeAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "foo", []byte{})
-		require.NoError(err)
-
-		assert.Equal(1, len(node.MsgPool.Pending()))
-	})
-
 }
 
 func repoConfig() ConfigOpt {

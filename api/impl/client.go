@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 
 	imp "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs/importer"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	mapi "github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -30,6 +32,8 @@ type nodeClient struct {
 func newNodeClient(api *nodeAPI) *nodeClient {
 	return &nodeClient{api: api}
 }
+
+var _ api.Client = &nodeClient{}
 
 func (api *nodeClient) Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 	// TODO: this goes back to 'how is data stored and referenced'
@@ -120,4 +124,8 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 	}()
 
 	return out, nil
+}
+
+func (api *nodeClient) Payments(ctx context.Context, dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
+	return api.api.node.StorageMinerClient.LoadVouchersForDeal(dealCid)
 }

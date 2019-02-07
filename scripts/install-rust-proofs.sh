@@ -19,7 +19,8 @@ install_precompiled() {
   RELEASE_ID=`echo $RELEASE_RESPONSE | jq '.id'`
 
   if [ "$RELEASE_ID" == "null" ]; then
-    echo "release does not exist"
+    echo "release ${RELEASE_TAG} does not exist, GitHub said ${RELEASE_RESPONSE}"
+    echo "ensure your access token has full repo scope"
     return 1
   fi
 
