@@ -348,9 +348,56 @@ This data lives in a file at `$HOME/.filecoin/keystore/self`.
 
 ## Testing
 
-(More content coming here)
+The `go-filecoin` codebase has a few different testing mechanisms: 
+unit tests, in-process integration tests, “daemon” integration tests, and a couple of high level functional tests.
 
-A few functional tests have some bash scripts orchestrating complex test setups.
+Many parts of code have good unit tests. 
+We’d like all parts to have unit tests, but in some places it hasn’t been possible where prototype code omitted testability features. 
+Functionality on the `Node` object is a prime example, which we are [moving away from](#plumbing-and-porcelain). 
+
+Historically there has been a prevalence of integration-type testing. 
+Relying only on integration tests can make it hard to verify small changes to internals. 
+We’re driving towards both wide unit test coverage, with integration tests to verifying end-to-end behaviour.
+
+There are two patterns for unit tests. 
+In plumbing and low level components, many tests use real dependencies (or at least in-memory versions of them). 
+For higher level components like porcelain or protocols, where dependencies are more complex to set up, 
+we often use fake implementations of just those parts of the plumbing that are required. 
+It is a goal to have both unit tests (with fakes or real deps), as well as higher level integration-style tests. 
+
+Code generally uses simple manual dependency injection. 
+A component that takes a large number of deps at construction can have them factored into a struct.
+A module should often (re-)declare a narrow subset of the interfaces it depends on (see [Consumer-defined interfaces](#consumer-defined-interfaces))), in canonical Go style. 
+
+Some [node integration tests](https://github.com/filecoin-project/go-filecoin/blob/master/node/node_test.go) start one or more full nodes in-process. 
+This is useful for fine-grained control over the node being tested. 
+Setup for these tests is a bit difficult and we aim to make it much easier to instantiate and test full nodes in-process.
+
+Daemon tests are end-to-end integration tests that exercise the command interface of the `go-filecoin` binary. 
+These execute separate `go-filecoin` processes and drive them via the command line. 
+These tests are mostly under the [`commands`](https://github.com/filecoin-project/go-filecoin/blob/master/commands) package, 
+and use [TestDaemon](https://github.com/filecoin-project/go-filecoin/blob/master/testhelpers/commands.go). 
+Because the test and the daemon being tested are in separate processes, getting access to the daemon process’s output streams or attaching a debugger is tricky; 
+see comments in [createNewProcess][(https://github.com/filecoin-project/go-filecoin/blob/726e6705860ddfc8ca4e55bc3610ad2230a95c0c/testhelpers/commands.go#L849)
+
+In daemon tests it is important to remember that messages do not have any effect on chain state until they are mined into a block. 
+Preparing an actor in order to receive messages and mutate state requires some delicate network set-up, mining messages into a block to create the actor before it can receive messages. 
+See `MineOnce` in [`mining/scheduler`](https://github.com/filecoin-project/go-filecoin/blob/master/mining/scheduler.go) which synchronously performs a round of block mining and then stops, pushing the test state forward.
+
+The `functional-tests` directory contains some Go and Bash scripts which perform complicated multi-node tests on our continuous build. 
+These are not daemon tests, but run separately.
+
+Some packages have a `testing.go` file with helpers for setting up tests involving that package’s types. 
+The [`types/testing.go`](https://github.com/filecoin-project/go-filecoin/blob/master/types/testing.go) file has some more generally useful constructors. 
+There is also a top-level [`testhelpers`](https://github.com/filecoin-project/go-filecoin/blob/master/testhelpers) package with higher level helpers, often used by daemon tests.
+
+We’re in process of creating the Filecoin Automation and Systems Toolkit (FAST) [library](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast). 
+The goal of this is to unify duplicated code paths which bootstrap and drive `go-filecoin` daemons for daemon tests, functional tests, 
+and network deployment verification, providing a common library for filecoin automation in Go. 
+
+Tests are typically run with `go run ./build/*.go test`. 
+It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. 
+Vanilla `go test` also works, after build scripts have built and installed appropriate dependencies.
 
 ## Dependencies
 
