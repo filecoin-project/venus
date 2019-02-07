@@ -12,6 +12,7 @@ import (
 
 type MockChainReader struct {
 	tipSets []consensus.TipSet
+	head    consensus.TipSet
 }
 
 // BlockHistory returns the head of the chain tracked by the store.
@@ -29,7 +30,11 @@ func (mcr *MockChainReader) BlockHistory(ctx context.Context) <-chan interface{}
 	return out
 }
 
-func TestChainLs(t *testing.T) {
+func (mcr *MockChainReader) Head() consensus.TipSet {
+	return mcr.head
+}
+
+func TestChainPlumbing(t *testing.T) {
 	t.Parallel()
 	t.Run("Ls creates a channel of tipsets", func(t *testing.T) {
 		t.Parallel()
@@ -53,5 +58,20 @@ func TestChainLs(t *testing.T) {
 
 		actual2 := <-ls
 		assert.Equal(expected2, actual2)
+	})
+	t.Run("Head returns chain head", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		require := require.New(t)
+
+		expected, err := consensus.NewTipSet(types.NewBlockForTest(nil, 2))
+		require.NoError(err)
+
+		chainAPI := New(&MockChainReader{
+			head: expected,
+		})
+
+		head := chainAPI.Head(context.Background())
+		assert.Equal(expected, head)
 	})
 }
