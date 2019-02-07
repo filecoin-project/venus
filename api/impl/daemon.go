@@ -107,14 +107,14 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
-	if cfg.ClusterTest && cfg.ClusterNightly {
-		return fmt.Errorf(`cannot use both "--cluster-test" and "--cluster-nightly" options`)
+	if cfg.DevnetTest && cfg.DevnetNightly {
+		return fmt.Errorf(`cannot use both "--devnet-test" and "--devnet-nightly" options`)
 	}
 
-	// Setup cluster test specific config options.
-	if cfg.ClusterTest {
+	// Setup devnet test specific config options.
+	if cfg.DevnetTest {
 		newConfig := rep.Config()
-		newConfig.Bootstrap.Addresses = fixtures.ClusterTestBootstrapAddrs
+		newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
 		if err := rep.ReplaceConfig(newConfig); err != nil {
@@ -122,10 +122,10 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
-	// Setup cluster nightly specific config options.
-	if cfg.ClusterNightly {
+	// Setup devnet nightly specific config options.
+	if cfg.DevnetNightly {
 		newConfig := rep.Config()
-		newConfig.Bootstrap.Addresses = fixtures.ClusterNightlyBootstrapAddrs
+		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
 		if err := rep.ReplaceConfig(newConfig); err != nil {
@@ -175,7 +175,7 @@ func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	}
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
-		// recently deployed test cluster.
+		// recently deployed test devnet.
 		response, err := http.Get(sourceName)
 		if err != nil {
 			return cid.Undef, err

@@ -5,10 +5,11 @@ import (
 	"io"
 	"strconv"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -24,6 +25,7 @@ var clientCmd = &cmds.Command{
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
+		"payments":             paymentsCmd,
 	},
 }
 
@@ -219,6 +221,49 @@ respectively.
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *api.Ask) error {
 			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
+			return nil
+		}),
+	},
+}
+
+var paymentsCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "List payments for a given deal",
+		ShortDescription: "List payments for a given deal",
+	},
+	Options: []cmdkit.Option{},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("dealCid", true, false, "Channel id from which to list vouchers"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		dealCid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return fmt.Errorf("invalid channel id")
+		}
+
+		vouchers, err := GetAPI(env).Client().Payments(req.Context, dealCid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(vouchers)
+	},
+	Type: []*paymentbroker.PaymentVoucher{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*paymentbroker.PaymentVoucher) error {
+			if _, err := fmt.Println("Channel\tAmount\tValidAt\tEncoded Voucher"); err != nil {
+				return err
+			}
+			for _, voucher := range vouchers {
+				encodedVoucher, err := voucher.Encode()
+				if err != nil {
+					return err
+				}
+				_, err = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", voucher.Channel.String(), voucher.Amount.String(), voucher.ValidAt.String(), encodedVoucher)
+				if err != nil {
+					return err
+				}
+			}
 			return nil
 		}),
 	},

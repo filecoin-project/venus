@@ -49,6 +49,8 @@ const (
 	ErrInsufficientPledge = 38
 	// ErrInvalidPoSt signals that the passed in PoSt was invalid.
 	ErrInvalidPoSt = 39
+	// ErrAskNotFound indicates that no ask was found with the given ID.
+	ErrAskNotFound = 40
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -60,6 +62,7 @@ var Errors = map[uint8]error{
 	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
 	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
+	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 }
 
 // Actor is the miner actor.
@@ -313,6 +316,10 @@ func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, erro
 				ask = a
 				break
 			}
+		}
+
+		if ask == nil {
+			return nil, Errors[ErrAskNotFound]
 		}
 
 		out, err := cbor.DumpObject(ask)

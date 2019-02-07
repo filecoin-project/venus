@@ -68,11 +68,11 @@ const (
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 
-	// ClusterTest populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters
-	ClusterTest = "cluster-test"
+	// DevnetTest populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters
+	DevnetTest = "devnet-test"
 
-	// ClusterNightly populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters
-	ClusterNightly = "cluster-nightly"
+	// DevnetNightly populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters
+	DevnetNightly = "devnet-nightly"
 
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
