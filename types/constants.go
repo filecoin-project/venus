@@ -62,7 +62,7 @@ func init() {
 	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
 	ActorCodeCidTypeNames[PaymentBrokerActorCodeCid] = "PaymentBrokerActor"
 	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
-	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "BootstrapMinerActor"
+	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "MinerActor"
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
