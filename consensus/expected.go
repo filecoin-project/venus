@@ -341,7 +341,7 @@ func CreateChallengeSeed(parents TipSet, nullBlkCount uint64) (proofs.PoStChalle
 		return proofs.PoStChallengeSeed{}, err
 	}
 
-	buf := make([]byte, 4)
+	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, nullBlkCount)
 	buf = append(smallest, buf[:n]...)
 
