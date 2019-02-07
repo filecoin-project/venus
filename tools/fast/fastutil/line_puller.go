@@ -12,7 +12,7 @@ import (
 // a source to a sink.
 type LinePuller struct {
 	scannerMu sync.Mutex
-	scanner   *bufio.Scanner
+	scanner   *bufio.Reader
 
 	source io.Reader
 	sink   io.Writer
@@ -25,7 +25,7 @@ func NewLinePuller(source io.Reader, sink io.Writer) *LinePuller {
 	return &LinePuller{
 		source:  source,
 		sink:    sink,
-		scanner: bufio.NewScanner(source),
+		scanner: bufio.NewReader(source),
 	}
 }
 
@@ -48,15 +48,17 @@ func (lp *LinePuller) StartPulling(ctx context.Context, freq time.Duration) erro
 func (lp *LinePuller) Pull() error {
 	lp.scannerMu.Lock()
 	defer lp.scannerMu.Unlock()
-	for lp.scanner.Scan() {
-		line := lp.scanner.Bytes()
-		line = append(line, '\n')
+
+	for {
+		line, rerr := lp.scanner.ReadBytes('\n')
 
 		_, err := lp.sink.Write(line)
 		if err != nil {
 			return err
 		}
-	}
 
-	return lp.scanner.Err()
+		if rerr == io.EOF {
+			return nil
+		}
+	}
 }

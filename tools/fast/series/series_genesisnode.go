@@ -19,7 +19,7 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, gcURI string, mi
 		return err
 	}
 
-	if _, err := node.StartDaemon(ctx, true); err != nil {
+	if _, err := node.StartDaemon(ctx, true, "--block-time", "5s"); err != nil {
 		return err
 	}
 

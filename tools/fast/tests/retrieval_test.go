@@ -5,6 +5,7 @@ import (
 	"context"
 	"io/ioutil"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -28,8 +29,6 @@ func init() {
 
 // TestRetrieval exercises storing and retreiving with the filecoin protocols
 func TestRetrieval(t *testing.T) {
-	t.SkipNow()
-
 	// This test should run in 500 seconds, and no longer
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*500))
 	defer cancel()
@@ -66,6 +65,10 @@ func TestRetrieval(t *testing.T) {
 	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fast.EnvironmentOpts{})
 	require.NoError(err)
 
+	defer client.DumpLastOutput(os.Stdout)
+	defer miner.DumpLastOutput(os.Stdout)
+	defer genesis.DumpLastOutput(os.Stdout)
+
 	// Start setting up the nodes
 	genesisURI := env.GenesisCar()
 	genesisMiner, err := env.GenesisMiner()
@@ -79,14 +82,14 @@ func TestRetrieval(t *testing.T) {
 	_, err = miner.InitDaemon(ctx, "--genesisfile", genesisURI)
 	require.NoError(err)
 
-	_, err = miner.StartDaemon(ctx, true)
+	_, err = miner.StartDaemon(ctx, true, "--block-time", "5s")
 	require.NoError(err)
 
 	// Start Client
 	_, err = client.InitDaemon(ctx, "--genesisfile", genesisURI)
 	require.NoError(err)
 
-	_, err = client.StartDaemon(ctx, true)
+	_, err = client.StartDaemon(ctx, true, "--block-time", "5s")
 	require.NoError(err)
 
 	// Connect everything to the genesis node so it can issue filecoin when needed
@@ -96,13 +99,12 @@ func TestRetrieval(t *testing.T) {
 	err = series.Connect(ctx, genesis, client)
 	require.NoError(err)
 
-	// Setup the miner
-	minerAddrs, err := miner.AddressLs(ctx)
+	// Everyone needs FIL to deal with gas costs and make sure their wallets
+	// exists (sending FIL to a wallet addr creates it)
+	err = series.SendFilecoinDefaults(ctx, genesis, miner, 1000)
 	require.NoError(err)
-	require.NotEmpty(minerAddrs, "no addresses for miner")
 
-	// Sends filecoin from the genesis default wallet to the address provided, value 1000
-	err = series.SendFilecoinFromDefault(ctx, genesis, minerAddrs[0], 1000)
+	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(err)
 
 	// Create a miner on the miner node
