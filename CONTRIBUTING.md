@@ -24,6 +24,7 @@ Filecoin, including go-filecoin and all related modules, follows the
   * [Gotchas](#gotchas)
   * [The Spec](#the-spec)
   * [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
+* [Roles](#roles)
 
 
 ## How can I contribute?
@@ -58,12 +59,14 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 ### Code Reviews
 
-`go-filecoin` requires 2 approvals for all PRs, with at least one of {@phritz, @acruikshank, @whyrusleeping}. If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged.
+`go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently, while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities. 
+
+The first review is done by a committer. Once they deem it ready for merge, they will assign a maintainer for the second review. Once the PR has 2 Approvals and blocking comments have been addressed, the committer rebases and merges the PR. If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged.
 
 We use the following conventions for code reviews:
 
 - "Approve" means approval. If there are comments and approval, it is expected that you'll address the comments before merging. Ask for clarification if you're not sure.
-  - *Example: reviewer points out an off by one error in a blocking comment, but Approves the PR. Reviewee must fix the error, but the reviewer trusts you to do that.*
+  - *Example: reviewer points out an off by one error in a blocking comment, but Approves the PR. Reviewee must fix the error, but PR can progress to maintainer review. Committer confirms this before merge.*
 - "Request Changes" means you don't have approval, and the reviewer wants another look.
   - *Example: the whole design of an abstraction is wrong and reviewer wants to see it reworked.*
   
@@ -244,3 +247,58 @@ Presently (Q1'19) the minimum bar is:
 * Lint (`go run ./build/*.go lint`).
 * Must match a subset of the spec.
 * Documentation is up to date.
+
+### Roles
+
+There are three main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Committers, and Maintainers.
+
+#### Contributors
+
+Anyone is welcome. If you have created an issue, commented on an issue or discussion forum thread, or submitted a PR, you are a contributor.
+
+Responsibilities:
+
+* TODO
+
+Abilities:
+
+* Open issues and PRs
+* Comment on issues and PRs
+
+#### Committers
+
+A **Committer** is someone with a broad understanding of the codebase and the judgment and humility to call on others' expertise when needed. They have a consistent track record of quality contributions, regular participation, and enabling others.
+
+Responsibilities:
+
+* Review PRs and guide work to ready-to-merge
+* With maintainer approval, rebase and merge contributor PRs
+* Issue triage and other project stewardship
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+#### Maintainers
+
+A **Maintainer** is someone:
+
+1. **who is invested in and broadly familiar with the project**, as demonstrated by a history of significant technical-, process-, and/or project-level contributions;
+2. **who deeply understands the system**, especially knowing when and who to defer to as a reviewer, and with an eye towards unintended consequences;
+3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
+4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
+
+Responsibilities:
+
+* Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
+* Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
+* Make significant, direct technical contributions
+* Backstop for hard problems and general project stewardship (TODO: improve wording)
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an issue {TODO: link to correct repo} pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities decsribed in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
