@@ -2,6 +2,7 @@ package miner
 
 import (
 	"math/big"
+	"os"
 	"strconv"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -51,6 +53,8 @@ const (
 	ErrInvalidPoSt = 39
 	// ErrAskNotFound indicates that no ask was found with the given ID.
 	ErrAskNotFound = 40
+	// ErrInvalidSealProof signals that the passed in seal proof was invalid.
+	ErrInvalidSealProof = 41
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -63,10 +67,13 @@ var Errors = map[uint8]error{
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
 	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
+	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
 }
 
 // Actor is the miner actor.
-type Actor struct{}
+type Actor struct {
+	Bootstrap bool
+}
 
 // Ask is a price advertisement by the miner
 type Ask struct {
@@ -421,6 +428,41 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	if len(commRStar) != int(proofs.CommitmentBytesLen) {
 		return 0, errors.NewRevertError("invalid sized commRStar")
 	}
+
+	if !ma.Bootstrap {
+		// This unfortunate environment variable-checking needs to happen because
+		// the PoRep verification operation needs to know some things (e.g. size)
+		// about the sector for which the proof was generated in order to verify.
+		//
+		// It is undefined behavior for a miner in "Live" mode to verify a proof
+		// created by a miner in "ProofsTest" mode (and vice-versa).
+		//
+		// We should come up with a mechanism for ensuring that all nodes in a
+		// Filecoin network are in the same mode.
+		//
+		sectorStoreType := proofs.Live
+		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
+			sectorStoreType = proofs.ProofTest
+		}
+
+		req := proofs.VerifySealRequest{}
+		copy(req.CommD[:], commD)
+		copy(req.CommR[:], commR)
+		copy(req.CommRStar[:], commRStar)
+		copy(req.Proof[:], proof)
+		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
+		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
+		req.StoreType = sectorStoreType
+
+		res, err := (&proofs.RustVerifier{}).VerifySeal(req)
+		if err != nil {
+			return 0, errors.RevertErrorWrap(err, "failed to verify seal proof")
+		}
+		if !res.IsValid {
+			return 0, Errors[ErrInvalidSealProof]
+		}
+	}
+
 	// TODO: use uint64 instead of this abomination, once refmt is fixed
 	// https://github.com/polydawn/refmt/issues/35
 	sectorIDstr := strconv.FormatUint(sectorID, 10)

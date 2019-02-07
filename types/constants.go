@@ -34,6 +34,12 @@ var MinerActorCodeObj ipld.Node
 // MinerActorCodeCid is the cid of the above object
 var MinerActorCodeCid cid.Cid
 
+// BootstrapMinerActorCodeObj is the code representation of the bootstrap miner actor.
+var BootstrapMinerActorCodeObj ipld.Node
+
+// BootstrapMinerActorCodeCid is the cid of the above object
+var BootstrapMinerActorCodeCid cid.Cid
+
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
 var ActorCodeCidTypeNames = make(map[cid.Cid]string)
 
@@ -46,6 +52,8 @@ func init() {
 	PaymentBrokerActorCodeCid = PaymentBrokerActorCodeObj.Cid()
 	MinerActorCodeObj = dag.NewRawNode([]byte("mineractor"))
 	MinerActorCodeCid = MinerActorCodeObj.Cid()
+	BootstrapMinerActorCodeObj = dag.NewRawNode([]byte("bootstrapmineractor"))
+	BootstrapMinerActorCodeCid = BootstrapMinerActorCodeObj.Cid()
 
 	// New Actors need to be added here.
 	// TODO: Make this work with reflection -- but note that nasty import cycles lie on that path.
@@ -54,6 +62,7 @@ func init() {
 	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
 	ActorCodeCidTypeNames[PaymentBrokerActorCodeCid] = "PaymentBrokerActor"
 	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
+	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "BootstrapMinerActor"
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.
