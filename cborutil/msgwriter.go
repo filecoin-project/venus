@@ -29,7 +29,7 @@ func (mw *MsgWriter) WriteMsg(i interface{}) error {
 		return err
 	}
 
-	buf := make([]byte, 8)
+	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, uint64(len(data)))
 	_, err = mw.w.Write(buf[:n])
 	if err != nil {
