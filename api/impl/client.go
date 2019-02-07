@@ -78,7 +78,7 @@ func (api *nodeClient) ListAsks(ctx context.Context) (<-chan mapi.Ask, error) {
 	go func() {
 		defer close(out)
 		err = st.ForEachActor(ctx, func(addr address.Address, act *actor.Actor) error {
-			if !types.MinerActorCodeCid.Equals(act.Code) {
+			if !types.MinerActorCodeCid.Equals(act.Code) && !types.BootstrapMinerActorCodeCid.Equals(act.Code) {
 				return nil
 			}
 
