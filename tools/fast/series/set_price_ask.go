@@ -2,10 +2,11 @@ package series
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math/big"
-	"time"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
@@ -20,44 +21,42 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		return api.Ask{}, err
 	}
 
-	// Use the information about the ask to find it
+	response, err := miner.MessageWait(ctx, pinfo.AddAskCid)
+	if err != nil {
+		return api.Ask{}, err
+	}
+
+	bbs := response.Receipt.Return[0]
+	value, err := abi.Deserialize(bbs, abi.Integer)
+	if err != nil {
+		return api.Ask{}, err
+	}
+
+	val, ok := value.Val.(*big.Int)
+	if !ok {
+		return api.Ask{}, fmt.Errorf("could not cast askid")
+	}
+
 	var ask api.Ask
-	found := false
-	eof := false
+	dec, err := miner.ClientListAsks(ctx)
+	if err != nil {
+		return api.Ask{}, err
+	}
+
 	for {
-		// Client lists all of the asks
-		asks, err := miner.ClientListAsks(ctx)
-		if err != nil {
+		err := dec.Decode(&ask)
+		if err != nil && err != io.EOF {
 			return api.Ask{}, err
 		}
 
-		// Look for the ask we want
-		eof = false
-		for {
-			if err := asks.Decode(&ask); err != nil {
-				if err == io.EOF {
-					eof = true
-				} else {
-					return api.Ask{}, err
-				}
-			}
-
-			if ask.Miner == pinfo.MinerAddr && ask.Price.Equal(pinfo.Price) {
-				found = true
-				break
-			}
-
-			if eof {
-				break
-			}
+		if val.Uint64() == ask.ID && ask.Miner == pinfo.MinerAddr {
+			return ask, nil
 		}
 
-		if found {
+		if err == io.EOF {
 			break
 		}
-
-		time.Sleep(time.Second * 3)
 	}
 
-	return ask, nil
+	return api.Ask{}, fmt.Errorf("could not find ask")
 }

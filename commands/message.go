@@ -29,7 +29,8 @@ var msgCmd = &cmds.Command{
 	},
 }
 
-type msgSendResult struct {
+// MessageSendResult is the return type for message send command
+type MessageSendResult struct {
 	Cid     cid.Cid
 	GasUsed types.GasUnits
 	Preview bool
@@ -92,7 +93,7 @@ var msgSendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(&msgSendResult{
+			return re.Emit(&MessageSendResult{
 				Cid:     cid.Cid{},
 				GasUsed: usedGas,
 				Preview: true,
@@ -112,15 +113,15 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&msgSendResult{
+		return re.Emit(&MessageSendResult{
 			Cid:     c,
 			GasUsed: types.NewGasUnits(0),
 			Preview: false,
 		})
 	},
-	Type: &msgSendResult{},
+	Type: &MessageSendResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *msgSendResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))

@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
@@ -81,5 +82,64 @@ func TestRunCmds(t *testing.T) {
 		assert.NoError(cmdDecoder.Decode(&outLdParam))
 		assert.Equal("value2", outLdParam.Key)
 	})
+}
 
+func TestInitDaemon(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	dir := "mockdir"
+
+	ns := iptb.NodeSpec{
+		Type:  mockplugin.PluginName,
+		Dir:   dir,
+		Attrs: nil,
+	}
+
+	c, err := ns.Load()
+	assert.NoError(err)
+
+	fc, ok := c.(IPTBCoreExt)
+	require.True(ok)
+
+	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
+
+		fastenvOpts := EnvironmentOpts{
+			InitOpts: []ProcessInitOption{POGenesisFile("http://example.com/genesis.car")},
+		}
+
+		mfc := NewFilecoinProcess(ctx, fc, fastenvOpts)
+		_, err := mfc.InitDaemon(context.Background(), "--foo")
+		require.Equal(ErrDoubleInitOpts, err)
+	})
+}
+
+func TestStartDaemon(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	dir := "mockdir"
+
+	ns := iptb.NodeSpec{
+		Type:  mockplugin.PluginName,
+		Dir:   dir,
+		Attrs: nil,
+	}
+
+	c, err := ns.Load()
+	assert.NoError(err)
+
+	fc, ok := c.(IPTBCoreExt)
+	require.True(ok)
+
+	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
+
+		fastenvOpts := EnvironmentOpts{
+			DaemonOpts: []ProcessDaemonOption{POBlockTime(time.Second)},
+		}
+
+		mfc := NewFilecoinProcess(ctx, fc, fastenvOpts)
+		_, err := mfc.StartDaemon(context.Background(), true, "--foo")
+		require.Equal(ErrDoubleDaemonOpts, err)
+	})
 }

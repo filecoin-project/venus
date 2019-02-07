@@ -10,12 +10,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
-// SetupGenesisNode will initialize, start, configure, and issue the "start mining" command to the filecoin process `node`.
-// Process `node` will use the genesisfile at `gcURI`, be configured with miner `minerAddress`, and import the address of the
-// miner `minerOwner`. Lastly the process `node` will start mining.
-func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, gcURI string, minerAddress address.Address, minerOwner files.File) error {
-
-	if _, err := node.InitDaemon(ctx, "--genesisfile", gcURI); err != nil {
+// SetupGenesisNode will initialize, start, configure, and issue the
+// "start mining" command to the filecoin process `node`. Process `node` will
+// be configured with miner `minerAddress`, and import the address of the miner
+// `minerOwner`. Lastly the process `node` will start mining.
+func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress address.Address, minerOwner files.File) error {
+	if _, err := node.InitDaemon(ctx); err != nil {
 		return err
 	}
 

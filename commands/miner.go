@@ -174,7 +174,8 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 }
 
-type minerSetPriceResult struct {
+// MinerSetPriceResult is the return type for miner set-price command
+type MinerSetPriceResult struct {
 	GasUsed               types.GasUnits
 	MinerSetPriceResponse porcelain.MinerSetPriceResponse
 	Preview               bool
@@ -236,7 +237,7 @@ This command waits for the ask to be mined.`,
 			if err != nil {
 				return err
 			}
-			return re.Emit(&minerSetPriceResult{
+			return re.Emit(&MinerSetPriceResult{
 				GasUsed:               usedGas,
 				Preview:               true,
 				MinerSetPriceResponse: porcelain.MinerSetPriceResponse{},
@@ -255,15 +256,15 @@ This command waits for the ask to be mined.`,
 			return err
 		}
 
-		return re.Emit(&minerSetPriceResult{
+		return re.Emit(&MinerSetPriceResult{
 			GasUsed:               types.NewGasUnits(0),
 			Preview:               false,
 			MinerSetPriceResponse: res,
 		})
 	},
-	Type: &minerSetPriceResult{},
+	Type: &MinerSetPriceResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerSetPriceResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerSetPriceResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
@@ -283,7 +284,8 @@ This command waits for the ask to be mined.`,
 	},
 }
 
-type minerUpdatePeerIDResult struct {
+// MinerUpdatePeerIDResult is the return type for miner update-peerid command
+type MinerUpdatePeerIDResult struct {
 	Cid     cid.Cid
 	GasUsed types.GasUnits
 	Preview bool
@@ -337,7 +339,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 				return err
 			}
 
-			return re.Emit(&minerUpdatePeerIDResult{
+			return re.Emit(&MinerUpdatePeerIDResult{
 				Cid:     cid.Cid{},
 				GasUsed: usedGas,
 				Preview: true,
@@ -358,15 +360,15 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(&minerUpdatePeerIDResult{
+		return re.Emit(&MinerUpdatePeerIDResult{
 			Cid:     c,
 			GasUsed: types.NewGasUnits(0),
 			Preview: false,
 		})
 	},
-	Type: &minerUpdatePeerIDResult{},
+	Type: &MinerUpdatePeerIDResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerUpdatePeerIDResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerUpdatePeerIDResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))

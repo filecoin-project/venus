@@ -52,10 +52,19 @@ func (l *Localfilecoin) getPID() (int, error) {
 func (l *Localfilecoin) env() ([]string, error) {
 	envs := os.Environ()
 
+	currPath := os.Getenv("PATH")
+	pathList := filepath.SplitList(currPath)
+	pathList = append([]string{filepath.Dir(l.binPath)}, pathList...)
+	newPath := strings.Join(pathList, string(filepath.ListSeparator))
 	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", l.dir)
 	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_USE_SMALL_SECTORS", l.useSmallSectors)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
+	envs = filecoin.UpdateOrAppendEnv(envs, "PATH", newPath)
+
+	if err := os.Setenv("PATH", newPath); err != nil {
+		return []string{}, err
+	}
 
 	return envs, nil
 }

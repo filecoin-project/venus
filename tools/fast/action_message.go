@@ -11,7 +11,7 @@ import (
 
 // MessageSend runs the `message send` command against the filecoin process.
 func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, method string, options ...ActionOption) (cid.Cid, error) {
-	var out cid.Cid
+	var out commands.MessageSendResult
 
 	args := []string{"go-filecoin", "message", "send"}
 
@@ -29,7 +29,7 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 }
 
 // MessageWait runs the `message wait` command against the filecoin process.
