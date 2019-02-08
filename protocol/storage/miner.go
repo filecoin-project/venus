@@ -86,15 +86,16 @@ type storageDeal struct {
 
 // porcelainAPI is the subset of the porcelain API that storage.Miner needs.
 type porcelainAPI interface {
-	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error
-	MessageQueryWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessagePreviewWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 
-	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedKey string, jsonString string) error
+
+	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error
+	MessagePreviewWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
+	MessageQueryWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 
 	WalletAddresses() []address.Address
 	WalletFind(address address.Address) (w.Backend, error)

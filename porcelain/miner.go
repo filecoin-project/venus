@@ -21,11 +21,11 @@ import (
 
 // mpcPlumbing is the subset of the plumbing.API that MinerPreviewCreate uses.
 type mpcPlumbing interface {
-	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	ConfigGet(dottedPath string) (interface{}, error)
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
+	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	NetworkGetPeerID() peer.ID
 	WalletFind(address address.Address) (w.Backend, error)
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
@@ -88,18 +88,18 @@ func MinerPreviewCreate(
 
 // mspPlumbing is the subset of the plumbing.API that MinerSetPrice uses.
 type mspPlumbing interface {
+	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedKey string, jsonString string) error
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	ConfigSet(dottedKey string, jsonString string) error
-	ConfigGet(dottedPath string) (interface{}, error)
 }
 
 // MinerSetPriceResponse collects relevant stats from the set price process
 type MinerSetPriceResponse struct {
-	Price     *types.AttoFIL
-	MinerAddr address.Address
 	AddAskCid cid.Cid
 	BlockCid  cid.Cid
+	MinerAddr address.Address
+	Price     *types.AttoFIL
 }
 
 // MinerSetPrice configures the price of storage, then sends an ask advertising that price and waits for it to be mined.
@@ -153,9 +153,9 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 
 // mpspPlumbing is the subset of the plumbing.API that MinerPreviewSetPrice uses.
 type mpspPlumbing interface {
-	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
-	ConfigSet(dottedKey string, jsonString string) error
 	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedKey string, jsonString string) error
+	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 }
 
 // MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
