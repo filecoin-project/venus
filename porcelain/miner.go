@@ -151,6 +151,54 @@ func MinerSetPrice(ctx context.Context, plumbing mspPlumbing, from address.Addre
 	return res, err
 }
 
+// mpspPlumbing is the subset of the plumbing.API that MinerPreviewSetPrice uses.
+type mpspPlumbing interface {
+	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
+	ConfigSet(dottedKey string, jsonString string) error
+	ConfigGet(dottedPath string) (interface{}, error)
+}
+
+// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
+// This method accepts all the same arguments as MinerSetPrice.
+func MinerPreviewSetPrice(ctx context.Context, plumbing mpspPlumbing, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
+	// get miner address if not provided
+	if miner.Empty() {
+		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
+		if err != nil {
+			return types.NewGasUnits(0), errors.Wrap(err, "Could not get miner address in config")
+		}
+		minerAddr, ok := minerValue.(address.Address)
+		if !ok {
+			return types.NewGasUnits(0), errors.Wrap(err, "Configured miner is not an address")
+		}
+		miner = minerAddr
+	}
+
+	// set price
+	jsonPrice, err := json.Marshal(price)
+	if err != nil {
+		return types.NewGasUnits(0), errors.New("Could not marshal price")
+	}
+	if err := plumbing.ConfigSet("mining.storagePrice", string(jsonPrice)); err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	// create ask
+	usedGas, err := plumbing.MessagePreviewWithDefaultAddress(
+		ctx,
+		from,
+		miner,
+		"addAsk",
+		price,
+		expiry,
+	)
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "couldn't preview message")
+	}
+
+	return usedGas, nil
+}
+
 // mgoaPlumbing is the subset of the plumbing.API that MinerGetOwnerAddress uses.
 type mgoaPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
@@ -203,52 +251,4 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidPlumbing, minerAddr addre
 		return peer.ID(""), errors.Wrap(err, "could not decode to peer.ID from message-bytes")
 	}
 	return pid, nil
-}
-
-// mpspPlumbing is the subset of the plumbing.API that MinerPreviewSetPrice uses.
-type mpspPlumbing interface {
-	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
-	ConfigSet(dottedKey string, jsonString string) error
-	ConfigGet(dottedPath string) (interface{}, error)
-}
-
-// MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
-// This method accepts all the same arguments as MinerSetPrice.
-func MinerPreviewSetPrice(ctx context.Context, plumbing mpspPlumbing, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
-	// get miner address if not provided
-	if miner.Empty() {
-		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
-		if err != nil {
-			return types.NewGasUnits(0), errors.Wrap(err, "Could not get miner address in config")
-		}
-		minerAddr, ok := minerValue.(address.Address)
-		if !ok {
-			return types.NewGasUnits(0), errors.Wrap(err, "Configured miner is not an address")
-		}
-		miner = minerAddr
-	}
-
-	// set price
-	jsonPrice, err := json.Marshal(price)
-	if err != nil {
-		return types.NewGasUnits(0), errors.New("Could not marshal price")
-	}
-	if err := plumbing.ConfigSet("mining.storagePrice", string(jsonPrice)); err != nil {
-		return types.NewGasUnits(0), err
-	}
-
-	// create ask
-	usedGas, err := plumbing.MessagePreviewWithDefaultAddress(
-		ctx,
-		from,
-		miner,
-		"addAsk",
-		price,
-		expiry,
-	)
-	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "couldn't preview message")
-	}
-
-	return usedGas, nil
 }

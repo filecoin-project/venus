@@ -57,7 +57,7 @@ func (mpc *minerPreviewCreate) GetAndMaybeSetDefaultSenderAddress() (address.Add
 }
 
 func TestMinerPreviewCreate(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
+	t.Run("returns the price given by message preview", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -310,6 +310,44 @@ func TestMinerSetPrice(t *testing.T) {
 		assert.Equal(minerAddr, res.MinerAddr)
 		assert.Equal(messageCid, res.AddAskCid)
 		assert.Equal(plumbing.blockCid, res.BlockCid)
+	})
+}
+
+type minerPreviewSetPricePlumbing struct {
+	config *cfg.Config
+}
+
+func newMinerPreviewSetPricePlumbing() *minerPreviewSetPricePlumbing {
+	return &minerPreviewSetPricePlumbing{
+		config: cfg.NewConfig(repo.NewInMemoryRepo()),
+	}
+}
+
+func (mtp *minerPreviewSetPricePlumbing) MessagePreviewWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+	return types.NewGasUnits(7), nil
+}
+
+func (mtp *minerPreviewSetPricePlumbing) ConfigSet(dottedKey string, jsonString string) error {
+	return mtp.config.Set(dottedKey, jsonString)
+}
+
+func (mtp *minerPreviewSetPricePlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	return mtp.config.Get(dottedPath)
+}
+
+func TestMinerPreviewSetPrice(t *testing.T) {
+	t.Run("returns the gas cost given by preview query", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		plumbing := newMinerPreviewSetPricePlumbing()
+		ctx := context.Background()
+		price := types.NewAttoFILFromFIL(0)
+
+		usedGas, err := MinerPreviewSetPrice(ctx, plumbing, address.Address{}, address.Address{}, price, big.NewInt(0))
+
+		require.NoError(err)
+		assert.Equal(types.NewGasUnits(7), usedGas)
 	})
 }
 
