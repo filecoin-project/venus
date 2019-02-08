@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // ImportAndStore imports the `data` to the `client`, and proposes a storage

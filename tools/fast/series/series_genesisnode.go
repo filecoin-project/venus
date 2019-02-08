@@ -7,7 +7,7 @@ import (
 	"gx/ipfs/QmXWZCd8jfaHmt4UDSnjKmGcrQMw95bDGWqEeVLVJjoANX/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // SetupGenesisNode will initialize, start, configure, and issue the "start mining" command to the filecoin process `node`.

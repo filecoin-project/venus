@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // SetPriceGetAsk issues a `set-price` and tries, to the best it can, return the

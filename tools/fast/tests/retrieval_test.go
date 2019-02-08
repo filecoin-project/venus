@@ -15,8 +15,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
-	"github.com/filecoin-project/go-filecoin/tools/fat/series"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
 

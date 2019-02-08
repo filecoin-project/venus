@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // SendFilecoinFromDefault will send the `value` of FIL from the default wallet

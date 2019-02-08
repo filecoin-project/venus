@@ -5,7 +5,7 @@ import (
 
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // Connect issues a `swarm connect` to the `from` node, using the addresses of the `to` node

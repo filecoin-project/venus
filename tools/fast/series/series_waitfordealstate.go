@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/tools/fat"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // WaitForDealState will query the storage deal until its state matches the
