@@ -1,4 +1,4 @@
-package fat
+package fast
 
 import (
 	"context"
