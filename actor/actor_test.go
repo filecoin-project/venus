@@ -176,7 +176,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		})
 
 		exportedFunc := MakeTypedExport(a, "six")
-		assert.PanicsWithValue("you are a bad person: error must be either a reverterror or a fault", func() {
+		assert.Panics(func() {
 			exportedFunc(makeCtx("six"))
 		})
 	})
