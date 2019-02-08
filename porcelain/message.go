@@ -18,8 +18,8 @@ import (
 // ErrNoDefaultFromAddress is returned when a default address to send from couldn't be determined (eg, there are zero addresses in the wallet).
 var ErrNoDefaultFromAddress = errors.New("unable to determine a default address to send the message from")
 
-// mswrPlumbing is the subset of the plumbing.API that MessageSendWithRetry uses.
-type mswrPlumbing interface {
+// mswrAPI is the subset of the plumbing.API that MessageSendWithRetry uses.
+type mswrAPI interface {
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
@@ -42,7 +42,7 @@ var log = logging.Logger("porcelain") // nolint: deadcode
 //
 // Access to failures might make this a little better but really the solution is
 // to not have re-tries, eg if we had nonce lanes.
-func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error) {
+func MessageSendWithRetry(ctx context.Context, plumbing mswrAPI, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error) {
 	for i := 0; i < int(numRetries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d, waitDuration %v", method, i, numRetries, waitDuration)
 
@@ -86,8 +86,8 @@ func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries
 	return errors.Wrapf(err, "failed to send message after waiting %v for each of %d retries ", waitDuration, numRetries)
 }
 
-// mpwdaPlumbing is the subset of the plumbing.API that MessagePreviewWithDefaultAddress uses.
-type mpwdaPlumbing interface {
+// mpwdaAPI is the subset of the plumbing.API that MessagePreviewWithDefaultAddress uses.
+type mpwdaAPI interface {
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 }
@@ -96,7 +96,7 @@ type mpwdaPlumbing interface {
 // address if none is provided
 func MessagePreviewWithDefaultAddress(
 	ctx context.Context,
-	plumbing mpwdaPlumbing,
+	plumbing mpwdaAPI,
 	from,
 	to address.Address,
 	method string,
@@ -114,8 +114,8 @@ func MessagePreviewWithDefaultAddress(
 	return plumbing.MessagePreview(ctx, from, to, method, params...)
 }
 
-// mqwdaPlumbing is the subset of the plumbing.API that MessageQueryWithDefaultAddress uses.
-type mqwdaPlumbing interface {
+// mqwdaAPI is the subset of the plumbing.API that MessageQueryWithDefaultAddress uses.
+type mqwdaAPI interface {
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageQuery(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 }
@@ -124,7 +124,7 @@ type mqwdaPlumbing interface {
 // address if none is provided
 func MessageQueryWithDefaultAddress(
 	ctx context.Context,
-	plumbing mqwdaPlumbing,
+	plumbing mqwdaAPI,
 	from,
 	to address.Address,
 	method string,
@@ -142,8 +142,8 @@ func MessageQueryWithDefaultAddress(
 	return plumbing.MessageQuery(ctx, from, to, method, params...)
 }
 
-// mswdaPlumbing is the subset of the plumbing.API that MessageSendWithDefaultAddress uses.
-type mswdaPlumbing interface {
+// mswdaAPI is the subset of the plumbing.API that MessageSendWithDefaultAddress uses.
+type mswdaAPI interface {
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 }
@@ -152,7 +152,7 @@ type mswdaPlumbing interface {
 // address if none is provided
 func MessageSendWithDefaultAddress(
 	ctx context.Context,
-	plumbing mswdaPlumbing,
+	plumbing mswdaAPI,
 	from,
 	to address.Address,
 	value *types.AttoFIL,
@@ -173,8 +173,8 @@ func MessageSendWithDefaultAddress(
 	return plumbing.MessageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
-// gamsdsaPlumbing is the subset of the plumbing.API that GetAndMaybeSetDefaultSenderAddress uses.
-type gamsdsaPlumbing interface {
+// gamsdsaAPI is the subset of the plumbing.API that GetAndMaybeSetDefaultSenderAddress uses.
+type gamsdsaAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
 
@@ -184,7 +184,7 @@ type gamsdsaPlumbing interface {
 // GetAndMaybeSetDefaultSenderAddress returns a default address from which to
 // send messsages. If none is set it picks the first address in the wallet and
 // sets it as the default in the config.
-func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaPlumbing) (address.Address, error) {
+func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaAPI) (address.Address, error) {
 	ret, err := plumbing.ConfigGet("wallet.defaultAddress")
 	addr := ret.(address.Address)
 	if err != nil || addr != (address.Address{}) {
