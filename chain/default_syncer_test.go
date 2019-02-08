@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -765,27 +766,39 @@ func TestTipSetWeightDeep(t *testing.T) {
 	ctx := context.Background()
 
 	// set up genesis block with power
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
-	testAddress := mockSigner.Addresses[0]
+	genCfg := &gengen.GenesisCfg{
+		Keys: 4,
+		Miners: []gengen.Miner{
+			{
+				Power: uint64(0),
+			},
+			{
+				Power: uint64(10),
+			},
+			{
+				Power: uint64(10),
+			},
+			{
+				Power: uint64(980),
+			},
+		},
+	}
 
-	testGen := consensus.MakeGenesisFunc(
-		consensus.ActorAccount(testAddress, types.NewAttoFILFromFIL(10000)),
-	)
+	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
+	require.NoError(err)
+
+	var calcGenBlk types.Block
+	require.NoError(cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
 	// chain.Store
-	calcGenBlk, err := testGen(cst, bs) // flushes state
-	require.NoError(err)
-	chainDS := r.ChainDatastore()
-	chain := NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
+	chain := NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
 
 	// chain.Syncer
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &testhelpers.TestView{}, calcGenBlk.Cid(), verifier)
-	syncer := NewDefaultSyncer(cst, cst, con, chain) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain genesis block and state
-	calcGenTS := testhelpers.RequireNewTipSet(require, calcGenBlk)
+	calcGenTS := testhelpers.RequireNewTipSet(require, &calcGenBlk)
 	genTsas := &TipSetAndState{
 		TipSet:          calcGenTS,
 		TipSetStateRoot: calcGenBlk.StateRoot,
@@ -796,39 +809,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 	requireHead(require, chain, calcGenTS)
 	requireTsAdded(require, chain, calcGenTS)
 
-	calcGenBlkCid := calcGenBlk.Cid()
-
-	// Bootstrap the storage market using a syncer with consensus using a
-	// TestView.
-	// pwr1, pwr2 = 1/100. pwr3 = 98/100.
-	pwr1, pwr2, pwr3 := uint64(10), uint64(10), uint64(980)
-
-	addr0, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, calcGenBlk, mockSigner, 0, mockSigner.Addresses[0], uint64(0), cst, bs, calcGenBlkCid)
-	require.NoError(err)
-
-	addr1, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr1, cst, bs, calcGenBlkCid)
-	require.NoError(err)
-
-	addr2, block, nonce, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr2, cst, bs, calcGenBlkCid)
-	require.NoError(err)
-
-	addr3, _, _, err := CreateMinerWithPower(ctx, t, syncer, block, mockSigner, nonce, addr0, pwr3, cst, bs, calcGenBlkCid)
-	require.NoError(err)
-
 	// Now sync the chain with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
-	con = consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &consensus.MarketView{}, calcGenBlkCid, verifier)
-	syncer = NewDefaultSyncer(cst, cst, con, chain)
+	con = consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
+	syncer := NewDefaultSyncer(cst, cst, con, chain)
 	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
-	baseParent, err := baseTS.Parents()
-	require.NoError(err)
-	parentID := baseParent.String()
-	parentTsas := requireGetTsas(ctx, require, chain, parentID)
-	pSt, err := state.LoadStateTree(ctx, cst, parentTsas.TipSetStateRoot, builtin.Actors)
-	require.NoError(err)
-	bootstrapSt, err := state.LoadStateTree(ctx, cst, bootstrapStateRoot, builtin.Actors)
+	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(err)
 	/* Test chain diagram and weight calcs */
 	// (Note f1b1 = fork 1 block 1)
@@ -850,18 +838,18 @@ func TestTipSetWeightDeep(t *testing.T) {
 		// No power-altering messages processed from here on out.
 		// And so bootstrapSt correctly retrives power table for all
 		// test blocks.
-		return con.Weight(ctx, ts, bootstrapSt)
+		return con.Weight(ctx, ts, pSt)
 	}
 	f1b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
+		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b1.Proof, f1b1.Ticket, err = MakeProofAndWinningTicket(addr1, pwr1, 1000)
+	f1b1.Proof, f1b1.Ticket, err = MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
 	require.NoError(err)
 
 	f2b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
+		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f2b1.Proof, f2b1.Ticket, err = MakeProofAndWinningTicket(addr2, pwr2, 1000)
+	f2b1.Proof, f2b1.Ticket, err = MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
 	require.NoError(err)
 
 	tsShared := testhelpers.RequireNewTipSet(require, f1b1, f2b1)
@@ -878,15 +866,15 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// fork 1 is heavier than the old head.
 	f1b2a := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr1},
+		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = MakeProofAndWinningTicket(addr1, pwr1, 1000)
+	f1b2a.Proof, f1b2a.Ticket, err = MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
 	require.NoError(err)
 
 	f1b2b := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: addr2},
+		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = MakeProofAndWinningTicket(addr2, pwr2, 1000)
+	f1b2b.Proof, f1b2b.Ticket, err = MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
 	require.NoError(err)
 
 	f1 := testhelpers.RequireNewTipSet(require, f1b2a, f1b2b)
@@ -902,7 +890,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1.
 	f2b2 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlkCid, StateRoot: bootstrapStateRoot, MinerAddr: addr3},
+		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[3].Address},
 		wFun)
 
 	f2 := testhelpers.RequireNewTipSet(require, f2b2)
