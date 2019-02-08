@@ -1,4 +1,4 @@
-package network
+package node
 
 import (
 	"context"
@@ -15,75 +15,66 @@ import (
 	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
 )
 
-// BlankValidator is for testing
-type BlankValidator struct{}
-
-// Validate is for testing
-func (BlankValidator) Validate(_ string, _ []byte) error { return nil }
-
-// Select is for testing
-func (BlankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
-
-// NoopLibP2PHost is for testing
-type NoopLibP2PHost struct{}
+// noopLibP2PHost is for testing
+type noopLibP2PHost struct{}
 
 // ID is for testing
-func (NoopLibP2PHost) ID() peer.ID {
+func (noopLibP2PHost) ID() peer.ID {
 	return ""
 }
 
 // Peerstore is for testing
-func (NoopLibP2PHost) Peerstore() peerstore.Peerstore {
+func (noopLibP2PHost) Peerstore() peerstore.Peerstore {
 	return pstoremem.NewPeerstore()
 }
 
 // Addrs is for testing
-func (NoopLibP2PHost) Addrs() []multiaddr.Multiaddr {
+func (noopLibP2PHost) Addrs() []multiaddr.Multiaddr {
 	return []multiaddr.Multiaddr{}
 }
 
 // Network is for testing
-func (NoopLibP2PHost) Network() net.Network {
+func (noopLibP2PHost) Network() net.Network {
 	return noopLibP2PNetwork{}
 }
 
 // Mux is for testing
-func (NoopLibP2PHost) Mux() *multistream.MultistreamMuxer {
+func (noopLibP2PHost) Mux() *multistream.MultistreamMuxer {
 	panic("implement me")
 }
 
 // Connect is for testing
-func (NoopLibP2PHost) Connect(ctx context.Context, pi peerstore.PeerInfo) error {
-	return errors.New("Connect called on NoopLibP2PHost")
+func (noopLibP2PHost) Connect(ctx context.Context, pi peerstore.PeerInfo) error {
+	return errors.New("Connect called on noopLibP2PHost")
 }
 
 // SetStreamHandler is for testing
-func (NoopLibP2PHost) SetStreamHandler(pid protocol.ID, handler net.StreamHandler) {
+func (noopLibP2PHost) SetStreamHandler(pid protocol.ID, handler net.StreamHandler) {
 
 }
 
 // SetStreamHandlerMatch is for testing
-func (NoopLibP2PHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, net.StreamHandler) {
+func (noopLibP2PHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, net.StreamHandler) {
 
 }
 
 // RemoveStreamHandler is for testing
-func (NoopLibP2PHost) RemoveStreamHandler(pid protocol.ID) {
+func (noopLibP2PHost) RemoveStreamHandler(pid protocol.ID) {
 	panic("implement me")
 }
 
 // NewStream is for testing
-func (NoopLibP2PHost) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (net.Stream, error) {
-	return nil, errors.New("NewStream on NoopLibP2PHost")
+func (noopLibP2PHost) NewStream(ctx context.Context, p peer.ID, pids ...protocol.ID) (net.Stream, error) {
+	return nil, errors.New("NewStream on noopLibP2PHost")
 }
 
 // Close is for testing
-func (NoopLibP2PHost) Close() error {
+func (noopLibP2PHost) Close() error {
 	return nil
 }
 
 // ConnManager is for testing
-func (NoopLibP2PHost) ConnManager() ifconnmgr.ConnManager {
+func (noopLibP2PHost) ConnManager() ifconnmgr.ConnManager {
 	panic("implement me")
 }
 

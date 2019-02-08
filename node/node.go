@@ -242,6 +242,11 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 	return n.Build(ctx)
 }
 
+type blankValidator struct{}
+
+func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
+
 // readGenesisCid is a helper function that queries the provided datastore forr
 // an entry with the genesisKey cid, returning if found.
 func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
@@ -317,7 +322,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
-	validator := network.BlankValidator{}
+	validator := blankValidator{}
 
 	var peerHost host.Host
 	var router routing.IpfsRouting
@@ -344,7 +349,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		}
 	} else {
 		router = offroute.NewOfflineRouter(nc.Repo.Datastore(), validator)
-		peerHost = rhost.Wrap(network.NoopLibP2PHost{}, router)
+		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
 	}
 
 	// set up pinger

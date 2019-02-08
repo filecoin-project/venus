@@ -138,7 +138,7 @@ func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) 
 
 // NetworkGetPeerID gets the current peer id from Util
 func (api *API) NetworkGetPeerID() peer.ID {
-	return api.network.GetPeerId()
+	return api.network.GetPeerID()
 }
 
 // WalletAddresses gets addresses from the wallet
