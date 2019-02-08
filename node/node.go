@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/filnet"
@@ -534,8 +535,21 @@ func (node *Node) Start(ctx context.Context) error {
 
 		return addr
 	}
+	// start the primary heartbeat service
 	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
 	go hbs.Start(ctx)
+
+	// check if we want to connect to an alert service. An alerting service is a heartbeat
+	// service that can trigger alerts based on the contents of heatbeats.
+	if alertTarget := os.Getenv("FIL_HEARTBEAT_ALERTS"); len(alertTarget) > 0 {
+		ahbs := metrics.NewHeartbeatService(node.Host(), &config.HeartbeatConfig{
+			BeatTarget:      alertTarget,
+			BeatPeriod:      "10s",
+			ReconnectPeriod: "10s",
+			Nickname:        node.Repo.Config().Heartbeat.Nickname,
+		}, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
+		go ahbs.Start(ctx)
+	}
 	return nil
 }
 
