@@ -77,13 +77,16 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
-// is optional; if not provided, an address will be chosen from the node's wallet.
+// is optional; if not provided, an address will be chosen from the node's wallet. Note
+// that no default from address is provided. If you need a default address, use
+// MessagePreviewWithDefaultAddress instead.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
-// recording the amount of Gas used.
+// recording the amount of Gas used. Note that no default from address is provided. If you
+// need a default address, use MessagePreviewWithDefaultAddress instead.
 func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
@@ -91,7 +94,8 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain.
+// message to go on chain. Note that no default from address is provided. If you need
+// a default address, use MessageSendWithDefaultAddress instead.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }

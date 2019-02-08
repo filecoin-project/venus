@@ -93,7 +93,8 @@ type mpwdaAPI interface {
 }
 
 // MessagePreviewWithDefaultAddress calls MessagePreview but with a default from
-// address if none is provided
+// address if none is provided. If you don't need a default address provided,
+// use MessagePreview instead.
 func MessagePreviewWithDefaultAddress(
 	ctx context.Context,
 	plumbing mpwdaAPI,
@@ -121,7 +122,8 @@ type mqwdaAPI interface {
 }
 
 // MessageQueryWithDefaultAddress calls MessageQuery but with a default from
-// address if none is provided
+// address if none is provided. If you don't need a default address provided,
+// use MessageQuery instead.
 func MessageQueryWithDefaultAddress(
 	ctx context.Context,
 	plumbing mqwdaAPI,
@@ -149,7 +151,8 @@ type mswdaAPI interface {
 }
 
 // MessageSendWithDefaultAddress calls MessageSend but with a default from
-// address if none is provided
+// address if none is provided. If you don't need a default address provided,
+// use MessageSend instead.
 func MessageSendWithDefaultAddress(
 	ctx context.Context,
 	plumbing mswdaAPI,
