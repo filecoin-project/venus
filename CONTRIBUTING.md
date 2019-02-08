@@ -47,7 +47,7 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 ### Design Before Code
 - Write down design intent before writing code, and subject it to constructive feedback.
-- Major changes should have a [Design Doc](designdocs.md).
+- Major changes should have a [Design Doc](https://github.com/filecoin-project/designdocs).
 - For minor changes, file an issue for your change if it doesn't yet have one, and outline your implementation plan on the issue.
 
 ### Pull Requests
@@ -59,9 +59,11 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 ### Code Reviews
 
-`go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently, while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities. 
+`go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
 
-The first review is done by a committer. Once they deem it ready for merge, they will assign a maintainer for the second review. Once the PR has 2 Approvals and blocking comments have been addressed, the committer rebases and merges the PR. If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged.
+The first review is done by a committer. Once they deem it ready for merge, they will assign a maintainer for the second review. Once the PR has 2 Approvals and blocking comments have been addressed, the committer rebases and merges the PR.
+
+If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged. 
 
 We use the following conventions for code reviews:
 
@@ -70,8 +72,9 @@ We use the following conventions for code reviews:
 - "Request Changes" means you don't have approval, and the reviewer wants another look.
   - *Example: the whole design of an abstraction is wrong and reviewer wants to see it reworked.*
   
-- [There is a proposal in progress to invert BLOCKING, to match most contributors' expectations.] By default, code review comments are advisory: the reviewee should consider them but doesn't _have_ to respond or address them. Comments that start with "BLOCKING" must be addressed and responded to. If a reviewer makes a blocking comment but does not block merging (by marking the review "Add Comments" or "Approve") then the reviewee can merge if the issue is addressed.
+- By default, code review comments are advisory: the reviewee should consider them but doesn't _have_ to respond or address them. Comments that start with "BLOCKING" must be addressed and responded to. If a reviewer makes a blocking comment but does not block merging (by marking the review "Add Comments" or "Approve") then the reviewee can merge if the issue is addressed.
 
+In rare cases, a maintainter may request approval from all maintainers for a wide-reaching PR.
 
 #### Code Reviewer Responsibilities:
 
