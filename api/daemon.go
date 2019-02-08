@@ -30,6 +30,8 @@ type DaemonInitConfig struct {
 	DevnetTest bool
 	// DevnetNightly, if set, sets the config to enable bootstrapping to the nightly devnet.
 	DevnetNightly bool
+	// DevnetUser, if set, sets the config to enable bootstrapping to the user devnet.
+	DevnetUser bool
 	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
 	AutoSealIntervalSeconds uint
 	DefaultAddress          address.Address
@@ -77,6 +79,13 @@ func DevnetTest(doit bool) DaemonInitOpt {
 func DevnetNightly(doit bool) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
 		dc.DevnetNightly = doit
+	}
+}
+
+// DevnetUser sets the DevnetUser option.
+func DevnetUser(doit bool) DaemonInitOpt {
+	return func(dc *DaemonInitConfig) {
+		dc.DevnetUser = doit
 	}
 }
 
