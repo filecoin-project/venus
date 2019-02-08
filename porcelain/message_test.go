@@ -1,4 +1,4 @@
-package porcelain
+package porcelain_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -72,7 +73,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 		fp.messageSend = fp.successfulMessageSend
 		fp.messageWait = fp.successfulMessageWait
 
-		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.NoError(err)
 		assert.Equal(1, fp.sendCnt)
 	})
@@ -87,7 +88,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 		fp.messageSend = fp.successfulMessageSend
 		fp.messageWait = fp.unsuccessfulMessageWait
 
-		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.NoError(err)
 		assert.Equal(10, fp.sendCnt)
 	})
@@ -108,7 +109,7 @@ func TestMessageSendWithRetry(t *testing.T) {
 			return nil
 		}
 
-		err := MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
+		err := porcelain.MessageSendWithRetry(ctx, fp, 10 /* retries */, 1*time.Second /* wait time*/, from, to, val, "", gasPrice, gasLimit)
 		require.Error(err)
 		assert.Equal(1, fp.sendCnt)
 	})
@@ -158,7 +159,7 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 		require.NoError(err)
 		fp.ConfigSet("wallet.defaultAddress", addrA.String())
 
-		addrB, err := GetAndMaybeSetDefaultSenderAddress(fp)
+		addrB, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)
 		require.NoError(err)
 		assert.Equal(addrA.String(), addrB.String())
 	})
@@ -176,11 +177,11 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 			addresses = append(addresses, a)
 		}
 
-		expected, err := GetAndMaybeSetDefaultSenderAddress(fp)
+		expected, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)
 		require.NoError(err)
 		require.True(isInList(expected, addresses))
 		for i := 0; i < 30; i++ {
-			got, err := GetAndMaybeSetDefaultSenderAddress(fp)
+			got, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)
 			require.NoError(err)
 			assert.Equal(expected, got)
 		}
