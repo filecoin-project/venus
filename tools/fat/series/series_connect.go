@@ -9,7 +9,7 @@ import (
 )
 
 // Connect issues a `swarm connect` to the `from` node, using the addresses of the `to` node
-func Connect(ctx context.Context, from, to *fat.Filecoin) error {
+func Connect(ctx context.Context, from, to *fast.Filecoin) error {
 	details, err := to.ID(ctx)
 	if err != nil {
 		return err

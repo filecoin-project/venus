@@ -13,7 +13,7 @@ import (
 // SetupGenesisNode will initialize, start, configure, and issue the "start mining" command to the filecoin process `node`.
 // Process `node` will use the genesisfile at `gcURI`, be configured with miner `minerAddress`, and import the address of the
 // miner `minerOwner`. Lastly the process `node` will start mining.
-func SetupGenesisNode(ctx context.Context, node *fat.Filecoin, gcURI string, minerAddress address.Address, minerOwner files.File) error {
+func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, gcURI string, minerAddress address.Address, minerOwner files.File) error {
 
 	if _, err := node.InitDaemon(ctx, "--genesisfile", gcURI); err != nil {
 		return err
@@ -36,7 +36,7 @@ func SetupGenesisNode(ctx context.Context, node *fat.Filecoin, gcURI string, min
 		return err
 	}
 
-	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fat.AOFromAddr(wallet[0]), fat.AOPrice(big.NewFloat(300)), fat.AOLimit(300))
+	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fast.AOFromAddr(wallet[0]), fast.AOPrice(big.NewFloat(300)), fast.AOLimit(300))
 	if err != nil {
 		return err
 	}

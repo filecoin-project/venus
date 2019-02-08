@@ -11,13 +11,13 @@ import (
 // SendFilecoinFromDefault will send the `value` of FIL from the default wallet
 // address, per the config of the `node`, to the provided address `addr` and
 // wait for the message to showup on chain.
-func SendFilecoinFromDefault(ctx context.Context, node *fat.Filecoin, addr address.Address, value int) error {
+func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr address.Address, value int) error {
 	var walletAddr address.Address
 	if err := node.ConfigGet(ctx, "wallet.defaultAddress", &walletAddr); err != nil {
 		return err
 	}
 
-	mcid, err := node.MessageSend(ctx, addr, "", fat.AOValue(value), fat.AOFromAddr(walletAddr), fat.AOPrice(big.NewFloat(1.0)), fat.AOLimit(300))
+	mcid, err := node.MessageSend(ctx, addr, "", fast.AOValue(value), fast.AOFromAddr(walletAddr), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	if err != nil {
 		return err
 	}

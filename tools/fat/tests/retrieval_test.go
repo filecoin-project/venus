@@ -41,7 +41,7 @@ func TestRetrieval(t *testing.T) {
 	require.NoError(err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fat.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir)
+	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir)
 	require.NoError(err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -57,13 +57,13 @@ func TestRetrieval(t *testing.T) {
 	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Enable small sectors
 
 	// Setup nodes used for the test
-	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fat.EnvironmentOpts{})
+	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fast.EnvironmentOpts{})
 	require.NoError(err)
 
-	miner, err := env.NewProcess(ctx, localplugin.PluginName, options, fat.EnvironmentOpts{})
+	miner, err := env.NewProcess(ctx, localplugin.PluginName, options, fast.EnvironmentOpts{})
 	require.NoError(err)
 
-	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fat.EnvironmentOpts{})
+	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fast.EnvironmentOpts{})
 	require.NoError(err)
 
 	// Start setting up the nodes
@@ -106,7 +106,7 @@ func TestRetrieval(t *testing.T) {
 	require.NoError(err)
 
 	// Create a miner on the miner node
-	_, err = miner.MinerCreate(ctx, 10, big.NewInt(10), fat.AOPrice(big.NewFloat(1.0)), fat.AOLimit(300))
+	_, err = miner.MinerCreate(ctx, 10, big.NewInt(10), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	require.NoError(err)
 
 	//TODO(tperson): I don't think a miner is valid unless it has power. Does

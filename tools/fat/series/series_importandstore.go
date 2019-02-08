@@ -14,7 +14,7 @@ import (
 // ImportAndStore imports the `data` to the `client`, and proposes a storage
 // deal using the provided `ask`, returning the cid of the import and the
 // created deal.
-func ImportAndStore(ctx context.Context, client *fat.Filecoin, ask api.Ask, data files.File) (cid.Cid, *storage.DealResponse, error) {
+func ImportAndStore(ctx context.Context, client *fast.Filecoin, ask api.Ask, data files.File) (cid.Cid, *storage.DealResponse, error) {
 	// Client neeeds to import the data
 	dcid, err := client.ClientImport(ctx, data)
 	if err != nil {
