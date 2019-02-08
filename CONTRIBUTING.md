@@ -253,7 +253,7 @@ Presently (Q1'19) the minimum bar is:
 
 ### Roles
 
-There are three main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Committers, and Maintainers.
+There are four main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Collaborators, Committers, and Maintainers.
 
 #### Contributors
 
@@ -261,12 +261,24 @@ Anyone is welcome. If you have created an issue, commented on an issue or discus
 
 Responsibilities:
 
-* TODO
+* Participate in the project, following the [Code of Conduct](https://github.com/filecoin-project/community/blob/master/CODE_OF_CONDUCT.md).
 
 Abilities:
 
 * Open issues and PRs
 * Comment on issues and PRs
+
+#### Collaborators
+
+A **Collaborator** is someone who demonstrates helpful contributions to the project.
+
+Responsibilities:
+
+* Make helpful contributions via issues, PRs, and other venues
+
+Abilities:
+* Write to the repo (but cannot merge to master)
+* Manage issues
 
 #### Committers
 
