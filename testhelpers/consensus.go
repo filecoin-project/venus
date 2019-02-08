@@ -113,7 +113,7 @@ type TestSignedMessageValidator struct{}
 var _ consensus.SignedMessageValidator = (*TestSignedMessageValidator)(nil)
 
 // Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor, bh *types.BlockHeight) error {
+func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 

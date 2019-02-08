@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"testing"
 
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
-
-	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/stretchr/testify/require"
+
+	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	iptb "github.com/ipfs/iptb/testbed"
 
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -66,6 +68,20 @@ type TestNode struct {
 // NewTestNodes returns `count` TestNodes, and error is returned if a failure is
 // encoundered.
 func NewTestNodes(t *testing.T, count int, attrs map[string]string) ([]*TestNode, error) {
+
+	if attrs == nil {
+		attrs = make(map[string]string)
+	}
+
+	if _, ok := attrs[localplugin.AttrFilecoinBinary]; !ok {
+		binaryPath, err := th.GetFilecoinBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		attrs[localplugin.AttrFilecoinBinary] = binaryPath
+	}
+
 	// create a testbed
 	tb, err := NewIPTBTestbed(count, "localfilecoin", "iptb-testnode", attrs)
 	if err != nil {

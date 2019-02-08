@@ -6,14 +6,14 @@ import (
 	cmds "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 // Env is the environment passed to commands. Implements cmds.Environment.
 type Env struct {
-	ctx         context.Context
-	api         api.API
-	plumbingAPI *plumbing.API
+	ctx          context.Context
+	api          api.API
+	porcelainAPI *porcelain.API
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -34,8 +34,8 @@ func GetAPI(env cmds.Environment) api.API {
 	return ce.API()
 }
 
-// GetPlumbingAPI returns the plumbing.API interface from the environment.
-func GetPlumbingAPI(env cmds.Environment) *plumbing.API {
+// GetPorcelainAPI returns the porcelain.API interface from the environment.
+func GetPorcelainAPI(env cmds.Environment) *porcelain.API {
 	ce := env.(*Env)
-	return ce.plumbingAPI
+	return ce.porcelainAPI
 }

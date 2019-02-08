@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,9 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	iptbtester "github.com/filecoin-project/go-filecoin/testhelpers/iptbtester"
 )
+
+var runFunctionalTests = flag.Bool("functional", false, "Run the functional go tests")
 
 var faucetBinary = "../tools/faucet/faucet"
 
@@ -29,15 +31,16 @@ func init() {
 }
 
 func TestFaucetSendFunds(t *testing.T) {
+	// Only run this test if the "-functional" flag is passed to test command
+	if !*runFunctionalTests {
+		t.SkipNow()
+	}
 	assert := assert.New(t)
 	require := require.New(t)
 
-	iptbAttrs := make(map[string]string)
-	iptbAttrs["filecoin_binary"] = th.MustGetFilecoinBinary()
-
 	ctx := context.Background()
 
-	tns, err := iptbtester.NewTestNodes(t, 2, iptbAttrs)
+	tns, err := iptbtester.NewTestNodes(t, 2, nil)
 	require.NoError(err)
 
 	node0 := tns[0]

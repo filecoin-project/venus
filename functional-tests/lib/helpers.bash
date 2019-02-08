@@ -53,20 +53,20 @@ function init_local_daemon {
     --genesisfile="$3"
 }
 
-function init_cluster_daemon {
+function init_devnet_daemon {
     if [[ "$CLUSTER" = "test" ]]; then
         ./go-filecoin init \
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-            --cluster-test \
+            --devnet-test \
             --genesisfile="http://test.kittyhawk.wtf:8020/genesis.car"
    else
         ./go-filecoin init \
             --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
             --repodir="$1" \
             --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-            --cluster-nightly \
+            --devnet-nightly \
             --genesisfile="http://nightly.kittyhawk.wtf:8020/genesis.car"
     fi
 }

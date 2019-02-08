@@ -24,6 +24,12 @@ type GenesisMiner struct {
 	Owner io.Reader
 }
 
+// EnvironmentOpts are used define process init and daemon options for the environment.
+type EnvironmentOpts struct {
+	InitOpts   []ProcessInitOption
+	DaemonOpts []ProcessDaemonOption
+}
+
 // Environment defines the interface common among all environments that the
 // FAT lib can work across. It helps smooth out the differences by providing
 // a common ground to work from
@@ -47,7 +53,7 @@ type Environment interface {
 	// environments may create a Filecoin process that interacts with
 	// an already running filecoin node, and supplied the API multiaddr
 	// as options.
-	NewProcess(context.Context, string, map[string]string) (*Filecoin, error)
+	NewProcess(ctx context.Context, processType string, options map[string]string, eo EnvironmentOpts) (*Filecoin, error)
 
 	// Processes returns a slice of all processes the environment knows
 	// about.

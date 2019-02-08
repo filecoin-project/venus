@@ -9,9 +9,8 @@ import (
 // GasUnits represents number of units of gas consumed
 type GasUnits = Uint64
 
-// MaxGasUnits is a convenience value for when we want to guarantee a direct message does not fail due
-//    to lack of gas
-const MaxGasUnits = ^uint64(0)
+// BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
+var BlockGasLimit = NewGasUnits(10000000)
 
 func init() {
 	cbor.RegisterCborType(MeteredMessage{})

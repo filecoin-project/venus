@@ -2,19 +2,24 @@ package plumbing
 
 import (
 	"context"
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
-// to implement protocols and user/network-facing features.
+// to implement protocols and user/network-facing features. You probably should
+// depend on the higher level porcelain.API instead of this api, as it includes
+// these calls in addition to higher level convenience calls to make them more
+// ergonomic.
 type API struct {
 	logger logging.EventLogger
 
@@ -23,18 +28,30 @@ type API struct {
 	msgSender  *msg.Sender
 	msgWaiter  *msg.Waiter
 	config     *cfg.Config
+	chain      *chn.Reader
+}
+
+// APIDeps contains all the API's dependencies
+type APIDeps struct {
+	SigGetter  *mthdsig.Getter
+	MsgQueryer *msg.Queryer
+	MsgSender  *msg.Sender
+	MsgWaiter  *msg.Waiter
+	Config     *cfg.Config
+	Chain      *chn.Reader
 }
 
 // New constructs a new instance of the API.
-func New(sigGetter *mthdsig.Getter, msgQueryer *msg.Queryer, msgSender *msg.Sender, msgWaiter *msg.Waiter, cfg *cfg.Config) *API {
+func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		sigGetter:  sigGetter,
-		msgQueryer: msgQueryer,
-		msgSender:  msgSender,
-		msgWaiter:  msgWaiter,
-		config:     cfg,
+		sigGetter:  deps.SigGetter,
+		msgQueryer: deps.MsgQueryer,
+		msgSender:  deps.MsgSender,
+		msgWaiter:  deps.MsgWaiter,
+		config:     deps.Config,
+		chain:      deps.Chain,
 	}
 }
 
@@ -83,4 +100,14 @@ func (api *API) ConfigSet(dottedPath string, paramJSON string) error {
 // The path may be either a single field name, or a dotted path to a field.
 func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
+}
+
+// ChainLs returns a channel of tipsets from head to genesis
+func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
+	return api.chain.Ls(ctx)
+}
+
+// BlockGet gets a block by CID
+func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
+	return api.chain.BlockGet(ctx, id)
 }

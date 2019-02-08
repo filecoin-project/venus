@@ -4,4 +4,6 @@
 
 ### Risks + pitfalls
 
+### Protocol Changes
+
 ### Where to begin

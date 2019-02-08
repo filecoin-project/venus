@@ -84,9 +84,17 @@ func AOStreams() ActionOption {
 	}
 }
 
-// AOLatency provides the `--Latency` option to actions
+// AOLatency provides the `--latency` option to actions
 func AOLatency() ActionOption {
 	return func() []string {
 		return []string{"--latency"}
+	}
+}
+
+// AOValue provides the `--value` option to actions
+func AOValue(value int) ActionOption {
+	sValue := fmt.Sprintf("%d", value)
+	return func() []string {
+		return []string{"--value", sValue}
 	}
 }

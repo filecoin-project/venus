@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 type nodeAPI struct {
@@ -14,8 +14,6 @@ type nodeAPI struct {
 
 	actor           *nodeActor
 	address         *nodeAddress
-	block           *nodeBlock
-	bootstrap       *nodeBootstrap
 	chain           *nodeChain
 	client          *nodeClient
 	daemon          *nodeDaemon
@@ -41,25 +39,23 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	var plumbingAPI *plumbing.API
+	var porcelainAPI *porcelain.API
 	if node != nil {
-		plumbingAPI = node.PlumbingAPI
+		porcelainAPI = node.PorcelainAPI
 	}
 
 	api.actor = newNodeActor(api)
 	api.address = newNodeAddress(api)
-	api.block = newNodeBlock(api)
-	api.bootstrap = newNodeBootstrap(api)
 	api.chain = newNodeChain(api)
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.dag = newNodeDag(api)
 	api.id = newNodeID(api)
 	api.log = newNodeLog(api)
-	api.miner = newNodeMiner(api, plumbingAPI)
+	api.miner = newNodeMiner(api, porcelainAPI)
 	api.mining = newNodeMining(api)
 	api.mpool = newNodeMpool(api)
-	api.paych = newNodePaych(api, plumbingAPI)
+	api.paych = newNodePaych(api, porcelainAPI)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)
@@ -74,14 +70,6 @@ func (api *nodeAPI) Actor() api.Actor {
 
 func (api *nodeAPI) Address() api.Address {
 	return api.address
-}
-
-func (api *nodeAPI) Block() api.Block {
-	return api.block
-}
-
-func (api *nodeAPI) Bootstrap() api.Bootstrap {
-	return api.bootstrap
 }
 
 func (api *nodeAPI) Chain() api.Chain {

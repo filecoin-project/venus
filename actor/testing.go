@@ -70,6 +70,10 @@ var FakeActorExports = exec.Exports{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
+	"blockLimitTestMethod": &exec.FunctionSignature{
+		Params: nil,
+		Return: nil,
+	},
 }
 
 // InitializeState stores this actors
@@ -202,6 +206,15 @@ func (ma *FakeActor) RunsAnotherMessage(ctx exec.VMContext, target address.Addre
 	}
 	_, code, err := ctx.Send(target, "hasReturnValue", types.ZeroAttoFIL, []interface{}{})
 	return code, err
+}
+
+// BlockLimitTestMethod is designed to be used with block gas limit tests. It consumes 1/4 of the
+// block gas limit per run. Please ensure message.gasLimit >= 1/4 of block limit or it will panic.
+func (ma *FakeActor) BlockLimitTestMethod(ctx exec.VMContext) (uint8, error) {
+	if err := ctx.Charge(types.BlockGasLimit / 4); err != nil {
+		panic("designed for block limit testing, ensure msg limit is adequate")
+	}
+	return 0, nil
 }
 
 // MustConvertParams encodes the given params and panics if it fails to do so.

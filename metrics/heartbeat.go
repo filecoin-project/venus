@@ -26,7 +26,7 @@ var log = logging.Logger("metrics")
 
 // Heartbeat contains the information required to determine the current state of a node.
 // Heartbeats are used for aggregating information about nodes in a log aggregator
-// to support alerting and cluster visualization.
+// to support alerting and devnet visualization.
 type Heartbeat struct {
 	// Head represents the heaviest tipset the nodes is mining on
 	Head string

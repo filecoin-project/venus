@@ -27,11 +27,17 @@ func SetupGenesisNode(ctx context.Context, node *fat.Filecoin, gcURI string, min
 		return err
 	}
 
-	if _, err := node.WalletImport(ctx, minerOwner); err != nil {
+	wallet, err := node.WalletImport(ctx, minerOwner)
+	if err != nil {
 		return err
 	}
 
-	if _, err := node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fat.AOPrice(big.NewFloat(300)), fat.AOLimit(300)); err != nil {
+	if err := node.ConfigSet(ctx, "wallet.defaultAddress", wallet[0].String()); err != nil {
+		return err
+	}
+
+	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fat.AOFromAddr(wallet[0]), fat.AOPrice(big.NewFloat(300)), fat.AOLimit(300))
+	if err != nil {
 		return err
 	}
 

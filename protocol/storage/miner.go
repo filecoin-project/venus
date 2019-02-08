@@ -30,7 +30,6 @@ import (
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -45,7 +44,7 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
 // TODO: replace this with a queries to pick reasonable gas price and limits.
 const submitPostGasPrice = 0
-const submitPostGasLimit = 100000000000
+const submitPostGasLimit = 300
 
 const minerDatastorePrefix = "miner"
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
@@ -65,8 +64,8 @@ type Miner struct {
 
 	dealsAwaitingSeal *dealsAwaitingSealStruct
 
-	plumbingAPI plumbing
-	node        node
+	porcelainAPI porcelainAPI
+	node         node
 
 	proposalAcceptor func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error)
 	proposalRejector func(ctx context.Context, m *Miner, p *DealProposal, reason string) (*DealResponse, error)
@@ -77,18 +76,16 @@ type storageDeal struct {
 	Response *DealResponse
 }
 
-// plumbing is the subset of the plumbing API that storage.Miner needs.
-type plumbing interface {
+// porcelainAPI is the subset of the porcelain API that storage.Miner needs.
+type porcelainAPI interface {
+	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
-// are moving off of node and into the plumbing api (see PlumbingAPI). Eventually this
-// dependency on node should go away, fully replaced by the dependency on the plumbing api.
+// are moving off of node and into the porcelain api (see porcelainAPI). Eventually this
+// dependency on node should go away, fully replaced by the dependency on the porcelain api.
 type node interface {
 	BlockHeight() (*types.BlockHeight, error)
 	GetBlockTime() time.Duration
@@ -112,12 +109,12 @@ func init() {
 }
 
 // NewMiner is
-func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, plumbingAPI plumbing) (*Miner, error) {
+func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI porcelainAPI) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:        minerAddr,
 		minerOwnerAddr:   minerOwnerAddr,
 		deals:            make(map[cid.Cid]*storageDeal),
-		plumbingAPI:      plumbingAPI,
+		porcelainAPI:     porcelainAPI,
 		dealsDs:          dealsDs,
 		node:             nd,
 		proposalAcceptor: acceptProposal,
@@ -169,7 +166,7 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, p *DealProposal) (*
 	//       and also check that the payment info is valid.
 	//       A valid payment info contains enough funds to *us* to cover the totalprice
 
-	storagePrice, err := sm.plumbingAPI.ConfigGet("mining.storagePrice")
+	storagePrice, err := sm.porcelainAPI.ConfigGet("mining.storagePrice")
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +487,7 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 	ctx := context.Background()
 
-	rets, sig, err := sm.plumbingAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments")
+	rets, sig, err := sm.porcelainAPI.MessageQuery(ctx, (address.Address{}), sm.minerAddr, "getSectorCommitments")
 	if err != nil {
 		log.Errorf("failed to call query method getSectorCommitments: %s", err)
 		return
@@ -566,7 +563,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts consensus.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, _, err := sm.plumbingAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart")
+	res, _, err := sm.porcelainAPI.MessageQuery(context.Background(), (address.Address{}), sm.minerAddr, "getProvingPeriodStart")
 	if err != nil {
 		return nil, err
 	}
@@ -638,7 +635,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
 	gasLimit := types.NewGasUnits(submitPostGasLimit)
 
-	err = porcelain.MessageSendWithRetry(ctx, sm.plumbingAPI, 10 /*retries*/, sm.node.GetBlockTime() /*wait time*/, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
+	err = sm.porcelainAPI.MessageSendWithRetry(ctx, 10 /*retries*/, sm.node.GetBlockTime() /*wait time*/, sm.minerOwnerAddr, sm.minerAddr, types.NewAttoFIL(big.NewInt(0)), "submitPoSt", gasPrice, gasLimit, proof[:])
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

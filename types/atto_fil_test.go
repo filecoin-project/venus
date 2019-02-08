@@ -174,6 +174,22 @@ func TestMulInt(t *testing.T) {
 	})
 }
 
+func TestDivCeil(t *testing.T) {
+	x := AttoFIL{val: big.NewInt(200)}
+
+	t.Run("returns exactly the dividend when y divides x", func(t *testing.T) {
+		assert := assert.New(t)
+		actual := x.DivCeil(&AttoFIL{val: big.NewInt(10)})
+		assert.Equal(NewAttoFIL(big.NewInt(20)), actual)
+	})
+
+	t.Run("rounds up when y does not divide x", func(t *testing.T) {
+		assert := assert.New(t)
+		actual := x.DivCeil(&AttoFIL{val: big.NewInt(9)})
+		assert.Equal(NewAttoFIL(big.NewInt(23)), actual)
+	})
+}
+
 func TestPriceCalculation(t *testing.T) {
 	price := NewAttoFILFromFIL(123)
 	numBytes := NewBytesAmount(10)

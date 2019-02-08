@@ -22,8 +22,8 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(ClusterTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test cluster and other test cluster specific bootstrap parameters."),
-		cmdkit.BoolOption(ClusterNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly cluster and other nightly cluster specific bootstrap parameters"),
+		cmdkit.BoolOption(DevnetTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters."),
+		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir := getRepoDir(req)
@@ -34,8 +34,8 @@ var initCmd = &cmds.Command{
 		genesisFile, _ := req.Options[GenesisFile].(string)
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
-		clusterTest, _ := req.Options[ClusterTest].(bool)
-		clusterNightly, _ := req.Options[ClusterNightly].(bool)
+		devnetTest, _ := req.Options[DevnetTest].(bool)
+		devnetNightly, _ := req.Options[DevnetNightly].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options[WithMiner].(string); ok {
@@ -61,8 +61,8 @@ var initCmd = &cmds.Command{
 			api.GenesisFile(genesisFile),
 			api.PeerKeyFile(peerKeyFile),
 			api.WithMiner(withMiner),
-			api.ClusterTest(clusterTest),
-			api.ClusterNightly(clusterNightly),
+			api.DevnetTest(devnetTest),
+			api.DevnetNightly(devnetNightly),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 			api.DefaultAddress(defaultAddress),
 		)

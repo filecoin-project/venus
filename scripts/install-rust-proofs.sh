@@ -19,7 +19,8 @@ install_precompiled() {
   RELEASE_ID=`echo $RELEASE_RESPONSE | jq '.id'`
 
   if [ "$RELEASE_ID" == "null" ]; then
-    echo "release does not exist"
+    echo "release ${RELEASE_TAG} does not exist, GitHub said ${RELEASE_RESPONSE}"
+    echo "ensure your access token has full repo scope"
     return 1
   fi
 
@@ -49,6 +50,12 @@ install_precompiled() {
 }
 
 install_local() {
+  if ! [ -x "$(command -v cargo)" ] ; then
+    echo 'Error: cargo is not installed.'
+    echo 'Install Rust toolchain to resolve this problem.'
+    exit 1
+  fi
+
   git submodule update --init --recursive
 
   pushd proofs/rust-proofs
