@@ -72,10 +72,9 @@ var Errors = map[uint8]error{
 
 // Actor is the miner actor.
 //
-// If `Bootstrap` is `true`, the miner will not verify seal proofs and its
-// operator will never generate proof-of-spacetimes for the sectors which it has
-// committed to the network. This is useful when testing, as miners with
-// non-zero power can be created using bogus commitments.
+// If `Bootstrap` is `true`, the miner will not verify seal proofs. This is
+// useful when testing, as miners with non-zero power can be created using bogus
+// commitments.
 //
 // The `Bootstrap` field must be set to `true` if the miner was created in the
 // genesis block. If the miner was created in any other block, `Bootstrap` must
