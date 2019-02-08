@@ -53,7 +53,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
-	"github.com/filecoin-project/go-filecoin/plumbing/network"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -142,7 +142,7 @@ type Node struct {
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
 
-	// Blockstore is the un-networked blocks interface
+	// Blockstore is the un-ed blocks interface
 	Blockstore bstore.Blockstore
 
 	// Blockservice is a higher level interface for fetching data
@@ -412,7 +412,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
-		Network:      network.NewNetwork(peerHost),
+		Network:      ntwk.NewNetwork(peerHost),
 		Wallet:       fcWallet,
 	}))
 

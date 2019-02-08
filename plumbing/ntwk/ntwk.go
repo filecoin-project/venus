@@ -1,4 +1,4 @@
-package network
+package ntwk
 
 import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"

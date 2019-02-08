@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
-	"github.com/filecoin-project/go-filecoin/plumbing/network"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -34,7 +34,7 @@ type API struct {
 	msgWaiter    *msg.Waiter
 	config       *cfg.Config
 	chain        *chn.Reader
-	network      *network.Network
+	network      *ntwk.Network
 	wallet       *wallet.Wallet
 }
 
@@ -47,7 +47,7 @@ type APIDeps struct {
 	MsgWaiter    *msg.Waiter
 	Config       *cfg.Config
 	Chain        *chn.Reader
-	Network      *network.Network
+	Network      *ntwk.Network
 	Wallet       *wallet.Wallet
 }
 
