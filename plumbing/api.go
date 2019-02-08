@@ -7,6 +7,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
@@ -100,6 +101,11 @@ func (api *API) ConfigSet(dottedPath string, paramJSON string) error {
 // The path may be either a single field name, or a dotted path to a field.
 func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
+}
+
+// ChainHead returns the head tipset
+func (api *API) ChainHead(ctx context.Context) consensus.TipSet {
+	return api.chain.Head(ctx)
 }
 
 // ChainLs returns a channel of tipsets from head to genesis
