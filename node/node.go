@@ -142,7 +142,7 @@ type Node struct {
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
 
-	// Blockstore is the un-ed blocks interface
+	// Blockstore is the un-networked blocks interface
 	Blockstore bstore.Blockstore
 
 	// Blockservice is a higher level interface for fetching data
