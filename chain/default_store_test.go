@@ -36,8 +36,8 @@ func newChainStore() Store {
 	return NewDefaultStore(ds, hamt.NewCborStore(), genCid)
 }
 
-// RequirePutTestChain adds all test chain tipsets to the passed in chain store.
-func RequirePutTestChain(require *require.Assertions, chain Store) {
+// requirePutTestChain adds all test chain tipsets to the passed in chain store.
+func requirePutTestChain(require *require.Assertions, chain Store) {
 	ctx := context.Background()
 	genTsas := &TipSetAndState{
 		TipSet:          genTS,
@@ -102,7 +102,7 @@ func TestGetByKey(t *testing.T) {
 	assert := assert.New(t)
 	chain := newChainStore()
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	kg := genTS.String()
 	k1 := link1.String()
 	k2 := link2.String()
@@ -136,7 +136,7 @@ func TestGetByParent(t *testing.T) {
 	assert := assert.New(t)
 	chain := newChainStore()
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	pkg := types.SortedCidSet{}.String() // empty cid set is genesis pIDs
 	pk1 := genTS.String()
 	pk2 := link1.String()
@@ -169,7 +169,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	assert := assert.New(t)
 	chain := newChainStore()
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	pk1 := genTS.String()
 	// give one parent multiple children and then query
 	newBlk := RequireMkFakeChild(require,
@@ -205,7 +205,7 @@ func TestGetBlocks(t *testing.T) {
 	_, err := chain.GetBlock(ctx, genCid)
 	assert.Error(err) // Get errors before put
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 
 	var cids types.SortedCidSet
 	for _, blk := range blks {
@@ -232,7 +232,7 @@ func TestHasAllBlocks(t *testing.T) {
 		link2blk2, link2blk3, link3blk1, link4blk1, link4blk2}
 	assert.False(chain.HasBlock(ctx, genCid)) // Has returns false before put
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 
 	var cids []cid.Cid
 	for _, blk := range blks {
@@ -251,7 +251,7 @@ func TestSetGenesis(t *testing.T) {
 	initStoreTest(ctx, require.New(t))
 	require := require.New(t)
 	chain := newChainStore()
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	require.Equal(genCid, chain.GenesisCid())
 }
 
@@ -268,7 +268,7 @@ func TestHead(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	chain := newChainStore()
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 
 	// Head starts as nil
 	assert.Nil(chain.Head())
@@ -298,7 +298,7 @@ func TestLatestState(t *testing.T) {
 	cst := hamt.NewCborStore()
 	chain := NewDefaultStore(ds, cst, genCid)
 
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 
 	// LatestState errors without a set head
 	_, err := chain.LatestState(ctx)
@@ -332,7 +332,7 @@ func TestHeadEvents(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	chain := newChainStore()
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 
 	ps := chain.HeadEvents()
 	chA := ps.Sub(NewHeadTopic)
@@ -372,7 +372,7 @@ func TestBlockHistory(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	chain := newChainStore()
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	assertSetHead(assert, chain, genTS) // set the genesis block
 
 	assertSetHead(assert, chain, link4)
@@ -395,7 +395,7 @@ func TestBlockHistoryCancel(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	chain := newChainStore()
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	assertSetHead(assert, chain, genTS) // set the genesis block
 
 	assertSetHead(assert, chain, link4)
@@ -412,6 +412,42 @@ func TestBlockHistoryCancel(t *testing.T) {
 	assert.Equal(false, more)
 }
 
+func TestUnknownBlockRetrievalError(t *testing.T) {
+	ctx := context.Background()
+	initStoreTest(ctx, require.New(t))
+	require := require.New(t)
+	chainStore := newChainStore()
+	requirePutTestChain(require, chainStore)
+
+	parBlock := types.NewBlockForTest(nil, 0)
+	chlBlock := types.NewBlockForTest(parBlock, 1)
+
+	chlTS := testhelpers.RequireNewTipSet(require, chlBlock)
+	err := chainStore.PutTipSetAndState(ctx, &TipSetAndState{
+		TipSet:          chlTS,
+		TipSetStateRoot: chlBlock.StateRoot,
+	})
+	require.NoError(err)
+	err = chainStore.SetHead(ctx, chlTS)
+	require.NoError(err)
+
+	// parBlock is not known to the chain, which causes the timeout
+	var innerErr error
+	for raw := range chainStore.BlockHistory(ctx) {
+		switch v := raw.(type) {
+		case error:
+			innerErr = v
+		case consensus.TipSet:
+			// ignore
+		default:
+			require.FailNow("invalid element in ls", v)
+		}
+	}
+
+	require.NotNil(innerErr)
+	require.Contains(innerErr.Error(), "failed to get block")
+}
+
 /* Loading  */
 // Load does not error and gives the chain store access to all blocks and
 // tipset indexes along the heaviest chain.
@@ -424,7 +460,7 @@ func TestLoadAndReboot(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	chain := NewDefaultStore(ds, hamt.NewCborStore(), genCid)
-	RequirePutTestChain(require, chain)
+	requirePutTestChain(require, chain)
 	assertSetHead(assert, chain, genTS) // set the genesis block
 
 	assertSetHead(assert, chain, link4)

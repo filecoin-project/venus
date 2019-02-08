@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -50,12 +51,16 @@ var idCmd = &cmds.Command{
 }
 
 func idFormatSubstitute(format string, val *api.IDDetails) string {
+	addrStrings := make([]string, len(val.Addresses))
+	for i, addr := range val.Addresses {
+		addrStrings[i] = addr.String()
+	}
 	output := format
 	output = strings.Replace(output, "<id>", val.ID.Pretty(), -1)
 	output = strings.Replace(output, "<aver>", val.AgentVersion, -1)
 	output = strings.Replace(output, "<pver>", val.ProtocolVersion, -1)
-	output = strings.Replace(output, "<pubkey>", val.PublicKey, -1)
-	output = strings.Replace(output, "<addrs>", strings.Join(val.Addresses, "\n"), -1)
+	output = strings.Replace(output, "<pubkey>", base64.StdEncoding.EncodeToString(val.PublicKey), -1)
+	output = strings.Replace(output, "<addrs>", strings.Join(addrStrings, "\n"), -1)
 	output = strings.Replace(output, "\\n", "\n", -1)
 	output = strings.Replace(output, "\\t", "\t", -1)
 	return output

@@ -49,7 +49,7 @@ var chainLsCmd = &cmds.Command{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		for raw := range GetAPI(env).Chain().Ls(req.Context) {
+		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
 			switch v := raw.(type) {
 			case error:
 				return v

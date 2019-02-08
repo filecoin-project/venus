@@ -224,7 +224,11 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 	message := newSignedMessage()
 
-	receipt := &MessageReceipt{ExitCode: 0}
+	retVal := []byte{1, 2, 3}
+	receipt := &MessageReceipt{
+		ExitCode: 123,
+		Return:   []Bytes{retVal},
+	}
 	child.Messages = []*SignedMessage{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
 
@@ -241,5 +245,9 @@ func TestBlockJsonMarshal(t *testing.T) {
 	e2 := json.Unmarshal(marshalled, &unmarshalled)
 	assert.NoError(e2)
 
+	AssertHaveSameCid(assert, &child, &unmarshalled)
 	assert.True(child.Equals(&unmarshalled))
+
+	assert.Equal(uint8(123), unmarshalled.MessageReceipts[0].ExitCode)
+	assert.Equal([]Bytes{[]byte{1, 2, 3}}, unmarshalled.MessageReceipts[0].Return)
 }
