@@ -71,6 +71,15 @@ var Errors = map[uint8]error{
 }
 
 // Actor is the miner actor.
+//
+// If `Bootstrap` is `true`, the miner will not verify seal proofs and its
+// operator will never generate proof-of-spacetimes for the sectors which it has
+// committed to the network. This is useful when testing, as miners with
+// non-zero power can be created using bogus commitments.
+//
+// The `Bootstrap` field must be set to `true` if the miner was created in the
+// genesis block. If the miner was created in any other block, `Bootstrap` must
+// be false.
 type Actor struct {
 	Bootstrap bool
 }
@@ -436,9 +445,6 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		//
 		// It is undefined behavior for a miner in "Live" mode to verify a proof
 		// created by a miner in "ProofsTest" mode (and vice-versa).
-		//
-		// We should come up with a mechanism for ensuring that all nodes in a
-		// Filecoin network are in the same mode.
 		//
 		sectorStoreType := proofs.Live
 		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
