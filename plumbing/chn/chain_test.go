@@ -2,11 +2,10 @@ package chn
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -15,6 +14,7 @@ import (
 )
 
 type FakeChainer struct {
+	head    consensus.TipSet
 	tipSets []consensus.TipSet
 	blocks  map[cid.Cid]*types.Block
 }
@@ -43,8 +43,27 @@ func (mcr FakeChainer) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block,
 	return blk, nil
 }
 
+func (mcr *FakeChainer) Head() consensus.TipSet {
+	return mcr.head
+}
+
 func TestChainLs(t *testing.T) {
 	t.Parallel()
+	t.Run("Head returns chain head", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		require := require.New(t)
+
+		expected, err := consensus.NewTipSet(types.NewBlockForTest(nil, 2))
+		require.NoError(err)
+
+		chainAPI := New(&FakeChainer{
+			head: expected,
+		})
+
+		head := chainAPI.Head(context.Background())
+		assert.Equal(expected, head)
+	})
 	t.Run("Ls creates a channel of tipsets", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
@@ -68,7 +87,6 @@ func TestChainLs(t *testing.T) {
 		actual2 := <-ls
 		assert.Equal(expected2, actual2)
 	})
-
 	t.Run("BlockGet returns block", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
