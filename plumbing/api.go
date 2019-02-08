@@ -3,10 +3,11 @@ package plumbing
 import (
 	"context"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
@@ -28,7 +29,7 @@ type API struct {
 	msgSender  *msg.Sender
 	msgWaiter  *msg.Waiter
 	config     *cfg.Config
-	chain      *chn.Lser
+	chain      *chn.Reader
 }
 
 // APIDeps contains all the API's dependencies
@@ -38,7 +39,7 @@ type APIDeps struct {
 	MsgSender  *msg.Sender
 	MsgWaiter  *msg.Waiter
 	Config     *cfg.Config
-	Chain      *chn.Lser
+	Chain      *chn.Reader
 }
 
 // New constructs a new instance of the API.
@@ -102,7 +103,17 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
 }
 
+// ChainHead returns the head tipset
+func (api *API) ChainHead(ctx context.Context) consensus.TipSet {
+	return api.chain.Head(ctx)
+}
+
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.Ls(ctx)
+}
+
+// BlockGet gets a block by CID
+func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
+	return api.chain.BlockGet(ctx, id)
 }

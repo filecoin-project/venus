@@ -17,12 +17,11 @@ func Connect(ctx context.Context, from, to *fat.Filecoin) error {
 
 	var addrs []multiaddr.Multiaddr
 	for _, addr := range details.Addresses {
-		maddr, err := multiaddr.NewMultiaddr(addr)
 		if err != nil {
 			return err
 		}
 
-		addrs = append(addrs, maddr)
+		addrs = append(addrs, addr)
 	}
 
 	if _, err := from.SwarmConnect(ctx, addrs...); err != nil {

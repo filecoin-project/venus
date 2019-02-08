@@ -37,7 +37,7 @@ all other block properties will be included as well.`,
 			return err
 		}
 
-		block, err := GetAPI(env).Block().Get(req.Context, cid)
+		block, err := GetPorcelainAPI(env).BlockGet(req.Context, cid)
 		if err != nil {
 			return err
 		}
