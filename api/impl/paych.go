@@ -45,7 +45,7 @@ func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address
 		payerAddr = fromAddr
 	}
 
-	values, _, err := np.porcelainAPI.MessageQueryWithDefaultAddress(
+	values, _, err := np.porcelainAPI.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -72,7 +72,7 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		return "", err
 	}
 
-	values, _, err := np.porcelainAPI.MessageQueryWithDefaultAddress(
+	values, _, err := np.porcelainAPI.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,

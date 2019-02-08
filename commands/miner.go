@@ -261,7 +261,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				minerAddr,
@@ -332,7 +332,7 @@ var minerAddAskCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				minerAddr,

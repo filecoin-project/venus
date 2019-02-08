@@ -885,7 +885,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := node.PorcelainAPI.MessageQueryWithDefaultAddress(
+	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -1057,7 +1057,7 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, _, err := node.PorcelainAPI.MessageQueryWithDefaultAddress(
+	res, _, err := node.PorcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		miningAddr,

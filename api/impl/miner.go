@@ -69,7 +69,7 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 }
 
 func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQueryWithDefaultAddress(
+	bytes, _, err := nm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -83,7 +83,7 @@ func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (a
 }
 
 func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQueryWithDefaultAddress(
+	bytes, _, err := nm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -99,7 +99,7 @@ func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*
 }
 
 func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQueryWithDefaultAddress(
+	bytes, _, err := nm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		minerAddr,
@@ -115,7 +115,7 @@ func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (
 }
 
 func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQueryWithDefaultAddress(
+	bytes, _, err := nm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		address.StorageMarketAddress,

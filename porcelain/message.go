@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -84,64 +83,6 @@ func MessageSendWithRetry(ctx context.Context, plumbing mswrAPI, numRetries uint
 	}
 
 	return errors.Wrapf(err, "failed to send message after waiting %v for each of %d retries ", waitDuration, numRetries)
-}
-
-// mpwdaAPI is the subset of the plumbing.API that MessagePreviewWithDefaultAddress uses.
-type mpwdaAPI interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
-	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
-}
-
-// MessagePreviewWithDefaultAddress calls MessagePreview but with a default from
-// address if none is provided. If you don't need a default address provided,
-// use MessagePreview instead.
-func MessagePreviewWithDefaultAddress(
-	ctx context.Context,
-	plumbing mpwdaAPI,
-	from,
-	to address.Address,
-	method string,
-	params ...interface{},
-) (types.GasUnits, error) {
-	// If the from address isn't set attempt to use the default address.
-	if from == (address.Address{}) {
-		ret, err := plumbing.GetAndMaybeSetDefaultSenderAddress()
-		if (err != nil && err == ErrNoDefaultFromAddress) || ret == (address.Address{}) {
-			return types.NewGasUnits(0), ErrNoDefaultFromAddress
-		}
-		from = ret
-	}
-
-	return plumbing.MessagePreview(ctx, from, to, method, params...)
-}
-
-// mqwdaAPI is the subset of the plumbing.API that MessageQueryWithDefaultAddress uses.
-type mqwdaAPI interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
-	MessageQuery(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-}
-
-// MessageQueryWithDefaultAddress calls MessageQuery but with a default from
-// address if none is provided. If you don't need a default address provided,
-// use MessageQuery instead.
-func MessageQueryWithDefaultAddress(
-	ctx context.Context,
-	plumbing mqwdaAPI,
-	from,
-	to address.Address,
-	method string,
-	params ...interface{},
-) ([][]byte, *exec.FunctionSignature, error) {
-	// If the from address isn't set attempt to use the default address.
-	if from == (address.Address{}) {
-		ret, err := plumbing.GetAndMaybeSetDefaultSenderAddress()
-		if (err != nil && err == ErrNoDefaultFromAddress) || ret == (address.Address{}) {
-			return nil, nil, ErrNoDefaultFromAddress
-		}
-		from = ret
-	}
-
-	return plumbing.MessageQuery(ctx, from, to, method, params...)
 }
 
 // mswdaAPI is the subset of the plumbing.API that MessageSendWithDefaultAddress uses.

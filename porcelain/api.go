@@ -10,7 +10,6 @@ import (
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -68,30 +67,6 @@ func (a *API) MessageSendWithRetry(
 	params ...interface{},
 ) (err error) {
 	return MessageSendWithRetry(ctx, a, numRetries, waitDuration, from, to, val, method, gasPrice, gasLimit, params...)
-}
-
-// MessagePreviewWithDefaultAddress calls MessagePreview but with a default from
-// address if none is provided
-func (a *API) MessagePreviewWithDefaultAddress(
-	ctx context.Context,
-	from,
-	to address.Address,
-	method string,
-	params ...interface{},
-) (types.GasUnits, error) {
-	return MessagePreviewWithDefaultAddress(ctx, a, from, to, method, params...)
-}
-
-// MessageQueryWithDefaultAddress calls MessageQuery but with a default from
-// address if none is provided
-func (a *API) MessageQueryWithDefaultAddress(
-	ctx context.Context,
-	from,
-	to address.Address,
-	method string,
-	params ...interface{},
-) ([][]byte, *exec.FunctionSignature, error) {
-	return MessageQueryWithDefaultAddress(ctx, a, from, to, method, params...)
 }
 
 // MessageSendWithDefaultAddress calls MessageSend but with a default from

@@ -74,7 +74,7 @@ message to be mined to get the channelID.`,
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -234,7 +234,7 @@ var redeemCmd = &cmds.Command{
 				return err
 			}
 
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -292,7 +292,7 @@ var reclaimCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -356,7 +356,7 @@ var closeCmd = &cmds.Command{
 				return err
 			}
 
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -426,7 +426,7 @@ var extendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,

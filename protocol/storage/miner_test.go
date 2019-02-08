@@ -35,7 +35,7 @@ func (mtp *minerTestPorcelain) MessageSendWithRetry(ctx context.Context, numRetr
 	return nil
 }
 
-func (mtp *minerTestPorcelain) MessageQueryWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 	return [][]byte{}, nil, nil
 }
 

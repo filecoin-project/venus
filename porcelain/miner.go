@@ -155,7 +155,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 type mpspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
-	MessagePreviewWithDefaultAddress(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
+	MessagePreview(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 }
 
 // MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
@@ -184,7 +184,7 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 	}
 
 	// create ask
-	usedGas, err := plumbing.MessagePreviewWithDefaultAddress(
+	usedGas, err := plumbing.MessagePreview(
 		ctx,
 		from,
 		miner,

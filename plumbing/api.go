@@ -77,16 +77,13 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
-// is optional; if not provided, an address will be chosen from the node's wallet. Note
-// that no default from address is provided. If you need a default address, use
-// MessagePreviewWithDefaultAddress instead.
+// is optional; if not provided, an address will be chosen from the node's wallet.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
-// recording the amount of Gas used. Note that no default from address is provided. If you
-// need a default address, use MessagePreviewWithDefaultAddress instead.
+// recording the amount of Gas used.
 func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }

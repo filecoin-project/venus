@@ -77,7 +77,7 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		if preview {
-			usedGas, err := GetPorcelainAPI(env).MessagePreviewWithDefaultAddress(
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				target,

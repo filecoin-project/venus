@@ -323,7 +323,7 @@ func newMinerPreviewSetPricePlumbing() *minerPreviewSetPricePlumbing {
 	}
 }
 
-func (mtp *minerPreviewSetPricePlumbing) MessagePreviewWithDefaultAddress(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+func (mtp *minerPreviewSetPricePlumbing) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
 	return types.NewGasUnits(7), nil
 }
 
