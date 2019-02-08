@@ -29,6 +29,12 @@ var msgCmd = &cmds.Command{
 	},
 }
 
+type msgSendResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
+}
+
 var msgSendCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Send a message", // This feels too generic...
@@ -86,7 +92,11 @@ var msgSendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&msgSendResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
@@ -102,12 +112,21 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&msgSendResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &msgSendResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *msgSendResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
@@ -28,6 +29,12 @@ var paymentChannelCmd = &cmds.Command{
 		"redeem":  redeemCmd,
 		"voucher": voucherCmd,
 	},
+}
+
+type createChannelResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
 }
 
 var createChannelCmd = &cmds.Command{
@@ -84,7 +91,11 @@ message to be mined to get the channelID.`,
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&createChannelResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
@@ -92,12 +103,21 @@ message to be mined to get the channelID.`,
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&createChannelResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &createChannelResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *createChannelResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
 }
@@ -198,6 +218,12 @@ var voucherCmd = &cmds.Command{
 	},
 }
 
+type redeemResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
+}
+
 var redeemCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Redeem a payment voucher against a payment channel",
@@ -244,7 +270,11 @@ var redeemCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&redeemResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -252,14 +282,29 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&redeemResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &redeemResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *redeemResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
+}
+
+type reclaimResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
 }
 
 var reclaimCmd = &cmds.Command{
@@ -302,7 +347,11 @@ var reclaimCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&reclaimResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
@@ -310,14 +359,29 @@ var reclaimCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&reclaimResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &reclaimResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *reclaimResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
+}
+
+type closeResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
 }
 
 var closeCmd = &cmds.Command{
@@ -366,7 +430,11 @@ var closeCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&closeResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -374,14 +442,29 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&closeResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &closeResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *closeResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
+}
+
+type extendResult struct {
+	cid     cid.Cid
+	gasUsed types.GasUnits
+	preview bool
 }
 
 var extendCmd = &cmds.Command{
@@ -436,7 +519,11 @@ var extendCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			return re.Emit(strconv.FormatUint(uint64(usedGas), 10))
+			return re.Emit(&extendResult{
+				cid:     cid.Cid{},
+				gasUsed: usedGas,
+				preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
@@ -444,12 +531,21 @@ var extendCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c.String())
+		return re.Emit(&extendResult{
+			cid:     c,
+			gasUsed: types.NewGasUnits(0),
+			preview: false,
+		})
 	},
+	Type: &extendResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res string) error {
-			_, err := w.Write([]byte(res))
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *extendResult) error {
+			if res.preview {
+				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.cid)
 		}),
 	},
 }
