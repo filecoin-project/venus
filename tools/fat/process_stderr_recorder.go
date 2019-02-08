@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	fatutil "github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
+	"github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
 )
 
 // setupStderrCpaturing opens a reader to the filcoin process to read the stderr
@@ -19,7 +19,7 @@ func (f *Filecoin) setupStderrCapturing() error {
 
 	f.stderr = stderr
 
-	f.lp = fatutil.NewLinePuller(stderr, &f.ir)
+	f.lp = fastutil.NewLinePuller(stderr, &f.ir)
 	f.lpCtx, f.lpCancel = context.WithCancel(f.ctx)
 
 	go func(ctx context.Context) {
@@ -40,11 +40,11 @@ func (f *Filecoin) teardownStderrCapturing() error {
 	return f.stderr.Close()
 }
 
-// StartLogCapture returns a fatutil.Interval, after calling fatutil.Interval#Stop
+// StartLogCapture returns a fastutil.Interval, after calling fastutil.Interval#Stop
 // all stderr logs generator between the call to StartLogCapture and then will
-// be available. fatutil.Interval implements io.Reader (its a bytes.Buffer)
+// be available. fastutil.Interval implements io.Reader (its a bytes.Buffer)
 // If an error has occurred reading the stderr, the error will be returned here
-func (f *Filecoin) StartLogCapture() (*fatutil.Interval, error) {
+func (f *Filecoin) StartLogCapture() (*fastutil.Interval, error) {
 	if f.lpErr != nil {
 		return nil, f.lpErr
 	}

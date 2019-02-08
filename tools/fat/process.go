@@ -11,7 +11,7 @@ import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
-	fatutil "github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
+	"github.com/filecoin-project/go-filecoin/tools/fat/fatutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -68,8 +68,8 @@ type Filecoin struct {
 	lpCtx    context.Context
 	lpCancel context.CancelFunc
 	lpErr    error
-	lp       *fatutil.LinePuller
-	ir       fatutil.IntervalRecorder
+	lp       *fastutil.LinePuller
+	ir       fastutil.IntervalRecorder
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
@@ -122,13 +122,13 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 // DumpLastOutput writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin.
 func (f *Filecoin) DumpLastOutput(w io.Writer) {
-	fatutil.DumpOutput(w, f.lastCmdOutput)
+	fastutil.DumpOutput(w, f.lastCmdOutput)
 }
 
 // DumpLastOutputJSON writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin as json.
 func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
-	fatutil.DumpOutputJSON(w, f.lastCmdOutput)
+	fastutil.DumpOutputJSON(w, f.lastCmdOutput)
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.

@@ -1,4 +1,4 @@
-package fatutil
+package fastutil
 
 import (
 	"bufio"
