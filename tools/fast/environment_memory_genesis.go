@@ -22,7 +22,7 @@ import (
 	iptb "github.com/ipfs/iptb/testbed"
 )
 
-// EnvironmentMemoryGenesis is a FAT lib environment that is meant to be used
+// EnvironmentMemoryGenesis is a FAST lib environment that is meant to be used
 // when working locally, on the same network / machine. It's great for writing
 // functional tests!
 type EnvironmentMemoryGenesis struct {

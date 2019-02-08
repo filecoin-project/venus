@@ -36,7 +36,7 @@ func TestRetrieval(t *testing.T) {
 
 	require := require.New(t)
 
-	// Create a directory for the test using the test name (mostly for FAT)
+	// Create a directory for the test using the test name (mostly for FAST)
 	dir, err := ioutil.TempDir("", t.Name())
 	require.NoError(err)
 

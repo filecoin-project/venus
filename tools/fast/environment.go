@@ -31,7 +31,7 @@ type EnvironmentOpts struct {
 }
 
 // Environment defines the interface common among all environments that the
-// FAT lib can work across. It helps smooth out the differences by providing
+// FAST lib can work across. It helps smooth out the differences by providing
 // a common ground to work from
 type Environment interface {
 	// GenesisCar returns a location to the genesis.car file. This can be
