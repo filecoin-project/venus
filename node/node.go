@@ -408,7 +408,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Chain:        chn.New(chainReader),
 		Config:       cfg.NewConfig(nc.Repo),
 		SigGetter:    mthdsig.NewGetter(chainReader),
-		MsgPreviewer: msg.NewPreviewer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgPreviewer: msg.NewPreviewer(fcWallet, chainReader, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),

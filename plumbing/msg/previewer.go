@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -21,8 +20,6 @@ import (
 
 // Previewer calculates the amount of Gas needed for a command
 type Previewer struct {
-	// For getting the default address. Lame.
-	repo   repo.Repo
 	wallet *wallet.Wallet
 	// To get the head tipset state root.
 	chainReader chain.ReadStore
@@ -33,8 +30,8 @@ type Previewer struct {
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
-	return &Previewer{repo, wallet, chainReader, cst, bs}
+func NewPreviewer(wallet *wallet.Wallet, chainReader chain.ReadStore, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
+	return &Previewer{wallet, chainReader, cst, bs}
 }
 
 // Preview sends a read-only message to an actor.
