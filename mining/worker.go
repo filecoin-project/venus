@@ -68,7 +68,7 @@ type MessageApplier interface {
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	createPoSTFunc  DoSomeWorkFunc
-	minerAddr       address.Address // TODO: needs to be a key in the near future
+	minerAddr       address.Address
 	blockSignerAddr address.Address
 	blockSigner     types.Signer
 	// consensus things

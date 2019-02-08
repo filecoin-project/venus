@@ -471,8 +471,8 @@ func (node *Node) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Only set these up, if there is a miner configured.
-	if _, err := node.MiningAddress(); err == nil {
+	// Only set these up if there is a miner configured.
+	if _, err := node.miningAddress(); err == nil {
 		if err := node.setupMining(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
@@ -530,8 +530,8 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	mag := func() address.Address {
-		addr, err := node.MiningAddress()
-		// the only error MiningAddress() returns is ErrNoMinerAddress.
+		addr, err := node.miningAddress()
+		// the only error miningAddress() returns is ErrNoMinerAddress.
 		// if there is no configured miner address, simply send a zero
 		// address across the wire.
 		if err != nil {
@@ -703,9 +703,9 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	}
 }
 
-// MiningAddress returns the address of the mining actor mining on behalf of
+// miningAddress returns the address of the mining actor mining on behalf of
 // the node.
-func (node *Node) MiningAddress() (address.Address, error) {
+func (node *Node) miningAddress() (address.Address, error) {
 	addr := node.Repo.Config().Mining.MinerAddress
 	if addr == (address.Address{}) {
 		return address.Address{}, ErrNoMinerAddress
@@ -746,7 +746,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	if node.isMining() {
 		return errors.New("Node is already mining")
 	}
-	minerAddr, err := node.MiningAddress()
+	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
@@ -758,7 +758,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 	}
 
-	minerOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
+	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
 	minerSigningAddress := node.MiningSignerAddress()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
@@ -912,7 +912,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 }
 
 func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType proofs.SectorStoreType) (sectorbuilder.SectorBuilder, error) {
-	minerAddr, err := node.MiningAddress()
+	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
@@ -945,12 +945,12 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType p
 }
 
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
-	minerAddr, err := node.MiningAddress()
+	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
 
-	miningOwnerAddr, err := node.MiningOwnerAddress(ctx, minerAddr)
+	miningOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
@@ -986,9 +986,15 @@ func (node *Node) NewAddress() (address.Address, error) {
 // CreateMiner creates a new miner actor for the given account and returns its address.
 // It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
+// TODO: add ability to pass in a KeyInfo to store for signing blocks.
+//       See https://github.com/filecoin-project/go-filecoin/issues/1843
 func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+
+	hbc := node.Repo.Config().Heartbeat
+	log.Errorf("Current heartbeatconfig: %v", *hbc)
+
 	// Only create a miner if we don't already have one.
-	if _, err := node.MiningAddress(); err != ErrNoMinerAddress {
+	if _, err := node.miningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
@@ -996,8 +1002,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-
-	pubKey, err := node.GetMinerOwnerPubKey()
+	pubKey, err := node.getMinerActorPubKey()
 	if err != nil {
 		return nil, err
 	}
@@ -1020,51 +1025,47 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	var minerAddress address.Address
+	var minerAddr address.Address
 	err = node.PorcelainAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
 		}
-		minerAddress, err = address.NewFromBytes(receipt.Return[0])
+		minerAddr, err = address.NewFromBytes(receipt.Return[0])
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	signingInfo, err := node.GenerateNewKeyInfo()
+	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1843
+	blockSignerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		return &minerAddress, err
+		return &minerAddr, err
 	}
 
-	signerAddr, err := signingInfo.Address()
+	err = node.saveMinerConfig(minerAddr, blockSignerAddr)
 	if err != nil {
-		return &minerAddress, err
-	}
-
-	err = node.saveMinerConfig(minerAddress, signerAddr)
-	if err != nil {
-		return &minerAddress, err
+		return &minerAddr, err
 	}
 
 	err = node.setupMining(ctx)
 
-	return &minerAddress, err
+	return &minerAddr, err
 }
 
-// saveMinerConfig updates the Node Mining config with the MinerAddress and the SignerAddress.
-func (node *Node) saveMinerConfig(ownerAddr address.Address, signerAddr address.Address) error {
+// saveMinerConfig updates the Node Mining config with the MinerAddress and the BlockSignerAddress.
+func (node *Node) saveMinerConfig(minerAddr address.Address, signerAddr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
-	newConfig.Mining.MinerAddress = ownerAddr
-	newConfig.Mining.SignerAddress = signerAddr
+	newConfig.Mining.MinerAddress = minerAddr
+	newConfig.Mining.BlockSignerAddress = signerAddr
 	return r.ReplaceConfig(newConfig)
 }
 
-// MiningOwnerAddress returns the owner of miningAddr.
+// miningOwnerAddress returns the owner of miningAddr.
 // TODO: find a better home for this method
-func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
+func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
 	res, _, err := node.PorcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
@@ -1081,7 +1082,7 @@ func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Add
 // MiningSignerAddress returns the signing address for the miner actor to sign blocks and tickets
 func (node *Node) MiningSignerAddress() address.Address {
 	r := node.Repo
-	return r.Config().Mining.SignerAddress
+	return r.Config().Mining.BlockSignerAddress
 }
 
 // BlockHeight returns the current block height of the chain.
@@ -1097,50 +1098,15 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	return types.NewBlockHeight(height), nil
 }
 
-// GetMinerOwnerPubKey gets the miner owner public key
-func (node *Node) GetMinerOwnerPubKey() ([]byte, error) {
-	// TODO: make this more streamlined in the wallet
-	r := node.Repo
-	addr := r.Config().Mining.MinerAddress
+// getMinerActorPubKey gets the miner actor public key
+func (node *Node) getMinerActorPubKey() ([]byte, error) {
+	addr := node.Repo.Config().Mining.MinerAddress
 
 	// this is expected if there is no miner
 	if (addr == address.Address{}) || !node.Wallet.HasAddress(addr) {
 		return nil, nil
 	}
-
-	backend, err := node.Wallet.Find(addr)
-	if err != nil {
-		return nil, err
-	}
-	info, err := backend.GetKeyInfo(addr)
-	if err != nil {
-		return nil, err
-	}
-	pubkey, err := info.PublicKey()
-	if err != nil {
-		return nil, err
-	}
-	return pubkey, nil
-}
-
-// GenerateNewKeyInfo creates a new key pair for a node
-func (node *Node) GenerateNewKeyInfo() (*types.KeyInfo, error) {
-	// TODO: make this more streamlined in the wallet
-	newAddr, err := node.NewAddress()
-	if err != nil {
-		return &types.KeyInfo{}, err
-	}
-
-	backend, err := node.Wallet.Find(newAddr)
-	if err != nil {
-		return &types.KeyInfo{}, err
-	}
-
-	info, err := backend.GetKeyInfo(newAddr)
-	if err != nil {
-		return &types.KeyInfo{}, err
-	}
-	return info, nil
+	return node.Wallet.GetPubKeyForAddress(addr)
 }
 
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s *pubsub.Subscription, sname string) {

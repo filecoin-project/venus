@@ -427,22 +427,7 @@ func TestNodeConfig(t *testing.T) {
 	}, cfg.Swarm)
 }
 
-func TestNode_GenerateNewKeyInfo(t *testing.T) {
-	tnode := MakeNodesUnstarted(t, 1, true, true)[0]
-	ki, err := tnode.GenerateNewKeyInfo()
-	require.NoError(t, err)
-	assert.NotNil(t, ki)
-
-	pkey, err := ki.PublicKey()
-	require.NoError(t, err)
-	assert.NotNil(t, pkey)
-
-	addr, err := ki.Address()
-	require.NoError(t, err)
-	assert.NotNil(t, addr)
-}
-
-func TestNode_GetMinerOwnerPubKey(t *testing.T) {
+func TestNode_getMinerOwnerPubKey(t *testing.T) {
 	ctx := context.Background()
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
@@ -456,14 +441,14 @@ func TestNode_GetMinerOwnerPubKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	// it hasn't yet been saved to the MinerConfig; simulates incomplete CreateMiner, or no miner for the node
-	pkey, err := tnode.GetMinerOwnerPubKey()
+	pkey, err := tnode.getMinerActorPubKey()
 	assert.NoError(t, err)
 	assert.Nil(t, pkey)
 
 	err = tnode.saveMinerConfig(minerOwnerAddr, address.Address{})
 	assert.NoError(t, err)
 
-	pkey, err = tnode.GetMinerOwnerPubKey()
+	pkey, err = tnode.getMinerActorPubKey()
 	assert.NoError(t, err)
 	assert.NotNil(t, pkey)
 }
