@@ -10,10 +10,6 @@ import (
 
 // Tip is what expected consensus needs from a Block. For now it *is* a
 // Block.
-// TODO This needs to change in the future as holding all Blocks in
-// memory is expensive. We could define a struct encompassing the subset
-// of Block needed for EC and embed it in the block or we could limit the
-// height we index or both.
 type Tip = types.Block
 
 // TipSet is a set of Tips, blocks at the same height with the same parent set,

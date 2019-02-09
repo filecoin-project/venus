@@ -145,26 +145,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		// TODO: Sign this proposal
 	}
 
-	// check for duplicate deal prior to creating payment info
-	proposalCid, err := convert.ToCid(proposal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cid of proposal")
-	}
-
-	_, isDuplicate := smc.deals[proposalCid]
-	if isDuplicate && !allowDuplicates {
-		return nil, Errors[ErrDupicateDeal]
-	}
-
-	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		proposal.LastDuplicate = proposalCid.String()
-
-		proposalCid, err = convert.ToCid(proposal)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get cid of proposal")
-		}
-	}
-
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -183,6 +163,25 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.Channel = cpResp.Channel
 	proposal.Payment.ChannelMsgCid = cpResp.ChannelMsgCid.String()
 	proposal.Payment.Vouchers = cpResp.Vouchers
+
+	proposalCid, err := convert.ToCid(proposal)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cid of proposal")
+	}
+
+	_, isDuplicate := smc.deals[proposalCid]
+	if isDuplicate && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
+
+	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
+		proposal.LastDuplicate = proposalCid.String()
+
+		proposalCid, err = convert.ToCid(proposal)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get cid of proposal")
+		}
+	}
 
 	// send proposal
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
@@ -210,6 +209,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 }
 
 func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal, proposalCid cid.Cid) error {
+	if !proposalCid.Equals(resp.ProposalCid) {
+		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
+	}
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
 	_, ok := smc.deals[proposalCid]
