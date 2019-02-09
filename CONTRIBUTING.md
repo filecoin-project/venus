@@ -61,7 +61,7 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 `go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
 
-The first review is done by a committer. Once they deem it ready for merge, they will assign a maintainer for the second review. Once the PR has 2 Approvals and blocking comments have been addressed, the committer rebases and merges the PR.
+The first review is done by a committer familiar with that area of the codebase. Once they deem it ready for merge, they will assign a maintainer for the second review. Once the PR has 2 Approvals and blocking comments have been addressed, the committer rebases and merges the PR.
 
 If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is also welcome and encouraged. 
 
