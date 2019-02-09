@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,10 +36,12 @@ func TestProposeDeal(t *testing.T) {
 		require.True(ok)
 		proposal = p
 
+		pcid, err := convert.ToCid(p)
+		require.NoError(err)
 		return &DealResponse{
 			State:       Accepted,
 			Message:     "OK",
-			ProposalCid: p.PieceRef,
+			ProposalCid: pcid,
 		}, nil
 	})
 
@@ -111,6 +114,7 @@ func TestProposeDeal(t *testing.T) {
 		var response *DealResponse
 		for entry := range res.Next() {
 			var deal clientDeal
+			require.Equal("/client/"+dealResponse.ProposalCid.String(), entry.Key)
 			require.NoError(cbor.DecodeInto(entry.Value, &deal))
 			response = deal.Response
 		}
