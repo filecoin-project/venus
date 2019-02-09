@@ -1,13 +1,12 @@
 package commands
 
 import (
-	"fmt"
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/fixtures"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestListAsks(t *testing.T) {
@@ -97,11 +96,12 @@ func TestDuplicateDeals(t *testing.T) {
 		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
 	})
 
-	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
-		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
-		assert.Equal(expectedError, proposeDealOutput)
-	})
+	// TODO phritz delete or re-enable this as part of 1853
+	// t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
+	// 	proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
+	// 	expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
+	// 	assert.Equal(expectedError, proposeDealOutput)
+	// })
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
