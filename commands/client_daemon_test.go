@@ -69,7 +69,6 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 func TestDuplicateDeals(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
 
 	miner := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
