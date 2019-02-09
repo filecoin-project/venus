@@ -177,7 +177,12 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 	result := client.RunSuccess("client", "payments", dealCid).ReadStdoutTrimNewlines()
 
 	assert.Contains(result, "Channel\tAmount\tValidAt\tEncoded Voucher")
-	assert.Contains(result, "0\t240000\t1002")
-	assert.Contains(result, "0\t480000\t2002")
-	assert.Contains(result, "0\t720000\t3002")
+	// Note: in the assertion below the expiration is four digits, but we're only checking
+	// two. This is intentional: the expiry depends on the block at which the vouchers were
+	// created, which could be any small number eg 0 or 3. The expiry in each case would
+	// be 1000/2000/3000 or 1003/2003/3003. Anyway, it's non-deterministic. So we just check
+	// the first couple of digits.
+	assert.Contains(result, "0\t240000\t10")
+	assert.Contains(result, "0\t480000\t20")
+	assert.Contains(result, "0\t720000\t30")
 }
