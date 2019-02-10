@@ -12,8 +12,8 @@ import (
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var chainCmd = &cmds.Command{
@@ -60,8 +60,8 @@ var chainLsCmd = &cmds.Command{
 			since = 0
 		}
 
-		porcelainApi := GetPorcelainAPI(env)
-		for raw := range porcelain.ChainBlocksSince(req.Context, porcelainApi, since) {
+		porcelainAPI := GetPorcelainAPI(env)
+		for raw := range porcelain.ChainBlocksSince(req.Context, porcelainAPI, since) {
 			switch v := raw.(type) {
 			case error:
 				return v
