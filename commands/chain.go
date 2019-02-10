@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 var chainCmd = &cmds.Command{
@@ -51,9 +52,16 @@ var chainLsCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+		cmdkit.Uint64Option("since", "s", "Show only blocks including and past the provided height. By default, will include all blocks from head to genesis."),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
+		since, ok := req.Options["since"].(uint64)
+		if !ok {
+			since = 0
+		}
+
+		porcelainApi := GetPorcelainAPI(env)
+		for raw := range porcelain.ChainBlocksSince(req.Context, porcelainApi, since) {
 			switch v := raw.(type) {
 			case error:
 				return v

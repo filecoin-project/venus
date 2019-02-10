@@ -28,3 +28,38 @@ func ChainBlockHeight(ctx context.Context, plumbing chPlumbing) (*types.BlockHei
 	}
 	return types.NewBlockHeight(currentHeight), nil
 }
+
+// ChainBlocksSince returns all blocks up to and including the block height
+func ChainBlocksSince(ctx context.Context, plumbing chPlumbing, since uint64) chan interface{} {
+	out := make(chan interface{})
+	lsCtx, cancelLs := context.WithCancel(ctx)
+
+	go func() {
+		defer close(out)
+		for raw := range plumbing.ChainLs(lsCtx) {
+			switch v := raw.(type) {
+			case error:
+				out <- v
+				return
+			case consensus.TipSet:
+				height, err := v.Height()
+				if err != nil {
+					out <- err
+					cancelLs()
+					return
+				}
+
+				out <- v
+
+				if height == since {
+					cancelLs()
+					return
+				}
+			default:
+				out <- v
+			}
+		}
+	}()
+
+	return out
+}
