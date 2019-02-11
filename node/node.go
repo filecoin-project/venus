@@ -561,7 +561,7 @@ func (node *Node) setupMining(ctx context.Context) error {
 	// configure the underlying sector store, defaulting to the non-test version
 	sectorStoreType := proofs.Live
 	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		sectorStoreType = proofs.ProofTest
+		sectorStoreType = proofs.Test
 	}
 
 	// initialize a sector builder
