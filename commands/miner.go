@@ -59,9 +59,9 @@ var minerPledgeCmd = &cmds.Command{
 }
 
 type minerCreateResult struct {
-	address address.Address
-	gasUsed types.GasUnits
-	preview bool
+	Address address.Address
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var minerCreateCmd = &cmds.Command{
@@ -126,9 +126,9 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 				return err
 			}
 			return re.Emit(&minerCreateResult{
-				address: address.Address{},
-				gasUsed: usedGas,
-				preview: true,
+				Address: address.Address{},
+				GasUsed: usedGas,
+				Preview: true,
 			})
 		}
 
@@ -138,28 +138,28 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 		}
 
 		return re.Emit(&minerCreateResult{
-			address: addr,
-			gasUsed: types.NewGasUnits(0),
-			preview: false,
+			Address: addr,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
 		})
 	},
 	Type: &minerCreateResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerCreateResult) error {
-			if res.preview {
-				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
 				return err
 			}
-			return PrintString(w, res.address)
+			return PrintString(w, res.Address)
 		}),
 	},
 }
 
 type minerSetPriceResult struct {
-	gasUsed               types.GasUnits
-	minerSetPriceResponse porcelain.MinerSetPriceResponse
-	preview               bool
+	GasUsed               types.GasUnits
+	MinerSetPriceResponse porcelain.MinerSetPriceResponse
+	Preview               bool
 }
 
 var minerSetPriceCmd = &cmds.Command{
@@ -219,9 +219,9 @@ This command waits for the ask to be mined.`,
 				return err
 			}
 			return re.Emit(&minerSetPriceResult{
-				gasUsed:               usedGas,
-				preview:               true,
-				minerSetPriceResponse: porcelain.MinerSetPriceResponse{},
+				GasUsed:               usedGas,
+				Preview:               true,
+				MinerSetPriceResponse: porcelain.MinerSetPriceResponse{},
 			})
 		}
 
@@ -238,16 +238,16 @@ This command waits for the ask to be mined.`,
 		}
 
 		return re.Emit(&minerSetPriceResult{
-			gasUsed:               types.NewGasUnits(0),
-			preview:               false,
-			minerSetPriceResponse: res,
+			GasUsed:               types.NewGasUnits(0),
+			Preview:               false,
+			MinerSetPriceResponse: res,
 		})
 	},
 	Type: &minerSetPriceResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerSetPriceResult) error {
-			if res.preview {
-				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
 				return err
 			}
@@ -255,10 +255,10 @@ This command waits for the ask to be mined.`,
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
 	`,
-				res.minerSetPriceResponse.MinerAddr.String(),
-				res.minerSetPriceResponse.Price.String(),
-				res.minerSetPriceResponse.AddAskCid.String(),
-				res.minerSetPriceResponse.BlockCid.String(),
+				res.MinerSetPriceResponse.MinerAddr.String(),
+				res.MinerSetPriceResponse.Price.String(),
+				res.MinerSetPriceResponse.AddAskCid.String(),
+				res.MinerSetPriceResponse.BlockCid.String(),
 			)
 			_, err := w.Write([]byte(output))
 			return err
@@ -267,9 +267,9 @@ This command waits for the ask to be mined.`,
 }
 
 type minerUpdatePeerIDResult struct {
-	cid     cid.Cid
-	gasUsed types.GasUnits
-	preview bool
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var minerUpdatePeerIDCmd = &cmds.Command{
@@ -321,9 +321,9 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			}
 
 			return re.Emit(&minerUpdatePeerIDResult{
-				cid:     cid.Cid{},
-				gasUsed: usedGas,
-				preview: true,
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
 			})
 		}
 
@@ -333,28 +333,28 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		}
 
 		return re.Emit(&minerUpdatePeerIDResult{
-			cid:     c,
-			gasUsed: types.NewGasUnits(0),
-			preview: false,
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
 		})
 	},
 	Type: &minerUpdatePeerIDResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerUpdatePeerIDResult) error {
-			if res.preview {
-				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
 				return err
 			}
-			return PrintString(w, res.cid)
+			return PrintString(w, res.Cid)
 		}),
 	},
 }
 
 type minerAddAskResult struct {
-	cid     cid.Cid
-	gasUsed types.GasUnits
-	preview bool
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var minerAddAskCmd = &cmds.Command{
@@ -411,9 +411,9 @@ var minerAddAskCmd = &cmds.Command{
 				return err
 			}
 			return re.Emit(&minerAddAskResult{
-				cid:     cid.Cid{},
-				gasUsed: usedGas,
-				preview: true,
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
 			})
 		}
 
@@ -422,20 +422,20 @@ var minerAddAskCmd = &cmds.Command{
 			return err
 		}
 		return re.Emit(&minerAddAskResult{
-			cid:     c,
-			gasUsed: types.NewGasUnits(0),
-			preview: false,
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
 		})
 	},
 	Type: &minerAddAskResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerAddAskResult) error {
-			if res.preview {
-				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
 				return err
 			}
-			return PrintString(w, res.cid)
+			return PrintString(w, res.Cid)
 		}),
 	},
 }

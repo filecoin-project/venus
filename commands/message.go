@@ -30,9 +30,9 @@ var msgCmd = &cmds.Command{
 }
 
 type msgSendResult struct {
-	cid     cid.Cid
-	gasUsed types.GasUnits
-	preview bool
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var msgSendCmd = &cmds.Command{
@@ -93,9 +93,9 @@ var msgSendCmd = &cmds.Command{
 				return err
 			}
 			return re.Emit(&msgSendResult{
-				cid:     cid.Cid{},
-				gasUsed: usedGas,
-				preview: true,
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
 			})
 		}
 
@@ -113,20 +113,20 @@ var msgSendCmd = &cmds.Command{
 		}
 
 		return re.Emit(&msgSendResult{
-			cid:     c,
-			gasUsed: types.NewGasUnits(0),
-			preview: false,
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
 		})
 	},
 	Type: &msgSendResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *msgSendResult) error {
-			if res.preview {
-				output := strconv.FormatUint(uint64(res.gasUsed), 10)
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
 				return err
 			}
-			return PrintString(w, res.cid)
+			return PrintString(w, res.Cid)
 		}),
 	},
 }
