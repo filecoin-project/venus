@@ -18,6 +18,7 @@ import (
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore/query"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -144,26 +145,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		// TODO: Sign this proposal
 	}
 
-	// check for duplicate deal prior to creating payment info
-	proposalCid, err := convert.ToCid(proposal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cid of proposal")
-	}
-
-	_, isDuplicate := smc.deals[proposalCid]
-	if isDuplicate && !allowDuplicates {
-		return nil, Errors[ErrDupicateDeal]
-	}
-
-	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		proposal.LastDuplicate = proposalCid.String()
-
-		proposalCid, err = convert.ToCid(proposal)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get cid of proposal")
-		}
-	}
-
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -182,6 +163,25 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.Channel = cpResp.Channel
 	proposal.Payment.ChannelMsgCid = cpResp.ChannelMsgCid.String()
 	proposal.Payment.Vouchers = cpResp.Vouchers
+
+	proposalCid, err := convert.ToCid(proposal)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get cid of proposal")
+	}
+
+	_, isDuplicate := smc.deals[proposalCid]
+	if isDuplicate && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
+
+	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
+		proposal.LastDuplicate = proposalCid.String()
+
+		proposalCid, err = convert.ToCid(proposal)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get cid of proposal")
+		}
+	}
 
 	// send proposal
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
@@ -209,6 +209,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 }
 
 func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal, proposalCid cid.Cid) error {
+	if !proposalCid.Equals(resp.ProposalCid) {
+		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
+	}
 	smc.dealsLk.Lock()
 	defer smc.dealsLk.Unlock()
 	_, ok := smc.deals[proposalCid]
@@ -307,6 +310,28 @@ func (smc *Client) saveDeal(cid cid.Cid) error {
 		return errors.Wrap(err, "could not save client deal to disk, in-memory deals differ from persisted deals!")
 	}
 	return nil
+}
+
+// LoadVouchersForDeal loads vouchers from disk for a given deal
+func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
+	queryResults, err := smc.dealsDs.Query(query.Query{Prefix: "/" + clientDatastorePrefix})
+	if err != nil {
+		return []*paymentbroker.PaymentVoucher{}, errors.Wrap(err, "failed to query vouchers from datastore")
+	}
+
+	var results []*paymentbroker.PaymentVoucher
+
+	for entry := range queryResults.Next() {
+		var deal clientDeal
+		if err := cbor.DecodeInto(entry.Value, &deal); err != nil {
+			return results, errors.Wrap(err, "failed to unmarshal deals from datastore")
+		}
+		if deal.Response.ProposalCid == dealCid {
+			results = append(results, deal.Proposal.Payment.Vouchers...)
+		}
+	}
+
+	return results, nil
 }
 
 // ClientNodeImpl implements the client node interface

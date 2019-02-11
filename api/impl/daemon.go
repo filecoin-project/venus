@@ -133,6 +133,17 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
+	// Setup devnet user specific config options.
+	if cfg.DevnetUser {
+		newConfig := rep.Config()
+		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.Period = "10s"
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
 	switch {
 	case cfg.GenesisFile != "":
 		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking

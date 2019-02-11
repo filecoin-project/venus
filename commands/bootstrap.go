@@ -24,12 +24,12 @@ var bootstrapCmd = &cmds.Command{
 
 var bootstrapLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		peers, err := GetAPI(env).Bootstrap().Ls(req.Context)
+		peers, err := GetPorcelainAPI(env).ConfigGet("bootstrap.addresses")
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(&BootstrapLsResult{peers})
+		return re.Emit(&BootstrapLsResult{peers.([]string)})
 	},
 	Type: &BootstrapLsResult{},
 	Encoders: cmds.EncoderMap{

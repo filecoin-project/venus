@@ -119,10 +119,8 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 	reconTicker := time.NewTicker(rd)
 	defer reconTicker.Stop()
 	for {
-		log.Debug("running heartbeat reconnect loop")
 		select {
 		case <-ctx.Done():
-			log.Debug("stopping heartbeat service")
 			return
 		case <-reconTicker.C:
 			if err := hbs.Connect(ctx); err != nil {
@@ -133,7 +131,6 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 			// we connected, send heartbeats!
 			// Run will block until it fails to send a heartbeat.
 			if err := hbs.Run(ctx); err != nil {
-				log.Debugf("Heartbeat run failed: %s", err)
 				log.Warning("disconnecting from aggregator, failed to send heartbeat")
 				continue
 			}
@@ -146,7 +143,6 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 // be returned if Run encounters an error when sending the heartbeat and the connection
 // to the aggregator will be closed.
 func (hbs *HeartbeatService) Run(ctx context.Context) error {
-	log.Debug("running heartbeat service")
 	bd, err := time.ParseDuration(hbs.Config.BeatPeriod)
 	if err != nil {
 		log.Errorf("invalid heartbeat beatPeriod: %s", err)
@@ -173,7 +169,6 @@ func (hbs *HeartbeatService) Run(ctx context.Context) error {
 
 // Beat will create a heartbeat.
 func (hbs *HeartbeatService) Beat() Heartbeat {
-	log.Debug("heartbeat service creating heartbeat")
 	nick := hbs.Config.Nickname
 	ts := hbs.HeadGetter()
 	tipset := ts.ToSortedCidSet().String()
@@ -214,7 +209,6 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 		fmt.Sprintf("/p2p/%s", peer.IDB58Encode(peerid)))
 	targetAddr := targetMaddr.Decapsulate(targetPeerAddr)
 
-	log.Infof("attempting to open stream, peerID: %s, targetAddr: %s", peerid, targetAddr)
 	hbs.Host.Peerstore().AddAddr(peerid, targetAddr, pstore.PermanentAddrTTL)
 
 	s, err := hbs.Host.NewStream(ctx, peerid, HeartbeatProtocol)

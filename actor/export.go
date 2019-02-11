@@ -97,7 +97,12 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 		outErr, ok := out[len(out)-1].Interface().(error)
 		if ok {
 			if !(errors.ShouldRevert(outErr) || errors.IsFault(outErr)) {
-				panic("you are a bad person: error must be either a reverterror or a fault")
+				var paramStr []string
+				for _, param := range params {
+					paramStr = append(paramStr, param.String())
+				}
+				msg := fmt.Sprintf("actor: %#+v, method: %s, args: %v, error: %s", actor, method, paramStr, outErr.Error())
+				panic(fmt.Sprintf("you are a bad person: error must be either a reverterror or a fault: %v", msg))
 			}
 
 			return nil, exitCode, outErr

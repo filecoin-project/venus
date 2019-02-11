@@ -26,7 +26,9 @@ install_precompiled() {
 
   RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url"`
 
+
   ASSET_URL=`curl \
+      --head \
       --header "Authorization: token $GITHUB_TOKEN" \
       --header "Accept:application/octet-stream" \
       --location \
@@ -34,22 +36,31 @@ install_precompiled() {
       -w %{url_effective} \
       "$RELEASE_URL"
   `
+  ASSET_ID=`basename ${RELEASE_URL}`
 
-  curl --output /tmp/$RELEASE_NAME.tar.gz "$ASSET_URL"
-
-  if [ $? -ne "0" ]; then
-    echo "asset failed to be downloaded"
-    return 1
+  TAR_NAME="${RELEASE_NAME}_${ASSET_ID}"
+  if [ ! -f "/tmp/${TAR_NAME}.tar.gz" ]; then
+      curl --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
+      if [ $? -ne "0" ]; then
+          echo "asset failed to be downloaded"
+          return 1
+      fi
   fi
 
   mkdir -p proofs/bin
   mkdir -p proofs/include
   mkdir -p proofs/lib/pkgconfig
 
-  tar -C proofs -xzf /tmp/$RELEASE_NAME.tar.gz
+  tar -C proofs -xzf /tmp/${TAR_NAME}.tar.gz
 }
 
 install_local() {
+  if ! [ -x "$(command -v cargo)" ] ; then
+    echo 'Error: cargo is not installed.'
+    echo 'Install Rust toolchain to resolve this problem.'
+    exit 1
+  fi
+
   git submodule update --init --recursive
 
   pushd proofs/rust-proofs

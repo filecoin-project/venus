@@ -24,6 +24,7 @@ var initCmd = &cmds.Command{
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
+		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir := getRepoDir(req)
@@ -36,6 +37,7 @@ var initCmd = &cmds.Command{
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		devnetTest, _ := req.Options[DevnetTest].(bool)
 		devnetNightly, _ := req.Options[DevnetNightly].(bool)
+		devnetUser, _ := req.Options[DevnetUser].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options[WithMiner].(string); ok {
@@ -63,6 +65,7 @@ var initCmd = &cmds.Command{
 			api.WithMiner(withMiner),
 			api.DevnetTest(devnetTest),
 			api.DevnetNightly(devnetNightly),
+			api.DevnetUser(devnetUser),
 			api.AutoSealIntervalSeconds(autoSealIntervalSeconds),
 			api.DefaultAddress(defaultAddress),
 		)

@@ -30,9 +30,13 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		out, err := GetAPI(env).Chain().Head()
-		if err != nil {
-			return err
+		ts := GetPorcelainAPI(env).ChainHead(req.Context)
+
+		// Sort CIDs for a stable order
+		tsSlice := ts.ToSlice()
+		out := types.SortedCidSet{}
+		for _, b := range tsSlice {
+			out.Add(b.Cid())
 		}
 
 		return re.Emit(out)
@@ -49,7 +53,7 @@ var chainLsCmd = &cmds.Command{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		for raw := range GetAPI(env).Chain().Ls(req.Context) {
+		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
 			switch v := raw.(type) {
 			case error:
 				return v
