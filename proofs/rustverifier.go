@@ -149,8 +149,6 @@ func CSectorStoreType(cfg SectorStoreType) (*C.ConfiguredStore, error) {
 		scfg = C.ConfiguredStore(C.Live)
 	} else if cfg == Test {
 		scfg = C.ConfiguredStore(C.Test)
-	} else if cfg == ProofTest {
-		scfg = C.ConfiguredStore(C.ProofTest)
 	} else {
 		return nil, errors.Errorf("unknown sector store type: %v", cfg)
 	}
