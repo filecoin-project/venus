@@ -145,6 +145,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		// TODO: Sign this proposal
 	}
 
+	if smc.isMaybeDupDeal(proposal) && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
+
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -164,25 +168,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.ChannelMsgCid = cpResp.ChannelMsgCid.String()
 	proposal.Payment.Vouchers = cpResp.Vouchers
 
-	proposalCid, err := convert.ToCid(proposal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cid of proposal")
-	}
-
-	_, isDuplicate := smc.deals[proposalCid]
-	if isDuplicate && !allowDuplicates {
-		return nil, Errors[ErrDupicateDeal]
-	}
-
-	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		proposal.LastDuplicate = proposalCid.String()
-
-		proposalCid, err = convert.ToCid(proposal)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get cid of proposal")
-		}
-	}
-
 	// send proposal
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
 	if err != nil {
@@ -201,14 +186,18 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(&response, miner, proposal, proposalCid); err != nil {
+	if err := smc.recordResponse(&response, miner, proposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal, proposalCid cid.Cid) error {
+func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal) error {
+	proposalCid, err := convert.ToCid(p)
+	if err != nil {
+		return errors.New("failed to get cid of proposal")
+	}
 	if !proposalCid.Equals(resp.ProposalCid) {
 		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
 	}
@@ -310,6 +299,17 @@ func (smc *Client) saveDeal(cid cid.Cid) error {
 		return errors.Wrap(err, "could not save client deal to disk, in-memory deals differ from persisted deals!")
 	}
 	return nil
+}
+
+func (smc *Client) isMaybeDupDeal(p *DealProposal) bool {
+	smc.dealsLk.Lock()
+	defer smc.dealsLk.Unlock()
+	for _, d := range smc.deals {
+		if d.Miner == p.MinerAddress && d.Proposal.PieceRef.Equals(p.PieceRef) {
+			return true
+		}
+	}
+	return false
 }
 
 // LoadVouchersForDeal loads vouchers from disk for a given deal
