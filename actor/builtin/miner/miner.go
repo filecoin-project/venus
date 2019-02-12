@@ -428,13 +428,13 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	if len(commD) != int(proofs.CommitmentBytesLen) {
-		return 0, errors.NewRevertError("invalid sized commD")
+		return 1, errors.NewRevertError("invalid sized commD")
 	}
 	if len(commR) != int(proofs.CommitmentBytesLen) {
-		return 0, errors.NewRevertError("invalid sized commR")
+		return 1, errors.NewRevertError("invalid sized commR")
 	}
 	if len(commRStar) != int(proofs.CommitmentBytesLen) {
-		return 0, errors.NewRevertError("invalid sized commRStar")
+		return 1, errors.NewRevertError("invalid sized commRStar")
 	}
 
 	if !ma.Bootstrap {
@@ -461,10 +461,10 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 		res, err := (&proofs.RustVerifier{}).VerifySeal(req)
 		if err != nil {
-			return 0, errors.RevertErrorWrap(err, "failed to verify seal proof")
+			return 1, errors.RevertErrorWrap(err, "failed to verify seal proof")
 		}
 		if !res.IsValid {
-			return 0, Errors[ErrInvalidSealProof]
+			return ErrInvalidSealProof, Errors[ErrInvalidSealProof]
 		}
 	}
 
