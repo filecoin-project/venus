@@ -74,7 +74,8 @@ var Errors = map[uint8]error{
 //
 // If `Bootstrap` is `true`, the miner will not verify seal proofs. This is
 // useful when testing, as miners with non-zero power can be created using bogus
-// commitments.
+// commitments. This is a temporary measure; we want to ultimately be able to
+// create a real genesis block whose miners are seeded with real commitments.
 //
 // The `Bootstrap` field must be set to `true` if the miner was created in the
 // genesis block. If the miner was created in any other block, `Bootstrap` must
