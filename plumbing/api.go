@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -13,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // API is the plumbing implementation, the irreducible set of calls required
@@ -24,22 +27,28 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	sigGetter  *mthdsig.Getter
-	msgQueryer *msg.Queryer
-	msgSender  *msg.Sender
-	msgWaiter  *msg.Waiter
-	config     *cfg.Config
-	chain      *chn.Reader
+	sigGetter    *mthdsig.Getter
+	msgPreviewer *msg.Previewer
+	msgQueryer   *msg.Queryer
+	msgSender    *msg.Sender
+	msgWaiter    *msg.Waiter
+	config       *cfg.Config
+	chain        *chn.Reader
+	network      *ntwk.Network
+	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	SigGetter  *mthdsig.Getter
-	MsgQueryer *msg.Queryer
-	MsgSender  *msg.Sender
-	MsgWaiter  *msg.Waiter
-	Config     *cfg.Config
-	Chain      *chn.Reader
+	SigGetter    *mthdsig.Getter
+	MsgPreviewer *msg.Previewer
+	MsgQueryer   *msg.Queryer
+	MsgSender    *msg.Sender
+	MsgWaiter    *msg.Waiter
+	Config       *cfg.Config
+	Chain        *chn.Reader
+	Network      *ntwk.Network
+	Wallet       *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -47,12 +56,15 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		sigGetter:  deps.SigGetter,
-		msgQueryer: deps.MsgQueryer,
-		msgSender:  deps.MsgSender,
-		msgWaiter:  deps.MsgWaiter,
-		config:     deps.Config,
-		chain:      deps.Chain,
+		sigGetter:    deps.SigGetter,
+		msgPreviewer: deps.MsgPreviewer,
+		msgQueryer:   deps.MsgQueryer,
+		msgSender:    deps.MsgSender,
+		msgWaiter:    deps.MsgWaiter,
+		config:       deps.Config,
+		chain:        deps.Chain,
+		network:      deps.Network,
+		wallet:       deps.Wallet,
 	}
 }
 
@@ -70,10 +82,17 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 
+// MessagePreview previews the Gas cost of a message by running it locally on the client and
+// recording the amount of Gas used.
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
+}
+
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain.
+// message to go on chain. Note that no default from address is provided. If you need
+// a default address, use MessageSendWithDefaultAddress instead.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
@@ -116,4 +135,24 @@ func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 // BlockGet gets a block by CID
 func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	return api.chain.BlockGet(ctx, id)
+}
+
+// NetworkGetPeerID gets the current peer id from Util
+func (api *API) NetworkGetPeerID() peer.ID {
+	return api.network.GetPeerID()
+}
+
+// WalletAddresses gets addresses from the wallet
+func (api *API) WalletAddresses() []address.Address {
+	return api.wallet.Addresses()
+}
+
+// WalletFind finds addresses on the wallet
+func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
+	return api.wallet.Find(address)
+}
+
+// WalletNewAddress generates a new wallet address
+func (api *API) WalletNewAddress() (address.Address, error) {
+	return wallet.NewAddress(api.wallet)
 }

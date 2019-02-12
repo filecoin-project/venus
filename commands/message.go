@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -28,6 +29,12 @@ var msgCmd = &cmds.Command{
 	},
 }
 
+type msgSendResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
+}
+
 var msgSendCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Send a message", // This feels too generic...
@@ -41,6 +48,7 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address to send message from"),
 		priceOption,
 		limitOption,
+		previewOption,
 		// TODO: (per dignifiedquire) add an option to set the nonce and method explicitly
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -64,7 +72,7 @@ var msgSendCmd = &cmds.Command{
 			}
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
 		}
@@ -74,16 +82,51 @@ var msgSendCmd = &cmds.Command{
 			method = ""
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(req.Context, fromAddr, target, types.NewAttoFILFromFIL(uint64(val)), gasPrice, gasLimit, method)
+		if preview {
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				target,
+				method,
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&msgSendResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
+		}
+
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			target,
+			types.NewAttoFILFromFIL(uint64(val)),
+			gasPrice,
+			gasLimit,
+			method,
+		)
 		if err != nil {
 			return err
 		}
-		return re.Emit(c)
+
+		return re.Emit(&msgSendResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &msgSendResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *msgSendResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
 }

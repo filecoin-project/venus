@@ -21,7 +21,7 @@ type minerTestPorcelain struct {
 	config *cfg.Config
 }
 
-func newminerTestPorcelain() *minerTestPorcelain {
+func newMinerTestPorcelain() *minerTestPorcelain {
 	return &minerTestPorcelain{
 		config: cfg.NewConfig(repo.NewInMemoryRepo()),
 	}
@@ -39,6 +39,10 @@ func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error)
 	return mtp.config.Get(dottedPath)
 }
 
+func (mtp *minerTestPorcelain) ConfigSet(dottedKey string, jsonString string) error {
+	return mtp.config.Set(dottedKey, jsonString)
+}
+
 func TestReceiveStorageProposal(t *testing.T) {
 	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
 		assert := assert.New(t)
@@ -47,7 +51,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		accepted := false
 		rejected := false
 
-		porcelainAPI := newminerTestPorcelain()
+		porcelainAPI := newMinerTestPorcelain()
 		miner := Miner{
 			porcelainAPI: porcelainAPI,
 			proposalAcceptor: func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error) {
@@ -81,7 +85,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		accepted := false
 		rejected := false
 
-		porcelainAPI := newminerTestPorcelain()
+		porcelainAPI := newMinerTestPorcelain()
 		miner := Miner{
 			porcelainAPI: porcelainAPI,
 			proposalAcceptor: func(ctx context.Context, m *Miner, p *DealProposal) (*DealResponse, error) {

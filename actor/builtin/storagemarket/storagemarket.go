@@ -128,7 +128,13 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 		}
 
 		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value)
-		if err := vmctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
+
+		actorCodeCid := types.MinerActorCodeCid
+		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
+			actorCodeCid = types.BootstrapMinerActorCodeCid
+		}
+
+		if err := vmctx.CreateNewActor(addr, actorCodeCid, minerInitializationParams); err != nil {
 			return nil, err
 		}
 

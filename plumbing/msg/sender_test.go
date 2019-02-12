@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -17,11 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func setupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
-	d := requireCommonDeps(require)
-	return d.repo, d.wallet, d.chainStore, core.NewMessagePool()
-}
 
 func TestSend(t *testing.T) {
 	t.Parallel()
@@ -127,62 +121,7 @@ func TestNextNonce(t *testing.T) {
 	})
 }
 
-func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
-	t.Parallel()
-
-	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
-		require := require.New(t)
-		repo, w, _, _ := setupSendTest(require)
-
-		// generate a default address
-		addrA, err := wallet.NewAddress(w)
-		require.NoError(err)
-
-		// load up the wallet with a few more addresses
-		for i := 0; i < 10; i++ {
-			wallet.NewAddress(w)
-		}
-
-		// configure a default
-		repo.Config().Wallet.DefaultAddress = addrA
-
-		addrB, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
-		require.NoError(err)
-		require.Equal(addrA.String(), addrB.String())
-	})
-
-	t.Run("default is consistent if none configured", func(t *testing.T) {
-		require := require.New(t)
-		repo, w, _, _ := setupSendTest(require)
-
-		// generate a few addresses
-		// load up the wallet with a few more addresses
-		addresses := []address.Address{}
-		for i := 0; i < 10; i++ {
-			a, err := wallet.NewAddress(w)
-			require.NoError(err)
-			addresses = append(addresses, a)
-		}
-
-		// remove existing wallet config
-		repo.Config().Wallet = &config.WalletConfig{}
-
-		expected, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
-		require.NoError(err)
-		require.True(isInList(expected, addresses))
-		for i := 0; i < 30; i++ {
-			got, err := GetAndMaybeSetDefaultSenderAddress(repo, w)
-			require.NoError(err)
-			require.Equal(expected, got)
-		}
-	})
-}
-
-func isInList(needle address.Address, haystack []address.Address) bool {
-	for _, a := range haystack {
-		if a == needle {
-			return true
-		}
-	}
-	return false
+func setupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
+	d := requireCommonDeps(require)
+	return d.repo, d.wallet, d.chainStore, core.NewMessagePool()
 }

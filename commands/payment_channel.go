@@ -3,10 +3,13 @@ package commands
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/QmekxXDhCxCJRNuzmHreuaT3BsuJcsjcXWNrtV9C8DRHtd/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -28,6 +31,12 @@ var paymentChannelCmd = &cmds.Command{
 	},
 }
 
+type createChannelResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
+}
+
 var createChannelCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Create a new payment channel",
@@ -43,6 +52,7 @@ message to be mined to get the channelID.`,
 		cmdkit.StringOption("from", "Address to send from"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -65,9 +75,27 @@ message to be mined to get the channelID.`,
 			return ErrInvalidBlockHeight
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"createChannel",
+				target, eol,
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&createChannelResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
@@ -75,12 +103,21 @@ message to be mined to get the channelID.`,
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(&createChannelResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &createChannelResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *createChannelResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
 }
@@ -181,6 +218,12 @@ var voucherCmd = &cmds.Command{
 	},
 }
 
+type redeemResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
+}
+
 var redeemCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Redeem a payment voucher against a payment channel",
@@ -192,6 +235,7 @@ var redeemCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel target"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -199,9 +243,38 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+			if err != nil {
+				return err
+			}
+
+			var voucher paymentbroker.PaymentVoucher
+			err = cbor.DecodeInto(cborVoucher, &voucher)
+			if err != nil {
+				return err
+			}
+
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"redeem",
+				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&redeemResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -209,14 +282,29 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(&redeemResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &redeemResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *redeemResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
+}
+
+type reclaimResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var reclaimCmd = &cmds.Command{
@@ -230,6 +318,7 @@ var reclaimCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel creator"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -242,9 +331,27 @@ var reclaimCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"reclaim",
+				channel,
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&reclaimResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
@@ -252,15 +359,29 @@ var reclaimCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(&reclaimResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &reclaimResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *reclaimResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
+}
+
+type closeResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var closeCmd = &cmds.Command{
@@ -274,6 +395,7 @@ var closeCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel target"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -281,9 +403,38 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
+			if err != nil {
+				return err
+			}
+
+			var voucher paymentbroker.PaymentVoucher
+			err = cbor.DecodeInto(cborVoucher, &voucher)
+			if err != nil {
+				return err
+			}
+
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"close",
+				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&closeResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
@@ -291,14 +442,29 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(&closeResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &closeResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			return PrintString(w, c)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *closeResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
+}
+
+type extendResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
 }
 
 var extendCmd = &cmds.Command{
@@ -314,6 +480,7 @@ var extendCmd = &cmds.Command{
 		cmdkit.StringOption("from", "Address of the channel creator"),
 		priceOption,
 		limitOption,
+		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		fromAddr, err := optionalAddr(req.Options["from"])
@@ -336,9 +503,27 @@ var extendCmd = &cmds.Command{
 			return ErrInvalidBlockHeight
 		}
 
-		gasPrice, gasLimit, err := parseGasOptions(req)
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
 		if err != nil {
 			return err
+		}
+
+		if preview {
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"extend",
+				channel, eol,
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&extendResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
 		}
 
 		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
@@ -346,13 +531,21 @@ var extendCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(c)
+		return re.Emit(&extendResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
 	},
-	Type: cid.Undef,
+	Type: &extendResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
-			fmt.Fprintln(w, c) // nolint: errcheck
-			return nil
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *extendResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
 		}),
 	},
 }
