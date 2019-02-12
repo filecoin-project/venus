@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -57,6 +58,7 @@ const (
 type clientNode interface {
 	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
+	GetBlockTime() time.Duration
 }
 
 type clientPorcelainAPI interface {
@@ -104,6 +106,8 @@ func NewClient(nd clientNode, api clientPorcelainAPI, dealsDs repo.Datastore) (*
 
 // ProposeDeal is
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*DealResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 4*smc.node.GetBlockTime())
+	defer cancel()
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -148,7 +152,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	if smc.isMaybeDupDeal(proposal) && !allowDuplicates {
 		return nil, Errors[ErrDupicateDeal]
 	}
-
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -161,7 +164,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating payment")
 	}
 
 	proposal.Payment.Channel = cpResp.Channel
@@ -336,16 +339,23 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 
 // ClientNodeImpl implements the client node interface
 type ClientNodeImpl struct {
-	dserv ipld.DAGService
-	host  host.Host
+	dserv     ipld.DAGService
+	host      host.Host
+	blockTime time.Duration
 }
 
 // NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(ds ipld.DAGService, host host.Host) *ClientNodeImpl {
+func NewClientNodeImpl(ds ipld.DAGService, host host.Host, bt time.Duration) *ClientNodeImpl {
 	return &ClientNodeImpl{
-		dserv: ds,
-		host:  host,
+		dserv:     ds,
+		host:      host,
+		blockTime: bt,
 	}
+}
+
+// GetBlockTime returns the blocktime this node is configured with.
+func (cni *ClientNodeImpl) GetBlockTime() time.Duration {
+	return cni.blockTime
 }
 
 // GetFileSize returns the size of the file referenced by 'c'
