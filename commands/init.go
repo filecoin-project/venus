@@ -19,7 +19,7 @@ var initCmd = &cmds.Command{
 		Tagline: "Initialize a filecoin repo",
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data").withDefault(devnetUserGenesis),
+		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data").WithDefault(devnetUserGenesis),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires running the daemon using dev mode (--dev)"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
