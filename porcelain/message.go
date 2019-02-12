@@ -14,9 +14,12 @@ import (
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// mswrPlumbing is the subset of the plumbing.API that MessageSendWithRetry uses.
-type mswrPlumbing interface {
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+// ErrNoDefaultFromAddress is returned when a default address to send from couldn't be determined (eg, there are zero addresses in the wallet).
+var ErrNoDefaultFromAddress = errors.New("unable to determine a default address to send the message from")
+
+// mswrAPI is the subset of the plumbing.API that MessageSendWithRetry uses.
+type mswrAPI interface {
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -38,7 +41,7 @@ var log = logging.Logger("porcelain") // nolint: deadcode
 //
 // Access to failures might make this a little better but really the solution is
 // to not have re-tries, eg if we had nonce lanes.
-func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error) {
+func MessageSendWithRetry(ctx context.Context, plumbing mswrAPI, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error) {
 	for i := 0; i < int(numRetries); i++ {
 		log.Debugf("SendMessageAndWait (%s) retry %d/%d, waitDuration %v", method, i, numRetries, waitDuration)
 
@@ -46,7 +49,16 @@ func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries
 			return
 		}
 
-		msgCid, err := plumbing.MessageSend(ctx, from, to, val, gasPrice, gasLimit, method, params...)
+		msgCid, err := plumbing.MessageSendWithDefaultAddress(
+			ctx,
+			from,
+			to,
+			val,
+			gasPrice,
+			gasLimit,
+			method,
+			params...,
+		)
 		if err != nil {
 			return errors.Wrap(err, "couldn't send message")
 		}
@@ -71,4 +83,68 @@ func MessageSendWithRetry(ctx context.Context, plumbing mswrPlumbing, numRetries
 	}
 
 	return errors.Wrapf(err, "failed to send message after waiting %v for each of %d retries ", waitDuration, numRetries)
+}
+
+// mswdaAPI is the subset of the plumbing.API that MessageSendWithDefaultAddress uses.
+type mswdaAPI interface {
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
+	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+}
+
+// MessageSendWithDefaultAddress calls MessageSend but with a default from
+// address if none is provided. If you don't need a default address provided,
+// use MessageSend instead.
+func MessageSendWithDefaultAddress(
+	ctx context.Context,
+	plumbing mswdaAPI,
+	from,
+	to address.Address,
+	value *types.AttoFIL,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+	method string,
+	params ...interface{},
+) (cid.Cid, error) {
+	// If the from address isn't set attempt to use the default address.
+	if from == (address.Address{}) {
+		ret, err := plumbing.GetAndMaybeSetDefaultSenderAddress()
+		if (err != nil && err == ErrNoDefaultFromAddress) || ret == (address.Address{}) {
+			return cid.Undef, ErrNoDefaultFromAddress
+		}
+		from = ret
+	}
+
+	return plumbing.MessageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+}
+
+// gamsdsaAPI is the subset of the plumbing.API that GetAndMaybeSetDefaultSenderAddress uses.
+type gamsdsaAPI interface {
+	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedPath string, paramJSON string) error
+
+	WalletAddresses() []address.Address
+}
+
+// GetAndMaybeSetDefaultSenderAddress returns a default address from which to
+// send messsages. If none is set it picks the first address in the wallet and
+// sets it as the default in the config.
+func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaAPI) (address.Address, error) {
+	ret, err := plumbing.ConfigGet("wallet.defaultAddress")
+	addr := ret.(address.Address)
+	if err != nil || addr != (address.Address{}) {
+		return addr, err
+	}
+
+	// No default is set; pick the 0th and make it the default.
+	if len(plumbing.WalletAddresses()) > 0 {
+		addr := plumbing.WalletAddresses()[0]
+		err := plumbing.ConfigSet("wallet.defaultAddress", addr.String())
+		if err != nil {
+			return address.Address{}, err
+		}
+
+		return addr, nil
+	}
+
+	return address.Address{}, ErrNoDefaultFromAddress
 }

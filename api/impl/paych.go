@@ -8,7 +8,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -23,7 +22,7 @@ func newNodePaych(api *nodeAPI, porcelainAPI *porcelain.API) *nodePaych {
 }
 
 func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -46,8 +45,7 @@ func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address
 		payerAddr = fromAddr
 	}
 
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	values, _, err := queryer.Query(
+	values, _, err := np.porcelainAPI.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -74,8 +72,7 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 		return "", err
 	}
 
-	queryer := msg.NewQueryer(nd.Repo, nd.Wallet, nd.ChainReader, nd.CborStore(), nd.Blockstore)
-	values, _, err := queryer.Query(
+	values, _, err := np.porcelainAPI.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -106,7 +103,7 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 		return cid.Undef, err
 	}
 
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -119,7 +116,7 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 }
 
 func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -137,7 +134,7 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		return cid.Undef, err
 	}
 
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -150,7 +147,7 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 }
 
 func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSend(
+	return np.porcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,

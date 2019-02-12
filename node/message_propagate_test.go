@@ -43,7 +43,16 @@ func TestMessagePropagation(t *testing.T) {
 	gasLimit := types.NewGasUnits(0)
 
 	t.Run("Make sure new message makes it to every node message pool and is correctly propagated", func(t *testing.T) {
-		_, err = nodes[0].PorcelainAPI.MessageSend(ctx, nd0Addr, address.NetworkAddress, types.NewAttoFILFromFIL(123), gasPrice, gasLimit, "foo", []byte{})
+		_, err = nodes[0].PorcelainAPI.MessageSendWithDefaultAddress(
+			ctx,
+			nd0Addr,
+			address.NetworkAddress,
+			types.NewAttoFILFromFIL(123),
+			gasPrice,
+			gasLimit,
+			"foo",
+			[]byte{},
+		)
 		require.NoError(err)
 
 		var msgs0, msgs1, msgs2, msgs3, msgs4 []*types.SignedMessage

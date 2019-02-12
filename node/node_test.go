@@ -19,11 +19,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,15 +155,20 @@ func TestNodeStartMining(t *testing.T) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	minerNode := MakeNodeWithChainSeed(t, seed, []ConfigOpt{}, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
+	walletBackend, _ := wallet.NewDSBackend(minerNode.Repo.WalletDatastore())
+
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		SigGetter:  mthdsig.NewGetter(minerNode.ChainReader),
-		MsgQueryer: msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:  msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
-		MsgWaiter:  msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
-		Config:     pbConfig.NewConfig(minerNode.Repo),
-		Chain:      chn.New(minerNode.ChainReader),
+		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
+		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
+		MsgSender:    msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PubSub.Publish),
+		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
+		Config:       pbConfig.NewConfig(minerNode.Repo),
+		Chain:        chn.New(minerNode.ChainReader),
+		Network:      ntwk.NewNetwork(minerNode.Host()),
+		Wallet:       wallet.New(walletBackend),
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 

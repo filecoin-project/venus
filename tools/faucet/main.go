@@ -103,14 +103,16 @@ func main() {
 			return
 		}
 
+		msgResp := struct{ Cid cid.Cid }{}
+
 		// result should be a message cid
-		var msgcid cid.Cid
-		if err := json.Unmarshal(out, &msgcid); err != nil {
+		if err := json.Unmarshal(out, &msgResp); err != nil {
 			log.Errorf("json unmarshal from response failed: %s", err)
-			log.Errorf("response data was: %s", string(out))
+			log.Errorf("response data was: %s", out)
 			http.Error(w, "faucet unmarshal failed", 500)
 			return
 		}
+		msgcid := msgResp.Cid
 
 		addrLimiter.Add(target, time.Now().Add(*expiry))
 
