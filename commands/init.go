@@ -58,7 +58,7 @@ var initCmd = &cmds.Command{
 			}
 		}
 
-		isDevnetUser = !(devnetTest || devnetNightly)
+		isDevnetUser := !(devnetTest || devnetNightly)
 
 		if !isDevnetUser && genesisFile == devnetUserGenesis {
 			return fmt.Errorf("--devnet-* flag was supplied without --genesisfile")
