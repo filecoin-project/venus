@@ -39,9 +39,7 @@ func TestPreview(t *testing.T) {
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through genesis helpers.
 		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-		defer func() {
-			delete(builtin.Actors, fakeActorCodeCid)
-		}()
+		defer delete(builtin.Actors, fakeActorCodeCid)
 		testGen := consensus.MakeGenesisFunc(
 			// Actor we will send the query to.
 			consensus.AddActor(fakeActorAddr, fakeActor),

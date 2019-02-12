@@ -251,7 +251,7 @@ This command waits for the ask to be mined.`,
 				_, err := w.Write([]byte(output))
 				return err
 			}
-			output := fmt.Sprintf(`Set price for miner %s to %s.
+			_, err := fmt.Fprintf(w, `Set price for miner %s to %s.
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
 	`,
@@ -260,7 +260,6 @@ This command waits for the ask to be mined.`,
 				res.MinerSetPriceResponse.AddAskCid.String(),
 				res.MinerSetPriceResponse.BlockCid.String(),
 			)
-			_, err := w.Write([]byte(output))
 			return err
 		}),
 	},
