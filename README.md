@@ -96,6 +96,7 @@ To do so:
   - Export these two environment variables before fetching dependencies:
     - `GITHUB_TOKEN` - a personal access token [from GitHub](https://github.com/settings/tokens) with `repo` scope
     - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS=1`
+    - `FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES=1`
   - Make sure `curl` and `jq` are installed in your system.
   - You will still need `rust`/`cargo` to install bls-signatures (until #1759 is resolved).
 
