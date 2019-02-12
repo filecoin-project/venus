@@ -200,7 +200,7 @@ Looking for even more? See the full rundown at [filecoin-project/community](http
 
 ## Developer Networks
 
-There are currently 2 developer networks (aka devnets) available for development and testing. Both are subject to _**frequent downtimes and breaking changes**_. See [Networks](https://github.com/filecoin-project/go-filecoin/wiki/Networks) in the wiki for a description of
+There are currently 3 developer networks (aka devnets) available for development and testing. These are subject to _**frequent downtimes and breaking changes**_. See [Devnets](https://github.com/filecoin-project/go-filecoin/wiki/Devnets) in the wiki for a description of
 these developer networks and instructions for connecting your nodes to them.
 
 ## License
