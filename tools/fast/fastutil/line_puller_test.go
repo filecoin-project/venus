@@ -2,6 +2,8 @@ package fastutil
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,4 +48,56 @@ func TestLinePuller(t *testing.T) {
 
 		compare(t, expected.Bytes(), sink.Bytes())
 	})
+
+	t.Run("pull after EOF", func(t *testing.T) {
+		var source manualReader
+		var sink bytes.Buffer
+		var expected bytes.Buffer
+
+		lp := NewLinePuller(&source, &sink)
+
+		source.bytes = []byte("Hello World\n")
+		source.err = io.EOF
+
+		expected.Write(source.bytes)
+
+		err := lp.Pull()
+		require.NoError(t, err)
+
+		expected.Write(source.bytes)
+
+		err = lp.Pull()
+		require.NoError(t, err)
+
+		compare(t, expected.Bytes(), sink.Bytes())
+	})
+
+	t.Run("source returns error", func(t *testing.T) {
+		var source manualReader
+		var sink bytes.Buffer
+		var expected bytes.Buffer
+
+		lp := NewLinePuller(&source, &sink)
+
+		source.bytes = []byte{}
+		source.err = errors.New("An error")
+
+		err := lp.Pull()
+		require.Equal(t, err, source.err)
+
+		compare(t, expected.Bytes(), sink.Bytes())
+	})
+}
+
+type manualReader struct {
+	bytes []byte
+	err   error
+}
+
+func (r *manualReader) Read(p []byte) (int, error) {
+	if len(p) < len(r.bytes) {
+		panic("manualReader bytes is larger than read buffer")
+	}
+
+	return copy(p, r.bytes), r.err
 }
