@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"testing"
+	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -205,6 +206,10 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 	return &testClientNode{
 		responder: responder,
 	}
+}
+
+func (tcn *testClientNode) GetBlockTime() time.Duration {
+	return 100 * time.Millisecond
 }
 
 func (tcn *testClientNode) GetFileSize(context.Context, cid.Cid) (uint64, error) {
