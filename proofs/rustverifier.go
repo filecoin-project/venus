@@ -108,6 +108,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 		(*[192]C.uint8_t)(proofCBytes),
 		faultsPtr,
 		faultsSize,
+		0,
 	)))
 	defer C.destroy_verify_post_response(resPtr)
 
