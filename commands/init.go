@@ -38,7 +38,6 @@ var initCmd = &cmds.Command{
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		devnetTest, _ := req.Options[DevnetTest].(bool)
 		devnetNightly, _ := req.Options[DevnetNightly].(bool)
-		devnetUser, _ := req.Options[DevnetUser].(bool)
 
 		var withMiner address.Address
 		if m, ok := req.Options[WithMiner].(string); ok {
