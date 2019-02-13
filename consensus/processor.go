@@ -283,7 +283,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		// includes errInsufficientFunds because we don't want the message
 		// to be replayable.
 		executionError = err
-		log.Warningf("ApplyMessage execution error: %s", executionError)
+		log.Infof("ApplyMessage failed: %s %s", executionError, msg.String())
 	}
 
 	// At this point we consider the message successfully applied so inc

@@ -390,7 +390,9 @@ func (td *TestDaemon) Stop() *TestDaemon {
 
 // Restart restarts the daemon
 func (td *TestDaemon) Restart() *TestDaemon {
-	return td.Stop().Start()
+	td.Stop()
+	td.assertNoLogErrors()
+	return td.Start()
 }
 
 // Shutdown stops the daemon and deletes the repository.
@@ -411,6 +413,13 @@ func (td *TestDaemon) Shutdown() {
 func (td *TestDaemon) ShutdownSuccess() {
 	err := td.process.Process.Signal(syscall.SIGTERM)
 	assert.NoError(td.test, err)
+
+	td.assertNoLogErrors()
+
+	_ = os.RemoveAll(td.repoDir)
+}
+
+func (td *TestDaemon) assertNoLogErrors() {
 	tdErr := td.ReadStderr()
 
 	// We filter out errors expected from the cleanup associated with SIGTERM
@@ -428,8 +437,6 @@ func (td *TestDaemon) ShutdownSuccess() {
 
 	assert.NotContains(td.test, filteredStdErr, "CRITICAL")
 	assert.NotContains(td.test, filteredStdErr, "ERROR")
-
-	_ = os.RemoveAll(td.repoDir)
 }
 
 // ShutdownEasy stops the daemon using `SIGINT`.
