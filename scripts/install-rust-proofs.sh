@@ -104,5 +104,6 @@ else
   if [ $? -ne "0" ]; then
     echo "failed to find or obtain precompiled rust-proofs, falling back to local"
     install_local
+    copy_groth_params
   fi
 fi
