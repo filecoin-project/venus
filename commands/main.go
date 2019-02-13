@@ -332,7 +332,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, er
 
 		price = p
 	} else {
-		price = types.NewAttoFIL(big.NewInt(10000))
+		price = types.NewAttoFIL(big.NewInt(300))
 	}
 
 	var gasLimit types.GasUnits
