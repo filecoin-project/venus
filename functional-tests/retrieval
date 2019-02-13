@@ -37,15 +37,14 @@ BLOCK_TIME="5s"
 HODL="HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL"
 
 if [ "${USE_SMALL_SECTORS}" = true ] ; then
-    echo "${HODL}" > "${PIECE_1_PATH}"
-    echo "BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN BLOCKCHAIN" > "${PIECE_2_PATH}"
+    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=1 count=700
+    dd if=/dev/urandom of="${PIECE_1_PATH}" bs=1 count=500
 else
-    # Keeping first piece block count at: 1040000 < 1040384 = 1065353216/1024
-    # will prevent first piece from triggering seal.
-    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=1024 count=1040000
-    # A total block count of: (piece_1_count + piece_2_count) = 1040000 + 500 = 1040500 > 1040384
-    # will cause the second piece to trigger a seal.
-    dd if=/dev/urandom of="${PIECE_1_PATH}" bs=1024 count=500
+    # Maximum number of user piece-bytes in a Live-configuration sector is
+    # equal to 266338304. Our first piece will not fill up the whole sector.
+    dd if=/dev/urandom of="${PIECE_1_PATH}" bs=$((1024*1024)) count=180
+    # Adding this second piece will cause the sector sealing process to run.
+    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=$((1024*1024)) count=180
 fi
 
 trap finish EXIT

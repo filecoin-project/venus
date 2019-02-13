@@ -18,6 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// MaxTimeToSealASector represents the maximum amount of time the test should
+// wait for a sector to be sealed. Seal performance varies depending on the
+// computer, so we need to select a value which works for slow (CircleCI OSX
+// build containers) and fast (developer machines) alike.
+const MaxTimeToSealASector = time.Second * 360
+
 func TestSectorBuilder(t *testing.T) {
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()
@@ -64,10 +70,10 @@ func TestSectorBuilder(t *testing.T) {
 		var addedPieceCids []string
 		var sealedPieceCids []string
 
-		// wait for a bit of time for the various seal() ops to complete
-		// and capture the CIDs of added pieces for comparison with the
-		// CIDS of sealed pieces
-		timeout := time.After(700 * time.Second)
+		// Wait for a bit of time for the various seal() ops to complete and
+		// capture the cids of added pieces for comparison with the cids of
+		// sealed pieces. At most we should seal 10 times (once per piece).
+		timeout := time.After(MaxTimeToSealASector * 10)
 		for {
 			if piecesToSeal == 0 {
 				break
@@ -143,8 +149,9 @@ func TestSectorBuilder(t *testing.T) {
 			}()
 		}
 
-		// realistically, this should take 15-20 seconds
-		timeout := time.After(700 * time.Second)
+		// Sealing a small sector can take 180+ seconds on a MacBook Pro i7.
+		// In the worst-case scenario, we seal 5 times (once per piece).
+		timeout := time.After(MaxTimeToSealASector * 5)
 		for {
 			if piecesToSeal == 0 {
 				break
@@ -177,30 +184,28 @@ func TestSectorBuilder(t *testing.T) {
 		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
 		require.NoError(t, err)
 
-		timeout := time.After(700 * time.Second)
-	Loop:
-		for {
-			select {
-			case val := <-h.SectorBuilder.SectorSealResults():
-				require.NoError(t, val.SealingErr)
-				require.Equal(t, sectorID, val.SealingResult.SectorID)
+		// Sealing can take 180+ seconds on an i7 MacBook Pro. We are sealing
+		// but one sector in this test.
+		timeout := time.After(MaxTimeToSealASector)
 
-				res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
-					CommD:     val.SealingResult.CommD,
-					CommR:     val.SealingResult.CommR,
-					CommRStar: val.SealingResult.CommRStar,
-					Proof:     val.SealingResult.Proof,
-					ProverID:  sectorbuilder.AddressToProverID(h.MinerAddr),
-					SectorID:  sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
-					StoreType: h.SectorConfig,
-				})
-				require.NoError(t, err)
-				require.True(t, res.IsValid)
+		select {
+		case val := <-h.SectorBuilder.SectorSealResults():
+			require.NoError(t, val.SealingErr)
+			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
-				break Loop
-			case <-timeout:
-				break Loop // I've always dreamt of using GOTO
-			}
+			res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
+				CommD:     val.SealingResult.CommD,
+				CommR:     val.SealingResult.CommR,
+				CommRStar: val.SealingResult.CommRStar,
+				Proof:     val.SealingResult.Proof,
+				ProverID:  sectorbuilder.AddressToProverID(h.MinerAddr),
+				SectorID:  sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				StoreType: h.SectorConfig,
+			})
+			require.NoError(t, err)
+			require.True(t, res.IsValid)
+		case <-timeout:
+			t.Fatalf("timed out waiting for seal to complete")
 		}
 
 		reader, err := h.SectorBuilder.ReadPieceFromSealedSector(info.Ref)
@@ -248,7 +253,7 @@ func TestSectorBuilder(t *testing.T) {
 		// seal everything
 		hB.SectorBuilder.SealAllStagedSectors(context.Background())
 
-		timeout := time.After(120 * time.Second)
+		timeout := time.After(MaxTimeToSealASector * 2)
 	Loop:
 		for {
 			select {
@@ -267,7 +272,7 @@ func TestSectorBuilder(t *testing.T) {
 					break Loop
 				}
 			case <-timeout:
-				break Loop
+				t.Fatalf("timed out waiting for seal to complete")
 			}
 		}
 
@@ -288,41 +293,38 @@ func TestSectorBuilder(t *testing.T) {
 		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
 		require.NoError(t, err)
 
-		timeout := time.After(700 * time.Second)
-	Loop:
-		for {
-			select {
-			case val := <-h.SectorBuilder.SectorSealResults():
-				require.NoError(t, val.SealingErr)
-				require.Equal(t, sectorID, val.SealingResult.SectorID)
+		// Sealing can take 180+ seconds on an i7 MacBook Pro. We are sealing
+		// but one sector in this test.
+		timeout := time.After(MaxTimeToSealASector)
 
-				// TODO: This should be generates from some standard source of
-				// entropy, e.g. the blockchain
-				challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
+		select {
+		case val := <-h.SectorBuilder.SectorSealResults():
+			require.NoError(t, val.SealingErr)
+			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
-				// generate a proof-of-spacetime
-				gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
-					CommRs:        []proofs.CommR{val.SealingResult.CommR, val.SealingResult.CommR},
-					ChallengeSeed: challengeSeed,
-				})
-				require.NoError(t, gerr)
+			// TODO: This should be generates from some standard source of
+			// entropy, e.g. the blockchain
+			challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
 
-				// TODO: Replace these hard-coded values (in rust-proofs) with an
-				// end-to-end PoST test over a small number of replica commitments
-				require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proof[0]))
-				require.Equal(t, 1, len(gres.Faults))
-				require.Equal(t, uint64(0), gres.Faults[0])
+			// generate a proof-of-spacetime
+			gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
+				CommRs:        []proofs.CommR{val.SealingResult.CommR, val.SealingResult.CommR},
+				ChallengeSeed: challengeSeed,
+			})
+			require.NoError(t, gerr)
 
-				// verify the proof-of-spacetime
-				vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, []proofs.CommR{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
-				require.NoError(t, verr)
-				require.True(t, vres)
+			// TODO: Replace these hard-coded values (in rust-proofs) with an
+			// end-to-end PoST test over a small number of replica commitments
+			require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proof[0]))
+			require.Equal(t, 1, len(gres.Faults))
+			require.Equal(t, uint64(0), gres.Faults[0])
 
-				break Loop
-			case <-timeout:
-				t.Fail()
-				break Loop // I've always dreamt of using GOTO
-			}
+			// verify the proof-of-spacetime
+			vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, []proofs.CommR{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
+			require.NoError(t, verr)
+			require.True(t, vres)
+		case <-timeout:
+			t.Fatalf("timed out waiting for seal to complete")
 		}
 	})
 }
