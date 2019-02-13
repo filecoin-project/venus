@@ -832,19 +832,16 @@ func (node *Node) StartMining(ctx context.Context) error {
 					gasUnits := types.BlockGasLimit
 
 					val := result.SealingResult
-					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
-					// as our miners existence depends on this.
-					err := porcelain.MessageSendWithRetry(
+					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
+					// We should deal with this, but MessageSendWithRetry is problematic.
+					_, err := node.PorcelainAPI.MessageSend(
 						node.miningCtx,
-						node.PorcelainAPI,
-						10,                  /* retries */
-						node.GetBlockTime(), /* wait per retry */
 						minerOwnerAddr,
 						minerAddr,
 						nil,
-						"commitSector",
 						gasPrice,
 						gasUnits,
+						"commitSector",
 						val.SectorID,
 						val.CommD[:],
 						val.CommR[:],

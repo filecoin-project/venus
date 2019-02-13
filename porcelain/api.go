@@ -3,7 +3,6 @@ package porcelain
 import (
 	"context"
 	"math/big"
-	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
@@ -50,23 +49,6 @@ func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) 
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
-}
-
-// MessageSendWithRetry sends a message and retries if it does not appear on chain. See implementation
-// for more details.
-func (a *API) MessageSendWithRetry(
-	ctx context.Context,
-	numRetries uint,
-	waitDuration time.Duration,
-	from,
-	to address.Address,
-	val *types.AttoFIL,
-	method string,
-	gasPrice types.AttoFIL,
-	gasLimit types.GasUnits,
-	params ...interface{},
-) (err error) {
-	return MessageSendWithRetry(ctx, a, numRetries, waitDuration, from, to, val, method, gasPrice, gasLimit, params...)
 }
 
 // MessageSendWithDefaultAddress calls MessageSend but with a default from
