@@ -485,7 +485,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// To keep things simple for now this info is not used.
 		err := node.Syncer.HandleNewBlocks(context.Background(), cids)
 		if err != nil {
-			log.Info("error handling blocks: %s", types.NewSortedCidSet(cids...).String())
+			log.Infof("error handling blocks: %s", types.NewSortedCidSet(cids...).String())
 		}
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)

@@ -124,6 +124,7 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // It does NOT add tipsets to the store.
 func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, types.TipSet, error) {
 	var chain []types.TipSet
+	defer logSyncer.Info("chain synced")
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
@@ -145,6 +146,11 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 			syncer.badTipSets.Add(tsKey)
 			syncer.badTipSets.AddChain(chain)
 			return nil, nil, err
+		}
+
+		height, _ := ts.Height()
+		if len(chain)%500 == 0 {
+			logSyncer.Infof("syncing the chain, currently at block height %d", height)
 		}
 
 		// Finish traversal if the tipset made is tracked in the store.
