@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
@@ -161,6 +162,14 @@ func NewBlockForTest(parent *Block, nonce uint64) *Block {
 	}
 
 	return block
+}
+
+// RequireNewTipSet instantiates and returns a new tipset of the given blocks
+// and requires that the setup validation succeed.
+func RequireNewTipSet(require *require.Assertions, blks ...*Block) TipSet {
+	ts, err := NewTipSet(blks...)
+	require.NoError(err)
+	return ts
 }
 
 // NewMsgs returns n messages. The messages returned are unique to this invocation

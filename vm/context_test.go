@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -12,6 +13,7 @@ import (
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -21,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
-	"github.com/stretchr/testify/require"
 )
 
 func TestVMContextStorage(t *testing.T) {
@@ -292,4 +293,83 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	vmCtxParams.From = nonAccountActor
 	ctx = NewVMContext(vmCtxParams)
 	assert.False(ctx.IsFromAccountActor())
+}
+
+func TestVMContextRand(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	var ancestors []types.TipSet
+	// setup ancestor chain
+	head := types.NewBlockForTest(nil, uint64(0))
+	head.Ticket = []byte(strconv.Itoa(0))
+	for i := 0; i < 20; i++ {
+		ancestors = append(ancestors, types.RequireNewTipSet(require, head))
+		newBlock := types.NewBlockForTest(head, uint64(0))
+		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
+		head = newBlock
+	}
+	ancestors = append(ancestors, types.RequireNewTipSet(require, head))
+
+	t.Run("happy path", func(t *testing.T) {
+		vmCtxParams := NewContextParams{
+			Ancestors: ancestors,
+			LookBack:  3,
+		}
+		ctx := NewVMContext(vmCtxParams)
+
+		r, err := ctx.Rand(types.NewBlockHeight(uint64(20)))
+		assert.NoError(err)
+		assert.Equal([]byte(strconv.Itoa(17)), r)
+
+		r, err = ctx.Rand(types.NewBlockHeight(uint64(3)))
+		assert.NoError(err)
+		assert.Equal([]byte(strconv.Itoa(0)), r)
+
+		r, err = ctx.Rand(types.NewBlockHeight(uint64(10)))
+		assert.NoError(err)
+		assert.Equal([]byte(strconv.Itoa(7)), r)
+	})
+
+	t.Run("faults with height out of range", func(t *testing.T) {
+		// edit ancestors to include null blocks
+		baseBlock := ancestors[len(ancestors)-2].ToSlice()[0]
+		afterNull := types.NewBlockForTest(baseBlock, uint64(0))
+		afterNull.Height += types.Uint64(uint64(5))
+		afterNull.Ticket = []byte(strconv.Itoa(int(afterNull.Height)))
+		modAncestors := append(ancestors[:len(ancestors)-1], types.RequireNewTipSet(require, afterNull))
+		vmCtxParams := NewContextParams{
+			Ancestors: modAncestors,
+			LookBack:  3,
+		}
+
+		ctx := NewVMContext(vmCtxParams)
+		_, err := ctx.Rand(types.NewBlockHeight(uint64(22))) // null block here
+		assert.Error(err)
+
+		_, err = ctx.Rand(types.NewBlockHeight(uint64(30))) // ancestors all lower height
+		assert.Error(err)
+	})
+
+	t.Run("faults with lookback out of range", func(t *testing.T) {
+		modAncestors := ancestors[5:]
+		vmCtxParams := NewContextParams{
+			Ancestors: modAncestors,
+			LookBack:  3,
+		}
+
+		ctx := NewVMContext(vmCtxParams)
+		_, err := ctx.Rand(types.NewBlockHeight(uint64(5))) // lookback height lower than all ancestors
+		assert.Error(err)
+	})
+
+	t.Run("truncated to genesis", func(t *testing.T) {
+		vmCtxParams := NewContextParams{
+			Ancestors: ancestors,
+			LookBack:  3,
+		}
+		ctx := NewVMContext(vmCtxParams)
+		r, err := ctx.Rand(types.NewBlockHeight(uint64(1))) // lookback height lower than all ancestors
+		assert.NoError(err)
+		assert.Equal([]byte(strconv.Itoa(0)), r)
+	})
 }
