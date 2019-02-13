@@ -6,10 +6,12 @@ package mining
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"time"
+
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
@@ -20,6 +22,11 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	ticket types.Signature,
 	proof proofs.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
+
+	generateTimer := time.Now()
+	defer func() {
+		log.Infof("[TIMER] DefaultWorker.Generate baseTipset: %s - elapsed time: %s", baseTipSet.String(), time.Since(generateTimer).Round(time.Millisecond))
+	}()
 
 	stateTree, err := w.getStateTree(ctx, baseTipSet)
 	if err != nil {

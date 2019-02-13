@@ -51,7 +51,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
-	log.Info("Calling Waiter.Wait")
+	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
 	ch := make(chan (interface{}))
