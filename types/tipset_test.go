@@ -25,14 +25,6 @@ func init() {
 	mockSignerForTest = NewMockSigner(ki)
 }
 
-// requireNewTipSet instantiates and returns a new tipset of the given blocks
-// and requires that the setup validation succeed.
-func requireNewTipSet(require *require.Assertions, blks ...*Block) TipSet {
-	ts, err := NewTipSet(blks...)
-	require.NoError(err)
-	return ts
-}
-
 // requireTipSetAdd adds a block to the provided tipset and requires that this
 // does not error.
 func requireTipSetAdd(require *require.Assertions, blk *Block, ts TipSet) {
@@ -112,7 +104,7 @@ func RequireTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 func RequireTestTipSet(t *testing.T) TipSet {
 	require := require.New(t)
 	b1, b2, b3 := RequireTestBlocks(t)
-	return requireNewTipSet(require, b1, b2, b3)
+	return RequireNewTipSet(require, b1, b2, b3)
 }
 
 func TestTipSetAddBlock(t *testing.T) {
@@ -127,7 +119,7 @@ func TestTipSetAddBlock(t *testing.T) {
 	requireTipSetAdd(require, b2, ts1)
 	requireTipSetAdd(require, b3, ts1)
 
-	ts2 := requireNewTipSet(require, b1, b2, b3)
+	ts2 := RequireNewTipSet(require, b1, b2, b3)
 	assert.Equal(ts2, ts1)
 
 	// Invalid height
@@ -267,7 +259,7 @@ func TestTipSetEquals(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ts2 := requireNewTipSet(require, b1, b2)
+	ts2 := RequireNewTipSet(require, b1, b2)
 	assert.True(!ts2.Equals(ts))
 	ts2.AddBlock(b3)
 	assert.True(ts.Equals(ts2))
