@@ -118,6 +118,16 @@ func (s SortedCidSet) Equals(s2 SortedCidSet) bool {
 	return true
 }
 
+// Contains checks if s2 is a sub-tipset of s
+func (s *SortedCidSet) Contains(s2 *SortedCidSet) bool {
+	for it := s2.Iter(); !it.Complete(); it.Next() {
+		if !s.Has(it.Value()) {
+			return false
+		}
+	}
+	return true
+}
+
 // String returns a string listing the cids in the set.
 func (s SortedCidSet) String() string {
 	out := "{"

@@ -157,7 +157,7 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 }
 
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
-func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (chain.Syncer, *hamt.CborIpldStore) {
+func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (*chain.DefaultSyncer, *hamt.CborIpldStore) {
 	powerTable := &testhelpers.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
@@ -172,7 +172,7 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (chain.Syncer,
 
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(require *require.Assertions) (chain.Syncer, chain.Store, *hamt.CborIpldStore, repo.Repo) {
+func initSyncTestDefault(require *require.Assertions) (*chain.DefaultSyncer, chain.Store, *hamt.CborIpldStore, repo.Repo) {
 	processor := testhelpers.NewTestProcessor()
 	powerTable := &testhelpers.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -186,7 +186,7 @@ func initSyncTestDefault(require *require.Assertions) (chain.Syncer, chain.Store
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensus.PowerTableView) (chain.Syncer, chain.Store, *hamt.CborIpldStore, consensus.Protocol) {
+func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensus.PowerTableView) (*chain.DefaultSyncer, chain.Store, *hamt.CborIpldStore, consensus.Protocol) {
 	processor := testhelpers.NewTestProcessor()
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -198,7 +198,7 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 	return sync, testchain, cst, con
 }
 
-func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (chain.Syncer, chain.Store, *hamt.CborIpldStore, repo.Repo) {
+func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (*chain.DefaultSyncer, chain.Store, *hamt.CborIpldStore, repo.Repo) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
