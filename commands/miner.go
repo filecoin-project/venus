@@ -66,13 +66,13 @@ type minerCreateResult struct {
 
 var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+		Tagline: "Create a new file miner with <pledge> sectors and <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
 Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in 1GB sectors) for the miner"),
+		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in sectors) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
 	},
 	Options: []cmdkit.Option{
