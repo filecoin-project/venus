@@ -34,8 +34,8 @@ var minerCmd = &cmds.Command{
 
 var minerPledgeCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "View number of pledged 1GB sectors for <miner>",
-		ShortDescription: `Shows the number of pledged 1GB sectors for the given miner address`,
+		Tagline:          "View number of pledged sectors for <miner>",
+		ShortDescription: `Shows the number of pledged sectors for the given miner address`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The miner address"),
