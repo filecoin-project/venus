@@ -102,16 +102,6 @@ func runCapture(name string) string {
 	return strings.Trim(string(output), lineBreak)
 }
 
-// hydrateParamCache hydrates the groth parameter cache used when sealing a
-// sector to ensure consistent test runs. If the cache is hydrated lazily (the
-// first time that seal runs), a test could take longer than expected and time
-// out.
-func hydrateParamCache() []command {
-	return []command{
-		cmd("./proofs/bin/paramcache"),
-	}
-}
-
 // deps installs all dependencies
 func deps() {
 	runCmd(cmd("pkg-config --version"))
@@ -140,9 +130,9 @@ func deps() {
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
+		cmd("./proofs/bin/paramcache"),
+		cmd("./scripts/copy-groth-params.sh"),
 	}
-
-	cmds = append(cmds, hydrateParamCache()...)
 
 	for _, c := range cmds {
 		runCmd(c)
