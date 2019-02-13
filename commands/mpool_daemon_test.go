@@ -14,7 +14,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 )
 
-func TestMpool(t *testing.T) {
+func TestMpoolLs(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -29,7 +29,7 @@ func TestMpool(t *testing.T) {
 			"--value=10", fixtures.TestAddresses[2],
 		)
 
-		out := d.RunSuccess("mpool")
+		out := d.RunSuccess("mpool", "ls")
 		c := strings.Trim(out.ReadStdout(), "\n")
 		ci, err := cid.Decode(c)
 		assert.NoError(err)
@@ -46,7 +46,7 @@ func TestMpool(t *testing.T) {
 
 		complete := false
 		go func() {
-			out := d.RunSuccess("mpool", "--wait-for-count=3")
+			out := d.RunSuccess("mpool", "ls", "--wait-for-count=3")
 			complete = true
 			c := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
 			assert.Equal(3, len(c))
@@ -78,5 +78,27 @@ func TestMpool(t *testing.T) {
 		wg.Wait()
 
 		assert.True(complete)
+	})
+}
+
+func TestMpoolRm(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	t.Run("remove a message", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
+		defer d.ShutdownSuccess()
+
+		msgCid := d.RunSuccess("message", "send",
+			"--from", fixtures.TestAddresses[0],
+			"--price", "0", "--limit", "300",
+			"--value=10", fixtures.TestAddresses[2],
+		).ReadStdoutTrimNewlines()
+
+		d.RunSuccess("mpool", "rm", msgCid)
+
+		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
+		assert.Equal("", out)
 	})
 }
