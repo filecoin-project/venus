@@ -140,9 +140,9 @@ func deps() {
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
+		cmd("./proofs/bin/paramcache"),
+		cmd("./scripts/copy-groth-params.sh"),
 	}
-
-	cmds = append(cmds, hydrateParamCache()...)
 
 	for _, c := range cmds {
 		runCmd(c)
