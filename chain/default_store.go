@@ -17,7 +17,6 @@ import (
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -48,7 +47,7 @@ type DefaultStore struct {
 	// genesis is the CID of the genesis block.
 	genesis cid.Cid
 	// head is the tipset at the head of the best known chain.
-	head consensus.TipSet
+	head types.TipSet
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -103,7 +102,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	headTs := consensus.TipSet{}
+	headTs := types.TipSet{}
 	// traverse starting from head to begin loading the chain
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
@@ -116,9 +115,9 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		}
 	}
 
-	var genesii consensus.TipSet
+	var genesii types.TipSet
 	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		ts, err := consensus.NewTipSet(tips...)
+		ts, err := types.NewTipSet(tips...)
 		if err != nil {
 			return false, err
 		}
@@ -172,7 +171,7 @@ func (store *DefaultStore) loadHead() (types.SortedCidSet, error) {
 	return cids, nil
 }
 
-func (store *DefaultStore) loadStateRoot(ts consensus.TipSet) (cid.Cid, error) {
+func (store *DefaultStore) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, err
@@ -296,7 +295,7 @@ func (store *DefaultStore) HeadEvents() *pubsub.PubSub {
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) error {
+func (store *DefaultStore) SetHead(ctx context.Context, ts types.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
@@ -315,7 +314,7 @@ func (store *DefaultStore) SetHead(ctx context.Context, ts consensus.TipSet) err
 	return nil
 }
 
-func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts consensus.TipSet) error {
+func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts types.TipSet) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -358,7 +357,7 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 }
 
 // Head returns the current head.
-func (store *DefaultStore) Head() consensus.TipSet {
+func (store *DefaultStore) Head() types.TipSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
@@ -378,20 +377,19 @@ func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) 
 	return state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
 }
 
-// BlockHistory returns a channel of block pointers (or errors), starting with the current best tipset's blocks
+// BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (store *DefaultStore) BlockHistory(ctx context.Context) <-chan interface{} {
+func (store *DefaultStore) BlockHistory(ctx context.Context, start types.TipSet) <-chan interface{} {
 	ctx = logStore.Start(ctx, "BlockHistory")
 	out := make(chan interface{})
-	tips := store.Head().ToSlice()
 
 	go func() {
 		defer close(out)
 		defer logStore.Finish(ctx)
-		err := store.walkChain(ctx, tips, func(tips []*types.Block) (cont bool, err error) {
+		err := store.walkChain(ctx, start.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
 			var raw interface{}
-			raw, err = consensus.NewTipSet(tips...)
+			raw, err = types.NewTipSet(tips...)
 			if err != nil {
 				raw = err
 			}

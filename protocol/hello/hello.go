@@ -14,7 +14,7 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -35,7 +35,7 @@ type Message struct {
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
-type getTipSetFunc func() consensus.TipSet
+type getTipSetFunc func() types.TipSet
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of

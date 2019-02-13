@@ -6,6 +6,7 @@ import (
 
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmfWqohMtbivn5NRJvtrLzCW3EU4QmoLvVNtmvo9vbdtVA/refmt/obj/atlas"
 )
 
@@ -108,4 +109,14 @@ func (z *BlockHeight) Add(y *BlockHeight) *BlockHeight {
 	a := big.NewInt(0).Set(z.val)
 	a = a.Add(a, y.val)
 	return &BlockHeight{val: a}
+}
+
+// Sub subtracts y from a copy of z and returns the copy.
+func (z *BlockHeight) Sub(y *BlockHeight) (*BlockHeight, error) {
+	if z.LessThan(y) {
+		return nil, errors.New("difference is negative cannot create negative block height")
+	}
+	a := big.NewInt(0).Set(z.val)
+	a = a.Sub(a, y.val)
+	return &BlockHeight{val: a}, nil
 }

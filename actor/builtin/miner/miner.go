@@ -36,6 +36,12 @@ const PoStProofLength = 192
 // https://github.com/filecoin-project/go-filecoin/issues/966
 var ProvingPeriodBlocks = types.NewBlockHeight(20000)
 
+// GracePeriodBlocks is the number of blocks after a proving period over
+// which a miner can still submit a post at a penalty.
+// TODO: what is a secure value for this?  Value is arbitrary right now.
+// See https://github.com/filecoin-project/go-filecoin/issues/1887
+var GracePeriodBlocks = types.NewBlockHeight(100)
+
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
 	ErrPublicKeyTooBig = 33

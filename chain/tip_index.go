@@ -7,7 +7,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var (
@@ -21,7 +21,7 @@ var (
 type TipSetAndState struct {
 	// root of aggregate state after applying tipset
 	TipSetStateRoot cid.Cid
-	TipSet          consensus.TipSet
+	TipSet          types.TipSet
 }
 
 type tsasByTipSetID map[string]*TipSetAndState

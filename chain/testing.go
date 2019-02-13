@@ -23,7 +23,7 @@ type FakeChildParams struct {
 	MinerAddr      address.Address
 	Nonce          uint64
 	NullBlockCount uint64
-	Parent         consensus.TipSet
+	Parent         types.TipSet
 	StateRoot      cid.Cid
 }
 
@@ -60,7 +60,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
 func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
-	wFun := func(ts consensus.TipSet) (uint64, error) {
+	wFun := func(ts types.TipSet) (uint64, error) {
 		return params.Consensus.Weight(context.Background(), params.Parent, nil)
 	}
 	return MkFakeChildCore(params.Parent,
@@ -72,12 +72,12 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 }
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
-func MkFakeChildCore(parent consensus.TipSet,
+func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
 	nonce uint64,
 	nullBlockCount uint64,
 	minerAddress address.Address,
-	wFun func(consensus.TipSet) (uint64, error)) (*types.Block, error) {
+	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it doesn't it is assumed consensus uses a
 	// power table view that does not access the state.
 	w, err := wFun(parent)
@@ -124,15 +124,15 @@ func RequireMkFakeChildWithCon(require *require.Assertions, params FakeChildPara
 // it does not errror.
 func RequireMkFakeChildCore(require *require.Assertions,
 	params FakeChildParams,
-	wFun func(consensus.TipSet) (uint64, error)) *types.Block {
+	wFun func(types.TipSet) (uint64, error)) *types.Block {
 	child, err := MkFakeChildCore(params.Parent, params.StateRoot, params.Nonce, params.NullBlockCount, params.MinerAddr, wFun)
 	require.NoError(err)
 	return child
 }
 
 // MustNewTipSet makes a new tipset or panics trying.
-func MustNewTipSet(blks ...*types.Block) consensus.TipSet {
-	ts, err := consensus.NewTipSet(blks...)
+func MustNewTipSet(blks ...*types.Block) types.TipSet {
+	ts, err := types.NewTipSet(blks...)
 	if err != nil {
 		panic(err)
 	}

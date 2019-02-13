@@ -60,8 +60,8 @@ func MustConvertParams(params ...interface{}) []byte {
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func NewChainWithMessages(store *hamt.CborIpldStore, root consensus.TipSet, msgSets ...[][]*types.SignedMessage) []consensus.TipSet {
-	tipSets := []consensus.TipSet{}
+func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
+	tipSets := []types.TipSet{}
 	parents := root
 
 	// only add root to the chain if it is not the zero-valued-tipset
@@ -74,7 +74,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root consensus.TipSet, msgS
 
 	for _, tsMsgs := range msgSets {
 		height, _ := parents.Height()
-		ts := consensus.TipSet{}
+		ts := types.TipSet{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {

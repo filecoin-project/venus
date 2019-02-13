@@ -7,7 +7,6 @@ import (
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -37,11 +36,11 @@ type ReadStore interface {
 
 	HeadEvents() *pubsub.PubSub
 	// Head returns the head of the chain tracked by the store.
-	Head() consensus.TipSet
+	Head() types.TipSet
 	// LatestState returns the latest state of the head
 	LatestState(ctx context.Context) (state.Tree, error)
 
-	BlockHistory(ctx context.Context) <-chan interface{}
+	BlockHistory(ctx context.Context, tips types.TipSet) <-chan interface{}
 	GenesisCid() cid.Cid
 }
 
@@ -73,5 +72,5 @@ type Store interface {
 	HasBlock(ctx context.Context, c cid.Cid) bool
 
 	// SetHead sets the internally tracked  head to the provided tipset.
-	SetHead(ctx context.Context, s consensus.TipSet) error
+	SetHead(ctx context.Context, s types.TipSet) error
 }

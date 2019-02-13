@@ -1,4 +1,4 @@
-package consensus_test
+package types
 
 import (
 	"sort"
@@ -7,43 +7,55 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	. "github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	cid1, cid2        cid.Cid
-	mockSignerForTest types.MockSigner
+	mockSignerForTest MockSigner
 )
 
 func init() {
-	cidGetter := types.NewCidForTestGetter()
+	cidGetter := NewCidForTestGetter()
 	cid1 = cidGetter()
 	cid2 = cidGetter()
 
-	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-	mockSignerForTest = types.NewMockSigner(ki)
+	ki := MustGenerateKeyInfo(2, GenerateKeyInfoSeed())
+	mockSignerForTest = NewMockSigner(ki)
 }
 
-func block(require *require.Assertions, height int, parentCid cid.Cid, parentWeight uint64, msg string) *types.Block {
+// requireNewTipSet instantiates and returns a new tipset of the given blocks
+// and requires that the setup validation succeed.
+func requireNewTipSet(require *require.Assertions, blks ...*Block) TipSet {
+	ts, err := NewTipSet(blks...)
+	require.NoError(err)
+	return ts
+}
+
+// requireTipSetAdd adds a block to the provided tipset and requires that this
+// does not error.
+func requireTipSetAdd(require *require.Assertions, blk *Block, ts TipSet) {
+	err := ts.AddBlock(blk)
+	require.NoError(err)
+}
+
+func block(require *require.Assertions, height int, parentCid cid.Cid, parentWeight uint64, msg string) *Block {
 	addrGetter := address.NewForTestGetter()
 
-	m1 := types.NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, types.NewAttoFILFromFIL(10), "hello", []byte(msg))
-	sm1, err := types.NewSignedMessage(*m1, &mockSignerForTest, types.NewGasPrice(0), types.NewGasUnits(0))
+	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
+	sm1, err := NewSignedMessage(*m1, &mockSignerForTest, NewGasPrice(0), NewGasUnits(0))
 	require.NoError(err)
 	ret := []byte{1, 2}
 
-	return &types.Block{
-		Parents:         types.NewSortedCidSet(parentCid),
-		ParentWeight:    types.Uint64(parentWeight),
-		Height:          types.Uint64(42 + uint64(height)),
+	return &Block{
+		Parents:         NewSortedCidSet(parentCid),
+		ParentWeight:    Uint64(parentWeight),
+		Height:          Uint64(42 + uint64(height)),
 		Nonce:           7,
-		Messages:        []*types.SignedMessage{sm1},
-		StateRoot:       types.SomeCid(),
-		MessageReceipts: []*types.MessageReceipt{{ExitCode: 1, Return: []types.Bytes{ret}}},
+		Messages:        []*SignedMessage{sm1},
+		StateRoot:       SomeCid(),
+		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: []Bytes{ret}}},
 	}
 }
 
@@ -83,7 +95,7 @@ func TestTipSet(t *testing.T) {
 }
 
 // Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
-func RequireTestBlocks(t *testing.T) (*types.Block, *types.Block, *types.Block) {
+func RequireTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	require := require.New(t)
 
 	pW := uint64(1337000)
@@ -100,7 +112,7 @@ func RequireTestBlocks(t *testing.T) (*types.Block, *types.Block, *types.Block) 
 func RequireTestTipSet(t *testing.T) TipSet {
 	require := require.New(t)
 	b1, b2, b3 := RequireTestBlocks(t)
-	return testhelpers.RequireNewTipSet(require, b1, b2, b3)
+	return requireNewTipSet(require, b1, b2, b3)
 }
 
 func TestTipSetAddBlock(t *testing.T) {
@@ -110,34 +122,34 @@ func TestTipSetAddBlock(t *testing.T) {
 
 	// Add Valid
 	ts1 := TipSet{}
-	testhelpers.RequireTipSetAdd(require, b1, ts1)
+	requireTipSetAdd(require, b1, ts1)
 	assert.Equal(1, len(ts1))
-	testhelpers.RequireTipSetAdd(require, b2, ts1)
-	testhelpers.RequireTipSetAdd(require, b3, ts1)
+	requireTipSetAdd(require, b2, ts1)
+	requireTipSetAdd(require, b3, ts1)
 
-	ts2 := testhelpers.RequireNewTipSet(require, b1, b2, b3)
+	ts2 := requireNewTipSet(require, b1, b2, b3)
 	assert.Equal(ts2, ts1)
 
 	// Invalid height
 	b2.Height = 5
 	ts := TipSet{}
-	testhelpers.RequireTipSetAdd(require, b1, ts)
+	requireTipSetAdd(require, b1, ts)
 	err := ts.AddBlock(b2)
 	assert.Error(err)
 	b2.Height = b1.Height
 
 	// Invalid parent set
-	b2.Parents = types.NewSortedCidSet(cid1, cid2)
+	b2.Parents = NewSortedCidSet(cid1, cid2)
 	ts = TipSet{}
-	testhelpers.RequireTipSetAdd(require, b1, ts)
+	requireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
 	assert.Error(err)
 	b2.Parents = b1.Parents
 
 	// Invalid weight
-	b2.ParentWeight = types.Uint64(3000)
+	b2.ParentWeight = Uint64(3000)
 	ts = TipSet{}
-	testhelpers.RequireTipSetAdd(require, b1, ts)
+	requireTipSetAdd(require, b1, ts)
 	err = ts.AddBlock(b2)
 	assert.Error(err)
 }
@@ -162,14 +174,14 @@ func TestNewTipSet(t *testing.T) {
 	b1.Height = b2.Height
 
 	// Invalid parent sets
-	b1.Parents = types.NewSortedCidSet(cid1, cid2)
+	b1.Parents = NewSortedCidSet(cid1, cid2)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
 	assert.Nil(ts)
 	b1.Parents = b2.Parents
 
 	// Invalid parent weights
-	b1.ParentWeight = types.Uint64(3000)
+	b1.ParentWeight = Uint64(3000)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
 	assert.Nil(ts)
@@ -180,7 +192,7 @@ func TestTipSetMinTicket(t *testing.T) {
 	ts := RequireTestTipSet(t)
 	mt, err := ts.MinTicket()
 	assert.NoError(err)
-	assert.Equal(types.Signature([]byte{0}), mt)
+	assert.Equal(Signature([]byte{0}), mt)
 }
 
 func TestTipSetHeight(t *testing.T) {
@@ -213,7 +225,7 @@ func TestTipSetToSortedCidSet(t *testing.T) {
 	b1, b2, b3 := RequireTestBlocks(t)
 	assert := assert.New(t)
 
-	cidsExp := types.NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
+	cidsExp := NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
 	assert.Equal(cidsExp, ts.ToSortedCidSet())
 }
 
@@ -222,7 +234,7 @@ func TestTipSetString(t *testing.T) {
 	b1, b2, b3 := RequireTestBlocks(t)
 	assert := assert.New(t)
 
-	cidsExp := types.NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
+	cidsExp := NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid())
 	strExp := cidsExp.String()
 	assert.Equal(strExp, ts.String())
 }
@@ -230,7 +242,7 @@ func TestTipSetString(t *testing.T) {
 func TestTipSetToSlice(t *testing.T) {
 	ts := RequireTestTipSet(t)
 	b1, b2, b3 := RequireTestBlocks(t)
-	tips := []*types.Block{b1, b2, b3}
+	tips := []*Block{b1, b2, b3}
 	assert := assert.New(t)
 
 	blks := ts.ToSlice()
@@ -255,7 +267,7 @@ func TestTipSetEquals(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	ts2 := testhelpers.RequireNewTipSet(require, b1, b2)
+	ts2 := requireNewTipSet(require, b1, b2)
 	assert.True(!ts2.Equals(ts))
 	ts2.AddBlock(b3)
 	assert.True(ts.Equals(ts2))
@@ -266,14 +278,14 @@ func TestTipSetEquals(t *testing.T) {
 	require := require.New(t)
 	idx := tipIndex{}
 
-	contains := func(b *types.Block, expectedHeightEntries, expectedParentSetEntries, expectedBlocks int) {
+	contains := func(b *Block, expectedHeightEntries, expectedParentSetEntries, expectedBlocks int) {
 		assert.Equal(expectedHeightEntries, len(idx))
 		assert.Equal(expectedParentSetEntries, len(idx[uint64(b.Height)]))
 		assert.Equal(expectedBlocks, len(idx[uint64(b.Height)][KeyForParentSet(b.Parents)]))
 		assert.True(b.Cid().Equals(idx[uint64(b.Height)][KeyForParentSet(b.Parents)][b.Cid().String()].Cid()))
 	}
 
-	cidGetter := types.NewCidForTestGetter()
+	cidGetter := NewCidForTestGetter()
 	cid1 := cidGetter()
 	b1 := block(require, 42, cid1, uint64(1137), "foo")
 	idx.addBlock(b1)
