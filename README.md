@@ -18,7 +18,7 @@
 - [What is Filecoin?](#what-is-filecoin)
 - [Install](#install)
   - [System Requirements](#system-requirements)
-  - [Install from Release Binary](#install-from-release-binary)
+<!--  - [Install from Release Binary](#install-from-release-binary) -->
   - [Install from Source](#install-from-source)
     - [Install Go and Rust](#install-go-and-rust)
     - [Install Dependencies](#install-dependencies)
@@ -44,18 +44,22 @@ See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/K
 
 👋 Welcome to Go Filecoin!
 
+<!--
 - To **run** `go-filecoin` for mining, storing or other exploring, jump straight to
   [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started).
 - To **build** `go-filecoin` from source for development, keep following this README.
+-->
 
 ### System Requirements
 
 Filecoin can build and run on most Linux and MacOS systems. Windows is not yet supported.
 
+<!--
 ### Install from Release Binary
 
 - We host prebuilt binaries for Linux and OSX at [Releases](https://github.com/filecoin-project/go-filecoin/releases/). Log in with Github.
 - Follow the remaining steps in [Start running Filecoin](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started#start-running-filecoin)
+-->
 
 ### Install from Source
 
