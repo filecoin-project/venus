@@ -56,6 +56,7 @@ COPY --from=builder $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=builder $SRC_DIR/fixtures/* /data/
 COPY --from=builder /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=builder /tmp/tini /sbin/tini
+COPY --from=builder /tmp/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
 COPY --from=builder /tmp/jq /usr/local/bin/jq
 COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 
