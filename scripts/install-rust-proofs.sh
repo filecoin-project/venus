@@ -54,6 +54,7 @@ install_precompiled() {
 }
 
 install_local() {
+  mkdir -p /tmp/filecoin-proof-parameters
   if ! [ -x "$(command -v cargo)" ] ; then
     echo 'Error: cargo is not installed.'
     echo 'Install Rust toolchain to resolve this problem.'
