@@ -32,8 +32,6 @@ func initStoreTest(ctx context.Context, require *require.Assertions) {
 	requireSetTestChain(require, con, true)
 }
 
-
-
 func newChainStore() chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()

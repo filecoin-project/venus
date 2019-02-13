@@ -159,7 +159,7 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (chain.Syncer,
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, verifier)
 	syncer, testchain, cst, _ := initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
 	ctx := context.Background()
-	err :=  testchain.Load(ctx)
+	err := testchain.Load(ctx)
 	require.NoError(err)
 	return syncer, cst
 }
@@ -904,7 +904,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(expectedWeight, measuredWeight)
 }
-
 
 func requireGetTsas(ctx context.Context, require *require.Assertions, chain chain.Store, key string) *chain.TipSetAndState {
 	tsas, err := chain.GetTipSetAndState(ctx, key)
