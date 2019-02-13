@@ -119,7 +119,7 @@ ACTOR COMMANDS
 
 MESSAGE COMMANDS
   go-filecoin message                - Manage messages
-  go-filecoin mpool                  - View the mempool of outstanding messages
+  go-filecoin mpool                  - Manage the message pool
 
 TOOL COMMANDS
   go-filecoin log                    - Interact with the daemon event log output.
