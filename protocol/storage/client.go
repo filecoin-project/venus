@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
@@ -57,6 +58,7 @@ const (
 type clientNode interface {
 	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
+	GetBlockTime() time.Duration
 }
 
 type clientPorcelainAPI interface {
@@ -104,6 +106,8 @@ func NewClient(nd clientNode, api clientPorcelainAPI, dealsDs repo.Datastore) (*
 
 // ProposeDeal is
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*DealResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, 4*smc.node.GetBlockTime())
+	defer cancel()
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -145,6 +149,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		// TODO: Sign this proposal
 	}
 
+	if smc.isMaybeDupDeal(proposal) && !allowDuplicates {
+		return nil, Errors[ErrDupicateDeal]
+	}
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -157,31 +164,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating payment")
 	}
 
 	proposal.Payment.Channel = cpResp.Channel
 	proposal.Payment.ChannelMsgCid = cpResp.ChannelMsgCid.String()
 	proposal.Payment.Vouchers = cpResp.Vouchers
-
-	proposalCid, err := convert.ToCid(proposal)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cid of proposal")
-	}
-
-	_, isDuplicate := smc.deals[proposalCid]
-	if isDuplicate && !allowDuplicates {
-		return nil, Errors[ErrDupicateDeal]
-	}
-
-	for ; isDuplicate; _, isDuplicate = smc.deals[proposalCid] {
-		proposal.LastDuplicate = proposalCid.String()
-
-		proposalCid, err = convert.ToCid(proposal)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get cid of proposal")
-		}
-	}
 
 	// send proposal
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
@@ -201,14 +189,18 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(&response, miner, proposal, proposalCid); err != nil {
+	if err := smc.recordResponse(&response, miner, proposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal, proposalCid cid.Cid) error {
+func (smc *Client) recordResponse(resp *DealResponse, miner address.Address, p *DealProposal) error {
+	proposalCid, err := convert.ToCid(p)
+	if err != nil {
+		return errors.New("failed to get cid of proposal")
+	}
 	if !proposalCid.Equals(resp.ProposalCid) {
 		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
 	}
@@ -312,6 +304,17 @@ func (smc *Client) saveDeal(cid cid.Cid) error {
 	return nil
 }
 
+func (smc *Client) isMaybeDupDeal(p *DealProposal) bool {
+	smc.dealsLk.Lock()
+	defer smc.dealsLk.Unlock()
+	for _, d := range smc.deals {
+		if d.Miner == p.MinerAddress && d.Proposal.PieceRef.Equals(p.PieceRef) {
+			return true
+		}
+	}
+	return false
+}
+
 // LoadVouchersForDeal loads vouchers from disk for a given deal
 func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
 	queryResults, err := smc.dealsDs.Query(query.Query{Prefix: "/" + clientDatastorePrefix})
@@ -336,16 +339,23 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 
 // ClientNodeImpl implements the client node interface
 type ClientNodeImpl struct {
-	dserv ipld.DAGService
-	host  host.Host
+	dserv     ipld.DAGService
+	host      host.Host
+	blockTime time.Duration
 }
 
 // NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(ds ipld.DAGService, host host.Host) *ClientNodeImpl {
+func NewClientNodeImpl(ds ipld.DAGService, host host.Host, bt time.Duration) *ClientNodeImpl {
 	return &ClientNodeImpl{
-		dserv: ds,
-		host:  host,
+		dserv:     ds,
+		host:      host,
+		blockTime: bt,
 	}
+}
+
+// GetBlockTime returns the blocktime this node is configured with.
+func (cni *ClientNodeImpl) GetBlockTime() time.Duration {
+	return cni.blockTime
 }
 
 // GetFileSize returns the size of the file referenced by 'c'

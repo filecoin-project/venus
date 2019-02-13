@@ -41,14 +41,6 @@ func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadSto
 
 // Query sends a read-only message to an actor.
 func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	if optFrom == (address.Address{}) {
-		from, err := GetAndMaybeSetDefaultSenderAddress(q.repo, q.wallet)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to retrieve default sender address")
-		}
-		optFrom = from
-	}
-
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "couldnt encode message params")

@@ -318,24 +318,27 @@ func isConnectionRefused(err error) bool {
 
 var priceOption = cmdkit.StringOption("price", "Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message")
 var limitOption = cmdkit.Uint64Option("limit", "Maximum number of GasUnits this message is allowed to consume")
+var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
-func parseGasOptions(req *cmds.Request) (gasPrice types.AttoFIL, gasLimit types.GasUnits, error error) {
+func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
 	priceOption := req.Options["price"]
 	if priceOption == nil {
-		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("price option is required")
+		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
 	if !ok {
-		return types.AttoFIL{}, types.NewGasUnits(0), errors.New("invalid gas price (specify FIL as a decimal number)")
+		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
 	gasLimitInt, ok := req.Options["limit"].(uint64)
 
 	if !ok {
 		msg := fmt.Sprintf("invalid gas limit: %s", req.Options["limit"].(string))
-		return types.AttoFIL{}, types.NewGasUnits(0), errors.New(msg)
+		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New(msg)
 	}
 
-	return *price, types.NewGasUnits(gasLimitInt), nil
+	preview, _ := req.Options["preview"].(bool)
+
+	return *price, types.NewGasUnits(gasLimitInt), preview, nil
 }

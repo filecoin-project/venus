@@ -50,9 +50,6 @@ type DealProposal struct {
 	// Duration is the number of blocks to make a deal for
 	Duration uint64
 
-	// LastDuplicate is a string of the CID of the last deal proposal with the same properties, or an empty string if no such deal exists
-	LastDuplicate string
-
 	// MinerAddress is the address of the storage miner in the deal proposal
 	MinerAddress address.Address
 

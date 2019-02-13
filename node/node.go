@@ -53,6 +53,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -404,12 +405,15 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:      chn.New(chainReader),
-		Config:     cfg.NewConfig(nc.Repo),
-		SigGetter:  mthdsig.NewGetter(chainReader),
-		MsgQueryer: msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
-		MsgSender:  msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
-		MsgWaiter:  msg.NewWaiter(chainReader, bs, &cstOffline),
+		Chain:        chn.New(chainReader),
+		Config:       cfg.NewConfig(nc.Repo),
+		SigGetter:    mthdsig.NewGetter(chainReader),
+		MsgPreviewer: msg.NewPreviewer(fcWallet, chainReader, &cstOffline, bs),
+		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
+		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
+		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
+		Network:      ntwk.NewNetwork(peerHost),
+		Wallet:       fcWallet,
 	}))
 
 	nd := &Node{
@@ -453,7 +457,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// On-chain lookup service
 	defaultAddressGetter := func() (address.Address, error) {
-		return msg.GetAndMaybeSetDefaultSenderAddress(nd.Repo, nd.Wallet)
+		return nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
 	}
 	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
@@ -486,7 +490,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
 
-	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host())
+	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host(), node.GetBlockTime())
 	var err error
 	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI, node.Repo.DealsDatastore())
 	if err != nil {
@@ -826,8 +830,23 @@ func (node *Node) StartMining(ctx context.Context) error {
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions, so we retry to make sure we include it,
 					// as our miners existence depends on this.
-					// TODO: what is the right number of retries?
-					err := porcelain.MessageSendWithRetry(node.miningCtx, node.PorcelainAPI, 10 /* retries */, node.GetBlockTime() /* wait per retry */, minerOwnerAddr, minerAddr, nil, "commitSector", gasPrice, gasUnits, val.SectorID, val.CommD[:], val.CommR[:], val.CommRStar[:], val.Proof[:])
+					err := porcelain.MessageSendWithRetry(
+						node.miningCtx,
+						node.PorcelainAPI,
+						10,                  /* retries */
+						node.GetBlockTime(), /* wait per retry */
+						minerOwnerAddr,
+						minerAddr,
+						nil,
+						"commitSector",
+						gasPrice,
+						gasUnits,
+						val.SectorID,
+						val.CommD[:],
+						val.CommR[:],
+						val.CommRStar[:],
+						val.Proof[:],
+					)
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -866,7 +885,12 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(ctx, (address.Address{}), minerAddr, "getLastUsedSectorID")
+	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getLastUsedSectorID",
+	)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
 	}
@@ -983,7 +1007,18 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	smsgCid, err := node.PorcelainAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice, gasLimit, "createMiner", big.NewInt(int64(pledge)), pubkey, pid)
+	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
+		ctx,
+		accountAddr,
+		address.StorageMarketAddress,
+		collateral,
+		gasPrice,
+		gasLimit,
+		"createMiner",
+		big.NewInt(int64(pledge)),
+		pubkey,
+		pid,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1022,7 +1057,12 @@ func (node *Node) saveMinerAddressToConfig(addr address.Address) error {
 // MiningOwnerAddress returns the owner of the passed in mining address.
 // TODO: find a better home for this method
 func (node *Node) MiningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, _, err := node.PorcelainAPI.MessageQuery(ctx, (address.Address{}), miningAddr, "getOwner")
+	res, _, err := node.PorcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		miningAddr,
+		"getOwner",
+	)
 	if err != nil {
 		return address.Address{}, errors.Wrap(err, "failed to getOwner")
 	}

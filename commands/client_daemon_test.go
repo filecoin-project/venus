@@ -1,10 +1,12 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +23,7 @@ func TestListAsks(t *testing.T) {
 	defer minerDaemon.ShutdownSuccess()
 
 	minerDaemon.RunSuccess("mining start")
-	minerDaemon.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 
 	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
 	assert.Equal(fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
@@ -48,7 +50,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	minerDaemon.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
@@ -69,6 +71,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 func TestDuplicateDeals(t *testing.T) {
 	t.Parallel()
+	assert := assert.New(t)
 
 	miner := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
@@ -85,7 +88,7 @@ func TestDuplicateDeals(t *testing.T) {
 
 	miner.ConnectSuccess(client)
 
-	miner.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
@@ -95,12 +98,11 @@ func TestDuplicateDeals(t *testing.T) {
 		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
 	})
 
-	// TODO phritz delete or re-enable this as part of 1853
-	// t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
-	// 	proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-	// 	expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
-	// 	assert.Equal(expectedError, proposeDealOutput)
-	// })
+	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
+		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
+		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
+		assert.Equal(expectedError, proposeDealOutput)
+	})
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
@@ -134,8 +136,8 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 
 	miner2.RunSuccess("mining start")
 
-	miner1.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	miner2.CreateAsk(miner2Addr.String(), fixtures.TestAddresses[1], "20", "10")
+	miner1.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner2.MinerSetPrice(miner2Addr.String(), fixtures.TestAddresses[1], "20", "10")
 
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
@@ -164,7 +166,7 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 
 	miner.ConnectSuccess(client)
 
-	miner.CreateAsk(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "3000").ReadStdoutTrimNewlines()

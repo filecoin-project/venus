@@ -135,6 +135,7 @@ func MustStartFaucet(t *testing.T, ctx context.Context, node *iptbtester.TestNod
 func MustSendFundsFaucet(t *testing.T, host, target string) string {
 	data := url.Values{}
 	data.Set("target", target)
+
 	resp, err := http.PostForm("http://"+host+"/tap", data)
 	if err != nil {
 		t.Fatal(err)
