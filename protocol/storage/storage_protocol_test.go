@@ -22,7 +22,8 @@ func TestSerializeProposal(t *testing.T) {
 	cg := types.NewCidForTestGetter()
 	p := &DealProposal{}
 	p.Size = types.NewBytesAmount(5)
-	p.Payment.ChannelMsgCid = cg().String()
+	cmc := cg()
+	p.Payment.ChannelMsgCid = &cmc
 	p.Payment.Channel = types.NewChannelID(4)
 	voucher := &paymentbroker.PaymentVoucher{
 		Channel:   *types.NewChannelID(4),

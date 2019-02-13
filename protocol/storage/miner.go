@@ -11,7 +11,7 @@ import (
 	"time"
 
 	inet "gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
-	unixfs "gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs"
+	"gx/ipfs/QmQXze9tG878pa4Euya4rrDpyTNX3kQe4dhCaBzBozGgpe/go-unixfs"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmRoARq3nkUb13HSKZGepCZSWe5GrVPwx7xURJGZ7KWv9V/go-ipld-cbor"
 	dag "gx/ipfs/QmTQdH4848iTVCJmKXYyRiK72HufWTLYQQ8iN3JaQ8K1Hq/go-merkledag"
@@ -26,6 +26,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -34,7 +35,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
-	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
 var log = logging.Logger("/fil/storage")
@@ -46,15 +46,10 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 const submitPostGasPrice = 0
 const submitPostGasLimit = 300
 
+const waitForPaymentChannelDuration = 2 * time.Minute
+
 const minerDatastorePrefix = "miner"
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
-
-type minerPorcelain interface {
-	ConfigGet(dottedPath string) (interface{}, error)
-	ConfigSet(dottedPath string, paramJSON string) error
-	MessageQuery(ctx context.Context, from, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) (err error)
-}
 
 // Miner represents a storage miner.
 type Miner struct {
@@ -83,21 +78,14 @@ type storageDeal struct {
 	Response *DealResponse
 }
 
-// porcelainAPI is the subset of the porcelain API that storage.Miner needs.
-type porcelainAPI interface {
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
-
+// minerPorcelain is the subset of the porcelain API that storage.Miner needs.
+type minerPorcelain interface {
+	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	ConfigGet(dottedPath string) (interface{}, error)
-	ConfigSet(dottedKey string, jsonString string) error
 
 	MessageSendWithRetry(ctx context.Context, numRetries uint, waitDuration time.Duration, from, to address.Address, val *types.AttoFIL, method string, gasPrice types.AttoFIL, gasLimit types.GasUnits, params ...interface{}) error
-	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-
-	WalletAddresses() []address.Address
-	WalletFind(address address.Address) (w.Backend, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -126,7 +114,7 @@ func init() {
 }
 
 // NewMiner is
-func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI porcelainAPI) (*Miner, error) {
+func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:        minerAddr,
 		minerOwnerAddr:   minerOwnerAddr,
@@ -179,10 +167,107 @@ func (sm *Miner) handleMakeDeal(s inet.Stream) {
 func (sm *Miner) receiveStorageProposal(ctx context.Context, p *DealProposal) (*DealResponse, error) {
 	// TODO: Check signature
 
-	// TODO: check size, duration, totalprice match up with the payment info
-	//       and also check that the payment info is valid.
-	//       A valid payment info contains enough funds to *us* to cover the totalprice
+	if err := sm.validateDealPayment(ctx, p); err != nil {
+		return sm.proposalRejector(ctx, sm, p, err.Error())
+	}
 
+	// Payment is valid, everything else checks out, let's accept this proposal
+	return sm.proposalAcceptor(ctx, sm, p)
+}
+
+func (sm *Miner) validateDealPayment(ctx context.Context, p *DealProposal) error {
+	// compute expected total price for deal (storage price * duration * bytes)
+	price, err := sm.getStoragePrice()
+	if err != nil {
+		return err
+	}
+
+	if p.Size == nil {
+		return fmt.Errorf("proposed deal has no size")
+	}
+
+	durationBigInt := big.NewInt(0).SetUint64(p.Duration)
+	priceBigInt := big.NewInt(0).SetUint64(p.Size.Uint64())
+	expectedPrice := price.MulBigInt(durationBigInt).MulBigInt(priceBigInt)
+	if p.TotalPrice.LessThan(expectedPrice) {
+		return fmt.Errorf("proposed price (%s) is less than expected (%s) given asking price of %s", p.TotalPrice.String(), expectedPrice.String(), price.String())
+	}
+
+	// get channel
+	channel, err := sm.getPaymentChannel(ctx, p)
+	if err != nil {
+		return err
+	}
+
+	// confirm we are target of channel
+	if channel.Target != sm.minerOwnerAddr {
+		return fmt.Errorf("miner account (%s) is not target of payment channel (%s)", sm.minerOwnerAddr.String(), channel.Target.String())
+	}
+
+	// confirm channel contains enough funds
+	if channel.Amount.LessThan(expectedPrice) {
+		return fmt.Errorf("payment channel does not contain enough funds (%s < %s)", channel.Amount.String(), expectedPrice.String())
+	}
+
+	// start with current block height
+	blockHeight, err := sm.porcelainAPI.ChainBlockHeight(ctx)
+	if err != nil {
+		return fmt.Errorf("could not get current block height")
+	}
+
+	// require at least one payment
+	if len(p.Payment.Vouchers) < 1 {
+		return errors.New("deal proposal contains no payment vouchers")
+	}
+
+	// first payment must be before blockHeight + VoucherInterval
+	expectedFirstPayment := blockHeight.Add(types.NewBlockHeight(VoucherInterval))
+	firstPayment := p.Payment.Vouchers[0].ValidAt
+	if firstPayment.GreaterThan(expectedFirstPayment) {
+		return errors.New("payments start after deal start interval")
+	}
+
+	lastValidAt := expectedFirstPayment
+	for _, v := range p.Payment.Vouchers {
+		// confirm signature is valid against expected actor and channel id
+		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Signature) {
+			return errors.New("invalid signature in voucher")
+		}
+
+		// make sure voucher validAt is not spaced to far apart
+		expectedValidAt := lastValidAt.Add(types.NewBlockHeight(VoucherInterval))
+		if v.ValidAt.GreaterThan(expectedValidAt) {
+			return fmt.Errorf("interval between vouchers too high (%s - %s > %d)", v.ValidAt.String(), lastValidAt.String(), VoucherInterval)
+		}
+
+		// confirm voucher amounts increase linearly
+		// We want the ratio of voucher amount / (valid at - expected start) >= total price / duration
+		// this is implied by amount*duration >= total price*(valid at - expected start).
+		lhs := v.Amount.MulBigInt(big.NewInt(int64(p.Duration)))
+		rhs := p.TotalPrice.MulBigInt(v.ValidAt.Sub(blockHeight).AsBigInt())
+		if lhs.LessThan(rhs) {
+			return fmt.Errorf("voucher amount (%s) less than expected for voucher valid at (%s)", v.Amount.String(), v.ValidAt.String())
+		}
+
+		lastValidAt = &v.ValidAt
+	}
+
+	// confirm last voucher value is for full amount
+	lastVoucher := p.Payment.Vouchers[len(p.Payment.Vouchers)-1]
+	if lastVoucher.Amount.LessThan(p.TotalPrice) {
+		return fmt.Errorf("last payment (%s) does not cover total price (%s)", lastVoucher.Amount.String(), p.TotalPrice.String())
+	}
+
+	// require channel expires at or after last voucher + ChannelExpiryInterval
+	expectedEol := lastVoucher.ValidAt.Add(types.NewBlockHeight(ChannelExpiryInterval))
+	if channel.Eol.LessThan(expectedEol) {
+		return fmt.Errorf("payment channel eol (%s) less than required eol (%s)", channel.Eol, expectedEol)
+	}
+
+	return nil
+}
+
+func (sm *Miner) getStoragePrice() (*types.AttoFIL, error) {
 	storagePrice, err := sm.porcelainAPI.ConfigGet("mining.storagePrice")
 	if err != nil {
 		return nil, err
@@ -191,13 +276,42 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, p *DealProposal) (*
 	if !ok {
 		return nil, errors.New("Could not retrieve storagePrice from config")
 	}
-	if p.TotalPrice.LessThan(storagePriceAF) {
-		return sm.proposalRejector(ctx, sm, p,
-			fmt.Sprintf("proposed price %s is less that miner's current asking price: %s", p.TotalPrice, storagePriceAF))
+	return storagePriceAF, nil
+}
+
+// some parts of this should be porcelain
+func (sm *Miner) getPaymentChannel(ctx context.Context, p *DealProposal) (*paymentbroker.PaymentChannel, error) {
+	// wait for create channel message
+	messageCid := p.Payment.ChannelMsgCid
+
+	waitCtx, waitCancel := context.WithDeadline(ctx, time.Now().Add(waitForPaymentChannelDuration))
+	err := sm.porcelainAPI.MessageWait(waitCtx, *messageCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		return nil
+	})
+	waitCancel()
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			return nil, errors.Wrap(err, "Timeout waiting for payment channel")
+		}
+		return nil, err
 	}
 
-	// Payment is valid, everything else checks out, let's accept this proposal
-	return sm.proposalAcceptor(ctx, sm, p)
+	payer := p.Payment.Payer
+
+	ret, _, err := sm.porcelainAPI.MessageQuery(ctx, address.Address{}, address.PaymentBrokerAddress, "ls", payer)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error getting payment channel for payer")
+	}
+
+	var channels map[string]*paymentbroker.PaymentChannel
+	if err := cbor.DecodeInto(ret[0], &channels); err != nil {
+		return nil, errors.Wrap(err, "Could not decode payment channels for payer")
+	}
+	channel, ok := channels[p.Payment.Channel.KeyString()]
+	if !ok {
+		return nil, fmt.Errorf("could not find payment channel for payer %s and id %s", payer.String(), p.Payment.Channel.KeyString())
+	}
+	return channel, nil
 }
 
 func acceptProposal(ctx context.Context, sm *Miner, p *DealProposal) (*DealResponse, error) {

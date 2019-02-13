@@ -268,6 +268,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	// Initial Balance 10,000,000
 	payerA, err := address.NewFromString(fixtures.TestAddresses[0])
 	require.NoError(err)
+
 	// Initial Balance 10,000,000
 	targetA, err := address.NewFromString(fixtures.TestAddresses[1])
 	require.NoError(err)

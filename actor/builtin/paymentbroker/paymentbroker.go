@@ -187,8 +187,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	data := createVoucherSignatureData(chid, amt, validAt)
-	if !types.IsValidSignature(data, payer, sig) {
+	if !VerifyVoucherSignature(payer, chid, amt, validAt, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
@@ -238,8 +237,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	data := createVoucherSignatureData(chid, amt, validAt)
-	if !types.IsValidSignature(data, payer, sig) {
+	if !VerifyVoucherSignature(payer, chid, amt, validAt, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
@@ -554,6 +552,12 @@ const separator = 0x0
 func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, signer types.Signer) (types.Signature, error) {
 	data := createVoucherSignatureData(channelID, amount, validAt)
 	return signer.SignBytes(data, addr)
+}
+
+// VerifyVoucherSignature returns whether the voucher's signature is valid
+func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) bool {
+	data := createVoucherSignatureData(chid, amt, validAt)
+	return types.IsValidSignature(data, payer, sig)
 }
 
 func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) []byte {

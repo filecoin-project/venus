@@ -141,6 +141,11 @@ func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
 }
 
+// SignBytes uses private key information associated with the given address to sign the given bytes.
+func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return api.wallet.SignBytes(data, addr)
+}
+
 // WalletAddresses gets addresses from the wallet
 func (api *API) WalletAddresses() []address.Address {
 	return api.wallet.Addresses()

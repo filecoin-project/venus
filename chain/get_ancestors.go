@@ -36,8 +36,8 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if lookback == 0 {
 		return nil, errors.New("lookback must be greater than 0")
 	}
-	earliestAncestorHeight, err := childBH.Sub(ancestorRoundsNeeded)
-	if err != nil {
+	earliestAncestorHeight := childBH.Sub(ancestorRoundsNeeded)
+	if earliestAncestorHeight.LessThan(types.NewBlockHeight(0)) {
 		earliestAncestorHeight = types.NewBlockHeight(uint64(0))
 	}
 	historyCh := chainReader.BlockHistory(ctx, base)
