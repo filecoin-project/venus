@@ -1,7 +1,8 @@
-package chain
+package chain_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"testing"
 
 	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
