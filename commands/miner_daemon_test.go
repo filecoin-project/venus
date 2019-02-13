@@ -36,9 +36,9 @@ func TestMinerHelp(t *testing.T) {
 
 		expected := []string{
 			"miner add-ask <miner> <price> <expiry>  - DEPRECATED: Use set-price",
-			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
 			"miner owner <miner>                     - Show the actor address of <miner>",
-			"miner pledge <miner>                    - View number of pledged 1GB sectors for <miner>",
+			"miner pledge <miner>                    - View number of pledged sectors for <miner>",
 			"miner power <miner>                     - Get the power of a miner versus the total storage market power",
 			"miner set-price <storageprice> <expiry> - Set the minimum price for storage",
 			"miner update-peerid <address> <peerid>  - Change the libp2p identity that a miner is operating",
@@ -53,7 +53,7 @@ func TestMinerHelp(t *testing.T) {
 	t.Run("pledge --help shows pledge help", func(t *testing.T) {
 		t.Parallel()
 		result := runHelpSuccess(t, "miner", "pledge", "--help")
-		assert.Contains(result, "Shows the number of pledged 1GB sectors for the given miner address")
+		assert.Contains(result, "Shows the number of pledged sectors for the given miner address")
 	})
 
 	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestMinerCreate(t *testing.T) {
 
 		op1 := d.RunSuccess("miner", "create", "--help")
 		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "<pledge>     - The size of the pledge (in 1GB sectors) for the miner")
+		assert.Contains(result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
 	})
 
 	t.Run("success", func(t *testing.T) {
