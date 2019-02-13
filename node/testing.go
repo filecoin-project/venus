@@ -266,10 +266,10 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		}
 		return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
 	}
-	getStateTree := func(ctx context.Context, ts consensus.TipSet) (state.Tree, error) {
+	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
 		return getStateFromKey(ctx, ts.String())
 	}
-	getWeight := func(ctx context.Context, ts consensus.TipSet) (uint64, error) {
+	getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
 		parent, err := ts.Parents()
 		if err != nil {
 			return uint64(0), err
@@ -284,8 +284,10 @@ func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint6
 		}
 		return node.Consensus.Weight(ctx, ts, pSt)
 	}
-
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+	}
+	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, getAncestors, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
 	cur := node.ChainReader.Head()
 	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
 	require.NoError(err)

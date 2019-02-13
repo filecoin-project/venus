@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ const (
 )
 
 type paymentsTestPlumbing struct {
-	tipSets []*consensus.TipSet
+	tipSets []*types.TipSet
 	msgCid  cid.Cid
 
 	messageSend  func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
@@ -39,7 +38,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	channelID := types.NewChannelID(channelID)
 	cidGetter := types.NewCidForTestGetter()
 	msgCid := cidGetter()
-	tipSet, err := consensus.NewTipSet(&types.Block{
+	tipSet, err := types.NewTipSet(&types.Block{
 		Nonce:  43,
 		Height: startingBlock,
 	})
@@ -48,7 +47,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	}
 	return &paymentsTestPlumbing{
 		msgCid:  msgCid,
-		tipSets: []*consensus.TipSet{&tipSet},
+		tipSets: []*types.TipSet{&tipSet},
 		messageSend: func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
@@ -104,6 +103,10 @@ func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan interface{}
 	return out
 }
 
+func (ptp *paymentsTestPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return []byte("signature"), nil
+}
+
 func validPaymentsConfig() CreatePaymentsParams {
 	addresses := address.NewForTestGetter()
 	from := addresses()
@@ -148,18 +151,23 @@ func TestCreatePayments(t *testing.T) {
 		require.True(ok)
 
 		for i := 0; i < 9; i++ {
-			assert.Equal(*types.NewChannelID(channelID), paymentResponse.Vouchers[i].Channel)
-			assert.Equal(config.From, paymentResponse.Vouchers[i].Payer)
-			assert.Equal(config.To, paymentResponse.Vouchers[i].Target)
-			assert.Equal(*types.NewBlockHeight(startingBlock + config.PaymentInterval*uint64(i+1)), paymentResponse.Vouchers[i].ValidAt)
-			assert.Equal(*expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), paymentResponse.Vouchers[i].Amount)
+			voucher := paymentResponse.Vouchers[i]
+			assert.Equal(*types.NewChannelID(channelID), voucher.Channel)
+			assert.Equal(config.From, voucher.Payer)
+			assert.Equal(config.To, voucher.Target)
+			assert.Equal(*types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
+			assert.Equal(*expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
+
+			// voucher signature should be what is returned by SignBytes
+
+			sig := types.Signature([]byte("signature"))
+			assert.Equal(sig, voucher.Signature)
 		}
 
 		// last payment should be for the full amount
 		assert.Equal(*types.NewChannelID(channelID), paymentResponse.Vouchers[9].Channel)
 		assert.Equal(config.From, paymentResponse.Vouchers[9].Payer)
 		assert.Equal(config.To, paymentResponse.Vouchers[9].Target)
-		assert.Equal(*types.NewBlockHeight(startingBlock + config.PaymentInterval*uint64(10)), paymentResponse.Vouchers[9].ValidAt)
 		assert.Equal(config.Value, paymentResponse.Vouchers[9].Amount)
 	})
 
@@ -212,7 +220,7 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.tipSets = []*consensus.TipSet{}
+		plumbing.tipSets = []*types.TipSet{}
 
 		config := validPaymentsConfig()
 		_, err := CreatePayments(context.Background(), plumbing, config)
@@ -220,8 +228,8 @@ func TestCreatePayments(t *testing.T) {
 		assert.Contains(err.Error(), "block height")
 
 		plumbing = newTestCreatePaymentsPlumbing()
-		ts := consensus.TipSet{}
-		plumbing.tipSets = []*consensus.TipSet{&ts}
+		ts := types.TipSet{}
+		plumbing.tipSets = []*types.TipSet{&ts}
 
 		config = validPaymentsConfig()
 		_, err = CreatePayments(context.Background(), plumbing, config)

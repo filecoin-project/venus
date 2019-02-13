@@ -3,7 +3,6 @@ package porcelain
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -22,7 +21,7 @@ func ChainBlockHeight(ctx context.Context, plumbing chPlumbing) (*types.BlockHei
 		return nil, errors.New("could not retrieve block height")
 	}
 
-	currentHeight, err := head.(consensus.TipSet).Height()
+	currentHeight, err := head.(types.TipSet).Height()
 	if err != nil {
 		return nil, err
 	}

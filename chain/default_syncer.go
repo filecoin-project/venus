@@ -122,8 +122,9 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 //
 // collectChain is the entrypoint to the code that interacts with the network.
 // It does NOT add tipsets to the store.
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]consensus.TipSet, consensus.TipSet, error) {
-	var chain []consensus.TipSet
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, types.TipSet, error) {
+	var chain []types.TipSet
+	defer logSyncer.Info("chain synced")
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
@@ -147,13 +148,18 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 			return nil, nil, err
 		}
 
+		height, _ := ts.Height()
+		if len(chain)%500 == 0 {
+			logSyncer.Infof("syncing the chain, currently at block height %d", height)
+		}
+
 		// Finish traversal if the tipset made is tracked in the store.
 		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
 			return chain, ts, nil
 		}
 
 		// Update values to traverse next tipset
-		chain = append([]consensus.TipSet{ts}, chain...)
+		chain = append([]types.TipSet{ts}, chain...)
 		parentCidSet, err := ts.Parents()
 		if err != nil {
 			return nil, nil, err
@@ -187,7 +193,7 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 //
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
-func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus.TipSet) error {
+func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the store
 	st, err := syncer.tipSetState(ctx, parent.String())
@@ -195,9 +201,20 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 		return err
 	}
 
+	// Gather ancestor chain needed to process state transition.
+	h, err := next.Height()
+	if err != nil {
+		return err
+	}
+	newBlockHeight := types.NewBlockHeight(h)
+	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+	if err != nil {
+		return err
+	}
+
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	st, err = syncer.consensus.RunStateTransition(ctx, next, parent, st)
+	st, err = syncer.consensus.RunStateTransition(ctx, next, ancestors, st)
 	if err != nil {
 		return err
 	}
@@ -251,7 +268,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next consensus
 // returns the union of the input tipset and the biggest tipset with the same
 // parents from the store.
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
-func (syncer *DefaultSyncer) widen(ctx context.Context, ts consensus.TipSet) (consensus.TipSet, error) {
+func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet, error) {
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {

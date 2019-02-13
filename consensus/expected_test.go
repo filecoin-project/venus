@@ -86,7 +86,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	})
 }
 
-func makeSomeBlocks(pTipSet consensus.TipSet) []*types.Block {
+func makeSomeBlocks(pTipSet types.TipSet) []*types.Block {
 	blocks := []*types.Block{
 		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("foo")),
 		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bar")),
@@ -127,7 +127,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
+		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
 		assert.NoError(err)
 	})
 
@@ -147,7 +147,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, pTipSet, stateTree)
+		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
 		assert.EqualError(err, "can't check for winning ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
@@ -252,7 +252,7 @@ func TestCreateChallenge(t *testing.T) {
 		decoded, err := hex.DecodeString(c.challenge)
 		assert.NoError(err)
 
-		parents := consensus.TipSet{}
+		parents := types.TipSet{}
 		for _, t := range c.parentTickets {
 			b := types.Block{Ticket: t}
 			parents.AddBlock(&b)

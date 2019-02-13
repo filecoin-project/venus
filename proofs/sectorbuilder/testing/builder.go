@@ -73,7 +73,7 @@ func (b *Builder) Build() Harness {
 
 	// TODO: Replace this with proofs.Live plus a sector size (in this case,
 	// "small" or 127 (bytes).
-	sectorStoreType := proofs.ProofTest
+	sectorStoreType := proofs.Test
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,

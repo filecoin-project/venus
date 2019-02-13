@@ -35,15 +35,15 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) TipSet {
-	ts, err := NewTipSet(blks...)
+func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.TipSet {
+	ts, err := types.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
 }
 
 // RequireTipSetAdd adds a block to the provided tipset and requires that this
 // does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts TipSet) {
+func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
 	err := ts.AddBlock(blk)
 	require.NoError(err)
 }

@@ -109,3 +109,15 @@ func (z *BlockHeight) Add(y *BlockHeight) *BlockHeight {
 	a = a.Add(a, y.val)
 	return &BlockHeight{val: a}
 }
+
+// Sub subtracts y from a copy of z and returns the copy.
+func (z *BlockHeight) Sub(y *BlockHeight) *BlockHeight {
+	a := big.NewInt(0).Set(z.val)
+	a = a.Sub(a, y.val)
+	return &BlockHeight{val: a}
+}
+
+// AsBigInt returns the blockheight as a big.Int
+func (z *BlockHeight) AsBigInt() *big.Int {
+	return z.val
+}

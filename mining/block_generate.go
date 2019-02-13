@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -17,7 +16,7 @@ import (
 
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
-	baseTipSet consensus.TipSet,
+	baseTipSet types.TipSet,
 	ticket types.Signature,
 	proof proofs.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
@@ -32,7 +31,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	weight, err := w.getWeight(ctx, baseTipSet)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "get weight")
 	}
@@ -44,13 +42,18 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 
 	blockHeight := baseHeight + nullBlockCount + 1
 
+	ancestors, err := w.getAncestors(ctx, baseTipSet, types.NewBlockHeight(blockHeight))
+	if err != nil {
+		return nil, errors.Wrap(err, "get base tip set ancestors")
+	}
+
 	pending := w.messagePool.Pending()
 	messages := make([]*types.SignedMessage, len(pending))
 
 	copy(messages, core.OrderMessagesByNonce(pending))
 
 	vms := vm.NewStorageMap(w.blockstore)
-	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerAddr, types.NewBlockHeight(blockHeight))
+	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerAddr, types.NewBlockHeight(blockHeight), ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "generate apply messages")
 	}

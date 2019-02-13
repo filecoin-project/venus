@@ -98,11 +98,11 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block) ([]*ApplicationResult, error) {
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
 
 	bh := types.NewBlockHeight(uint64(blk.Height))
-	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blk.Messages, blk.Miner, bh)
+	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blk.Messages, blk.Miner, bh, ancestors)
 	if faultErr != nil {
 		return emptyResults, faultErr
 	}
@@ -124,7 +124,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts TipSet) (*ProcessTipSetResponse, error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (*ProcessTipSetResponse, error) {
 	var res ProcessTipSetResponse
 	var emptyRes ProcessTipSetResponse
 	h, err := ts.Height()
@@ -156,7 +156,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 			// TODO is there ever a reason to try a duplicate failed message again within the same tipset?
 			msgFilter[mCid.String()] = struct{}{}
 		}
-		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, blk.Miner, bh)
+		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, blk.Miner, bh, ancestors)
 		if err != nil {
 			return &emptyRes, err
 		}
@@ -248,10 +248,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker) (*ApplicationResult, error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*ApplicationResult, error) {
 	cachedStateTree := state.NewCachedStateTree(st)
 
-	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh, gasTracker)
+	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh, gasTracker, ancestors)
 	if err == nil {
 		err = cachedStateTree.Commit(ctx)
 		if err != nil {
@@ -340,9 +340,18 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 	gasTracker := vm.NewGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, gasTracker, optBh)
-	res, exitCode, err := vm.Send(ctx, vmCtx)
-	return res, exitCode, err
+	vmCtxParams := vm.NewContextParams{
+		To:          toActor,
+		Message:     msg,
+		State:       cachedSt,
+		StorageMap:  vms,
+		GasTracker:  gasTracker,
+		BlockHeight: optBh,
+	}
+
+	vmCtx := vm.NewVMContext(vmCtxParams)
+	ret, retCode, err := vm.Send(ctx, vmCtx)
+	return ret, retCode, err
 }
 
 // PreviewQueryMethod estimates the amount of gas that will be used by a method
@@ -369,7 +378,15 @@ func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, t
 	gasTracker := vm.NewGasTracker()
 	gasTracker.MsgGasLimit = types.BlockGasLimit
 
-	vmCtx := vm.NewVMContext(nil, toActor, msg, cachedSt, vms, gasTracker, optBh)
+	vmCtxParams := vm.NewContextParams{
+		To:          toActor,
+		Message:     msg,
+		State:       cachedSt,
+		StorageMap:  vms,
+		GasTracker:  gasTracker,
+		BlockHeight: optBh,
+	}
+	vmCtx := vm.NewVMContext(vmCtxParams)
 	_, _, err = vm.Send(ctx, vmCtx)
 
 	return vmCtx.GasUnits(), err
@@ -380,7 +397,7 @@ func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, t
 // should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker) (*types.MessageReceipt, error) {
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*types.MessageReceipt, error) {
 	gasTracker.ResetForNewMessage(msg.MeteredMessage)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
@@ -425,7 +442,18 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
 	}
 
-	vmCtx := vm.NewVMContext(fromActor, toActor, &msg.Message, st, store, gasTracker, bh)
+	vmCtxParams := vm.NewContextParams{
+		From:        fromActor,
+		To:          toActor,
+		Message:     &msg.Message,
+		State:       st,
+		StorageMap:  store,
+		GasTracker:  gasTracker,
+		BlockHeight: bh,
+		Ancestors:   ancestors,
+	}
+	vmCtx := vm.NewVMContext(vmCtxParams)
+
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)
 	if errors.IsFault(vmErr) {
 		return nil, vmErr
@@ -467,7 +495,7 @@ type ApplyMessagesResponse struct {
 // successes, and the permanent and temporary errors raised during application.
 // ApplyMessages will return an error iff a fault message occurs.
 // Precondition: signatures of messages are checked by the caller.
-func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight) (ApplyMessagesResponse, error) {
+func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 
@@ -480,7 +508,7 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 
 	// process all messages
 	for _, smsg := range messages {
-		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerAddr, bh, gasTracker)
+		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerAddr, bh, gasTracker, ancestors)
 		// If the message should not have been in the block, bail somehow.
 		switch {
 		case errors.IsFault(err):

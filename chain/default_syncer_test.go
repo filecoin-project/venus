@@ -39,7 +39,7 @@ var (
 	genStateRoot, link1State, link2State, link3State, link4State cid.Cid
 
 	// TipSets
-	genTS, link1, link2, link3, link4 consensus.TipSet
+	genTS, link1, link2, link3, link4 types.TipSet
 
 	// utils
 	cidGetter    func() cid.Cid
@@ -222,7 +222,7 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 	return syncer, chain, cst, r
 }
 
-func containsTipSet(tsasSlice []*TipSetAndState, ts consensus.TipSet) bool {
+func containsTipSet(tsasSlice []*TipSetAndState, ts types.TipSet) bool {
 	for _, tsas := range tsasSlice {
 		if tsas.TipSet.String() == ts.String() { //bingo
 			return true
@@ -231,7 +231,7 @@ func containsTipSet(tsasSlice []*TipSetAndState, ts consensus.TipSet) bool {
 	return false
 }
 
-func requireTsAdded(require *require.Assertions, chain Store, ts consensus.TipSet) {
+func requireTsAdded(require *require.Assertions, chain Store, ts types.TipSet) {
 	ctx := context.Background()
 	h, err := ts.Height()
 	require.NoError(err)
@@ -251,7 +251,7 @@ func requireTsAdded(require *require.Assertions, chain Store, ts consensus.TipSe
 	}
 }
 
-func assertTsAdded(assert *assert.Assertions, chain Store, ts consensus.TipSet) {
+func assertTsAdded(assert *assert.Assertions, chain Store, ts types.TipSet) {
 	ctx := context.Background()
 	h, err := ts.Height()
 	assert.NoError(err)
@@ -282,12 +282,12 @@ func assertNoAdd(assert *assert.Assertions, chain Store, cids []cid.Cid) {
 	}
 }
 
-func requireHead(require *require.Assertions, chain Store, head consensus.TipSet) {
+func requireHead(require *require.Assertions, chain Store, head types.TipSet) {
 	gotHead := chain.Head()
 	require.Equal(head, gotHead)
 }
 
-func assertHead(assert *assert.Assertions, chain Store, head consensus.TipSet) {
+func assertHead(assert *assert.Assertions, chain Store, head types.TipSet) {
 	gotHead := chain.Head()
 	assert.Equal(head, gotHead)
 }
@@ -834,7 +834,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	startingWeight, err := con.Weight(ctx, baseTS, pSt)
 	require.NoError(err)
 
-	wFun := func(ts consensus.TipSet) (uint64, error) {
+	wFun := func(ts types.TipSet) (uint64, error) {
 		// No power-altering messages processed from here on out.
 		// And so bootstrapSt correctly retrives power table for all
 		// test blocks.

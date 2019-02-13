@@ -26,23 +26,37 @@ type Context struct {
 	storageMap  StorageMap
 	gasTracker  *GasTracker
 	blockHeight *types.BlockHeight
+	ancestors   []types.TipSet
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
 var _ exec.VMContext = (*Context)(nil)
 
+// NewContextParams is passed to NewVMContext to construct a new context.
+type NewContextParams struct {
+	From        *actor.Actor
+	To          *actor.Actor
+	Message     *types.Message
+	State       *state.CachedTree
+	StorageMap  StorageMap
+	GasTracker  *GasTracker
+	BlockHeight *types.BlockHeight
+	Ancestors   []types.TipSet
+}
+
 // NewVMContext returns an initialized context.
-func NewVMContext(from, to *actor.Actor, msg *types.Message, st *state.CachedTree, store StorageMap, gasTracker *GasTracker, bh *types.BlockHeight) *Context {
+func NewVMContext(params NewContextParams) *Context {
 	return &Context{
-		from:        from,
-		to:          to,
-		message:     msg,
-		state:       st,
-		storageMap:  store,
-		gasTracker:  gasTracker,
-		blockHeight: bh,
-		deps:        makeDeps(st),
+		from:        params.From,
+		to:          params.To,
+		message:     params.Message,
+		state:       params.State,
+		storageMap:  params.StorageMap,
+		gasTracker:  params.GasTracker,
+		blockHeight: params.BlockHeight,
+		ancestors:   params.Ancestors,
+		deps:        makeDeps(params.State),
 	}
 }
 
@@ -145,7 +159,17 @@ func (ctx *Context) Send(to address.Address, method string, value *types.AttoFIL
 		return nil, 1, errors.FaultErrorWrapf(err, "failed to get or create To actor %s", msg.To)
 	}
 	// TODO(fritz) de-dup some of the logic between here and core.Send
-	innerCtx := NewVMContext(fromActor, toActor, msg, ctx.state, ctx.storageMap, ctx.gasTracker, ctx.blockHeight)
+	innerParams := NewContextParams{
+		From:        fromActor,
+		To:          toActor,
+		Message:     msg,
+		State:       ctx.state,
+		StorageMap:  ctx.storageMap,
+		GasTracker:  ctx.gasTracker,
+		BlockHeight: ctx.blockHeight,
+		Ancestors:   ctx.ancestors,
+	}
+	innerCtx := NewVMContext(innerParams)
 
 	out, ret, err := deps.Send(context.Background(), innerCtx)
 	if err != nil {

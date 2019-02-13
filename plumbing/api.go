@@ -8,7 +8,6 @@ import (
 	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
@@ -123,7 +122,7 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 }
 
 // ChainHead returns the head tipset
-func (api *API) ChainHead(ctx context.Context) consensus.TipSet {
+func (api *API) ChainHead(ctx context.Context) types.TipSet {
 	return api.chain.Head(ctx)
 }
 
@@ -140,6 +139,11 @@ func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) 
 // NetworkGetPeerID gets the current peer id from Util
 func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
+}
+
+// SignBytes uses private key information associated with the given address to sign the given bytes.
+func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return api.wallet.SignBytes(data, addr)
 }
 
 // WalletAddresses gets addresses from the wallet

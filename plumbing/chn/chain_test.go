@@ -2,25 +2,24 @@ package chn
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type FakeChainer struct {
-	head    consensus.TipSet
-	tipSets []consensus.TipSet
+	head    types.TipSet
+	tipSets []types.TipSet
 	blocks  map[cid.Cid]*types.Block
 }
 
 // BlockHistory returns the head of the chain tracked by the store.
-func (mcr *FakeChainer) BlockHistory(ctx context.Context) <-chan interface{} {
+func (mcr *FakeChainer) BlockHistory(ctx context.Context, start types.TipSet) <-chan interface{} {
 	out := make(chan interface{}, len(mcr.tipSets))
 
 	go func() {
@@ -43,7 +42,7 @@ func (mcr FakeChainer) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block,
 	return blk, nil
 }
 
-func (mcr *FakeChainer) Head() consensus.TipSet {
+func (mcr *FakeChainer) Head() types.TipSet {
 	return mcr.head
 }
 
@@ -54,7 +53,7 @@ func TestChainLs(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		expected, err := consensus.NewTipSet(types.NewBlockForTest(nil, 2))
+		expected, err := types.NewTipSet(types.NewBlockForTest(nil, 2))
 		require.NoError(err)
 
 		chainAPI := New(&FakeChainer{
@@ -69,14 +68,14 @@ func TestChainLs(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		expected1, err := consensus.NewTipSet(types.NewBlockForTest(nil, 2))
+		expected1, err := types.NewTipSet(types.NewBlockForTest(nil, 2))
 		require.NoError(err)
 
-		expected2, err := consensus.NewTipSet(types.NewBlockForTest(nil, 3))
+		expected2, err := types.NewTipSet(types.NewBlockForTest(nil, 3))
 		require.NoError(err)
 
 		chainAPI := New(&FakeChainer{
-			tipSets: []consensus.TipSet{expected1, expected2},
+			tipSets: []types.TipSet{expected1, expected2},
 		})
 
 		ls := chainAPI.Ls(context.Background())

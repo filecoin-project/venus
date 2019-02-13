@@ -44,7 +44,4 @@ const (
 	Live = SectorStoreType(iota)
 	// Test configures the SectorBuilder to be used with large sectors, in tests.
 	Test
-	// ProofTest configures the SectorBuilder to perform real proofs against small
-	// sectors.
-	ProofTest
 )

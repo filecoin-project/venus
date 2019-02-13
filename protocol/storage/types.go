@@ -23,12 +23,15 @@ type PaymentInfo struct {
 	// that will be used to facilitate payments
 	PayChActor address.Address
 
+	// Payer is the address of the owner of the payment channel
+	Payer address.Address
+
 	// Channel is the ID of the specific channel the client will
 	// use to pay the miner. It must already have sufficient funds locked up
 	Channel *types.ChannelID
 
 	// ChannelMsgCid is the B58 encoded CID of the message used to create the channel (so the miner can wait for it).
-	ChannelMsgCid string
+	ChannelMsgCid *cid.Cid
 
 	// Vouchers is a set of payments from the client to the miner that can be
 	// cashed out contingent on the agreed upon data being provably within a

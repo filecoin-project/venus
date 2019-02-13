@@ -84,7 +84,7 @@ func TestProposeDeal(t *testing.T) {
 	t.Run("and creates a new payment channel", func(t *testing.T) {
 		// correct payment id and message cid in proposal implies a call to createChannel
 		assert.Equal(testAPI.channelID, proposal.Payment.Channel)
-		assert.Equal(testAPI.msgCid.String(), proposal.Payment.ChannelMsgCid)
+		assert.Equal(&testAPI.msgCid, proposal.Payment.ChannelMsgCid)
 	})
 
 	t.Run("and creates payment info", func(t *testing.T) {
@@ -193,7 +193,7 @@ func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.
 	return id, nil
 }
 
-func (ctp *clientTestAPI) ConfigGet(dottedPath string) (interface{}, error) {
+func (ctp *clientTestAPI) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
 	// always just default address
 	return ctp.payer, nil
 }

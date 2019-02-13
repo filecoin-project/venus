@@ -18,7 +18,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -74,8 +73,8 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() consensus.TipSet {
-			return consensus.TipSet{
+		func() types.TipSet {
+			return types.TipSet{
 				"tippywippy": nil,
 			}
 		},
@@ -102,8 +101,8 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() consensus.TipSet {
-			return consensus.TipSet{
+		func() types.TipSet {
+			return types.TipSet{
 				"tippywippy": nil,
 			}
 		},
@@ -153,7 +152,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func() consensus.TipSet {
+		func() types.TipSet {
 			return expTs
 		},
 		WithMinerAddressGetter(func() address.Address {
@@ -168,8 +167,8 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 }
 
-func mustMakeTipset(t *testing.T, height types.Uint64) consensus.TipSet {
-	ts, err := consensus.NewTipSet(&types.Block{
+func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
+	ts, err := types.NewTipSet(&types.Block{
 		Miner:           address.NewForTestGetter()(),
 		Ticket:          nil,
 		Parents:         types.SortedCidSet{},
