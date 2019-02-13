@@ -40,6 +40,7 @@ install_precompiled() {
   mkdir -p proofs/bin
   mkdir -p proofs/include
   mkdir -p proofs/lib/pkgconfig
+  mkdir -p proofs/misc
 
   tar -C proofs -xzf /tmp/${TAR_NAME}.tar.gz
 }
@@ -64,8 +65,11 @@ install_local() {
   mkdir -p proofs/bin
   mkdir -p proofs/include
   mkdir -p proofs/lib/pkgconfig
+  mkdir -p proofs/misc
 
+  cp proofs/rust-proofs/parameters.json ./proofs/misc/
   cp proofs/rust-proofs/target/release/paramcache ./proofs/bin/
+  cp proofs/rust-proofs/target/release/paramfetch ./proofs/bin/
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.h ./proofs/include/
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.a ./proofs/lib/
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.pc ./proofs/lib/pkgconfig/

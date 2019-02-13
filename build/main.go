@@ -130,6 +130,7 @@ func deps() {
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
+		cmdWithDir("./proofs/misc/", "../bin/paramfetch fetch --all"),
 		cmd("./proofs/bin/paramcache"),
 		cmd("./scripts/copy-groth-params.sh"),
 	}
@@ -152,6 +153,7 @@ func smartdeps() {
 		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
+		cmdWithDir("./proofs/misc/", "../bin/paramfetch fetch --all"),
 		cmd("./proofs/bin/paramcache"),
 		cmd("./scripts/copy-groth-params.sh"),
 	}
