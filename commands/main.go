@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/types"
 	"net"
 	"net/url"
 	"os"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 const (
@@ -331,10 +331,14 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, er
 		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
-	gasLimitInt, ok := req.Options["limit"].(uint64)
+	limitOption := req.Options["limit"]
+	if limitOption == nil {
+		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("limit option is required")
+	}
 
+	gasLimitInt, ok := limitOption.(uint64)
 	if !ok {
-		msg := fmt.Sprintf("invalid gas limit: %s", req.Options["limit"].(string))
+		msg := fmt.Sprintf("invalid gas limit: %s", limitOption)
 		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New(msg)
 	}
 
