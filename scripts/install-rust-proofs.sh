@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 install_precompiled() {
   RELEASE_SHA1=`git rev-parse @:./proofs/rust-proofs`
   RELEASE_NAME="rust-proofs-`uname`"
@@ -80,22 +81,9 @@ install_local() {
   cp proofs/rust-proofs/target/release/libfilecoin_proofs.pc ./proofs/lib/pkgconfig/
 }
 
-copy_groth_params() {
-  mkdir -p /tmp/filecoin-proof-parameters
-  pushd /tmp/filecoin-proof-parameters
-  if ! ls v9-zigzag-proof-of-replication-*; then
-    echo "groth parameters were not found"
-    echo "try rerunning 'go run ./build/*.go deps'"
-    exit 1
-  fi
-  ln -s v9-zigzag-proof-of-replication-52431242c129794fe51d373ae29953f2ff52abd94c78756e318ce45f3e4946d8 params.out
-  popd
-}
-
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
   echo "using local rust-proofs"
   install_local
-  copy_groth_params
 else
   echo "using precompiled rust-proofs"
   install_precompiled
