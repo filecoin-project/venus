@@ -9,12 +9,13 @@ import (
 	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process
 func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *big.Int, options ...ActionOption) (address.Address, error) {
-	var out address.Address
+	var out commands.MinerCreateResult
 
 	sPledge := fmt.Sprintf("%d", pledge)
 	sCollateral := collateral.String()
@@ -31,7 +32,7 @@ func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *b
 		return address.Address{}, err
 	}
 
-	return out, nil
+	return out.Address, nil
 }
 
 // MinerUpdatePeerid runs the `miner update-peerid` command against the filecoin process
