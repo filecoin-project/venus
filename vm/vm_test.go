@@ -52,7 +52,7 @@ func TestSendErrorHandling(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
 
-	t.Run("returns appropriate and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
+	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
 		assert := assert.New(t)
 
 		transferErr := xerrors.New("error")
@@ -84,7 +84,7 @@ func TestSendErrorHandling(t *testing.T) {
 		assert.Equal(transferErr, sendErr)
 	})
 
-	t.Run("returns exit code 1 and a revert error if we can't load the recipient actor's code", func(t *testing.T) {
+	t.Run("returns right exit code and a revert error if we can't load the recipient actor's code", func(t *testing.T) {
 		assert := assert.New(t)
 
 		msg := newMsg()
