@@ -78,7 +78,7 @@ The build process for go-filecoin requires:
 
 - [Go](https://golang.org/doc/install) >= v1.11.2. 
   - Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
-- [Rust](https://www.rust-lang.org/) >= v1.29.0 and `cargo`  
+- [Rust](https://www.rust-lang.org/) >= v1.31.0 and `cargo`
 - `pkg-config` - used by go-filecoin to handle generating linker flags
   - Mac OS devs can install through brew `brew install pkg-config`
   
