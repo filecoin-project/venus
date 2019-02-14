@@ -122,7 +122,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 
 	var genesii types.TipSet
 	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		if (tips[0].Height % logStatusEvery) == 0 {
+		if logStatusEvery != 0 && (tips[0].Height%logStatusEvery) == 0 {
 			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
 		}
 		ts, err := types.NewTipSet(tips...)
