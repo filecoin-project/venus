@@ -39,7 +39,7 @@ type Bootstrapper struct {
 	r routing.IpfsRouting
 	// Does the work. Usually Bootstrapper.bootstrap. Argument is a slice of
 	// currently-connected peers (so it won't attempt to reconnect).
-	Bootstrap func(context.Context, []peer.ID)
+	Bootstrap func([]peer.ID)
 
 	// Bookkeeping
 	ticker         *time.Ticker
@@ -78,7 +78,7 @@ func (b *Bootstrapper) Start(ctx context.Context) {
 			case <-b.ctx.Done():
 				return
 			case <-b.ticker.C:
-				b.Bootstrap(b.ctx, b.d.Peers())
+				b.Bootstrap(b.d.Peers())
 			}
 		}
 	}()
@@ -94,7 +94,7 @@ func (b *Bootstrapper) Stop() {
 // bootstrap does the actual work. If the number of connected peers
 // has fallen below b.MinPeerThreshold it will attempt to connect to
 // a random subset of its bootstrap peers.
-func (b *Bootstrapper) bootstrap(ctx context.Context, currentPeers []peer.ID) {
+func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 	peersNeeded := b.MinPeerThreshold - len(currentPeers)
 	if peersNeeded < 1 {
 		return
@@ -108,7 +108,7 @@ func (b *Bootstrapper) bootstrap(ctx context.Context, currentPeers []peer.ID) {
 		// DHT Bootstrap is a persistent process so only do this once.
 		if !b.dhtBootStarted {
 			b.dhtBootStarted = true
-			err := b.r.Bootstrap(ctx)
+			err := b.r.Bootstrap(b.ctx)
 			if err != nil {
 				log.Warningf("got error trying to bootstrap DHT: %s. Peer discovery may suffer.", err.Error())
 			}
@@ -127,7 +127,7 @@ func (b *Bootstrapper) bootstrap(ctx context.Context, currentPeers []peer.ID) {
 		wg.Add(1)
 		go func() {
 			if err := b.h.Connect(ctx, pinfo); err != nil {
-				log.Warningf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
+				log.Errorf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
 			}
 			wg.Done()
 		}()
