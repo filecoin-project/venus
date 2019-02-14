@@ -198,7 +198,7 @@
   ],
   "gxVersion": "0.12.1",
   "language": "go",
-  "license": "",
+  "license": "(MIT OR APACHE)",
   "name": "go-filecoin",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
   "subtoolRequired": true,
