@@ -893,9 +893,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f2b2 := RequireMkFakeChildCore(require,
 		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[3].Address},
 		wFun)
+	// This should fix https://github.com/filecoin-project/go-filecoin/issues/1828
+	f2b2.Proof, f2b2.Ticket, err = chain.MakeProofAndWinningTicket(addr3, pwr3, 1000)
 
 	f2 := testhelpers.RequireNewTipSet(require, f2b2)
 	f2Cids := requirePutBlocks(require, cst, f2.ToSlice()...)
+	// This is where the test fails https://github.com/filecoin-project/go-filecoin/issues/1828
 	err = syncer.HandleNewBlocks(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f2)
