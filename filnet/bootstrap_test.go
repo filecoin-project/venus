@@ -42,7 +42,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	// protects callCount
 	var lk sync.Mutex
 	callCount := 0
-	b.Bootstrap = func(context.Context, []peer.ID) {
+	b.Bootstrap = func([]peer.ID) {
 		lk.Lock()
 		defer lk.Unlock()
 		callCount++
@@ -73,7 +73,8 @@ func TestBootstrapperBootstrap(t *testing.T) {
 
 		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, fakeRouter, 1, time.Minute)
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
-		assert.NotPanics(func() { b.bootstrap(ctx, currentPeers) })
+		b.ctx = ctx
+		assert.NotPanics(func() { b.bootstrap(currentPeers) })
 	})
 
 	var lk sync.Mutex
@@ -101,7 +102,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, fakeRouter, 3, time.Minute)
 		b.ctx = context.Background()
 		currentPeers := []peer.ID{requireRandPeerID(t)} // Have 1
-		b.bootstrap(b.ctx, currentPeers)
+		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)
 		lk.Lock()
 		assert.Equal(2, connectCount)
@@ -125,7 +126,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		b := NewBootstrapper(bootstrapPeers, fakeHost, fakeDialer, fakeRouter, 2, time.Minute) // Need 2 bootstrap peers.
 		b.ctx = context.Background()
 		currentPeers := []peer.ID{connectedPeerID} // Have 1, which is the bootstrap peer.
-		b.bootstrap(b.ctx, currentPeers)
+		b.bootstrap(currentPeers)
 		time.Sleep(20 * time.Millisecond)
 		lk.Lock()
 		assert.Equal(0, connectCount)
