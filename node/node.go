@@ -990,9 +990,6 @@ func (node *Node) NewAddress() (address.Address, error) {
 //       See https://github.com/filecoin-project/go-filecoin/issues/1843
 func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 
-	hbc := node.Repo.Config().Heartbeat
-	log.Errorf("Current heartbeatconfig: %v", *hbc)
-
 	// Only create a miner if we don't already have one.
 	if _, err := node.miningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
