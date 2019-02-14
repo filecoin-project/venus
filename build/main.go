@@ -370,6 +370,8 @@ func main() {
 		generateGenesis()
 	case "build":
 		build()
+	case "fbuild":
+		forcebuild()
 	case "test":
 		test(args[1:]...)
 	case "install":

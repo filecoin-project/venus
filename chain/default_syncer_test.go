@@ -791,35 +791,35 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	// chain.Store
-	chain := NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
+	// chainStore.Store
+	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
 
-	// chain.Syncer
+	// chainStore.Syncer
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &testhelpers.TestView{}, calcGenBlk.Cid(), verifier)
 
 	// Initialize stores to contain genesis block and state
 	calcGenTS := testhelpers.RequireNewTipSet(require, &calcGenBlk)
-	genTsas := &TipSetAndState{
+	genTsas := &chain.TipSetAndState{
 		TipSet:          calcGenTS,
 		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
 	chain.RequirePutTsas(ctx, require, chainStore, genTsas)
-	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chain store with correct genesis
+	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct genesis
 	require.NoError(err)
 	requireHead(require, chainStore, calcGenTS)
 	requireTsAdded(require, chainStore, calcGenTS)
 
-	// Now sync the chain with consensus using a MarketView.
+	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
-	syncer := NewDefaultSyncer(cst, cst, con, chain)
-	baseTS := chain.Head() // this is the last block of the bootstrapping chain creating miners
+	syncer := chain.NewDefaultSyncer(cst, cst, con, chainStore)
+	baseTS := chainStore.Head() // this is the last block of the bootstrapping chainStore creating miners
 	require.Equal(1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(err)
-	/* Test chain diagram and weight calcs */
+	/* Test chainStore diagram and weight calcs */
 	// (Note f1b1 = fork 1 block 1)
 	//
 	// f1b1 -> {f1b2a, f1b2b}
@@ -841,16 +841,16 @@ func TestTipSetWeightDeep(t *testing.T) {
 		// test blocks.
 		return con.Weight(ctx, ts, pSt)
 	}
-	f1b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
+	f1b1 := chain.RequireMkFakeChildCore(require,
+		chain.FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b1.Proof, f1b1.Ticket, err = MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
+	f1b1.Proof, f1b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
 	require.NoError(err)
 
-	f2b1 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
+	f2b1 := chain.RequireMkFakeChildCore(require,
+		chain.FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f2b1.Proof, f2b1.Ticket, err = MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
+	f2b1.Proof, f2b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
 	require.NoError(err)
 
 	tsShared := testhelpers.RequireNewTipSet(require, f1b1, f2b1)
@@ -866,16 +866,16 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(expectedWeight, measuredWeight)
 
 	// fork 1 is heavier than the old head.
-	f1b2a := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
+	f1b2a := chain.RequireMkFakeChildCore(require,
+		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
+	f1b2a.Proof, f1b2a.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
 	require.NoError(err)
 
-	f1b2b := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
+	f1b2b := chain.RequireMkFakeChildCore(require,
+		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
+	f1b2b.Proof, f1b2b.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
 	require.NoError(err)
 
 	f1 := testhelpers.RequireNewTipSet(require, f1b2a, f1b2b)
@@ -890,11 +890,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// fork 2 has heavier weight because of addr3's power even though there
 	// are fewer blocks in the tipset than fork 1.
-	f2b2 := RequireMkFakeChildCore(require,
-		FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[3].Address},
+	f2b2 := chain.RequireMkFakeChildCore(require,
+		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[3].Address},
 		wFun)
 	// This should fix https://github.com/filecoin-project/go-filecoin/issues/1828
-	f2b2.Proof, f2b2.Ticket, err = chain.MakeProofAndWinningTicket(addr3, pwr3, 1000)
+	f2b2.Proof, f2b2.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[3].Address, info.Miners[3].Power, 1000)
+	require.NoError(err)
 
 	f2 := testhelpers.RequireNewTipSet(require, f2b2)
 	f2Cids := requirePutBlocks(require, cst, f2.ToSlice()...)
