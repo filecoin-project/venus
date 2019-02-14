@@ -104,6 +104,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	}
 	headTs := types.TipSet{}
 	// traverse starting from head to begin loading the chain
+	var startHeight types.Uint64
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
@@ -113,10 +114,17 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to add validated block to TipSet")
 		}
+		startHeight = blk.Height
 	}
+	logStore.Infof("start loading chain at tipset: %s, height: %d", tipCids.String(), startHeight)
+	// esnures we only produce 10 log messages regardless of the chain height
+	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
 	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
+		if (tips[0].Height % logStatusEvery) == 0 {
+			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
+		}
 		ts, err := types.NewTipSet(tips...)
 		if err != nil {
 			return false, err
@@ -150,6 +158,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		return errors.Errorf("expected genesis cid: %s, loaded genesis cid: %s", store.genesis, loadCid)
 	}
 
+	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
 }
