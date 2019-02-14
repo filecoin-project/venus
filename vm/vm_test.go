@@ -84,7 +84,7 @@ func TestSendErrorHandling(t *testing.T) {
 		assert.Equal(transferErr, sendErr)
 	})
 
-	t.Run("returns exit code 1 and a fault error if we can't load the recipient actor's code", func(t *testing.T) {
+	t.Run("returns right exit code and a revert error if we can't load the recipient actor's code", func(t *testing.T) {
 		assert := assert.New(t)
 
 		msg := newMsg()
@@ -106,8 +106,8 @@ func TestSendErrorHandling(t *testing.T) {
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
 		assert.Error(sendErr)
-		assert.Equal(1, int(code))
-		assert.True(errors.IsFault(sendErr))
+		assert.Equal(errors.ErrNoActorCode, int(code))
+		assert.True(errors.ShouldRevert(sendErr))
 	})
 
 	t.Run("returns exit code 1 and a revert error if code doesn't export a matching method", func(t *testing.T) {

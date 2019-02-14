@@ -18,7 +18,7 @@
 - [What is Filecoin?](#what-is-filecoin)
 - [Install](#install)
   - [System Requirements](#system-requirements)
-  - [Install from Release Binary](#install-from-release-binary)
+<!--  - [Install from Release Binary](#install-from-release-binary) -->
   - [Install from Source](#install-from-source)
     - [Install Go and Rust](#install-go-and-rust)
     - [Install Dependencies](#install-dependencies)
@@ -44,18 +44,22 @@ See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/K
 
 👋 Welcome to Go Filecoin!
 
+<!--
 - To **run** `go-filecoin` for mining, storing or other exploring, jump straight to
   [detailed setup instructions](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started).
 - To **build** `go-filecoin` from source for development, keep following this README.
+-->
 
 ### System Requirements
 
 Filecoin can build and run on most Linux and MacOS systems. Windows is not yet supported.
 
+<!--
 ### Install from Release Binary
 
 - We host prebuilt binaries for Linux and OSX at [Releases](https://github.com/filecoin-project/go-filecoin/releases/). Log in with Github.
 - Follow the remaining steps in [Start running Filecoin](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started#start-running-filecoin)
+-->
 
 ### Install from Source
 
@@ -86,15 +90,7 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 #### Install Dependencies
 
 `go-filecoin` depends on some proofs code written in Rust, housed in the
-[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. If you're not
-planning to edit the proofs, you can fetch pre-compiled assets for your build rather than compiling them locally.
-
-To do so:
-  - Export these two environment variables before fetching dependencies:
-    - `GITHUB_TOKEN` - a personal access token [from GitHub](https://github.com/settings/tokens) with `repo` scope
-    - `FILECOIN_USE_PRECOMPILED_RUST_PROOFS=1`
-  - Make sure `curl` and `jq` are installed in your system.
-  - You will still need `rust`/`cargo` to install bls-signatures (until #1759 is resolved).
+[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. You will need to have `rust` and `cargo` installed.
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies, run:

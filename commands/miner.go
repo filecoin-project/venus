@@ -34,8 +34,8 @@ var minerCmd = &cmds.Command{
 
 var minerPledgeCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "View number of pledged 1GB sectors for <miner>",
-		ShortDescription: `Shows the number of pledged 1GB sectors for the given miner address`,
+		Tagline:          "View number of pledged sectors for <miner>",
+		ShortDescription: `Shows the number of pledged sectors for the given miner address`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The miner address"),
@@ -58,7 +58,8 @@ var minerPledgeCmd = &cmds.Command{
 	},
 }
 
-type minerCreateResult struct {
+// MinerCreateResult is the type returned when creating a miner.
+type MinerCreateResult struct {
 	Address address.Address
 	GasUsed types.GasUnits
 	Preview bool
@@ -66,13 +67,13 @@ type minerCreateResult struct {
 
 var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Create a new file miner with <pledge> 1GB sectors and <collateral> FIL",
+		Tagline: "Create a new file miner with <pledge> sectors and <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
 Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in 1GB sectors) for the miner"),
+		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in sectors) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
 	},
 	Options: []cmdkit.Option{
@@ -125,7 +126,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			if err != nil {
 				return err
 			}
-			return re.Emit(&minerCreateResult{
+			return re.Emit(&MinerCreateResult{
 				Address: address.Address{},
 				GasUsed: usedGas,
 				Preview: true,
@@ -137,15 +138,15 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			return err
 		}
 
-		return re.Emit(&minerCreateResult{
+		return re.Emit(&MinerCreateResult{
 			Address: addr,
 			GasUsed: types.NewGasUnits(0),
 			Preview: false,
 		})
 	},
-	Type: &minerCreateResult{},
+	Type: &MinerCreateResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerCreateResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerCreateResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))

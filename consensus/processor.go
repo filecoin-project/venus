@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -100,6 +101,11 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // See comments on ApplyMessage for specific intent.
 func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
+
+	processBlkTimer := time.Now()
+	defer func() {
+		log.Infof("[TIMER] DefaultProcessor.ProcessBlock BlkCID: %s - elapsed time: %s", blk.Cid(), time.Since(processBlkTimer).Round(time.Millisecond))
+	}()
 
 	bh := types.NewBlockHeight(uint64(blk.Height))
 	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blk.Messages, blk.Miner, bh, ancestors)
@@ -249,6 +255,18 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //   - everything else: successfully applied (include, keep changes)
 //
 func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*ApplicationResult, error) {
+
+	// used for log timer call below
+	msgCid, err := msg.Cid()
+	if err != nil {
+		return nil, errors.FaultErrorWrap(err, "could not get message cid")
+	}
+
+	applyMsgTimer := time.Now()
+	defer func() {
+		log.Infof("[TIMER] DefaultProcessor.ApplyMessage CID: %s - elapsed time: %s", msgCid.String(), time.Since(applyMsgTimer).Round(time.Millisecond))
+	}()
+
 	cachedStateTree := state.NewCachedStateTree(st)
 
 	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh, gasTracker, ancestors)
@@ -283,7 +301,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		// includes errInsufficientFunds because we don't want the message
 		// to be replayable.
 		executionError = err
-		log.Warningf("ApplyMessage execution error: %s", executionError)
+		log.Infof("ApplyMessage failed: %s %s", executionError, msg.String())
 	}
 
 	// At this point we consider the message successfully applied so inc

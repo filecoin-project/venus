@@ -45,7 +45,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 
 	toExecutable, err := vmCtx.state.GetBuiltinActorCode(vmCtx.to.Code)
 	if err != nil {
-		return nil, 1, errors.FaultErrorWrapf(err, "unable to load code for To actor: %v", vmCtx.to)
+		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
 	}
 
 	if !toExecutable.Exports().Has(vmCtx.message.Method) {
