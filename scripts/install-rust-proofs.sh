@@ -54,6 +54,11 @@ install_precompiled() {
   tar -C proofs -xzf /tmp/${TAR_NAME}.tar.gz
 }
 
+cleanup_compile_artifacts() {
+  rm proofs/bin/paramfetch
+  rm -r proofs/misc/
+}
+
 install_local() {
   if ! [ -x "$(command -v cargo)" ] ; then
     echo 'Error: cargo is not installed.'
@@ -84,6 +89,7 @@ install_local() {
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
   echo "using local rust-proofs"
   install_local
+  cleanup_compile_artifacts
 else
   echo "using precompiled rust-proofs"
   install_precompiled
@@ -91,5 +97,6 @@ else
   if [ $? -ne "0" ]; then
     echo "failed to find or obtain precompiled rust-proofs, falling back to local"
     install_local
+    cleanup_compile_artifacts
   fi
 fi
