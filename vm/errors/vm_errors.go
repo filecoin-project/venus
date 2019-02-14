@@ -12,6 +12,8 @@ const (
 	ErrInsufficientBalance
 	// ErrMissingExport is the error code for a message that calls a non-existent method
 	ErrMissingExport
+	// ErrNoActorCode indicates the recipient's code could not be loaded.
+	ErrNoActorCode
 )
 
 // Errors is a map from exit codes to errors.
@@ -21,6 +23,7 @@ var Errors = map[uint8]error{
 	ErrCannotTransferNegativeValue: NewCodedRevertError(ErrCannotTransferNegativeValue, "cannot transfer negative values"),
 	ErrInsufficientBalance:         NewCodedRevertError(ErrInsufficientBalance, "not enough balance"),
 	ErrMissingExport:               NewCodedRevertError(ErrInsufficientBalance, "actor does not export method"),
+	ErrNoActorCode:                 NewCodedRevertError(ErrNoActorCode, "actor code not found"),
 }
 
 // VMExitCodeToError tries to locate an error in either the VM errors or the provide error map
