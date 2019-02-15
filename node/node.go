@@ -796,7 +796,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
 		}
 		processor := consensus.NewDefaultProcessor()
-		// add signingAddr and signer to params
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
 			node.Blockstore, node.CborStore(), minerAddr, minerSigningAddress, node.Wallet, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
@@ -1003,8 +1002,6 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	if err != nil {
 		return nil, err
 	}
-	smsgCid, err := node.PorcelainAPI.MessageSend(ctx, accountAddr, address.StorageMarketAddress, collateral, gasPrice,
-		gasLimit, "createMiner", big.NewInt(int64(pledge)), pubKey, pid)
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
@@ -1015,7 +1012,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		gasLimit,
 		"createMiner",
 		big.NewInt(int64(pledge)),
-		pubkey,
+		pubKey,
 		pid,
 	)
 	if err != nil {

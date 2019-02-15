@@ -112,9 +112,11 @@ func NewDefaultWorker(messagePool *core.MessagePool,
 		blockSigner,
 		bt,
 		func() {})
+
 	// TODO: create real PoST.
 	// https://github.com/filecoin-project/go-filecoin/issues/1791
 	w.createPoSTFunc = w.fakeCreatePoST
+
 	return w
 }
 
@@ -133,17 +135,17 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool,
 	bt time.Duration,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		getStateTree: getStateTree,
-		getWeight:    getWeight,
-		getAncestors: getAncestors,
-		messagePool:  messagePool,
-		processor:    processor,
-		powerTable:   powerTable,
-		blockstore:   bs,
-		cstore:       cst,
+		getStateTree:    getStateTree,
+		getWeight:       getWeight,
+		getAncestors:    getAncestors,
+		messagePool:     messagePool,
+		processor:       processor,
+		powerTable:      powerTable,
+		blockstore:      bs,
+		cstore:          cst,
 		createPoSTFunc:  createPoST,
-		minerAddr:    miner,
-		blockTime:    bt,
+		minerAddr:       miner,
+		blockTime:       bt,
 		blockSignerAddr: blockSignerAddr,
 		blockSigner:     blockSigner,
 	}

@@ -227,52 +227,6 @@ func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
 	return append(cfo, VerifierConfigOption(verifier))
 }
 
-// resetNodeGen resets the genesis block of the input given node using the gif
-// function provided.
-// Note: this is an awful way to test the node. This function duplicates to a large
-// degree what the constructor does. It should not be in the business of replacing
-// fields on node as doing that correctly requires knowing exactly how the node is
-// created, which is bad information to need to rely on in tests.
-func resetNodeGen(node *Node, gif consensus.GenesisInitFunc) error { // nolint: deadcode
-	ctx := context.Background()
-
-	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-		return getStateFromKey(ctx, ts.String())
-	}
-	getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
-		parent, err := ts.Parents()
-		if err != nil {
-			return uint64(0), err
-		}
-		// TODO handle genesis cid more gracefully
-		if parent.Len() == 0 {
-			return node.Consensus.Weight(ctx, ts, nil)
-		}
-		pSt, err := getStateFromKey(ctx, parent.String())
-		if err != nil {
-			return uint64(0), err
-		}
-		return node.Consensus.Weight(ctx, ts, pSt)
-	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
-	}
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, getAncestors, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
-	cur := node.ChainReader.Head()
-	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
-	require.NoError(err)
-	require.NoError(out.Err)
-	outTS := testhelpers.RequireNewTipSet(require, out.NewBlock)
-	chainStore, ok := node.ChainReader.(chain.Store)
-	require.True(ok)
-	tsas := &chain.TipSetAndState{
-		TipSet:          outTS,
-		TipSetStateRoot: out.NewBlock.StateRoot,
-	}
-	node.lookup = lookup.NewChainLookupService(newChainReader, defaultSenderGetter, node.Blockstore)
-	return nil
-}
-
 // PeerKeys are a list of keys for peers that can be used in testing.
 var PeerKeys = []crypto.PrivKey{
 	mustGenKey(101),

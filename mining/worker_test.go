@@ -49,10 +49,6 @@ func Test_Mine(t *testing.T) {
 
 	minerOwnerAddr := addrs[3]
 
-	// Success case. TODO: this case isn't testing much.  Testing w.Mine
-	// further needs a lot more attention.
-	worker := NewDefaultWorker(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), NewTestPowerTableView(1), bs, cst, addrs[3], th.BlockTimeTest)
-
 	// Success case.
 	// TODO: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
@@ -214,7 +210,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	minerOwnerAddr := addrs[3]
 
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-		&th.TestView{}, bs, cst, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest)
+		&th.TestView{}, bs, cst, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -257,7 +253,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		return nil, nil
 	}
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, cst, addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest)
+		&th.TestView{}, bs, cst, addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -364,7 +360,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getAncestors, getWeightTest, consensus.NewDefaultProcessor(),
+	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
 		&th.TestView{}, bs, cst, addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
 	assert.Len(pool.Pending(), 0)
