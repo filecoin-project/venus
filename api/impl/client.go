@@ -52,9 +52,15 @@ func (api *nodeClient) Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error
 
 func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	ds := dag.NewDAGService(api.api.node.BlockService())
+	bufds := ipld.NewBufferedDAG(ctx, ds)
+
 	spl := chunk.DefaultSplitter(data)
 
-	return imp.BuildDagFromReader(ds, spl)
+	nd, err := imp.BuildDagFromReader(bufds, spl)
+	if err != nil {
+		return nil, err
+	}
+	return nd, bufds.Commit()
 }
 
 func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64, allowDuplicates bool) (*storage.DealResponse, error) {
