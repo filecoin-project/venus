@@ -195,7 +195,6 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (chain.Syncer, chain.Store, *hamt.CborIpldStore, repo.Repo) {
 	ctx := context.Background()
 
-	// chainStore.Store
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
 	require.NoError(err)
 
@@ -204,7 +203,6 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 	chainDS := r.ChainDatastore()
 	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
-	// chainStore.chain.Syncer
 	syncer := chain.NewDefaultSyncer(cst, cst, con, chainStore) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain genesis block and state
@@ -791,10 +789,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	// chainStore.Store
 	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
 
-	// chainStore.Syncer
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &testhelpers.TestView{}, calcGenBlk.Cid(), verifier)
 
@@ -805,7 +801,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
 	chain.RequirePutTsas(ctx, require, chainStore, genTsas)
-	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct genesis
+	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore with correct genesis
 	require.NoError(err)
 	requireHead(require, chainStore, calcGenTS)
 	requireTsAdded(require, chainStore, calcGenTS)
@@ -814,12 +810,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
 	syncer := chain.NewDefaultSyncer(cst, cst, con, chainStore)
-	baseTS := chainStore.Head() // this is the last block of the bootstrapping chainStore creating miners
+	baseTS := chainStore.Head() // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(err)
-	/* Test chainStore diagram and weight calcs */
+	/* Test chain diagram and weight calcs */
 	// (Note f1b1 = fork 1 block 1)
 	//
 	// f1b1 -> {f1b2a, f1b2b}
