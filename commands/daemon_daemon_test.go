@@ -47,7 +47,9 @@ func TestDaemonCORS(t *testing.T) {
 	t.Run("default allowed origins work", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
+
 		td := th.NewDaemon(t).Start()
+		defer td.ShutdownSuccess()
 
 		maddr, err := ma.NewMultiaddr(td.CmdAddr())
 		assert.NoError(err)
@@ -89,6 +91,7 @@ func TestDaemonCORS(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		td := th.NewDaemon(t).Start()
+		defer td.ShutdownSuccess()
 
 		maddr, err := ma.NewMultiaddr(td.CmdAddr())
 		assert.NoError(err)
