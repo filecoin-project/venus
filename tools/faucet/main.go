@@ -21,7 +21,7 @@ var log = logging.Logger("faucet")
 var limiterCleanTick = time.Minute * 15
 
 // Default timeout between wallet fund requests
-var defaultLimiterExpiry = time.Hour * 24
+var defaultLimiterExpiry = time.Hour * 1
 
 func init() {
 	// Info level
