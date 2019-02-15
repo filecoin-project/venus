@@ -103,8 +103,8 @@ go run ./build/*.go deps
 #### Build, Run Tests, and Install
 
 ```sh
-# First, build the binary...
-go run ./build/*.go build
+# First, build the binary (with precompiled proofs, recommended)
+FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build/*.go build
 
 # Install go-filecoin to ${GOPATH}/bin (necessary for tests)
 go run ./build/*.go install
