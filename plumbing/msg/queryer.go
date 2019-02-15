@@ -3,9 +3,9 @@ package msg
 import (
 	"context"
 
-	hamt "gx/ipfs/QmeoCaPwsaPtW34W4vnPEYFYNgNFAygknmX2RRBbGytF9Y/go-hamt-ipld"
 	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	hamt "gx/ipfs/QmeoCaPwsaPtW34W4vnPEYFYNgNFAygknmX2RRBbGytF9Y/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
