@@ -5,16 +5,7 @@ install_precompiled() {
   RELEASE_NAME="rust-proofs-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
-  if [ -z $GITHUB_TOKEN ]; then
-    echo "\$GITHUB_TOKEN not set"
-    return 1
-  fi
-
-  RELEASE_RESPONSE=`
-    curl \
-      --header "Authorization: token $GITHUB_TOKEN" \
-      "https://api.github.com/repos/filecoin-project/rust-proofs/releases/tags/$RELEASE_TAG"
-  `
+  RELEASE_RESPONSE=`curl "https://api.github.com/repos/filecoin-project/rust-proofs/releases/tags/$RELEASE_TAG"`
 
   RELEASE_ID=`echo $RELEASE_RESPONSE | jq '.id'`
 
@@ -29,7 +20,6 @@ install_precompiled() {
 
   ASSET_URL=`curl \
       --head \
-      --header "Authorization: token $GITHUB_TOKEN" \
       --header "Accept:application/octet-stream" \
       --location \
       --output /dev/null \
