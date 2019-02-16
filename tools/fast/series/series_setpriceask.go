@@ -56,7 +56,7 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 			break
 		}
 
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Second * 3)
 	}
 
 	return ask, nil

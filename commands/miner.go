@@ -58,7 +58,8 @@ var minerPledgeCmd = &cmds.Command{
 	},
 }
 
-type minerCreateResult struct {
+// MinerCreateResult is the type returned when creating a miner.
+type MinerCreateResult struct {
 	Address address.Address
 	GasUsed types.GasUnits
 	Preview bool
@@ -125,7 +126,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			if err != nil {
 				return err
 			}
-			return re.Emit(&minerCreateResult{
+			return re.Emit(&MinerCreateResult{
 				Address: address.Address{},
 				GasUsed: usedGas,
 				Preview: true,
@@ -137,15 +138,15 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			return err
 		}
 
-		return re.Emit(&minerCreateResult{
+		return re.Emit(&MinerCreateResult{
 			Address: addr,
 			GasUsed: types.NewGasUnits(0),
 			Preview: false,
 		})
 	},
-	Type: &minerCreateResult{},
+	Type: &MinerCreateResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerCreateResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerCreateResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
