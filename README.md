@@ -90,7 +90,7 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 #### Install Dependencies
 
 `go-filecoin` depends on some proofs code written in Rust, housed in the
-[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. You will need to have `cargo` installed.
+[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. You will need to have `cargo` and `jq` installed.
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
 other build and test dependencies (with precompiled proofs, recommended), run:
