@@ -364,7 +364,16 @@ var reclaimCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"reclaim",
+			channel,
+		)
 		if err != nil {
 			return err
 		}

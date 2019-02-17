@@ -102,19 +102,6 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
-func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		types.NewAttoFILFromFIL(0),
-		gasPrice,
-		gasLimit,
-		"reclaim",
-		channel,
-	)
-}
-
 func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
 	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
 	if err != nil {
