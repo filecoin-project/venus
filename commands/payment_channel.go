@@ -545,7 +545,16 @@ var extendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			amount,
+			gasPrice,
+			gasLimit,
+			"extend",
+			channel, eol,
+		)
 		if err != nil {
 			return err
 		}

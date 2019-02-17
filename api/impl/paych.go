@@ -119,16 +119,3 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)
 }
-
-func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		amount,
-		gasPrice,
-		gasLimit,
-		"extend",
-		channel, eol,
-	)
-}
