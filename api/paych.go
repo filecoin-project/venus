@@ -12,7 +12,6 @@ import (
 
 // Paych is the interface that defines methods to execute payment channel operations.
 type Paych interface {
-	Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error)
 	Ls(ctx context.Context, fromAddr address.Address, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error)
 	Voucher(ctx context.Context, fromAddr address.Address, channel *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) (string, error)
 	Redeem(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error)

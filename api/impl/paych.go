@@ -21,19 +21,6 @@ func newNodePaych(api *nodeAPI, porcelainAPI *porcelain.API) *nodePaych {
 	return &nodePaych{api: api, porcelainAPI: porcelainAPI}
 }
 
-func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		amount,
-		gasPrice,
-		gasLimit,
-		"createChannel",
-		target, eol,
-	)
-}
-
 func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := np.api.node
 

@@ -98,7 +98,17 @@ message to be mined to get the channelID.`,
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			amount,
+			gasPrice,
+			gasLimit,
+			"createChannel",
+			target,
+			eol,
+		)
 		if err != nil {
 			return err
 		}
