@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -31,27 +30,6 @@ func newNodeAddress(api *nodeAPI) *nodeAddress {
 
 func (api *nodeAddress) Addrs() api.Addrs {
 	return api.addrs
-}
-
-func (api *nodeAddress) Balance(ctx context.Context, addr address.Address) (*types.AttoFIL, error) {
-	fcn := api.api.node
-
-	tree, err := fcn.ChainReader.LatestState(ctx)
-	if err != nil {
-		return types.ZeroAttoFIL, err
-	}
-
-	act, err := tree.GetActor(ctx, addr)
-	if err != nil {
-		if state.IsActorNotFoundError(err) {
-			// if the account doesn't exit, the balance should be zero
-			return types.NewAttoFILFromFIL(0), nil
-		}
-
-		return types.ZeroAttoFIL, err
-	}
-
-	return act.Balance, nil
 }
 
 type nodeAddrs struct {

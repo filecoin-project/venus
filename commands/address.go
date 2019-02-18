@@ -123,7 +123,7 @@ var balanceCmd = &cmds.Command{
 			return err
 		}
 
-		balance, err := GetAPI(env).Address().Balance(req.Context, addr)
+		balance, err := GetPorcelainAPI(env).WalletBalance(req.Context, addr)
 		if err != nil {
 			return err
 		}
