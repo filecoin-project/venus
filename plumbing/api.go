@@ -2,6 +2,7 @@ package plumbing
 
 import (
 	"context"
+	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/ps"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -34,6 +36,8 @@ type API struct {
 	msgQueryer   *msg.Queryer
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
+	subscriber   *ps.Subscriber
+	publisher    *ps.Publisher
 	network      *ntwk.Network
 	sigGetter    *mthdsig.Getter
 	wallet       *wallet.Wallet
@@ -48,6 +52,8 @@ type APIDeps struct {
 	MsgQueryer   *msg.Queryer
 	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
+	Subscriber   *ps.Subscriber
+	Publisher    *ps.Publisher
 	Network      *ntwk.Network
 	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
@@ -65,6 +71,8 @@ func New(deps *APIDeps) *API {
 		msgQueryer:   deps.MsgQueryer,
 		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
+		subscriber:   deps.Subscriber,
+		publisher:    deps.Publisher,
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
 		wallet:       deps.Wallet,
@@ -143,6 +151,16 @@ func (api *API) MessageSend(ctx context.Context, from, to address.Address, value
 // to appear on chain.
 func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
+}
+
+// PubSubSubscribe subscribes to a topic for notifications from the filecoin network
+func (api *API) PubSubSubscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error) {
+	return api.subscriber.Subscribe(topic, opts...)
+}
+
+// PubSubPublish publishes a message to a topic on the filecoin network
+func (api *API) PubSubPublish(topic string, data []byte) error {
+	return api.publisher.Publish(topic, data)
 }
 
 // NetworkGetPeerID gets the current peer id from Util

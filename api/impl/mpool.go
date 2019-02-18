@@ -20,7 +20,7 @@ func (api *nodeMpool) View(ctx context.Context, messageCount uint) ([]*types.Sig
 
 	pending := nd.MsgPool.Pending()
 	if len(pending) < int(messageCount) {
-		subscription, err := nd.PubSub.Subscribe(msg.Topic)
+		subscription, err := nd.PorcelainAPI.PubSubSubscribe(msg.Topic)
 		if err != nil {
 			return nil, err
 		}
