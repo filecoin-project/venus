@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/plumbing/ps"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -110,6 +111,11 @@ func (api *API) ChainHead(ctx context.Context) types.TipSet {
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.BlockHistory(ctx, api.chain.Head())
+}
+
+// ChainLatestState returns the latest state tree from the chain reader
+func (api *API) ChainLatestState(ctx context.Context) (state.Tree, error) {
+	return api.chain.LatestState(ctx)
 }
 
 // BlockGet gets a block by CID
