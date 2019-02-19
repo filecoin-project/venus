@@ -42,7 +42,6 @@ COPY --from=builder $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
 COPY --from=builder $SRC_DIR/bin/node_restart /usr/local/bin/node_restart
 COPY --from=builder $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=builder $SRC_DIR/fixtures/* /data/
-COPY --from=builder $SRC_DIR/filecoin-proof-parameters /tmp/filecoin-proof-parameters/
 COPY --from=builder /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=builder /tmp/tini /sbin/tini
 COPY --from=builder /tmp/jq /usr/local/bin/jq

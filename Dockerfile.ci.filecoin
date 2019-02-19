@@ -3,7 +3,7 @@ MAINTAINER Filecoin Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
-COPY --from=filecoin:all $SRC_DIR/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
+COPY $SRC_DIR/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
 COPY --from=filecoin:all $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
 COPY --from=filecoin:all $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
 COPY --from=filecoin:all $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
