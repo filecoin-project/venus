@@ -1,5 +1,11 @@
 version: 2
 
+definitions:
+  steps:
+    - run: &rust_proofs_checksum
+        name: generate rust proofs checksum
+        command: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
+
 jobs:
   build_macos:
     macos:
@@ -21,8 +27,7 @@ jobs:
       - run:
           name: Update submodules
           command: git submodule update --init
-      - run:
-          command: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
+      - run: *rust_proofs_checksum
       - restore_cache:
           key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
 
@@ -142,7 +147,7 @@ jobs:
       - run: git submodule update --init
 
       # Save the Git SHA of the rust-proofs submodule so that we can use it when creating a cache key
-      - run: git rev-parse @:./proofs/rust-proofs > /tmp/rust-proofs-checksum.txt
+      - run: *rust_proofs_checksum
 
       - restore_cache:
           keys:
@@ -275,9 +280,21 @@ jobs:
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: small
     steps:
-      - command: |
-          go build -o ./faucet ./tools/faucet/main.go
-          go build -o ./genesis-file-server ./tools/genesis-file-server/main.go
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
+
+      - restore_cache:
+          keys:
+            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
+
+      - checkout
+      - run:
+          name: build faucet and genesis-file-server
+          command: |
+            go build -o ./faucet ./tools/faucet/main.go
+            go build -o ./genesis-file-server ./tools/genesis-file-server/main.go
 
       - persist_to_workspace:
           root: "."
@@ -309,6 +326,8 @@ jobs:
 
       # The first checkout ensures we have the files needed to restore the cache
       - checkout
+
+      - run: *rust_proofs_checksum
 
       - attach_workspace:
           at: "."
@@ -430,11 +449,11 @@ workflows:
   test_all:
     jobs:
       - build_linux
-      - build_faucet_and_genesis:
-          filters:
-            branches:
-              only:
-                - master
+      - build_faucet_and_genesis
+#          filters:
+#            branches:
+#              only:
+#                - master
       - build_docker_img:
           requires:
             - build_linux
