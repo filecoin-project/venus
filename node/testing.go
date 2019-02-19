@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 
 	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
@@ -17,20 +16,16 @@ import (
 	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
 	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/stretchr/testify/require"
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -230,78 +225,6 @@ type MustCreateMinerResult struct {
 func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
 	verifier := proofs.NewFakeVerifier(true, nil)
 	return append(cfo, VerifierConfigOption(verifier))
-}
-
-// RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint64, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
-	resultChan := make(chan MustCreateMinerResult)
-	require := require.New(t)
-
-	if !node.ChainReader.GenesisCid().Defined() {
-		panic("must initialize with genesis block first")
-	}
-
-	ctx := context.Background()
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-
-	subscription, err := node.PubSub.Subscribe(msg.Topic)
-	require.NoError(err)
-
-	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, types.NewGasPrice(0), types.NewGasUnits(0), pledge, pid, &collateral)
-		resultChan <- MustCreateMinerResult{MinerAddress: minerAddr, Err: err}
-		wg.Done()
-	}()
-
-	// wait for create miner call to put a message in the pool
-	_, err = subscription.Next(ctx)
-	require.NoError(err)
-	getStateFromKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
-		tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
-		if err != nil {
-			return nil, err
-		}
-		return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
-	}
-	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-		return getStateFromKey(ctx, ts.String())
-	}
-	getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
-		parent, err := ts.Parents()
-		if err != nil {
-			return uint64(0), err
-		}
-		// TODO handle genesis cid more gracefully
-		if parent.Len() == 0 {
-			return node.Consensus.Weight(ctx, ts, nil)
-		}
-		pSt, err := getStateFromKey(ctx, parent.String())
-		if err != nil {
-			return uint64(0), err
-		}
-		return node.Consensus.Weight(ctx, ts, pSt)
-	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
-	}
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, getAncestors, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
-	cur := node.ChainReader.Head()
-	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
-	require.NoError(err)
-	require.NoError(out.Err)
-	outTS := testhelpers.RequireNewTipSet(require, out.NewBlock)
-	chainStore, ok := node.ChainReader.(chain.Store)
-	require.True(ok)
-	tsas := &chain.TipSetAndState{
-		TipSet:          outTS,
-		TipSetStateRoot: out.NewBlock.StateRoot,
-	}
-	require.NoError(chainStore.PutTipSetAndState(ctx, tsas))
-	require.NoError(chainStore.SetHead(ctx, outTS))
-	return resultChan
 }
 
 // PeerKeys are a list of keys for peers that can be used in testing.
