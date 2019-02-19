@@ -20,7 +20,11 @@ import (
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service
-const HeartbeatProtocol = "fil/heartbeat/1.0.0"
+const (
+	HeartbeatProtocol = "fil/heartbeat/1.0.0"
+	// Minutes to wait before logging connection failure at ERROR level
+	connectionFailureErrorLogPeriodMinutes = 10 * time.Minute
+)
 
 var log = logging.Logger("metrics")
 
@@ -118,16 +122,35 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 
 	reconTicker := time.NewTicker(rd)
 	defer reconTicker.Stop()
+	// Timestamp of the first connection failure since the last successful connection.
+	// Zero initially and while connected.
+	var failedAt time.Time
+	// Timestamp of the last ERROR log (or of failure, before the first ERROR log).
+	var erroredAt time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-reconTicker.C:
 			if err := hbs.Connect(ctx); err != nil {
-				log.Debugf("Heartbeat service failed to connect: %s", err)
+				// Logs once as a warning immediately on failure, then as error every 10 minutes.
+				now := time.Now()
+				logfn := log.Debugf
+				if failedAt.IsZero() { // First failure since connection
+					failedAt = now
+					erroredAt = failedAt // Start the timer on raising to ERROR level
+					logfn = log.Warningf
+				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriodMinutes {
+					logfn = log.Errorf
+					erroredAt = now // Reset the timer
+				}
+				failureDuration := now.Sub(failedAt)
+				logfn("Heartbeat service failed to connect for %s: %s", failureDuration, err)
 				// failed to connect, continue reconnect loop
 				continue
 			}
+			failedAt = time.Time{}
+
 			// we connected, send heartbeats!
 			// Run will block until it fails to send a heartbeat.
 			if err := hbs.Run(ctx); err != nil {
@@ -213,7 +236,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 
 	s, err := hbs.Host.NewStream(ctx, peerid, HeartbeatProtocol)
 	if err != nil {
-		log.Errorf("failed to open stream, peerID: %s, targetAddr: %s %s", peerid, targetAddr, err)
+		log.Debugf("failed to open stream, peerID: %s, targetAddr: %s %s", peerid, targetAddr, err)
 		return err
 	}
 	log.Infof("successfully to open stream, peerID: %s, targetAddr: %s", peerid, targetAddr)
