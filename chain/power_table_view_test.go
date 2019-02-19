@@ -1,4 +1,4 @@
-package chain
+package chain_test
 
 import (
 	"context"
