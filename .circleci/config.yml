@@ -284,6 +284,8 @@ jobs:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
 
+      - checkout
+      - run: *rust_proofs_checksum
       - restore_cache:
           keys:
             - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-proofs-checksum.txt" }}
@@ -449,7 +451,9 @@ workflows:
   test_all:
     jobs:
       - build_linux
-      - build_faucet_and_genesis
+      - build_faucet_and_genesis:
+          requires:
+            - build_linux
 #          filters:
 #            branches:
 #              only:
