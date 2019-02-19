@@ -32,7 +32,7 @@ var mpoolLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)
 
-		pending, err := GetAPI(env).Mpool().View(req.Context, messageCount)
+		pending, err := GetPorcelainAPI(env).MessagePoolWait(req.Context, messageCount)
 		if err != nil {
 			return err
 		}

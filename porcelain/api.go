@@ -51,6 +51,12 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
+// MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
+// It's useful for integration testing.
+func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {
+	return MessagePoolWait(ctx, a, messageCount)
+}
+
 // MessageSendWithDefaultAddress calls MessageSend but with a default from
 // address if none is provided
 func (a *API) MessageSendWithDefaultAddress(
