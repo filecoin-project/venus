@@ -130,3 +130,40 @@ func NewAddress(w *Wallet) (address.Address, error) {
 	backend := (backends[0]).(*DSBackend)
 	return backend.NewAddress()
 }
+
+// GetPubKeyForAddress returns the public key in the keystore associated with
+// the given address.
+func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
+	info, err := w.keyInfoForAddr(addr)
+	if err != nil {
+		return nil, err
+	}
+	pubkey, err := info.PublicKey()
+	if err != nil {
+		return nil, err
+	}
+	return pubkey, nil
+}
+
+// NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
+func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
+	newAddr, err := NewAddress(w)
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+
+	return w.keyInfoForAddr(newAddr)
+}
+
+func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {
+	backend, err := w.Find(addr)
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+
+	info, err := backend.GetKeyInfo(addr)
+	if err != nil {
+		return &types.KeyInfo{}, err
+	}
+	return info, nil
+}
