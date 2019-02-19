@@ -2,13 +2,11 @@ package commands
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-
-	"sync"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -23,17 +21,24 @@ func TestMpoolLs(t *testing.T) {
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
-		d.RunSuccess("message", "send",
-			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "300",
-			"--value=10", fixtures.TestAddresses[2],
-		)
+		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
+		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[2])
 
 		out := d.RunSuccess("mpool", "ls")
-		c := strings.Trim(out.ReadStdout(), "\n")
-		ci, err := cid.Decode(c)
-		assert.NoError(err)
-		assert.True(ci.Defined())
+
+		cids := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+		assert.Equal(2, len(cids))
+
+		for _, c := range cids {
+			ci, err := cid.Decode(c)
+			assert.NoError(err)
+			assert.True(ci.Defined())
+		}
+
+		// Should return immediately with --wait-for-count equal to message count
+		out = d.RunSuccess("mpool", "ls", "--wait-for-count=2")
+		cids = strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+		assert.Equal(2, len(cids))
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {
@@ -53,27 +58,11 @@ func TestMpoolLs(t *testing.T) {
 			wg.Done()
 		}()
 
-		d.RunSuccess("message", "send",
-			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "300",
-			"--value=10", fixtures.TestAddresses[1],
-		)
-
+		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 		assert.False(complete)
-
-		d.RunSuccess("message", "send",
-			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "300",
-			"--value=10", fixtures.TestAddresses[1],
-		)
-
+		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 		assert.False(complete)
-
-		d.RunSuccess("message", "send",
-			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "300",
-			"--value=10", fixtures.TestAddresses[1],
-		)
+		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 
 		wg.Wait()
 
@@ -101,4 +90,12 @@ func TestMpoolRm(t *testing.T) {
 		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
 		assert.Equal("", out)
 	})
+}
+
+func sendMessage(d *th.TestDaemon, from string, to string) *th.Output {
+	return d.RunSuccess("message", "send",
+		"--from", from,
+		"--price", "0", "--limit", "300",
+		"--value=10", to,
+	)
 }
