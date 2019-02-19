@@ -1,14 +1,31 @@
 package address
 
-import "fmt"
+import (
+	"github.com/filecoin-project/go-filecoin/bls-signatures"
+)
 
-// NewForTestGetter returns a closure that returns an address unique to that invocation.
+// newActorIDForTestGetter returns a closure that returns an address unique to that invocation.
 // The address is unique wrt the closure returned, not globally.
-func NewForTestGetter() func() Address {
-	i := 0
+func newActorIDForTestGetter() func() Address {
 	return func() Address {
-		s := fmt.Sprintf("address%d", i)
+		i := 0
 		i++
-		return MakeTestAddress(s)
+		newAddr, err := NewFromActorID(Testnet, uint64(i))
+		if err != nil {
+			panic(err)
+		}
+		return newAddr
+	}
+}
+
+// newBLSForTestGetter returns a closure that returns an address unique to that invocation.
+// The address is unique wrt the closure returned, not globally.
+func newBLSForTestGetter() func() Address {
+	return func() Address {
+		blsAddress, err := NewFromBLS(Testnet, bls.PrivateKeyPublicKey((bls.PrivateKeyGenerate())))
+		if err != nil {
+			panic(err)
+		}
+		return blsAddress
 	}
 }
