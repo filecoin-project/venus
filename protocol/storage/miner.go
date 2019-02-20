@@ -145,14 +145,14 @@ func NewMiner(ctx context.Context, minerAddr, minerOwnerAddr address.Address, nd
 func (sm *Miner) handleMakeDeal(s inet.Stream) {
 	defer s.Close() // nolint: errcheck
 
-	var proposal DealProposal
-	if err := cbu.NewMsgReader(s).ReadMsg(&proposal); err != nil {
+	var signedProposal SignedDealProposal
+	if err := cbu.NewMsgReader(s).ReadMsg(&signedProposal); err != nil {
 		log.Errorf("received invalid proposal: %s", err)
 		return
 	}
 
 	ctx := context.Background()
-	resp, err := sm.receiveStorageProposal(ctx, &proposal)
+	resp, err := sm.receiveStorageProposal(ctx, &signedProposal)
 	if err != nil {
 		log.Errorf("failed to process proposal: %s", err)
 		return
@@ -164,8 +164,17 @@ func (sm *Miner) handleMakeDeal(s inet.Stream) {
 }
 
 // receiveStorageProposal is the entry point for the miner storage protocol
-func (sm *Miner) receiveStorageProposal(ctx context.Context, p *DealProposal) (*DealResponse, error) {
-	// TODO: Check signature
+func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *SignedDealProposal) (*DealResponse, error) {
+	// Validate deal signature
+	bdp, err := sp.DealProposal.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	p := &sp.DealProposal
+
+	if !types.IsValidSignature(bdp, sp.Payment.Payer, sp.Signature) {
+		return sm.proposalRejector(ctx, sm, p, fmt.Sprint("invalid deal signature"))
+	}
 
 	if err := sm.validateDealPayment(ctx, p); err != nil {
 		return sm.proposalRejector(ctx, sm, p, err.Error())
