@@ -62,7 +62,7 @@ func (noopLibP2PHost) Close() error {
 }
 
 func (noopLibP2PHost) ConnManager() ifconnmgr.ConnManager {
-	panic("implement me")
+	return &ifconnmgr.NullConnMgr{}
 }
 
 type noopLibP2PNetwork struct{}
