@@ -1,4 +1,4 @@
-FROM debian:stretch-20190204-slim AS builder
+FROM debian:stretch-20190204-slim AS base
 MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates file sudo git build-essential wget
