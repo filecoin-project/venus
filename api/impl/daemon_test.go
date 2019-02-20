@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 )
 
 func TestDaemonInitSuccess(t *testing.T) {
