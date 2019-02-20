@@ -17,7 +17,7 @@ type ActionOption func() []string
 
 // AOPrice provides the `--price=<fil>` option to actions
 func AOPrice(price *big.Float) ActionOption {
-	sPrice := fmt.Sprintf("%f", price)
+	sPrice := price.Text('f', -1)
 	return func() []string {
 		return []string{"--price", sPrice}
 	}
