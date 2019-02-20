@@ -354,8 +354,8 @@ jobs:
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             docker build -f Dockerfile.ci.genesis --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA
-#            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
-#            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
+            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
 
       - run:
           name: build & push image - faucet
@@ -363,8 +363,8 @@ jobs:
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             docker build -f Dockerfile.ci.faucet --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
-#            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
-#            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
 
       - run:
           name: build & push image - filecoin
@@ -374,8 +374,8 @@ jobs:
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
-#            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
-#            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
+            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
 
   trigger_nightly_devnet_deploy:
     docker:
@@ -455,18 +455,18 @@ workflows:
       - build_faucet_and_genesis:
           requires:
             - build_linux
-#          filters:
-#            branches:
-#              only:
-#                - master
+          filters:
+            branches:
+              only:
+                - master
       - build_docker_img:
           requires:
             - build_linux
             - build_faucet_and_genesis
-#          filters:
-#            branches:
-#              only:
-#                - master
+          filters:
+            branches:
+              only:
+                - master
 
   build_nightly_osx:
     triggers:
