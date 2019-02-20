@@ -365,8 +365,7 @@ type minerTestPorcelain struct {
 }
 
 func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
 	payerAddr, err := ki[0].Address()
 	require.NoError(err, "Could not create payer address")
 

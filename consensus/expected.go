@@ -31,7 +31,9 @@ var (
 
 func init() {
 	ticketDomain = &big.Int{}
-	ticketDomain.Exp(big.NewInt(2), big.NewInt(256), nil)
+	// The size of the ticket domain must equal the size of the Signature (ticket) generated.
+	// Currently this is a secp256.Sign signature, which is 65 bytes.
+	ticketDomain.Exp(big.NewInt(2), big.NewInt(65*8), nil)
 	ticketDomain.Sub(ticketDomain, big.NewInt(1))
 }
 
@@ -265,24 +267,39 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 // validateMining checks validity of the block ticket, proof, and miner address.
 //    Returns an error if:
 //    	* any tipset's block was mined by an invalid miner address.
-//      * the block ticket is incorrectly computed
+//      * the block proof is invalid for the challenge
 //      * the block ticket fails the power check, i.e. is not a winning ticket
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
 	for _, blk := range ts.ToSlice() {
-		computedTicket := CreateTicket(blk.Proof, blk.Miner)
-
-		if !bytes.Equal(blk.Ticket, computedTicket) {
-			return errors.New("ticket incorrectly computed")
+		parentHeight, err := parentTs.Height()
+		if err != nil {
+			return errors.Wrap(err, "failed to get parentHeight")
 		}
 
+		if parentHeight > uint64(blk.Height) {
+			return errors.New("parent height > block height")
+		}
+
+		nullBlockCount := uint64(blk.Height) - parentHeight - 1
+		challengeSeed, err := CreateChallengeSeed(parentTs, nullBlockCount)
+		if err != nil {
+			return errors.Wrap(err, "couldn't create challengeSeed")
+		}
+
+		isValid, err := proofs.IsPoStValidWithVerifier(c.verifier, []proofs.CommR{}, challengeSeed, []uint64{}, blk.Proof)
+		if err != nil {
+			return errors.Wrap(err, "could not test the proof's validity")
+		}
+		if !isValid {
+			return errors.New("invalid proof")
+		}
+
+		// TODO: Re-enable ticket checking for part 3. See:
+		// https://github.com/filecoin-project/go-filecoin/pull/1795
+
 		// TODO: Also need to validate BlockSig
-
-		// TODO: Once we've picked a delay function (see #2119), we need to
-		// verify its proof here. The proof will likely be written to a field on
-		// the mined block.
-
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {
@@ -342,19 +359,6 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (proofs.PoSt
 
 	h := sha256.Sum256(buf)
 	return h, nil
-}
-
-// CreateTicket computes a valid ticket using the supplied proof
-// []byte and the minerAddress address.Address.
-//    returns:  []byte -- the ticket.
-func CreateTicket(proof proofs.PoStProof, minerAddr address.Address) []byte {
-	// TODO: the ticket is supposed to be a signature, per the spec.
-	// For now to ensure that the ticket is unique to each miner mix in
-	// the miner address.
-	// https://github.com/filecoin-project/go-filecoin/issues/1054
-	buf := append(proof[:], minerAddr.Bytes()...)
-	h := sha256.Sum256(buf)
-	return h[:]
 }
 
 // runMessages applies the messages of all blocks within the input

@@ -7,14 +7,18 @@ import (
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 
+	"fmt"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/minio/blake2b-simd"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"testing"
 )
 
@@ -83,7 +87,10 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // to be correct.
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
-	ticket := consensus.CreateTicket(postProof, minerAddr)
+	ticket := createTicket(postProof, signerAddr, signer)
+
+	baseTsBlock := baseTipSet.ToSlice()[0]
+	stateRoot := baseTsBlock.StateRoot
 
 	return &types.Block{
 		Miner:        minerAddr,
@@ -92,7 +99,7 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		ParentWeight: types.Uint64(10000 * height),
 		Height:       types.Uint64(height),
 		Nonce:        types.Uint64(height),
-		StateRoot:    stateRootCid,
+		StateRoot:    stateRoot,
 		Proof:        postProof,
 	}
 }
@@ -159,19 +166,19 @@ func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh
 
 // ApplyTestMessageWithGas uses the TestBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerAddr address.Address) (*consensus.ApplicationResult, error) {
 
 	smsg, err := types.NewSignedMessage(*msg, signer, gasPrice, gasLimit)
 	if err != nil {
 		panic(err)
 	}
 	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder())
-	return newMessageApplier(smsg, applier, st, store, bh, minerOwner)
+	return newMessageApplier(smsg, applier, st, store, bh, minerAddr)
 }
 
 func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
-	bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerOwner, bh, nil)
+	bh *types.BlockHeight, minerAddr address.Address) (*consensus.ApplicationResult, error) {
+	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerAddr, bh, nil)
 
 	if len(amr.Results) > 0 {
 		return amr.Results[0], err
@@ -191,4 +198,17 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 
 func newTestApplier() *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+}
+
+// This is currently to prevent an import cycle error with mining :(
+func createTicket(proof proofs.PoStProof, signerAddr address.Address, signer types.Signer) []byte {
+	buf := append(proof[:], signerAddr.Bytes()...)
+	h := blake2b.Sum256(buf)
+
+	ticket, err := signer.SignBytes(h[:], signerAddr)
+	if err != nil {
+		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
+		panic(errMsg)
+	}
+	return ticket
 }

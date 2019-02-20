@@ -2,6 +2,10 @@ package node
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
@@ -57,7 +61,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 		ParentWeight: types.Uint64(10000),
 		StateRoot:    baseTS.ToSlice()[0].StateRoot,
 		Proof:        proof,
-		Ticket:       consensus.CreateTicket(proof, minerAddr),
+		Ticket:       mining.CreateTicket(proof, signerAddr, signer),
 	}
 
 	// Wait for network connection notifications to propagate
@@ -92,11 +96,13 @@ func TestChainSync(t *testing.T) {
 
 	baseTS := nodes[0].ChainReader.Head()
 
-	stateRoot := baseTS.ToSlice()[0].StateRoot
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	signerAddr, err := ki[0].Address()
+	require.NoError(t, err)
 
-	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr)
-	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr)
-	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr)
+	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 1, minerAddr, signerAddr, signer)
+	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 2, minerAddr, signerAddr, signer)
+	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 3, minerAddr, signerAddr, signer)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

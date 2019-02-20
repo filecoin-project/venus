@@ -81,17 +81,18 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	// see powerTableForWidenTest
 	minerPower := uint64(25)
 	totalPower := uint64(100)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 	link1blk1 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
 	// set up tickets
-	link1blk1.Proof, link1blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link1blk1.Proof, link1blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link1blk2 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
 	// set up tickets
-	link1blk2.Proof, link1blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link1blk2.Proof, link1blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link1 = testhelpers.RequireNewTipSet(require, link1blk1, link1blk2)
@@ -104,17 +105,17 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link2blk1 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(0),
 			NullBlockCount: uint64(0), Consensus: con, MinerAddr: minerAddress})
-	link2blk1.Proof, link2blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link2blk1.Proof, link2blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link2blk2 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Consensus: con, MinerAddr: minerAddress})
-	link2blk2.Proof, link2blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link2blk2.Proof, link2blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link2blk3 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: link1State, Nonce: uint64(1), Consensus: con, MinerAddr: minerAddress})
-	link2blk3.Proof, link2blk3.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link2blk3.Proof, link2blk3.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link2 = testhelpers.RequireNewTipSet(require, link2blk1, link2blk2, link2blk3)
@@ -126,7 +127,7 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	}
 	link3blk1 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link2, GenesisCid: genCid, StateRoot: link2State, Consensus: con, MinerAddr: minerAddress})
-	link3blk1.Proof, link3blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link3blk1.Proof, link3blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link3 = testhelpers.RequireNewTipSet(require, link3blk1)
@@ -139,12 +140,12 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 
 	link4blk1 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress}) // 2 null blks between link 3 and 4
-	link4blk1.Proof, link4blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link4blk1.Proof, link4blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link4blk2 = chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link3, GenesisCid: genCid, StateRoot: link3State, Nonce: uint64(1), NullBlockCount: uint64(2), Consensus: con, MinerAddr: minerAddress})
-	link4blk2.Proof, link4blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	link4blk2.Proof, link4blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	link4 = testhelpers.RequireNewTipSet(require, link4blk1, link4blk2)
@@ -701,34 +702,35 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 
 	minerPower := uint64(25)
 	totalPower := uint64(100)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	var err error
 	forklink2blk1 := chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(51), MinerAddr: minerAddress})
 
-	forklink2blk1.Proof, forklink2blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	forklink2blk1.Proof, forklink2blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	forklink2blk2 := chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(52), MinerAddr: minerAddress})
-	forklink2blk2.Proof, forklink2blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	forklink2blk2.Proof, forklink2blk2.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	forklink2blk3 := chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(53), MinerAddr: minerAddress})
-	forklink2blk3.Proof, forklink2blk3.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	forklink2blk3.Proof, forklink2blk3.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	forklink2blk4 := chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: link1, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, Nonce: uint64(54), MinerAddr: minerAddress})
-	forklink2blk4.Proof, forklink2blk4.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	forklink2blk4.Proof, forklink2blk4.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	forklink2 := testhelpers.RequireNewTipSet(require, forklink2blk1, forklink2blk2, forklink2blk3, forklink2blk4)
 
 	forklink3blk1 := chain.RequireMkFakeChildWithCon(require,
 		chain.FakeChildParams{Parent: forklink2, GenesisCid: genCid, StateRoot: genStateRoot, Consensus: con, MinerAddr: minerAddress})
-	forklink3blk1.Proof, forklink3blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower)
+	forklink3blk1.Proof, forklink3blk1.Ticket, err = chain.MakeProofAndWinningTicket(minerAddress, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
 	forklink3 := testhelpers.RequireNewTipSet(require, forklink3blk1)
@@ -769,6 +771,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	cst := hamt.NewCborStore()
 
 	ctx := context.Background()
+
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	// set up genesis block with power
 	genCfg := &gengen.GenesisCfg{
@@ -846,13 +850,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1 := chain.RequireMkFakeChildCore(require,
 		chain.FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b1.Proof, f1b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
+	f1b1.Proof, f1b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000, mockSigner)
 	require.NoError(err)
 
 	f2b1 := chain.RequireMkFakeChildCore(require,
 		chain.FakeChildParams{Parent: baseTS, GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f2b1.Proof, f2b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
+	f2b1.Proof, f2b1.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000, mockSigner)
 	require.NoError(err)
 
 	tsShared := testhelpers.RequireNewTipSet(require, f1b1, f2b1)
@@ -871,13 +875,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a := chain.RequireMkFakeChildCore(require,
 		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[1].Address},
 		wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000)
+	f1b2a.Proof, f1b2a.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[1].Address, info.Miners[1].Power, 1000, mockSigner)
 	require.NoError(err)
 
 	f1b2b := chain.RequireMkFakeChildCore(require,
 		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f1b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, Nonce: uint64(1), MinerAddr: info.Miners[2].Address},
 		wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000)
+	f1b2b.Proof, f1b2b.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[2].Address, info.Miners[2].Power, 1000, mockSigner)
 	require.NoError(err)
 
 	f1 := testhelpers.RequireNewTipSet(require, f1b2a, f1b2b)
@@ -896,7 +900,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		chain.FakeChildParams{Parent: testhelpers.RequireNewTipSet(require, f2b1), GenesisCid: calcGenBlk.Cid(), StateRoot: bootstrapStateRoot, MinerAddr: info.Miners[3].Address},
 		wFun)
 	// This should fix https://github.com/filecoin-project/go-filecoin/issues/1828
-	f2b2.Proof, f2b2.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[3].Address, info.Miners[3].Power, 1000)
+	f2b2.Proof, f2b2.Ticket, err = chain.MakeProofAndWinningTicket(info.Miners[3].Address, info.Miners[3].Power, 1000, mockSigner)
 	require.NoError(err)
 
 	f2 := testhelpers.RequireNewTipSet(require, f2b2)

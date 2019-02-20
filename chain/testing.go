@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 
@@ -25,6 +26,8 @@ type FakeChildParams struct {
 	NullBlockCount uint64
 	Parent         types.TipSet
 	StateRoot      cid.Cid
+	Signer         types.Signer
+	SignerAddr     address.Address
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -68,6 +71,8 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
+		params.SignerAddr,
+		params.Signer,
 		wFun)
 }
 
@@ -77,7 +82,8 @@ func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
 	nonce uint64,
 	nullBlockCount uint64,
-	minerAddress address.Address,
+	minerAddr, signerAddr address.Address,
+	signer types.Signer,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
@@ -95,12 +101,13 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := th.NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddress)
+	newBlock := th.NewValidTestBlockFromTipSet(parent, height, minerAddr, signerAddr, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
 	newBlock.Nonce = types.Uint64(nonce)
+	newBlock.StateRoot = stateRoot
 
 	return newBlock, nil
 }
@@ -140,7 +147,14 @@ func RequireMkFakeChildWithCon(require *require.Assertions, params FakeChildPara
 func RequireMkFakeChildCore(require *require.Assertions,
 	params FakeChildParams,
 	wFun func(types.TipSet) (uint64, error)) *types.Block {
-	child, err := MkFakeChildCore(params.Parent, params.StateRoot, params.Nonce, params.NullBlockCount, params.MinerAddr, wFun)
+	child, err := MkFakeChildCore(params.Parent,
+		params.StateRoot,
+		params.Nonce,
+		params.NullBlockCount,
+		params.MinerAddr,
+		params.SignerAddr,
+		params.Signer,
+		wFun)
 	require.NoError(err)
 	return child
 }
@@ -162,7 +176,10 @@ func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Stor
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64,
+	totalPower uint64, signer types.Signer,
+) (proofs.PoStProof, types.Signature, error) {
+
 	var postProof proofs.PoStProof
 	var ticket types.Signature
 
@@ -172,7 +189,7 @@ func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, tot
 
 	for {
 		postProof = th.MakeRandomPoSTProofForTest()
-		ticket = consensus.CreateTicket(postProof, minerAddr)
+		ticket = mining.CreateTicket(postProof, minerAddr, signer)
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
 			return postProof, ticket, nil
 		}

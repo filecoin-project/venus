@@ -54,6 +54,14 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 	return ms
 }
 
+// NewMockSignersAndKeyInfo is a convenience function to generate a given number of (mock)
+// signers with their KeyInfo
+func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
+	ki := MustGenerateKeyInfo(numSigners, GenerateKeyInfoSeed())
+	signer := NewMockSigner(ki)
+	return signer, ki
+}
+
 // SignBytes cryptographically signs `data` using the Address `addr`.
 func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]

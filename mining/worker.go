@@ -6,6 +6,7 @@ package mining
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/minio/blake2b-simd"
 )
 
 var log = logging.Logger("mining")
@@ -70,17 +72,15 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	createPoSTFunc  DoSomeWorkFunc
 	minerAddr       address.Address
-	minerOwnerAddr  address.Address
 	blockSignerAddr address.Address
 	blockSigner     types.Signer
-
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
@@ -104,8 +104,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	powerTable consensus.PowerTableView,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
-	miner address.Address,
-	minerOwner address.Address,
+	miner address.Address, // rename minerActor
 	blockSignerAddr address.Address,
 	blockSigner types.Signer,
 	bt time.Duration) *DefaultWorker {
@@ -119,7 +118,6 @@ func NewDefaultWorker(messageSource MessageSource,
 		bs,
 		cst,
 		miner,
-		minerOwner,
 		blockSignerAddr,
 		blockSigner,
 		bt,
@@ -141,8 +139,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	powerTable consensus.PowerTableView,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
-	miner address.Address,
-	minerOwner address.Address,
+	miner address.Address, // rename minerActorAddr
 	blockSignerAddr address.Address,
 	blockSigner types.Signer,
 	bt time.Duration,
@@ -158,7 +155,6 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 		cstore:          cst,
 		createPoSTFunc:  createPoST,
 		minerAddr:       miner,
-		minerOwnerAddr:  minerOwner,
 		blockTime:       bt,
 		blockSignerAddr: blockSignerAddr,
 		blockSigner:     blockSigner,
@@ -214,7 +210,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		copy(proof[:], prChRead[:])
-		ticket = consensus.CreateTicket(proof, w.minerAddr)
+		ticket = CreateTicket(proof, w.minerAddr, w.blockSigner)
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoSTFunc()
@@ -231,8 +227,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
-			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
+		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		outCh <- NewOutput(next, err)
 		return true
 	}
@@ -251,6 +247,22 @@ func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFu
 		c <- challengeSeed
 	}()
 	return c
+}
+
+// CreateTicket computes a valid ticket using the supplied proof
+// []byte and the minerAddress address.Address.
+//    returns:  []byte -- the ticket.
+func CreateTicket(proof proofs.PoStProof, signerAddr address.Address, signer types.Signer) []byte {
+	buf := append(proof[:], signerAddr.Bytes()...)
+	h := blake2b.Sum256(buf)
+	//return h[:]
+
+	ticket, err := signer.SignBytes(h[:], signerAddr)
+	if err != nil {
+		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
+		panic(errMsg)
+	}
+	return ticket
 }
 
 // fakeCreatePoST is the default implementation of DoSomeWorkFunc.

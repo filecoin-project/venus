@@ -28,8 +28,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
-var ki = types.MustGenerateKeyInfo(10, types.GenerateKeyInfoSeed())
-var mockSigner = types.NewMockSigner(ki)
+var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 func TestPaymentBrokerGenesis(t *testing.T) {
 	assert := assert.New(t)
