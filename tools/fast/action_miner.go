@@ -60,7 +60,7 @@ func (f *Filecoin) MinerAddAsk(ctx context.Context, minerAddr address.Address, f
 
 	sMinerAddr := minerAddr.String()
 	sExpiry := expiry.String()
-	sFil := fil.String()
+	sFil := fil.Text('f', -1)
 
 	args := []string{"go-filecoin", "miner", "add-ask"}
 
@@ -120,7 +120,7 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 	var out porcelain.MinerSetPriceResponse
 
 	sExpiry := expiry.String()
-	sFil := fil.String()
+	sFil := fil.Text('f', -1)
 
 	args := []string{"go-filecoin", "miner", "set-price"}
 

@@ -122,13 +122,21 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 // DumpLastOutput writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin.
 func (f *Filecoin) DumpLastOutput(w io.Writer) {
-	fastutil.DumpOutput(w, f.lastCmdOutput)
+	if f.lastCmdOutput != nil {
+		fastutil.DumpOutput(w, f.lastCmdOutput)
+	} else {
+		fmt.Fprintln(w, "<nil>") // nolint: errcheck
+	}
 }
 
 // DumpLastOutputJSON writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin as json.
 func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
-	fastutil.DumpOutputJSON(w, f.lastCmdOutput)
+	if f.lastCmdOutput != nil {
+		fastutil.DumpOutputJSON(w, f.lastCmdOutput)
+	} else {
+		fmt.Fprintln(w, "{}") // nolint: errcheck
+	}
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.

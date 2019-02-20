@@ -53,6 +53,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/ps"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -71,8 +72,6 @@ var filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
 var log = logging.Logger("node") // nolint: deadcode
 
 var (
-	// ErrNoRepo is returned when the configs repo is nil
-	ErrNoRepo = errors.New("must pass a repo option to the node build process")
 	// ErrNoMinerAddress is returned when the node is not configured to have any miner addresses.
 	ErrNoMinerAddress = errors.New("no miner addresses configured")
 )
@@ -121,7 +120,6 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	PubSub       *pubsub.PubSub
 	BlockSub     *pubsub.Subscription
 	MessageSub   *pubsub.Subscription
 	Ping         *ping.PingService
@@ -411,6 +409,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
+		Subscriber:   ps.NewSubscriber(fsub),
+		Publisher:    ps.NewPublisher(fsub),
 		Network:      ntwk.NewNetwork(peerHost),
 		SigGetter:    mthdsig.NewGetter(chainReader),
 		Wallet:       fcWallet,
@@ -432,7 +432,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		OfflineMode:  nc.OfflineMode,
 		PeerHost:     peerHost,
 		Ping:         pinger,
-		PubSub:       fsub,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
 		blockTime:    nc.BlockTime,
@@ -501,14 +500,14 @@ func (node *Node) Start(ctx context.Context) error {
 	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
-	blkSub, err := node.PubSub.Subscribe(BlockTopic)
+	blkSub, err := node.PorcelainAPI.PubSubSubscribe(BlockTopic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to blocks topic")
 	}
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PubSub.Subscribe(msg.Topic)
+	msgSub, err := node.PorcelainAPI.PubSubSubscribe(msg.Topic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}

@@ -30,7 +30,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	// TODO: should this just be a cid? Right now receivers ask to fetch
 	// the block over bitswap anyway.
-	return node.PubSub.Publish(BlockTopic, b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(BlockTopic, b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (err error) {
