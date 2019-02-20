@@ -50,7 +50,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
@@ -405,7 +404,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:        chn.New(chainReader),
+		Chain:        chainReader,
 		Config:       cfg.NewConfig(nc.Repo),
 		MessagePool:  msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainReader, &cstOffline, bs),
