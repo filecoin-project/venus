@@ -34,7 +34,7 @@ var swarmPeersCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "List peers with open connections.",
 		ShortDescription: `
-'ipfs swarm peers' lists the set of peers this node is connected to.
+'go-filecoin swarm peers' lists the set of peers this node is connected to.
 `,
 	},
 	Options: []cmdkit.Option{
