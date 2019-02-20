@@ -13,7 +13,7 @@ import (
 // Address is the interface that defines methods to manage Filecoin addresses and wallets.
 type Address interface {
 	Addrs() Addrs
-	Import(ctx context.Context, f files.File) ([]address.Address, error)
+	Import(ctx context.Context, f files.Directory) ([]address.Address, error)
 	Export(ctx context.Context, addrs []address.Address) ([]*types.KeyInfo, error)
 }
 

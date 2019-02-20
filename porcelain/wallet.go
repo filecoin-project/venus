@@ -9,11 +9,10 @@ import (
 )
 
 type walletPlumbing interface {
-	ChainLs(ctx context.Context) <-chan interface{}
 	ChainLatestState(ctx context.Context) (state.Tree, error)
 }
 
-// WalletBalance gets the current balance of the wallet
+// WalletBalance gets the current balance associated with an address
 func WalletBalance(ctx context.Context, plumbing walletPlumbing, addr address.Address) (*types.AttoFIL, error) {
 	tree, err := plumbing.ChainLatestState(ctx)
 	if err != nil {
