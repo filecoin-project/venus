@@ -13,7 +13,6 @@ tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
 proofs/misc/parameters.json
-proofs/bin/paramfetch
 proofs/bin/paramcache
 proofs/bin/paramfetch
 proofs/include/libfilecoin_proofs.h
