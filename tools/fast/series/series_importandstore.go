@@ -3,8 +3,8 @@ package series
 import (
 	"context"
 
+	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmXWZCd8jfaHmt4UDSnjKmGcrQMw95bDGWqEeVLVJjoANX/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
