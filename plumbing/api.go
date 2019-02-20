@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
@@ -27,7 +27,7 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	chain        *chn.Reader
+	chain        chain.ReadStore
 	config       *cfg.Config
 	messagePool  *core.MessagePool
 	msgPreviewer *msg.Previewer
@@ -41,7 +41,7 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Chain        *chn.Reader
+	Chain        chain.ReadStore
 	Config       *cfg.Config
 	MessagePool  *core.MessagePool
 	MsgPreviewer *msg.Previewer
@@ -96,17 +96,17 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 
 // ChainHead returns the head tipset
 func (api *API) ChainHead(ctx context.Context) types.TipSet {
-	return api.chain.Head(ctx)
+	return api.chain.Head()
 }
 
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	return api.chain.Ls(ctx)
+	return api.chain.BlockHistory(ctx, api.chain.Head())
 }
 
 // BlockGet gets a block by CID
 func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return api.chain.BlockGet(ctx, id)
+	return api.chain.GetBlock(ctx, id)
 }
 
 // MessagePoolRemove removes a message from the message pool

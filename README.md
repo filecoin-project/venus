@@ -67,7 +67,7 @@ Clone the git repository:
 
 ```sh
 mkdir -p ${GOPATH}/src/github.com/filecoin-project
-git clone git@github.com:filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
+git clone https://github.com/filecoin-project/go-filecoin.git ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 ```
 
 Now install the tools and dependencies listed below. If you have **any problems building go-filecoin**, see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/Troubleshooting-&-FAQ) Wiki page.
@@ -78,7 +78,7 @@ The build process for go-filecoin requires:
 
 - [Go](https://golang.org/doc/install) >= v1.11.2. 
   - Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
-- [Rust](https://www.rust-lang.org/) >= v1.29.0 and `cargo`  
+- [Rust](https://www.rust-lang.org/) >= v1.31.0 and `cargo`
 - `pkg-config` - used by go-filecoin to handle generating linker flags
   - Mac OS devs can install through brew `brew install pkg-config`
   
@@ -90,20 +90,23 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 #### Install Dependencies
 
 `go-filecoin` depends on some proofs code written in Rust, housed in the
-[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. You will need to have `rust` and `cargo` installed.
+[rust-proofs](https://github.com/filecoin-project/rust-proofs) repo and consumed as a submodule. You will need to have `cargo` and `jq` installed.
 
 go-filecoin's dependencies are managed by [gx][2]; this project is not "go gettable." To install gx, gometalinter, and
-other build and test dependencies, run:
+other build and test dependencies (with precompiled proofs, recommended), run:
 
 ```sh
 cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-go run ./build/*.go deps
+FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build/*.go deps
 ```
+
+Note: The first time you run `deps` can be **slow** as a ~1.6GB parameter file is either downloaded or generated locally in `/tmp/filecoin-proof-parameters`. 
+Have patience; future runs will be faster.
 
 #### Build, Run Tests, and Install
 
 ```sh
-# First, build the binary...
+# First, build the binary
 go run ./build/*.go build
 
 # Install go-filecoin to ${GOPATH}/bin (necessary for tests)

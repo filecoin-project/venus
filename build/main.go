@@ -258,6 +258,26 @@ func build() {
 	generateGenesis()
 }
 
+func forcebuild() {
+	forceBuildFC()
+	buildGengen()
+	buildFaucet()
+	buildGenesisFileServer()
+	generateGenesis()
+}
+
+func forceBuildFC() {
+	log.Println("Force building go-filecoin...")
+
+	commit := runCapture("git log -n 1 --format=%H")
+
+	runCmd(cmd([]string{
+		"go", "build",
+		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
+		"-a", "-v", "-o", "go-filecoin", ".",
+	}...))
+}
+
 func generateGenesis() {
 	log.Println("Generating genesis...")
 	runCmd(cmd([]string{
@@ -309,7 +329,7 @@ func install() {
 func test(args ...string) {
 	log.Println("Testing...")
 
-	runCmd(cmd(fmt.Sprintf("go test -parallel 8 ./... %s", strings.Join(args, " "))))
+	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./... %s", strings.Join(args, " "))))
 }
 
 func main() {
@@ -340,6 +360,8 @@ func main() {
 		generateGenesis()
 	case "build":
 		build()
+	case "fbuild":
+		forcebuild()
 	case "test":
 		test(args[1:]...)
 	case "install":

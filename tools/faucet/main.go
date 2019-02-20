@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/tools/faucet/limiter"
@@ -21,7 +21,7 @@ var log = logging.Logger("faucet")
 var limiterCleanTick = time.Minute * 15
 
 // Default timeout between wallet fund requests
-var defaultLimiterExpiry = time.Hour * 24
+var defaultLimiterExpiry = time.Hour * 1
 
 func init() {
 	// Info level

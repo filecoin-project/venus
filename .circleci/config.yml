@@ -99,6 +99,7 @@ jobs:
 
       - run:
           name: Test
+          no_output_timeout: 30m
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
             go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out

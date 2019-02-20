@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 )
 
 func TestDefaults(t *testing.T) {
@@ -65,6 +65,7 @@ func TestWriteFile(t *testing.T) {
 	},
 	"mining": {
 		"minerAddress": "",
+		"blockSignerAddress": "",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},

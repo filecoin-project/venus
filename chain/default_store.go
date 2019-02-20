@@ -6,15 +6,15 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	bstore "gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
+	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
+	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
-	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
-	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -104,6 +104,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	}
 	headTs := types.TipSet{}
 	// traverse starting from head to begin loading the chain
+	var startHeight types.Uint64
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
@@ -113,10 +114,17 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to add validated block to TipSet")
 		}
+		startHeight = blk.Height
 	}
+	logStore.Infof("start loading chain at tipset: %s, height: %d", tipCids.String(), startHeight)
+	// esnures we only produce 10 log messages regardless of the chain height
+	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
 	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
+		if logStatusEvery != 0 && (tips[0].Height%logStatusEvery) == 0 {
+			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
+		}
 		ts, err := types.NewTipSet(tips...)
 		if err != nil {
 			return false, err
@@ -150,6 +158,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		return errors.Errorf("expected genesis cid: %s, loaded genesis cid: %s", store.genesis, loadCid)
 	}
 
+	logStore.Infof("finished loading %d tipsets from %s", startHeight, headTs.String())
 	// Set actual head.
 	return store.SetHead(ctx, headTs)
 }

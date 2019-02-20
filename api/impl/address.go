@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 
+	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	"gx/ipfs/QmZMWMvWMVKCbHetJ4RgndbuEF1io2UpUxwQwtNjtYPzSC/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
@@ -80,10 +79,10 @@ func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID
 	return id, nil
 }
 
-func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Address, error) {
+func (api *nodeAddress) Import(ctx context.Context, d files.Directory) ([]address.Address, error) {
 	nd := api.api.node
 
-	kinfos, err := parseKeyInfos(f)
+	kinfos, err := parseKeyInfos(d)
 	if err != nil {
 		return nil, err
 	}
@@ -133,16 +132,13 @@ func (api *nodeAddress) Export(ctx context.Context, addrs []address.Address) ([]
 	return out, nil
 }
 
-func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
+func parseKeyInfos(d files.Directory) ([]*types.KeyInfo, error) {
+	iter := d.Entries()
 	var kinfos []*types.KeyInfo
-	for {
-		fi, err := f.NextFile()
-		switch err {
-		case io.EOF:
-			return kinfos, nil
-		case nil: // noop
-		default:
-			return nil, err
+	for iter.Next() {
+		fi, ok := iter.Node().(files.File)
+		if !ok {
+			return nil, fmt.Errorf("file passed to import was not a file")
 		}
 
 		var ki types.KeyInfo
@@ -152,4 +148,5 @@ func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
 
 		kinfos = append(kinfos, &ki)
 	}
+	return kinfos, iter.Err()
 }

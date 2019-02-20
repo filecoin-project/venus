@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"gx/ipfs/QmZxaF6uz9VWbuQ5Jk43stXksbnX8x5veYS73eFD4hKqtD/go-ipfs-keystore"
-	"gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
+	"gx/ipfs/QmTsgWR7cZQ11NMMSgptZkWXBHsYzcPd712JbPzNeowqXy/go-ipfs-keystore"
+	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )
@@ -16,7 +16,6 @@ type Datastore interface {
 	// can either force it, or just do hopeful type checks. Not all datastores
 	// implement every feature.
 	datastore.Batching
-	Close() error
 }
 
 // Repo is a representation of all persistent data in a filecoin node.

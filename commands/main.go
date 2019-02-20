@@ -10,11 +10,11 @@ import (
 	"syscall"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
+	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds/cli"
+	cmdhttp "gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds/http"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZcLBXKaFe8ND5YHPkJRAwmhJGrVsi1JqDZNyJ4nRK5Mj/go-multiaddr-net"
-	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
-	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds/cli"
-	cmdhttp "gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds/http"
 	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
@@ -233,7 +233,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 		var err error
 		api, err = getAPIAddress(req)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get API address")
+			return nil, err
 		}
 	}
 
@@ -248,39 +248,40 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 }
 
 func getAPIAddress(req *cmds.Request) (string, error) {
-	var out string
+	var rawAddr string
 	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		out = envapi
+		rawAddr = envapi
 	}
 
 	// first highest precedence is cmd flag.
 	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		out = apiAddress
+		rawAddr = apiAddress
 	}
 
 	// we will read the api file if no other option is given.
-	if len(out) == 0 {
-		apiFilePath, err := homedir.Expand(filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile))
+	if len(rawAddr) == 0 {
+		rawPath := filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile)
+		apiFilePath, err := homedir.Expand(rawPath)
 		if err != nil {
-			return "", errors.Wrap(err, "failed to read api file")
+			return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", rawPath))
 		}
 
-		out, err = repo.APIAddrFromFile(apiFilePath)
+		rawAddr, err = repo.APIAddrFromFile(apiFilePath)
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
 
 	}
 
-	maddr, err := ma.NewMultiaddr(out)
+	maddr, err := ma.NewMultiaddr(rawAddr)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, fmt.Sprintf("unable to convert API endpoint address %s to a multiaddr", rawAddr))
 	}
 
 	_, host, err := manet.DialArgs(maddr)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, fmt.Sprintf("unable to dial API endpoint address %s", maddr))
 	}
 
 	return host, nil

@@ -1,7 +1,7 @@
 [submodule "proofs/rust-proofs"]
 	path = proofs/rust-proofs
-	url = git@github.com:filecoin-project/rust-proofs.git
+	url = https://github.com/filecoin-project/rust-proofs.git
 	branch = master
 [submodule "bls-signatures/bls-signatures"]
 	path = bls-signatures/bls-signatures
-	url = git@github.com:filecoin-project/bls-signatures.git
+	url = https://github.com/filecoin-project/bls-signatures.git

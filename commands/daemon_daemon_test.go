@@ -12,8 +12,8 @@ import (
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestDaemonStartupMessage(t *testing.T) {
@@ -47,7 +47,9 @@ func TestDaemonCORS(t *testing.T) {
 	t.Run("default allowed origins work", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
+
 		td := th.NewDaemon(t).Start()
+		defer td.ShutdownSuccess()
 
 		maddr, err := ma.NewMultiaddr(td.CmdAddr())
 		assert.NoError(err)
@@ -89,6 +91,7 @@ func TestDaemonCORS(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		td := th.NewDaemon(t).Start()
+		defer td.ShutdownSuccess()
 
 		maddr, err := ma.NewMultiaddr(td.CmdAddr())
 		assert.NoError(err)
