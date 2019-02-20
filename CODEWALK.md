@@ -391,10 +391,10 @@ other party responds positively, chain sync with that peer begins.
 
 In a P2P world, one of the main challenges is achieving connectivity when one,
 or both, of the parties is/are behind a Network Address Translation (NAT)
-devices, such as routers. NATs are commonplace in all networks: residential,
-companies, public hotspots, universities, etc. Their purpose is to enable
-devices in a private network to share a common public IP address in the
-global, scarce IPv4 space.
+devices, such as routers. NATs are commonplace in different network types: 
+residential, companies, public hotspots, universities, etc. Their purpose is 
+to enable devices in a private network to share a common public IP address in 
+the global, scarce IPv4 space.
 
 Outbound connections behind a NAT tend to be frictionless, but inbound
 connections are problematic. For a primer on this topic, we recommend reading
@@ -410,10 +410,10 @@ Relay capability is activated by sensing our NAT status, once at start (may
 take a few minutes) and continuously at runtime. Two protocols are involved
 here:
 
-* *Identify* protocol: for every peer we connect to, we use the *Identify*
+* **Identify** protocol: for every peer we connect to, we use the *Identify*
   protocol to learn the address that peer observes from us (source
   ip_address:port). We compile all our observed addresses as we learn them.
-* *AutoNAT* protocol: for every peer we connect to that supports the AutoNAT
+* **AutoNAT** protocol: for every peer we connect to that supports the AutoNAT
   service, we request a _dialback_ to our observed addresses. We wait 42
   seconds (current grace period) to get the result of those dials.
     * If the peer was able to establish an incoming connection through any of
@@ -430,32 +430,33 @@ world, establishing long-lived connections to them, and advertising
 relay-enabled addresses for ourselves to our peers, thus making ourselves
 routable through delegated routing.
 
-The Filecoin project operates a fleet of relays, all of which are enlisted in
-the Autorelay namespace in the DHT via provider records so that Filecoin
-clients can discover them.
+The Filecoin project operates a fleet of relay nodes, all of which are 
+enlisted in the Autorelay namespace in the DHT via provider records so that 
+Filecoin clients can discover them.
 
-When AutoNAT detects the NAT status is `PRIVATE`, meaning that we are not
+When AutoNAT asserts the NAT status as `PRIVATE`, meaning that we are not
 reachable through a public endpoint, it activates Autorelay, and the following
 happens:
 
 1. We locate candidate relays by running a DHT provider search for the
    `/libp2p/relay` namespace.
-2. We select three random relays and connect to them. The libp2p is working to
-   use latency as a selection heuristic.
-3. We negotiate the relay protocol (p2p-circuit) and establish long-lived
-   connections by tagging them in the connection manager to spare them from
-   pruning.
+2. We select three random relays and connect to them. The libp2p team is 
+   working to use latency as a selection heuristic.
+3. We negotiate the relay protocol (`/libp2p/circuit/relay/0.1.0`) and 
+   establish long-lived connections by tagging them in the connection 
+   manager to spare them from pruning.
 4. We enhance our local address list with our newly acquired relay-enabled
-   multiaddrs, which follow the format:
+   multiaddrs, with format:
    `/ip4/1.2.3.4/tcp/4001/p2p/QmRelay/p2p-circuit`, where `1.2.3.4` is the
    relay's public IP address, `4001` is the libp2p port, and `QmRelay` is the
-   peer ID of the relay. Elements in that multiaddr can change based on the
+   peer ID of the relay. Elements in the multiaddr can change based on the
    actual transports at use.
 5. We announce our new relay-enabled addresses to the peers we're already
    connected to via the `IdentifyPush` protocol.
 
-The last step is crucial, as it enables peers to return our updated address
-set whenever another peer is searching for us via DHT lookups.
+The last step is crucial, as it enables peers to learn our updated addresses,
+and consequently return them whenever another peer is searching for us 
+via DHT lookups.
 
 ## Testing
 
