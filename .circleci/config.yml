@@ -308,6 +308,7 @@ jobs:
     docker:
       - image: circleci/golang:latest
     resource_class: xlarge
+    working_directory: "~/docker_build"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -344,7 +345,6 @@ jobs:
           name: build an image of all binaries
           command: |
             tar -xf filecoin-Linux.tar.gz
-            ln -s $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             docker build -t filecoin:all --target=builder .
           no_output_timeout: 20m
 
