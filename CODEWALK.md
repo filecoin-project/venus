@@ -346,6 +346,117 @@ essentially who is storing what data, for what fee and which sectors have been s
 The keystore contains the binary encoded peer key for interacting securely over the network. 
 This data lives in a file at `$HOME/.filecoin/keystore/self`.
 
+## libp2p Networking
+
+As mentioned above, Filecoin relies on [libp2p](https://libp2p.io/) for its
+networking needs. Here we'll explain some of the mechanics that drive the
+network layer, in particular:
+
+1. Node discovery
+2. NAT topology determination
+3. Autorelay services for solving connectivity issues
+
+### Node discovery
+
+We use the libp2p Kademlia DHT bootstrapping mechanism to find Filecoin peers
+to interface with. libp2p maintains a k-bucket routing table, where peers are
+organized according to the _distance metric proposed_ in the [Kademlia
+paper](http://www.scs.stanford.edu/~dm/home/papers/kpos.pdf).
+
+To populate our routing table, and to keep it healthy over time, we traverse
+the network periodically (and once on startup) by performing random walks. We
+kickstart this process by seeding our routing table with a set of trusted
+bootstrap nodes operated by the Filecoin project. This approach will likely
+evolve in the future.
+
+On each round, we generate a random peer ID and query our known DHT peers by
+sending them `FindPeer(id)` messages. Each node returns a list of peers they
+believe to be closer to the search target (based on the Kademlia distance
+metric), along with their addresses.
+
+As replies come in, we connect to new incoming nodes we've discovered, and we
+repeat this process iteratively, until either:
+
+a. we find the peer; highly unlikely scenario, as the chance is 1/2^256 with
+   our peer ID length; or
+b. we yield because a timer runs out; the most probable scenario. This is a
+   healthy timeout to timebox discovery iterations.
+
+Throughout this process, the libp2p stack generates `CONNECTED` events for
+every new connection we establish to a peer, for which `go-filecoin` registers
+a callback that triggers the Filecoin `HELLO` protocol negotiation. If the
+other party responds positively, chain sync with that peer begins.
+
+### NAT topology determination
+
+In a P2P world, one of the main challenges is achieving connectivity when one,
+or both, of the parties is/are behind a Network Address Translation (NAT)
+devices, such as routers. NATs are commonplace in all networks: residential,
+companies, public hotspots, universities, etc. Their purpose is to enable
+devices in a private network to share a common public IP address in the
+global, scarce IPv4 space.
+
+Outbound connections behind a NAT tend to be frictionless, but inbound
+connections are problematic. For a primer on this topic, we recommend reading
+[Peer-to-Peer Communication Across Network Address
+Translators](https://pdos.csail.mit.edu/papers/p2pnat.pdf).
+
+To enable a pair of Filecoin peers behind NATs to communicate with one
+another, we use libp2p relay services: nodes deployed across the globe that
+pipe encrypted traffic between any two Filecoin peers, akin to [TURN-like
+servers](https://en.wikipedia.org/wiki/Traversal_Using_Relays_around_NAT).
+
+Relay capability is activated by sensing our NAT status, once at start (may
+take a few minutes) and continuously at runtime. Two protocols are involved
+here:
+
+* *Identify* protocol: for every peer we connect to, we use the *Identify*
+  protocol to learn the address that peer observes from us (source
+  ip_address:port). We compile all our observed addresses as we learn them.
+* *AutoNAT* protocol: for every peer we connect to that supports the AutoNAT
+  service, we request a _dialback_ to our observed addresses. We wait 42
+  seconds (current grace period) to get the result of those dials.
+    * If the peer was able to establish an incoming connection through any of
+      our observed addresses, we consider ourselves to be publicly reachable,
+      therefore we bypass setting up relay routing.
+    * If the peer was unable to establish an incoming connection at all, we
+      consider ourselves to be behind a private NAT, and as a result we
+      initialise Autorelay to make ourselves reachable via relayed routing.
+
+### Autorelay services for solving connectivity issues
+
+The Autorelay service is responsible for discovering relay nodes around the
+world, establishing long-lived connections to them, and advertising
+relay-enabled addresses for ourselves to our peers, thus making ourselves
+routable through delegated routing.
+
+The Filecoin project operates a fleet of relays, all of which are enlisted in
+the Autorelay namespace in the DHT via provider records so that Filecoin
+clients can discover them.
+
+When AutoNAT detects the NAT status is `PRIVATE`, meaning that we are not
+reachable through a public endpoint, it activates Autorelay, and the following
+happens:
+
+1. We locate candidate relays by running a DHT provider search for the
+   `/libp2p/relay` namespace.
+2. We select three random relays and connect to them. The libp2p is working to
+   use latency as a selection heuristic.
+3. We negotiate the relay protocol (p2p-circuit) and establish long-lived
+   connections by tagging them in the connection manager to spare them from
+   pruning.
+4. We enhance our local address list with our newly acquired relay-enabled
+   multiaddrs, which follow the format:
+   `/ip4/1.2.3.4/tcp/4001/p2p/QmRelay/p2p-circuit`, where `1.2.3.4` is the
+   relay's public IP address, `4001` is the libp2p port, and `QmRelay` is the
+   peer ID of the relay. Elements in that multiaddr can change based on the
+   actual transports at use.
+5. We announce our new relay-enabled addresses to the peers we're already
+   connected to via the `IdentifyPush` protocol.
+
+The last step is crucial, as it enables peers to return our updated address
+set whenever another peer is searching for us via DHT lookups.
+
 ## Testing
 
 The `go-filecoin` codebase has a few different testing mechanisms: 
