@@ -250,6 +250,7 @@ jobs:
           root: "."
           paths:
             - "filecoin-Linux.tar.gz"
+            - "gengen/gengen"
 
   publish_release:
     docker:
