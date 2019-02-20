@@ -8,11 +8,11 @@ import (
 	"time"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmNgLg1NTw37iWbYPKcyK85YJ9Whs1MkPtJwhfqbNYAyKg/go-libp2p-net"
-	pstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	"gx/ipfs/QmaoXrM4Z41PD48JY36YqQGKQpLGjyLA2cKcLsES7YddAq/go-libp2p-host"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -20,7 +20,11 @@ import (
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service
-const HeartbeatProtocol = "fil/heartbeat/1.0.0"
+const (
+	HeartbeatProtocol = "fil/heartbeat/1.0.0"
+	// Minutes to wait before logging connection failure at ERROR level
+	connectionFailureErrorLogPeriodMinutes = 10 * time.Minute
+)
 
 var log = logging.Logger("metrics")
 
@@ -118,16 +122,35 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 
 	reconTicker := time.NewTicker(rd)
 	defer reconTicker.Stop()
+	// Timestamp of the first connection failure since the last successful connection.
+	// Zero initially and while connected.
+	var failedAt time.Time
+	// Timestamp of the last ERROR log (or of failure, before the first ERROR log).
+	var erroredAt time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-reconTicker.C:
 			if err := hbs.Connect(ctx); err != nil {
-				log.Debugf("Heartbeat service failed to connect: %s", err)
+				// Logs once as a warning immediately on failure, then as error every 10 minutes.
+				now := time.Now()
+				logfn := log.Debugf
+				if failedAt.IsZero() { // First failure since connection
+					failedAt = now
+					erroredAt = failedAt // Start the timer on raising to ERROR level
+					logfn = log.Warningf
+				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriodMinutes {
+					logfn = log.Errorf
+					erroredAt = now // Reset the timer
+				}
+				failureDuration := now.Sub(failedAt)
+				logfn("Heartbeat service failed to connect for %s: %s", failureDuration, err)
 				// failed to connect, continue reconnect loop
 				continue
 			}
+			failedAt = time.Time{}
+
 			// we connected, send heartbeats!
 			// Run will block until it fails to send a heartbeat.
 			if err := hbs.Run(ctx); err != nil {
@@ -213,7 +236,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 
 	s, err := hbs.Host.NewStream(ctx, peerid, HeartbeatProtocol)
 	if err != nil {
-		log.Errorf("failed to open stream, peerID: %s, targetAddr: %s %s", peerid, targetAddr, err)
+		log.Debugf("failed to open stream, peerID: %s, targetAddr: %s %s", peerid, targetAddr, err)
 		return err
 	}
 	log.Infof("successfully to open stream, peerID: %s, targetAddr: %s", peerid, targetAddr)
