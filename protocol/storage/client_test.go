@@ -23,6 +23,8 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
+var testSignature = types.Signature("<test signature>")
+
 func TestProposeDeal(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
@@ -30,14 +32,14 @@ func TestProposeDeal(t *testing.T) {
 	addressCreator := address.NewForTestGetter()
 	cidCreator := types.NewCidForTestGetter()
 
-	var proposal *DealProposal
+	var proposal *SignedDealProposal
 
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*DealProposal)
+		p, ok := request.(*SignedDealProposal)
 		require.True(ok)
 		proposal = p
 
-		pcid, err := convert.ToCid(p)
+		pcid, err := convert.ToCid(p.DealProposal)
 		require.NoError(err)
 		return &DealResponse{
 			State:       Accepted,
@@ -46,7 +48,7 @@ func TestProposeDeal(t *testing.T) {
 		}, nil
 	})
 
-	testAPI := newTestClientAPI()
+	testAPI := newTestClientAPI(require)
 	testRepo := repo.NewInMemoryRepo()
 
 	client, err := NewClient(testNode, testAPI, testRepo.DealsDs)
@@ -64,6 +66,7 @@ func TestProposeDeal(t *testing.T) {
 		assert.Equal(dataCid, proposal.PieceRef)
 		assert.Equal(duration, proposal.Duration)
 		assert.Equal(minerAddr, proposal.MinerAddress)
+		assert.Equal(testSignature, proposal.Signature)
 	})
 
 	t.Run("and creates proposal with file size", func(t *testing.T) {
@@ -132,9 +135,10 @@ type clientTestAPI struct {
 	payer       address.Address
 	target      address.Address
 	perPayment  *types.AttoFIL
+	require     *require.Assertions
 }
 
-func newTestClientAPI() *clientTestAPI {
+func newTestClientAPI(require *require.Assertions) *clientTestAPI {
 	cidGetter := types.NewCidForTestGetter()
 	addressGetter := address.NewForTestGetter()
 
@@ -145,6 +149,7 @@ func newTestClientAPI() *clientTestAPI {
 		payer:       addressGetter(),
 		target:      addressGetter(),
 		perPayment:  types.NewAttoFILFromFIL(10),
+		require:     require,
 	}
 }
 
@@ -187,15 +192,18 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 
 func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
-	if err != nil {
-		panic("Could not create peer id")
-	}
+	ctp.require.NoError(err, "Could not create peer id")
+
 	return id, nil
 }
 
 func (ctp *clientTestAPI) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
 	// always just default address
 	return ctp.payer, nil
+}
+
+func (ctp *clientTestAPI) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return testSignature, nil
 }
 
 type testClientNode struct {

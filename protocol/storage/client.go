@@ -68,6 +68,7 @@ type clientPorcelainAPI interface {
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
+	types.Signer
 }
 
 type clientDeal struct {
@@ -142,12 +143,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		TotalPrice:   totalPrice,
 		Duration:     duration,
 		MinerAddress: miner,
-		// TODO: Sign this proposal
 	}
 
 	if smc.isMaybeDupDeal(proposal) && !allowDuplicates {
 		return nil, Errors[ErrDupicateDeal]
 	}
+
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -169,6 +170,11 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
 	proposal.Payment.Vouchers = cpResp.Vouchers
 
+	signedProposal, err := proposal.NewSignedProposal(fromAddress, smc.api)
+	if err != nil {
+		return nil, err
+	}
+
 	// send proposal
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
 	if err != nil {
@@ -176,7 +182,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	var response DealResponse
-	err = smc.node.MakeProtocolRequest(ctx, makeDealProtocol, pid, proposal, &response)
+	err = smc.node.MakeProtocolRequest(ctx, makeDealProtocol, pid, signedProposal, &response)
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending proposal")
 	}
@@ -187,7 +193,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(&response, miner, proposal); err != nil {
+	if err := smc.recordResponse(&response, miner, &signedProposal.DealProposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 
