@@ -11,11 +11,9 @@ import (
 // LinePuller provides an easy way to pull complete lines (ending in \n) from
 // a source to a sink.
 type LinePuller struct {
-	scannerMu sync.Mutex
-	scanner   *bufio.Scanner
-
-	source io.Reader
-	sink   io.Writer
+	sourceMu sync.Mutex
+	source   *bufio.Reader
+	sink     io.Writer
 }
 
 // NewLinePuller returns a LinePuller that will read complete lines
@@ -23,9 +21,8 @@ type LinePuller struct {
 // frequency.
 func NewLinePuller(source io.Reader, sink io.Writer) *LinePuller {
 	return &LinePuller{
-		source:  source,
-		sink:    sink,
-		scanner: bufio.NewScanner(source),
+		source: bufio.NewReader(source),
+		sink:   sink,
 	}
 }
 
@@ -46,17 +43,21 @@ func (lp *LinePuller) StartPulling(ctx context.Context, freq time.Duration) erro
 
 // Pull reads in all data from the source and writes each line out to the sink.
 func (lp *LinePuller) Pull() error {
-	lp.scannerMu.Lock()
-	defer lp.scannerMu.Unlock()
-	for lp.scanner.Scan() {
-		line := lp.scanner.Bytes()
-		line = append(line, '\n')
+	lp.sourceMu.Lock()
+	defer lp.sourceMu.Unlock()
+	for {
+		line, rerr := lp.source.ReadBytes('\n')
+		if rerr != nil && rerr != io.EOF {
+			return rerr
+		}
 
 		_, err := lp.sink.Write(line)
 		if err != nil {
 			return err
 		}
-	}
 
-	return lp.scanner.Err()
+		if rerr == io.EOF {
+			return nil
+		}
+	}
 }

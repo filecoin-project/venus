@@ -96,13 +96,12 @@ func TestRetrieval(t *testing.T) {
 	err = series.Connect(ctx, genesis, client)
 	require.NoError(err)
 
-	// Setup the miner
-	minerAddrs, err := miner.AddressLs(ctx)
+	// Everyone needs FIL to deal with gas costs and make sure their wallets
+	// exists (sending FIL to a wallet addr creates it)
+	err = series.SendFilecoinDefaults(ctx, genesis, miner, 1000)
 	require.NoError(err)
-	require.NotEmpty(minerAddrs, "no addresses for miner")
 
-	// Sends filecoin from the genesis default wallet to the address provided, value 1000
-	err = series.SendFilecoinFromDefault(ctx, genesis, minerAddrs[0], 1000)
+	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(err)
 
 	// Create a miner on the miner node
