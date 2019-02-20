@@ -100,6 +100,9 @@ cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
 FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build/*.go deps
 ```
 
+Note: The first time you run `deps` can be **slow** as a ~1.6GB parameter file is either downloaded or generated locally in `/tmp/filecoin-proof-parameters`. 
+Have patience; future runs will be faster.
+
 #### Build, Run Tests, and Install
 
 ```sh
