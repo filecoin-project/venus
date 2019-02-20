@@ -1,7 +1,8 @@
 FROM golang:1.11.2-stretch AS builder
 MAINTAINER Filecoin Dev Team
 
-RUN apt-get update && apt-get install -y ca-certificates file sudo
+RUN apt-get update && apt-get install -y ca-certificates file sudo clang
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 
 # This docker file is a modified version of
 # https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
@@ -10,6 +11,17 @@ RUN apt-get update && apt-get install -y ca-certificates file sudo
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
 
 COPY . $SRC_DIR
+
+# Build the thing.
+RUN cd $SRC_DIR \
+&& . $HOME/.cargo/env \
+&& go run ./build/*go deps \
+&& go run ./build/*go build \
+&& go build -o ./faucet ./tools/faucet/main.go \
+&& go build -o ./genesis-file-server ./tools/genesis-file-server/main.go
+
+# Build gengen
+RUN cd
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -44,6 +56,7 @@ COPY --from=builder $SRC_DIR/gengen/gengen /usr/local/bin/gengen
 COPY --from=builder $SRC_DIR/fixtures/* /data/
 COPY --from=builder /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=builder /tmp/tini /sbin/tini
+COPY --from=builder /tmp/filecoin-proof-parameters/* /tmp/filecoin-proof-parameters/
 COPY --from=builder /tmp/jq /usr/local/bin/jq
 COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 
