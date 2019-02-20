@@ -313,7 +313,7 @@ func TestSectorBuilder(t *testing.T) {
 			})
 			require.NoError(t, gerr)
 
-			// TODO: Replace these hard-coded values (in rust-proofs) with an
+			// TODO: Replace these hard-coded values (in rust-fil-proofs) with an
 			// end-to-end PoST test over a small number of replica commitments
 			require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proof[0]))
 			require.Equal(t, 1, len(gres.Faults))
