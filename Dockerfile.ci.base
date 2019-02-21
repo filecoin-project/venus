@@ -1,0 +1,27 @@
+FROM debian:stretch-20190204-slim AS base
+MAINTAINER Filecoin Dev Team
+
+RUN apt-get update && apt-get install -y ca-certificates file sudo git build-essential wget
+
+# This docker file is a modified version of
+# https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
+# Thanks Lars :)
+
+# Get su-exec, a very minimal tool for dropping privileges,
+# and tini, a very minimal init daemon for containers
+ENV SUEXEC_VERSION v0.2
+ENV TINI_VERSION v0.16.1
+RUN set -x \
+&& cd /tmp \
+&& git clone https://github.com/ncopa/su-exec.git \
+&& cd su-exec \
+&& git checkout -q $SUEXEC_VERSION \
+&& make \
+&& cd /tmp \
+&& wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
+&& chmod +x tini
+
+# need jq for parsing genesis output
+RUN cd /tmp \
+&& wget -q -O jq https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 \
+&& chmod +x jq
