@@ -65,8 +65,6 @@ COPY --from=builder /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
 COPY --from=builder /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
 COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
 COPY --from=builder /lib/x86_64-linux-gnu/libutil.so.1 /lib/libutil.so.1
-COPY --from=builder $SRC_DIR/proofs/rust-proofs/target/release/libfilecoin_proofs.so /lib/libfilecoin_proofs.so
-COPY --from=builder $SRC_DIR/proofs/rust-proofs/target/release/libsector_base.so /lib/libsector_base.so
 
 # Ports for Swarm and CmdAPI
 EXPOSE 6000
