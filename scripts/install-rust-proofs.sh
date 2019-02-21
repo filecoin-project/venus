@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 install_precompiled() {
   RELEASE_SHA1=`git rev-parse @:./proofs/rust-proofs`
