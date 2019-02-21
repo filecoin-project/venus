@@ -1,7 +1,7 @@
 package impl
 
 import (
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -21,7 +21,6 @@ type nodeAPI struct {
 	log             *nodeLog
 	miner           *nodeMiner
 	mining          *nodeMining
-	mpool           *nodeMpool
 	paych           *nodePaych
 	ping            *nodePing
 	retrievalClient *nodeRetrievalClient
@@ -52,7 +51,6 @@ func New(node *node.Node) api.API {
 	api.log = newNodeLog(api)
 	api.miner = newNodeMiner(api, porcelainAPI)
 	api.mining = newNodeMining(api)
-	api.mpool = newNodeMpool(api)
 	api.paych = newNodePaych(api, porcelainAPI)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
@@ -96,10 +94,6 @@ func (api *nodeAPI) Miner() api.Miner {
 
 func (api *nodeAPI) Mining() api.Mining {
 	return api.mining
-}
-
-func (api *nodeAPI) Mpool() api.Mpool {
-	return api.mpool
 }
 
 func (api *nodeAPI) Paych() api.Paych {

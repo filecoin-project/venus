@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -49,6 +49,12 @@ func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) 
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
+}
+
+// MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
+// It's useful for integration testing.
+func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {
+	return MessagePoolWait(ctx, a, messageCount)
 }
 
 // MessageSendWithDefaultAddress calls MessageSend but with a default from

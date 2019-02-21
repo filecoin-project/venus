@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmXWZCd8jfaHmt4UDSnjKmGcrQMw95bDGWqEeVLVJjoANX/go-ipfs-files"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
-	"github.com/stretchr/testify/require"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -96,13 +96,12 @@ func TestRetrieval(t *testing.T) {
 	err = series.Connect(ctx, genesis, client)
 	require.NoError(err)
 
-	// Setup the miner
-	minerAddrs, err := miner.AddressLs(ctx)
+	// Everyone needs FIL to deal with gas costs and make sure their wallets
+	// exists (sending FIL to a wallet addr creates it)
+	err = series.SendFilecoinDefaults(ctx, genesis, miner, 1000)
 	require.NoError(err)
-	require.NotEmpty(minerAddrs, "no addresses for miner")
 
-	// Sends filecoin from the genesis default wallet to the address provided, value 1000
-	err = series.SendFilecoinFromDefault(ctx, genesis, minerAddrs[0], 1000)
+	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(err)
 
 	// Create a miner on the miner node

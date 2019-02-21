@@ -26,7 +26,7 @@ import (
 
 	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 
 	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 )

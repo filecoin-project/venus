@@ -6,7 +6,7 @@ import (
 	"math/big"
 
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
@@ -60,7 +60,7 @@ func (f *Filecoin) MinerAddAsk(ctx context.Context, minerAddr address.Address, f
 
 	sMinerAddr := minerAddr.String()
 	sExpiry := expiry.String()
-	sFil := fil.String()
+	sFil := fil.Text('f', -1)
 
 	args := []string{"go-filecoin", "miner", "add-ask"}
 
@@ -120,7 +120,7 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 	var out porcelain.MinerSetPriceResponse
 
 	sExpiry := expiry.String()
-	sFil := fil.String()
+	sFil := fil.Text('f', -1)
 
 	args := []string{"go-filecoin", "miner", "set-price"}
 

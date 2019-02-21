@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/stretchr/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 )
 
 func TestListAsks(t *testing.T) {

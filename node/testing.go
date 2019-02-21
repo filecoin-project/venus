@@ -5,32 +5,26 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"sync"
 	"testing"
 
-	"gx/ipfs/QmNiJiXwWE3kRhZrC5ej3kSjWHm337pYfhjLGSCDNKJP2s/go-libp2p-crypto"
-	pstore "gx/ipfs/QmPiemjiKBC9VA7vZF82m4x1oygtg2c2YVqag8PX7dN1BD/go-libp2p-peerstore"
-	"gx/ipfs/QmRXf2uUSdGSunRJsM9wXSUNVwLUGCY3So5fAs7h2CBJVf/go-hamt-ipld"
-	"gx/ipfs/QmS2aqUZLJp8kF1ihE5rvDGE5LvmKDPnx32w9Z1BW9xLV5/go-ipfs-blockstore"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	bserv "gx/ipfs/QmYPZzd9VqmJDwxUnThfeSbV1Y5o53aVPDijTB7j7rS9Ep/go-blockservice"
-	"gx/ipfs/QmYZwey1thDTynSrvd6qQkX24UpTka6TFhQ2v569UpoqxD/go-ipfs-exchange-offline"
-	ds "gx/ipfs/Qmf4xQhNomPNhrtZc67qSnfJSjxjXs9LWvknJtSXwimPrM/go-datastore"
+	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
+	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	ds "gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
+	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/stretchr/testify/require"
 )
 
 // ChainSeed is a generalized struct for configuring node
@@ -230,78 +224,6 @@ type MustCreateMinerResult struct {
 func configureFakeVerifier(cfo []ConfigOpt) []ConfigOpt {
 	verifier := proofs.NewFakeVerifier(true, nil)
 	return append(cfo, VerifierConfigOption(verifier))
-}
-
-// RunCreateMiner runs create miner and then runs a given assertion with the result.
-func RunCreateMiner(t *testing.T, node *Node, from address.Address, pledge uint64, pid peer.ID, collateral types.AttoFIL) chan MustCreateMinerResult {
-	resultChan := make(chan MustCreateMinerResult)
-	require := require.New(t)
-
-	if !node.ChainReader.GenesisCid().Defined() {
-		panic("must initialize with genesis block first")
-	}
-
-	ctx := context.Background()
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-
-	subscription, err := node.PubSub.Subscribe(msg.Topic)
-	require.NoError(err)
-
-	go func() {
-		minerAddr, err := node.CreateMiner(ctx, from, types.NewGasPrice(0), types.NewGasUnits(0), pledge, pid, &collateral)
-		resultChan <- MustCreateMinerResult{MinerAddress: minerAddr, Err: err}
-		wg.Done()
-	}()
-
-	// wait for create miner call to put a message in the pool
-	_, err = subscription.Next(ctx)
-	require.NoError(err)
-	getStateFromKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
-		tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
-		if err != nil {
-			return nil, err
-		}
-		return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
-	}
-	getStateTree := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-		return getStateFromKey(ctx, ts.String())
-	}
-	getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
-		parent, err := ts.Parents()
-		if err != nil {
-			return uint64(0), err
-		}
-		// TODO handle genesis cid more gracefully
-		if parent.Len() == 0 {
-			return node.Consensus.Weight(ctx, ts, nil)
-		}
-		pSt, err := getStateFromKey(ctx, parent.String())
-		if err != nil {
-			return uint64(0), err
-		}
-		return node.Consensus.Weight(ctx, ts, pSt)
-	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
-	}
-	w := mining.NewDefaultWorker(node.MsgPool, getStateTree, getWeight, getAncestors, consensus.NewDefaultProcessor(), node.PowerTable, node.Blockstore, node.CborStore(), address.TestAddress, testhelpers.BlockTimeTest)
-	cur := node.ChainReader.Head()
-	out, err := mining.MineOnce(ctx, w, mining.MineDelayTest, cur)
-	require.NoError(err)
-	require.NoError(out.Err)
-	outTS := testhelpers.RequireNewTipSet(require, out.NewBlock)
-	chainStore, ok := node.ChainReader.(chain.Store)
-	require.True(ok)
-	tsas := &chain.TipSetAndState{
-		TipSet:          outTS,
-		TipSetStateRoot: out.NewBlock.StateRoot,
-	}
-	require.NoError(chainStore.PutTipSetAndState(ctx, tsas))
-	require.NoError(chainStore.SetHead(ctx, outTS))
-	return resultChan
 }
 
 // PeerKeys are a list of keys for peers that can be used in testing.

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/Qma6uuSyjkecGhMFFLfzyJDPyoDtNJSHJNweDccZhaWkgU/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -32,7 +32,7 @@ var mpoolLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		messageCount, _ := req.Options["wait-for-count"].(uint)
 
-		pending, err := GetAPI(env).Mpool().View(req.Context, messageCount)
+		pending, err := GetPorcelainAPI(env).MessagePoolWait(req.Context, messageCount)
 		if err != nil {
 			return err
 		}

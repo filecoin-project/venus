@@ -8,8 +8,8 @@ import (
 
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
@@ -122,13 +122,21 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 // DumpLastOutput writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin.
 func (f *Filecoin) DumpLastOutput(w io.Writer) {
-	fastutil.DumpOutput(w, f.lastCmdOutput)
+	if f.lastCmdOutput != nil {
+		fastutil.DumpOutput(w, f.lastCmdOutput)
+	} else {
+		fmt.Fprintln(w, "<nil>") // nolint: errcheck
+	}
 }
 
 // DumpLastOutputJSON writes all the output (args, exit-code, error, stderr, stdout) of the last ran
 // command from RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin as json.
 func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
-	fastutil.DumpOutputJSON(w, f.lastCmdOutput)
+	if f.lastCmdOutput != nil {
+		fastutil.DumpOutputJSON(w, f.lastCmdOutput)
+	} else {
+		fmt.Fprintln(w, "{}") // nolint: errcheck
+	}
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.

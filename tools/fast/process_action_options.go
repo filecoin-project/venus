@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"gx/ipfs/QmcqU6QUDSXprb1518vYDGczrTJTyGwLG9eUa5iNX4xUtS/go-libp2p-peer"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -17,7 +17,7 @@ type ActionOption func() []string
 
 // AOPrice provides the `--price=<fil>` option to actions
 func AOPrice(price *big.Float) ActionOption {
-	sPrice := fmt.Sprintf("%f", price)
+	sPrice := price.Text('f', -1)
 	return func() []string {
 		return []string{"--price", sPrice}
 	}

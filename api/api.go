@@ -12,7 +12,6 @@ type API interface {
 	Log() Log
 	Miner() Miner
 	Mining() Mining
-	Mpool() Mpool
 	Paych() Paych
 	Ping() Ping
 	RetrievalClient() RetrievalClient

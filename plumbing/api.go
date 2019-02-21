@@ -4,17 +4,19 @@ import (
 	"context"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmY5Grm8pJdiSSVsYxx4uNRgweY72EmYwuSDbRnbFok3iY/go-libp2p-peer"
-	logging "gx/ipfs/QmcuXC5cxs79ro2cUuHs4HQ2bkDLJUYokwL8aivcX6HW3C/go-log"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/ps"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -27,13 +29,15 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	chain        *chn.Reader
+	chain        chain.ReadStore
 	config       *cfg.Config
-	messagePool  *core.MessagePool
+	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
+	subscriber   *ps.Subscriber
+	publisher    *ps.Publisher
 	network      *ntwk.Network
 	sigGetter    *mthdsig.Getter
 	wallet       *wallet.Wallet
@@ -41,13 +45,15 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Chain        *chn.Reader
+	Chain        chain.ReadStore
 	Config       *cfg.Config
-	MessagePool  *core.MessagePool
+	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
 	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
+	Subscriber   *ps.Subscriber
+	Publisher    *ps.Publisher
 	Network      *ntwk.Network
 	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
@@ -60,11 +66,13 @@ func New(deps *APIDeps) *API {
 
 		chain:        deps.Chain,
 		config:       deps.Config,
-		messagePool:  deps.MessagePool,
+		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
 		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
+		subscriber:   deps.Subscriber,
+		publisher:    deps.Publisher,
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
 		wallet:       deps.Wallet,
@@ -96,22 +104,27 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 
 // ChainHead returns the head tipset
 func (api *API) ChainHead(ctx context.Context) types.TipSet {
-	return api.chain.Head(ctx)
+	return api.chain.Head()
 }
 
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	return api.chain.Ls(ctx)
+	return api.chain.BlockHistory(ctx, api.chain.Head())
 }
 
 // BlockGet gets a block by CID
 func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return api.chain.BlockGet(ctx, id)
+	return api.chain.GetBlock(ctx, id)
+}
+
+// MessagePoolPending lists messages un-mined in the pool
+func (api *API) MessagePoolPending() []*types.SignedMessage {
+	return api.msgPool.Pending()
 }
 
 // MessagePoolRemove removes a message from the message pool
 func (api *API) MessagePoolRemove(cid cid.Cid) {
-	api.messagePool.Remove(cid)
+	api.msgPool.Remove(cid)
 }
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
@@ -143,6 +156,16 @@ func (api *API) MessageSend(ctx context.Context, from, to address.Address, value
 // to appear on chain.
 func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
+}
+
+// PubSubSubscribe subscribes to a topic for notifications from the filecoin network
+func (api *API) PubSubSubscribe(topic string, opts ...pubsub.SubOpt) (ps.Subscription, error) {
+	return api.subscriber.Subscribe(topic, opts...)
+}
+
+// PubSubPublish publishes a message to a topic on the filecoin network
+func (api *API) PubSubPublish(topic string, data []byte) error {
+	return api.publisher.Publish(topic, data)
 }
 
 // NetworkGetPeerID gets the current peer id from Util
