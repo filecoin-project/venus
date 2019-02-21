@@ -220,8 +220,6 @@ func (o *Output) AssertSuccess() *Output {
 	require.NoError(o.test, o.Error)
 	oErr := o.ReadStderr()
 
-	fmt.Println("--------------------", oErr)
-
 	require.Equal(o.test, 0, o.Code, oErr)
 	require.NotContains(o.test, oErr, "CRITICAL")
 	require.NotContains(o.test, oErr, "ERROR")

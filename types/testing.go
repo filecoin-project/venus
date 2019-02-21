@@ -1,13 +1,15 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
-
+	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/minio/blake2b-simd"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -35,6 +37,7 @@ func (mr *MockRecoverer) Ecrecover(data []byte, sig Signature) ([]byte, error) {
 type MockSigner struct {
 	AddrKeyInfo map[address.Address]KeyInfo
 	Addresses   []address.Address
+	PubKeys     [][]byte
 }
 
 // NewMockSigner returns a new mock signer, capable of signing data with
@@ -49,7 +52,7 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 		newAddr := address.NewMainnet(addrHash)
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k
-
+		ms.PubKeys = append(ms.PubKeys, pub)
 	}
 	return ms
 }
@@ -71,6 +74,44 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 
 	hash := blake2b.Sum256(data)
 	return crypto.Sign(ki.Key(), hash[:])
+}
+
+// AddressFromPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
+func (ms MockSigner) AddressFromPubKey(pk []byte) (address.Address, error) {
+	var addr address.Address
+
+	for _, ki := range ms.AddrKeyInfo {
+		testPk := ki.PublicKey()
+
+		if bytes.Equal(testPk, pk) {
+			addr, err := ki.Address()
+			if err != nil {
+				return addr, errors.New("could not fetch address")
+			}
+			return addr, nil
+		}
+	}
+	return addr, errors.New("public key not found in wallet")
+}
+
+// CreateTicket is effectively a duplicate of Wallet CreateTicket for testing purposes.
+func (ms MockSigner) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (Signature, error) {
+	var ticket Signature
+
+	signerAddr, err := ms.AddressFromPubKey(signerPubKey)
+	if err != nil {
+		return ticket, err
+	}
+
+	buf := append(proof[:], signerAddr.Bytes()...)
+	h := blake2b.Sum256(buf)
+
+	ticket, err = ms.SignBytes(h[:], signerAddr)
+	if err != nil {
+		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
+		panic(errMsg)
+	}
+	return ticket, nil
 }
 
 // NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.

@@ -83,6 +83,7 @@ func MustImportGenesisMiner(tn *TestNode, gi *GenesisInfo) {
 	ctx := context.Background()
 
 	tn.MustRunCmd(ctx, "go-filecoin", "config", "mining.minerAddress", fmt.Sprintf("\"%s\"", gi.MinerAddress))
+	tn.MustRunCmd(ctx, "go-filecoin", "config", "mining.blockSignerAddress", fmt.Sprintf("\"%s\"", gi.WalletAddress))
 
 	tn.MustRunCmd(ctx, "go-filecoin", "wallet", "import", gi.KeyFile)
 

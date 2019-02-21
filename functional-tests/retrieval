@@ -89,6 +89,7 @@ echo ""
 echo "node default address should match what's associated with imported SK..."
 set_wallet_default_address_in_config "${CL_FIL_ADDRESS}" "${CL_REPO_DIR}"
 set_wallet_default_address_in_config "${MN_MINER_OWNER_FIL_ADDR}" "${MN_REPO_DIR}"
+set_blocksigner_address_in_config "${MN_MINER_OWNER_FIL_ADDR}" "${MN_REPO_DIR}"
 
 echo ""
 echo "get mining node's libp2p identity..."

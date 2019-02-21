@@ -771,7 +771,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	}
 
 	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
-	minerSigningAddress := node.MiningSignerAddress()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
@@ -808,8 +807,17 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
 		}
 		processor := consensus.NewDefaultProcessor()
+
+		queryer := msg.NewQueryer(node.Repo, node.Wallet, node.ChainReader, node.cborStore, node.Blockstore)
+		res, _, err := queryer.Query(ctx, minerOwnerAddr, minerAddr, "getKey")
+		if err != nil {
+			log.Errorf("could not getKey from miner actor")
+			return err
+		}
+		minerPubKey := res[0]
+
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
-			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerSigningAddress, node.Wallet, blockTime)
+			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, node.Wallet, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
 
@@ -995,29 +1003,35 @@ func (node *Node) NewAddress() (address.Address, error) {
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.
-// It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
+// It will wait for the the actor to appear on-chain and add the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
 // TODO: add ability to pass in a KeyInfo to store for signing blocks.
 //       See https://github.com/filecoin-project/go-filecoin/issues/1843
-func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+
+	fmt.Printf("==================================================================================================================")
 
 	// Only create a miner if we don't already have one.
 	if _, err := node.miningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
+	fmt.Printf("==================================================================================================================")
 
 	ctx = log.Start(ctx, "Node.CreateMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-	pubKey, err := node.getMinerActorPubKey()
+	fmt.Printf("==================================================================================================================")
+
+	pubKey, err := node.Wallet.GetPubKeyForAddress(minerOwnerAddr)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("\n\ncreating a miner for %s with pubkey\n%v\n", minerOwnerAddr.String(), pubKey[:])
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
-		accountAddr,
+		minerOwnerAddr,
 		address.StorageMarketAddress,
 		collateral,
 		gasPrice,
@@ -1031,6 +1045,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
+	fmt.Printf("==================================================================================================================")
 	var minerAddr address.Address
 	err = node.PorcelainAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
@@ -1044,28 +1059,22 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1843
-	blockSignerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
-	if err != nil {
-		return &minerAddr, err
-	}
-
-	err = node.saveMinerConfig(minerAddr, blockSignerAddr)
+	err = node.saveMinerConfig(minerAddr)
 	if err != nil {
 		return &minerAddr, err
 	}
 
 	err = node.setupMining(ctx)
+	fmt.Printf("==================================================================================================================")
 
 	return &minerAddr, err
 }
 
-// saveMinerConfig updates the Node Mining config with the MinerAddress and the BlockSignerAddress.
-func (node *Node) saveMinerConfig(minerAddr address.Address, signerAddr address.Address) error {
+// saveMinerConfig updates the Node Mining config with the MinerAddress.
+func (node *Node) saveMinerConfig(minerAddr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
 	newConfig.Mining.MinerAddress = minerAddr
-	newConfig.Mining.BlockSignerAddress = signerAddr
 	return r.ReplaceConfig(newConfig)
 }
 
@@ -1085,12 +1094,6 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 	return address.NewFromBytes(res[0])
 }
 
-// MiningSignerAddress returns the signing address for the miner actor to sign blocks and tickets
-func (node *Node) MiningSignerAddress() address.Address {
-	r := node.Repo
-	return r.Config().Mining.BlockSignerAddress
-}
-
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	head := node.ChainReader.Head()
@@ -1102,17 +1105,6 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 		return nil, err
 	}
 	return types.NewBlockHeight(height), nil
-}
-
-// getMinerActorPubKey gets the miner actor public key
-func (node *Node) getMinerActorPubKey() ([]byte, error) {
-	addr := node.Repo.Config().Mining.MinerAddress
-
-	// this is expected if there is no miner
-	if (addr == address.Address{}) || !node.Wallet.HasAddress(addr) {
-		return nil, nil
-	}
-	return node.Wallet.GetPubKeyForAddress(addr)
 }
 
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {

@@ -273,33 +273,12 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
 	for _, blk := range ts.ToSlice() {
-		parentHeight, err := parentTs.Height()
-		if err != nil {
-			return errors.Wrap(err, "failed to get parentHeight")
-		}
-
-		if parentHeight > uint64(blk.Height) {
-			return errors.New("parent height > block height")
-		}
-
-		nullBlockCount := uint64(blk.Height) - parentHeight - 1
-		challengeSeed, err := CreateChallengeSeed(parentTs, nullBlockCount)
-		if err != nil {
-			return errors.Wrap(err, "couldn't create challengeSeed")
-		}
-
-		isValid, err := proofs.IsPoStValidWithVerifier(c.verifier, []proofs.CommR{}, challengeSeed, []uint64{}, blk.Proof)
-		if err != nil {
-			return errors.Wrap(err, "could not test the proof's validity")
-		}
-		if !isValid {
-			return errors.New("invalid proof")
-		}
-
-		// TODO: Re-enable ticket checking for part 3. See:
-		// https://github.com/filecoin-project/go-filecoin/pull/1795
-
 		// TODO: Also need to validate BlockSig
+
+		// TODO: Once we've picked a delay function (see #2119), we need to
+		// verify its proof here. The proof will likely be written to a field on
+		// the mined block.
+
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {

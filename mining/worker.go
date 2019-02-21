@@ -6,7 +6,6 @@ package mining
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
@@ -21,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"github.com/minio/blake2b-simd"
 )
 
 var log = logging.Logger("mining")
@@ -49,6 +47,11 @@ type Worker interface {
 	Mine(runCtx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool
 }
 
+// WorkerSigner is the interface used for signing blocks and tickets.
+type WorkerSigner interface {
+	CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error)
+}
+
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
 type GetStateTree func(context.Context, types.TipSet) (state.Tree, error)
@@ -72,15 +75,17 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
-	createPoSTFunc  DoSomeWorkFunc
-	minerAddr       address.Address
-	blockSignerAddr address.Address
-	blockSigner     types.Signer
+	createPoSTFunc DoSomeWorkFunc
+	minerAddr      address.Address
+	minerOwnerAddr address.Address
+	minerPubKey    []byte
+	workerSigner   WorkerSigner
+
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
@@ -104,9 +109,10 @@ func NewDefaultWorker(messageSource MessageSource,
 	powerTable consensus.PowerTableView,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
-	miner address.Address, // rename minerActor
-	blockSignerAddr address.Address,
-	blockSigner types.Signer,
+	miner address.Address,
+	minerOwner address.Address,
+	minerPubKey []byte,
+	workerSigner WorkerSigner,
 	bt time.Duration) *DefaultWorker {
 
 	w := NewDefaultWorkerWithDeps(messageSource,
@@ -118,8 +124,9 @@ func NewDefaultWorker(messageSource MessageSource,
 		bs,
 		cst,
 		miner,
-		blockSignerAddr,
-		blockSigner,
+		minerOwner,
+		minerPubKey,
+		workerSigner,
 		bt,
 		func() {})
 
@@ -139,25 +146,27 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	powerTable consensus.PowerTableView,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
-	miner address.Address, // rename minerActorAddr
-	blockSignerAddr address.Address,
-	blockSigner types.Signer,
+	miner address.Address,
+	minerOwner address.Address,
+	minerPubKey []byte,
+	workerSigner WorkerSigner,
 	bt time.Duration,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		getStateTree:    getStateTree,
-		getWeight:       getWeight,
-		getAncestors:    getAncestors,
-		messageSource:   messageSource,
-		processor:       processor,
-		powerTable:      powerTable,
-		blockstore:      bs,
-		cstore:          cst,
-		createPoSTFunc:  createPoST,
-		minerAddr:       miner,
-		blockTime:       bt,
-		blockSignerAddr: blockSignerAddr,
-		blockSigner:     blockSigner,
+		getStateTree:   getStateTree,
+		getWeight:      getWeight,
+		getAncestors:   getAncestors,
+		messageSource:  messageSource,
+		processor:      processor,
+		powerTable:     powerTable,
+		blockstore:     bs,
+		cstore:         cst,
+		createPoSTFunc: createPoST,
+		minerAddr:      miner,
+		minerOwnerAddr: minerOwner,
+		minerPubKey:    minerPubKey,
+		blockTime:      bt,
+		workerSigner:   workerSigner,
 	}
 }
 
@@ -210,7 +219,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		copy(proof[:], prChRead[:])
-		ticket = CreateTicket(proof, w.minerAddr, w.blockSigner)
+		signer := w.workerSigner
+		ticket, err = signer.CreateTicket(proof, w.minerPubKey)
+		if err != nil {
+			log.Errorf("failed to create ticket: %s", err)
+			return false
+		}
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoSTFunc()
@@ -227,8 +241,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
+			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
-		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		outCh <- NewOutput(next, err)
 		return true
 	}
@@ -247,22 +261,6 @@ func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFu
 		c <- challengeSeed
 	}()
 	return c
-}
-
-// CreateTicket computes a valid ticket using the supplied proof
-// []byte and the minerAddress address.Address.
-//    returns:  []byte -- the ticket.
-func CreateTicket(proof proofs.PoStProof, signerAddr address.Address, signer types.Signer) []byte {
-	buf := append(proof[:], signerAddr.Bytes()...)
-	h := blake2b.Sum256(buf)
-	//return h[:]
-
-	ticket, err := signer.SignBytes(h[:], signerAddr)
-	if err != nil {
-		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
-		panic(errMsg)
-	}
-	return ticket
 }
 
 // fakeCreatePoST is the default implementation of DoSomeWorkFunc.

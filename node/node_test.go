@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
@@ -76,10 +77,10 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
-		opts, err := OptionsFromRepo(r)
+		opts, err := node.OptionsFromRepo(r)
 		require.NoError(err)
 
-		nd, err := New(ctx, opts...)
+		nd, err := node.New(ctx, opts...)
 		require.NoError(err)
 		assert.NoError(nd.Start(ctx))
 		defer nd.Stop(ctx)
@@ -105,9 +106,9 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 
 		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
-		opts, err := OptionsFromRepo(r)
+		opts, err := node.OptionsFromRepo(r)
 		require.NoError(err)
-		nd, err := New(ctx, opts...)
+		nd, err := node.New(ctx, opts...)
 		require.NoError(err)
 		nd.Bootstrapper.MinPeerThreshold = 2
 		nd.Bootstrapper.Period = 10 * time.Millisecond
@@ -137,7 +138,7 @@ func TestNodeInit(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	nd := MakeOfflineNode(t)
+	nd := node.MakeOfflineNode(t)
 
 	assert.NoError(nd.Start(ctx))
 
@@ -148,11 +149,10 @@ func TestNodeInit(t *testing.T) {
 func TestNodeStartMining(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	//require := require.New(t)
 	ctx := context.Background()
 
-	seed := MakeChainSeed(t, TestGenCfg)
-	minerNode := MakeNodeWithChainSeed(t, seed, []ConfigOpt{}, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
+	seed := node.MakeChainSeed(t, node.TestGenCfg)
+	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
 
 	walletBackend, _ := wallet.NewDSBackend(minerNode.Repo.WalletDatastore())
 	validator := consensus.NewDefaultMessageValidator()
@@ -174,8 +174,10 @@ func TestNodeStartMining(t *testing.T) {
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 
-	seed.GiveKey(t, minerNode, 0)
+	provisionalOwnerAddr := seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
+	require.Equal(t, provisionalOwnerAddr, minerOwnerAddr)
+
 	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 
@@ -199,94 +201,6 @@ func TestNodeStartMining(t *testing.T) {
 	})
 
 }
-
-// skipped anyway, now commented out.  With new mining we really need something here though.
-/*
-func TestNodeMining(t *testing.T) {
-	t.Skip("Bad Test, stop messing with __all__ internals of the node, write a better test!")
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	newCid := types.NewCidForTestGetter()
-	ctx := context.Background()
-
-	node := MakeNodeUnstartedSeed(t, true, true)
-
-	mockScheduler := &mining.MockScheduler{}
-	outCh, doneWg := make(chan mining.Output), new(sync.WaitGroup)
-	// Apparently you have to have exact types for testify.mock, so
-	// we use iCh and oCh for the specific return type of Start().
-	var oCh <-chan mining.Output = outCh
-
-	mockScheduler.On("Start", mock.Anything).Return(oCh, doneWg)
-	node.MiningScheduler = mockScheduler
-	// TODO: this is horrible, this setup needs to be a lot less dependent of the inner workings of the node!!
-	node.miningCtx, node.cancelMining = context.WithCancel(ctx)
-	node.miningDoneWg = doneWg
-	go node.handleNewMiningOutput(oCh)
-
-	// Ensure that the initial input (the best tipset) is wired up properly.
-	chainForTest, ok := node.ChainReader.(chain.Store)
-	require.True(ok)
-	require.NoError(node.Start(ctx))
-	genTS := chainForTest.Head()
-	b1 := genTS.ToSlice()[0]
-	require.NoError(node.StartMining(ctx))
-
-	// Ensure that the successive inputs (new best tipsets) are wired up properly.
-	b2 := chain.RequireMkFakeChild(require, genTS, node.ChainReader.GenesisCid(), newCid(), uint64(0), uint64(0))
-	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
-
-	node.StopMining(ctx)
-	chainForTest.SetHead(ctx, consensus.RequireNewTipSet(require, b2))
-
-	time.Sleep(20 * time.Millisecond)
-	assert.Equal(mining.ChannelEmpty, mining.ReceiveInCh(inCh))
-
-	// Ensure we're tearing down cleanly.
-	// Part of stopping cleanly is waiting for the worker to be done.
-	// Kinda lame to test this way, but better than not testing.
-	node = MakeNodeUnstartedSeed(t, true, true)
-
-	assert.NoError(node.Start(ctx))
-	assert.NoError(node.StartMining(ctx))
-
-	workerDone := false
-	node.miningDoneWg.Add(1)
-	go func() {
-		time.Sleep(20 * time.Millisecond)
-		workerDone = true
-		node.miningDoneWg.Done()
-	}()
-	node.Stop(ctx)
-	assert.True(workerDone)
-
-	// Ensure that the output is wired up correctly.
-	node = MakeNodeUnstartedSeed(t, true, true)
-
-	mockScheduler = &mining.MockScheduler{}
-	inCh, outCh, doneWg = make(chan mining.Input), make(chan mining.Output), new(sync.WaitGroup)
-	iCh = inCh
-	oCh = outCh
-	mockScheduler.On("Start", mock.Anything).Return(iCh, oCh, doneWg)
-	node.MiningScheduler = mockScheduler
-	node.miningCtx, node.cancelMining = context.WithCancel(ctx)
-	node.miningInCh = inCh
-	node.miningDoneWg = doneWg
-	go node.handleNewMiningOutput(oCh)
-	assert.NoError(node.Start(ctx))
-
-	var gotBlock *types.Block
-	gotBlockCh := make(chan struct{})
-	node.AddNewlyMinedBlock = func(ctx context.Context, b *types.Block) {
-		gotBlock = b
-		go func() { gotBlockCh <- struct{}{} }()
-	}
-	assert.NoError(node.StartMining(ctx))
-	go func() { outCh <- mining.NewOutput(b1, nil) }()
-	<-gotBlockCh
-	assert.True(b1.Cid().Equals(gotBlock.Cid()))
-}*/
 
 func TestUpdateMessagePool(t *testing.T) {
 	t.Parallel()
@@ -344,48 +258,19 @@ func TestOptionWithError(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	assert.NoError(Init(ctx, r, consensus.DefaultGenesis))
 
-	opts, err := OptionsFromRepo(r)
+	opts, err := node.OptionsFromRepo(r)
 	assert.NoError(err)
 
 	scaryErr := errors.New("i am an error grrrr")
-	errOpt := func(c *Config) error {
+	errOpt := func(c *node.Config) error {
 		return scaryErr
 	}
 
 	opts = append(opts, errOpt)
 
-	_, err = New(ctx, opts...)
+	_, err = node.New(ctx, opts...)
 	assert.Error(err, scaryErr)
 
-}
-
-func TestMakePrivateKey(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	// should fail if less than 1024
-	badKey, err := makePrivateKey(10)
-	assert.Error(err, ErrLittleBits)
-	assert.Nil(badKey)
-
-	// 1024 should work
-	okKey, err := makePrivateKey(1024)
-	assert.NoError(err)
-	assert.NotNil(okKey)
-
-	// large values should work
-	goodKey, err := makePrivateKey(4096)
-	assert.NoError(err)
-	assert.NotNil(goodKey)
-}
-
-func repoConfig() ConfigOpt {
-	defaultCfg := config.NewDefaultConfig()
-	return func(c *Config) error {
-		// overwrite value set with testhelpers.GetFreePort()
-		c.Repo.Config().API.Address = defaultCfg.API.Address
-		return nil
-	}
 }
 
 func TestNodeConfig(t *testing.T) {
@@ -394,27 +279,27 @@ func TestNodeConfig(t *testing.T) {
 
 	defaultCfg := config.NewDefaultConfig()
 
-	// fake mining/always a winning ticket
+	// fake mining
 	verifier := proofs.NewFakeVerifier(true, nil)
 
 	configBlockTime := 99
 
-	configOptions := []ConfigOpt{
+	configOptions := []node.ConfigOpt{
 		repoConfig(),
-		VerifierConfigOption(verifier),
-		BlockTime(time.Duration(configBlockTime)),
+		node.VerifierConfigOption(verifier),
+		node.BlockTime(time.Duration(configBlockTime)),
 	}
 
-	initOpts := []InitOpt{AutoSealIntervalSecondsOpt(120)}
+	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}
 
-	tno := TestNodeOptions{
+	tno := node.TestNodeOptions{
 		ConfigOpts:  configOptions,
 		InitOpts:    initOpts,
 		OfflineMode: true,
 		GenesisFunc: consensus.DefaultGenesis,
 	}
 
-	n := GenNode(t, &tno)
+	n := node.GenNode(t, &tno)
 	cfg := n.Repo.Config()
 	_, blockTime := n.MiningTimes()
 
@@ -428,27 +313,11 @@ func TestNodeConfig(t *testing.T) {
 	}, cfg.Swarm)
 }
 
-func TestNode_getMinerOwnerPubKey(t *testing.T) {
-	seed := MakeChainSeed(t, TestGenCfg)
-	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
-	tnode := MakeNodeWithChainSeed(t, seed, configOpts,
-		PeerKeyOpt(PeerKeys[0]),
-		AutoSealIntervalSecondsOpt(1),
-	)
-	seed.GiveKey(t, tnode, 0)
-	mineraddr, minerOwnerAddr := seed.GiveMiner(t, tnode, 0)
-	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PorcelainAPI)
-	assert.NoError(t, err)
-
-	// it hasn't yet been saved to the MinerConfig; simulates incomplete CreateMiner, or no miner for the node
-	pkey, err := tnode.getMinerActorPubKey()
-	assert.NoError(t, err)
-	assert.Nil(t, pkey)
-
-	err = tnode.saveMinerConfig(minerOwnerAddr, address.Address{})
-	assert.NoError(t, err)
-
-	pkey, err = tnode.getMinerActorPubKey()
-	assert.NoError(t, err)
-	assert.NotNil(t, pkey)
+func repoConfig() node.ConfigOpt {
+	defaultCfg := config.NewDefaultConfig()
+	return func(c *node.Config) error {
+		// overwrite value set with testhelpers.GetFreePort()
+		c.Repo.Config().API.Address = defaultCfg.API.Address
+		return nil
+	}
 }

@@ -176,7 +176,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("create --help includes pledge text", func(t *testing.T) {
 		t.Parallel()
-		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("miner", "create", "--help")
@@ -190,7 +190,7 @@ func TestMinerCreate(t *testing.T) {
 		var addr address.Address
 
 		tf := func(fromAddress address.Address, pid peer.ID) {
-			d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+			d1 := makeTestDaemonWithMinerAndStart(t)
 			defer d1.ShutdownSuccess()
 
 			d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
@@ -263,7 +263,7 @@ func TestMinerCreate(t *testing.T) {
 
 	t.Run("insufficient pledge", func(t *testing.T) {
 		t.Parallel()
-		d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+		d1 := makeTestDaemonWithMinerAndStart(t)
 		defer d1.ShutdownSuccess()
 
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
@@ -292,7 +292,10 @@ func TestMinerSetPrice(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0]), th.DefaultAddress(fixtures.TestAddresses[0])).Start()
+	d1 := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0])).Start()
 	defer d1.ShutdownSuccess()
 
 	d1.RunSuccess("mining", "start")
@@ -309,7 +312,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
 	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 	defer d.ShutdownSuccess()
@@ -336,7 +339,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
 	require.NoError(err)
 
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
 	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 	defer d.ShutdownSuccess()
@@ -384,7 +387,7 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 func TestMinerAddAskFail(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
 	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
 	defer d.ShutdownSuccess()

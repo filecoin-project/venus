@@ -171,3 +171,26 @@ func TestSignErrorCases(t *testing.T) {
 	assert.Error(err)
 	assert.Contains(err.Error(), "failed to sign data")
 }
+
+func TestAddressFromPubKey(t *testing.T) {
+	assert := assert.New(t)
+
+	ds := datastore.NewMapDatastore()
+	fs, err := NewDSBackend(ds)
+	assert.NoError(err)
+	w := New(fs)
+
+	for range []int{0, 1, 2} {
+		ki, err := w.NewKeyInfo()
+		if err != nil {
+			panic("w.NewKeyInfo failed for this wallet")
+		}
+
+		expectedAddr, _ := ki.Address()
+		pubkey := ki.PublicKey()
+		actualAddr, err := w.AddressFromPubKey(pubkey)
+		assert.NoError(err)
+		assert.Equal(expectedAddr, actualAddr)
+	}
+
+}

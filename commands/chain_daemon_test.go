@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ func TestChainDaemon(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
@@ -76,7 +76,7 @@ func TestChainDaemon(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
 		var blocks []types.Block
@@ -98,7 +98,7 @@ func TestChainDaemon(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
 		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()

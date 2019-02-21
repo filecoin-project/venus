@@ -75,7 +75,6 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 	if !t.Out(t.NumOut() - 1).Implements(errorType) {
 		badImpl()
 	}
-
 	return func(ctx exec.VMContext) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {

@@ -52,15 +52,18 @@ func TestProcessBlockSuccess(t *testing.T) {
 
 	toAddr := newAddress()
 	minerAddr := newAddress()
+	minerOwnerAddr := newAddress()
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
+	vms := th.VMStorage()
+	minerActor := th.RequireNewMinerActor(require, vms, minerAddr, minerOwnerAddr, []byte{}, 10, th.RequireRandomPeerID(), types.ZeroAttoFIL)
 	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(startingNetworkBalance)),
-		minerAddr:              th.RequireNewAccountActor(require, types.ZeroAttoFIL),
+		minerAddr:              minerActor,
+		minerOwnerAddr:         th.RequireNewAccountActor(require, types.ZeroAttoFIL),
 		fromAddr:               fromAct,
 	})
 
-	vms := th.VMStorage()
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
@@ -83,10 +86,12 @@ func TestProcessBlockSuccess(t *testing.T) {
 	expectedNetworkBalance := types.NewAttoFILFromFIL(startingNetworkBalance).Sub(blockRewardAmount)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
-		minerAddr:              th.RequireNewAccountActor(require, blockRewardAmount),
+		minerAddr:              minerActor,
+		minerOwnerAddr:         th.RequireNewAccountActor(require, blockRewardAmount),
 		fromAddr:               expAct1,
 		toAddr:                 expAct2,
 	})
+
 	assert.True(expStCid.Equals(gotStCid))
 }
 
@@ -97,24 +102,27 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	newAddress := address.NewForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	vms := th.VMStorage()
 
 	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
 	minerAddr := newAddress()
 
 	toAddr := newAddress()
-	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	fromAddr1 := mockSigner.Addresses[0]
 	fromAddr2 := mockSigner.Addresses[1]
 
 	fromAddr1Act := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
 	fromAddr2Act := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
 		fromAddr1:              fromAddr1Act,
 		fromAddr2:              fromAddr2Act,
 	})
+
+	vms := th.VMStorage()
+	minerOwner := address.MakeTestAddress("mo")
+	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
@@ -151,7 +159,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
-		minerAddr:              th.RequireNewEmptyActor(require, twoBlockRewards),
+		minerAddr:              miner,
+		minerOwner:             th.RequireNewEmptyActor(require, twoBlockRewards),
 		fromAddr1:              expAct1,
 		fromAddr2:              expAct2,
 		toAddr:                 expAct3,
@@ -174,10 +183,13 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
 		fromAddr:               act1,
 	})
+
+	minerOwner := address.MakeTestAddress("mo")
+	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
@@ -214,7 +226,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 	expectedNetworkBalance := startingNetworkBalance.Sub(twoBlockRewards)
 	expStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, expectedNetworkBalance),
-		minerAddr:              th.RequireNewEmptyActor(require, twoBlockRewards),
+		minerOwner:             th.RequireNewEmptyActor(require, twoBlockRewards),
+		minerAddr:              miner,
 		fromAddr:               expAct1,
 		toAddr:                 expAct2,
 	})
@@ -233,12 +246,16 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	toAddr := newAddress()
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(10000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000)),
 		fromAddr:               fromAct,
 	})
 
 	vms := th.VMStorage()
+	minerAddr := address.MakeTestAddress("miner")
+	minerOwner := address.MakeTestAddress("mo")
+	stCid, _ := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
+
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
@@ -248,6 +265,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
+		Miner:     minerAddr,
 		Messages:  []*types.SignedMessage{smsg},
 	}
 	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, nil)
@@ -264,11 +282,12 @@ func TestProcessBlockReward(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
+	minerAddr := newAddress()
 	minerOwnerAddr := newAddress()
 	minerBalance := types.NewAttoFILFromFIL(10000)
 	ownerAct := th.RequireNewAccountActor(require, minerBalance)
 	networkAct := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(100000000000))
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		minerOwnerAddr: ownerAct,
 		// TODO: get rid of this ugly hack as soon once we have
 		// sustainable reward support (i.e. anything but setting
@@ -277,8 +296,10 @@ func TestProcessBlockReward(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
+	stCid, _ := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwnerAddr)
+
 	blk := &types.Block{
-		Miner:     minerOwnerAddr,
+		Miner:     minerAddr,
 		Height:    20,
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{},
@@ -304,7 +325,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	newAddress := address.NewForTestGetter()
 	startingNetworkBalance := types.NewAttoFILFromFIL(1000000)
-	minerAddr := newAddress()
+	minerAddr, minerOwnerAddr := newAddress(), newAddress()
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -318,11 +339,14 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 
 	act1, act2 := th.RequireNewEmptyActor(require, types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(require, vms, toAddr, fakeActorCodeCid)
-	stCid, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance),
 		fromAddr:               act1,
 		toAddr:                 act2,
 	})
+
+	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwnerAddr)
+
 	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
@@ -351,7 +375,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
 	expectedStCid, _ := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(require, startingNetworkBalance.Sub(blockRewardAmount)),
-		minerAddr:              th.RequireNewEmptyActor(require, blockRewardAmount),
+		minerOwnerAddr:         th.RequireNewEmptyActor(require, blockRewardAmount),
+		minerAddr:              miner,
 		fromAddr:               expectedAct1,
 		toAddr:                 expectedAct2,
 	})
@@ -1064,4 +1089,12 @@ func mustSetup2Actors(t *testing.T, balance1 *types.AttoFIL, balance2 *types.Att
 		addr2: act2,
 	})
 	return addr1, act1, addr2, act2, st, mockSigner
+}
+
+func mustCreateMiner(ctx context.Context, require *require.Assertions, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
+	miner := th.RequireNewMinerActor(require, vms, minerAddr, minerOwner, []byte{}, 1000, th.RequireRandomPeerID(), types.ZeroAttoFIL)
+	st.SetActor(ctx, minerAddr, miner)
+	stCid, err := st.Flush(ctx)
+	require.NoError(err)
+	return stCid, miner
 }

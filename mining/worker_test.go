@@ -10,8 +10,8 @@ import (
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
-	ast "gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	req "gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -25,21 +25,21 @@ import (
 )
 
 func Test_Mine(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 
-	var doSomeWorkCalled = false
+	var doSomeWorkCalled bool
 	CreatePoSTFunc := func() { doSomeWorkCalled = true }
 
-	mockSigner, blockSignerAddr := setupSigner()
+	mockSignerVal, blockSignerAddr := setupSigner()
+	mockSigner := &mockSignerVal
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
 	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
 	tipSet := th.RequireNewTipSet(require, baseBlock)
-	ctx, cancel := context.WithCancel(context.Background())
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -47,51 +47,53 @@ func Test_Mine(t *testing.T) {
 		return nil, nil
 	}
 
-	minerAddr := addrs[4]
-	minerOwnerAddr := addrs[3]
+	minerAddr := addrs[3]      // addr4 in sharedSetup
+	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
 
-	// Success case.
 	// TODO: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-		mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest,
-		CreatePoSTFunc)
+	t.Run("Trivial success case", func(t *testing.T) {
+		doSomeWorkCalled = false
+		ctx, cancel := context.WithCancel(context.Background())
+		outCh := make(chan mining.Output)
+		worker := mining.NewDefaultWorkerWithDeps(
+			pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), mining.NewTestPowerTableView(1),
+			bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest,
+			CreatePoSTFunc)
 
-	outCh := make(chan mining.Output)
-	go worker.Mine(ctx, tipSet, 0, outCh)
-	r := <-outCh
-	assert.NoError(r.Err)
-	assert.True(doSomeWorkCalled)
-	cancel()
-	// Block generation fails.
-	ctx, cancel = context.WithCancel(context.Background())
-	worker = mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, th.NewTestProcessor(),
-		mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
-	outCh = make(chan mining.Output)
-	doSomeWorkCalled = false
-	go worker.Mine(ctx, tipSet, 0, outCh)
-	r = <-outCh
-	assert.Error(r.Err)
-	assert.True(doSomeWorkCalled)
-	cancel()
+		go worker.Mine(ctx, tipSet, 0, outCh)
+		r := <-outCh
+		assert.NoError(r.Err)
+		assert.True(doSomeWorkCalled)
+		cancel()
+	})
+	t.Run("Block generation fails", func(t *testing.T) {
+		doSomeWorkCalled = false
+		ctx, cancel := context.WithCancel(context.Background())
+		worker := mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, th.NewTestProcessor(),
+			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		outCh := make(chan mining.Output)
+		doSomeWorkCalled = false
+		go worker.Mine(ctx, tipSet, 0, outCh)
+		r := <-outCh
+		assert.Error(r.Err)
+		assert.True(doSomeWorkCalled)
+		cancel()
 
-	// Sent empty tipset
-	ctx, cancel = context.WithCancel(context.Background())
-	worker = mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-		mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
-	outCh = make(chan mining.Output)
-	doSomeWorkCalled = false
-	input := types.TipSet{}
-	go worker.Mine(ctx, input, 0, outCh)
-	r = <-outCh
-	assert.Error(r.Err)
-	assert.False(doSomeWorkCalled)
-	cancel()
-}
+	})
 
-func TestGenerate(t *testing.T) {
-	// TODO use core.FakeActor for state/contract tests for generate:
-	//  - test nonces out of order
-	//  - test nonce gap
+	t.Run("Sent empty tipset", func(t *testing.T) {
+		doSomeWorkCalled = false
+		ctx, cancel := context.WithCancel(context.Background())
+		worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
+			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		input := types.TipSet{}
+		outCh := make(chan mining.Output)
+		go worker.Mine(ctx, input, 0, outCh)
+		r := <-outCh
+		assert.Error(r.Err)
+		assert.False(doSomeWorkCalled)
+		cancel()
+	})
 }
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
@@ -105,7 +107,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 
-	require := req.New(t)
+	require := require.New(t)
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()
@@ -135,8 +137,8 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 
 // TODO this test belongs in core, it calls ApplyMessages
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 	vms := th.VMStorage()
 
 	mockSigner, _ := setupSigner()
@@ -192,8 +194,8 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 }
 
 func TestGenerateMultiBlockTipSet(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 	ctx := context.Background()
 
 	CreatePoSTFunc := func() {}
@@ -239,8 +241,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 	CreatePoSTFunc := func() {}
 
 	ctx := context.Background()
@@ -301,8 +303,8 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -347,8 +349,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -383,8 +385,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 // If something goes wrong while generating a new block, even as late as when flushing it,
 // no block should be returned, and the message pool should not be pruned.
 func TestGenerateError(t *testing.T) {
-	assert := ast.New(t)
-	require := req.New(t)
+	assert := assert.New(t)
+	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -458,9 +460,9 @@ func makeExplodingGetStateTree(st state.Tree) func(context.Context, types.TipSet
 	}
 }
 
-func setupSigner() (types.MockSigner, address.Address) {
+func setupSigner() (types.MockSigner, []byte) {
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(10)
 
-	blockSignerAddr := mockSigner.Addresses[len(mockSigner.Addresses)-1]
-	return mockSigner, blockSignerAddr
+	signerPubKey := mockSigner.PubKeys[len(mockSigner.Addresses)-1]
+	return mockSigner, signerPubKey
 }

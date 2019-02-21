@@ -2,7 +2,6 @@ package chain_test
 
 import (
 	"context"
-
 	"testing"
 	"time"
 
@@ -166,11 +165,23 @@ func TestGetMultipleByParent(t *testing.T) {
 	assert := assert.New(t)
 	chainStore := newChainStore()
 
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
+	mockSignerPubKey := ki[0].PublicKey()
+
+	fakeChildParams := chain.FakeChildParams{
+		Parent:      genTS,
+		GenesisCid:  genCid,
+		StateRoot:   genStateRoot,
+		MinerAddr:   minerAddress,
+		Nonce:       uint64(5),
+		Signer:      mockSigner,
+		MinerPubKey: mockSignerPubKey,
+	}
+
 	requirePutTestChain(require, chainStore)
 	pk1 := genTS.String()
 	// give one parent multiple children and then query
-	newBlk := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{Parent: genTS, GenesisCid: genCid, StateRoot: genStateRoot, Nonce: uint64(5)})
+	newBlk := chain.RequireMkFakeChild(require, fakeChildParams)
 	newChild := testhelpers.RequireNewTipSet(require, newBlk)
 	newRoot := cidGetter()
 	newChildTsas := &chain.TipSetAndState{
