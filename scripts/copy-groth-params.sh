@@ -9,7 +9,7 @@ copy_groth_params() {
     echo "try rerunning 'go run ./build/*.go deps'"
     exit 1
   fi
-  ln -s ${params_file} params.out
+  ln -sf ${params_file} params.out
   popd
 }
 
