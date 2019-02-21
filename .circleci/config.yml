@@ -1,5 +1,11 @@
 version: 2
 
+definitions:
+  steps:
+    - run: &rust_fil_proofs_checksum
+        name: generate rust proofs checksum
+        command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-fil-proofs-checksum.txt
+
 jobs:
   build_macos:
     macos:
@@ -21,8 +27,7 @@ jobs:
       - run:
           name: Update submodules
           command: git submodule update --init
-      - run:
-          command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-fil-proofs-checksum.txt
+      - run: *rust_fil_proofs_checksum
       - restore_cache:
           key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
@@ -103,7 +108,6 @@ jobs:
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
             go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out
-
       - run:
           name: Create macos bundle
           command: ./scripts/build-bundle.sh
@@ -130,7 +134,6 @@ jobs:
             echo 'export PATH="${HOME}/.cargo/bin:${PATH}"' >> $BASH_ENV
             echo 'export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters/"' >> $BASH_ENV
             echo 'export FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes' >> $BASH_ENV
-
       - add_ssh_keys:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
@@ -142,7 +145,7 @@ jobs:
       - run: git submodule update --init
 
       # Save the Git SHA of the rust-fil-proofs submodule so that we can use it when creating a cache key
-      - run: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-fil-proofs-checksum.txt
+      - run: *rust_fil_proofs_checksum
 
       - restore_cache:
           keys:
@@ -165,7 +168,6 @@ jobs:
           name: Install Rust toolchain (for rust-fil-proofs)
           command: |
             (sudo apt-get update && sudo apt-get install -y clang libssl-dev && which cargo && which rustc) || (curl https://sh.rustup.rs -sSf | sh -s -- -y)
-
       - run:
           name: Install Dependencies
           command: go run ./build/*.go smartdeps
@@ -221,7 +223,6 @@ jobs:
           command: |
             trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
             go run ./build/*.go test -v  2>&1 | tee test-results/go-test-suite/go-test.out
-
       - run:
           name: Functional Tests
           command: ./functional-tests/run
@@ -233,15 +234,19 @@ jobs:
       - run:
           name: Create linux bundle
           command: ./scripts/build-bundle.sh
+
       - store_artifacts:
           path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin-Linux.tar.gz"
           destination: filecoin-Linux.tar.gz
+
       - store_test_results:
           path: test-results
+
       - persist_to_workspace:
           root: "."
           paths:
             - "filecoin-Linux.tar.gz"
+            - "gengen/gengen"
 
   publish_release:
     docker:
@@ -265,12 +270,40 @@ jobs:
           name: Publish new release
           command: |
             ./scripts/publish-release.sh
+  build_faucet_and_genesis:
+    docker:
+      - image: circleci/golang:1.11.1
+    working_directory: /go/src/github.com/filecoin-project/go-filecoin
+    resource_class: small
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
 
+      - checkout
+      - run: *rust_fil_proofs_checksum
+      - restore_cache:
+          keys:
+            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+
+      - checkout
+      - run:
+          name: build faucet and genesis-file-server
+          command: |
+            go build -o ./faucet ./tools/faucet/main.go
+            go build -o ./genesis-file-server ./tools/genesis-file-server/main.go
+      - persist_to_workspace:
+          root: "."
+          paths:
+            - "faucet"
+            - "genesis-file-server"
 
   build_docker_img:
     docker:
       - image: circleci/golang:latest
     resource_class: xlarge
+    working_directory: "~/docker_build"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -288,9 +321,16 @@ jobs:
             export AWS_ACCESS_KEY_ID=$AWS_ECR_ACCESS_KEY_ID
             export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
             eval $(aws --region us-east-1 ecr --no-include-email get-login)
-
       # The first checkout ensures we have the files needed to restore the cache
       - checkout
+
+      - run: *rust_fil_proofs_checksum
+
+      - attach_workspace:
+          at: "."
+
+      - restore_cache:
+          key: v0-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
       # Pull in all submodules (inc. rust-fil-proofs)
       - run: git submodule update --init
@@ -298,17 +338,8 @@ jobs:
       - run:
           name: build an image of all binaries
           command: |
-            docker build -t filecoin:all --target=builder .
+            docker build -t filecoin:all --target=base --file Dockerfile.ci.base .
           no_output_timeout: 20m
-
-      - run:
-          name: build & push image - filecoin
-          command: |
-            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
-            docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
-            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
 
       - run:
           name: build & push image - genesis file server
@@ -318,7 +349,6 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
-
       - run:
           name: build & push image - faucet
           command: |
@@ -327,7 +357,16 @@ jobs:
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
-
+      - run:
+          name: build & push image - filecoin
+          command: |
+            tar -xf filecoin-Linux.tar.gz
+            mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
+            export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+            docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
+            docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
+            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
   trigger_nightly_devnet_deploy:
     docker:
       - image: circleci/golang:latest
@@ -352,7 +391,6 @@ jobs:
           command: |
             sudo apt-get install -y curl jq
             curl -X POST --header "Content-Type: application/json" -d '{"branch":"filecoin-nightly"}' https://circleci.com/api/v1.1/project/github/filecoin-project/go-filecoin-infra/build?circle-token=$CIRCLE_API_TOKEN
-
   trigger_user_devnet_deploy:
     docker:
       - image: circleci/golang:latest
@@ -397,15 +435,22 @@ jobs:
           command: |
             sudo apt-get install -y curl jq
             curl -X POST --header "Content-Type: application/json" -d '{"branch":"filecoin-usernet"}' https://circleci.com/api/v1.1/project/github/filecoin-project/go-filecoin-infra/build?circle-token=$CIRCLE_API_TOKEN
-
 workflows:
   version: 2
   test_all:
     jobs:
       - build_linux
+      - build_faucet_and_genesis:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              only:
+                - master
       - build_docker_img:
           requires:
             - build_linux
+            - build_faucet_and_genesis
           filters:
             branches:
               only:
@@ -464,9 +509,13 @@ workflows:
                 - master
     jobs:
       - build_linux
+      - build_faucet_and_genesis:
+          requires:
+            - build_linux
       - build_docker_img:
           requires:
             - build_linux
+            - build_faucet_and_genesis
       - trigger_nightly_devnet_deploy:
           requires:
             - build_docker_img
@@ -481,7 +530,8 @@ workflows:
             tags:
               only:
                 - /^devnet-user$/
-      - build_docker_img:
+
+      - build_faucet_and_genesis:
           requires:
             - build_linux
           filters:
@@ -491,6 +541,19 @@ workflows:
             tags:
               only:
                 - /^devnet-user$/
+
+      - build_docker_img:
+          requires:
+            - build_linux
+            - build_faucet_and_genesis
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^devnet-user$/
+
       - trigger_user_devnet_deploy:
           requires:
             - build_docker_img
