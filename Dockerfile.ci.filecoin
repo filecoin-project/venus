@@ -3,15 +3,15 @@ MAINTAINER Filecoin Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
-COPY --from=filecoin:all $SRC_DIR/go-filecoin /usr/local/bin/go-filecoin
-COPY --from=filecoin:all $SRC_DIR/bin/container_daemon /usr/local/bin/start_filecoin
-COPY --from=filecoin:all $SRC_DIR/bin/devnet_start /usr/local/bin/devnet_start
-COPY --from=filecoin:all $SRC_DIR/bin/node_restart /usr/local/bin/node_restart
-COPY --from=filecoin:all $SRC_DIR/gengen/gengen /usr/local/bin/gengen
-COPY --from=filecoin:all $SRC_DIR/fixtures/* /data/
+COPY filecoin-proof-parameters /tmp/filecoin-proof-parameters
+COPY filecoin/go-filecoin /usr/local/bin/go-filecoin
+COPY bin/container_daemon /usr/local/bin/start_filecoin
+COPY bin/devnet_start /usr/local/bin/devnet_start
+COPY bin/node_restart /usr/local/bin/node_restart
+COPY fixtures/* /data/
+COPY gengen/gengen /usr/local/bin/gengen
 COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=filecoin:all /tmp/tini /sbin/tini
-COPY --from=filecoin:all /tmp/filecoin-proof-parameters/v9-zigzag-* /tmp/filecoin-proof-parameters/
 COPY --from=filecoin:all /tmp/jq /usr/local/bin/jq
 COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
 
