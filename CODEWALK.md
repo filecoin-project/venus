@@ -298,14 +298,6 @@ A null block count indicates the absence of any blocks mined in a previous round
 Subsequent blocks are built upon *all* of the tipset; 
 there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
 
-### Network layer
-
-Filecoin relies on [libp2p](https://libp2p.io/) for all its networking, such as peer discovery, NAT discovery, and circuit relay. 
-Filecoin uses two transport protocols from libp2p:
-
-- [GossipSub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) for pubsub gossip among peers propagating blockchain blocks and unmined messages.
-- [Bitswap](https://github.com/ipfs/specs/tree/master/bitswap) for exchanging binary data.
-
 ### Entry point
 
 There’s no centrally dispatched event loop. 
@@ -314,44 +306,12 @@ Protocols (goroutines) communicate through custom channels.
 This architecture needs more thought, but we are considering moving more inter-module communication to use iterators (c.f. those in Java). 
 An event bus might also be a good pattern for some cases, though.
 
-## Filesystem storage
-
-The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `go-filecoin daemon`, typically at `$HOME/.filecoin`. 
-The repo does not include client data stored by storage miners, which is held instead in the sector base. 
-The repo does include a JSON config file with preferences on how the daemon should operate, 
-several key value datastores holding data important to the internal services, 
-and the keystore which holds private key data for encryption.
-
-### JSON Config
-
-The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the `go-filecoin config` command. 
-Users can also edit the file directly at their own peril.
-
-### Datastores
-
-The key-value datastores in the repo include persisted data from a variety of systems within Filecoin. 
-Most of them hold CBOR encoded data keyed on CID, however this varies. 
-The key value stores include the badger, chain, deals, and wallet directories under `$HOME/.filecoin`.
-
-The purpose of these directories is:
-- _Badger_ is a general purpose datastore currently only holding the genesis key, but in the future, 
-almost all our datastores should be merged into this one.
-- _Chain_ is where the local copy of the blockchain is stored.
-- _Deals_ is where the miner and client store persisted information on open deals for data storage, 
-essentially who is storing what data, for what fee and which sectors have been sealed.
-- _Wallet_ is where the user’s Filecoin wallet information is stored.
-
-### Keystore
-
-The keystore contains the binary encoded peer key for interacting securely over the network. 
-This data lives in a file at `$HOME/.filecoin/keystore/self`.
-
 ## libp2p networking
 
-As mentioned above, Filecoin relies on [libp2p](https://libp2p.io/) for its networking needs.
+Filecoin relies on [libp2p](https://libp2p.io/) for its networking needs.
 
 libp2p is a modular networking stack for the peer-to-peer era. It offers building blocks to tackle requirements such as
-peer discovery, transport switching, multiplexing, content routing, NAT traversal, pubsub, etc.
+peer discovery, transport switching, multiplexing, content routing, NAT traversal, pubsub, circuit relay, etc., most of which Filecoin uses.
 Developers can compose these blocks easily to build the networking layer behind their P2P system.
 
 Here we'll explain some of the mechanics that drive the Filecoin network layer, in particular:
@@ -359,6 +319,9 @@ Here we'll explain some of the mechanics that drive the Filecoin network layer, 
 1. Peer discovery.
 2. NAT topology determination.
 3. Autorelay services for solving connectivity issues.
+
+In addition, it must be noted that Filecoin relies on [GossipSub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) for 
+pubsub gossip among peers propagating blockchain blocks and unmined messages.
 
 ### Peer discovery
 
@@ -447,6 +410,38 @@ When AutoNAT detects we're behind a NAT that blocks inbound connections, Autorel
 4. We announce our new relay-enabled addresses to the peers we're already connected to via the `IdentifyPush` protocol.
 
 The last step is crucial, as it enables peers to learn our updated addresses, and in turn return them when another peer looks us up.
+
+## Filesystem storage
+
+The *repo*, aka `fsrepo`, is a directory stored on disk containing all necessary information to run a `go-filecoin daemon`, typically at `$HOME/.filecoin`. 
+The repo does not include client data stored by storage miners, which is held instead in the sector base. 
+The repo does include a JSON config file with preferences on how the daemon should operate, 
+several key value datastores holding data important to the internal services, 
+and the keystore which holds private key data for encryption.
+
+### JSON Config
+
+The JSON config file is stored at `$HOME/.filecoin/config.json`, and can be easily edited using the `go-filecoin config` command. 
+Users can also edit the file directly at their own peril.
+
+### Datastores
+
+The key-value datastores in the repo include persisted data from a variety of systems within Filecoin. 
+Most of them hold CBOR encoded data keyed on CID, however this varies. 
+The key value stores include the badger, chain, deals, and wallet directories under `$HOME/.filecoin`.
+
+The purpose of these directories is:
+- _Badger_ is a general purpose datastore currently only holding the genesis key, but in the future, 
+almost all our datastores should be merged into this one.
+- _Chain_ is where the local copy of the blockchain is stored.
+- _Deals_ is where the miner and client store persisted information on open deals for data storage, 
+essentially who is storing what data, for what fee and which sectors have been sealed.
+- _Wallet_ is where the user’s Filecoin wallet information is stored.
+
+### Keystore
+
+The keystore contains the binary encoded peer key for interacting securely over the network. 
+This data lives in a file at `$HOME/.filecoin/keystore/self`.
 
 ## Testing
 
