@@ -176,7 +176,7 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 
 	hash := address.Hash(buf.Bytes())
 
-	return address.NewMainnet(hash), nil
+	return address.NewFromActor(address.Mainnet, hash)
 }
 
 // CreateNewActor creates and initializes an actor at the given address.

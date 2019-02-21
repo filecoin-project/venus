@@ -54,7 +54,10 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 			panic("unknown public key type")
 		}
 		addrHash := address.Hash(cu.SerializeUncompressed(pub))
-		newAddr := address.NewMainnet(addrHash)
+		newAddr, err := address.NewFromActor(address.Mainnet, addrHash)
+		if err != nil {
+			panic(err)
+		}
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k
 
@@ -88,9 +91,13 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 	return func() *SignedMessage {
 		s := fmt.Sprintf("smsg%d", i)
 		i++
+		msgAddr, err := address.NewFromActor(address.Mainnet, []byte(s+"-to"))
+		if err != nil {
+			panic(err)
+		}
 		msg := NewMessage(
 			ms.Addresses[0], // from needs to be an address from the signer
-			address.NewMainnet([]byte(s+"-to")),
+			msgAddr,
 			0,
 			NewAttoFILFromFIL(0),
 			s,
@@ -134,9 +141,17 @@ func NewMessageForTestGetter() func() *Message {
 	return func() *Message {
 		s := fmt.Sprintf("msg%d", i)
 		i++
+		fromAddr, err := address.NewFromActor(address.Mainnet, []byte(s+"-from"))
+		if err != nil {
+			panic(err)
+		}
+		toAddr, err := address.NewFromActor(address.Mainnet, []byte(s+"-to"))
+		if err != nil {
+			panic(err)
+		}
 		return NewMessage(
-			address.NewMainnet([]byte(s+"-from")),
-			address.NewMainnet([]byte(s+"-to")),
+			fromAddr,
+			toAddr,
 			0,
 			nil,
 			s,

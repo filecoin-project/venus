@@ -249,7 +249,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// get miner address
-		maddr, err := address.NewFromBytes(ret[0])
+		maddr, err := address.NewFromActor(address.Mainnet, ret[0])
 		if err != nil {
 			return nil, err
 		}

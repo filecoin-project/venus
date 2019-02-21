@@ -9,7 +9,7 @@ import (
 
 // AddressToProverID creates a prover id by padding an address hash to 31 bytes
 func AddressToProverID(addr address.Address) [31]byte {
-	hash := addr.Hash()
+	hash := address.Hash(addr.Bytes())
 
 	dlen := 31          // desired length
 	hlen := len(hash)   // hash length

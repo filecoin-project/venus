@@ -69,7 +69,7 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 	addrHash := address.Hash(pub)
 
 	// TODO: Use the address type we are running on from the config.
-	return address.NewMainnet(addrHash), nil
+	return address.NewFromActor(address.Mainnet, addrHash)
 }
 
 // PublicKey returns the public key part as uncompressed bytes.
