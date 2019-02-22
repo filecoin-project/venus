@@ -19,7 +19,7 @@ type Backend interface {
 
 	// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
 	// the public key `pk`.
-	Verify(data []byte, pk []byte, sig types.Signature) (bool, error)
+	Verify(data, pk []byte, sig types.Signature) bool
 
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.

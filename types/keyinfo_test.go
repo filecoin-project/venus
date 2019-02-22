@@ -4,12 +4,15 @@ import (
 	"testing"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/crypto"
 )
 
 func TestKeyInfoMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	testKey := []byte("privat key here")
+	testKey, err := crypto.GenerateKey()
+	assert.NoError(err)
 	testType := "test_key_type"
 	ki := &KeyInfo{
 		PrivateKey: testKey,

@@ -65,10 +65,7 @@ func MinerPreviewCreate(
 	if err != nil {
 		return types.NewGasUnits(0), err
 	}
-	pubkey, err := info.PublicKey()
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
+	pubkey := info.PublicKey()
 
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
