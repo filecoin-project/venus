@@ -138,11 +138,8 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pubkey, err := info.PublicKey()
-	if err != nil {
-		return nil, err
-	}
-	return pubkey, nil
+
+	return info.PublicKey(), nil
 }
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it

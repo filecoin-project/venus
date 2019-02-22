@@ -23,7 +23,7 @@ func MustGenerateKeyInfo(n int, seed io.Reader) []KeyInfo {
 		}
 
 		ki := &KeyInfo{
-			PrivateKey: crypto.ECDSAToBytes(prv),
+			PrivateKey: prv,
 			Curve:      SECP256K1,
 		}
 		keyinfos = append(keyinfos, *ki)
@@ -31,7 +31,7 @@ func MustGenerateKeyInfo(n int, seed io.Reader) []KeyInfo {
 	return keyinfos
 }
 
-// GenerateKeyInfoSeed returns a reader to be passed to MustGenerateKeyInfo
+// GenerateKeyInfoSeed returns a random to be passed to MustGenerateKeyInfo
 func GenerateKeyInfoSeed() io.Reader {
 	token := make([]byte, 512)
 	rand.Read(token)

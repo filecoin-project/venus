@@ -164,7 +164,7 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
 		}
 
 		ki := &types.KeyInfo{
-			PrivateKey: crypto.ECDSAToBytes(sk),
+			PrivateKey: sk,
 			Curve:      types.SECP256K1,
 		}
 
@@ -242,11 +242,9 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// create miner
-		pubkey, err := keys[m.Owner].PublicKey()
-		if err != nil {
-			return nil, err
-		}
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey, pid)
+		pubkey := keys[m.Owner].PublicKey()
+
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey[:], pid)
 		if err != nil {
 			return nil, err
 		}

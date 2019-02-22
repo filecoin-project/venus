@@ -6,7 +6,6 @@ import (
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/crypto"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 )
@@ -84,10 +83,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	ki, err := backend.GetKeyInfo(addr)
 	assert.NoError(err)
 
-	_, pk, err := keysFromInfo(ki)
-	assert.NoError(err)
-
-	pkb := crypto.ECDSAPubToBytes(pk)
+	pkb := ki.PublicKey()
 
 	t.Log("verify signed content")
 	valid, err := w.Verify(dataA, pkb, sig)

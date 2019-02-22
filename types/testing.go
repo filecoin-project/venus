@@ -1,17 +1,16 @@
 package types
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	cu "github.com/filecoin-project/go-filecoin/crypto/util"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
@@ -44,17 +43,9 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 	var ms MockSigner
 	ms.AddrKeyInfo = make(map[address.Address]KeyInfo)
 	for _, k := range kis {
-		// get the secret key
-		sk, err := crypto.BytesToECDSA(k.PrivateKey)
-		if err != nil {
-			panic(err)
-		}
 		// extract public key
-		pub, ok := sk.Public().(*ecdsa.PublicKey)
-		if !ok {
-			panic("unknown public key type")
-		}
-		addrHash := address.Hash(cu.SerializeUncompressed(pub))
+		pub := k.PublicKey()
+		addrHash := address.Hash(pub)
 		newAddr := address.NewMainnet(addrHash)
 		ms.Addresses = append(ms.Addresses, newAddr)
 		ms.AddrKeyInfo[newAddr] = k
@@ -70,12 +61,8 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 		panic("unknown address")
 	}
 
-	sk, err := crypto.BytesToECDSA(ki.PrivateKey)
-	if err != nil {
-		return Signature{}, err
-	}
-
-	return wutil.Sign(sk, data)
+	hash := blake2b.Sum256(data)
+	return crypto.Sign(ki.Key(), hash[:])
 }
 
 // NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.
