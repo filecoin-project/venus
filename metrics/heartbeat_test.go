@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
 	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
 	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p"
@@ -21,6 +22,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var testCid cid.Cid
+
+func init() {
+	c, err := cid.Decode("Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW")
+	if err != nil {
+		panic(err)
+	}
+	testCid = c
+}
 
 type endpoint struct {
 	Host    host.Host
@@ -75,7 +86,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 		},
 		func() types.TipSet {
 			return types.TipSet{
-				"tippywippy": nil,
+				testCid: nil,
 			}
 		},
 	)
@@ -103,7 +114,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 		},
 		func() types.TipSet {
 			return types.TipSet{
-				"tippywippy": nil,
+				testCid: nil,
 			}
 		},
 	)
