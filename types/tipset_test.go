@@ -60,29 +60,29 @@ func TestTipSet(t *testing.T) {
 	b3 := block(require, 1, cid1, uint64(1137), "3")
 
 	ts := TipSet{}
-	ts[b1.Cid().String()] = b1
+	ts[b1.Cid()] = b1
 
 	ts2 := ts.Clone()
 	assert.Equal(ts2, ts) // note: assert.Equal() does a deep comparison, not same as Golang == operator
 	assert.False(&ts2 == &ts)
 
-	ts[b2.Cid().String()] = b2
+	ts[b2.Cid()] = b2
 	assert.NotEqual(ts2, ts)
 	assert.Equal(2, len(ts))
 	assert.Equal(1, len(ts2))
 
 	ts2 = ts.Clone()
 	assert.Equal(ts2, ts)
-	ts2[b1.Cid().String()] = b3
+	ts2[b1.Cid()] = b3
 	assert.NotEqual(ts2, ts)
-	assert.Equal([]byte("3"), ts2[b1.Cid().String()].Messages[0].Params)
-	assert.Equal([]byte("1"), ts[b1.Cid().String()].Messages[0].Params)
+	assert.Equal([]byte("3"), ts2[b1.Cid()].Messages[0].Params)
+	assert.Equal([]byte("1"), ts[b1.Cid()].Messages[0].Params)
 
 	// The actual values inside the TipSets are not copied - we assume they are used immutably.
 	ts2 = ts.Clone()
 	assert.Equal(ts2, ts)
-	oldB1 := ts[b1.Cid().String()]
-	ts[oldB1.Cid().String()].Nonce = 17
+	oldB1 := ts[b1.Cid()]
+	ts[oldB1.Cid()].Nonce = 17
 	assert.Equal(ts2, ts)
 }
 
@@ -153,9 +153,9 @@ func TestNewTipSet(t *testing.T) {
 	// Valid blocks
 	ts, err := NewTipSet(b1, b2, b3)
 	assert.NoError(err)
-	assert.Equal(ts[b1.Cid().String()], b1)
-	assert.Equal(ts[b2.Cid().String()], b2)
-	assert.Equal(ts[b3.Cid().String()], b3)
+	assert.Equal(ts[b1.Cid()], b1)
+	assert.Equal(ts[b2.Cid()], b2)
+	assert.Equal(ts[b3.Cid()], b3)
 	assert.Equal(3, len(ts))
 
 	// Invalid heights

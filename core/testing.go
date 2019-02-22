@@ -83,7 +83,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
-			ts[child.Cid().String()] = child
+			ts[child.Cid()] = child
 		}
 		for _, msgs := range tsMsgs {
 			child := &types.Block{
@@ -92,7 +92,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 				Height:   types.Uint64(height + 1),
 			}
 			MustPut(store, child)
-			ts[child.Cid().String()] = child
+			ts[child.Cid()] = child
 		}
 		tipSets = append(tipSets, ts)
 		parents = ts

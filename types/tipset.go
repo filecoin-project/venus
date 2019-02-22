@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
@@ -11,8 +12,8 @@ import (
 type Tip = Block
 
 // TipSet is a set of Tips, blocks at the same height with the same parent set,
-// keyed by Cid string.
-type TipSet map[string]*Tip
+// keyed by Cid.
+type TipSet map[cid.Cid]*Tip
 
 var (
 	// ErrEmptyTipSet is returned when a method requiring a non-empty tipset is called on an empty tipset
@@ -39,7 +40,7 @@ func NewTipSet(blks ...*Block) (TipSet, error) {
 func (ts TipSet) AddBlock(b *Block) error {
 	if len(ts) == 0 {
 		id := b.Cid()
-		ts[id.String()] = b
+		ts[id] = b
 		return nil
 	}
 
@@ -66,7 +67,7 @@ func (ts TipSet) AddBlock(b *Block) error {
 	}
 
 	id := b.Cid()
-	ts[id.String()] = b
+	ts[id] = b
 	return nil
 }
 
@@ -109,7 +110,7 @@ func (ts TipSet) ToSlice() []*Block {
 	sl := make([]*Block, len(ts))
 	var i int
 	for it := ts.ToSortedCidSet().Iter(); !it.Complete(); it.Next() {
-		sl[i] = ts[it.Value().String()]
+		sl[i] = ts[it.Value()]
 		i++
 	}
 	return sl
