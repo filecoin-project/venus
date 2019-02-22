@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"math/big"
-	"math/rand"
 	"strconv"
 	"sync"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -73,6 +73,7 @@ type Miner struct {
 type minerPorcelain interface {
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	ConfigGet(dottedPath string) (interface{}, error)
+	ChainLs(ctx context.Context) <-chan interface{}
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
@@ -128,6 +129,45 @@ func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.D
 	nd.Host().SetStreamHandler(queryDealProtocol, sm.handleQueryDeal)
 
 	return sm, nil
+}
+
+func (sm *Miner) currentPoStChallengeSeed(ctx context.Context) (proofs.PoStChallengeSeed, error) {
+	startHeight, err := sm.getProvingPeriodStart()
+	if err != nil {
+		panic(err)
+	}
+
+	sampleBlockHeight := startHeight.Sub(types.NewBlockHeight(consensus.LookBackParameter))
+
+	for raw := range sm.porcelainAPI.ChainLs(ctx) {
+		switch v := raw.(type) {
+		case error:
+			panic(v)
+		case types.TipSet:
+			tipSetHeight, err := v.Height()
+			if err != nil {
+				panic(err)
+			}
+
+			tipSetBlockHeight := types.NewBlockHeight(tipSetHeight)
+
+			if tipSetBlockHeight.Equal(sampleBlockHeight) {
+				ticket, err := v.MinTicket()
+				if err != nil {
+					panic(err)
+				}
+
+				seed := proofs.PoStChallengeSeed{}
+				copy(seed[:], ticket)
+
+				return seed, nil
+			}
+		default:
+			panic("unexpected type")
+		}
+	}
+
+	panic("could not find a TipSet corresponding to start of miner's current proving period")
 }
 
 func (sm *Miner) handleMakeDeal(s inet.Stream) {
@@ -679,7 +719,13 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		if h.LessThan(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodStart
-			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, inputs)
+
+			seed, err := sm.currentPoStChallengeSeed(ctx)
+			if err != nil {
+				panic(err)
+			}
+
+			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -718,13 +764,7 @@ func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChalle
 	return res.Proofs, res.Faults, nil
 }
 
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePostInput) {
-	// TODO: real seed generation
-	seed := proofs.PoStChallengeSeed{}
-	if _, err := rand.Read(seed[:]); err != nil {
-		panic(err)
-	}
-
+func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed proofs.PoStChallengeSeed, inputs []generatePostInput) {
 	commRs := make([]proofs.CommR, len(inputs))
 	for i, input := range inputs {
 		commRs[i] = input.commR
