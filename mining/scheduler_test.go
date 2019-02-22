@@ -16,7 +16,7 @@ func newTestUtils(t *testing.T) (*assert.Assertions, *require.Assertions, types.
 	require := require.New(t)
 	baseBlock := &types.Block{StateRoot: types.SomeCid()}
 
-	ts := types.TipSet{baseBlock.Cid().String(): baseBlock}
+	ts := types.TipSet{baseBlock.Cid(): baseBlock}
 	return assert, require, ts
 }
 
