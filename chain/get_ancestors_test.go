@@ -5,8 +5,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"testing"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
@@ -14,14 +13,14 @@ import (
 )
 
 // setupGetAncestorTests initializes genesis and chain store for tests.
-func setupGetAncestorTests(require *require.Assertions) (context.Context, *hamt.CborIpldStore, chain.Store) {
-	_, chainStore, cst, _ := initSyncTestDefault(require)
-	return context.Background(), cst, chainStore
+func setupGetAncestorTests(require *require.Assertions) (context.Context, *net.TestFetcher, chain.Store) {
+	_, chainStore, _, blockSource := initSyncTestDefault(require)
+	return context.Background(), blockSource, chainStore
 }
 
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, require *require.Assertions, cst *hamt.CborIpldStore, chainStore chain.Store, numBlocks int) {
+func requireGrowChain(ctx context.Context, require *require.Assertions, blockSource *net.TestFetcher, chainStore chain.Store, numBlocks int) {
 	link := chainStore.Head()
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
@@ -36,7 +35,7 @@ func requireGrowChain(ctx context.Context, require *require.Assertions, cst *ham
 			StateRoot:   genStateRoot,
 		}
 		linkBlock := chain.RequireMkFakeChild(require, fakeChildParams)
-		requirePutBlocks(require, cst, linkBlock)
+		requirePutBlocks(require, blockSource, linkBlock)
 		link = testhelpers.RequireNewTipSet(require, linkBlock)
 		linkTsas := &chain.TipSetAndState{
 			TipSet:          link,
@@ -52,9 +51,9 @@ func requireGrowChain(ctx context.Context, require *require.Assertions, cst *ham
 func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	chainLen := 15
-	requireGrowChain(ctx, require, cst, chainStore, chainLen-1)
+	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	ch := chainStore.BlockHistory(ctx, chainStore.Head())
 	stopHeight := types.NewBlockHeight(uint64(4))
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, ch, stopHeight)
@@ -72,9 +71,9 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	chainLen := 25
-	requireGrowChain(ctx, require, cst, chainStore, chainLen-1)
+	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	ch := chainStore.BlockHistory(ctx, chainStore.Head())
 	stopHeight := types.NewBlockHeight(uint64(0))
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, ch, stopHeight)
@@ -92,10 +91,10 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	// Add 30 tipsets to the head of the chainStore.
 	len1 := 30
-	requireGrowChain(ctx, require, cst, chainStore, len1)
+	requireGrowChain(ctx, require, blockSource, chainStore, len1)
 
 	// Now add 10 null blocks and 1 tipset.
 
@@ -114,7 +113,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	}
 
 	afterNullBlock := chain.RequireMkFakeChild(require, fakeChildParams)
-	requirePutBlocks(require, cst, afterNullBlock)
+	requirePutBlocks(require, blockSource, afterNullBlock)
 	afterNull := testhelpers.RequireNewTipSet(require, afterNullBlock)
 	afterNullTsas := &chain.TipSetAndState{
 		TipSet:          afterNull,
@@ -126,7 +125,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 
 	// Now add 19 more tipsets.
 	len2 := 19
-	requireGrowChain(ctx, require, cst, chainStore, len2)
+	requireGrowChain(ctx, require, blockSource, chainStore, len2)
 
 	ch := chainStore.BlockHistory(ctx, chainStore.Head())
 	stopHeight := types.NewBlockHeight(uint64(35))
@@ -144,9 +143,9 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 func TestCollectAtMostNTipSets(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	chainLen := 25
-	requireGrowChain(ctx, require, cst, chainStore, chainLen-1)
+	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	t.Run("happy path", func(t *testing.T) {
 		ch := chainStore.BlockHistory(ctx, chainStore.Head())
 		number := uint(10)
@@ -170,9 +169,9 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 func TestGetRecentAncestors(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	chainLen := 200
-	requireGrowChain(ctx, require, cst, chainStore, chainLen-1)
+	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	h, err := chainStore.Head().Height()
 	require.NoError(err)
 	epochs := uint64(100)
@@ -193,9 +192,9 @@ func TestGetRecentAncestors(t *testing.T) {
 func TestGetRecentAncestorsTruncates(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	chainLen := 100
-	requireGrowChain(ctx, require, cst, chainStore, chainLen-1)
+	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	h, err := chainStore.Head().Height()
 	require.NoError(err)
 	epochs := uint64(200)
@@ -220,10 +219,10 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	ctx, cst, chainStore := setupGetAncestorTests(require)
+	ctx, blockSource, chainStore := setupGetAncestorTests(require)
 	// Add 30 tipsets to the head of the chainStore.
 	len1 := 30
-	requireGrowChain(ctx, require, cst, chainStore, len1)
+	requireGrowChain(ctx, require, blockSource, chainStore, len1)
 
 	// Now add 10 null blocks and 1 tipset.
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
@@ -240,7 +239,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		MinerPubKey:    mockSignerPubKey,
 	}
 	afterNullBlock := chain.RequireMkFakeChild(require, fakeChildParams)
-	requirePutBlocks(require, cst, afterNullBlock)
+	requirePutBlocks(require, blockSource, afterNullBlock)
 	afterNull := testhelpers.RequireNewTipSet(require, afterNullBlock)
 	afterNullTsas := &chain.TipSetAndState{
 		TipSet:          afterNull,
@@ -252,7 +251,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 
 	// Now add 19 more tipsets.
 	len2 := 19
-	requireGrowChain(ctx, require, cst, chainStore, len2)
+	requireGrowChain(ctx, require, blockSource, chainStore, len2)
 
 	epochs := uint64(28)
 	lookback := uint(6)

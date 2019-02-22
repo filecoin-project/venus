@@ -67,7 +67,7 @@ type Store interface {
 	HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool
 
 	// GetBlocks gets several blocks by cid. In the future there is caching here
-	GetBlocks(ctx context.Context, ids types.SortedCidSet) ([]*types.Block, error)
+	GetBlocks(ctx context.Context, cids types.SortedCidSet) ([]*types.Block, error)
 	// HasAllBlocks indicates whether the blocks are in the store.
 	HasAllBlocks(ctx context.Context, cs []cid.Cid) bool
 	HasBlock(ctx context.Context, c cid.Cid) bool

@@ -127,7 +127,6 @@ type Node struct {
 	Ping         *ping.PingService
 	HelloSvc     *hello.Handler
 	Bootstrapper *net.Bootstrapper
-	OnlineStore  *hamt.CborIpldStore
 
 	// Data Storage Fields
 
@@ -137,6 +136,9 @@ type Node struct {
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
+
+	// Fetcher is the interface for fetching data from nodes.
+	Fetcher *net.Fetcher
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -260,7 +262,7 @@ func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 }
 
 // buildHost determines if we are publically dialable.  If so use public
-// address, if not configure node to announce relay address.
+// Address, if not configure node to announce relay address.
 func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.IpfsRouting, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their
@@ -360,8 +362,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
+	fetcher := net.NewFetcher(ctx, bservice)
 
-	cstOnline := hamt.CborIpldStore{Blocks: bservice}
 	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
 	if err != nil {
@@ -386,7 +388,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, nodeConsensus, chainStore)
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
 	msgPool := core.NewMessagePool(chainStore)
 
 	// Set up libp2p pubsub
@@ -419,12 +421,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockservice: bservice,
 		Blockstore:   bs,
 		cborStore:    &cstOffline,
-		OnlineStore:  &cstOnline,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PorcelainAPI: PorcelainAPI,
+		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
 		MsgPool:      msgPool,
@@ -442,7 +444,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		nd.AddNewBlock,
 		bs,
 		&cstOffline,
-		&cstOnline,
 		chainStore,
 		nodeConsensus,
 		blockTime,
