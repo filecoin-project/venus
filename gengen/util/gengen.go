@@ -318,7 +318,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 // applyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
 // This is a shortcut to allow gengen to use built-in actor functionality to alter the genesis block's state.
 // Outside genesis, direct execution of actor code is a really bad idea.
-func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) ([]types.Bytes, error) {
+func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value *types.AttoFIL, method string, params ...interface{}) ([][]byte, error) {
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(from, to, 0, value, method, pdata)
 	// this should never fail due to lack of gas since gas doesn't have meaning here

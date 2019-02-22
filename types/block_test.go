@@ -91,7 +91,7 @@ func TestTriangleEncoding(t *testing.T) {
 
 		b := &Block{
 			Miner:           newAddress(),
-			Ticket:          Bytes([]byte{0x01, 0x02, 0x03}),
+			Ticket:          []byte{0x01, 0x02, 0x03},
 			Height:          Uint64(2),
 			Nonce:           3,
 			Messages:        []*SignedMessage{newSignedMessage()},
@@ -170,8 +170,8 @@ func TestDecodeBlock(t *testing.T) {
 			Messages:  []*SignedMessage{newSignedMessage(), newSignedMessage()},
 			StateRoot: c2,
 			MessageReceipts: []*MessageReceipt{
-				{ExitCode: 1, Return: []Bytes{[]byte{1, 2}}},
-				{ExitCode: 1, Return: []Bytes{[]byte{1, 2, 3}}},
+				{ExitCode: 1, Return: [][]byte{{1, 2}}},
+				{ExitCode: 1, Return: [][]byte{{1, 2, 3}}},
 			},
 		}
 
@@ -227,7 +227,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	retVal := []byte{1, 2, 3}
 	receipt := &MessageReceipt{
 		ExitCode: 123,
-		Return:   []Bytes{retVal},
+		Return:   [][]byte{retVal},
 	}
 	child.Messages = []*SignedMessage{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
@@ -249,5 +249,5 @@ func TestBlockJsonMarshal(t *testing.T) {
 	assert.True(child.Equals(&unmarshalled))
 
 	assert.Equal(uint8(123), unmarshalled.MessageReceipts[0].ExitCode)
-	assert.Equal([]Bytes{[]byte{1, 2, 3}}, unmarshalled.MessageReceipts[0].Return)
+	assert.Equal([][]byte{{1, 2, 3}}, unmarshalled.MessageReceipts[0].Return)
 }

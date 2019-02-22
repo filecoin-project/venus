@@ -47,7 +47,7 @@ func block(require *require.Assertions, height int, parentCid cid.Cid, parentWei
 		Nonce:           7,
 		Messages:        []*SignedMessage{sm1},
 		StateRoot:       SomeCid(),
-		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: []Bytes{ret}}},
+		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
 	}
 }
 

@@ -56,7 +56,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 		messageWait: func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 			return cb(nil, nil, &types.MessageReceipt{
 				ExitCode:   uint8(0),
-				Return:     []types.Bytes{channelID.Bytes()},
+				Return:     [][]byte{channelID.Bytes()},
 				GasAttoFIL: types.NewAttoFILFromFIL(9),
 			})
 		},

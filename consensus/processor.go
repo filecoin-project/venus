@@ -486,11 +486,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		GasAttoFIL: gasCharge,
 	}
 
-	// :( - necessary because go slices aren't covariant and we need to convert
-	// from [][]byte to []Bytes.
-	for _, b := range ret {
-		receipt.Return = append(receipt.Return, b)
-	}
+	receipt.Return = append(receipt.Return, ret...)
 
 	return receipt, vmErr
 }
