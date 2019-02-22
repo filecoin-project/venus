@@ -123,7 +123,7 @@ var findPeerDhtCmd = &cmds.Command{
 		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerID", true, true, "The ID of the peer to search for."),
+		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
 	},
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		peerID, err := peer.IDB58Decode(req.Arguments[0])
