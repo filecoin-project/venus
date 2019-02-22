@@ -22,7 +22,7 @@ trip latency information.
 		`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peer ID", true, true, "ID of peer to be pinged.").EnableStdin(),
+		cmdkit.StringArg("peer ID", true, false, "ID of peer to be pinged.").EnableStdin(),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.UintOption("count", "c", "Number of ping messages to send.").WithDefault(10),
