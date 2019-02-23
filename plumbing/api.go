@@ -2,11 +2,11 @@ package plumbing
 
 import (
 	"context"
+	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -31,7 +31,7 @@ type API struct {
 
 	chain        chain.ReadStore
 	config       *cfg.Config
-	msgPool      *core.MessagePool
+	messagePool  *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
 	msgSender    *msg.Sender
@@ -47,7 +47,7 @@ type API struct {
 type APIDeps struct {
 	Chain        chain.ReadStore
 	Config       *cfg.Config
-	MsgPool      *core.MessagePool
+	MessagePool  *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
 	MsgSender    *msg.Sender
@@ -66,7 +66,7 @@ func New(deps *APIDeps) *API {
 
 		chain:        deps.Chain,
 		config:       deps.Config,
-		msgPool:      deps.MsgPool,
+		messagePool:  deps.MessagePool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
 		msgSender:    deps.MsgSender,
@@ -117,14 +117,9 @@ func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) 
 	return api.chain.GetBlock(ctx, id)
 }
 
-// MessagePoolPending lists messages un-mined in the pool
-func (api *API) MessagePoolPending() []*types.SignedMessage {
-	return api.msgPool.Pending()
-}
-
 // MessagePoolRemove removes a message from the message pool
 func (api *API) MessagePoolRemove(cid cid.Cid) {
-	api.msgPool.Remove(cid)
+	api.messagePool.Remove(cid)
 }
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
@@ -159,7 +154,7 @@ func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.
 }
 
 // PubSubSubscribe subscribes to a topic for notifications from the filecoin network
-func (api *API) PubSubSubscribe(topic string, opts ...pubsub.SubOpt) (ps.Subscription, error) {
+func (api *API) PubSubSubscribe(topic string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error) {
 	return api.subscriber.Subscribe(topic, opts...)
 }
 
