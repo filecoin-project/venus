@@ -17,10 +17,10 @@ type FakeSubscription struct {
 }
 
 // NewFakeSubscription builds a new fake subscription to a topic.
-func NewFakeSubscription(topic string) *FakeSubscription {
+func NewFakeSubscription(topic string, bufSize int) *FakeSubscription {
 	sub := &FakeSubscription{
 		topic:       topic,
-		pending:     make(chan *pubsub.Message),
+		pending:     make(chan *pubsub.Message, bufSize),
 		awaitCancel: sync.WaitGroup{},
 	}
 	sub.awaitCancel.Add(1)
