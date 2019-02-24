@@ -24,13 +24,17 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
   - [Plumbing & porcelain](#plumbing--porcelain)
   - [Commands](#commands)
   - [Protocols](#protocols)
-  - [Network layer](#network-layer)
+  - [Actors](#actors)
+  - [The state tree](#the-state-tree)
+  - [Messages and state transitions](#messages-and-state-transitions)
+  - [Consensus](#consensus)
   - [Entry point](#entry-point)
-  - [Testing](#testing)
+- [Networking](#networking)
 - [Filesystem storage](#filesystem-storage)
   - [JSON Config](#json-config)
   - [Datastores](#datastores)
   - [Keystore](#keystore)
+- [Testing](#testing)
 - [Dependencies](#dependencies)
 - [Patterns](#patterns)
   - [Plumbing and porcelain](#plumbing-and-porcelain)
@@ -298,14 +302,6 @@ A null block count indicates the absence of any blocks mined in a previous round
 Subsequent blocks are built upon *all* of the tipset; 
 there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
 
-### Network layer
-
-Filecoin relies on [libp2p](https://libp2p.io/) for all its networking, such as peer discovery, NAT discovery, and circuit relay. 
-Filecoin uses two transport protocols from libp2p:
-
-- [GossipSub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub) for pubsub gossip among peers propagating blockchain blocks and unmined messages.
-- [Bitswap](https://github.com/ipfs/specs/tree/master/bitswap) for exchanging binary data.
-
 ### Entry point
 
 There’s no centrally dispatched event loop. 
@@ -313,6 +309,16 @@ The node starts up all the components, connects them as needed, and waits.
 Protocols (goroutines) communicate through custom channels. 
 This architecture needs more thought, but we are considering moving more inter-module communication to use iterators (c.f. those in Java). 
 An event bus might also be a good pattern for some cases, though.
+
+## Networking
+
+Filecoin relies on [libp2p](https://libp2p.io/) for its networking needs.
+
+libp2p is a modular networking stack for the peer-to-peer era. It offers building blocks to tackle requirements such as
+peer discovery, transport switching, multiplexing, content routing, NAT traversal, pubsub, circuit relay, etc., most of which Filecoin uses.
+Developers can compose these blocks easily to build the networking layer behind their P2P system.
+
+A detailed overview of how Filecoin uses libp2p can be found in the [Networking doc](networking.md).
 
 ## Filesystem storage
 
