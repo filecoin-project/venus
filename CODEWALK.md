@@ -1,3 +1,7 @@
+<!--
+ This document is formatted one-sentence-per-line, breaking very long sentences at phrase boundaries.
+ This format makes diffs clean and review comments easy to target.
+ -->
 # Go-filecoin code overview
 
 This document provides a high level tour of the go-filecoin implementation of the Filecoin protocols in Go.
@@ -28,6 +32,8 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
   - [The state tree](#the-state-tree)
   - [Messages and state transitions](#messages-and-state-transitions)
   - [Consensus](#consensus)
+  - [Storage protocol](#storage-protocol)
+  - [Retrieval](#retrieval)
   - [Entry point](#entry-point)
 - [Networking](#networking)
 - [Filesystem storage](#filesystem-storage)
@@ -301,6 +307,52 @@ Tipsets contain one or more blocks.
 A null block count indicates the absence of any blocks mined in a previous round. 
 Subsequent blocks are built upon *all* of the tipset; 
 there is a canonical ordering of the messages in a tipset defining a new consensus state, not directly referenced from any of the tipset’s blocks.
+
+### Storage protocol
+The storage protocol is mechanism by which clients make deals directly with storage miners to store their data, implemented in [`protocol/storage`](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage).
+
+A storage miner ([protocol/storage/miner.go](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage/miner.go)) advertises storage with an on-chain ask, 
+which specifies an asking price and storage capacity at that price. 
+Clients discover asks by iterating miner actors’ on-chain state. 
+A client wishing to take an ask creates a deal proposal. 
+A proposal references a specific unit of data, termed a piece, which has a CID (hash of the bytes). 
+A piece must fit inside a single sector (see below) as defined by network parameters.
+
+A storage client ([protocol/storage/client.go](https://github.com/filecoin-project/go-filecoin/blob/master/protocol/storage/client.go)) connects directly to a miner to propose a deal, 
+using a libp2p peer id embedded in the on-chain storage miner actor data. 
+An off-chain lookup service maps peer ids to concrete addresses, in the form of multiaddr, using a [libp2p distributed hash table](https://github.com/filecoin-project/go-filecoin/blob/master/networking.md) (DHT). 
+A client also creates a payment channel so the miner can be paid over time for storing the piece. 
+The miner responds with acceptance or otherwise.
+
+When proposing a deal, a client loads the piece data into its [IPFS block service](https://github.com/ipfs/go-blockservice). 
+This advertises the availability of the data to the network, making it available to miners. 
+A miner accepting a deal pulls the data from the client (or any other host) using the IPFS block service [bitswap protocol](https://github.com/ipfs/specs/tree/master/bitswap).
+
+A miner packs pieces from many clients into a sector, which is then sealed with a proof of replication (aka commitment). 
+Sealing is a computationally intensive process that can take tens of minutes. 
+A client polls the miner directly for deal status to monitor the piece being received, staged in a sector, the sector sealed, and the proof posted to the blockchain. 
+Once the sector commitment is on chain, the client can observe it directly. 
+A miner periodically computes proofs for all sealed sectors and posts on chain. 
+There is no on-chain mapping of pieces to sectors; a client must keep track of its own pieces.
+
+Note that the mechanisms for communication of deals and state are not specified in the protocol, except the format of messages and the eventual on-chain commitment. 
+Other mechanisms may be used.
+
+The storage [client commands](https://github.com/filecoin-project/go-filecoin/blob/master/commands/client.go) interface to a `go-filecoin` daemon in the same way as other node [commands](#commands). 
+Right now, a client must be running a full node, but that’s not in-principle necessary. 
+Future reorganisation will allow the extraction of a thin client binary. 
+
+Data preparation is entirely the responsibility of the client, including breaking it up into appropriate chunks (<= sector size), compressing, 
+encrypting, adding error-correcting codes, and replicating widely enough to achieve redundancy goals. 
+In the future, we will build a client library which handles many of these tasks for a user. 
+We also plan support for “repair miners”, to whom responsibility can be delegated for monitoring and repairing faults.
+
+### Retrieval
+Retrieval mining is not necessarily linked to storage mining, although in practise we expect all storage miners to also run retrieval miners. 
+Retrieval miners serve requests to fetch content, and are not much more than a big cache and some logic to find missing pieces.
+
+The retrieval protocol and implementation are not yet fully developed. 
+At present (early 2019), retrieval is not charged for, and always causes unsealing of a sector.
 
 ### Entry point
 
