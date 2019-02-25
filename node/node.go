@@ -32,7 +32,7 @@ import (
 	autonatsvc "gx/ipfs/QmceTjrpdhYXocRzx9hMEwztLyWUEvyDdRqrkSjLQeq6pE/go-libp2p-autonat-svc"
 	offroute "gx/ipfs/QmcjqHcsk8E1Gd8RbuaUawWC7ogDtaVcdjLvZF8ysCCiPn/go-ipfs-routing/offline"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
+	libp2pps "gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 	dht "gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
 	dhtopts "gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht/opts"
 
@@ -53,13 +53,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
-	"github.com/filecoin-project/go-filecoin/plumbing/ps"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -76,7 +76,7 @@ var (
 	ErrNoMinerAddress = errors.New("no miner addresses configured")
 )
 
-type pubSubProcessorFunc func(ctx context.Context, msg *pubsub.Message) error
+type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
 // Node represents a full Filecoin node.
 type Node struct {
@@ -120,8 +120,8 @@ type Node struct {
 	RetrievalMiner  *retrieval.Miner
 
 	// Network Fields
-	BlockSub     ps.Subscription
-	MessageSub   ps.Subscription
+	BlockSub     pubsub.Subscription
+	MessageSub   pubsub.Subscription
 	Ping         *ping.PingService
 	HelloSvc     *hello.Handler
 	Bootstrapper *filnet.Bootstrapper
@@ -391,7 +391,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPool := core.NewMessagePool()
 
 	// Set up libp2p pubsub
-	fsub, err := pubsub.NewFloodSub(ctx, peerHost)
+	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up pubsub")
 	}
@@ -409,8 +409,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
-		Subscriber:   ps.NewSubscriber(fsub),
-		Publisher:    ps.NewPublisher(fsub),
+		Subscriber:   pubsub.NewSubscriber(fsub),
+		Publisher:    pubsub.NewPublisher(fsub),
 		Network:      ntwk.NewNetwork(peerHost),
 		SigGetter:    mthdsig.NewGetter(chainReader),
 		Wallet:       fcWallet,
@@ -1101,7 +1101,7 @@ func (node *Node) getMinerActorPubKey() ([]byte, error) {
 	return node.Wallet.GetPubKeyForAddress(addr)
 }
 
-func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s ps.Subscription, sname string) {
+func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
 		if err != nil {

@@ -1,16 +1,32 @@
-package ps
+package pubsub
 
 import (
 	"context"
 	"sync"
 
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 )
+
+// FakeMessage is a simple pubsub message
+type FakeMessage struct {
+	peerID peer.ID
+	data   []byte
+}
+
+// GetFrom returns the message's sender ID
+func (m *FakeMessage) GetFrom() peer.ID {
+	return m.peerID
+}
+
+// GetData returns the message's payload
+func (m *FakeMessage) GetData() []byte {
+	return m.data
+}
 
 // FakeSubscription is a fake pubsub subscription.
 type FakeSubscription struct {
 	topic       string
-	pending     chan *pubsub.Message
+	pending     chan *FakeMessage
 	err         error
 	cancelled   bool
 	awaitCancel sync.WaitGroup
@@ -20,7 +36,7 @@ type FakeSubscription struct {
 func NewFakeSubscription(topic string, bufSize int) *FakeSubscription {
 	sub := &FakeSubscription{
 		topic:       topic,
-		pending:     make(chan *pubsub.Message, bufSize),
+		pending:     make(chan *FakeMessage, bufSize),
 		awaitCancel: sync.WaitGroup{},
 	}
 	sub.awaitCancel.Add(1)
@@ -35,7 +51,7 @@ func (s *FakeSubscription) Topic() string {
 }
 
 // Next returns the next messages from this subscription.
-func (s *FakeSubscription) Next(ctx context.Context) (*pubsub.Message, error) {
+func (s *FakeSubscription) Next(ctx context.Context) (Message, error) {
 	if s.err != nil {
 		return nil, s.err
 	}
@@ -59,7 +75,7 @@ func (s *FakeSubscription) Cancel() {
 // Manipulators
 
 // Post posts a new message to this subscription.
-func (s *FakeSubscription) Post(msg *pubsub.Message) {
+func (s *FakeSubscription) Post(msg *FakeMessage) {
 	if s.err != nil {
 		panic("subscription has failed")
 	}

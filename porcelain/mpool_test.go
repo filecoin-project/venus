@@ -5,20 +5,18 @@ import (
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
-
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/ps"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type fakeMpoolWaitPlumbing struct {
 	pending            []*types.SignedMessage
-	subscription       *ps.FakeSubscription // Receives subscription as is it opened
+	subscription       *pubsub.FakeSubscription // Receives subscription as is it opened
 	afterPendingCalled func()               // Invoked after each call to MessagePoolPending
 }
 
@@ -35,8 +33,8 @@ func (plumbing *fakeMpoolWaitPlumbing) MessagePoolPending() []*types.SignedMessa
 	return plumbing.pending
 }
 
-func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string, opts ...pubsub.SubOpt) (ps.Subscription, error) {
-	subscription := ps.NewFakeSubscription(msg.Topic, 1)
+func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
+	subscription := pubsub.NewFakeSubscription(msg.Topic, 1)
 	plumbing.subscription = subscription
 	return subscription, nil
 }
