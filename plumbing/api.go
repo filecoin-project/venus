@@ -8,6 +8,7 @@ import (
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -110,6 +111,15 @@ func (api *API) ChainHead(ctx context.Context) types.TipSet {
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.BlockHistory(ctx, api.chain.Head())
+}
+
+// ActorGet returns an actor from the latest state on the chain
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	state, err := api.chain.LatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return state.GetActor(ctx, addr)
 }
 
 // BlockGet gets a block by CID
