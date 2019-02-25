@@ -587,16 +587,15 @@ func (sm *Miner) OnCommitmentAddedToChain(sector *sectorbuilder.SealedSectorMeta
 	log.Debug("Miner.OnCommitmentAddedToChain")
 
 	if err != nil {
-		errMsg := fmt.Sprintf("failed sealing sector: %v: %s:", sectorID, err)
-		log.Error(errMsg)
+		log.Errorf("failed sealing sector: %d: %s:", sectorID, err)
+		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
 		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
 	} else {
 		sm.dealsAwaitingSeal.success(sector)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
-		errMsg := fmt.Sprintf("failed persisting deals awaiting seal: %s", err)
-		log.Error(errMsg)
-		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
+		log.Errorf("failed persisting deals awaiting seal: %s", err)
+		sm.dealsAwaitingSeal.fail(sector.SectorID, "failed persisting deals awaiting seal")
 	}
 }
 
