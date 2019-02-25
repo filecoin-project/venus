@@ -200,6 +200,10 @@ jobs:
             - "/home/circleci/.cargo"
 
       - run:
+          name: Lint
+          command: go run ./build/*.go lint
+
+      - run:
           name: Build
           command: go run ./build/*.go build
 
@@ -226,10 +230,6 @@ jobs:
       - run:
           name: Functional Tests
           command: ./functional-tests/run
-
-      - run:
-          name: Lint
-          command: go run ./build/*.go lint
 
       - run:
           name: Create linux bundle
