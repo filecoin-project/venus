@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -59,6 +59,14 @@ type GetWeight func(context.Context, types.TipSet) (uint64, error)
 // process the input tipset.
 type GetAncestors func(context.Context, types.TipSet, *types.BlockHeight) ([]types.TipSet, error)
 
+// MessageSource provides message candidates for mining into blocks
+type MessageSource interface {
+	// Pending returns a slice of un-mined messages.
+	Pending() []*types.SignedMessage
+	// Remove removes a message from the source permanently
+	Remove(message cid.Cid)
+}
+
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
@@ -77,16 +85,16 @@ type DefaultWorker struct {
 	getAncestors GetAncestors
 
 	// core filecoin things
-	messagePool *core.MessagePool
-	processor   MessageApplier
-	powerTable  consensus.PowerTableView
-	blockstore  blockstore.Blockstore
-	cstore      *hamt.CborIpldStore
-	blockTime   time.Duration
+	messageSource MessageSource
+	processor     MessageApplier
+	powerTable    consensus.PowerTableView
+	blockstore    blockstore.Blockstore
+	cstore        *hamt.CborIpldStore
+	blockTime     time.Duration
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messagePool *core.MessagePool,
+func NewDefaultWorker(messageSource MessageSource,
 	getStateTree GetStateTree,
 	getWeight GetWeight,
 	getAncestors GetAncestors,
@@ -99,7 +107,7 @@ func NewDefaultWorker(messagePool *core.MessagePool,
 	blockSigner types.Signer,
 	bt time.Duration) *DefaultWorker {
 
-	w := NewDefaultWorkerWithDeps(messagePool,
+	w := NewDefaultWorkerWithDeps(messageSource,
 		getStateTree,
 		getWeight,
 		getAncestors,
@@ -121,7 +129,7 @@ func NewDefaultWorker(messagePool *core.MessagePool,
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messagePool *core.MessagePool,
+func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	getStateTree GetStateTree,
 	getWeight GetWeight,
 	getAncestors GetAncestors,
@@ -138,7 +146,7 @@ func NewDefaultWorkerWithDeps(messagePool *core.MessagePool,
 		getStateTree:    getStateTree,
 		getWeight:       getWeight,
 		getAncestors:    getAncestors,
-		messagePool:     messagePool,
+		messageSource:   messageSource,
 		processor:       processor,
 		powerTable:      powerTable,
 		blockstore:      bs,

@@ -2,14 +2,14 @@ package core
 
 import (
 	"context"
-	"sort"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
@@ -220,26 +220,6 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	}
 
 	return nil
-}
-
-// OrderMessagesByNonce returns the pending messages in the
-// pool ordered such that all messages with the same msg.From
-// occur in Nonce order in the slice.
-// TODO can be smarter here by skipping messages with gaps; see
-//      ethereum's abstraction for example
-// TODO order by time of receipt
-func OrderMessagesByNonce(messages []*types.SignedMessage) []*types.SignedMessage {
-	// TODO this could all be more efficient.
-	byAddress := make(map[address.Address][]*types.SignedMessage)
-	for _, m := range messages {
-		byAddress[m.From] = append(byAddress[m.From], m)
-	}
-	messages = messages[:0]
-	for _, msgs := range byAddress {
-		sort.Slice(msgs, func(i, j int) bool { return msgs[i].Nonce < msgs[j].Nonce })
-		messages = append(messages, msgs...)
-	}
-	return messages
 }
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
