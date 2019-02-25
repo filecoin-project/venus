@@ -56,7 +56,7 @@ install_local() {
     exit 1
   fi
 
-  git submodule update --init --recursive rust-fil-proofs
+  git submodule update --init --recursive proofs/rust-fil-proofs
 
   pushd proofs/rust-fil-proofs
 
