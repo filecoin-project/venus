@@ -27,7 +27,7 @@ func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	var wir fcapi.WalletImportResult
+	var wir fcapi.WalletSerializeResult
 	wir.KeyInfo = append(wir.KeyInfo, ki)
 
 	return json.NewEncoder(fi).Encode(wir)

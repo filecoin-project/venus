@@ -32,6 +32,11 @@ func (api *nodeAddress) Addrs() api.Addrs {
 	return api.addrs
 }
 
+// WalletSerializeResult is the type wallet export and import return and expect.
+type WalletSerializeResult struct {
+	KeyInfo []*types.KeyInfo
+}
+
 type nodeAddrs struct {
 	api *nodeAPI
 }
@@ -115,13 +120,8 @@ func (api *nodeAddress) Export(ctx context.Context, addrs []address.Address) ([]
 	return out, nil
 }
 
-// WalletImportResult is the structure used to hold imported wallet data.
-type WalletImportResult struct {
-	KeyInfo []*types.KeyInfo
-}
-
 func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
-	var wir *WalletImportResult
+	var wir *WalletSerializeResult
 	if err := json.NewDecoder(f).Decode(&wir); err != nil {
 		return nil, err
 	}
