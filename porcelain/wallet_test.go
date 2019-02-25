@@ -14,10 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type walletTestPlumbing struct{}
+type walletTestPlumbing struct {
+	balance *types.AttoFIL
+}
 
 func (wtp *walletTestPlumbing) ChainGetActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	testActor := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(20))
+	testActor := actor.NewActor(cid.Undef, wtp.balance)
 	return testActor, nil
 }
 
@@ -27,9 +29,13 @@ func TestWalletBalance(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		balance, err := porcelain.WalletBalance(ctx, &walletTestPlumbing{}, address.Address{})
+		expectedBalance := types.NewAttoFILFromFIL(20)
+		plumbing := &walletTestPlumbing{
+			balance: expectedBalance,
+		}
+		balance, err := porcelain.WalletBalance(ctx, plumbing, address.Address{})
 		require.NoError(err)
 
-		assert.Equal(types.NewAttoFILFromFIL(20), balance)
+		assert.Equal(expectedBalance, balance)
 	})
 }
