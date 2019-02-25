@@ -140,7 +140,7 @@ func TestChecksum(t *testing.T) {
 	checksum := createChecksum(hrp, data)
 	assert.Len(checksum, 6)
 
-	combined := append(data, []byte(checksum)...)
+	combined := append(data, checksum...)
 	assert.True(verifyChecksum(hrp, combined))
 }
 

@@ -10,11 +10,11 @@ import (
 
 func TestRoundtrip(t *testing.T) {
 	assert := assert.New(t)
-	cases := []Bytes{Bytes(nil), {}, Bytes([]byte("bytes"))}
+	cases := [][]byte{nil, {}, []byte("bytes")}
 	for _, c := range cases {
 		b, err := cbor.WrapObject(c, DefaultHashFunction, -1)
 		assert.NoError(err)
-		var out Bytes
+		var out []byte
 		err = cbor.DecodeInto(b.RawData(), &out)
 		assert.NoError(err)
 		switch {

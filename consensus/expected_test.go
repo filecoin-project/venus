@@ -74,7 +74,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 		receipt := &types.MessageReceipt{
 			ExitCode: 123,
-			Return:   []types.Bytes{retVal},
+			Return:   [][]byte{retVal},
 		}
 		blocks[0].MessageReceipts = []*types.MessageReceipt{receipt}
 

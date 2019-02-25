@@ -10,7 +10,7 @@ import (
 var log = logging.Logger("types")
 
 // Signature is the result of a cryptographic sign operation.
-type Signature = Bytes
+type Signature []byte
 
 // IsValidSignature cryptographically verifies that 'sig' is the signed hash of 'data' with
 // the public key belonging to `addr`.

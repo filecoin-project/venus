@@ -17,7 +17,7 @@ func TestMessageReceiptMarshal(t *testing.T) {
 		},
 		{
 			ExitCode: 0,
-			Return:   []Bytes{[]byte{1, 2, 3}},
+			Return:   [][]byte{{1, 2, 3}},
 		},
 		{},
 	}
