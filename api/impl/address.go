@@ -57,12 +57,17 @@ func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID
 	return id, nil
 }
 
-func (api *nodeAddress) Import(ctx context.Context, d files.Directory) ([]address.Address, error) {
+func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Address, error) {
 	nd := api.api.node
 
-	kinfos, err := parseKeyInfos(d)
+	kinfos, err := parseKeyInfos(f)
 	if err != nil {
 		return nil, err
+	}
+
+	// error if we fail to parse keyinfo from the provided file.
+	if len(kinfos) == 0 {
+		return nil, fmt.Errorf("no keys in wallet file")
 	}
 
 	dsb := nd.Wallet.Backends(wallet.DSBackendType)
@@ -110,21 +115,15 @@ func (api *nodeAddress) Export(ctx context.Context, addrs []address.Address) ([]
 	return out, nil
 }
 
-func parseKeyInfos(d files.Directory) ([]*types.KeyInfo, error) {
-	iter := d.Entries()
-	var kinfos []*types.KeyInfo
-	for iter.Next() {
-		fi, ok := iter.Node().(files.File)
-		if !ok {
-			return nil, fmt.Errorf("file passed to import was not a file")
-		}
+// WalletImportResult is the structure used to hold imported wallet data.
+type WalletImportResult struct {
+	KeyInfo []*types.KeyInfo
+}
 
-		var ki types.KeyInfo
-		if err := json.NewDecoder(fi).Decode(&ki); err != nil {
-			return nil, err
-		}
-
-		kinfos = append(kinfos, &ki)
+func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
+	var wir *WalletImportResult
+	if err := json.NewDecoder(f).Decode(&wir); err != nil {
+		return nil, err
 	}
-	return kinfos, iter.Err()
+	return wir.KeyInfo, nil
 }

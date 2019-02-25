@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	fcapi "github.com/filecoin-project/go-filecoin/api/impl"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -26,7 +27,10 @@ func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	return json.NewEncoder(fi).Encode(ki)
+	var wir fcapi.WalletImportResult
+	wir.KeyInfo = append(wir.KeyInfo, ki)
+
+	return json.NewEncoder(fi).Encode(wir)
 }
 
 /* gengen takes as input a json encoded 'Genesis Config'
