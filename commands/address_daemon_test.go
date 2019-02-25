@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestAddrsNewAndList(t *testing.T) {
@@ -114,4 +116,27 @@ func TestWalletLoadFromFile(t *testing.T) {
 	// assert default amount of funds were allocated to address during genesis
 	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
 	assert.Contains(wb, "10000")
+}
+
+func TestWalletExportImportRoundTrip(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	d := th.NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
+
+	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+
+	ki := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+
+	wf, err := os.Create("walletFileTest")
+	require.NoError(err)
+	defer os.Remove("walletFileTest")
+	_, err = wf.WriteString(ki)
+	require.NoError(err)
+	require.NoError(wf.Close())
+
+	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
+	assert.Equal(dw, maybeAddr)
+
 }
