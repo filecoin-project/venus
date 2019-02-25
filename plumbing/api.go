@@ -113,8 +113,8 @@ func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.BlockHistory(ctx, api.chain.Head())
 }
 
-// ChainGetActorFromLatestState returns an actor from the latest state on the chain
-func (api *API) ChainGetActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+// ActorGet returns an actor from the latest state on the chain
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	state, err := api.chain.LatestState(ctx)
 	if err != nil {
 		return nil, err

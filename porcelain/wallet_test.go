@@ -18,7 +18,7 @@ type walletTestPlumbing struct {
 	balance *types.AttoFIL
 }
 
-func (wtp *walletTestPlumbing) ChainGetActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+func (wtp *walletTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	testActor := actor.NewActor(cid.Undef, wtp.balance)
 	return testActor, nil
 }

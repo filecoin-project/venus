@@ -10,12 +10,12 @@ import (
 )
 
 type walletPlumbing interface {
-	ChainGetActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error)
+	ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error)
 }
 
 // WalletBalance gets the current balance associated with an address
 func WalletBalance(ctx context.Context, plumbing walletPlumbing, addr address.Address) (*types.AttoFIL, error) {
-	act, err := plumbing.ChainGetActorFromLatestState(ctx, addr)
+	act, err := plumbing.ActorGet(ctx, addr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			// if the account doesn't exit, the balance should be zero
