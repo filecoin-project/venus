@@ -106,9 +106,12 @@ func TestChainSync(t *testing.T) {
 	defer stopNodes(nodes)
 
 	baseTS := nodes[0].ChainReader.Head()
-	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 1, minerAddr)
-	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 2, minerAddr)
-	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, 3, minerAddr)
+
+	stateRoot := baseTS.ToSlice()[0].StateRoot
+
+	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr)
+	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr)
+	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr)
 
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))

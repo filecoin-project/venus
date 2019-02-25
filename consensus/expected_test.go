@@ -3,6 +3,8 @@ package consensus_test
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	"testing"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -11,17 +13,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/filecoin-project/go-filecoin/vm"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
 	"gx/ipfs/QmcTzQXRcU2vf8yX5EEboz1BSvWC7wWmeYAKVQmhp8WZYU/sha256-simd"
-	"testing"
 )
 
 func TestNewExpected(t *testing.T) {
@@ -53,7 +55,12 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := makeSomeBlocks(pTipSet)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		require.NoError(err)
+
+		vms := vm.NewStorageMap(bstore)
+
+		blocks := makeSomeBlocks(ctx, require, pTipSet, stateTree, vms)
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.NoError(err)
@@ -86,11 +93,23 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 	})
 }
 
-func makeSomeBlocks(pTipSet types.TipSet) []*types.Block {
+func makeSomeBlocks(ctx context.Context, require *require.Assertions, pTipSet types.TipSet, tree state.Tree, vms vm.StorageMap) []*types.Block {
+	addrNames := []string{"foo", "bar", "bazz"}
+	addrs := make([]address.Address, len(addrNames))
+
+	for i, name := range addrNames {
+		addrs[i] = address.MakeTestAddress(name)
+		owner := address.MakeTestAddress(fmt.Sprintf("%s%s", name, "Owner"))
+		miner := testhelpers.RequireNewMinerActor(require, vms, addrs[i], owner, []byte{}, 10000, testhelpers.RequireRandomPeerID(), types.NewZeroAttoFIL())
+		tree.SetActor(ctx, addrs[i], miner)
+	}
+	stateRoot, err := tree.Flush(ctx)
+	require.NoError(err)
+
 	blocks := []*types.Block{
-		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("foo")),
-		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bar")),
-		testhelpers.NewValidTestBlockFromTipSet(pTipSet, 1, address.MakeTestAddress("bazz")),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, addrs[0]),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, addrs[1]),
+		testhelpers.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, addrs[2]),
 	}
 	return blocks
 }
@@ -119,12 +138,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := makeSomeBlocks(pTipSet)
-
-		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		vms := vm.NewStorageMap(bstore)
+
+		blocks := makeSomeBlocks(ctx, require, pTipSet, stateTree, vms)
+
+		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
@@ -139,12 +160,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
 		require.NoError(err)
 
-		blocks := makeSomeBlocks(pTipSet)
-
-		tipSet, err := exp.NewValidTipSet(ctx, blocks)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
 		require.NoError(err)
 
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		vms := vm.NewStorageMap(bstore)
+
+		blocks := makeSomeBlocks(ctx, require, pTipSet, stateTree, vms)
+
+		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		require.NoError(err)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)

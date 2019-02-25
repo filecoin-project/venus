@@ -70,15 +70,17 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	createPoSTFunc  DoSomeWorkFunc
 	minerAddr       address.Address
+	minerOwnerAddr  address.Address
 	blockSignerAddr address.Address
 	blockSigner     types.Signer
+
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
@@ -103,6 +105,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
+	minerOwner address.Address,
 	blockSignerAddr address.Address,
 	blockSigner types.Signer,
 	bt time.Duration) *DefaultWorker {
@@ -116,6 +119,7 @@ func NewDefaultWorker(messageSource MessageSource,
 		bs,
 		cst,
 		miner,
+		minerOwner,
 		blockSignerAddr,
 		blockSigner,
 		bt,
@@ -138,6 +142,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	bs blockstore.Blockstore,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
+	minerOwner address.Address,
 	blockSignerAddr address.Address,
 	blockSigner types.Signer,
 	bt time.Duration,
@@ -153,6 +158,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 		cstore:          cst,
 		createPoSTFunc:  createPoST,
 		minerAddr:       miner,
+		minerOwnerAddr:  minerOwner,
 		blockTime:       bt,
 		blockSignerAddr: blockSignerAddr,
 		blockSigner:     blockSigner,

@@ -28,7 +28,7 @@ func initStoreTest(ctx context.Context, require *require.Assertions) {
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, proofs.NewFakeVerifier(true, nil))
-	initSyncTest(require, con, consensus.InitGenesis, cst, bs, r)
+	initSyncTest(require, con, initGenesis, cst, bs, r)
 	requireSetTestChain(require, con, true)
 }
 
@@ -303,7 +303,7 @@ func TestLatestState(t *testing.T) {
 
 	// Call init genesis again to load genesis state into cbor store.
 	// This is required for the chain to access the state in the cbor store.
-	_, err = consensus.InitGenesis(cst, bs)
+	_, err = initGenesis(cst, bs)
 	require.NoError(err)
 
 	assertSetHead(assert, chain, genTS)
