@@ -26,7 +26,7 @@ func (m *FakeMessage) GetData() []byte {
 // FakeSubscription is a fake pubsub subscription.
 type FakeSubscription struct {
 	topic       string
-	pending     chan *FakeMessage
+	pending     chan Message
 	err         error
 	cancelled   bool
 	awaitCancel sync.WaitGroup
@@ -36,7 +36,7 @@ type FakeSubscription struct {
 func NewFakeSubscription(topic string, bufSize int) *FakeSubscription {
 	sub := &FakeSubscription{
 		topic:       topic,
-		pending:     make(chan *FakeMessage, bufSize),
+		pending:     make(chan Message, bufSize),
 		awaitCancel: sync.WaitGroup{},
 	}
 	sub.awaitCancel.Add(1)
@@ -75,7 +75,7 @@ func (s *FakeSubscription) Cancel() {
 // Manipulators
 
 // Post posts a new message to this subscription.
-func (s *FakeSubscription) Post(msg *FakeMessage) {
+func (s *FakeSubscription) Post(msg Message) {
 	if s.err != nil {
 		panic("subscription has failed")
 	}

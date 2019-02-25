@@ -162,11 +162,12 @@ func TestNodeStartMining(t *testing.T) {
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
 		Chain:        minerNode.ChainReader,
 		Config:       pbConfig.NewConfig(minerNode.Repo),
+		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgSender:    msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
-		Network:      ntwk.NewNetwork(minerNode.Host()),
+		Network:      ntwk.New(minerNode.Host(), nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
 	})

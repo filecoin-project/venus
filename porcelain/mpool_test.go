@@ -17,7 +17,7 @@ import (
 type fakeMpoolWaitPlumbing struct {
 	pending            []*types.SignedMessage
 	subscription       *pubsub.FakeSubscription // Receives subscription as is it opened
-	afterPendingCalled func()               // Invoked after each call to MessagePoolPending
+	afterPendingCalled func()                   // Invoked after each call to MessagePoolPending
 }
 
 func newFakeMpoolWaitPlumbing(onPendingCalled func()) *fakeMpoolWaitPlumbing {

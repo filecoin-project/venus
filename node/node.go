@@ -409,9 +409,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(nc.Repo, fcWallet, chainReader, msgPool, fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
-		Subscriber:   pubsub.NewSubscriber(fsub),
-		Publisher:    pubsub.NewPublisher(fsub),
-		Network:      ntwk.NewNetwork(peerHost),
+		Network:      ntwk.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub)),
 		SigGetter:    mthdsig.NewGetter(chainReader),
 		Wallet:       fcWallet,
 	}))

@@ -36,8 +36,6 @@ type API struct {
 	msgQueryer   *msg.Queryer
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
-	subscriber   *pubsub.Subscriber
-	publisher    *pubsub.Publisher
 	network      *ntwk.Network
 	sigGetter    *mthdsig.Getter
 	wallet       *wallet.Wallet
@@ -52,8 +50,6 @@ type APIDeps struct {
 	MsgQueryer   *msg.Queryer
 	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
-	Subscriber   *pubsub.Subscriber
-	Publisher    *pubsub.Publisher
 	Network      *ntwk.Network
 	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
@@ -71,8 +67,6 @@ func New(deps *APIDeps) *API {
 		msgQueryer:   deps.MsgQueryer,
 		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
-		subscriber:   deps.Subscriber,
-		publisher:    deps.Publisher,
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
 		wallet:       deps.Wallet,
@@ -169,12 +163,12 @@ func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.
 
 // PubSubSubscribe subscribes to a topic for notifications from the filecoin network
 func (api *API) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
-	return api.subscriber.Subscribe(topic)
+	return api.network.Subscribe(topic)
 }
 
 // PubSubPublish publishes a message to a topic on the filecoin network
 func (api *API) PubSubPublish(topic string, data []byte) error {
-	return api.publisher.Publish(topic, data)
+	return api.network.Publish(topic, data)
 }
 
 // NetworkGetPeerID gets the current peer id from Util

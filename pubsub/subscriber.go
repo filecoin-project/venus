@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
+	libp2p "gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 )
 
 // Subscriber subscribes to pubsub topics
 type Subscriber struct {
-	pubsub *pubsub.PubSub
+	pubsub *libp2p.PubSub
 }
 
 // Message defines the common interface for go-filecoin message consumers.
@@ -31,7 +31,7 @@ type Subscription interface {
 }
 
 // NewSubscriber builds a new subscriber
-func NewSubscriber(sub *pubsub.PubSub) *Subscriber {
+func NewSubscriber(sub *libp2p.PubSub) *Subscriber {
 	return &Subscriber{pubsub: sub}
 }
 
@@ -43,7 +43,7 @@ func (s *Subscriber) Subscribe(topic string) (Subscription, error) {
 
 // subscriptionWrapper extends a pubsub.Subscription in order to wrap the Message type.
 type subscriptionWrapper struct {
-	*pubsub.Subscription
+	*libp2p.Subscription
 }
 
 // Next wraps pubsub.Subscription.Next, implicitly adapting *pubsub.Message to the Message interface.
