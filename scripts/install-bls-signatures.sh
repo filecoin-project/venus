@@ -12,7 +12,7 @@ install_local() {
     exit 1
   fi
 
-  git submodule update --init --recursive bls-signatures
+  git submodule update --init --recursive bls-signatures/bls-signatures
 
   pushd bls-signatures/bls-signatures
 
