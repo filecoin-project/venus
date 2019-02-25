@@ -98,7 +98,17 @@ message to be mined to get the channelID.`,
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Create(req.Context, fromAddr, gasPrice, gasLimit, target, eol, amount)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			amount,
+			gasPrice,
+			gasLimit,
+			"createChannel",
+			target,
+			eol,
+		)
 		if err != nil {
 			return err
 		}
@@ -354,7 +364,16 @@ var reclaimCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Reclaim(req.Context, fromAddr, gasPrice, gasLimit, channel)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"reclaim",
+			channel,
+		)
 		if err != nil {
 			return err
 		}
@@ -526,7 +545,16 @@ var extendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Extend(req.Context, fromAddr, gasPrice, gasLimit, channel, eol, amount)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			amount,
+			gasPrice,
+			gasLimit,
+			"extend",
+			channel, eol,
+		)
 		if err != nil {
 			return err
 		}

@@ -21,19 +21,6 @@ func newNodePaych(api *nodeAPI, porcelainAPI *porcelain.API) *nodePaych {
 	return &nodePaych{api: api, porcelainAPI: porcelainAPI}
 }
 
-func (np *nodePaych) Create(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, target address.Address, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		amount,
-		gasPrice,
-		gasLimit,
-		"createChannel",
-		target, eol,
-	)
-}
-
 func (np *nodePaych) Ls(ctx context.Context, fromAddr, payerAddr address.Address) (map[string]*paymentbroker.PaymentChannel, error) {
 	nd := np.api.node
 
@@ -115,19 +102,6 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 	)
 }
 
-func (np *nodePaych) Reclaim(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		types.NewAttoFILFromFIL(0),
-		gasPrice,
-		gasLimit,
-		"reclaim",
-		channel,
-	)
-}
-
 func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
 	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
 	if err != nil {
@@ -143,18 +117,5 @@ func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPri
 		gasLimit,
 		"close",
 		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-	)
-}
-
-func (np *nodePaych) Extend(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, channel *types.ChannelID, eol *types.BlockHeight, amount *types.AttoFIL) (cid.Cid, error) {
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		amount,
-		gasPrice,
-		gasLimit,
-		"extend",
-		channel, eol,
 	)
 }
