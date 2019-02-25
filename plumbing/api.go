@@ -8,6 +8,7 @@ import (
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -17,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/plumbing/ps"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -113,9 +113,13 @@ func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.BlockHistory(ctx, api.chain.Head())
 }
 
-// ChainLatestState returns the latest state tree from the chain reader
-func (api *API) ChainLatestState(ctx context.Context) (state.Tree, error) {
-	return api.chain.LatestState(ctx)
+// ChainGetActorFromLatestState returns an actor from the latest state on the chain
+func (api *API) ChainGetActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	state, err := api.chain.LatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return state.GetActor(ctx, addr)
 }
 
 // BlockGet gets a block by CID
