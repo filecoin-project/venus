@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -179,11 +180,6 @@ var walletImportCmd = &cmds.Command{
 	},
 }
 
-// WalletExportResult is the resut of running the wallet export command.
-type WalletExportResult struct {
-	KeyInfo []*types.KeyInfo
-}
-
 var walletExportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("addresses", true, true, "Addresses of keys to export").EnableStdin(),
@@ -203,14 +199,14 @@ var walletExportCmd = &cmds.Command{
 			return err
 		}
 
-		var klr WalletExportResult
+		var klr impl.WalletSerializeResult
 		klr.KeyInfo = append(klr.KeyInfo, kis...)
 
 		return re.Emit(klr)
 	},
-	Type: &WalletExportResult{},
+	Type: &impl.WalletSerializeResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *WalletExportResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *impl.WalletSerializeResult) error {
 			for _, k := range klr.KeyInfo {
 				a, err := k.Address()
 				if err != nil {
