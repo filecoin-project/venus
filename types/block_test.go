@@ -104,7 +104,7 @@ func TestTriangleEncoding(t *testing.T) {
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 10, s.NumField())
+		require.Equal(t, 12, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -210,6 +210,19 @@ func TestEquals(t *testing.T) {
 	assert.False(b1.Equals(b3))
 	assert.False(b1.Equals(b4))
 	assert.False(b3.Equals(b4))
+}
+
+func TestParanoidPanic(t *testing.T) {
+	assert := assert.New(t)
+	paranoid = true
+
+	b1 := &Block{Nonce: 1}
+	b1.Cid()
+
+	b1.Nonce = 2
+	assert.Panics(func() {
+		b1.Cid()
+	})
 }
 
 func TestBlockJsonMarshal(t *testing.T) {

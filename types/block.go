@@ -63,7 +63,7 @@ type Block struct {
 // set this to true to panic if the blocks data differs from the cached cid. This should
 // be obviated by changing the block to have protected construction, private fields, and
 // getters for all the values.
-const paranoid = false
+var paranoid = false
 
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {

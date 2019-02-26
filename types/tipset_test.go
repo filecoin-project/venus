@@ -159,6 +159,7 @@ func TestNewTipSet(t *testing.T) {
 	assert.Equal(3, len(ts))
 
 	// Invalid heights
+	b1, b2, b3 = RequireTestBlocks(t)
 	b1.Height = 3
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
@@ -166,6 +167,7 @@ func TestNewTipSet(t *testing.T) {
 	b1.Height = b2.Height
 
 	// Invalid parent sets
+	b1, b2, b3 = RequireTestBlocks(t)
 	b1.Parents = NewSortedCidSet(cid1, cid2)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
@@ -173,6 +175,7 @@ func TestNewTipSet(t *testing.T) {
 	b1.Parents = b2.Parents
 
 	// Invalid parent weights
+	b1, b2, b3 = RequireTestBlocks(t)
 	b1.ParentWeight = Uint64(3000)
 	ts, err = NewTipSet(b1, b2, b3)
 	assert.Error(err)
