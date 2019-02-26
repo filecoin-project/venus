@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 definitions:
   steps:
@@ -127,6 +127,11 @@ jobs:
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
+    parameters:
+      sector_builder_tests:
+        description: "Run the sector builder integration tests"
+        type: boolean
+        default: false
     steps:
       - run:
           name: Configure environment variables
@@ -224,9 +229,8 @@ jobs:
 
       - run:
           name: Test
-          command: |
-            trap "go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            go run ./build/*.go test -v  2>&1 | tee test-results/go-test-suite/go-test.out
+          command: "trap \"go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml\" EXIT;
+            FILECOIN_RUN_SECTOR_BUILDER_TESTS=<< parameters.sector_builder_tests >> go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out"
       - run:
           name: Functional Tests
           command: ./functional-tests/run
@@ -467,6 +471,18 @@ workflows:
                 - master
     jobs:
       - build_macos
+
+  run_sector_builder_tests:
+    triggers:
+      - schedule:
+          cron: "0 0,6,12,18 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_linux:
+          sector_builder_tests: true
 
   build_and_publish_release:
     jobs:

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -25,6 +26,9 @@ import (
 const MaxTimeToSealASector = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
+	if os.Getenv("FILECOIN_RUN_SECTOR_BUILDER_TESTS") != "true" {
+		t.SkipNow()
+	}
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
