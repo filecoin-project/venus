@@ -141,7 +141,7 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 					erroredAt = failedAt // Start the timer on raising to ERROR level
 					logfn = log.Warningf
 				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriodMinutes {
-					logfn = log.Errorf
+					logfn = log.Warningf
 					erroredAt = now // Reset the timer
 				}
 				failureDuration := now.Sub(failedAt)
