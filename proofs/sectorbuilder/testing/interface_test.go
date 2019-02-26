@@ -312,7 +312,7 @@ func TestSectorBuilder(t *testing.T) {
 
 			// generate a proof-of-spacetime
 			gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
-				CommRs:        []proofs.CommR{val.SealingResult.CommR, val.SealingResult.CommR},
+				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				ChallengeSeed: challengeSeed,
 			})
 			require.NoError(t, gerr)
@@ -324,9 +324,16 @@ func TestSectorBuilder(t *testing.T) {
 			require.Equal(t, uint64(0), gres.Faults[0])
 
 			// verify the proof-of-spacetime
-			vres, verr := proofs.IsPoStValidWithVerifier(&proofs.RustVerifier{}, []proofs.CommR{val.SealingResult.CommR}, challengeSeed, gres.Faults, gres.Proof)
+			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoSTRequest{
+				ChallengeSeed: proofs.PoStChallengeSeed{},
+				CommRs:        []proofs.CommR{val.SealingResult.CommR},
+				Faults:        gres.Faults,
+				Proof:         gres.Proof,
+				StoreType:     proofs.Test,
+			})
+
 			require.NoError(t, verr)
-			require.True(t, vres)
+			require.True(t, vres.IsValid)
 		case <-timeout:
 			t.Fatalf("timed out waiting for seal to complete")
 		}

@@ -283,14 +283,6 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 			return errors.Wrap(err, "couldn't create challengeSeed")
 		}
 
-		isValid, err := proofs.IsPoStValidWithVerifier(c.verifier, []proofs.CommR{}, challengeSeed, []uint64{}, blk.Proof)
-		if err != nil {
-			return errors.Wrap(err, "could not test the proof's validity")
-		}
-		if !isValid {
-			return errors.New("invalid proof")
-		}
-
 		computedTicket := CreateTicket(blk.Proof, blk.Miner)
 
 		if !bytes.Equal(blk.Ticket, computedTicket) {
