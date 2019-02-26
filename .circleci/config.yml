@@ -1,10 +1,11 @@
 version: 2.1
 
-definitions:
-  steps:
-    - run: &rust_fil_proofs_checksum
-        name: generate rust proofs checksum
-        command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-fil-proofs-checksum.txt
+commands:
+  rust_fil_proofs_checksum:
+    steps:
+      - run:
+          name: generate rust proofs checksum
+          command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-fil-proofs-checksum.txt
 
 jobs:
   build_macos:
@@ -27,7 +28,7 @@ jobs:
       - run:
           name: Update submodules
           command: git submodule update --init
-      - run: *rust_fil_proofs_checksum
+      - rust_fil_proofs_checksum
       - restore_cache:
           key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
@@ -150,7 +151,7 @@ jobs:
       - run: git submodule update --init
 
       # Save the Git SHA of the rust-fil-proofs submodule so that we can use it when creating a cache key
-      - run: *rust_fil_proofs_checksum
+      - rust_fil_proofs_checksum
 
       - restore_cache:
           keys:
@@ -286,7 +287,7 @@ jobs:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
 
       - checkout
-      - run: *rust_fil_proofs_checksum
+      - rust_fil_proofs_checksum
       - restore_cache:
           keys:
             - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
@@ -329,7 +330,7 @@ jobs:
       # The first checkout ensures we have the files needed to restore the cache
       - checkout
 
-      - run: *rust_fil_proofs_checksum
+      - rust_fil_proofs_checksum
 
       - attach_workspace:
           at: "."
