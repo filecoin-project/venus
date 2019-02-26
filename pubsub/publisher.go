@@ -1,4 +1,4 @@
-package ps
+package pubsub
 
 import "gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 

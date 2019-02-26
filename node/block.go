@@ -5,8 +5,8 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -33,7 +33,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	return node.PorcelainAPI.PubSubPublish(BlockTopic, b.ToNode().RawData())
 }
 
-func (node *Node) processBlock(ctx context.Context, pubSubMsg *pubsub.Message) (err error) {
+func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
 	// ignore messages from ourself
 	if pubSubMsg.GetFrom() == node.Host().ID() {
 		return nil
