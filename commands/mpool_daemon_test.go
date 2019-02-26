@@ -70,6 +70,40 @@ func TestMpoolLs(t *testing.T) {
 	})
 }
 
+func TestMpoolShow(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+
+	t.Run("shows message", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
+		defer d.ShutdownSuccess()
+
+		msgCid := d.RunSuccess("message", "send",
+			"--from", fixtures.TestAddresses[0],
+			"--price", "0", "--limit", "300",
+			"--value=10", fixtures.TestAddresses[2],
+		).ReadStdoutTrimNewlines()
+
+		out := d.RunSuccess("mpool", "show", msgCid).ReadStdoutTrimNewlines()
+
+		assert.Contains(out, "From:      "+fixtures.TestAddresses[0])
+		assert.Contains(out, "To:        "+fixtures.TestAddresses[2])
+		assert.Contains(out, "Value:     10")
+	})
+
+	t.Run("fails missing message", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
+		defer d.ShutdownSuccess()
+
+		const c = "QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw"
+
+		out := d.RunFail("not found", "mpool", "show", c).ReadStderr()
+		assert.Contains(out, c)
+	})
+}
+
 func TestMpoolRm(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)

@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"strconv"
 
 	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -17,8 +19,9 @@ var mpoolCmd = &cmds.Command{
 		Tagline: "Manage the message pool",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"ls": mpoolLsCmd,
-		"rm": mpoolRemoveCmd,
+		"ls":   mpoolLsCmd,
+		"show": mpoolShowCmd,
+		"rm":   mpoolRemoveCmd,
 	},
 }
 
@@ -47,9 +50,57 @@ var mpoolLsCmd = &cmds.Command{
 				if err != nil {
 					return err
 				}
-				fmt.Fprintln(w, c.String()) // nolint: errcheck
+				_ = PrintString(w, c)
 			}
 			return nil
+		}),
+	},
+}
+
+var mpoolShowCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show content of an outstanding message",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("cid", true, false, "The CID of the message to show"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		msgCid, err := cid.Parse(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "invalid message cid")
+		}
+
+		msg, ok := GetPorcelainAPI(env).MessagePoolGet(msgCid)
+		if !ok {
+			return fmt.Errorf("message %s not found in pool (already mined?)", msgCid)
+		}
+		return re.Emit(msg)
+	},
+	Type: &types.SignedMessage{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, msg *types.SignedMessage) error {
+			_, err := fmt.Fprintf(w, `Message Details
+To:        %s
+From:      %s
+Nonce:     %s
+Value:     %s
+Method:    %s
+Params:    %s
+Gas price: %s
+Gas limit: %s
+Signature: %s
+`,
+				msg.To,
+				msg.From,
+				strconv.FormatUint(uint64(msg.Nonce), 10),
+				msg.Value,
+				msg.Method,
+				base64.StdEncoding.EncodeToString(msg.Params),
+				msg.GasPrice.String(),
+				strconv.FormatUint(uint64(msg.GasLimit), 10),
+				base64.StdEncoding.EncodeToString(msg.Signature),
+			)
+			return err
 		}),
 	},
 }

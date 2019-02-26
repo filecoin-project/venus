@@ -120,12 +120,17 @@ func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) 
 	return api.chain.GetBlock(ctx, id)
 }
 
-// MessagePoolPending lists messages un-mined in the pool
+// MessagePoolPending lists messages in the pool.
 func (api *API) MessagePoolPending() []*types.SignedMessage {
 	return api.msgPool.Pending()
 }
 
-// MessagePoolRemove removes a message from the message pool
+// MessagePoolGet fetches a message from the pool.
+func (api *API) MessagePoolGet(cid cid.Cid) (value *types.SignedMessage, ok bool) {
+	return api.msgPool.Get(cid)
+}
+
+// MessagePoolRemove removes a message from the message pool.
 func (api *API) MessagePoolRemove(cid cid.Cid) {
 	api.msgPool.Remove(cid)
 }

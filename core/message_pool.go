@@ -56,6 +56,17 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 	return out
 }
 
+// Get retrieves a message from the pool by CID.
+func (pool *MessagePool) Get(c cid.Cid) (value *types.SignedMessage, ok bool) {
+	pool.lk.Lock()
+	defer pool.lk.Unlock()
+	value, ok = pool.pending[c]
+	if ok && value == nil {
+		panic("Found nil message for CID " + c.String())
+	}
+	return
+}
+
 // Remove removes the message by CID from the pending pool.
 func (pool *MessagePool) Remove(c cid.Cid) {
 	pool.lk.Lock()
