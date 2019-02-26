@@ -1,16 +1,15 @@
 package mining
 
 import (
-	"testing"
-
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestSelectMessagesForBlock(t *testing.T) {
+func TestMessageQueueOrder(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -35,8 +34,11 @@ func TestSelectMessagesForBlock(t *testing.T) {
 	}
 
 	t.Run("empty", func(t *testing.T) {
-		ordered := SelectMessagesForBlock([]*types.SignedMessage{})
-		assert.Equal(0, len(ordered))
+		q := NewMessageQueue([]*types.SignedMessage{})
+		assert.True(q.Empty())
+		msg, ok := q.Pop()
+		assert.Nil(msg)
+		assert.False(ok)
 	})
 
 	t.Run("orders by nonce", func(t *testing.T) {
@@ -58,16 +60,43 @@ func TestSelectMessagesForBlock(t *testing.T) {
 			sign(a2, to, 1, 0, 0),
 		}
 
-		ordered := SelectMessagesForBlock(msgs)
-		assert.Equal(len(msgs), len(ordered))
+		q := NewMessageQueue(msgs)
 
 		lastFromAddr := make(map[address.Address]uint64)
-		for _, m := range ordered {
-			last, seen := lastFromAddr[m.From]
+		for msg, more := q.Pop(); more == true; msg, more = q.Pop() {
+			last, seen := lastFromAddr[msg.From]
 			if seen {
-				assert.True(last <= uint64(m.Nonce))
+				assert.True(last <= uint64(msg.Nonce))
 			}
-			lastFromAddr[m.From] = uint64(m.Nonce)
+			lastFromAddr[msg.From] = uint64(msg.Nonce)
 		}
+		assert.True(q.Empty())
+	})
+
+	t.Run("orders by gas price", func(t *testing.T) {
+		msgs := []*types.SignedMessage{
+			sign(a0, to, 0, 0, 2),
+			sign(a1, to, 0, 0, 3),
+			sign(a2, to, 0, 0, 1),
+		}
+		q := NewMessageQueue(msgs)
+		expected := []*types.SignedMessage{msgs[1], msgs[0], msgs[2]}
+		actual := q.Drain()
+		assert.Equal(expected, actual)
+		assert.True(q.Empty())
+	})
+
+	t.Run("nonce overrides gas price", func(t *testing.T) {
+		msgs := []*types.SignedMessage{
+			sign(a0, to, 0, 0, 1),
+			sign(a0, to, 1, 0, 3), // More valuable but must come after previous message from a0
+			sign(a2, to, 0, 0, 2),
+		}
+		expected := []*types.SignedMessage{msgs[2], msgs[0], msgs[1]}
+
+		q := NewMessageQueue(msgs)
+		actual := q.Drain()
+		assert.Equal(expected, actual)
+		assert.True(q.Empty())
 	})
 }
