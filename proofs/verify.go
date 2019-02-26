@@ -27,6 +27,7 @@ func IsPoStValidWithVerifier(verifier Verifier, commRs []CommR, challengeSeed Po
 		CommRs:        commRs,
 		Faults:        faults,
 		Proof:         proof,
+		StoreType:     Test,
 	}
 
 	res, err := verifier.VerifyPoST(req)

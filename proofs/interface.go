@@ -17,6 +17,7 @@ type VerifyPoSTRequest struct {
 	CommRs        []CommR
 	Faults        []uint64
 	Proof         PoStProof
+	StoreType     SectorStoreType // used to control sealing/verification performance
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
