@@ -340,6 +340,10 @@ jobs:
       - run: git submodule update --init
 
       - run:
+          name: Generate fixtures
+          command: go build -o ./gengen/gengen ./gengen
+
+      - run:
           name: build an image of all binaries
           command: |
             docker build -t filecoin:all --target=base --file Dockerfile.ci.base .
