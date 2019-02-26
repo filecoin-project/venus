@@ -6,12 +6,10 @@ package mining
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -56,9 +54,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	pending := w.messageSource.Pending()
-	messages := make([]*types.SignedMessage, len(pending))
-
-	copy(messages, SelectMessagesForBlock(pending))
+	mq := NewMessageQueue(pending)
+	messages := mq.Drain()
 
 	vms := vm.NewStorageMap(w.blockstore)
 	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerAddr, types.NewBlockHeight(blockHeight), ancestors)
@@ -114,23 +111,4 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	return next, nil
-}
-
-// SelectMessagesForBlock sorts a slice messages such that messages with the same From are contiguous
-// and occur in Nonce order in the slice.
-// Potential improvements include:
-// - skipping messages after a gap in nonce value, which can never be mined (see Ethereum)
-// - order by time of receipt
-// - order by gas price (#1751)
-func SelectMessagesForBlock(messages []*types.SignedMessage) []*types.SignedMessage {
-	byAddress := make(map[address.Address][]*types.SignedMessage)
-	for _, m := range messages {
-		byAddress[m.From] = append(byAddress[m.From], m)
-	}
-	messages = messages[:0]
-	for _, msgs := range byAddress {
-		sort.Slice(msgs, func(i, j int) bool { return msgs[i].Nonce < msgs[j].Nonce })
-		messages = append(messages, msgs...)
-	}
-	return messages
 }
