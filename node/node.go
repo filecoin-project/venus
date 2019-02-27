@@ -525,6 +525,14 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Bootstrapper.Start(context.Background())
 	}
 
+	if err := node.setupHeartbeatServices(ctx); err != nil {
+		return errors.Wrap(err, "failed to start heartbeat services")
+	}
+
+	return nil
+}
+
+func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	mag := func() address.Address {
 		addr, err := node.miningAddress()
 		// the only error miningAddress() returns is ErrNoMinerAddress.
@@ -533,12 +541,14 @@ func (node *Node) Start(ctx context.Context) error {
 		if err != nil {
 			return address.Address{}
 		}
-
 		return addr
 	}
+
 	// start the primary heartbeat service
-	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
-	go hbs.Start(ctx)
+	if len(node.Repo.Config().Heartbeat.BeatTarget) > 0 {
+		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
+		go hbs.Start(ctx)
+	}
 
 	// check if we want to connect to an alert service. An alerting service is a heartbeat
 	// service that can trigger alerts based on the contents of heatbeats.
