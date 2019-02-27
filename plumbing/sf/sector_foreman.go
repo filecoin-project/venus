@@ -1,10 +1,13 @@
 package sf
 
 import (
+	"context"
+	"io"
 	"os"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -68,4 +71,24 @@ func (sf *SectorForeman) Stop() error {
 		sf.sectorBuilder = nil
 	}
 	return nil
+}
+
+// IsRunning returns true if the sectorbuilder is present, otherwise false
+func (sf *SectorForeman) IsRunning() bool {
+	return sf.sectorBuilder != nil
+}
+
+// SealAllStagedSectors seals all stages sectors on the sector builder
+func (sf *SectorForeman) SealAllStagedSectors(ctx context.Context) error {
+	return sf.sectorBuilder.SealAllStagedSectors(ctx)
+}
+
+// SectorSealResults gets seal results from the sector builder
+func (sf *SectorForeman) SectorSealResults() <-chan sectorbuilder.SectorSealResult {
+	return sf.sectorBuilder.SectorSealResults()
+}
+
+// ReadPieceFromSealedSector reads a piece from a sealed sector
+func (sf *SectorForeman) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
+	return sf.ReadPieceFromSealedSector(pieceCid)
 }
