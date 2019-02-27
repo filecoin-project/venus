@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	hamt "gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
@@ -32,12 +32,23 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0)
+	m, ok := pool.Get(c1)
+	assert.Nil(m)
+	assert.False(ok)
+
 	_, err = pool.Add(msg1)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
 	_, err = pool.Add(msg2)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 2)
+
+	m, ok = pool.Get(c1)
+	assert.Equal(msg1, m)
+	assert.True(ok)
+	m, ok = pool.Get(c2)
+	assert.Equal(msg2, m)
+	assert.True(ok)
 
 	pool.Remove(c1)
 	assert.Len(pool.Pending(), 1)
@@ -55,6 +66,11 @@ func TestMessagePoolAddBadSignature(t *testing.T) {
 	c, err := pool.Add(smsg)
 	assert.False(c.Defined())
 	assert.Error(err)
+
+	c, _ = smsg.Cid()
+	m, ok := pool.Get(c)
+	assert.Nil(m)
+	assert.False(ok)
 }
 
 func TestMessagePoolDedup(t *testing.T) {
