@@ -660,12 +660,22 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 		postProof := proofs.PoStProof{}
 		copy(postProof[:], proof)
 
-		// TODO: use IsPoStValidWithProver when proofs are implemented
+		// See comment above, in CommitSector.
+		//
+		// It is undefined behavior for a miner in "Live" mode to verify a proof
+		// created by a miner in "ProofsTest" mode (and vice-versa).
+		//
+		sectorStoreType := proofs.Live
+		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
+			sectorStoreType = proofs.Test
+		}
+
 		req := proofs.VerifyPoSTRequest{
 			ChallengeSeed: proofs.PoStChallengeSeed{},
 			CommRs:        commRs,
 			Faults:        []uint64{},
 			Proof:         postProof,
+			StoreType:     sectorStoreType,
 		}
 
 		res, err := (&proofs.RustVerifier{}).VerifyPoST(req)

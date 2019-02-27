@@ -265,32 +265,12 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 // validateMining checks validity of the block ticket, proof, and miner address.
 //    Returns an error if:
 //    	* any tipset's block was mined by an invalid miner address.
-//      * the block proof is invalid for the challenge
 //      * the block ticket is incorrectly computed
 //      * the block ticket fails the power check, i.e. is not a winning ticket
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
 	for _, blk := range ts.ToSlice() {
-		parentHeight, err := parentTs.Height()
-		if err != nil {
-			return errors.Wrap(err, "failed to get parentHeight")
-		}
-
-		nullBlockCount := uint64(blk.Height) - parentHeight - 1
-		challengeSeed, err := CreateChallengeSeed(parentTs, nullBlockCount)
-		if err != nil {
-			return errors.Wrap(err, "couldn't create challengeSeed")
-		}
-
-		isValid, err := proofs.IsPoStValidWithVerifier(c.verifier, []proofs.CommR{}, challengeSeed, []uint64{}, blk.Proof)
-		if err != nil {
-			return errors.Wrap(err, "could not test the proof's validity")
-		}
-		if !isValid {
-			return errors.New("invalid proof")
-		}
-
 		computedTicket := CreateTicket(blk.Proof, blk.Miner)
 
 		if !bytes.Equal(blk.Ticket, computedTicket) {
@@ -298,6 +278,10 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		}
 
 		// TODO: Also need to validate BlockSig
+
+		// TODO: Once we've picked a delay function (see #2119), we need to
+		// verify its proof here. The proof will likely be written to a field on
+		// the mined block.
 
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
