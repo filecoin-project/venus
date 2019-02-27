@@ -210,7 +210,7 @@ func TestGetBlocks(t *testing.T) {
 		(&cids).Add(c)
 		gotBlk, err := chain.GetBlock(ctx, c)
 		assert.NoError(err)
-		assert.Equal(blk, gotBlk)
+		assert.Equal(blk.Cid(), gotBlk.Cid())
 	}
 	gotBlks, err := chain.GetBlocks(ctx, cids)
 	assert.NoError(err)
