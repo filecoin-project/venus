@@ -2,6 +2,7 @@ package porcelain
 
 import (
 	"context"
+	"fmt"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -13,19 +14,24 @@ import (
 type sbsPlumbing interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	SectorBuilderIsRunning() bool
 	SectorBuilderStart(minerAddr address.Address, sectorID uint64) error
 }
 
 // SectorBuilderSetup starts the sector builder with the default miner address
 // from config and the last used sector id fetched from the miner actor.
 func SectorBuilderSetup(ctx context.Context, plumbing sbsPlumbing) error {
-	minerAddrString, err := plumbing.ConfigGet("mining.minerAddress")
+	if plumbing.SectorBuilderIsRunning() {
+		return nil
+	}
+
+	minerAddrInterface, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return errors.Wrap(err, "failed to get node's mining address")
 	}
-	minerAddr, err := address.NewFromString(minerAddrString.(string))
-	if err != nil {
-		return errors.Wrap(err, "failed to get node's mining address")
+	minerAddr, success := minerAddrInterface.(address.Address)
+	if !success {
+		return fmt.Errorf("invalid miner address: %T %v", minerAddrInterface, minerAddrInterface)
 	}
 
 	lastUsedSectorID, err := sectorBuilderGetLastUsedID(ctx, plumbing, minerAddr)

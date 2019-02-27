@@ -436,6 +436,18 @@ func (mtp *minerTestPorcelain) MessageWait(ctx context.Context, msgCid cid.Cid, 
 	return nil
 }
 
+func (mtp *minerTestPorcelain) SectorBuilderAddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error) {
+	return uint64(12345), nil
+}
+
+func (mtp *minerTestPorcelain) SectorBuilderGeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error) {
+	return sectorbuilder.GeneratePoSTResponse{}, nil
+}
+
+func (mtp *minerTestPorcelain) SectorBuilderIsRunning() bool {
+	return true
+}
+
 func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
 		porcelainAPI:   api,

@@ -74,12 +74,17 @@ type minerPorcelain interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	DealsLs() ([]*storagedeal.Deal, error)
 	DealGet(cid.Cid) *storagedeal.Deal
 	DealPut(*storagedeal.Deal) error
+
+	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+
+	SectorBuilderAddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error)
+	SectorBuilderGeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error)
+	SectorBuilderIsRunning() bool
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -90,7 +95,6 @@ type node interface {
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
-	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
 // generatePostInput is a struct containing sector id and related commitments
@@ -312,7 +316,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 }
 
 func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-	if sm.node.SectorBuilder() == nil {
+	if !sm.porcelainAPI.SectorBuilderIsRunning() {
 		return nil, errors.New("Mining disabled, can not process proposal")
 	}
 
@@ -440,7 +444,7 @@ func (sm *Miner) processStorageDeal(c cid.Cid) {
 	//
 	// Also, this pattern of not being able to set up book-keeping ahead of
 	// the call is inelegant.
-	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, pi)
+	sectorID, err := sm.porcelainAPI.SectorBuilderAddPiece(ctx, pi)
 	if err != nil {
 		fail("failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
 		return

@@ -20,8 +20,7 @@ type sectorbuilderTestPlumbing struct {
 }
 
 func (stp *sectorbuilderTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
-	out := stp.minerAddress.String()
-	return out, nil
+	return stp.minerAddress, nil
 }
 
 func (stp *sectorbuilderTestPlumbing) MessageQuery(
@@ -42,6 +41,10 @@ func (stp *sectorbuilderTestPlumbing) MessageQuery(
 	ret, err := val.Serialize()
 	stp.require.NoError(err)
 	return [][]byte{ret}, signature, nil
+}
+
+func (stp *sectorbuilderTestPlumbing) SectorBuilderIsRunning() bool {
+	return false
 }
 
 func (stp *sectorbuilderTestPlumbing) SectorBuilderStart(addr address.Address, sectorID uint64) error {
