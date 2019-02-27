@@ -3,19 +3,15 @@ package commands
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	oldlogging "gx/ipfs/QmcaSwFc5RBg8yCq54QURwEU4nwjfCpjbpmaAm4VbdGLKv/go-logging"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 )
 
 var loglogger = logging.Logger("commands/log")
-
-// Golang os.Args overrides * and replaces the character argument with
-// an array which includes every file in the user's CWD. As a
-// workaround, we use 'all' instead. The util library still uses * so
-// we convert it at this step.
-var logAllKeyword = "all"
 
 var logCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -27,9 +23,9 @@ output of a running daemon.
 	},
 
 	Subcommands: map[string]*cmds.Command{
-		"tail":  logTailCmd,
 		"level": logLevelCmd,
 		"ls":    logLsCmd,
+		"tail":  logTailCmd,
 	},
 }
 
@@ -57,28 +53,34 @@ the event log.
 	},
 
 	Arguments: []cmdkit.Argument{
-		// TODO use a different keyword for 'all' because all can theoretically
-		// clash with a subsystem name
-		cmdkit.StringArg("subsystem", true, false, fmt.Sprintf("The subsystem logging identifier. Use '%s' for all subsystems.", logAllKeyword)),
-		cmdkit.StringArg("level", true, false, `The log level, with 'debug' the most verbose and 'critical' the least verbose.
-			One of: debug, info, warning, error, critical.
+		cmdkit.StringArg("level", true, false, `The log level, with 'debug' the most verbose and 'panic' the least verbose.
+			One of: debug, info, warning, error, fatal, panic.
 		`),
 	},
 
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("subsystem", "The subsystem logging identifier"),
+	},
+
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
-		args := req.Arguments
-		subsystem, level := args[0], args[1]
+		level := strings.ToLower(req.Arguments[0])
 
-		if subsystem == logAllKeyword {
-			subsystem = "*"
+		var s string
+		if subsystem, ok := req.Options["subsystem"].(string); ok {
+			if err := logging.SetLogLevel(subsystem, level); err != nil {
+				return err
+			}
+			s = fmt.Sprintf("Changed log level of '%s' to '%s'", subsystem, level)
+			loglogger.Info(s)
+		} else {
+			lvl, err := getLogLevel(level)
+			if err != nil {
+				return err
+			}
+			logging.SetAllLoggers(oldlogging.Level(lvl))
+			s = fmt.Sprintf("Changed log level of all subsystems to: %s", level)
+			loglogger.Info(s)
 		}
-
-		if err := logging.SetLogLevel(subsystem, level); err != nil {
-			return err
-		}
-
-		s := fmt.Sprintf("Changed log level of '%s' to '%s'", subsystem, level)
-		loglogger.Info(s)
 
 		return cmds.EmitOnce(res, s)
 	},
@@ -111,4 +113,25 @@ subsystems of a running daemon.
 			return nil
 		}),
 	},
+}
+
+func getLogLevel(level string) (int, error) {
+	var lvl int
+	switch level {
+	case "debug":
+		lvl = 5
+	case "info":
+		lvl = 4
+	case "warning":
+		lvl = 3
+	case "error":
+		lvl = 2
+	case "fatal":
+		lvl = 1
+	case "panic":
+		lvl = 0
+	default:
+		return -1, fmt.Errorf("unknown log level: %s. Available levels: debug, info, warning, error, fatal, panic", level)
+	}
+	return lvl, nil
 }
