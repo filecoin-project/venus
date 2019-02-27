@@ -525,6 +525,14 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Bootstrapper.Start(context.Background())
 	}
 
+	if err := node.setupHeartbeatServices(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	mag := func() address.Address {
 		addr, err := node.miningAddress()
 		// the only error miningAddress() returns is ErrNoMinerAddress.
@@ -533,9 +541,9 @@ func (node *Node) Start(ctx context.Context) error {
 		if err != nil {
 			return address.Address{}
 		}
-
 		return addr
 	}
+
 	// start the primary heartbeat service
 	hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
 	go hbs.Start(ctx)
