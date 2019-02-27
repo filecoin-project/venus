@@ -131,10 +131,15 @@ func TestWaitConflicting(t *testing.T) {
 	ctx := context.Background()
 
 	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
+
+	// create a valid miner
+	minerAddr := mockSigner.Addresses[3]
+
 	testGen := consensus.MakeGenesisFunc(
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
+		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, testhelpers.RequireRandomPeerID(), types.ZeroAttoFIL),
 	)
 	cst, chainStore, waiter := setupTestWithGif(require, testGen)
 
@@ -155,7 +160,7 @@ func TestWaitConflicting(t *testing.T) {
 
 	b1 := chain.RequireMkFakeChild(require,
 		chain.FakeChildParams{
-			Parent: baseTS, GenesisCid: chainStore.GenesisCid(), StateRoot: baseBlock.StateRoot})
+			Parent: baseTS, GenesisCid: chainStore.GenesisCid(), StateRoot: baseBlock.StateRoot, MinerAddr: minerAddr})
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(cst, b1)
@@ -163,7 +168,7 @@ func TestWaitConflicting(t *testing.T) {
 	b2 := chain.RequireMkFakeChild(require,
 		chain.FakeChildParams{
 			Parent: baseTS, GenesisCid: chainStore.GenesisCid(),
-			StateRoot: baseBlock.StateRoot, Nonce: uint64(1)})
+			StateRoot: baseBlock.StateRoot, Nonce: uint64(1), MinerAddr: minerAddr})
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)

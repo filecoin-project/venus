@@ -333,7 +333,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	miningMinerAddr, err := address.NewFromString(fixtures.TestMiners[0])
+	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
 	require.NoError(err)
 
 	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
@@ -343,8 +343,8 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	d1.ConnectSuccess(d)
 	var wg sync.WaitGroup
 
-	// make sure the FIL shows up in the MinerAccount
-	startingBalance := queryBalance(t, d, miningMinerAddr)
+	// make sure the FIL shows up in the MinerOwnerAccount
+	startingBalance := queryBalance(t, d, miningMinerOwnerAddr)
 
 	wg.Add(1)
 	go func() {
@@ -362,7 +362,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	expectedPrice := types.NewAttoFILFromFIL(333)
 	expectedGasCost := big.NewInt(100)
 	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
-	newBalance := queryBalance(t, d, miningMinerAddr)
+	newBalance := queryBalance(t, d, miningMinerOwnerAddr)
 	assert.Equal(expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 

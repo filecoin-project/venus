@@ -2,13 +2,16 @@ package consensus
 
 import (
 	"context"
+	"math/big"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -37,6 +40,7 @@ type Config struct {
 	accounts map[address.Address]*types.AttoFIL
 	nonces   map[address.Address]uint64
 	actors   map[address.Address]*actor.Actor
+	miners   map[address.Address]*miner.State
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -46,6 +50,14 @@ type GenOption func(*Config) error
 func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 	return func(gc *Config) error {
 		gc.accounts[addr] = amt
+		return nil
+	}
+}
+
+// MinerActor returns a config option that sets up an miner actor account.
+func MinerActor(addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) GenOption {
+	return func(gc *Config) error {
+		gc.miners[addr] = miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
 		return nil
 	}
 }
@@ -74,6 +86,7 @@ func NewEmptyConfig() *Config {
 		accounts: make(map[address.Address]*types.AttoFIL),
 		nonces:   make(map[address.Address]uint64),
 		actors:   make(map[address.Address]*actor.Actor),
+		miners:   make(map[address.Address]*miner.State),
 	}
 }
 
@@ -99,6 +112,23 @@ func MakeGenesisFunc(opts ...GenOption) func(cst *hamt.CborIpldStore, bs blockst
 			}
 
 			if err := st.SetActor(ctx, addr, a); err != nil {
+				return nil, err
+			}
+		}
+		// Initialize miner actors
+		for addr, val := range genCfg.miners {
+			a := miner.NewActor()
+
+			if err := st.SetActor(ctx, addr, a); err != nil {
+				return nil, err
+			}
+
+			s := storageMap.NewStorage(addr, a)
+			scid, err := s.Put(val)
+			if err != nil {
+				return nil, err
+			}
+			if err = s.Commit(scid, a.Head); err != nil {
 				return nil, err
 			}
 		}

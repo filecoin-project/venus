@@ -23,7 +23,7 @@ func TestMiningGenBlock(t *testing.T) {
 	d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 	defer d.ShutdownSuccess()
 
-	addr := fixtures.TestMiners[0]
+	addr := fixtures.TestAddresses[0]
 
 	s := d.RunSuccess("wallet", "balance", addr)
 	beforeBalance := parseInt(assert, s.ReadStdout())
@@ -34,5 +34,5 @@ func TestMiningGenBlock(t *testing.T) {
 	afterBalance := parseInt(assert, s.ReadStdout())
 	sum := new(big.Int)
 
-	assert.True(sum.Add(beforeBalance, big.NewInt(1000)).Cmp(afterBalance) == 0)
+	assert.Equal(sum.Add(beforeBalance, big.NewInt(1000)), afterBalance)
 }

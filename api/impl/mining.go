@@ -58,6 +58,10 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 	miningAddr := miningAddrIf.(address.Address)
+	miningOwnerAddr, err := nd.PorcelainAPI.MinerGetOwnerAddress(ctx, miningAddr)
+	if err != nil {
+		return nil, err
+	}
 
 	blockSignerAddrIf, err := nd.PorcelainAPI.ConfigGet("mining.blockSignerAddress")
 	if err != nil {
@@ -69,7 +73,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
 	}
 	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
-		nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, blockSignerAddr, nd.Wallet, blockTime)
+		nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, miningOwnerAddr, blockSignerAddr, nd.Wallet, blockTime)
 
 	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)
 	if err != nil {

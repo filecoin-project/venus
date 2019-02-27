@@ -60,8 +60,8 @@ func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr a
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
-	require.NoError(storage.Flush())
 	require.NoError(err)
+	require.NoError(storage.Flush())
 	return act
 }
 
