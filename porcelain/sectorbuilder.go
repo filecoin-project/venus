@@ -10,12 +10,39 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 )
 
-type sbgluiPlumbing interface {
+type sbsPlumbing interface {
+	ConfigGet(dottedPath string) (interface{}, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	SectorBuilderStart(minerAddr address.Address, sectorID uint64) error
 }
 
-// SectorBuilderGetLastUsedID gets the last sector id used by the sectorbuilder
-func SectorBuilderGetLastUsedID(ctx context.Context, plumbing sbgluiPlumbing, minerAddr address.Address) (uint64, error) {
+// SectorBuilderSetup starts the sector builder with the default miner address
+// from config and the last used sector id fetched from the miner actor.
+func SectorBuilderSetup(ctx context.Context, plumbing sbsPlumbing) error {
+	minerAddrString, err := plumbing.ConfigGet("mining.minerAddress")
+	if err != nil {
+		return errors.Wrap(err, "failed to get node's mining address")
+	}
+	minerAddr, err := address.NewFromString(minerAddrString.(string))
+	if err != nil {
+		return errors.Wrap(err, "failed to get node's mining address")
+	}
+
+	lastUsedSectorID, err := sectorBuilderGetLastUsedID(ctx, plumbing, minerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
+	}
+
+	err = plumbing.SectorBuilderStart(minerAddr, lastUsedSectorID)
+	if err != nil {
+		return errors.Wrapf(err, "failed to initialize sector builder for miner %s", minerAddr.String())
+	}
+
+	return nil
+}
+
+// sectorBuilderGetLastUsedID gets the last sector id used by the sectorbuilder
+func sectorBuilderGetLastUsedID(ctx context.Context, plumbing sbsPlumbing, minerAddr address.Address) (uint64, error) {
 	rets, methodSignature, err := plumbing.MessageQuery(
 		ctx,
 		address.Address{},

@@ -151,6 +151,11 @@ func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
 	return GetAndMaybeSetDefaultSenderAddress(a)
 }
 
+// SectorBuilderSetup sets up the sectorbuilder for mining.
+func (a *API) SectorBuilderSetup(ctx context.Context) error {
+	return SectorBuilderSetup(ctx, a)
+}
+
 // WalletBalance returns the current balance of the given wallet address.
 func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)

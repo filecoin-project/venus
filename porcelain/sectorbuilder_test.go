@@ -13,8 +13,15 @@ import (
 )
 
 type sectorbuilderTestPlumbing struct {
-	require  *require.Assertions
-	sectorID uint64
+	assert       *assert.Assertions
+	minerAddress address.Address
+	require      *require.Assertions
+	sectorID     uint64
+}
+
+func (stp *sectorbuilderTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	out := stp.minerAddress.String()
+	return out, nil
 }
 
 func (stp *sectorbuilderTestPlumbing) MessageQuery(
@@ -37,20 +44,24 @@ func (stp *sectorbuilderTestPlumbing) MessageQuery(
 	return [][]byte{ret}, signature, nil
 }
 
-func TestSectorBuilderGetLastUsedID(t *testing.T) {
-	t.Run("return the correct last used ID", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-		ctx := context.Background()
+func (stp *sectorbuilderTestPlumbing) SectorBuilderStart(addr address.Address, sectorID uint64) error {
+	stp.assert.Equal(stp.minerAddress, addr)
+	stp.assert.Equal(stp.sectorID, sectorID)
+	return nil
+}
 
-		expectedSectorID := uint64(12345)
-		plumbing := &sectorbuilderTestPlumbing{
-			require:  require,
-			sectorID: expectedSectorID,
-		}
-		sectorID, err := porcelain.SectorBuilderGetLastUsedID(ctx, plumbing, address.Address{})
-		require.NoError(err)
+func TestSectorBuilderSetup(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
 
-		assert.Equal(expectedSectorID, sectorID)
-	})
+	plumbing := &sectorbuilderTestPlumbing{
+		assert:       assert,
+		minerAddress: address.Address{},
+		require:      require,
+		sectorID:     uint64(12345),
+	}
+
+	err := porcelain.SectorBuilderSetup(ctx, plumbing)
+	require.NoError(err)
 }
