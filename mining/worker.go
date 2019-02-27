@@ -225,8 +225,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
+			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
-		log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		outCh <- NewOutput(next, err)
 		return true
 	}
