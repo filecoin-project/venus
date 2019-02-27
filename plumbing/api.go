@@ -6,12 +6,12 @@ import (
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
+	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -211,9 +211,15 @@ func (api *API) PubSubPublish(topic string, data []byte) error {
 	return api.network.Publish(topic, data)
 }
 
+<<<<<<< HEAD
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network
 func (api *API) NetworkGetBandwidthStats() metrics.Stats {
 	return api.network.GetBandwidthStats()
+=======
+// NetworkSetStreamHandler sets the stream handler for the libp2p host
+func (api *API) NetworkSetStreamHandler(pid protocol.ID, handler net.StreamHandler) {
+	api.network.SetStreamHandler(pid, handler)
+>>>>>>> Added SectorBuilderAddPiece and GeneratePoST methods to plumbing for storage miner
 }
 
 // NetworkGetPeerAddresses gets the current addresses of the node
@@ -226,9 +232,51 @@ func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
 }
 
+<<<<<<< HEAD
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
 func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
 	return api.network.FindProvidersAsync(ctx, key, count)
+=======
+// SectorBuilderAddPiece adds a piece to the sectorbuilder
+func (api *API) SectorBuilderAddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error) {
+	return api.sectorForeman.AddPiece(ctx, pi)
+}
+
+// SectorBuilderIsRunning returns a boolean representing whether the sector
+// builder is present or not
+func (api *API) SectorBuilderIsRunning() bool {
+	return api.sectorForeman.IsRunning()
+}
+
+// SectorBuilderReadPieceFromSealedSector reads a piece from a sealed sector
+func (api *API) SectorBuilderReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
+	return api.sectorForeman.ReadPieceFromSealedSector(pieceCid)
+}
+
+// SectorBuilderSealAllStagedSectors seals all staged sectors on the sector builder
+func (api *API) SectorBuilderSealAllStagedSectors(ctx context.Context) error {
+	return api.sectorForeman.SealAllStagedSectors(ctx)
+}
+
+// SectorBuilderSectorSealResults returns results from the sector builder
+func (api *API) SectorBuilderSectorSealResults() <-chan sectorbuilder.SectorSealResult {
+	return api.sectorForeman.SectorSealResults()
+}
+
+// SectorBuilderStart starts the sector builder with a given address and sector id
+func (api *API) SectorBuilderStart(minerAddr address.Address, lastUsedSectorID uint64) error {
+	return api.sectorForeman.Start(minerAddr, lastUsedSectorID)
+}
+
+// SectorBuilderStop stops the sectorbuilder
+func (api *API) SectorBuilderStop() error {
+	return api.sectorForeman.Stop()
+>>>>>>> Added SectorBuilderAddPiece and GeneratePoST methods to plumbing for storage miner
+}
+
+// SectorBuilderGeneratePoST generates PoSt for the sectorbuilder
+func (api *API) SectorBuilderGeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error) {
+	return api.sectorForeman.GeneratePoST(req)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.

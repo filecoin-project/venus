@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -90,5 +90,15 @@ func (sf *SectorForeman) SectorSealResults() <-chan sectorbuilder.SectorSealResu
 
 // ReadPieceFromSealedSector reads a piece from a sealed sector
 func (sf *SectorForeman) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
-	return sf.ReadPieceFromSealedSector(pieceCid)
+	return sf.sectorBuilder.ReadPieceFromSealedSector(pieceCid)
+}
+
+// AddPiece adds a piece to the sectorbuilder
+func (sf *SectorForeman) AddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error) {
+	return sf.sectorBuilder.AddPiece(ctx, pi)
+}
+
+// GeneratePoST generates proof of spacetime for the sectorbuilder
+func (sf *SectorForeman) GeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error) {
+	return sf.sectorBuilder.GeneratePoST(req)
 }
