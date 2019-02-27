@@ -670,7 +670,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			sectorStoreType = proofs.Test
 		}
 
-		// TODO: use IsPoStValidWithProver when proofs are implemented
 		req := proofs.VerifyPoSTRequest{
 			ChallengeSeed: proofs.PoStChallengeSeed{},
 			CommRs:        commRs,
