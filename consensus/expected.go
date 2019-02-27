@@ -279,6 +279,10 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 
 		// TODO: Also need to validate BlockSig
 
+		// TODO: Once we've picked a delay function (see #2119), we need to
+		// verify its proof here. The proof will likely be written to a field on
+		// the mined block.
+
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
 		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
 		if err != nil {
