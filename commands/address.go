@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -212,7 +213,8 @@ var walletExportCmd = &cmds.Command{
 				if err != nil {
 					return err
 				}
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%x\nCurve:\t\t%s\n\n", a.String(), k.PrivateKey, k.Curve)
+				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
+				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.Curve)
 				if err != nil {
 					return err
 				}

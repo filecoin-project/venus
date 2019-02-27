@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -139,4 +140,21 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
 	assert.Equal(dw, maybeAddr)
 
+}
+
+func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
+	assert := assert.New(t)
+
+	d := th.NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
+
+	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+
+	exportText := d.RunSuccess("wallet", "export", dw).ReadStdoutTrimNewlines()
+	exportTextPrivateKeyLine := strings.Split(exportText, "\n")[1]
+	exportTextPrivateKey := strings.Split(exportTextPrivateKeyLine, "\t")[1]
+
+	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+
+	assert.Contains(exportJSON, exportTextPrivateKey)
 }
