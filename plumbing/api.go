@@ -20,8 +20,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
+	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/sf"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -34,32 +37,34 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	chain        chain.ReadStore
-	config       *cfg.Config
-	msgPool      *core.MessagePool
-	msgPreviewer *msg.Previewer
-	msgQueryer   *msg.Queryer
-	msgSender    *msg.Sender
-	msgWaiter    *msg.Waiter
-	network      *net.Network
-	sigGetter    *mthdsig.Getter
-	wallet       *wallet.Wallet
-	storagedeals *strgdls.Store
+	chain         chain.ReadStore
+	config        *cfg.Config
+	msgPool       *core.MessagePool
+	msgPreviewer  *msg.Previewer
+	msgQueryer    *msg.Queryer
+	msgSender     *msg.Sender
+	msgWaiter     *msg.Waiter
+	network       *ntwk.Network
+	sectorForeman *sf.SectorForeman
+	sigGetter     *mthdsig.Getter
+	storagedeals  *strgdls.Store
+	wallet        *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Chain        chain.ReadStore
-	Config       *cfg.Config
-	Deals        *strgdls.Store
-	MsgPool      *core.MessagePool
-	MsgPreviewer *msg.Previewer
-	MsgQueryer   *msg.Queryer
-	MsgSender    *msg.Sender
-	MsgWaiter    *msg.Waiter
-	Network      *net.Network
-	SigGetter    *mthdsig.Getter
-	Wallet       *wallet.Wallet
+	Chain         chain.ReadStore
+	Config        *cfg.Config
+	Deals         *strgdls.Store
+	MsgPool       *core.MessagePool
+	MsgPreviewer  *msg.Previewer
+	MsgQueryer    *msg.Queryer
+	MsgSender     *msg.Sender
+	MsgWaiter     *msg.Waiter
+	Network       *ntwk.Network
+	SectorForeman *sf.SectorForeman
+	SigGetter     *mthdsig.Getter
+	Wallet        *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -67,17 +72,18 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		chain:        deps.Chain,
-		config:       deps.Config,
-		msgPool:      deps.MsgPool,
-		msgPreviewer: deps.MsgPreviewer,
-		msgQueryer:   deps.MsgQueryer,
-		msgSender:    deps.MsgSender,
-		msgWaiter:    deps.MsgWaiter,
-		network:      deps.Network,
-		sigGetter:    deps.SigGetter,
-		wallet:       deps.Wallet,
-		storagedeals: deps.Deals,
+		chain:         deps.Chain,
+		config:        deps.Config,
+		msgPool:       deps.MsgPool,
+		msgPreviewer:  deps.MsgPreviewer,
+		msgQueryer:    deps.MsgQueryer,
+		msgSender:     deps.MsgSender,
+		msgWaiter:     deps.MsgWaiter,
+		network:       deps.Network,
+		sectorForeman: deps.SectorForeman,
+		sigGetter:     deps.SigGetter,
+		storagedeals:  deps.Deals,
+		wallet:        deps.Wallet,
 	}
 }
 
