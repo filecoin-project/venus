@@ -951,6 +951,16 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 	if err != nil {
 		return nil, err
 	}
+	addr, success := addrInterface.(address.Address)
+	if !success {
+		return nil, fmt.Errorf("failed to read miner address")
+	}
+	if (addr != address.Address{}) && node.Wallet.HasAddress(addr) {
+		pubKey, err = node.Wallet.GetPubKeyForAddress(addr)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
