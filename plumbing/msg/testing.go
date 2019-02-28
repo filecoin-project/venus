@@ -23,11 +23,7 @@ type commonDeps struct {
 	cst        *hamt.CborIpldStore
 }
 
-func requireCommonDeps(require *require.Assertions) *commonDeps { //nolint: deadcode
-	return requireCommonDepsWithGif(require, consensus.DefaultGenesis)
-}
-
-func requireCommonDepsWithGif(require *require.Assertions, gif consensus.GenesisInitFunc) *commonDeps {
+func requiredCommonDeps(require *require.Assertions, gif consensus.GenesisInitFunc) *commonDeps { // nolint: deadcode
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	return requireCommonDepsWithGifAndBlockstore(require, gif, r, bs)

@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/pkg/errors"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
@@ -26,13 +27,25 @@ import (
 func TestSend(t *testing.T) {
 	t.Parallel()
 
+	t.Run("invalid message rejected", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		w, chainStore, msgPool := setupSendTest(require)
+		addr := w.Addresses()[0]
+		nopPublish := func(string, []byte) error { return nil }
+
+		s := NewSender(w, chainStore, msgPool, nullValidator{rejectMessages: true}, nopPublish)
+		_, err := s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		assert.Errorf(err, "for testing")
+	})
+
 	t.Run("send message enqueues and calls publish", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		repo, w, chainStore, msgPool := setupSendTest(require)
-		addr, err := wallet.NewAddress(w)
-		require.NoError(err)
+		w, chainStore, msgPool := setupSendTest(require)
+		addr := w.Addresses()[0]
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -41,9 +54,9 @@ func TestSend(t *testing.T) {
 			return nil
 		}
 
-		s := NewSender(repo, w, chainStore, msgPool, publish)
+		s := NewSender(w, chainStore, msgPool, nullValidator{}, publish)
 		require.Equal(0, len(msgPool.Pending()))
-		_, err = s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(uint64(2)), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "")
 		require.NoError(err)
 		assert.Equal(1, len(msgPool.Pending()))
 		assert.True(publishCalled)
@@ -54,11 +67,10 @@ func TestSend(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
-		repo, w, chainStore, msgPool := setupSendTest(require)
-		addr, err := wallet.NewAddress(w)
-		require.NoError(err)
+		w, chainStore, msgPool := setupSendTest(require)
+		addr := w.Addresses()[0]
 		nopPublish := func(string, []byte) error { return nil }
-		s := NewSender(repo, w, chainStore, msgPool, nopPublish)
+		s := NewSender(w, chainStore, msgPool, nullValidator{}, nopPublish)
 
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
@@ -173,7 +185,30 @@ func TestNextNonce(t *testing.T) {
 	})
 }
 
-func setupSendTest(require *require.Assertions) (repo.Repo, *wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
-	d := requireCommonDeps(require)
-	return d.repo, d.wallet, d.chainStore, core.NewMessagePool()
+type nullValidator struct {
+	rejectMessages bool
+}
+
+func (v nullValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+	if v.rejectMessages {
+		return errors.New("rejected for testing")
+	}
+	return nil
+}
+
+func setupSendTest(require *require.Assertions) (*wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
+	// Install an account actor in the genesis block.
+	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())[0]
+	addr, err := ki.Address()
+	require.NoError(err)
+	genesis := consensus.MakeGenesisFunc(
+		consensus.ActorAccount(addr, types.NewAttoFILFromFIL(100)),
+	)
+
+	d := requiredCommonDeps(require, genesis)
+
+	// Install the key in the wallet for use in signing.
+	err = d.wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
+	require.NoError(err)
+	return d.wallet, d.chainStore, core.NewMessagePool()
 }

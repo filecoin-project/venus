@@ -8,11 +8,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/wallet"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -26,25 +25,24 @@ type PublishFunc func(topic string, data []byte) error
 
 // Sender is plumbing implementation that knows how to send a message.
 type Sender struct {
-	// For getting the default address.
-	repo   repo.Repo
-	wallet *wallet.Wallet
-
-	// For getting the latest nonce and enqueuing messages.
+	// Signs messages.
+	signer types.Signer
+	// Provides actor state (we could reduce this dependency to only LatestState()).
 	chainReader chain.ReadStore
-	msgPool     *core.MessagePool
-
-	// To publish the new message to the network.
+	// Pool of existing message, and receiver of the sent message.
+	msgPool *core.MessagePool
+	// Validates messages before sending them.
+	validator consensus.SignedMessageValidator
+	// Invoked to publish the new message to the network.
 	publish PublishFunc
-
-	// Locking in send reduces the chance of nonce collision.
+	// Protects the "next nonce" calculation to avoid collisions.
 	l sync.Mutex
 }
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, msgPool *core.MessagePool, publish PublishFunc) *Sender {
-	return &Sender{repo: repo, wallet: wallet, chainReader: chainReader, msgPool: msgPool, publish: publish}
+func NewSender(signer types.Signer, chainReader chain.ReadStore, msgPool *core.MessagePool, validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
+	return &Sender{signer: signer, chainReader: chainReader, msgPool: msgPool, validator: validator, publish: publish}
 }
 
 // Send sends a message. See api description.
@@ -63,15 +61,25 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
 	}
 
+	fromActor, err := st.GetActor(ctx, from)
+	if err != nil {
+		return cid.Undef, errors.Wrapf(err, "no actor at address %s", from)
+	}
+
 	nonce, err := nextNonce(ctx, st, s.msgPool, from)
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "couldn't get next nonce")
+		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor %s", from)
 	}
 
 	msg := types.NewMessage(from, to, nonce, value, method, encodedParams)
-	smsg, err := types.NewSignedMessage(*msg, s.wallet, gasPrice, gasLimit)
+	smsg, err := types.NewSignedMessage(*msg, s.signer, gasPrice, gasLimit)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
+	}
+
+	err = s.validator.Validate(ctx, smsg, fromActor)
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "invalid message")
 	}
 
 	smsgdata, err := smsg.Marshal()
@@ -79,23 +87,23 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrap(err, "failed to marshal message")
 	}
 
+	// Add to the local message pool at the last possible moment before broadcasting to network.
 	if _, err := s.msgPool.Add(smsg); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to the message pool")
 	}
 
 	if err = s.publish(Topic, smsgdata); err != nil {
-		return cid.Undef, errors.Wrap(err, "couldnt publish new message to network")
+		return cid.Undef, errors.Wrap(err, "failed to publish message to network")
 	}
 
 	log.Debugf("MessageSend with message: %s", smsg)
-
 	return smsg.Cid()
 }
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
 // of the actor's nonce value, or one greater than the largest nonce from the actor found in the message pool.
 // The address must be the address of an account actor, or be not contained in, in the provided state tree.
-func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, address address.Address) (nonce uint64, err error) {
+func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, address address.Address) (uint64, error) {
 	act, err := st.GetActor(ctx, address)
 	if err != nil && !state.IsActorNotFoundError(err) {
 		return 0, err

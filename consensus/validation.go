@@ -15,7 +15,9 @@ type SignedMessageValidator interface {
 	Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error
 }
 
-type defaultMessageValidator struct{}
+type defaultMessageValidator struct {
+	allowHighNonce bool
+}
 
 // NewDefaultMessageValidator creates a new default validator.
 // A default validator checks for both permanent semantic problems (e.g. invalid signature)
@@ -24,9 +26,16 @@ func NewDefaultMessageValidator() SignedMessageValidator {
 	return &defaultMessageValidator{}
 }
 
+// NewOutboundMessageValidator creates a new default validator for outbound messages. This
+// validator matches the default behaviour but allows nonces higher than the actor's current nonce
+// (allowing multiple messages to enter the mpool at once).
+func NewOutboundMessageValidator() SignedMessageValidator {
+	return &defaultMessageValidator{allowHighNonce: true}
+}
+
 var _ SignedMessageValidator = (*defaultMessageValidator)(nil)
 
-func (nmv *defaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	if !msg.VerifySignature() {
 		return errInvalidSignature
 	}
@@ -51,7 +60,7 @@ func (nmv *defaultMessageValidator) Validate(ctx context.Context, msg *types.Sig
 		return errNonceTooLow
 	}
 
-	if msg.Nonce > fromActor.Nonce {
+	if !v.allowHighNonce && msg.Nonce > fromActor.Nonce {
 		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
 		return errNonceTooHigh
 	}

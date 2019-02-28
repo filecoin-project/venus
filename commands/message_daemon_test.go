@@ -38,11 +38,10 @@ func TestMessageSend(t *testing.T) {
 	)
 
 	t.Log("[success] with from")
-	defaultaddr := d.GetDefaultAddress()
 	d.RunSuccess("message", "send",
 		"--from", fixtures.TestAddresses[0],
 		"--price", "0", "--limit", "300",
-		defaultaddr,
+		fixtures.TestAddresses[1],
 	)
 
 	t.Log("[success] with from and value")

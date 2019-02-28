@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -29,6 +27,7 @@ import (
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 )
 
 var seed = types.GenerateKeyInfoSeed()
@@ -157,6 +156,7 @@ func TestNodeStartMining(t *testing.T) {
 	minerNode := MakeNodeWithChainSeed(t, seed, []ConfigOpt{}, PeerKeyOpt(PeerKeys[0]), AutoSealIntervalSecondsOpt(1))
 
 	walletBackend, _ := wallet.NewDSBackend(minerNode.Repo.WalletDatastore())
+	validator := consensus.NewDefaultMessageValidator()
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
@@ -166,7 +166,7 @@ func TestNodeStartMining(t *testing.T) {
 		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:    msg.NewSender(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, minerNode.PorcelainAPI.PubSubPublish),
+		MsgSender:    msg.NewSender(minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
 		Network:      ntwk.New(minerNode.Host(), nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
