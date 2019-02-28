@@ -14,11 +14,6 @@ func init() {
 	cbor.RegisterCborType(Actor{})
 }
 
-var (
-	// ErrInvalidActorLength is returned when the actor length does not match the expected length.
-	ErrInvalidActorLength = errors.New("invalid actor length")
-)
-
 // Actor is the central abstraction of entities in the system.
 //
 // Both individual accounts, as well as contracts (user & system level) are
@@ -36,9 +31,14 @@ var (
 //
 // Not safe for concurrent access.
 type Actor struct {
-	Code    cid.Cid `refmt:",omitempty"`
-	Head    cid.Cid `refmt:",omitempty"`
-	Nonce   types.Uint64
+	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code)
+	Code cid.Cid `refmt:",omitempty"`
+	// Head is the CID of the root of the actor's state tree.
+	Head cid.Cid `refmt:",omitempty"`
+	// Nonce is the nonce expected on the next message from this actor.
+	// Messages are processed in strict, contiguous nonce order.
+	Nonce types.Uint64
+	// Balance is the amount of FIL in the actor's account.
 	Balance *types.AttoFIL
 }
 
@@ -81,4 +81,19 @@ func (a *Actor) Marshal() ([]byte, error) {
 // Format implements fmt.Formatter.
 func (a *Actor) Format(f fmt.State, c rune) {
 	f.Write([]byte(fmt.Sprintf("<%s (%p); balance: %v; nonce: %d>", types.ActorCodeTypeName(a.Code), a, a.Balance, a.Nonce))) // nolint: errcheck
+}
+
+///// Utility functions (non-methods) /////
+
+// NextNonce returns the nonce value for an account actor, which is the nonce expected on the
+// next message to be sent from that actor.
+// Returns zero for a nil actor, which is the value expected on the first message.
+func NextNonce(actor *Actor) (uint64, error) {
+	if actor == nil {
+		return 0, nil
+	}
+	if actor.Code.Defined() && !actor.Code.Equals(types.AccountActorCodeCid) {
+		return 0, errors.New("next nonce only defined for account or empty actors")
+	}
+	return uint64(actor.Nonce), nil
 }
