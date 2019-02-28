@@ -12,6 +12,7 @@ import (
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -22,10 +23,15 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
-// MustGetNonce returns the next nonce for an actor at the given address or panics.
+// MustGetNonce returns the next nonce for an actor at an address or panics.
 func MustGetNonce(st state.Tree, a address.Address) uint64 {
-	mp := NewMessagePool()
-	nonce, err := NextNonce(context.Background(), st, mp, a)
+	ctx := context.Background()
+	actr, err := st.GetActor(ctx, a)
+	if err != nil {
+		panic(err)
+	}
+
+	nonce, err := actor.NextNonce(actr)
 	if err != nil {
 		panic(err)
 	}

@@ -4,16 +4,18 @@ import (
 	"context"
 	"sync"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
+
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 // Topic is the network pubsub topic identifier on which new messages are announced.
@@ -56,7 +58,12 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	nonce, err := nextNonce(ctx, s.chainReader, s.msgPool, from)
+	st, err := s.chainReader.LatestState(ctx)
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
+	}
+
+	nonce, err := nextNonce(ctx, st, s.msgPool, from)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "couldn't get next nonce")
 	}
@@ -85,19 +92,22 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	return smsg.Cid()
 }
 
-// nextNonce returns the next nonce for the given address. It checks
-// the actor's memory and also scans the message pool for any pending
-// messages.
-func nextNonce(ctx context.Context, chainReader chain.ReadStore, msgPool *core.MessagePool, address address.Address) (nonce uint64, err error) {
-	st, err := chainReader.LatestState(ctx)
+// nextNonce returns the next expected nonce value for an account actor. This is the larger
+// of the actor's nonce value, or one greater than the largest nonce from the actor found in the message pool.
+// The address must be the address of an account actor, or be not contained in, in the provided state tree.
+func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, address address.Address) (nonce uint64, err error) {
+	act, err := st.GetActor(ctx, address)
+	if err != nil && !state.IsActorNotFoundError(err) {
+		return 0, err
+	}
+	actorNonce, err := actor.NextNonce(act)
 	if err != nil {
 		return 0, err
 	}
 
-	nonce, err = core.NextNonce(ctx, st, msgPool, address)
-	if err != nil {
-		return 0, err
+	poolNonce, found := core.LargestNonce(pool, address)
+	if found && poolNonce >= actorNonce {
+		return poolNonce + 1, nil
 	}
-
-	return nonce, nil
+	return actorNonce, nil
 }
