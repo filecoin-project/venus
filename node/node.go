@@ -981,7 +981,7 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 		return nil, err
 	}
 
-	err = node.saveMinerConfig(minerAddr)
+	err = node.PorcelainAPI.ConfigSet("mining.minerAddress", minerAddr.String())
 	if err != nil {
 		return &minerAddr, err
 	}
@@ -989,14 +989,6 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 	err = node.PorcelainAPI.SectorBuilderSetup(ctx)
 
 	return &minerAddr, err
-}
-
-// saveMinerConfig updates the Node Mining config with the MinerAddress.
-func (node *Node) saveMinerConfig(minerAddr address.Address) error {
-	r := node.Repo
-	newConfig := r.Config()
-	newConfig.Mining.MinerAddress = minerAddr
-	return r.ReplaceConfig(newConfig)
 }
 
 // miningOwnerAddress returns the owner of miningAddr.
