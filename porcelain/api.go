@@ -96,6 +96,19 @@ func (a *API) MessageSendWithDefaultAddress(
 	)
 }
 
+// MinerCreate creates a miner
+func (a *API) MinerCreate(
+	ctx context.Context,
+	accountAddr address.Address,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+	pledge uint64,
+	pid peer.ID,
+	collateral *types.AttoFIL,
+) (_ *address.Address, err error) {
+	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, pledge, pid, collateral)
+}
+
 // MinerPreviewCreate previews the Gas cost of creating a miner
 func (a *API) MinerPreviewCreate(
 	ctx context.Context,

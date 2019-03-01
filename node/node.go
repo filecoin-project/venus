@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"sync"
 	"time"
@@ -38,7 +37,6 @@ import (
 	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht/opts"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -66,7 +64,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -928,81 +925,6 @@ func (node *Node) StopMining(ctx context.Context) {
 // NewAddress creates a new account address on the default wallet backend.
 func (node *Node) NewAddress() (address.Address, error) {
 	return wallet.NewAddress(node.Wallet)
-}
-
-// CreateMiner creates a new miner actor for the given account and returns its address.
-// It will wait for the the actor to appear on-chain and add the address to mining.minerAddress in the config.
-// TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
-// TODO: add ability to pass in a KeyInfo to store for signing blocks.
-//       See https://github.com/filecoin-project/go-filecoin/issues/1843
-func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
-
-	// Only create a miner if we don't already have one.
-	cfgAddr, err := node.PorcelainAPI.ConfigGet("mining.minerAddress")
-	if err != nil {
-		return nil, err
-	}
-	if _, success := cfgAddr.(address.Address); !success {
-		return nil, fmt.Errorf("can only have one miner per node")
-	}
-
-	ctx = log.Start(ctx, "Node.CreateMiner")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
-
-	pubKey, err := node.Wallet.GetPubKeyForAddress(minerOwnerAddr)
-	if err != nil {
-		return nil, err
-	}
-	addr, success := addrInterface.(address.Address)
-	if !success {
-		return nil, fmt.Errorf("failed to read miner address")
-	}
-	if (addr != address.Address{}) && node.PorcelainAPI.WalletHasAddress(addr) {
-		pubKey, err = node.PorcelainAPI.WalletGetPubKeyForAddress(addr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		minerOwnerAddr,
-		address.StorageMarketAddress,
-		collateral,
-		gasPrice,
-		gasLimit,
-		"createMiner",
-		big.NewInt(int64(pledge)),
-		pubKey,
-		pid,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	var minerAddr address.Address
-	err = node.PorcelainAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
-		receipt *types.MessageReceipt) error {
-		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
-		}
-		minerAddr, err = address.NewFromBytes(receipt.Return[0])
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	err = node.PorcelainAPI.ConfigSet("mining.minerAddress", minerAddr.String())
-	if err != nil {
-		return &minerAddr, err
-	}
-
-	err = node.PorcelainAPI.SectorBuilderSetup(ctx)
-
-	return &minerAddr, err
 }
 
 // miningOwnerAddress returns the owner of miningAddr.
