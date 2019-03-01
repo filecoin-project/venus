@@ -55,8 +55,6 @@ install_local() {
     exit 1
   fi
 
-  git submodule update --init --recursive proofs/rust-fil-proofs
-
   pushd proofs/rust-fil-proofs
 
   cargo --version
@@ -77,6 +75,8 @@ install_local() {
   cp proofs/rust-fil-proofs/target/release/libfilecoin_proofs.a ./proofs/lib/
   cp proofs/rust-fil-proofs/target/release/libfilecoin_proofs.pc ./proofs/lib/pkgconfig/
 }
+
+git submodule update --init --recursive proofs/rust-fil-proofs
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
   echo "using local rust-fil-proofs"
