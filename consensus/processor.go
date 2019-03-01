@@ -14,13 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// SignedMessageValidator validates incoming signed messages.
-// This also includes other validations limited to the scope of the message and its fromActor
-type SignedMessageValidator interface {
-	// Validate validates that the given message is ready to be processed.
-	Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error
-}
-
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
 	// BlockReward pays out the mining reward
@@ -556,50 +549,6 @@ func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st st
 	return ret, nil
 }
 
-// DefaultMessageValidator validates that a message coming in from the network is valid.
-type DefaultMessageValidator struct{}
-
-// NewDefaultMessageValidator creates a new DefaultMessageValidator.
-func NewDefaultMessageValidator() *DefaultMessageValidator {
-	return &DefaultMessageValidator{}
-}
-
-var _ SignedMessageValidator = (*DefaultMessageValidator)(nil)
-
-// Validate validates that the given message is ready to be processed.
-func (nmv *DefaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	if !msg.VerifySignature() {
-		return errInvalidSignature
-	}
-
-	if msg.From == msg.To {
-		return errSelfSend
-	}
-
-	// sender must be an account actor.
-	if !fromActor.Code.Equals(types.AccountActorCodeCid) {
-		return errNonAccountActor
-	}
-
-	// avoid processing messages for actors that cannot pay.
-	if !canCoverGasLimit(msg, fromActor) {
-		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)
-		return errInsufficientGas
-	}
-
-	if msg.Nonce < fromActor.Nonce {
-		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
-		return errNonceTooLow
-	}
-
-	if msg.Nonce > fromActor.Nonce {
-		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
-		return errNonceTooHigh
-	}
-
-	return nil
-}
-
 // DefaultBlockRewarder pays the block reward from the network actor to the miner's owner.
 type DefaultBlockRewarder struct{}
 
@@ -650,12 +599,6 @@ func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value
 	}
 
 	return vm.Transfer(fromActor, toActor, value)
-}
-
-// returns true if the maximum gas charge does not exceed the actor's balance after message value has been subtracted.
-func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
-	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
-	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
 }
 
 func blockGasLimitError(gasTracker *vm.GasTracker) error {
