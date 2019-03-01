@@ -24,6 +24,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
@@ -48,6 +49,17 @@ func MinerCreate(
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
+	if accountAddr == (address.Address{}) {
+		accountAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if pid == "" {
+		pid = plumbing.NetworkGetPeerID()
+	}
+
 	// Only create a miner if we don't already have one.
 	cfgAddr, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
