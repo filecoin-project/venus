@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -417,4 +418,61 @@ func requirePeerID() peer.ID {
 		panic("Could not create peer id")
 	}
 	return id
+}
+
+type minerSetupTestPlumbing struct {
+	assert       *assert.Assertions
+	minerAddress address.Address
+	require      *require.Assertions
+	sectorID     uint64
+}
+
+func (stp *minerSetupTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	return stp.minerAddress, nil
+}
+
+func (stp *minerSetupTestPlumbing) MessageQuery(
+	ctx context.Context,
+	optFrom,
+	to address.Address,
+	method string,
+	params ...interface{},
+) ([][]byte, *exec.FunctionSignature, error) {
+	signature := &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
+	}
+	val := abi.Value{
+		Type: abi.SectorID,
+		Val:  stp.sectorID,
+	}
+	ret, err := val.Serialize()
+	stp.require.NoError(err)
+	return [][]byte{ret}, signature, nil
+}
+
+func (stp *minerSetupTestPlumbing) SectorBuilderIsRunning() bool {
+	return false
+}
+
+func (stp *minerSetupTestPlumbing) SectorBuilderStart(addr address.Address, sectorID uint64) error {
+	stp.assert.Equal(stp.minerAddress, addr)
+	stp.assert.Equal(stp.sectorID, sectorID)
+	return nil
+}
+
+func TestMinerSetup(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+
+	plumbing := &minerSetupTestPlumbing{
+		assert:       assert,
+		minerAddress: address.Address{},
+		require:      require,
+		sectorID:     uint64(12345),
+	}
+
+	err := MinerSetup(ctx, plumbing)
+	require.NoError(err)
 }

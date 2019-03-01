@@ -157,16 +157,16 @@ func (a *API) MinerPreviewSetPrice(
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
 }
 
+// MinerSetup sets up the sectorbuilder for mining.
+func (a *API) MinerSetup(ctx context.Context) error {
+	return MinerSetup(ctx, a)
+}
+
 // GetAndMaybeSetDefaultSenderAddress returns a default address from which to
 // send messsages. If none is set it picks the first address in the wallet and
 // sets it as the default in the config.
 func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
 	return GetAndMaybeSetDefaultSenderAddress(a)
-}
-
-// SectorBuilderSetup sets up the sectorbuilder for mining.
-func (a *API) SectorBuilderSetup(ctx context.Context) error {
-	return SectorBuilderSetup(ctx, a)
 }
 
 // WalletBalance returns the current balance of the given wallet address.
