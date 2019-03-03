@@ -29,16 +29,9 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		ts := GetPorcelainAPI(env).ChainHead(req.Context)
-
-		// Sort CIDs for a stable order
-		tsSlice := ts.ToSlice()
-		out := types.SortedCidSet{}
-		for _, b := range tsSlice {
-			out.Add(b.Cid())
-		}
-
-		return re.Emit(out)
+		headTipset := GetPorcelainAPI(env).ChainHead(req.Context)
+		blocks := headTipset.ToSlice()
+		return re.Emit(blocks)
 	},
 	Type: []cid.Cid{},
 }
