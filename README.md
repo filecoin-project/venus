@@ -52,7 +52,7 @@ See [KNOWN_ISSUES](https://github.com/filecoin-project/go-filecoin/blob/master/K
 
 ### System Requirements
 
-Filecoin can build and run on most Linux and MacOS systems. Windows is not yet supported.
+Filecoin can build and run on most Linux and MacOS systems with at least 8GB of RAM. Windows is not yet supported.
 
 <!--
 ### Install from Release Binary
