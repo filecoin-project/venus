@@ -318,7 +318,7 @@ func (r *FSRepo) loadVersion() (uint, error) {
 func (r *FSRepo) openDatastore() error {
 	switch r.cfg.Datastore.Type {
 	case "badgerds":
-		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), nil)
+		ds, err := badgerds.NewDatastore(filepath.Join(r.path, r.cfg.Datastore.Path), badgerOptions())
 		if err != nil {
 			return err
 		}
@@ -344,7 +344,7 @@ func (r *FSRepo) openKeystore() error {
 }
 
 func (r *FSRepo) openChainDatastore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, chainDatastorePrefix), nil)
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, chainDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -356,7 +356,7 @@ func (r *FSRepo) openChainDatastore() error {
 
 func (r *FSRepo) openWalletDatastore() error {
 	// TODO: read wallet datastore info from config, use that to open it up
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), nil)
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, walletDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -367,7 +367,7 @@ func (r *FSRepo) openWalletDatastore() error {
 }
 
 func (r *FSRepo) openDealsDatastore() error {
-	ds, err := badgerds.NewDatastore(filepath.Join(r.path, dealsDatastorePrefix), nil)
+	ds, err := badgerds.NewDatastore(filepath.Join(r.path, dealsDatastorePrefix), badgerOptions())
 	if err != nil {
 		return err
 	}
@@ -479,4 +479,10 @@ func APIAddrFromFile(apiFilePath string) (string, error) {
 // APIAddr reads the FSRepo's api file and returns the api address
 func (r *FSRepo) APIAddr() (string, error) {
 	return APIAddrFromFile(filepath.Join(filepath.Clean(r.path), APIFile))
+}
+
+func badgerOptions() *badgerds.Options {
+	result := &badgerds.DefaultOptions
+	result.Truncate = true
+	return result
 }
