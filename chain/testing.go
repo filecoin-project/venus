@@ -72,13 +72,14 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 }
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
+// NOTE: This is NOT deterministic because it generates a random value for the Proof field.
 func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
 	nonce uint64,
 	nullBlockCount uint64,
 	minerAddress address.Address,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
-	// State can be nil because it doesn't it is assumed consensus uses a
+	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
 	w, err := wFun(parent)
 	if err != nil {
@@ -109,6 +110,21 @@ func RequireMkFakeChild(require *require.Assertions, params FakeChildParams) *ty
 	child, err := MkFakeChild(params)
 	require.NoError(err)
 	return child
+}
+
+// RequireMkFakeChain returns a chain of num successive tipsets (no null blocks)
+// created with MkFakeChild and starting off of base.  Nonce, genCid and
+// stateRoot parameters for the whole chain are passed in with params.
+func RequireMkFakeChain(require *require.Assertions, base types.TipSet, num int, params FakeChildParams) []types.TipSet {
+	var ret []types.TipSet
+	params.Parent = base
+	for i := 0; i < num; i++ {
+		block := RequireMkFakeChild(require, params)
+		ts := th.RequireNewTipSet(require, block)
+		ret = append(ret, ts)
+		params.Parent = ts
+	}
+	return ret
 }
 
 // RequireMkFakeChildWithCon wraps MkFakeChildWithCon with a requirement that

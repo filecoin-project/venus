@@ -66,7 +66,7 @@ type DefaultSyncer struct {
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol, s Store) Syncer {
+func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol, s Store) *DefaultSyncer {
 	return &DefaultSyncer{
 		cstOnline:  online,
 		cstOffline: offline,
@@ -255,6 +255,16 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	}
 
 	if heavier {
+		// Gather the entire new chain for reorg comparison.
+		// See Issue #2151 for making this scalable.
+		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, syncer.chainStore.BlockHistory(ctx, parent), types.NewBlockHeight(uint64(0)))
+		if err != nil {
+			return err
+		}
+		newChain = append(newChain, next)
+		if IsReorg(syncer.chainStore.Head(), newChain) {
+			logSyncer.Infof("reorg occurring while switching from %s to %s", syncer.chainStore.Head().String(), next.String())
+		}
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
 		}

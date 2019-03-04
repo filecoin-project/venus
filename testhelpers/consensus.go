@@ -78,7 +78,7 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 }
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
-// to be correct
+// to be correct.
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
 	ticket := consensus.CreateTicket(postProof, minerAddr)
