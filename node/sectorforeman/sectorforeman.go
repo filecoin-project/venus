@@ -80,25 +80,44 @@ func (sf *SectorForeman) IsRunning() bool {
 
 // SealAllStagedSectors seals all stages sectors on the sector builder
 func (sf *SectorForeman) SealAllStagedSectors(ctx context.Context) error {
+	if !sf.IsRunning() {
+		return errors.New("sectorbuilder has not been started yet")
+	}
 	return sf.sectorBuilder.SealAllStagedSectors(ctx)
 }
 
 // SectorSealResults gets seal results from the sector builder
 func (sf *SectorForeman) SectorSealResults() <-chan sectorbuilder.SectorSealResult {
+	if !sf.IsRunning() {
+		var out chan sectorbuilder.SectorSealResult
+		out <- sectorbuilder.SectorSealResult{
+			SealingErr: errors.New("sectorbuilder has not been started yet"),
+		}
+		return out
+	}
 	return sf.sectorBuilder.SectorSealResults()
 }
 
 // ReadPieceFromSealedSector reads a piece from a sealed sector
 func (sf *SectorForeman) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
+	if !sf.IsRunning() {
+		return nil, errors.New("sectorbuilder has not been started yet")
+	}
 	return sf.sectorBuilder.ReadPieceFromSealedSector(pieceCid)
 }
 
 // AddPiece adds a piece to the sectorbuilder
 func (sf *SectorForeman) AddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error) {
+	if !sf.IsRunning() {
+		return uint64(0), errors.New("sectorbuilder has not been started yet")
+	}
 	return sf.sectorBuilder.AddPiece(ctx, pi)
 }
 
 // GeneratePoST generates proof of spacetime for the sectorbuilder
 func (sf *SectorForeman) GeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error) {
+	if !sf.IsRunning() {
+		return sectorbuilder.GeneratePoSTResponse{}, errors.New("sectorbuilder has not been started yet")
+	}
 	return sf.sectorBuilder.GeneratePoST(req)
 }
