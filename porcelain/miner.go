@@ -147,9 +147,7 @@ func MinerCreate(
 		return &minerAddr, err
 	}
 
-	err = plumbing.MinerSetup(ctx, sf)
-
-	return &minerAddr, err
+	return &minerAddr, nil
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
