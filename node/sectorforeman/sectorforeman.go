@@ -1,4 +1,4 @@
-package sf
+package sectorforeman
 
 import (
 	"context"

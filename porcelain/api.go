@@ -10,6 +10,7 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -99,6 +100,7 @@ func (a *API) MessageSendWithDefaultAddress(
 // MinerCreate creates a miner
 func (a *API) MinerCreate(
 	ctx context.Context,
+	sf *sectorforeman.SectorForeman,
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
@@ -106,7 +108,7 @@ func (a *API) MinerCreate(
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
-	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, pledge, pid, collateral)
+	return MinerCreate(ctx, a, sf, accountAddr, gasPrice, gasLimit, pledge, pid, collateral)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
@@ -158,8 +160,8 @@ func (a *API) MinerPreviewSetPrice(
 }
 
 // MinerSetup sets up the sectorbuilder for mining.
-func (a *API) MinerSetup(ctx context.Context) error {
-	return MinerSetup(ctx, a)
+func (a *API) MinerSetup(ctx context.Context, sf *sectorforeman.SectorForeman) error {
+	return MinerSetup(ctx, a, sf)
 }
 
 // GetAndMaybeSetDefaultSenderAddress returns a default address from which to

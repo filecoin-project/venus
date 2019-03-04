@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -473,6 +474,8 @@ func TestMinerSetup(t *testing.T) {
 		sectorID:     uint64(12345),
 	}
 
-	err := MinerSetup(ctx, plumbing)
+	sectorForeman := sectorforeman.NewSectorForeman(repo.NewInMemoryRepo(), nil)
+
+	err := MinerSetup(ctx, plumbing, sectorForeman)
 	require.NoError(err)
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	w "github.com/filecoin-project/go-filecoin/wallet"
@@ -30,7 +31,7 @@ type mcAPI interface {
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	NetworkGetPeerID() peer.ID
-	MinerSetup(ctx context.Context) error
+	MinerSetup(ctx context.Context, sf *sectorforeman.SectorForeman) error
 	WalletFind(address address.Address) (w.Backend, error)
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
 	WalletHasAddress(addr address.Address) bool
@@ -43,6 +44,7 @@ type mcAPI interface {
 func MinerCreate(
 	ctx context.Context,
 	plumbing mcAPI,
+	sf *sectorforeman.SectorForeman,
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
@@ -145,7 +147,7 @@ func MinerCreate(
 		return &minerAddr, err
 	}
 
-	err = plumbing.MinerSetup(ctx)
+	err = plumbing.MinerSetup(ctx, sf)
 
 	return &minerAddr, err
 }
@@ -395,15 +397,13 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 type msPlumbing interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	SectorBuilderIsRunning() bool
-	SectorBuilderStart(minerAddr address.Address, sectorID uint64) error
 }
 
 // MinerSetup starts the sector builder with the default miner address
 // from config and the last used sector id fetched from the miner actor.
 // TODO: when mining start is moved into plumbing/porcelain, make this private
-func MinerSetup(ctx context.Context, plumbing msPlumbing) error {
-	if plumbing.SectorBuilderIsRunning() {
+func MinerSetup(ctx context.Context, plumbing msPlumbing, sf *sectorforeman.SectorForeman) error {
+	if sf.IsRunning() {
 		return nil
 	}
 
@@ -421,7 +421,7 @@ func MinerSetup(ctx context.Context, plumbing msPlumbing) error {
 		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
-	err = plumbing.SectorBuilderStart(minerAddr, lastUsedSectorID)
+	err = sf.Start(minerAddr, lastUsedSectorID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to initialize sector builder for miner %s", minerAddr.String())
 	}

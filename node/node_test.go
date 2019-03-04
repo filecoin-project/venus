@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
@@ -173,11 +174,13 @@ func TestNodeStartMining(t *testing.T) {
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 
+	sectorForeman := sectorforeman.NewSectorForeman(minerNode.Repo, nil)
+
 	provisionalOwnerAddr := seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 	require.Equal(t, provisionalOwnerAddr, minerOwnerAddr)
 
-	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
+	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI, sectorForeman)
 	assert.NoError(err)
 
 	assert.NoError(minerNode.Start(ctx))

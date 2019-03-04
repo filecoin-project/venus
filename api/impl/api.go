@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
@@ -74,6 +75,10 @@ func (api *nodeAPI) Ping() api.Ping {
 
 func (api *nodeAPI) RetrievalClient() api.RetrievalClient {
 	return api.retrievalClient
+}
+
+func (api *nodeAPI) SectorForeman() *sectorforeman.SectorForeman {
+	return api.node.SectorForeman
 }
 
 func (api *nodeAPI) Swarm() api.Swarm {

@@ -142,6 +142,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 
 		addr, err := GetPorcelainAPI(env).MinerCreate(
 			req.Context,
+			GetAPI(env).SectorForeman(),
 			fromAddr,
 			gasPrice,
 			gasLimit,

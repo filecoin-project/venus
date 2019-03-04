@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
@@ -133,6 +134,11 @@ type Node struct {
 	// Repo is the repo this node was created with
 	// it contains all persistent artifacts of the filecoin node
 	Repo repo.Repo
+
+	// SectorForeman manages the SectorBuilder for the node and plumbing/porcelain.
+	// It's separated from both the node and plumbing porcelain to prevent coupling
+	// the two together.
+	SectorForeman *sectorforeman.SectorForeman
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -396,6 +402,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
+	sectorForeman := sectorforeman.NewSectorForeman(nc.Repo, bservice)
+
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
@@ -479,7 +487,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Only set these up if there is a miner configured.
 	if _, err := node.miningAddress(); err == nil {
-		if err := node.PorcelainAPI.MinerSetup(ctx); err != nil {
+		if err := node.PorcelainAPI.MinerSetup(ctx, node.SectorForeman); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
@@ -505,7 +513,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	node.RetrievalClient = retrieval.NewClient(node)
-	node.RetrievalMiner = retrieval.NewMiner(node.PorcelainAPI)
+	node.RetrievalMiner = retrieval.NewMiner(node.PorcelainAPI, node.SectorForeman)
 
 	// subscribe to block notifications
 	blkSub, err := node.PorcelainAPI.PubSubSubscribe(BlockTopic)
@@ -673,7 +681,7 @@ func (node *Node) Stop(ctx context.Context) {
 	node.cancelSubscriptions()
 	node.ChainReader.Stop()
 
-	if err := node.PorcelainAPI.SectorBuilderStop(); err != nil {
+	if err := node.SectorForeman.Stop(); err != nil {
 		fmt.Print(err)
 	}
 
@@ -737,7 +745,7 @@ func StartMining(ctx context.Context, node *Node) error {
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
-// the SectorBuilder for the mining address.
+// the SectorForeman for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
 	if node.isMining() {
 		return errors.New("Node is already mining")
@@ -747,8 +755,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 
-	if node.PorcelainAPI.SectorBuilderIsRunning() {
-		if err := node.PorcelainAPI.MinerSetup(ctx); err != nil {
+	if node.SectorForeman.IsRunning() {
+		if err := node.PorcelainAPI.MinerSetup(ctx, node.SectorForeman); err != nil {
 			return err
 		}
 	}
@@ -825,7 +833,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go func() {
 		for {
 			select {
-			case result := <-node.PorcelainAPI.SectorBuilderSectorSealResults():
+			case result := <-node.SectorForeman.SectorSealResults():
 				if result.SealingErr != nil {
 					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
 				} else if result.SealingResult != nil {
@@ -873,8 +881,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 					return
 				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
 					log.Info("auto-seal has been triggered")
-					if err := node.PorcelainAPI.SectorBuilderSealAllStagedSectors(node.miningCtx); err != nil {
-						log.Errorf("scheduler received error from node.SectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
+					if err := node.SectorForeman.SealAllStagedSectors(node.miningCtx); err != nil {
+						log.Errorf("scheduler received error from node.SectorForeman.SealAllStagedSectors (%s) - exiting", err.Error())
 						return
 					}
 				}
@@ -899,7 +907,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
+	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI, node.SectorForeman)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

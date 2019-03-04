@@ -2,7 +2,6 @@ package plumbing
 
 import (
 	"context"
-	"io"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -24,9 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
-	"github.com/filecoin-project/go-filecoin/plumbing/sf"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
-	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -41,34 +38,32 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	chain         chain.ReadStore
-	config        *cfg.Config
-	msgPool       *core.MessagePool
-	msgPreviewer  *msg.Previewer
-	msgQueryer    *msg.Queryer
-	msgSender     *msg.Sender
-	msgWaiter     *msg.Waiter
-	network       *ntwk.Network
-	sectorForeman *sf.SectorForeman
-	sigGetter     *mthdsig.Getter
-	storagedeals  *strgdls.Store
-	wallet        *wallet.Wallet
+	chain        chain.ReadStore
+	config       *cfg.Config
+	msgPool      *core.MessagePool
+	msgPreviewer *msg.Previewer
+	msgQueryer   *msg.Queryer
+	msgSender    *msg.Sender
+	msgWaiter    *msg.Waiter
+	network      *ntwk.Network
+	sigGetter    *mthdsig.Getter
+	storagedeals *strgdls.Store
+	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Chain         chain.ReadStore
-	Config        *cfg.Config
-	Deals         *strgdls.Store
-	MsgPool       *core.MessagePool
-	MsgPreviewer  *msg.Previewer
-	MsgQueryer    *msg.Queryer
-	MsgSender     *msg.Sender
-	MsgWaiter     *msg.Waiter
-	Network       *ntwk.Network
-	SectorForeman *sf.SectorForeman
-	SigGetter     *mthdsig.Getter
-	Wallet        *wallet.Wallet
+	Chain        chain.ReadStore
+	Config       *cfg.Config
+	Deals        *strgdls.Store
+	MsgPool      *core.MessagePool
+	MsgPreviewer *msg.Previewer
+	MsgQueryer   *msg.Queryer
+	MsgSender    *msg.Sender
+	MsgWaiter    *msg.Waiter
+	Network      *ntwk.Network
+	SigGetter    *mthdsig.Getter
+	Wallet       *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -76,18 +71,17 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		chain:         deps.Chain,
-		config:        deps.Config,
-		msgPool:       deps.MsgPool,
-		msgPreviewer:  deps.MsgPreviewer,
-		msgQueryer:    deps.MsgQueryer,
-		msgSender:     deps.MsgSender,
-		msgWaiter:     deps.MsgWaiter,
-		network:       deps.Network,
-		sectorForeman: deps.SectorForeman,
-		sigGetter:     deps.SigGetter,
-		storagedeals:  deps.Deals,
-		wallet:        deps.Wallet,
+		chain:        deps.Chain,
+		config:       deps.Config,
+		msgPool:      deps.MsgPool,
+		msgPreviewer: deps.MsgPreviewer,
+		msgQueryer:   deps.MsgQueryer,
+		msgSender:    deps.MsgSender,
+		msgWaiter:    deps.MsgWaiter,
+		network:      deps.Network,
+		sigGetter:    deps.SigGetter,
+		storagedeals: deps.Deals,
+		wallet:       deps.Wallet,
 	}
 }
 
@@ -210,15 +204,9 @@ func (api *API) PubSubPublish(topic string, data []byte) error {
 	return api.network.Publish(topic, data)
 }
 
-<<<<<<< HEAD
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network
 func (api *API) NetworkGetBandwidthStats() metrics.Stats {
 	return api.network.GetBandwidthStats()
-=======
-// NetworkSetStreamHandler sets the stream handler for the libp2p host
-func (api *API) NetworkSetStreamHandler(pid protocol.ID, handler net.StreamHandler) {
-	api.network.SetStreamHandler(pid, handler)
->>>>>>> Added SectorBuilderAddPiece and GeneratePoST methods to plumbing for storage miner
 }
 
 // NetworkGetPeerAddresses gets the current addresses of the node
@@ -231,51 +219,9 @@ func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
 }
 
-<<<<<<< HEAD
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
 func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
 	return api.network.FindProvidersAsync(ctx, key, count)
-=======
-// SectorBuilderAddPiece adds a piece to the sectorbuilder
-func (api *API) SectorBuilderAddPiece(ctx context.Context, pi *sectorbuilder.PieceInfo) (sectorID uint64, err error) {
-	return api.sectorForeman.AddPiece(ctx, pi)
-}
-
-// SectorBuilderIsRunning returns a boolean representing whether the sector
-// builder is present or not
-func (api *API) SectorBuilderIsRunning() bool {
-	return api.sectorForeman.IsRunning()
-}
-
-// SectorBuilderReadPieceFromSealedSector reads a piece from a sealed sector
-func (api *API) SectorBuilderReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
-	return api.sectorForeman.ReadPieceFromSealedSector(pieceCid)
-}
-
-// SectorBuilderSealAllStagedSectors seals all staged sectors on the sector builder
-func (api *API) SectorBuilderSealAllStagedSectors(ctx context.Context) error {
-	return api.sectorForeman.SealAllStagedSectors(ctx)
-}
-
-// SectorBuilderSectorSealResults returns results from the sector builder
-func (api *API) SectorBuilderSectorSealResults() <-chan sectorbuilder.SectorSealResult {
-	return api.sectorForeman.SectorSealResults()
-}
-
-// SectorBuilderStart starts the sector builder with a given address and sector id
-func (api *API) SectorBuilderStart(minerAddr address.Address, lastUsedSectorID uint64) error {
-	return api.sectorForeman.Start(minerAddr, lastUsedSectorID)
-}
-
-// SectorBuilderStop stops the sectorbuilder
-func (api *API) SectorBuilderStop() error {
-	return api.sectorForeman.Stop()
->>>>>>> Added SectorBuilderAddPiece and GeneratePoST methods to plumbing for storage miner
-}
-
-// SectorBuilderGeneratePoST generates PoSt for the sectorbuilder
-func (api *API) SectorBuilderGeneratePoST(req sectorbuilder.GeneratePoSTRequest) (sectorbuilder.GeneratePoSTResponse, error) {
-	return api.sectorForeman.GeneratePoST(req)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.
