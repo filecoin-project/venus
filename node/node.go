@@ -46,7 +46,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
@@ -136,10 +135,8 @@ type Node struct {
 	// it contains all persistent artifacts of the filecoin node
 	Repo repo.Repo
 
-	// SectorForeman manages the SectorBuilder for the node and plumbing/porcelain.
-	// It's separated from both the node and plumbing porcelain to prevent coupling
-	// the two together.
-	SectorForeman *sectorforeman.SectorForeman
+	// SectorBuilder is used by the miner to fill and seal sectors.
+	sectorBuilder sectorbuilder.SectorBuilder
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -403,8 +400,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	sectorForeman := sectorforeman.NewSectorForeman(nc.Repo, bservice)
-
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
@@ -488,7 +483,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Only set these up if there is a miner configured.
 	if _, err := node.miningAddress(); err == nil {
-		if err := setupMiner(ctx, node.PorcelainAPI, node.SectorForeman); err != nil {
+		if err := node.setupMining(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
@@ -514,7 +509,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	node.RetrievalClient = retrieval.NewClient(node)
-	node.RetrievalMiner = retrieval.NewMiner(node.PorcelainAPI, node.SectorForeman)
+	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
 	blkSub, err := node.PorcelainAPI.PubSubSubscribe(BlockTopic)
@@ -580,6 +575,23 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 		}, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
 		go ahbs.Start(ctx)
 	}
+	return nil
+}
+
+func (node *Node) setupMining(ctx context.Context) error {
+	// configure the underlying sector store, defaulting to the non-test version
+	sectorStoreType := proofs.Live
+	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
+		sectorStoreType = proofs.Test
+	}
+
+	// initialize a sector builder
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node, sectorStoreType)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize sector builder")
+	}
+	node.sectorBuilder = sectorBuilder
+
 	return nil
 }
 
@@ -682,8 +694,11 @@ func (node *Node) Stop(ctx context.Context) {
 	node.cancelSubscriptions()
 	node.ChainReader.Stop()
 
-	if err := node.SectorForeman.Stop(); err != nil {
-		fmt.Print(err)
+	if node.SectorBuilder() != nil {
+		if err := node.SectorBuilder().Close(); err != nil {
+			fmt.Printf("error closing sector builder: %s\n", err)
+		}
+		node.sectorBuilder = nil
 	}
 
 	if err := node.Host().Close(); err != nil {
@@ -746,7 +761,7 @@ func StartMining(ctx context.Context, node *Node) error {
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
-// the SectorForeman for the mining address.
+// the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
 	if node.isMining() {
 		return errors.New("Node is already mining")
@@ -756,8 +771,9 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 
-	if !node.SectorForeman.IsRunning() {
-		if err := setupMiner(ctx, node.PorcelainAPI, node.SectorForeman); err != nil {
+	// ensure we have a sector builder
+	if node.SectorBuilder() == nil {
+		if err := node.setupMining(ctx); err != nil {
 			return err
 		}
 	}
@@ -834,7 +850,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go func() {
 		for {
 			select {
-			case result := <-node.SectorForeman.SectorSealResults():
+			case result := <-node.SectorBuilder().SectorSealResults():
 				if result.SealingErr != nil {
 					log.Errorf("failed to seal sector with id %d: %s", result.SectorID, result.SealingErr.Error())
 				} else if result.SealingResult != nil {
@@ -882,8 +898,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 					return
 				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
 					log.Info("auto-seal has been triggered")
-					if err := node.SectorForeman.SealAllStagedSectors(node.miningCtx); err != nil {
-						log.Errorf("scheduler received error from node.SectorForeman.SealAllStagedSectors (%s) - exiting", err.Error())
+					if err := node.SectorBuilder().SealAllStagedSectors(node.miningCtx); err != nil {
+						log.Errorf("scheduler received error from node.SectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
 						return
 					}
 				}
@@ -897,6 +913,62 @@ func (node *Node) StartMining(ctx context.Context) error {
 	return nil
 }
 
+func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
+	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getLastUsedSectorID",
+	)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
+	}
+
+	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to convert returned ABI value")
+	}
+	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
+	if !ok {
+		return 0, errors.New("failed to convert returned ABI value to uint64")
+	}
+
+	return lastUsedSectorID, nil
+}
+
+func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType proofs.SectorStoreType) (sectorbuilder.SectorBuilder, error) {
+	minerAddr, err := node.miningAddress()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get node's mining address")
+	}
+
+	lastUsedSectorID, err := node.getLastUsedSectorID(ctx, minerAddr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
+	}
+
+	// TODO: Where should we store the RustSectorBuilder metadata? Currently, we
+	// configure the RustSectorBuilder to store its metadata in the staging
+	// directory.
+
+	cfg := sectorbuilder.RustSectorBuilderConfig{
+		BlockService:     node.blockservice,
+		LastUsedSectorID: lastUsedSectorID,
+		MetadataDir:      node.Repo.StagingDir(),
+		MinerAddr:        minerAddr,
+		SealedSectorDir:  node.Repo.SealedDir(),
+		SectorStoreType:  sectorStoreType,
+		StagedSectorDir:  node.Repo.StagingDir(),
+	}
+
+	sb, err := sectorbuilder.NewRustSectorBuilder(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf("failed to initialize sector builder for miner %s", minerAddr.String()))
+	}
+
+	return sb, nil
+}
+
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
 	minerAddr, err := node.miningAddress()
 	if err != nil {
@@ -908,7 +980,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI, node.SectorForeman)
+	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
@@ -988,6 +1060,11 @@ func (node *Node) Host() host.Host {
 	return node.host
 }
 
+// SectorBuilder returns the nodes sectorBuilder.
+func (node *Node) SectorBuilder() sectorbuilder.SectorBuilder {
+	return node.sectorBuilder
+}
+
 // BlockService returns the nodes blockservice.
 func (node *Node) BlockService() bserv.BlockService {
 	return node.blockservice
@@ -1001,58 +1078,4 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // ChainReadStore returns the node's chain store.
 func (node *Node) ChainReadStore() chain.ReadStore {
 	return node.ChainReader
-}
-
-// setupMiner starts the sector builder with the default miner address
-// from config and the last used sector id fetched from the miner actor.
-// TODO: when mining start is moved into plumbing/porcelain, make this private
-func setupMiner(ctx context.Context, plumbing *porcelain.API, sf *sectorforeman.SectorForeman) error {
-	if sf.IsRunning() {
-		return nil
-	}
-
-	minerAddrInterface, err := plumbing.ConfigGet("mining.minerAddress")
-	if err != nil {
-		return errors.Wrap(err, "failed to get node's mining address")
-	}
-	minerAddr, success := minerAddrInterface.(address.Address)
-	if !success {
-		return fmt.Errorf("invalid miner address: %T %v", minerAddrInterface, minerAddrInterface)
-	}
-
-	lastUsedSectorID, err := sectorBuilderGetLastUsedID(ctx, plumbing, minerAddr)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
-	}
-
-	err = sf.Start(minerAddr, lastUsedSectorID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to initialize sector builder for miner %s", minerAddr.String())
-	}
-
-	return nil
-}
-
-// sectorBuilderGetLastUsedID gets the last sector id used by the sectorbuilder
-func sectorBuilderGetLastUsedID(ctx context.Context, plumbing *porcelain.API, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := plumbing.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getLastUsedSectorID",
-	)
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
-	}
-
-	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to convert returned ABI value")
-	}
-	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
-	if !ok {
-		return 0, errors.New("failed to convert returned ABI value to uint64")
-	}
-
-	return lastUsedSectorID, nil
 }

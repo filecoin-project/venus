@@ -149,7 +149,7 @@ func makeNodes(t *testing.T, assertions *assert.Assertions, numNodes int) (addre
 	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI, minerNode.SectorForeman)
+	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
 	assertions.NoError(err)
 
 	nodes := []*Node{minerNode}

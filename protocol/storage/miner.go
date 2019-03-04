@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/node/sectorforeman"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -92,6 +91,7 @@ type node interface {
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
+	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
 // generatePostInput is a struct containing sector id and related commitments
@@ -441,7 +441,7 @@ func (sm *Miner) processStorageDeal(c cid.Cid) {
 	//
 	// Also, this pattern of not being able to set up book-keeping ahead of
 	// the call is inelegant.
-	sectorID, err := sm.sectorForeman.AddPiece(ctx, pi)
+	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, pi)
 	if err != nil {
 		fail("failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
 		return
@@ -735,7 +735,7 @@ func (sm *Miner) generatePoSt(commRs []proofs.CommR, seed proofs.PoStChallengeSe
 		CommRs:        commRs,
 		ChallengeSeed: seed,
 	}
-	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
+	res, err := sm.node.SectorBuilder().GeneratePoST(req)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
