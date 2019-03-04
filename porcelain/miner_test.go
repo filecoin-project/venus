@@ -452,16 +452,6 @@ func (stp *minerSetupTestPlumbing) MessageQuery(
 	return [][]byte{ret}, signature, nil
 }
 
-func (stp *minerSetupTestPlumbing) SectorBuilderIsRunning() bool {
-	return false
-}
-
-func (stp *minerSetupTestPlumbing) SectorBuilderStart(addr address.Address, sectorID uint64) error {
-	stp.assert.Equal(stp.minerAddress, addr)
-	stp.assert.Equal(stp.sectorID, sectorID)
-	return nil
-}
-
 func TestMinerSetup(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
