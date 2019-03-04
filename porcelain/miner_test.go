@@ -22,6 +22,84 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
+type minerCreate struct {
+	wallet *wallet.Wallet
+}
+
+func newMinerCreate(require *require.Assertions) *minerCreate {
+	repo := repo.NewInMemoryRepo()
+	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
+	wallet := wallet.New(backend)
+	require.NoError(err)
+	return &minerCreate{
+		wallet: wallet,
+	}
+}
+
+func (mpc *minerCreate) ConfigGet(dottedPath string) (interface{}, error) {
+	return nil, nil
+}
+
+func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
+	return nil
+}
+
+func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
+}
+
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	return cid.Cid{}, nil
+}
+
+func (mpc *minerCreate) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+	return cid.Cid{}, nil
+}
+
+func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	return cid.Cid{}, nil
+}
+
+func (mpc *minerCreate) NetworkGetPeerID() peer.ID {
+	return peer.ID("")
+}
+
+func (mpc *minerCreate) WalletFind(address address.Address) (wallet.Backend, error) {
+	return mpc.wallet.Find(address)
+}
+
+func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
+	return mpc.wallet.GetPubKeyForAddress(address)
+}
+
+func (mpc *minerCreate) WalletHasAddress(addr address.Address) bool {
+	return mpc.wallet.HasAddress(address)
+}
+
+func TestMinerCreate(t *testing.T) {
+	t.Run("returns the price given by message preview", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		ctx := context.Background()
+		plumbing := newMinerCreate(require)
+		collateral := types.NewAttoFILFromFIL(1)
+
+		addr, err := MinerCreate(
+			ctx,
+			plumbing,
+			address.Address{},
+			types.NewGasPrice(0),
+			types.NewGasUnits(100),
+			1,
+			"",
+			collateral,
+		)
+		require.NoError(err)
+		assert.Equal(addr, &address.Address{})
+	})
+}
+
 type minerPreviewCreate struct {
 	wallet *wallet.Wallet
 }
