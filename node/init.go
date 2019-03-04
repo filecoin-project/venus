@@ -58,8 +58,6 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 		o(cfg)
 	}
 
-	// TODO(ipfs): make the blockstore and blockservice have the same interfaces
-	// so that this becomes less painful
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 

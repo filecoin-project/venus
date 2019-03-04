@@ -2,19 +2,19 @@ package node
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"testing"
 	"time"
 
-	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func connect(t *testing.T, nd1, nd2 *Node) {
@@ -29,21 +29,6 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 	}
 }
 
-func stopNodes(nds []*Node) {
-	for _, nd := range nds {
-		nd.Stop(context.Background())
-	}
-}
-
-func startNodes(t *testing.T, nds []*Node) {
-	t.Helper()
-	for _, nd := range nds {
-		if err := nd.Start(context.Background()); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
 func TestBlockPropsManyNodes(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,8 +37,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	numNodes := 4
 	minerAddr, nodes := makeNodes(ctx, t, assert, numNodes)
-	startNodes(t, nodes)
-	defer stopNodes(nodes)
+	StartNodes(t, nodes)
+	defer StopNodes(nodes)
 
 	minerNode := nodes[0]
 
@@ -102,8 +87,8 @@ func TestChainSync(t *testing.T) {
 	assert := assert.New(t)
 
 	minerAddr, nodes := makeNodes(ctx, t, assert, 2)
-	startNodes(t, nodes)
-	defer stopNodes(nodes)
+	StartNodes(t, nodes)
+	defer StopNodes(nodes)
 
 	baseTS := nodes[0].ChainReader.Head()
 

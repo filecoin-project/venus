@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestPing(t *testing.T) {
@@ -18,7 +18,8 @@ func TestPing(t *testing.T) {
 	require := require.New(t)
 	ctx := context.Background()
 
-	nodes := node.MakeNodesStarted(t, 2, false, true)
+	nodes := node.MakeNodesUnstarted(t, 2, false)
+	node.StartNodes(t, nodes)
 	api0 := New(nodes[0])
 	p1 := nodes[1].Host().ID()
 	pi1 := pstore.PeerInfo{

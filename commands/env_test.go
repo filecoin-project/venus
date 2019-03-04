@@ -20,7 +20,7 @@ func TestEnv(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-	err := node.Init(ctx, r, consensus.InitGenesis)
+	err := node.Init(ctx, r, consensus.DefaultGenesis)
 	assert.NoError(err)
 
 	opts, err := node.OptionsFromRepo(r)

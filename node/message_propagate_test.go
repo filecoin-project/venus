@@ -19,9 +19,9 @@ func TestMessagePropagation(t *testing.T) {
 	defer cancel()
 	require := require.New(t)
 
-	nodes := MakeNodesUnstarted(t, 5, false, true)
-	startNodes(t, nodes)
-	defer stopNodes(nodes)
+	nodes := MakeNodesUnstarted(t, 5, false)
+	StartNodes(t, nodes)
+	defer StopNodes(nodes)
 	connect(t, nodes[0], nodes[1])
 	connect(t, nodes[1], nodes[2])
 	connect(t, nodes[2], nodes[3])

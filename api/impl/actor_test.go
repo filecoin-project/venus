@@ -54,7 +54,7 @@ func TestActorLs(t *testing.T) {
 
 		nd := node.MakeOfflineNode(t)
 
-		genBlock, err := consensus.InitGenesis(nd.CborStore(), nd.Blockstore)
+		genBlock, err := consensus.DefaultGenesis(nd.CborStore(), nd.Blockstore)
 		require.NoError(err)
 		b1 := types.NewBlockForTest(genBlock, 1)
 		ts := testhelpers.RequireNewTipSet(require, b1)
