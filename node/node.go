@@ -755,7 +755,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to get mining address")
 	}
 
-	if node.SectorForeman.IsRunning() {
+	if !node.SectorForeman.IsRunning() {
 		if err := node.PorcelainAPI.MinerSetup(ctx, node.SectorForeman); err != nil {
 			return err
 		}
