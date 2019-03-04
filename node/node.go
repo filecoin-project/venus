@@ -36,6 +36,7 @@ import (
 	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
 	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht/opts"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -487,7 +488,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Only set these up if there is a miner configured.
 	if _, err := node.miningAddress(); err == nil {
-		if err := node.PorcelainAPI.MinerSetup(ctx, node.SectorForeman); err != nil {
+		if err := setupMiner(ctx, node.PorcelainAPI, node.SectorForeman); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
@@ -756,7 +757,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	}
 
 	if !node.SectorForeman.IsRunning() {
-		if err := node.PorcelainAPI.MinerSetup(ctx, node.SectorForeman); err != nil {
+		if err := setupMiner(ctx, node.PorcelainAPI, node.SectorForeman); err != nil {
 			return err
 		}
 	}
@@ -1000,4 +1001,58 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // ChainReadStore returns the node's chain store.
 func (node *Node) ChainReadStore() chain.ReadStore {
 	return node.ChainReader
+}
+
+// setupMiner starts the sector builder with the default miner address
+// from config and the last used sector id fetched from the miner actor.
+// TODO: when mining start is moved into plumbing/porcelain, make this private
+func setupMiner(ctx context.Context, plumbing *porcelain.API, sf *sectorforeman.SectorForeman) error {
+	if sf.IsRunning() {
+		return nil
+	}
+
+	minerAddrInterface, err := plumbing.ConfigGet("mining.minerAddress")
+	if err != nil {
+		return errors.Wrap(err, "failed to get node's mining address")
+	}
+	minerAddr, success := minerAddrInterface.(address.Address)
+	if !success {
+		return fmt.Errorf("invalid miner address: %T %v", minerAddrInterface, minerAddrInterface)
+	}
+
+	lastUsedSectorID, err := sectorBuilderGetLastUsedID(ctx, plumbing, minerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
+	}
+
+	err = sf.Start(minerAddr, lastUsedSectorID)
+	if err != nil {
+		return errors.Wrapf(err, "failed to initialize sector builder for miner %s", minerAddr.String())
+	}
+
+	return nil
+}
+
+// sectorBuilderGetLastUsedID gets the last sector id used by the sectorbuilder
+func sectorBuilderGetLastUsedID(ctx context.Context, plumbing *porcelain.API, minerAddr address.Address) (uint64, error) {
+	rets, methodSignature, err := plumbing.MessageQuery(
+		ctx,
+		address.Address{},
+		minerAddr,
+		"getLastUsedSectorID",
+	)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
+	}
+
+	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to convert returned ABI value")
+	}
+	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
+	if !ok {
+		return 0, errors.New("failed to convert returned ABI value to uint64")
+	}
+
+	return lastUsedSectorID, nil
 }
