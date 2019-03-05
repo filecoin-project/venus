@@ -59,21 +59,11 @@ func MinerCreate(
 		pid = plumbing.NetworkGetPeerID()
 	}
 
-	// Only create a miner if we don't already have one.
-	cfgAddr, err := plumbing.ConfigGet("mining.minerAddress")
-	if err != nil {
-		return nil, err
-	}
-	if _, success := cfgAddr.(address.Address); !success {
-		return nil, fmt.Errorf("can only have one miner per node")
-	}
-
 	ctx = log.Start(ctx, "Node.CreateMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
 
-	pubKey := []byte{}
 	addrInterface, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return nil, err
@@ -82,7 +72,12 @@ func MinerCreate(
 	if !success {
 		return nil, fmt.Errorf("failed to read miner address")
 	}
-	if (addr != address.Address{}) && plumbing.WalletHasAddress(addr) {
+	if (addr != address.Address{}) {
+		return nil, fmt.Errorf("can only have one miner per node")
+	}
+
+	pubKey := []byte{}
+	if plumbing.WalletHasAddress(addr) {
 		pubKey, err = plumbing.WalletGetPubKeyForAddress(addr)
 		if err != nil {
 			return nil, err
