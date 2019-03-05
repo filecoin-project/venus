@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -23,25 +24,28 @@ import (
 )
 
 type minerCreate struct {
-	wallet *wallet.Wallet
+	config  *cfg.Config
+	require *require.Assertions
+	wallet  *wallet.Wallet
 }
 
 func newMinerCreate(require *require.Assertions) *minerCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
-	wallet := wallet.New(backend)
 	require.NoError(err)
 	return &minerCreate{
-		wallet: wallet,
+		config:  cfg.NewConfig(repo),
+		wallet:  wallet.New(backend),
+		require: require,
 	}
 }
 
 func (mpc *minerCreate) ConfigGet(dottedPath string) (interface{}, error) {
-	return nil, nil
+	return mpc.config.Get(dottedPath)
 }
 
 func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
-	return nil
+	return mpc.config.Set(dottedPath, paramJSON)
 }
 
 func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
@@ -52,32 +56,48 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 	return cid.Cid{}, nil
 }
 
-func (mpc *minerCreate) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	return cid.Cid{}, nil
+func (mpc *minerCreate) MessageQuery(
+	ctx context.Context,
+	optFrom,
+	to address.Address,
+	method string,
+	params ...interface{},
+) ([][]byte, *exec.FunctionSignature, error) {
+	signature := &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Address},
+	}
+	val := abi.Value{
+		Type: abi.Address,
+		Val:  address.Address{},
+	}
+	ret, err := val.Serialize()
+	mpc.require.NoError(err)
+	return [][]byte{ret}, signature, nil
 }
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	return cid.Cid{}, nil
+	return nil
 }
 
 func (mpc *minerCreate) NetworkGetPeerID() peer.ID {
 	return peer.ID("")
 }
 
-func (mpc *minerCreate) WalletFind(address address.Address) (wallet.Backend, error) {
-	return mpc.wallet.Find(address)
+func (mpc *minerCreate) WalletFind(addr address.Address) (wallet.Backend, error) {
+	return mpc.wallet.Find(addr)
 }
 
 func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
-	return mpc.wallet.GetPubKeyForAddress(address)
+	return mpc.wallet.GetPubKeyForAddress(addr)
 }
 
 func (mpc *minerCreate) WalletHasAddress(addr address.Address) bool {
-	return mpc.wallet.HasAddress(address)
+	return mpc.wallet.HasAddress(addr)
 }
 
 func TestMinerCreate(t *testing.T) {
-	t.Run("returns the price given by message preview", func(t *testing.T) {
+	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
