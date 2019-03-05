@@ -47,7 +47,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
 
-		genesisBlock, err := consensus.InitGenesis(cistore, bstore)
+		genesisBlock, err := consensus.DefaultGenesis(cistore, bstore)
 		require.NoError(err)
 
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, genesisBlock.Cid(), verifier)
@@ -124,7 +124,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	ctx := context.Background()
 
 	cistore, bstore, verifier := setupCborBlockstoreProofs()
-	genesisBlock, err := consensus.InitGenesis(cistore, bstore)
+	genesisBlock, err := consensus.DefaultGenesis(cistore, bstore)
 	require.NoError(err)
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {

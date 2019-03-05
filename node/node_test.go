@@ -39,7 +39,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false, true)[0]
+	nd := MakeNodesUnstarted(t, 1, false)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop(context.Background())
@@ -50,7 +50,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false, true)
+	nds := MakeNodesUnstarted(t, 2, false)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -76,7 +76,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, consensus.InitGenesis))
+		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -93,7 +93,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		ctx := context.Background()
 
 		// These are two bootstrap nodes we'll connect to.
-		nds := MakeNodesStarted(t, 2, false, true)
+		nds := MakeNodesUnstarted(t, 2, false)
+		StartNodes(t, nds)
 		nd1, nd2 := nds[0], nds[1]
 
 		// Gotta be a better way to do this?
@@ -104,7 +105,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, consensus.InitGenesis))
+		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 		opts, err := OptionsFromRepo(r)
 		require.NoError(err)
@@ -294,7 +295,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true, false)[0]
+	node := MakeNodesUnstarted(t, 1, true)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
@@ -341,7 +342,7 @@ func TestOptionWithError(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r, consensus.InitGenesis))
+	assert.NoError(Init(ctx, r, consensus.DefaultGenesis))
 
 	opts, err := OptionsFromRepo(r)
 	assert.NoError(err)
@@ -410,7 +411,7 @@ func TestNodeConfig(t *testing.T) {
 		ConfigOpts:  configOptions,
 		InitOpts:    initOpts,
 		OfflineMode: true,
-		GenesisFunc: consensus.InitGenesis,
+		GenesisFunc: consensus.DefaultGenesis,
 	}
 
 	n := GenNode(t, &tno)

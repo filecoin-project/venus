@@ -78,7 +78,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		} // else err may be set and returned as normal
 	}()
 
-	gif := consensus.InitGenesis
+	gif := consensus.DefaultGenesis
 
 	var initopts []node.InitOpt
 	if cfg.PeerKeyFile != "" {
