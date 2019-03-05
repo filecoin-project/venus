@@ -327,7 +327,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	// submit post
 	proof := th.MakeRandomPoSTProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", proof[:])
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
@@ -340,7 +340,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	// fail to submit inside the proving period
 	proof = th.MakeRandomPoSTProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", proof[:])
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
 }

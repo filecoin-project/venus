@@ -28,9 +28,6 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// PoStProofLength is the length of a single proof-of-spacetime proof (in bytes).
-const PoStProofLength = 192
-
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
@@ -226,7 +223,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
+		Params: []abi.Type{abi.PoStProofs},
 		Return: []abi.Type{},
 	},
 	"getProvingPeriodStart": &exec.FunctionSignature{
@@ -634,22 +631,9 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs [][]byte) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	// TODO: The postProofs parameter type should be []proofs.PoStProof instead
-	// of [][]byte. This would prevent us from needing to perform this runtime
-	// length check and would prevent us from needing to map the byte slices to
-	// proofs.PoStProof.
-	pps := make([]proofs.PoStProof, len(postProofs))
-	for i, postProofSlice := range postProofs {
-		if len(postProofSlice) != PoStProofLength {
-			return 0, errors.NewRevertError("invalid sized proof")
-		}
-
-		copy(pps[i][:], postProofSlice[:])
 	}
 
 	var state State
@@ -679,7 +663,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs [][]byte) (uint8, err
 			ChallengeSeed: proofs.PoStChallengeSeed{},
 			CommRs:        commRs,
 			Faults:        []uint64{},
-			Proofs:        pps,
+			Proofs:        postProofs,
 			StoreType:     sectorStoreType,
 		}
 

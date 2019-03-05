@@ -748,7 +748,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 		commRs[i] = input.commR
 	}
 
-	proof, faults, err := sm.generatePoSt(commRs, seed)
+	proofs, faults, err := sm.generatePoSt(commRs, seed)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return
@@ -784,7 +784,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePost
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
 	gasLimit := types.NewGasUnits(submitPostGasLimit)
 
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", proof[:])
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", proofs)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

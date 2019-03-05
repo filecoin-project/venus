@@ -10,6 +10,7 @@ import (
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -46,6 +47,8 @@ const (
 	SectorID
 	// CommitmentsMap is a map of stringified sector id (uint64) to commitments
 	CommitmentsMap
+	// PoStProofs is an array of proof-of-spacetime proofs
+	PoStProofs
 )
 
 func (t Type) String() string {
@@ -76,6 +79,8 @@ func (t Type) String() string {
 		return "uint64"
 	case CommitmentsMap:
 		return "map[string]Commitments"
+	case PoStProofs:
+		return "[]PoStProof"
 	default:
 		return "<unknown type>"
 	}
@@ -115,6 +120,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(uint64))
 	case CommitmentsMap:
 		return fmt.Sprint(av.Val.(map[string]types.Commitments))
+	case PoStProofs:
+		return fmt.Sprint(av.Val.([]proofs.PoStProof))
 	default:
 		return "<unknown type>"
 	}
@@ -214,6 +221,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(m)
+	case PoStProofs:
+		m, ok := av.Val.([]proofs.PoStProof)
+		if !ok {
+			return nil, &typeError{[]proofs.PoStProof{}, av.Val}
+		}
+
+		return cbor.DumpObject(m)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -253,6 +267,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: SectorID, Val: v})
 		case map[string]types.Commitments:
 			out = append(out, &Value{Type: CommitmentsMap, Val: v})
+		case []proofs.PoStProof:
+			out = append(out, &Value{Type: PoStProofs, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -347,7 +363,6 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  leb128.ToUInt64(data),
 		}, nil
-
 	case CommitmentsMap:
 		var m map[string]types.Commitments
 		if err := cbor.DecodeInto(data, &m); err != nil {
@@ -356,6 +371,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		return &Value{
 			Type: t,
 			Val:  m,
+		}, nil
+	case PoStProofs:
+		var slice []proofs.PoStProof
+		if err := cbor.DecodeInto(data, &slice); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  slice,
 		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
@@ -377,6 +401,7 @@ var typeTable = map[Type]reflect.Type{
 	PeerID:         reflect.TypeOf(peer.ID("")),
 	SectorID:       reflect.TypeOf(uint64(0)),
 	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
+	PoStProofs:     reflect.TypeOf([]proofs.PoStProof{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type
