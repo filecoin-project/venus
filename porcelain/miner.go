@@ -118,6 +118,14 @@ func MinerCreate(
 		return nil, err
 	}
 
+	if err = persistMinerAddress(ctx, plumbing, minerAddr); err != nil {
+		return nil, err
+	}
+
+	return &minerAddr, nil
+}
+
+func persistMinerAddress(ctx context.Context, plumbing mcAPI, minerAddr address.Address) error {
 	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1843
 	res, _, err := plumbing.MessageQuery(
 		ctx,
@@ -126,24 +134,23 @@ func MinerCreate(
 		"getOwner",
 	)
 	if err != nil {
-		return &address.Address{}, errors.Wrap(err, "failed to getOwner")
+		return errors.Wrap(err, "failed to getOwner")
 	}
 
 	blockSignerAddr, err := address.NewFromBytes(res[0])
 	if err != nil {
-		return &minerAddr, err
+		return err
 	}
 
-	err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String())
-	if err != nil {
-		return &minerAddr, err
-	}
-	err = plumbing.ConfigSet("mining.blockSignerAddress", blockSignerAddr.String())
-	if err != nil {
-		return &minerAddr, err
+	if err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String()); err != nil {
+		return err
 	}
 
-	return &minerAddr, nil
+	if err = plumbing.ConfigSet("mining.blockSignerAddress", blockSignerAddr.String()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
