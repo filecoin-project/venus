@@ -93,8 +93,8 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	challengeSeedCBytes := C.CBytes(req.ChallengeSeed[:])
 	defer C.free(challengeSeedCBytes)
 
-	proofCBytes := C.CBytes(req.Proof[:])
-	defer C.free(proofCBytes)
+	proofsPtr, proofsLen := cPoStProofs(req.Proofs)
+	defer C.free(unsafe.Pointer(proofsPtr))
 
 	// allocate fixed-length array of uint64s in C heap
 	faultsPtr, faultsSize := cUint64s(req.Faults)
@@ -111,7 +111,8 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(challengeSeedCBytes),
-		(*[192]C.uint8_t)(proofCBytes),
+		proofsPtr,
+		proofsLen,
 		faultsPtr,
 		faultsSize,
 	)))
@@ -127,6 +128,21 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 		// bool(resPtr.is_valid),
 		IsValid: true,
 	}, nil
+}
+
+// cPoStProofs copies bytes from the provided PoSt proofs to a C array and
+// returns a pointer to that array and its size. Callers are responsible for
+// freeing the pointer. If they do not do that, the array will be leaked.
+func cPoStProofs(src []PoStProof) (*C.uint8_t, C.size_t) {
+	flattenedLen := C.size_t(192 * len(src))
+
+	// flattening the byte slice makes it easier to copy into the C heap
+	flattened := make([]byte, flattenedLen)
+	for idx, proof := range src {
+		copy(flattened[(192*idx):(192*(1+idx))], proof[:])
+	}
+
+	return (*C.uint8_t)(C.CBytes(flattened)), flattenedLen
 }
 
 // cUint64s copies the contents of a slice into a C heap-allocated array and

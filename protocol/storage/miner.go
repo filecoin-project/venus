@@ -723,17 +723,17 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) (proofs.PoStProof, []uint64, error) {
-	req := sectorbuilder.GeneratePoSTRequest{
+func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) ([]proofs.PoStProof, []uint64, error) {
+	req := sectorbuilder.GeneratePoStRequest{
 		CommRs:        commRs,
 		ChallengeSeed: challenge,
 	}
-	res, err := sm.node.SectorBuilder().GeneratePoST(req)
+	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
 	if err != nil {
-		return proofs.PoStProof{}, nil, errors.Wrap(err, "failed to generate PoSt")
+		return nil, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
 
-	return res.Proof, res.Faults, nil
+	return res.Proofs, res.Faults, nil
 }
 
 func (sm *Miner) submitPoSt(start, end *types.BlockHeight, inputs []generatePostInput) {

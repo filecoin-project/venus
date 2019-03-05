@@ -634,13 +634,22 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs [][]byte) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	if len(proof) != PoStProofLength {
-		return 0, errors.NewRevertError("invalid sized proof")
+	// TODO: The postProofs parameter type should be []proofs.PoStProof instead
+	// of [][]byte. This would prevent us from needing to perform this runtime
+	// length check and would prevent us from needing to map the byte slices to
+	// proofs.PoStProof.
+	pps := make([]proofs.PoStProof, len(postProofs))
+	for i, postProofSlice := range postProofs {
+		if len(postProofSlice) != PoStProofLength {
+			return 0, errors.NewRevertError("invalid sized proof")
+		}
+
+		copy(pps[i][:], postProofSlice[:])
 	}
 
 	var state State
@@ -656,10 +665,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			commRs = append(commRs, v.CommR)
 		}
 
-		// copy message-bytes into PoStProof slice
-		postProof := proofs.PoStProof{}
-		copy(postProof[:], proof)
-
 		// See comment above, in CommitSector.
 		//
 		// It is undefined behavior for a miner in "Live" mode to verify a proof
@@ -674,7 +679,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			ChallengeSeed: proofs.PoStChallengeSeed{},
 			CommRs:        commRs,
 			Faults:        []uint64{},
-			Proof:         postProof,
+			Proofs:        pps,
 			StoreType:     sectorStoreType,
 		}
 

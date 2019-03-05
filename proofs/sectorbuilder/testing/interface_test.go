@@ -311,7 +311,7 @@ func TestSectorBuilder(t *testing.T) {
 			challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
 
 			// generate a proof-of-spacetime
-			gres, gerr := h.SectorBuilder.GeneratePoST(sectorbuilder.GeneratePoSTRequest{
+			gres, gerr := h.SectorBuilder.GeneratePoSt(sectorbuilder.GeneratePoStRequest{
 				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				ChallengeSeed: challengeSeed,
 			})
@@ -319,7 +319,7 @@ func TestSectorBuilder(t *testing.T) {
 
 			// TODO: Replace these hard-coded values (in rust-fil-proofs) with an
 			// end-to-end PoST test over a small number of replica commitments
-			require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proof[0]))
+			require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proofs[0][0]))
 			require.Equal(t, 1, len(gres.Faults))
 			require.Equal(t, uint64(0), gres.Faults[0])
 
@@ -328,7 +328,7 @@ func TestSectorBuilder(t *testing.T) {
 				ChallengeSeed: proofs.PoStChallengeSeed{},
 				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				Faults:        gres.Faults,
-				Proof:         gres.Proof,
+				Proofs:        gres.Proofs,
 				StoreType:     proofs.Test,
 			})
 

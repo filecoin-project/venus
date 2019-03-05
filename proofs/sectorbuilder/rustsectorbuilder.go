@@ -305,9 +305,9 @@ func (sb *RustSectorBuilder) Close() error {
 	return nil
 }
 
-// GeneratePoST produces a proof-of-spacetime for the provided commitment replicas.
-func (sb *RustSectorBuilder) GeneratePoST(req GeneratePoSTRequest) (GeneratePoSTResponse, error) {
-	defer elapsed("GeneratePoST")()
+// GeneratePoSt produces a proof-of-spacetime for the provided commitment replicas.
+func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoStResponse, error) {
+	defer elapsed("GeneratePoSt")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
 	flattened := make([]byte, 32*len(req.CommRs))
@@ -321,23 +321,38 @@ func (sb *RustSectorBuilder) GeneratePoST(req GeneratePoSTRequest) (GeneratePoST
 
 	challengeSeedPtr := unsafe.Pointer(&(req.ChallengeSeed)[0])
 
-	// a mutable pointer to a GeneratePoSTResponse C-struct
-	resPtr := (*C.GeneratePoSTResponse)(unsafe.Pointer(C.generate_post((*C.SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
+	// a mutable pointer to a GeneratePoStResponse C-struct
+	resPtr := (*C.GeneratePoStResponse)(unsafe.Pointer(C.generate_post((*C.SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
 	defer C.destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
-		return GeneratePoSTResponse{}, errors.New(C.GoString(resPtr.error_msg))
+		return GeneratePoStResponse{}, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	// copy proof bytes back to Go from C
-	proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.proof[0]), C.int(proofs.SnarkBytesLen))
-	var proof proofs.PoStProof
-	copy(proof[:], proofSlice)
-
-	return GeneratePoSTResponse{
-		Proof:  proof,
+	return GeneratePoStResponse{
+		Proofs: goPoStProofs(resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len),
 		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
 	}, nil
+}
+
+// goPoStProofs accepts a pointer to a C-allocated byte array and a size and
+// produces a Go-managed slice of PoStProof. Note that this function copies
+// values into the Go heap from C.
+func goPoStProofs(src *C.uint8_t, size C.size_t) []proofs.PoStProof {
+	chunkSize := int(proofs.PoStBytesLen)
+
+	out := make([]proofs.PoStProof, int(size)/chunkSize)
+	tmp := make([]byte, size)
+
+	if src != nil {
+		copy(tmp, (*(*[1 << 30]byte)(unsafe.Pointer(src)))[:size:size])
+
+		for i := 0; i < len(out); i++ {
+			copy(out[i][:], tmp[i*chunkSize:(i+1)*chunkSize])
+		}
+	}
+
+	return out
 }
 
 // goUint64s accepts a pointer to a C-allocated uint64 and a size and produces
