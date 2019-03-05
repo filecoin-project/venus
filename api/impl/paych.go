@@ -101,21 +101,3 @@ func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPr
 		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
 	)
 }
-
-func (np *nodePaych) Close(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
-	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		types.NewAttoFILFromFIL(0),
-		gasPrice,
-		gasLimit,
-		"close",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-	)
-}

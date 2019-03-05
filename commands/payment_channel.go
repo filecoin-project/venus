@@ -456,7 +456,21 @@ var closeCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
+		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"close",
+			voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+		)
 		if err != nil {
 			return err
 		}
