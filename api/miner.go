@@ -17,5 +17,4 @@ type Miner interface {
 	UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error)
 	AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error)
 	GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error)
-	GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error)
 }

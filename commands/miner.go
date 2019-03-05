@@ -47,10 +47,17 @@ var minerPledgeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		pledgeSectors, err := GetAPI(env).Miner().GetPledge(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getPledge",
+		)
 		if err != nil {
 			return err
 		}
+		pledgeSectors := big.NewInt(0).SetBytes(bytes[0])
 
 		str := fmt.Sprintf("%d", pledgeSectors)
 		re.Emit(str) // nolint: errcheck
