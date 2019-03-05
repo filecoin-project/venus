@@ -82,22 +82,6 @@ func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (a
 	return address.NewFromBytes(bytes[0])
 }
 
-func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getPower",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	power := big.NewInt(0).SetBytes(bytes[0])
-
-	return power, nil
-}
-
 func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
 	bytes, _, err := nm.porcelainAPI.MessageQuery(
 		ctx,

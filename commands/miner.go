@@ -479,12 +479,19 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		power, err := GetAPI(env).Miner().GetPower(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getPower",
+		)
 		if err != nil {
 			return err
 		}
+		power := big.NewInt(0).SetBytes(bytes[0])
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, _, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Address{},
 			address.StorageMarketAddress,
