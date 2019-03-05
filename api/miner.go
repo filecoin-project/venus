@@ -19,5 +19,4 @@ type Miner interface {
 	GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error)
 	GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error)
-	GetTotalPower(ctx context.Context) (*big.Int, error)
 }

@@ -113,19 +113,3 @@ func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (
 
 	return power, nil
 }
-
-func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		address.StorageMarketAddress,
-		"getTotalStorage",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	power := big.NewInt(0).SetBytes(bytes[0])
-
-	return power, nil
-}

@@ -483,10 +483,17 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		total, err := GetAPI(env).Miner().GetTotalPower(req.Context)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			address.StorageMarketAddress,
+			"getTotalStorage",
+		)
 		if err != nil {
 			return err
 		}
+		total := big.NewInt(0).SetBytes(bytes[0])
 
 		str := fmt.Sprintf("%d / %d", power, total)
 		return re.Emit(str)
