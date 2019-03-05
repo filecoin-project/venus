@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -82,22 +81,4 @@ func (np *nodePaych) Voucher(ctx context.Context, fromAddr address.Address, chan
 	voucher.Signature = sig
 
 	return voucher.Encode()
-}
-
-func (np *nodePaych) Redeem(ctx context.Context, fromAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, voucherRaw string) (cid.Cid, error) {
-	voucher, err := paymentbroker.DecodeVoucher(voucherRaw)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return np.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		address.PaymentBrokerAddress,
-		types.NewAttoFILFromFIL(0),
-		gasPrice,
-		gasLimit,
-		"redeem",
-		voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-	)
 }
