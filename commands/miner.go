@@ -424,7 +424,17 @@ var minerAddAskCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, price, expiry)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			minerAddr,
+			nil,
+			gasPrice,
+			gasLimit,
+			"addAsk",
+			price,
+			expiry,
+		)
 		if err != nil {
 			return err
 		}
