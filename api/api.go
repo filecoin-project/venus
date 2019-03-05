@@ -12,7 +12,6 @@ type API interface {
 	Log() Log
 	Miner() Miner
 	Mining() Mining
-	Paych() Paych
 	Ping() Ping
 	RetrievalClient() RetrievalClient
 	Swarm() Swarm
