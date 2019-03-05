@@ -198,6 +198,13 @@ var voucherCmd = &cmds.Command{
 			return err
 		}
 
+		if fromAddr == (address.Address{}) {
+			fromAddr, err = GetPorcelainAPI(env).GetAndMaybeSetDefaultSenderAddress()
+			if err != nil {
+				return err
+			}
+		}
+
 		validAt, err := optionalBlockHeight(req.Options["validat"])
 		if err != nil {
 			return err
@@ -213,12 +220,34 @@ var voucherCmd = &cmds.Command{
 			return ErrInvalidAmount
 		}
 
-		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount, validAt)
+		values, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			"voucher",
+			channel, amount, validAt,
+		)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(voucher)
+		var voucher paymentbroker.PaymentVoucher
+		if err := cbor.DecodeInto(values[0], &voucher); err != nil {
+			return err
+		}
+
+		sig, err := paymentbroker.SignVoucher(channel, amount, validAt, fromAddr, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+		voucher.Signature = sig
+
+		v, err := voucher.Encode()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(v)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, voucher string) error {
