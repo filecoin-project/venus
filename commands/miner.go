@@ -457,7 +457,17 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ownerAddr, err := GetAPI(env).Miner().GetOwner(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getOwner",
+		)
+		if err != nil {
+			return err
+		}
+		ownerAddr, err := address.NewFromBytes(bytes[0])
 		if err != nil {
 			return err
 		}

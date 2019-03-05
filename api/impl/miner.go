@@ -67,17 +67,3 @@ func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Add
 		expiry,
 	)
 }
-
-func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getOwner",
-	)
-	if err != nil {
-		return address.Address{}, err
-	}
-
-	return address.NewFromBytes(bytes[0])
-}
