@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -50,6 +51,11 @@ func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) 
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
+}
+
+// DealGet returns a single deal matching a given cid or an error
+func (a *API) DealGet(proposalCid cid.Cid) *storagedeal.Deal {
+	return DealGet(a, proposalCid)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.

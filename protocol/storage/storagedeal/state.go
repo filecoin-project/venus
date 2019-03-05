@@ -1,13 +1,15 @@
-package storage
+package storagedeal
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// DealState signifies the state of a deal
-type DealState int
+// State signifies the state of a deal
+type State int
 
 const (
 	// Unknown signifies an unknown negotiation
-	Unknown = DealState(iota)
+	Unknown = State(iota)
 
 	// Rejected means the deal was rejected for some reason
 	Rejected
@@ -32,7 +34,7 @@ const (
 	Staged
 )
 
-func (s DealState) String() string {
+func (s State) String() string {
 	switch s {
 	case Unknown:
 		return "unknown"

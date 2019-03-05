@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
 var clientCmd = &cmds.Command{
@@ -152,9 +152,9 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 
 		return re.Emit(resp)
 	},
-	Type: storage.DealResponse{},
+	Type: storagedeal.Response{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.Response) error {
 			fmt.Fprintf(w, "State:   %s\n", resp.State.String())       // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)              // nolint: errcheck
 			fmt.Fprintf(w, "DealID:  %s\n", resp.ProposalCid.String()) // nolint: errcheck
@@ -188,9 +188,9 @@ format is specified with the --enc flag.
 
 		return re.Emit(resp)
 	},
-	Type: storage.DealResponse{},
+	Type: storagedeal.Response{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storage.DealResponse) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.Response) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			return nil

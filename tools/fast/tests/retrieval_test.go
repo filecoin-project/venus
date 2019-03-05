@@ -13,7 +13,7 @@ import (
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -130,11 +130,11 @@ func TestRetrieval(t *testing.T) {
 	// the imported data, and the deal which was created
 	data := []byte("Hello World!")
 	dataReader := bytes.NewReader(data)
-	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
+	dcid, storageDeal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(err)
 
 	// Wait for the deal to be posted
-	err = series.WaitForDealState(ctx, client, deal, storage.Posted)
+	err = series.WaitForDealState(ctx, client, storageDeal, storagedeal.Posted)
 	require.NoError(err)
 
 	// Retrieve the stored piece of data

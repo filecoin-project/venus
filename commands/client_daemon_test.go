@@ -100,7 +100,7 @@ func TestDuplicateDeals(t *testing.T) {
 
 	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
 		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDupicateDeal].Error())
+		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDuplicateDeal].Error())
 		assert.Equal(expectedError, proposeDealOutput)
 	})
 }
