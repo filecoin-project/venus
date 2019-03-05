@@ -105,15 +105,7 @@ func MinerCreate(
 		return nil, err
 	}
 
-	var minerAddr address.Address
-	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
-		receipt *types.MessageReceipt) error {
-		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
-		}
-		minerAddr, err = address.NewFromBytes(receipt.Return[0])
-		return err
-	})
+	minerAddr, err := waitForMinerAddress(ctx, plumbing, smsgCid)
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +115,18 @@ func MinerCreate(
 	}
 
 	return &minerAddr, nil
+}
+
+func waitForMinerAddress(ctx context.Context, plumbing mcAPI, smsgCid cid.Cid) (address.Address, error) {
+	var minerAddr address.Address
+	err := plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
+		if receipt.ExitCode != uint8(0) {
+			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+		}
+		minerAddr, err = address.NewFromBytes(receipt.Return[0])
+		return err
+	})
+	return minerAddr, err
 }
 
 func persistMinerAddress(ctx context.Context, plumbing mcAPI, minerAddr address.Address) error {
