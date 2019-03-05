@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -38,17 +37,4 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	}
 
 	return *res, nil
-}
-
-func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
-	return nm.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		minerAddr,
-		nil,
-		gasPrice,
-		gasLimit,
-		"updatePeerID",
-		newPid,
-	)
 }

@@ -334,7 +334,16 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, newPid)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			minerAddr,
+			nil,
+			gasPrice,
+			gasLimit,
+			"updatePeerID",
+			newPid,
+		)
 		if err != nil {
 			return err
 		}
