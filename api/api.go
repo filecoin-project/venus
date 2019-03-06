@@ -16,5 +16,4 @@ type API interface {
 	Ping() Ping
 	RetrievalClient() RetrievalClient
 	Swarm() Swarm
-	Version() Version
 }

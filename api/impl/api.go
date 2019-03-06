@@ -25,7 +25,6 @@ type nodeAPI struct {
 	ping            *nodePing
 	retrievalClient *nodeRetrievalClient
 	swarm           *nodeSwarm
-	version         *nodeVersion
 }
 
 // Assert that nodeAPI fullfills the api.API interface.
@@ -55,7 +54,6 @@ func New(node *node.Node) api.API {
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api)
 	api.swarm = newNodeSwarm(api)
-	api.version = newNodeVersion(api)
 
 	return api
 }
@@ -110,8 +108,4 @@ func (api *nodeAPI) RetrievalClient() api.RetrievalClient {
 
 func (api *nodeAPI) Swarm() api.Swarm {
 	return api.swarm
-}
-
-func (api *nodeAPI) Version() api.Version {
-	return api.version
 }
