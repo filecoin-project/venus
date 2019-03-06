@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
@@ -179,6 +180,11 @@ func (api *API) PubSubPublish(topic string, data []byte) error {
 // NetworkGetPeerID gets the current peer id from Util
 func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
+}
+
+// NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
+func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
+	return api.network.FindProvidersAsync(ctx, key, count)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.

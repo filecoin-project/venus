@@ -109,6 +109,7 @@ VIEW DATA STRUCTURES
 
 NETWORK COMMANDS
   go-filecoin bootstrap              - Interact with bootstrap addresses
+  go-filecoin dht                    - Interact with the dht
   go-filecoin id                     - Show info about the network peers
   go-filecoin ping <peer ID>...      - Send echo request packets to p2p network members
   go-filecoin swarm                  - Interact with the swarm
@@ -156,6 +157,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"config":           configCmd,
 	"client":           clientCmd,
 	"dag":              dagCmd,
+	"dht":              dhtCmd,
 	"id":               idCmd,
 	"log":              logCmd,
 	"message":          msgCmd,

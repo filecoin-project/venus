@@ -102,6 +102,7 @@ type TestDaemon struct {
 	keyFiles         []string
 	withMiner        string
 	autoSealInterval string
+	isRelay          bool
 
 	firstRun bool
 	init     bool
@@ -730,6 +731,11 @@ func WithMiner(m string) func(*TestDaemon) {
 	}
 }
 
+// IsRelay starts the daemon with the --is-relay option.
+func IsRelay(td *TestDaemon) {
+	td.isRelay = true
+}
+
 // NewDaemon creates a new `TestDaemon`, using the passed in configuration options.
 func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	t.Helper()
@@ -756,7 +762,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
-	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	// build command options
 	initopts := []string{repoDirFlag}
@@ -801,8 +806,13 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
+	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
+
+	if td.isRelay {
+		td.daemonArgs = append(td.daemonArgs, "--is-relay")
+	}
 
 	return td
 }
