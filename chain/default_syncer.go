@@ -371,6 +371,12 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 			}
 		}
 		if err = syncer.syncOne(ctx, parent, ts); err != nil {
+			// While `syncOne` can indeed fail for reasons other than consensus,
+			// adding to the badTipSets at this point is the simplest, since we
+			// have access to the chain. If syncOne fails for non-consensus reasons,
+			// there is no assumption that the running node's data is valid at all,
+			// so we don't really lose anything with this simplification.
+			syncer.badTipSets.AddChain(chain[i:])
 			return err
 		}
 		parent = ts
