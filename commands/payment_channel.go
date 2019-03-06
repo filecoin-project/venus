@@ -147,36 +147,14 @@ var lsCmd = &cmds.Command{
 			return err
 		}
 
-		if fromAddr == (address.Address{}) {
-			fromAddr, err = GetPorcelainAPI(env).GetAndMaybeSetDefaultSenderAddress()
-			if err != nil {
-				return err
-			}
-		}
-
 		payerOption := req.Options["payer"]
 		payerAddr, err := optionalAddr(payerOption)
 		if err != nil {
 			return err
 		}
 
-		if payerAddr == (address.Address{}) {
-			payerAddr = fromAddr
-		}
-
-		values, _, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			fromAddr,
-			address.PaymentBrokerAddress,
-			"ls",
-			payerAddr,
-		)
+		channels, err := GetPorcelainAPI(env).PaymentChannelLs(req.Context, fromAddr, payerAddr)
 		if err != nil {
-			return err
-		}
-
-		var channels map[string]*paymentbroker.PaymentChannel
-		if err := cbor.DecodeInto(values[0], &channels); err != nil {
 			return err
 		}
 
