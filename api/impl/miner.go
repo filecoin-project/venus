@@ -2,9 +2,7 @@ package impl
 
 import (
 	"context"
-	"math/big"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -39,93 +37,4 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	}
 
 	return *res, nil
-}
-
-func (nm *nodeMiner) UpdatePeerID(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, newPid peer.ID) (cid.Cid, error) {
-	return nm.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		minerAddr,
-		nil,
-		gasPrice,
-		gasLimit,
-		"updatePeerID",
-		newPid,
-	)
-}
-
-func (nm *nodeMiner) AddAsk(ctx context.Context, fromAddr, minerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (cid.Cid, error) {
-	return nm.porcelainAPI.MessageSendWithDefaultAddress(
-		ctx,
-		fromAddr,
-		minerAddr,
-		nil,
-		gasPrice,
-		gasLimit,
-		"addAsk",
-		price,
-		expiry,
-	)
-}
-
-func (nm *nodeMiner) GetOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getOwner",
-	)
-	if err != nil {
-		return address.Address{}, err
-	}
-
-	return address.NewFromBytes(bytes[0])
-}
-
-func (nm *nodeMiner) GetPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getPower",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	power := big.NewInt(0).SetBytes(bytes[0])
-
-	return power, nil
-}
-
-func (nm *nodeMiner) GetPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getPledge",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	power := big.NewInt(0).SetBytes(bytes[0])
-
-	return power, nil
-}
-
-func (nm *nodeMiner) GetTotalPower(ctx context.Context) (*big.Int, error) {
-	bytes, _, err := nm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		address.StorageMarketAddress,
-		"getTotalStorage",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	power := big.NewInt(0).SetBytes(bytes[0])
-
-	return power, nil
 }

@@ -47,10 +47,17 @@ var minerPledgeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		pledgeSectors, err := GetAPI(env).Miner().GetPledge(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getPledge",
+		)
 		if err != nil {
 			return err
 		}
+		pledgeSectors := big.NewInt(0).SetBytes(bytes[0])
 
 		str := fmt.Sprintf("%d", pledgeSectors)
 		re.Emit(str) // nolint: errcheck
@@ -327,7 +334,16 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Miner().UpdatePeerID(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, newPid)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			minerAddr,
+			nil,
+			gasPrice,
+			gasLimit,
+			"updatePeerID",
+			newPid,
+		)
 		if err != nil {
 			return err
 		}
@@ -417,7 +433,17 @@ var minerAddAskCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Miner().AddAsk(req.Context, fromAddr, minerAddr, gasPrice, gasLimit, price, expiry)
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			minerAddr,
+			nil,
+			gasPrice,
+			gasLimit,
+			"addAsk",
+			price,
+			expiry,
+		)
 		if err != nil {
 			return err
 		}
@@ -450,7 +476,17 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ownerAddr, err := GetAPI(env).Miner().GetOwner(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getOwner",
+		)
+		if err != nil {
+			return err
+		}
+		ownerAddr, err := address.NewFromBytes(bytes[0])
 		if err != nil {
 			return err
 		}
@@ -479,14 +515,28 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		power, err := GetAPI(env).Miner().GetPower(req.Context, minerAddr)
+
+		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			minerAddr,
+			"getPower",
+		)
 		if err != nil {
 			return err
 		}
-		total, err := GetAPI(env).Miner().GetTotalPower(req.Context)
+		power := big.NewInt(0).SetBytes(bytes[0])
+
+		bytes, _, err = GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Address{},
+			address.StorageMarketAddress,
+			"getTotalStorage",
+		)
 		if err != nil {
 			return err
 		}
+		total := big.NewInt(0).SetBytes(bytes[0])
 
 		str := fmt.Sprintf("%d / %d", power, total)
 		return re.Emit(str)
