@@ -78,9 +78,9 @@ func (t Type) String() string {
 	case SectorID:
 		return "uint64"
 	case CommitmentsMap:
-		return "map[string]Commitments"
+		return "map[string]types.Commitments"
 	case PoStProofs:
-		return "[]PoStProof"
+		return "[]proofs.PoStProof"
 	default:
 		return "<unknown type>"
 	}
