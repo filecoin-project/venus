@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -135,4 +136,24 @@ func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
 // WalletBalance returns the current balance of the given wallet address.
 func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)
+}
+
+// PaymentChannelLs lists payment channels for a given payer
+func (a *API) PaymentChannelLs(
+	ctx context.Context,
+	fromAddr address.Address,
+	payerAddr address.Address,
+) (map[string]*paymentbroker.PaymentChannel, error) {
+	return PaymentChannelLs(ctx, a, fromAddr, payerAddr)
+}
+
+// PaymentChannelVoucher returns a signed payment channel voucher
+func (a *API) PaymentChannelVoucher(
+	ctx context.Context,
+	fromAddr address.Address,
+	channel *types.ChannelID,
+	amount *types.AttoFIL,
+	validAt *types.BlockHeight,
+) (voucher *paymentbroker.PaymentVoucher, err error) {
+	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
 }

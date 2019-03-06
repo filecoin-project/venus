@@ -153,7 +153,7 @@ var lsCmd = &cmds.Command{
 			return err
 		}
 
-		channels, err := GetAPI(env).Paych().Ls(req.Context, fromAddr, payerAddr)
+		channels, err := GetPorcelainAPI(env).PaymentChannelLs(req.Context, fromAddr, payerAddr)
 		if err != nil {
 			return err
 		}
@@ -198,11 +198,6 @@ var voucherCmd = &cmds.Command{
 			return err
 		}
 
-		validAt, err := optionalBlockHeight(req.Options["validat"])
-		if err != nil {
-			return err
-		}
-
 		channel, ok := types.NewChannelIDFromString(req.Arguments[0], 10)
 		if !ok {
 			return fmt.Errorf("invalid channel id")
@@ -213,12 +208,22 @@ var voucherCmd = &cmds.Command{
 			return ErrInvalidAmount
 		}
 
-		voucher, err := GetAPI(env).Paych().Voucher(req.Context, fromAddr, channel, amount, validAt)
+		validAt, err := optionalBlockHeight(req.Options["validat"])
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(voucher)
+		voucher, err := GetPorcelainAPI(env).PaymentChannelVoucher(req.Context, fromAddr, channel, amount, validAt)
+		if err != nil {
+			return err
+		}
+
+		v, err := voucher.Encode()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(v)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, voucher string) error {
@@ -287,7 +292,21 @@ var redeemCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Redeem(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
+		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"redeem",
+			voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+		)
 		if err != nil {
 			return err
 		}
@@ -456,7 +475,21 @@ var closeCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetAPI(env).Paych().Close(req.Context, fromAddr, gasPrice, gasLimit, req.Arguments[0])
+		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"close",
+			voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+		)
 		if err != nil {
 			return err
 		}
