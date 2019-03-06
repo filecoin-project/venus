@@ -329,8 +329,13 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 		return GeneratePoStResponse{}, errors.New(C.GoString(resPtr.error_msg))
 	}
 
+	proofs, err := goPoStProofs(resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len)
+	if err != nil {
+		return GeneratePoStResponse{}, err
+	}
+
 	return GeneratePoStResponse{
-		Proofs: goPoStProofs(resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len),
+		Proofs: proofs,
 		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
 	}, nil
 }
@@ -338,10 +343,16 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 // goPoStProofs accepts a pointer to a C-allocated byte array and a size and
 // produces a Go-managed slice of PoStProof. Note that this function copies
 // values into the Go heap from C.
-func goPoStProofs(src *C.uint8_t, size C.size_t) []proofs.PoStProof {
+func goPoStProofs(src *C.uint8_t, size C.size_t) ([]proofs.PoStProof, error) {
 	chunkSize := int(proofs.PoStBytesLen)
+	arrSize := int(size)
 
-	out := make([]proofs.PoStProof, int(size)/chunkSize)
+	if arrSize%chunkSize != 0 {
+		msg := "PoSt proof array invalid size (arrSize=%d % PoStBytesLen=%d != 0)"
+		return nil, errors.Errorf(msg, arrSize, proofs.PoStBytesLen)
+	}
+
+	out := make([]proofs.PoStProof, arrSize/chunkSize)
 	tmp := make([]byte, size)
 
 	if src != nil {
@@ -352,7 +363,7 @@ func goPoStProofs(src *C.uint8_t, size C.size_t) []proofs.PoStProof {
 		}
 	}
 
-	return out
+	return out, nil
 }
 
 // goUint64s accepts a pointer to a C-allocated uint64 and a size and produces
