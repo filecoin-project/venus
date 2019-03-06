@@ -347,6 +347,10 @@ func goPoStProofs(src *C.uint8_t, size C.size_t) ([]proofs.PoStProof, error) {
 	chunkSize := int(proofs.PoStBytesLen)
 	arrSize := int(size)
 
+	if src == nil {
+		return []proofs.PoStProof{}, nil
+	}
+
 	if arrSize%chunkSize != 0 {
 		msg := "PoSt proof array invalid size (arrSize=%d % PoStBytesLen=%d != 0)"
 		return nil, errors.Errorf(msg, arrSize, proofs.PoStBytesLen)
