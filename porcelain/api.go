@@ -146,3 +146,14 @@ func (a *API) PaymentChannelLs(
 ) (map[string]*paymentbroker.PaymentChannel, error) {
 	return PaymentChannelLs(ctx, a, fromAddr, payerAddr)
 }
+
+// PaymentChannelVoucher returns a signed payment channel voucher
+func (a *API) PaymentChannelVoucher(
+	ctx context.Context,
+	fromAddr address.Address,
+	channel *types.ChannelID,
+	amount *types.AttoFIL,
+	validAt *types.BlockHeight,
+) (voucher *paymentbroker.PaymentVoucher, err error) {
+	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
+}
