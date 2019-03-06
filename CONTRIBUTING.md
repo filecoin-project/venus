@@ -284,6 +284,9 @@ Presently (Q1'19) the minimum bar is:
 * Lint (`go run ./build/*.go lint`).
 * Must match a subset of the spec.
 * Documentation is up to date.
+* For major or risky changes: the code must be integrated. 
+Integrated means verifying that it works for real in a devnet, not just that it passes tests.
+This higher bar ensures major changes actually work, and reduces surprises/nightmares during release.
 
 ### Roles
 
