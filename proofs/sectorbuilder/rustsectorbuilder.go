@@ -357,14 +357,15 @@ func goPoStProofs(src *C.uint8_t, size C.size_t) ([]proofs.PoStProof, error) {
 	}
 
 	out := make([]proofs.PoStProof, arrSize/chunkSize)
-	tmp := make([]byte, size)
 
-	if src != nil {
-		copy(tmp, (*(*[1 << 30]byte)(unsafe.Pointer(src)))[:size:size])
+	// Create a slice from a pointer to an array on the C heap by slicing to
+	// the appropriate size. We can then copy from this slice into the Go heap.
+	//
+	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+	tmp := (*(*[1 << 30]byte)(unsafe.Pointer(src)))[:size:size]
 
-		for i := 0; i < len(out); i++ {
-			copy(out[i][:], tmp[i*chunkSize:(i+1)*chunkSize])
-		}
+	for i := 0; i < len(out); i++ {
+		copy(out[i][:], tmp[i*chunkSize:(i+1)*chunkSize])
 	}
 
 	return out, nil
