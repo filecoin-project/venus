@@ -6,6 +6,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -175,6 +176,11 @@ func (api *API) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
 // PubSubPublish publishes a message to a topic on the filecoin network
 func (api *API) PubSubPublish(topic string, data []byte) error {
 	return api.network.Publish(topic, data)
+}
+
+// NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network
+func (api *API) NetworkGetBandwidthStats() metrics.Stats {
+	return api.network.GetBandwidthStats()
 }
 
 // NetworkGetPeerID gets the current peer id from Util

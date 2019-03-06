@@ -24,6 +24,7 @@ import (
 	"gx/ipfs/QmXixGGfd98hN2dA5YiPHWANY3sjmHfZBQk3mLiQUo6NLJ/go-bitswap"
 	bsnet "gx/ipfs/QmXixGGfd98hN2dA5YiPHWANY3sjmHfZBQk3mLiQUo6NLJ/go-bitswap/network"
 	dhtprotocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	p2pmetrics "gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
 	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p"
@@ -324,6 +325,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	var peerHost host.Host
 	var router routing.IpfsRouting
 
+	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
+	nc.Libp2pOpts = append(nc.Libp2pOpts, libp2p.BandwidthReporter(bandwidthTracker))
+
 	if !nc.OfflineMode {
 		makeDHT := func(h host.Host) (routing.IpfsRouting, error) {
 			r, err := dht.New(
@@ -339,6 +343,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 			router = r
 			return r, err
 		}
+
 		var err error
 		peerHost, err = nc.buildHost(ctx, makeDHT)
 		if err != nil {
@@ -409,7 +414,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
 		MsgSender:    msg.NewSender(fcWallet, chainReader, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
-		Network:      ntwk.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), filnet.NewRouter(router)),
+		Network:      ntwk.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), filnet.NewRouter(router), bandwidthTracker),
 		SigGetter:    mthdsig.NewGetter(chainReader),
 		Wallet:       fcWallet,
 	}))
