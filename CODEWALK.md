@@ -68,7 +68,7 @@ Other patterns, we've evolving for our needs:
 - go-ipfs relies heavily on shell-based integration testing; we aim to rely heavily on unit testing and Go-based integration tests.
 - The go-ipfs package structure involves a deep hierarchy of dependent implementations; 
 we're moving towards a more Go-idiomatic approach with narrow interfaces defined in consuming packages (see [Patterns](#patterns).
-- The term “block” is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/go-filecoin/tree/master/types/block.go)), 
+- The term "block" is heavily overloaded: a blockchain block ([`types/block.go`](https://github.com/filecoin-project/go-filecoin/tree/master/types/block.go)), 
 but also content-id-addressed blocks in the block service. 
 Blockchain blocks are stored in block service blocks, but are not the same thing.
 
@@ -108,7 +108,7 @@ Protocols  │ Storage  │ │  Mining   │ │Retrieval │     │          
 
 ### History–the Node object
 
-The `Node` ([`node/`](https://github.com/filecoin-project/go-filecoin/tree/master/node)) object is the “server”. 
+The `Node` ([`node/`](https://github.com/filecoin-project/go-filecoin/tree/master/node)) object is the "server". 
 It contains much of the core protocol implementation and plumbing. 
 As an accident of history it has become something of a god-object, which we are working to resolve. 
 The `Node` object is difficult to unit test due to its many dependencies and complicated set-up. 
@@ -179,13 +179,13 @@ With no logic of their own, they should call just into a single plumbing or porc
 The go-ipfs command library introduces some boilerplate which we can reduce with some effort in the future. 
 Right now, some of the command implementations call into the node; this should change.
 
-Tests for commands are generally end-to-end “daemon tests” that exercise CLI. 
+Tests for commands are generally end-to-end "daemon tests" that exercise CLI. 
 They start some nodes and interact with them through shell commands. 
 
 ### Protocols
 
 [Protocols](https://github.com/filecoin-project/go-filecoin/tree/master/protocol) embody 
-“application-level” functionality. They are persistent; they keep running without active user/tool activity. 
+"application-level" functionality. They are persistent; they keep running without active user/tool activity. 
 Protocols interact with the network. 
 Protocols depend on `plumbing` and `porcelain` for their implementation, as well some "private" core APIs (at present, many still depend on the `Node` object).
 
@@ -211,7 +211,7 @@ Actors are Filecoin’s notion of smart contracts.
 They are not true smart contracts—with bytecode running on a VM—but instead implemented in Go. 
 It is expected that other implementations will match the behaviour of the Go actors exactly. 
 An ABI describes how inputs and outputs to the VM are encoded. 
-Future work will replace this implementation with a “real” VM.
+Future work will replace this implementation with a "real" VM.
 
 The [Actor](https://github.com/filecoin-project/go-filecoin/blob/master/actor/actor.go) struct is the base implementation of actors, with fields common to all of them.
 
@@ -238,7 +238,7 @@ The head CID in the actor structure points to that miner’s state instance (enc
 Other built-in actors include the [payment broker](https://github.com/filecoin-project/go-filecoin/blob/master/actor/builtin/paymentbroken), 
 which provides a mechanism for off-chain payments via payment channels, 
 and the [storage market](https://github.com/filecoin-project/go-filecoin/blob/master/actor/storagemarket), 
-which starts miners and tracks total storage (aka “power”). 
+which starts miners and tracks total storage (aka "power"). 
 These are both singletons.
 
 Actors declare a list of exported methods with ABI types. 
@@ -258,7 +258,7 @@ The ABI uses a separate inner encoding, which is manual.
 
 ### Messages and state transitions
 
-Filecoin state transitions are driven by messages sent to actors; these are our “transactions”. 
+Filecoin state transitions are driven by messages sent to actors; these are our "transactions". 
 A message is a method invocation on an actor. 
 A message has sender and recipient addresses, and optional parameters such as an amount of filecoin to transfer, a method name, and parameters.
 
@@ -345,7 +345,7 @@ Future reorganisation will allow the extraction of a thin client binary.
 Data preparation is entirely the responsibility of the client, including breaking it up into appropriate chunks (<= sector size), compressing, 
 encrypting, adding error-correcting codes, and replicating widely enough to achieve redundancy goals. 
 In the future, we will build a client library which handles many of these tasks for a user. 
-We also plan support for “repair miners”, to whom responsibility can be delegated for monitoring and repairing faults.
+We also plan support for "repair miners", to whom responsibility can be delegated for monitoring and repairing faults.
 
 ### Retrieval
 Retrieval mining is not necessarily linked to storage mining, although in practise we expect all storage miners to also run retrieval miners. 
@@ -361,6 +361,86 @@ The node starts up all the components, connects them as needed, and waits.
 Protocols (goroutines) communicate through custom channels. 
 This architecture needs more thought, but we are considering moving more inter-module communication to use iterators (c.f. those in Java). 
 An event bus might also be a good pattern for some cases, though.
+
+## Sector builder & proofs
+A storage mining node commits to storage by cryptographically proving that it has stored a sector, a process known as sealing. 
+Proof of replication, or PoRep, is an operation which generates a unique copy (sealed sector) of a sector's original data, a SNARK proof, 
+and a set of commitments identifying the sealed sector and linking it to the corresponding unsealed sector. 
+The commitSector message, posted to the blockchain, includes these commitments (CommR, CommRStar, CommD) and the SNARK proof.
+
+A storage miner continually computes proofs over their sealed sectors and periodically posts a summary of their proofs on chain. 
+When a miner commits their first sector to the network (with `commitSector` message included in some block), a "proving period" begins. 
+A proving period is a window of time (a fixed number of blocks) in which the miner must generate a  "proof of space-time", or PoSt, 
+in order to demonstrate to the network that they have not lost the sector which they have committed. 
+If the miner does not get a `submitPoSt` message included in a block during a proving period, it may be penalised ("slashed").
+
+Storage and proofs are administered by the [sector builder](https://github.com/filecoin-project/go-filecoin/tree/master/proofs/sectorbuilder). 
+Most of the sector builder is implemented in Rust and invoked via a [FFI](https://github.com/filecoin-project/go-filecoin/blob/master/proofs/interface.go). 
+This code includes functionality to:
+- write (and "preprocess") user piece-bytes to disk,
+- schedule seal (proof-of-replication) jobs,
+- schedule proof-of-spacetime generation jobs,
+- schedule unseal (retrieval) jobs,
+- verify proof-of-spacetime and proof-of-replication-verification,
+- map between replica commitment and sealed sector-bytes,
+- map between piece key (CID of user piece) and sealed sector-bytes.
+
+The Go `SectorBuilder` interface corresponds closely to the rust `SectorBuilder` struct. 
+Rust code is invoked directly (in-process) via Cgo. The sector builder’s lifecycle (in Rust) is controlled by go-filecoin. 
+Cgo functions like `C.CBytes` are used to move bytes across Cgo from Go to Rust; 
+Go allocates in the Rust heap through Cgo and then provides Rust with pointers from which it can reconstitute arrays, structs, and so forth.
+
+Sectors and sealed sectors (aka replicas) are just flat files on disk. 
+Sealing a sector is a destructive operation on the sector. 
+The process of sealing yields metadata such as the proof/commitment, which is stored is a separate metadata store, not within the replica file.
+
+We intend the sector builder interface to represent a service, abstracting away both policy (e.g. sector packing, scheduling of PoSt calculation) and implementation details. 
+In the future, we would like to able to interface to it via IPC/RPC as well as FFI. 
+
+The sector builder and proofs code is written in Rust partly to ease use of the [Bellman zk-SNARK library](https://github.com/zkcrypto/bellman). 
+The PoRep and PoSt code is under active development. 
+PoRep is integrated with go-filecoin, while the PoST implementation and integration is still in progress (March 2019).
+
+### Building and distribution.
+The Rust code responsible for sectors and proofs is in the [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo. 
+This repo is included in go-filecoin as a Git submodule. 
+The submodule refers to a specific repository SHA hash. 
+The `install-rust-proofs.sh` script, invoked by the `deps` build step of go-filecoin, builds the Rust proofs code and copies binary assets to locations hardcoded in Go interface code.
+
+As an alternative to compiling Rust code locally, the continuous integration server publishes an archive of precompiled binary objects with every successful build of the `rust-fil-proofs/master` branch.
+These releases are identified by the Git submodule SHA. This archive is pushed to the GitHub releases service. 
+When the `FILECOIN_USE_PRECOMPILED_RUST_PROOFS` environment variable is set, `install-rust-proofs.sh` attempts to fetch these assets from GitHub releases 
+and installs them in the same hardcoded locations required by the Go build.
+
+The build or tarball contains:
+- `libfilecoin_proofs.a` (a static library)
+- `libfilecoin_proofs.h` (corresponding C-header file)
+- `libfilecoin_proofs.pc` (a pkg-config manifest, used to specify linker dependencies)
+- `paramcache` (populates Groth parameter-cache
+- `paramfetch` (fetches Groth parameters from IPFS gateway into cache)
+- `parameters.json` (contains the most recently-published Groth parameters)
+
+### Groth parameters
+The proving algorithms rely on a large binary parameter file known as the Groth parameters. 
+This file is stored in a cache directory, typically `/tmp/filecoin-proof-parameters`. 
+When proofs code changes, the params may need to change.
+
+The `paramcache` program populates the Groth parameter directory by generating the parameters, a slow process (10s of minutes). 
+If the cache directory is already populated, generation is skipped. 
+The `parampublish` program (not part of the precompiled proofs archive) publishes params from the cache directory to a local IPFS node.
+The published CIDs need to be pinned e.g. by a Protocol Labs pinning service. 
+The `paramfetch` program fetches params to local cache directory from IPFS gateway. 
+The `install-rust-proofs.sh` script fetches or generates these Groth parameters as necessary when building `deps`.
+
+Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at go-filecoin runtime.
+The parameters are identified by the `parameters.json` file from fil-rust-proofs, which includes a checksum.
+
+### Sector size configuration
+Sealing a sector is a compute-intensive process that grows with the size of the sector being sealed (replication grows linearly, and proof-generation logarithmically).
+For ease of development, go-filecoin can be configured to use tiny sectors, holding only 1016 bytes of user data, which are faster to seal. 
+This mode is triggered by the `FIL_USE_SMALL_SECTORS` environment variable. 
+Sector size is a parameter on which nodes in a network must agree, and determines the Groth parameters; 
+nodes with different sector sizes cannot verify each other’s proofs.
 
 ## Networking
 
@@ -407,7 +487,7 @@ This data lives in a file at `$HOME/.filecoin/keystore/self`.
 ## Testing
 
 The `go-filecoin` codebase has a few different testing mechanisms: 
-unit tests, in-process integration tests, “daemon” integration tests, and a couple of high level functional tests.
+unit tests, in-process integration tests, "daemon" integration tests, and a couple of high level functional tests.
 
 Many parts of code have good unit tests. 
 We’d like all parts to have unit tests, but in some places it hasn’t been possible where prototype code omitted testability features. 
@@ -464,7 +544,7 @@ You’ll notice that the hash of a dependency’s content appears in the import 
 Almost all runtime dependencies are managed by gx (mostly being other Protocol Labs-sponsored projects). 
 
 The `gx-go` manages a package.json file. 
-In order to be imported by gx, a package needs to be “gxed”. 
+In order to be imported by gx, a package needs to be "gxed". 
 See the [gx-go repo](https://github.com/whyrusleeping/gx-go) for details about preparing a package for gxing and importing it into the project. 
 If you want to depend on a package whos author has not gxed it, we can fork it and gx our fork.
 
