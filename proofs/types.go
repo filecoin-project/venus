@@ -1,7 +1,7 @@
 package proofs
 
-// SnarkBytesLen is the length of the Proof of SpaceTime proof.
-const SnarkBytesLen uint = 192
+// PoStBytesLen is the length of the Proof of SpaceTime proof.
+const PoStBytesLen uint = 192
 
 // SealBytesLen is the length of the proof of Seal Proof of Replication.
 const SealBytesLen uint = 384
@@ -13,7 +13,7 @@ const PoStChallengeSeedBytesLen uint = 32
 const CommitmentBytesLen uint = 32
 
 // PoStProof is the byte representation of the Proof of SpaceTime proof
-type PoStProof [SnarkBytesLen]byte
+type PoStProof [PoStBytesLen]byte
 
 // SealProof is the byte representation of the Seal Proof of Replication
 type SealProof [SealBytesLen]byte

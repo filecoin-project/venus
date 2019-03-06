@@ -16,7 +16,7 @@ type VerifyPoSTRequest struct {
 	ChallengeSeed PoStChallengeSeed
 	CommRs        []CommR
 	Faults        []uint64
-	Proof         PoStProof
+	Proofs        []PoStProof
 	StoreType     SectorStoreType // used to control sealing/verification performance
 }
 

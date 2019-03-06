@@ -28,9 +28,6 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// PoStProofLength is the length of a single proof-of-spacetime proof (in bytes).
-const PoStProofLength = 192
-
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
@@ -226,7 +223,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.Integer},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes},
+		Params: []abi.Type{abi.PoStProofs},
 		Return: []abi.Type{},
 	},
 	"getProvingPeriodStart": &exec.FunctionSignature{
@@ -634,13 +631,9 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	if len(proof) != PoStProofLength {
-		return 0, errors.NewRevertError("invalid sized proof")
 	}
 
 	var state State
@@ -656,10 +649,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			commRs = append(commRs, v.CommR)
 		}
 
-		// copy message-bytes into PoStProof slice
-		postProof := proofs.PoStProof{}
-		copy(postProof[:], proof)
-
 		// See comment above, in CommitSector.
 		//
 		// It is undefined behavior for a miner in "Live" mode to verify a proof
@@ -674,7 +663,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, proof []byte) (uint8, error) {
 			ChallengeSeed: proofs.PoStChallengeSeed{},
 			CommRs:        commRs,
 			Faults:        []uint64{},
-			Proof:         postProof,
+			Proofs:        postProofs,
 			StoreType:     sectorStoreType,
 		}
 
