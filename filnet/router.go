@@ -2,10 +2,13 @@ package filnet
 
 import (
 	"context"
+	"errors"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
+	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
 )
 
 // This struct wraps the filecoin nodes router.  This router is a
@@ -38,4 +41,13 @@ func NewRouter(r routing.IpfsRouting) *Router {
 // given key.
 func (r *Router) FindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
 	return r.routing.FindProvidersAsync(ctx, key, count)
+}
+
+// GetClosestPeers returns peers of the K closest peers to the given key
+func (r *Router) GetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+	ipfsDHT, ok := r.routing.(*dht.IpfsDHT)
+	if !ok {
+		return nil, errors.New("underlying routing should be pointer of IpfsDHT")
+	}
+	return ipfsDHT.GetClosestPeers(ctx, key)
 }

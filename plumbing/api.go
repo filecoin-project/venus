@@ -187,6 +187,11 @@ func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, coun
 	return api.network.FindProvidersAsync(ctx, key, count)
 }
 
+// NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
+func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+	return api.network.GetClosestPeers(ctx, key)
+}
+
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)
