@@ -13,11 +13,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
-	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -169,7 +169,7 @@ func TestNodeStartMining(t *testing.T) {
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgSender:    msg.NewSender(minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
-		Network:      ntwk.New(minerNode.Host(), nil, nil, nil, nil),
+		Network:      net.New(minerNode.Host(), nil, nil, nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
 		Deals:        strgdls.New(minerNode.Repo.DealsDatastore()),
