@@ -428,7 +428,7 @@ When proofs code changes, the params may need to change.
 The `paramcache` program populates the Groth parameter directory by generating the parameters, a slow process (10s of minutes). 
 If the cache directory is already populated, generation is skipped. 
 The `parampublish` program (not part of the precompiled proofs archive) publishes params from the cache directory to a local IPFS node.
-The published CIDs need to be pinned e.g. by a Protocol Labs pinning service. 
+The CIDs of the parameter files thus published must be pinned (made continuously available) e.g. by a Protocol Labs pinning service. 
 The `paramfetch` program fetches params to local cache directory from IPFS gateway. 
 The `install-rust-proofs.sh` script fetches or generates these Groth parameters as necessary when building `deps`.
 
