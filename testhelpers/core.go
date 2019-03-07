@@ -92,6 +92,21 @@ func RequireRandomPeerID() peer.ID {
 	return pid
 }
 
+// TestBlockTimer provides a simple BlockTimer interface implementation.
+type TestBlockTimer struct {
+	Height uint64
+}
+
+// NewTestBlockTimer creates a new TestBlockTimer.
+func NewTestBlockTimer(h uint64) *TestBlockTimer {
+	return &TestBlockTimer{Height: h}
+}
+
+// BlockHeight represents the height of the highest tipset.
+func (tbt *TestBlockTimer) BlockHeight() (uint64, error) {
+	return tbt.Height, nil
+}
+
 // VMStorage creates a new storage object backed by an in memory datastore
 func VMStorage() vm.StorageMap {
 	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
