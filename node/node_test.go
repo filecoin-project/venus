@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -171,12 +172,13 @@ func TestNodeStartMining(t *testing.T) {
 		Network:      ntwk.New(minerNode.Host(), nil, nil, nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
+		Deals:        strgdls.New(minerNode.Repo.DealsDatastore()),
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
+	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 
 	assert.NoError(minerNode.Start(ctx))
@@ -429,7 +431,6 @@ func TestNodeConfig(t *testing.T) {
 }
 
 func TestNode_getMinerOwnerPubKey(t *testing.T) {
-	ctx := context.Background()
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
 	tnode := MakeNodeWithChainSeed(t, seed, configOpts,
@@ -438,7 +439,7 @@ func TestNode_getMinerOwnerPubKey(t *testing.T) {
 	)
 	seed.GiveKey(t, tnode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, tnode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PorcelainAPI)
+	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, tnode, tnode.Repo.DealsDatastore(), tnode.PorcelainAPI)
 	assert.NoError(t, err)
 
 	// it hasn't yet been saved to the MinerConfig; simulates incomplete CreateMiner, or no miner for the node

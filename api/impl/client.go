@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	mapi "github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -63,11 +63,11 @@ func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Nod
 	return nd, bufds.Commit()
 }
 
-func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64, allowDuplicates bool) (*storage.DealResponse, error) {
+func (api *nodeClient) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address, askid uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
 	return api.api.node.StorageMinerClient.ProposeDeal(ctx, miner, data, askid, duration, allowDuplicates)
 }
 
-func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error) {
+func (api *nodeClient) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.Response, error) {
 	return api.api.node.StorageMinerClient.QueryDeal(ctx, prop)
 }
 

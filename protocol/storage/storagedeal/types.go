@@ -1,21 +1,22 @@
-package storage
+package storagedeal
 
 import (
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
 	cbor.RegisterCborType(PaymentInfo{})
-	cbor.RegisterCborType(DealProposal{})
+	cbor.RegisterCborType(Proposal{})
+	cbor.RegisterCborType(Response{})
 	cbor.RegisterCborType(SignedDealProposal{})
-	cbor.RegisterCborType(DealResponse{})
 	cbor.RegisterCborType(ProofInfo{})
-	cbor.RegisterCborType(queryRequest{})
+	cbor.RegisterCborType(QueryRequest{})
+	cbor.RegisterCborType(Deal{})
 }
 
 // PaymentInfo contains all the payment related information for a storage deal.
@@ -40,8 +41,8 @@ type PaymentInfo struct {
 	Vouchers []*paymentbroker.PaymentVoucher
 }
 
-// DealProposal is the information sent over the wire, when a client proposes a deal to a miner.
-type DealProposal struct {
+// Proposal is the information sent over the wire, when a client proposes a deal to a miner.
+type Proposal struct {
 	// PieceRef is the cid of the piece being stored
 	PieceRef cid.Cid
 
@@ -63,18 +64,18 @@ type DealProposal struct {
 	Payment PaymentInfo
 }
 
-// Unmarshal a DealProposal from bytes.
-func (dp *DealProposal) Unmarshal(b []byte) error {
+// Unmarshal a Proposal from bytes.
+func (dp *Proposal) Unmarshal(b []byte) error {
 	return cbor.DecodeInto(b, dp)
 }
 
-// Marshal the DealProposal into bytes.
-func (dp *DealProposal) Marshal() ([]byte, error) {
+// Marshal the Proposal into bytes.
+func (dp *Proposal) Marshal() ([]byte, error) {
 	return cbor.DumpObject(dp)
 }
 
-// NewSignedProposal signs DealProposal with address `addr` and returns a SignedDealProposal.
-func (dp *DealProposal) NewSignedProposal(addr address.Address, signer types.Signer) (*SignedDealProposal, error) {
+// NewSignedProposal signs Proposal with address `addr` and returns a SignedDealProposal.
+func (dp *Proposal) NewSignedProposal(addr address.Address, signer types.Signer) (*SignedDealProposal, error) {
 	data, err := dp.Marshal()
 	if err != nil {
 		return nil, err
@@ -85,22 +86,22 @@ func (dp *DealProposal) NewSignedProposal(addr address.Address, signer types.Sig
 		return nil, err
 	}
 	return &SignedDealProposal{
-		DealProposal: *dp,
-		Signature:    sig,
+		Proposal:  *dp,
+		Signature: sig,
 	}, nil
 }
 
 // SignedDealProposal is a deal proposal signed by the proposing client
 type SignedDealProposal struct {
-	DealProposal
+	Proposal
 	// Signature is the signature of the client proposing the deal.
 	Signature types.Signature
 }
 
-// DealResponse is the information sent over the wire, when a miner responds to a client.
-type DealResponse struct {
+// Response is the information sent over the wire, when a miner responds to a client.
+type Response struct {
 	// State is the current state of this deal
-	State DealState
+	State State
 
 	// Message is an optional message to add context to any given response
 	Message string
@@ -116,6 +117,13 @@ type DealResponse struct {
 	Signature types.Signature
 }
 
+// Deal is a storage deal struct
+type Deal struct {
+	Miner    address.Address
+	Proposal *Proposal
+	Response *Response
+}
+
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
 // TODO: finalize parameters
 type ProofInfo struct {
@@ -124,6 +132,7 @@ type ProofInfo struct {
 	CommD    []byte
 }
 
-type queryRequest struct {
+// QueryRequest is used for making protocol api requests for deals
+type QueryRequest struct {
 	Cid cid.Cid
 }

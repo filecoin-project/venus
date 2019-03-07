@@ -18,6 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
+	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -41,12 +43,14 @@ type API struct {
 	network      *ntwk.Network
 	sigGetter    *mthdsig.Getter
 	wallet       *wallet.Wallet
+	storagedeals *strgdls.Store
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Chain        chain.ReadStore
 	Config       *cfg.Config
+	Deals        *strgdls.Store
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
@@ -72,6 +76,7 @@ func New(deps *APIDeps) *API {
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
 		wallet:       deps.Wallet,
+		storagedeals: deps.Deals,
 	}
 }
 
@@ -122,7 +127,17 @@ func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) 
 	return api.chain.GetBlock(ctx, id)
 }
 
-// MessagePoolPending lists messages in the pool.
+// DealsLs a slice of all storagedeals in the local datastore and possibly an error
+func (api *API) DealsLs() ([]*storagedeal.Deal, error) {
+	return api.storagedeals.Ls()
+}
+
+// DealPut puts a given deal in the datastore
+func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
+	return api.storagedeals.Put(storageDeal)
+}
+
+// MessagePoolPending lists messages un-mined in the pool
 func (api *API) MessagePoolPending() []*types.SignedMessage {
 	return api.msgPool.Pending()
 }

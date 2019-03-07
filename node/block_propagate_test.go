@@ -36,7 +36,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	assert := assert.New(t)
 
 	numNodes := 4
-	minerAddr, nodes := makeNodes(ctx, t, assert, numNodes)
+	minerAddr, nodes := makeNodes(t, assert, numNodes)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
@@ -86,7 +86,7 @@ func TestChainSync(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	minerAddr, nodes := makeNodes(ctx, t, assert, 2)
+	minerAddr, nodes := makeNodes(t, assert, 2)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
@@ -128,7 +128,7 @@ func (r *zeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr a
 }
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions, numNodes int) (address.Address, []*Node) {
+func makeNodes(t *testing.T, assertions *assert.Assertions, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&zeroRewarder{})}
 	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
@@ -137,7 +137,7 @@ func makeNodes(ctx context.Context, t *testing.T, assertions *assert.Assertions,
 	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(ctx, mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
+	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
 	assertions.NoError(err)
 
 	nodes := []*Node{minerNode}

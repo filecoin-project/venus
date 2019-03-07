@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 
 	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -36,9 +36,9 @@ func (f *Filecoin) ClientImport(ctx context.Context, data files.File) (cid.Cid, 
 
 // ClientProposeStorageDeal runs the client propose-storage-deal command against the filecoin process.
 func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
-	miner address.Address, ask uint64, duration uint64, allowDuplicates bool) (*storage.DealResponse, error) {
+	miner address.Address, ask uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
 
-	var out storage.DealResponse
+	var out storagedeal.Response
 	sData := data.String()
 	sMiner := miner.String()
 	sAsk := fmt.Sprintf("%d", ask)
@@ -51,8 +51,8 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 }
 
 // ClientQueryStorageDeal runs the client query-storage-deal command against the filecoin process.
-func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*storage.DealResponse, error) {
-	var out storage.DealResponse
+func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.Response, error) {
+	var out storagedeal.Response
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "query-storage-deal", prop.String()); err != nil {
 		return nil, err
