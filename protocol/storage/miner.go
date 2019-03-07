@@ -735,7 +735,7 @@ func (sm *Miner) generatePoSt(commRs []proofs.CommR, seed proofs.PoStChallengeSe
 		CommRs:        commRs,
 		ChallengeSeed: seed,
 	}
-	res, err := sm.node.SectorBuilder().GeneratePoST(req)
+	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to generate PoSt")
 	}
