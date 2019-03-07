@@ -31,7 +31,8 @@ func init() {
 //
 // Not safe for concurrent access.
 type Actor struct {
-	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code)
+	// Code is a CID of the VM code for this actor's implementation (or a constant for actors implemented in Go code).
+	// Code may be nil for an uninitialized actor (which exists because it has received a balance).
 	Code cid.Cid `refmt:",omitempty"`
 	// Head is the CID of the root of the actor's state tree.
 	Head cid.Cid `refmt:",omitempty"`

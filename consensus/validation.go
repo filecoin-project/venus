@@ -44,12 +44,13 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 		return errSelfSend
 	}
 
-	// sender must be an account actor.
-	if !fromActor.Code.Equals(types.AccountActorCodeCid) {
+	// Sender must be an account actor, or a undefined actor which will be upgraded to an account actor
+	// when the message is processed.
+	if fromActor.Code.Defined() && !fromActor.Code.Equals(types.AccountActorCodeCid) {
 		return errNonAccountActor
 	}
 
-	// avoid processing messages for actors that cannot pay.
+	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
 		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)
 		return errInsufficientGas

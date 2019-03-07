@@ -1,6 +1,8 @@
 package account
 
 import (
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,6 +26,9 @@ func NewActor(balance *types.AttoFIL) (*actor.Actor, error) {
 
 // UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
 func UpgradeActor(act *actor.Actor) error {
+	if act.Code.Defined() {
+		return errors.Errorf("Can't upgrade non-empty actor with code %s", act.Code)
+	}
 	act.Code = types.AccountActorCodeCid
 	return nil
 }
