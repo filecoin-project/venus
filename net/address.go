@@ -1,11 +1,9 @@
-package filnet
+package net
 
 import (
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 )
-
-// TODO we're using the ipfs/ protocol for peer ids, we should be using p2p.
 
 // PeerAddrsToPeerInfos converts a slice of string peer addresses
 // (multiaddr + ipfs peerid) to PeerInfos.

@@ -11,7 +11,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/filnet"
+	"github.com/filecoin-project/go-filecoin/net"
 )
 
 type nodeSwarm struct {
@@ -19,7 +19,7 @@ type nodeSwarm struct {
 }
 
 // COPIED FROM go-ipfs core/commands/swarm.go
-// TODO a lot of this functionality should migrate to the filnet package.
+// TODO a lot of this functionality should migrate to the network package.
 
 func newNodeSwarm(api *nodeAPI) *nodeSwarm {
 	return &nodeSwarm{api: api}
@@ -82,7 +82,7 @@ func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmCo
 		return nil, fmt.Errorf("peerhost network was not a swarm")
 	}
 
-	pis, err := filnet.PeerAddrsToPeerInfos(addrs)
+	pis, err := net.PeerAddrsToPeerInfos(addrs)
 	if err != nil {
 		return nil, err
 	}

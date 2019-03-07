@@ -1,4 +1,4 @@
-package filnet
+package net
 
 import (
 	"testing"

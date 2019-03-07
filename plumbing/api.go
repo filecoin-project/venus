@@ -14,13 +14,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
-	"github.com/filecoin-project/go-filecoin/plumbing/ntwk"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -40,7 +40,7 @@ type API struct {
 	msgQueryer   *msg.Queryer
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
-	network      *ntwk.Network
+	network      *net.Network
 	sigGetter    *mthdsig.Getter
 	wallet       *wallet.Wallet
 	storagedeals *strgdls.Store
@@ -56,7 +56,7 @@ type APIDeps struct {
 	MsgQueryer   *msg.Queryer
 	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
-	Network      *ntwk.Network
+	Network      *net.Network
 	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
 }
