@@ -1125,7 +1125,9 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 		}
 
 		if err := f(ctx, pubSubMsg); err != nil {
-			log.Errorf("%s(): %s", fname, err)
+			if err != context.Canceled {
+				log.Errorf("%s(): %s", fname, err)
+			}
 		}
 	}
 }
