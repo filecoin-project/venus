@@ -439,14 +439,6 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}
 
-	// processing an external message from an empty actor upgrades it to an account actor.
-	if !fromActor.Code.Defined() {
-		err := account.UpgradeActor(fromActor)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
-		}
-	}
-
 	err = p.signedMessageValidator.Validate(ctx, msg, fromActor)
 	if err != nil {
 		return &types.MessageReceipt{
@@ -463,6 +455,14 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	})
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "failed to get To actor")
+	}
+
+	// processing an external message from an empty actor upgrades it to an account actor.
+	if !toActor.Code.Defined() {
+		err := account.UpgradeActor(toActor)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")
+		}
 	}
 
 	vmCtxParams := vm.NewContextParams{
