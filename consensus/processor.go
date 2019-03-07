@@ -7,7 +7,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -475,7 +474,6 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		GasTracker:  gasTracker,
 		BlockHeight: bh,
 		Ancestors:   ancestors,
-		LookBack:    miner.LookbackParameter,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
 

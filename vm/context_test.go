@@ -313,7 +313,6 @@ func TestVMContextRand(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		vmCtxParams := NewContextParams{
 			Ancestors: ancestors,
-			LookBack:  3,
 		}
 		ctx := NewVMContext(vmCtxParams)
 
@@ -339,7 +338,6 @@ func TestVMContextRand(t *testing.T) {
 		modAncestors := append(ancestors[:len(ancestors)-1], types.RequireNewTipSet(require, afterNull))
 		vmCtxParams := NewContextParams{
 			Ancestors: modAncestors,
-			LookBack:  3,
 		}
 
 		ctx := NewVMContext(vmCtxParams)
@@ -354,7 +352,6 @@ func TestVMContextRand(t *testing.T) {
 		modAncestors := ancestors[5:]
 		vmCtxParams := NewContextParams{
 			Ancestors: modAncestors,
-			LookBack:  3,
 		}
 
 		ctx := NewVMContext(vmCtxParams)
@@ -365,7 +362,6 @@ func TestVMContextRand(t *testing.T) {
 	t.Run("truncated to genesis", func(t *testing.T) {
 		vmCtxParams := NewContextParams{
 			Ancestors: ancestors,
-			LookBack:  3,
 		}
 		ctx := NewVMContext(vmCtxParams)
 		r, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(1))) // lookback height lower than all ancestors
