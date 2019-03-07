@@ -753,6 +753,10 @@ func (ma *Actor) currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext) (proo
 // If no TipSet exists with the provided height (sampleHeight), we instead
 // sample the genesis block.
 func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetCh <-chan interface{}) ([]byte, error) {
+	// EDGE CASE: for now if ancestors includes the genesis block we take
+	// randomness from the genesis block.
+	// TODO: security, spec, bootstrap implications.
+	// See issue https://github.com/filecoin-project/go-filecoin/issues/1872
 	sampleHeight = sampleHeight.Sub(types.NewBlockHeight(LookbackParameter))
 	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
 		sampleHeight = types.NewBlockHeight(0)
