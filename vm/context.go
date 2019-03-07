@@ -245,37 +245,17 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 	return nil
 }
 
-// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height (minus lookback). This is useful for
-// things like PoSt challenge seed generation.
-//
-// If no TipSet exists with the provided height (sampleHeight), we instead
-// sample the genesis block.
+// SampleChainRandomness samples randomness from a block's ancestors at the
+// given height.
 func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
-	sampleHeight = sampleHeight.Sub(types.NewBlockHeight(miner.LookbackParameter))
-	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
-		sampleHeight = types.NewBlockHeight(0)
-	}
-
-	var sampleTipSet *types.TipSet
-
-	for _, tipSet := range ctx.ancestors {
-		height, err := tipSet.Height()
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "error obtaining tip set height")
+	ch := make(chan interface{})
+	go func() {
+		for _, val := range ctx.ancestors {
+			ch <- val
 		}
+	}()
 
-		if sampleHeight.Equal(types.NewBlockHeight(height)) {
-			sampleTipSet = &tipSet
-			break
-		}
-	}
-
-	if sampleTipSet == nil {
-		return nil, errors.NewFaultErrorf("found no tip set in ancestors with height %s", sampleHeight)
-	}
-
-	return sampleTipSet.MinTicket()
+	return miner.SampleChainRandomness(sampleHeight, ch)
 }
 
 // Dependency injection setup.
