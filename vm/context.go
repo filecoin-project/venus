@@ -5,13 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -248,14 +247,19 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 // SampleChainRandomness samples randomness from a block's ancestors at the
 // given height.
 func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
-	ch := make(chan interface{})
+	ancestorCh := make(chan interface{})
 	go func() {
 		for _, val := range ctx.ancestors {
-			ch <- val
+			ancestorCh <- val
 		}
 	}()
 
-	return miner.SampleChainRandomness(sampleHeight, ch)
+	bytes, err := miner.SampleChainRandomness(sampleHeight, ancestorCh)
+	if err != nil {
+		return nil, errors.FaultErrorWrap(err, "failed to sample randomness from chain")
+	}
+
+	return bytes, nil
 }
 
 // Dependency injection setup.
