@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -38,7 +37,7 @@ func TestNodeConstruct(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	nd := MakeNodesUnstarted(t, 1, false)[0]
+	nd := node.MakeNodesUnstarted(t, 1, false)[0]
 	assert.NotNil(nd.Host)
 
 	nd.Stop(context.Background())
@@ -49,7 +48,7 @@ func TestNodeNetworking(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 
-	nds := MakeNodesUnstarted(t, 2, false)
+	nds := node.MakeNodesUnstarted(t, 2, false)
 	nd1, nd2 := nds[0], nds[1]
 
 	pinfo := peerstore.PeerInfo{
@@ -75,7 +74,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
+		require.NoError(node.Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(err)
@@ -92,8 +91,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		ctx := context.Background()
 
 		// These are two bootstrap nodes we'll connect to.
-		nds := MakeNodesUnstarted(t, 2, false)
-		StartNodes(t, nds)
+		nds := node.MakeNodesUnstarted(t, 2, false)
+		node.StartNodes(t, nds)
 		nd1, nd2 := nds[0], nds[1]
 
 		// Gotta be a better way to do this?
@@ -104,7 +103,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(Init(ctx, r, consensus.DefaultGenesis))
+		require.NoError(node.Init(ctx, r, consensus.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(err)
@@ -209,7 +208,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	node := MakeNodesUnstarted(t, 1, true)[0]
+	node := node.MakeNodesUnstarted(t, 1, true)[0]
 	chainForTest, ok := node.ChainReader.(chain.Store)
 	require.True(ok)
 
@@ -256,7 +255,7 @@ func TestOptionWithError(t *testing.T) {
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
-	assert.NoError(Init(ctx, r, consensus.DefaultGenesis))
+	assert.NoError(node.Init(ctx, r, consensus.DefaultGenesis))
 
 	opts, err := node.OptionsFromRepo(r)
 	assert.NoError(err)

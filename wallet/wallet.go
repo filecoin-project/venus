@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/minio/blake2b-simd"
+	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 	"reflect"
 	"sort"
 	"sync"

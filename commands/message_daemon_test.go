@@ -26,7 +26,6 @@ func TestMessageSend(t *testing.T) {
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
 	).Start()
-
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("mining", "once")
@@ -41,15 +40,16 @@ func TestMessageSend(t *testing.T) {
 	)
 
 	t.Log("[success] with from")
+	defaultaddr := d.GetDefaultAddress()
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[1],
+		"--from", fixtures.TestAddresses[0],
 		"--price", "0", "--limit", "300",
-		fixtures.TestAddresses[1],
+		defaultaddr,
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[1],
+		"--from", fixtures.TestAddresses[0],
 		"--price", "0", "--limit", "300",
 		"--value=10", fixtures.TestAddresses[1],
 	)
