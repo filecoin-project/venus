@@ -3,6 +3,7 @@ package miner_test
 import (
 	"context"
 	"math/big"
+	"strconv"
 	"testing"
 
 	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -286,20 +287,20 @@ func TestMinerCommitSector(t *testing.T) {
 	commRStar := th.MakeCommitment()
 	commD := th.MakeCommitment()
 
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(proofs.SealBytesLen)))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(proofs.SealBytesLen)))
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// check that the proving period matches
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart")
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart", nil)
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	// blockheight was 3
 	require.Equal(types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
 
 	// fail because commR already exists
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(proofs.SealBytesLen)))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(proofs.SealBytesLen)))
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "sector already committed")
 	require.Equal(uint8(0x23), res.Receipt.ExitCode)
@@ -310,37 +311,57 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	ctx := context.Background()
 	st, vms := core.CreateStorages(ctx, t)
 
+	ancestors := requireAncestors(t, 10)
+
 	origPid := th.RequireRandomPeerID()
 	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(proofs.SealBytesLen)))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(proofs.SealBytesLen)))
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// add another sector
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(proofs.SealBytesLen)))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(proofs.SealBytesLen)))
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// submit post
 	proof := th.MakeRandomPoSTProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", []proofs.PoStProof{proof})
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(uint8(0), res.Receipt.ExitCode)
 
 	// check that the proving period is now the next one
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart")
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart", ancestors)
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 	require.Equal(types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
 
 	// fail to submit inside the proving period
 	proof = th.MakeRandomPoSTProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", []proofs.PoStProof{proof})
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", ancestors, []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
+}
+
+func requireAncestors(t *testing.T, length int) []types.TipSet {
+	require := require.New(t)
+
+	var ancestors []types.TipSet
+	head := types.NewBlockForTest(nil, uint64(0))
+	head.Ticket = []byte(strconv.Itoa(0))
+	for i := 0; i < length; i++ {
+		ancestors = append(ancestors, types.RequireNewTipSet(require, head))
+		newBlock := types.NewBlockForTest(head, uint64(0))
+		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
+		head = newBlock
+	}
+
+	ancestors = append(ancestors, types.RequireNewTipSet(require, head))
+
+	return ancestors
 }
