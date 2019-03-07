@@ -252,6 +252,7 @@ func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]by
 		for _, val := range ctx.ancestors {
 			ancestorCh <- val
 		}
+		close(ancestorCh)
 	}()
 
 	bytes, err := miner.SampleChainRandomness(sampleHeight, ancestorCh)
