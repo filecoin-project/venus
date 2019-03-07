@@ -3,12 +3,12 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 )
 
 // ActorLs runs the `actor ls` command against the filecoin process.
-func (f *Filecoin) ActorLs(ctx context.Context) (*api.ActorView, error) {
-	var out api.ActorView
+func (f *Filecoin) ActorLs(ctx context.Context) (*actr.ActorView, error) {
+	var out actr.ActorView
 	args := []string{"go-filecoin", "actor", "ls"}
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {

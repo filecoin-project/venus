@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 	"github.com/filecoin-project/go-filecoin/types"
 	"io/ioutil"
 	"math/big"
@@ -373,7 +373,7 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 	output := d.RunSuccess("actor", "ls", "--enc", "json")
 	result := output.ReadStdoutTrimNewlines()
 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
-		var a api.ActorView
+		var a actr.ActorView
 		err := json.Unmarshal(line, &a)
 		require.NoError(t, err)
 		if a.Address == actorAddr.String() {

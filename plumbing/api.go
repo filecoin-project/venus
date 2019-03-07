@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
@@ -34,6 +35,7 @@ import (
 type API struct {
 	logger logging.EventLogger
 
+	actor        *actr.Actor
 	chain        chain.ReadStore
 	config       *cfg.Config
 	msgPool      *core.MessagePool
@@ -49,6 +51,7 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
+	Actor        *actr.Actor
 	Chain        chain.ReadStore
 	Config       *cfg.Config
 	Deals        *strgdls.Store
@@ -67,6 +70,7 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
+		actor:        deps.Actor,
 		chain:        deps.Chain,
 		config:       deps.Config,
 		msgPool:      deps.MsgPool,
@@ -122,11 +126,12 @@ func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 
 // ActorGet returns an actor from the latest state on the chain
 func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	state, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetActor(ctx, addr)
+	return api.actor.Get(ctx, addr)
+}
+
+// ActorLs returns a slice of actors from the latest state on the chain
+func (api *API) ActorLs(ctx context.Context) ([]*actr.ActorView, error) {
+	return api.actor.Ls(ctx)
 }
 
 // BlockGet gets a block by CID

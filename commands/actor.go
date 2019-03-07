@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 
 	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
@@ -21,7 +21,7 @@ var actorCmd = &cmds.Command{
 
 var actorLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		actors, err := GetAPI(env).Actor().Ls(req.Context)
+		actors, err := GetPorcelainAPI(env).ActorLs(req.Context)
 		if err != nil {
 			return err
 		}
@@ -33,9 +33,9 @@ var actorLsCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: &api.ActorView{},
+	Type: &actr.ActorView{},
 	Encoders: cmds.EncoderMap{
-		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *api.ActorView) error {
+		cmds.JSON: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *actr.ActorView) error {
 			marshaled, err := json.Marshal(a)
 			if err != nil {
 				return err
