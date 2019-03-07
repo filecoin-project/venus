@@ -29,7 +29,6 @@ type Context struct {
 	gasTracker  *GasTracker
 	blockHeight *types.BlockHeight
 	ancestors   []types.TipSet
-	lookBack    int
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
