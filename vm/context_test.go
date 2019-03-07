@@ -340,10 +340,16 @@ func TestVMContextRand(t *testing.T) {
 			Ancestors: modAncestors,
 		}
 
+		// ancestor block heights:
+		//
+		// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 25
 		ctx := NewVMContext(vmCtxParams)
-		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(22))) // null block here
+
+		// 24 - lookback = 22 ... no such tip set in ancestors (null block)
+		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(24)))
 		assert.Error(err)
 
+		// 30 - lookback = 28 ... no such tip set in ancestors
 		_, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(30))) // ancestors all lower height
 		assert.Error(err)
 	})
