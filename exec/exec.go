@@ -74,6 +74,7 @@ type VMContext interface {
 	BlockHeight() *types.BlockHeight
 	IsFromAccountActor() bool
 	Charge(cost types.GasUnits) error
+	SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error)
 
 	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 

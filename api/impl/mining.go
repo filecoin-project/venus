@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -70,7 +71,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	blockSignerAddr := blockSignerAddrIf.(address.Address)
 
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, miner.LookbackParameter)
 	}
 	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
 		nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, miningOwnerAddr, blockSignerAddr, nd.Wallet, blockTime)

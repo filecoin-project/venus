@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -243,45 +245,37 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 	return nil
 }
 
-// Rand samples the chain randomness for the tipset at the given height.  The
-// tipset providing randomness for the tipset at sampleHeight is guaranteed to
-// be in ancestors, and Rand will return a fault error if it is not.
-func (ctx *Context) Rand(sampleHeight *types.BlockHeight) ([]byte, error) {
-	sampleIndex := -1
-	var firstHeight uint64
-	for i := 0; i < len(ctx.ancestors); i++ {
+// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
+// in the blockchain at a given height (minus lookback). This is useful for
+// things like PoSt challenge seed generation.
+//
+// If no TipSet exists with the provided height (sampleHeight), we instead
+// sample the genesis block.
+func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
+	sampleHeight = sampleHeight.Sub(types.NewBlockHeight(miner.LookbackParameter))
+	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
+		sampleHeight = types.NewBlockHeight(0)
+	}
 
-		height, err := ctx.ancestors[i].Height()
+	var sampleTipSet *types.TipSet
+
+	for _, tipSet := range ctx.ancestors {
+		height, err := tipSet.Height()
 		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "Error sampling randomness from chain")
+			return nil, errors.FaultErrorWrap(err, "error obtaining tip set height")
 		}
-		if i == 0 {
-			firstHeight = height
-		}
-		if types.NewBlockHeight(height).Equal(sampleHeight) {
-			sampleIndex = i
+
+		if sampleHeight.Equal(types.NewBlockHeight(height)) {
+			sampleTipSet = &tipSet
 			break
 		}
 	}
-	// Fault if a tipset of this height does not exist in ancestors.
-	if sampleIndex == -1 {
-		return nil, errors.NewFaultError("rand sample height out of range")
+
+	if sampleTipSet == nil {
+		return nil, errors.NewFaultErrorf("found no tip set in ancestors with height %s", sampleHeight)
 	}
 
-	// Fault if a tipset of sampleHeight - lookBack does not exist in ancestors.
-	// EDGE CASE: for now if ancestors includes the genesis block we take
-	// randomness from the genesis block.
-	// TODO: security, spec, bootstrap implications.
-	// See issue https://github.com/filecoin-project/go-filecoin/issues/1872
-	lookBackIndex := sampleIndex - ctx.lookBack
-	if lookBackIndex < 0 {
-		if firstHeight == uint64(0) {
-			lookBackIndex = 0
-		} else {
-			return nil, errors.NewFaultError("rand lookBack height out of range")
-		}
-	}
-	return ctx.ancestors[lookBackIndex].MinTicket()
+	return sampleTipSet.MinTicket()
 }
 
 // Dependency injection setup.

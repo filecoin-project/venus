@@ -317,15 +317,15 @@ func TestVMContextRand(t *testing.T) {
 		}
 		ctx := NewVMContext(vmCtxParams)
 
-		r, err := ctx.Rand(types.NewBlockHeight(uint64(20)))
+		r, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(20)))
 		assert.NoError(err)
 		assert.Equal([]byte(strconv.Itoa(17)), r)
 
-		r, err = ctx.Rand(types.NewBlockHeight(uint64(3)))
+		r, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(3)))
 		assert.NoError(err)
 		assert.Equal([]byte(strconv.Itoa(0)), r)
 
-		r, err = ctx.Rand(types.NewBlockHeight(uint64(10)))
+		r, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(10)))
 		assert.NoError(err)
 		assert.Equal([]byte(strconv.Itoa(7)), r)
 	})
@@ -343,10 +343,10 @@ func TestVMContextRand(t *testing.T) {
 		}
 
 		ctx := NewVMContext(vmCtxParams)
-		_, err := ctx.Rand(types.NewBlockHeight(uint64(22))) // null block here
+		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(22))) // null block here
 		assert.Error(err)
 
-		_, err = ctx.Rand(types.NewBlockHeight(uint64(30))) // ancestors all lower height
+		_, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(30))) // ancestors all lower height
 		assert.Error(err)
 	})
 
@@ -358,7 +358,7 @@ func TestVMContextRand(t *testing.T) {
 		}
 
 		ctx := NewVMContext(vmCtxParams)
-		_, err := ctx.Rand(types.NewBlockHeight(uint64(5))) // lookback height lower than all ancestors
+		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(5))) // lookback height lower than all ancestors
 		assert.Error(err)
 	})
 
@@ -368,7 +368,7 @@ func TestVMContextRand(t *testing.T) {
 			LookBack:  3,
 		}
 		ctx := NewVMContext(vmCtxParams)
-		r, err := ctx.Rand(types.NewBlockHeight(uint64(1))) // lookback height lower than all ancestors
+		r, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(1))) // lookback height lower than all ancestors
 		assert.NoError(err)
 		assert.Equal([]byte(strconv.Itoa(0)), r)
 	})

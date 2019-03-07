@@ -54,10 +54,6 @@ const ECV uint64 = 10
 // ECPrM is the power ratio magnitude defined in the EC spec.
 const ECPrM uint64 = 100
 
-// LookBackParameter is the protocol parameter defining how many blocks in the
-// past to look back to sample randomness values.
-const LookBackParameter = 3
-
 // AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
 // to process all state transitions.
 var AncestorRoundsNeeded = miner.ProvingPeriodBlocks.Add(miner.GracePeriodBlocks)

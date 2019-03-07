@@ -11,6 +11,7 @@ import (
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -207,7 +208,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		return err
 	}
 	newBlockHeight := types.NewBlockHeight(h)
-	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, consensus.AncestorRoundsNeeded, miner.LookbackParameter)
 	if err != nil {
 		return err
 	}

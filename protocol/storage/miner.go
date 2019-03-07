@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -73,7 +72,7 @@ type Miner struct {
 type minerPorcelain interface {
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	ConfigGet(dottedPath string) (interface{}, error)
-	ChainLs(ctx context.Context) <-chan interface{}
+	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
@@ -129,45 +128,6 @@ func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.D
 	nd.Host().SetStreamHandler(queryDealProtocol, sm.handleQueryDeal)
 
 	return sm, nil
-}
-
-func (sm *Miner) currentPoStChallengeSeed(ctx context.Context) (proofs.PoStChallengeSeed, error) {
-	startHeight, err := sm.getProvingPeriodStart()
-	if err != nil {
-		panic(err)
-	}
-
-	sampleBlockHeight := startHeight.Sub(types.NewBlockHeight(consensus.LookBackParameter))
-
-	for raw := range sm.porcelainAPI.ChainLs(ctx) {
-		switch v := raw.(type) {
-		case error:
-			panic(v)
-		case types.TipSet:
-			tipSetHeight, err := v.Height()
-			if err != nil {
-				panic(err)
-			}
-
-			tipSetBlockHeight := types.NewBlockHeight(tipSetHeight)
-
-			if tipSetBlockHeight.Equal(sampleBlockHeight) {
-				ticket, err := v.MinTicket()
-				if err != nil {
-					panic(err)
-				}
-
-				seed := proofs.PoStChallengeSeed{}
-				copy(seed[:], ticket)
-
-				return seed, nil
-			}
-		default:
-			panic("unexpected type")
-		}
-	}
-
-	panic("could not find a TipSet corresponding to start of miner's current proving period")
 }
 
 func (sm *Miner) handleMakeDeal(s inet.Stream) {
@@ -643,6 +603,23 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
+func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (proofs.PoStChallengeSeed, error) {
+	currentProvingPeriodStart, err := sm.getProvingPeriodStart()
+	if err != nil {
+		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
+	}
+
+	bytes, err := sm.porcelainAPI.SampleChainRandomness(ctx, currentProvingPeriodStart)
+	if err != nil {
+		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
+	}
+
+	seed := proofs.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+
+	return seed, nil
+}
+
 // OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
 // It is used to check if we are in a new proving period and need to trigger PoSt submission.
 func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
@@ -720,9 +697,10 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodStart
 
-			seed, err := sm.currentPoStChallengeSeed(ctx)
+			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx)
 			if err != nil {
-				panic(err)
+				log.Errorf("error obtaining challenge seed: %s", err)
+				return
 			}
 
 			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
@@ -751,10 +729,10 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(commRs []proofs.CommR, challenge proofs.PoStChallengeSeed) ([]proofs.PoStProof, []uint64, error) {
+func (sm *Miner) generatePoSt(commRs []proofs.CommR, seed proofs.PoStChallengeSeed) ([]proofs.PoStProof, []uint64, error) {
 	req := sectorbuilder.GeneratePoStRequest{
 		CommRs:        commRs,
-		ChallengeSeed: challenge,
+		ChallengeSeed: seed,
 	}
 	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
 	if err != nil {

@@ -28,6 +28,10 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
+// LookbackParameter is the protocol parameter defining how many blocks in the
+// past to look back to sample randomness values.
+const LookbackParameter = 3
+
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
@@ -659,8 +663,13 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			sectorStoreType = proofs.Test
 		}
 
+		seed, err := ma.currentProvingPeriodPoStChallengeSeed(ctx)
+		if err != nil {
+			return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
+		}
+
 		req := proofs.VerifyPoSTRequest{
-			ChallengeSeed: proofs.PoStChallengeSeed{},
+			ChallengeSeed: seed,
 			CommRs:        commRs,
 			Faults:        []uint64{},
 			Proofs:        postProofs,
@@ -713,4 +722,26 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 	}
 
 	return state.ProvingPeriodStart, 0, nil
+}
+
+func (ma *Actor) currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext) (proofs.PoStChallengeSeed, error) {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return proofs.PoStChallengeSeed{}, err
+	}
+
+	var state State
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return proofs.PoStChallengeSeed{}, err
+	}
+
+	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
+	if err != nil {
+		return proofs.PoStChallengeSeed{}, err
+	}
+
+	seed := proofs.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+
+	return seed, nil
 }
