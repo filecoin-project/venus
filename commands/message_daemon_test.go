@@ -30,28 +30,32 @@ func TestMessageSend(t *testing.T) {
 
 	d.RunSuccess("mining", "once")
 
+	from := d.GetDefaultAddress() // this should = fixtures.TestAddresses[0]
+
 	t.Log("[failure] invalid target")
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", fixtures.TestAddresses[0],
+		"--from", from,
 		"--price", "0", "--limit", "300",
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] with from")
-	defaultaddr := d.GetDefaultAddress()
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[0],
-		"--price", "0", "--limit", "300",
-		defaultaddr,
+		"--from", from,
+		"--price", "0",
+		"--limit", "300",
+		fixtures.TestAddresses[3],
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[0],
-		"--price", "0", "--limit", "300",
-		"--value=10", fixtures.TestAddresses[1],
+		"--from", from,
+		"--price", "0",
+		"--limit", "300",
+		"--value=10",
+		fixtures.TestAddresses[3],
 	)
 }
 
