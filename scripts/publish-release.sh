@@ -41,7 +41,7 @@ fi
 
 RELEASE_UPLOAD_URL=`echo $RELEASE_RESPONSE | jq -r '.upload_url' | cut -d'{' -f1`
 
-bundles=('filecoin-Linux.tar.gz' 'filecoin-Darwin.tar.gz' "filecoin-proof-parameters-$CIRCLE_TAG.tar.gz")
+bundles=('filecoin-Linux.tar.gz' "filecoin-proof-parameters-$CIRCLE_TAG.tar.gz")
 for RELEASE_FILE in "${bundles[@]}"
 do
   echo "Uploading release bundle: $RELEASE_FILE"
