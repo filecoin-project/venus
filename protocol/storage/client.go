@@ -12,6 +12,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
+	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -53,6 +54,7 @@ type clientNode interface {
 	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
 	GetBlockTime() time.Duration
+	Ping(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
 }
 
 type clientPorcelainAPI interface {
@@ -87,6 +89,18 @@ func NewClient(nd clientNode, api clientPorcelainAPI) (*Client, error) {
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, 4*smc.node.GetBlockTime())
 	defer cancel()
+
+	pid, err := smc.api.MinerGetPeerID(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+
+	minerAlive := make(chan error, 1)
+	go func() {
+		defer close(minerAlive)
+		minerAlive <- smc.pingMiner(ctx, pid)
+	}()
+
 	size, err := smc.node.GetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
@@ -127,6 +141,16 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, Errors[ErrDuplicateDeal]
 	}
 
+	// see if we managed to connect to the miner
+	select {
+	case err := <-minerAlive:
+		if err != nil {
+			return nil, err
+		}
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
 	// create payment information
 	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
@@ -154,11 +178,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	// send proposal
-	pid, err := smc.api.MinerGetPeerID(ctx, miner)
-	if err != nil {
-		return nil, err
-	}
-
 	var response storagedeal.Response
 	err = smc.node.MakeProtocolRequest(ctx, makeDealProtocol, pid, signedProposal, &response)
 	if err != nil {
@@ -176,6 +195,26 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	return &response, nil
+}
+
+func (smc *Client) pingMiner(ctx context.Context, pid peer.ID) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second) //TODO: better place to (not) hard-code this?
+	defer cancel()
+
+	res, err := smc.node.Ping(ctx, pid)
+	if err != nil {
+		return fmt.Errorf("couldn't establish connection to miner: %s", err)
+	}
+
+	select {
+	case _, ok := <-res:
+		if !ok {
+			return errors.New("couldn't establish connection to miner: ping channel closed")
+		}
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("couldn't establish connection to miner: %s", ctx.Err())
+	}
 }
 
 func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
@@ -269,14 +308,16 @@ type ClientNodeImpl struct {
 	dserv     ipld.DAGService
 	host      host.Host
 	blockTime time.Duration
+	*ping.PingService
 }
 
 // NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(ds ipld.DAGService, host host.Host, bt time.Duration) *ClientNodeImpl {
+func NewClientNodeImpl(ds ipld.DAGService, host host.Host, ps *ping.PingService, bt time.Duration) *ClientNodeImpl {
 	return &ClientNodeImpl{
-		dserv:     ds,
-		host:      host,
-		blockTime: bt,
+		dserv:       ds,
+		host:        host,
+		PingService: ps,
+		blockTime:   bt,
 	}
 }
 
