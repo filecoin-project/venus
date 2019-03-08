@@ -3,15 +3,15 @@ package wallet
 import (
 	"bytes"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 	"reflect"
 	"sort"
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
@@ -174,7 +174,7 @@ func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
 
 // CreateTicket computes a valid ticket.
 // 	params:  proof  []byte, minerAddress address.Address.
-//  returns:  []byte, error
+//  returns:  types.Signature ( []byte ), error
 func (w *Wallet) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error) {
 
 	var ticket []byte

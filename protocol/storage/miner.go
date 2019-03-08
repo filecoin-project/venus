@@ -106,7 +106,7 @@ func init() {
 	cbor.RegisterCborType(dealsAwaitingSealStruct{})
 }
 
-// NewMiner creates a new storage miner.
+// NewMiner is
 func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,

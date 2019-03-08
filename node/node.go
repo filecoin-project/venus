@@ -1009,19 +1009,15 @@ func (node *Node) NewAddress() (address.Address, error) {
 //       See https://github.com/filecoin-project/go-filecoin/issues/1843
 func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 
-	fmt.Printf("==================================================================================================================")
-
 	// Only create a miner if we don't already have one.
 	if _, err := node.miningAddress(); err != ErrNoMinerAddress {
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
-	fmt.Printf("==================================================================================================================")
 
 	ctx = log.Start(ctx, "Node.CreateMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-	fmt.Printf("==================================================================================================================")
 
 	pubKey, err := node.Wallet.GetPubKeyForAddress(minerOwnerAddr)
 	if err != nil {
@@ -1045,7 +1041,6 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 		return nil, err
 	}
 
-	fmt.Printf("==================================================================================================================")
 	var minerAddr address.Address
 	err = node.PorcelainAPI.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage,
 		receipt *types.MessageReceipt) error {
@@ -1065,7 +1060,6 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 	}
 
 	err = node.setupMining(ctx)
-	fmt.Printf("==================================================================================================================")
 
 	return &minerAddr, err
 }

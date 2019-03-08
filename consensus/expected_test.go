@@ -206,7 +206,7 @@ func TestIsWinningTicket(t *testing.T) {
 			wins       bool
 		}{
 			{0x00, 1, 5, true},
-			{0xFF, 0, 5, false},
+			{0xF0, 0, 5, false},
 		}
 
 		minerAddress := address.NewForTestGetter()()
@@ -217,7 +217,7 @@ func TestIsWinningTicket(t *testing.T) {
 
 		for _, c := range cases {
 			ptv := testhelpers.NewTestPowerTableView(c.myPower, c.totalPower)
-			ticket := [sha256.Size]byte{}
+			ticket := [65]byte{}
 			ticket[0] = c.ticket
 			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
 			assert.NoError(err)
@@ -234,7 +234,7 @@ func TestIsWinningTicket(t *testing.T) {
 
 	t.Run("IsWinningTicket returns false + error when we fail to get total power", func(t *testing.T) {
 		ptv1 := NewFailingTestPowerTableView(testCase.myPower, testCase.totalPower)
-		ticket := [sha256.Size]byte{}
+		ticket := [65]byte{}
 		ticket[0] = testCase.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, ticket[:], minerAddress)
 		assert.False(r)

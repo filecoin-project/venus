@@ -69,8 +69,6 @@ func TestPaymentChannelLs(t *testing.T) {
 		target, err := address.NewFromString(fixtures.TestAddresses[1])
 		require.NoError(err)
 
-		fmt.Printf("\n\n payer: %s, target: %s", fixtures.TestAddresses[2], fixtures.TestAddresses[1])
-
 		eol := types.NewBlockHeight(20)
 		amt := types.NewAttoFILFromFIL(10000)
 
