@@ -1,41 +1,62 @@
 package address
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/filecoin-project/go-filecoin/bls-signatures"
+
+	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
 	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
+	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"gx/ipfs/QmdBzoMxsBpojBfN1cv5GnKtB7sfYBMoLH7p9qSyEVYXcu/refmt/obj/atlas"
 )
 
 func init() {
-	// cbor.RegisterCborType(Address{})
+	cbor.RegisterCborType(addressAtlasEntry)
 }
 
-var hashConfig = &blake2b.Config{Size: HashLength}
+var addressAtlasEntry = atlas.BuildEntry(Address{}).Transform().
+	TransformMarshal(atlas.MakeMarshalTransformFunc(
+		func(a Address) ([]byte, error) {
+			return a.Bytes(), nil
+		})).
+	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
+		func(x []byte) (Address, error) {
+			return NewFromBytes(x)
+		})).
+	Complete()
 
-// Hash hashes the given input using the default address hashing function,
-// Blake2b 160.
-func Hash(input []byte) []byte {
-	hasher, err := blake2b.New(hashConfig)
-	if err != nil {
-		// If this happens sth is very wrong.
-		panic(fmt.Sprintf("invalid address hash configuration: %v", err))
-	}
-	if _, err := hasher.Write(input); err != nil {
-		// blake2bs Write implementation never returns an error in its current
-		// setup. So if this happens sth went very wrong.
-		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err))
-	}
-	return hasher.Sum(nil)
-}
+/*
 
-// MakeTestAddress creates a new testnet address by hashing the given string
-func MakeTestAddress(input string) Address {
-	hash := Hash([]byte(input))
+There are 2 ways a filecoin address can be represented. An address appearing on
+chain will always be formatted as raw bytes. An address may also be encoded to
+a string, this encoding includes a checksum and network prefix. An address
+encoded as a string will never appear on chain, this format is used for sharing
+among humans.
 
-	return NewTestnet(hash)
-}
+Bytes:
+|----------|---------|
+| protocol | payload |
+|----------|---------|
+|  1 byte  | n bytes |
+
+String:
+|------------|----------|---------|----------|
+|  network   | protocol | payload | checksum |
+|------------|----------|---------|----------|
+| 'f' or 't' |  1 byte  | n bytes | 4 bytes  |
+
+*/
+
+// Address is the go type that represents an address in the filecoin network.
+type Address struct{ str string }
+
+// Undef is the type that represents an undefined address.
+var Undef = Address{}
 
 // Network represents which network an address belongs to.
 type Network = byte
@@ -47,147 +68,91 @@ const (
 	Testnet
 )
 
-var (
-	// ErrUnknownNetwork is returned when encountering an unknown network in an address.
-	ErrUnknownNetwork = errors.New("unknown network")
-	// ErrUnknownVersion is returned when encountering an unknown address version.
-	ErrUnknownVersion = errors.New("unknown version")
-	// ErrInvalidBytes is returned when encountering an invalid byte format.
-	ErrInvalidBytes = errors.New("invalid bytes")
+// MainnetPrefix is the main network prefix.
+const MainnetPrefix = "f"
+
+// TestnetPrefix is the main network prefix.
+const TestnetPrefix = "t"
+
+// Protocol represents which protocol an address uses.
+type Protocol = byte
+
+const (
+	// ID represents the address ID protocol.
+	ID Protocol = iota
+	// SECP256K1 represents the address SECP256K1 protocol.
+	SECP256K1
+	// Actor represents the address Actor protocol.
+	Actor
+	// BLS represents the address BLS protocol.
+	BLS
 )
 
-// NetworkFromString tries to convert the string representation of a network to
-// its binary representation.
-func NetworkFromString(input string) (Network, error) {
-	switch input {
-	case "fc":
-		return Mainnet, nil
-	case "tf":
-		return Testnet, nil
-	default:
-		return 0, ErrUnknownNetwork
-	}
+// Protocol returns the protocol used by the address.
+func (a Address) Protocol() Protocol {
+	return a.str[0]
 }
 
-// NetworkToString creates a human readable representation of the network.
-func NetworkToString(n Network) string {
-	switch n {
-	case Mainnet:
-		return "fc"
-	case Testnet:
-		return "tf"
-	default:
-		panic("invalid network")
-	}
+// Payload returns the payload of the address.
+func (a Address) Payload() []byte {
+	return []byte(a.str[1:])
 }
 
-// Address is the go type that represents an address in the filecoin network.
-type Address [Length]byte
-
-// NewMainnet constructs a new mainnet address.
-func NewMainnet(hash []byte) Address {
-	return New(Mainnet, hash)
+// Bytes returns the address as bytes.
+func (a Address) Bytes() []byte {
+	return []byte(a.str)
 }
 
-// NewTestnet constructs a new testnet address.
-func NewTestnet(hash []byte) Address {
-	return New(Testnet, hash)
-}
-
-// New constructs a new address for the given nework.
-func New(network Network, hash []byte) Address {
-	var addr [Length]byte
-	addr[0] = network
-	addr[1] = Version
-	copy(addr[2:], hash)
-	return addr
-}
-
-// NewFromString tries to parse a given string into a filecoin address.
-func NewFromString(s string) (Address, error) {
-	networkString, version, hash, err := decode(s)
+// String returns an address encoded as a string.
+func (a Address) String() string {
+	str, err := encode(Testnet, a)
 	if err != nil {
-		return Address{}, err
+		panic(err)
 	}
-
-	network, err := NetworkFromString(networkString)
-	if err != nil {
-		return Address{}, err
-	}
-
-	if version != Version {
-		return Address{}, ErrUnknownVersion
-	}
-
-	return New(network, hash), nil
+	return str
 }
 
-// NewFromBytes tries to create an address from the given bytes.
-func NewFromBytes(raw []byte) (Address, error) {
-	if len(raw) != 22 {
-		return Address{}, ErrInvalidBytes
-	}
-
-	network := raw[0]
-	if network > Testnet {
-		return Address{}, ErrUnknownNetwork
-	}
-
-	version := raw[1]
-	if version != Version {
-		return Address{}, ErrUnknownVersion
-	}
-
-	return New(network, raw[2:]), nil
+// Equal returns true if address `b` is equal to address.
+func (a Address) Equal(b Address) bool {
+	return a == b
 }
 
-// ParseError checks if the given address parses as a valid filecoin address.
-func ParseError(addr string) error {
-	hrp, version, data, err := decode(addr)
+// Empty returns true if the address is empty, false otherwise.
+func (a Address) Empty() bool {
+	return a == Undef
+}
+
+// Unmarshal unmarshals the cbor bytes into the address.
+func (a Address) Unmarshal(b []byte) error {
+	return cbor.DecodeInto(b, &a)
+}
+
+// Marshal marshals the address to cbor.
+func (a Address) Marshal() ([]byte, error) {
+	return cbor.DumpObject(a)
+}
+
+// UnmarshalJSON implements the json unmarshal interface.
+func (a *Address) UnmarshalJSON(b []byte) error {
+	in := strings.TrimSuffix(strings.TrimPrefix(string(b), `"`), `"`)
+	addr, err := decode(in)
 	if err != nil {
-		return errors.Wrap(err, "unable to decode")
+		return err
 	}
-
-	if _, err := NetworkFromString(hrp); err != nil {
-		return errors.Wrap(err, "invalid network")
-	}
-
-	if version != Version {
-		return fmt.Errorf("invalid version: version=%d", version)
-	}
-
-	if len(data) != HashLength {
-		return fmt.Errorf("invalid data length: len=%d", len(data))
-	}
-
+	*a = addr
 	return nil
 }
 
-// Empty returns true if the address is empty.
-func (a Address) Empty() bool {
-	return a == (Address{})
-}
-
-// Network returns the network of the address.
-func (a Address) Network() Network {
-	return a[0]
-}
-
-// Version returns the version of the address.
-func (a Address) Version() byte {
-	return a[1]
-}
-
-// Hash returns the hash part of the address.
-func (a Address) Hash() []byte {
-	return a[2:]
+// MarshalJSON implements the json marshal interface.
+func (a Address) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.String())
 }
 
 // Format implements the Formatter interface.
 func (a Address) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
-		fmt.Fprintf(f, "[%s - %x - %x]", NetworkToString(a.Network()), a.Version(), a.Hash()) // nolint: errcheck
+		fmt.Fprintf(f, "[%x - %x]", a.Protocol(), a.Payload()) // nolint: errcheck
 	case 's':
 		fmt.Fprintf(f, "%s", a.String()) // nolint: errcheck
 	default:
@@ -195,179 +160,175 @@ func (a Address) Format(f fmt.State, c rune) {
 	}
 }
 
-// MarshalText implements the TextMarshaler interface.
-func (a Address) MarshalText() ([]byte, error) {
-	if a == (Address{}) {
-		return nil, nil
-	}
-
-	return []byte(a.String()), nil
+// NewIDAddress returns an address using the ID protocol.
+func NewIDAddress(id uint64) (Address, error) {
+	return newAddress(ID, leb128.FromUInt64(id))
 }
 
-// UnmarshalText implements the TextUnmarshaler interface.
-func (a *Address) UnmarshalText(in []byte) error {
-	if len(in) == 0 {
-		return nil
+// NewSecp256k1Address returns an address using the SECP256K1 protocol.
+func NewSecp256k1Address(pubkey []byte) (Address, error) {
+	return newAddress(SECP256K1, addressHash(pubkey))
+}
+
+// NewActorAddress returns an address using the Actor protocol.
+func NewActorAddress(data []byte) (Address, error) {
+	return newAddress(Actor, addressHash(data))
+}
+
+// NewBLSAddress returns an address using the BLS protocol.
+func NewBLSAddress(pubkey []byte) (Address, error) {
+	return newAddress(BLS, pubkey)
+}
+
+// NewFromString returns the address represented by the string `addr`.
+func NewFromString(addr string) (Address, error) {
+	return decode(addr)
+}
+
+// NewFromBytes return the address represented by the bytes `addr`.
+func NewFromBytes(addr []byte) (Address, error) {
+	if len(addr) == 0 {
+		return Undef, nil
+	}
+	if len(addr) == 1 {
+		return Undef, ErrInvalidLength
+	}
+	return newAddress(addr[0], addr[1:])
+}
+
+// Checksum returns the checksum of `ingest`.
+func Checksum(ingest []byte) []byte {
+	return hash(ingest, checksumHashConfig)
+}
+
+// ValidateChecksum returns true if the checksum of `ingest` is equal to `expected`>
+func ValidateChecksum(ingest, expect []byte) bool {
+	digest := Checksum(ingest)
+	return bytes.Equal(digest, expect)
+}
+
+func addressHash(ingest []byte) []byte {
+	return hash(ingest, payloadHashConfig)
+}
+
+func newAddress(protocol Protocol, payload []byte) (Address, error) {
+	switch protocol {
+	case ID:
+	case SECP256K1, Actor:
+		if len(payload) != PayloadHashLength {
+			return Undef, ErrInvalidPayload
+		}
+	case BLS:
+		if len(payload) != bls.PublicKeyBytes {
+			return Undef, ErrInvalidPayload
+		}
+	default:
+		return Undef, ErrUnknownProtocol
+	}
+	explen := 1 + len(payload)
+	buf := make([]byte, explen)
+
+	buf[0] = protocol
+	copy(buf[1:], payload)
+
+	return Address{string(buf)}, nil
+}
+
+func encode(network Network, addr Address) (string, error) {
+	if addr == Undef {
+		return UndefAddressString, nil
+	}
+	var ntwk string
+	switch network {
+	case Mainnet:
+		ntwk = MainnetPrefix
+	case Testnet:
+		ntwk = TestnetPrefix
+	default:
+		return UndefAddressString, ErrUnknownNetwork
 	}
 
-	out, err := NewFromString(string(in))
+	var strAddr string
+	switch addr.Protocol() {
+	case SECP256K1, Actor, BLS:
+		cksm := Checksum(append([]byte{addr.Protocol()}, addr.Payload()...))
+		strAddr = ntwk + fmt.Sprintf("%d", addr.Protocol()) + AddressEncoding.WithPadding(-1).EncodeToString(append(addr.Payload(), cksm[:]...))
+	case ID:
+		strAddr = ntwk + fmt.Sprintf("%d", addr.Protocol()) + fmt.Sprintf("%d", leb128.ToUInt64(addr.Payload()))
+	default:
+		return UndefAddressString, ErrUnknownProtocol
+	}
+	return strAddr, nil
+}
+
+func decode(a string) (Address, error) {
+	if len(a) == 0 {
+		return Undef, nil
+	}
+	if a == UndefAddressString {
+		return Undef, nil
+	}
+	if len(a) > MaxAddressStringLength || len(a) < 3 {
+		return Undef, ErrInvalidLength
+	}
+
+	if string(a[0]) != MainnetPrefix && string(a[0]) != TestnetPrefix {
+		return Undef, ErrUnknownNetwork
+	}
+
+	var protocol Protocol
+	switch a[1] {
+	case '0':
+		protocol = ID
+	case '1':
+		protocol = SECP256K1
+	case '2':
+		protocol = Actor
+	case '3':
+		protocol = BLS
+	default:
+		return Undef, ErrUnknownProtocol
+	}
+
+	raw := a[2:]
+	if protocol == ID {
+		id, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			return Undef, ErrInvalidPayload
+		}
+		return newAddress(protocol, leb128.FromUInt64(id))
+	}
+
+	payloadcksm, err := AddressEncoding.WithPadding(-1).DecodeString(raw)
 	if err != nil {
-		return err
+		return Undef, err
+	}
+	payload := payloadcksm[:len(payloadcksm)-ChecksumHashLength]
+	cksm := payloadcksm[len(payloadcksm)-ChecksumHashLength:]
+
+	if protocol == SECP256K1 || protocol == Actor {
+		if len(payload) != 20 {
+			return Undef, ErrInvalidPayload
+		}
 	}
 
-	copy(a[:], out[:])
+	if !ValidateChecksum(append([]byte{protocol}, payload...), cksm) {
+		return Undef, ErrInvalidChecksum
+	}
 
-	return nil
+	return newAddress(protocol, payload)
 }
 
-func (a Address) String() string {
-	out, err := encode(NetworkToString(a.Network()), a.Version(), a.Hash())
+func hash(ingest []byte, cfg *blake2b.Config) []byte {
+	hasher, err := blake2b.New(cfg)
 	if err != nil {
-		// should really not happen
-		panic(err)
+		// If this happens sth is very wrong.
+		panic(fmt.Sprintf("invalid address hash configuration: %v", err))
 	}
-
-	return out
-}
-
-// Bytes returns the byte representation of the address.
-func (a Address) Bytes() []byte {
-	return a[:]
-}
-
-// --
-// TODO: find a better place for the things below
-
-// encode encodes hrp(human-readable part) a version(byte) and data(32bit data array)
-func encode(hrp string, version byte, data []byte) (string, error) {
-	if len(hrp) != 2 {
-		return "", fmt.Errorf("hrp has invalid length: hrp=%d", len(hrp))
+	if _, err := hasher.Write(ingest); err != nil {
+		// blake2bs Write implementation never returns an error in its current
+		// setup. So if this happens sth went very wrong.
+		panic(fmt.Sprintf("blake2b is unable to process hashes: %v", err))
 	}
-	if len(data) != HashLength {
-		return "", fmt.Errorf("data is malformed: data length=%d", len(data))
-	}
-	for p, c := range hrp {
-		if c < 33 || c > 126 {
-			return "", fmt.Errorf("invalid character human-readable part : hrp[%d]=%d", p, c)
-		}
-	}
-	if version > 31 {
-		return "", fmt.Errorf("version too large")
-	}
-
-	hrp = strings.ToLower(hrp)
-	combined := append([]byte{version}, Base32.EncodeToBytes(data)...)
-	sum := createChecksum(hrp, combined)
-
-	toEncode := append(combined, sum...)
-	encoded := make([]byte, len(toEncode))
-
-	for i, p := range toEncode {
-		if p >= 32 {
-			return "", fmt.Errorf("invalid data")
-		}
-		encoded[i] += Base32Charset[p]
-	}
-
-	return hrp + string(encoded), nil
-}
-
-// decode decodes a filecoin address and returns
-// the hrp(human-readable part), version (1byte) and data(32bit data array)
-// or an error.
-func decode(addr string) (string, byte, []byte, error) {
-	if len(addr) < 2 {
-		return "", 0, nil, fmt.Errorf("address too short")
-	}
-	if len(addr) > 41 {
-		return "", 0, nil, fmt.Errorf("too long: len=%d", len(addr))
-	}
-	if strings.ToLower(addr) != addr && strings.ToUpper(addr) != addr {
-		return "", 0, nil, fmt.Errorf("mixed case")
-	}
-	addr = strings.ToLower(addr)
-	hrp := addr[0:2]
-	for p, c := range hrp {
-		if c < 33 || c > 126 {
-			return "", 0, nil, fmt.Errorf("invalid character human-readable part: addr[%d]=%d", p, c)
-		}
-	}
-
-	// check data
-	data := addr[2:]
-	dataBytes := []byte{}
-	for _, b := range data {
-		// alphanumeric only
-		if !((b >= int32('0') && b <= int32('9')) || (b >= int32('A') && b <= int32('Z')) || (b >= int32('a') && b <= int32('z'))) {
-			return "", 0, nil, fmt.Errorf("non alphanumeric character")
-		}
-
-		// exclude [1,b,i,o]
-		if b == int32('1') || b == int32('b') || b == int32('i') || b == int32('o') {
-			return "", 0, nil, fmt.Errorf("invalid character")
-		}
-
-		dataBytes = append(dataBytes, byte(Base32CharsetReverse[int(b)]))
-	}
-
-	if !verifyChecksum(hrp, dataBytes) {
-		return "", 0, nil, fmt.Errorf("invalid checksum")
-	}
-
-	decodedBytes, err := Base32.DecodeFromBytes(dataBytes[1 : len(dataBytes)-6])
-	if err != nil {
-		return "", 0, nil, err
-	}
-	if len(decodedBytes) != HashLength {
-		return "", 0, nil, fmt.Errorf("invalid data size: len=%d", len(decodedBytes))
-	}
-	return hrp, dataBytes[0], decodedBytes, nil
-}
-
-var generator = []uint32{0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3}
-
-func polymod(values []byte) uint32 {
-	chk := uint32(1)
-	var b byte
-	for _, v := range values {
-		b = byte(chk >> 25)
-		chk = (chk&0x1ffffff)<<5 ^ uint32(v)
-		for i := 0; i < 5; i++ {
-			if (b>>uint(i))&1 == 1 {
-				chk ^= generator[i]
-			}
-		}
-	}
-	return chk
-}
-
-func hrpExpand(hrp string) []byte {
-	out := []byte{}
-	for _, char := range hrp {
-		out = append(out, byte(char>>5))
-	}
-
-	out = append(out, 0)
-
-	for _, char := range hrp {
-		out = append(out, byte(char&31))
-	}
-
-	return out
-}
-
-func verifyChecksum(hrp string, data []byte) bool {
-	return polymod(append(hrpExpand(hrp), data...)) == 1
-}
-
-func createChecksum(hrp string, data []byte) []byte {
-	values := append(append(hrpExpand(hrp), data...), []byte{0, 0, 0, 0, 0, 0}...)
-	mod := polymod(values) ^ 1
-
-	checksum := make([]byte, 6)
-	for p := range checksum {
-		checksum[p] = byte((mod >> uint32(5*(5-p))) & 0x1f & 31)
-	}
-
-	return checksum
+	return hasher.Sum(nil)
 }
