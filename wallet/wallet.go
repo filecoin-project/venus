@@ -177,7 +177,7 @@ func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
 //  returns:  types.Signature ( []byte ), error
 func (w *Wallet) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error) {
 
-	var ticket []byte
+	var ticket types.Signature
 
 	signerAddr, err := w.AddressFromPubKey(signerPubKey)
 	if err != nil {
