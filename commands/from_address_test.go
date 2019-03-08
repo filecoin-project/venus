@@ -21,9 +21,8 @@ func TestOptionalAddr(t *testing.T) {
 
 		opts := make(cmdkit.OptMap)
 
-		hash := address.Hash([]byte("a new test address"))
-
-		specifiedAddr := address.NewMainnet(hash)
+		specifiedAddr, err := address.NewActorAddress([]byte("a new test address"))
+		require.NoError(err)
 		opts["from"] = specifiedAddr.String()
 
 		addr, err := optionalAddr(opts["from"])
@@ -38,6 +37,6 @@ func TestOptionalAddr(t *testing.T) {
 
 		addr, err := optionalAddr(opts["from"])
 		require.NoError(err)
-		assert.Equal(address.Address{}, addr)
+		assert.Equal(address.Undef, addr)
 	})
 }

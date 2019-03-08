@@ -54,22 +54,20 @@ func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 // RecoverAddress returns the address derived from the signature and message encapsulated in `SignedMessage`
 func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) {
 	if len(smsg.Signature) < 1 {
-		return address.Address{}, ErrMessageUnsigned
+		return address.Undef, ErrMessageUnsigned
 	}
 
 	bmsg, err := smsg.MeteredMessage.Marshal()
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	maybePk, err := r.Ecrecover(bmsg, smsg.Signature)
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
-	maybeAddrHash := address.Hash(maybePk)
-
-	return address.NewMainnet(maybeAddrHash), nil
+	return address.NewSecp256k1Address(maybePk)
 
 }
 

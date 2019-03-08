@@ -29,7 +29,7 @@ func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *b
 	args = append(args, sPledge, sCollateral)
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	return out.Address, nil
@@ -83,7 +83,7 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 	sMinerAddr := minerAddr.String()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "owner", sMinerAddr); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	return out, nil

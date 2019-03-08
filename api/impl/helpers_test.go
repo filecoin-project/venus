@@ -11,12 +11,12 @@ import (
 func TestSetDefaultFromAddr(t *testing.T) {
 	assert := assert.New(t)
 
-	addr := address.Address{}
+	addr := address.Undef
 	nd := node.MakeOfflineNode(t)
 
 	expected, err := nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
 	assert.NoError(err)
-	assert.NotEqual(expected, address.Address{})
+	assert.NotEqual(expected, address.Undef)
 
 	assert.NoError(setDefaultFromAddr(&addr, nd))
 	assert.Equal(expected, addr)

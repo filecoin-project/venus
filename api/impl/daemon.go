@@ -95,6 +95,21 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	}
 
 	newConfig := rep.Config()
+	if !cfg.WithMiner.Empty() {
+		newConfig := rep.Config()
+		newConfig.Mining.MinerAddress = cfg.WithMiner
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
+
+	if !cfg.DefaultAddress.Empty() {
+		newConfig := rep.Config()
+		newConfig.Wallet.DefaultAddress = cfg.DefaultAddress
+		if err := rep.ReplaceConfig(newConfig); err != nil {
+			return err
+		}
+	}
 
 	newConfig.Mining.MinerAddress = cfg.WithMiner
 

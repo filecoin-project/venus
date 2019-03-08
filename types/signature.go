@@ -21,7 +21,11 @@ func IsValidSignature(data []byte, addr address.Address, sig Signature) bool {
 		log.Infof("error in signature validation: %s", err)
 		return false
 	}
-	maybeAddrHash := address.Hash(maybePk)
+	maybeAddr, err := address.NewSecp256k1Address(maybePk)
+	if err != nil {
+		log.Infof("error in recovered address: %s", err)
+		return false
+	}
 
-	return address.NewMainnet(maybeAddrHash) == addr
+	return maybeAddr == addr
 }

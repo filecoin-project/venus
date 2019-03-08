@@ -65,7 +65,7 @@ func TestMinerPreviewCreate(t *testing.T) {
 		plumbing := newMinerPreviewCreate(require)
 		collateral := types.NewAttoFILFromFIL(1)
 
-		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Address{}, 1, "", collateral)
+		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, 1, "", collateral)
 		require.NoError(err)
 		assert.Equal(usedGas, types.NewGasUnits(5))
 	})
@@ -155,7 +155,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(err)
 		assert.Contains(err.Error(), "Test error in ConfigGet")
 	})
@@ -169,7 +169,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(err)
 		assert.Contains(err.Error(), "Test error in ConfigSet")
 	})
@@ -182,7 +182,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.NoError(err)
 
 		configPrice, err := plumbing.config.Get("mining.storagePrice")
@@ -200,7 +200,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(err)
 		assert.Contains(err.Error(), "Test error in MessageSend")
 
@@ -225,7 +225,7 @@ func TestMinerSetPrice(t *testing.T) {
 			return types.NewCidForTestGetter()(), nil
 		}
 
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.NoError(err)
 	})
 
@@ -246,7 +246,7 @@ func TestMinerSetPrice(t *testing.T) {
 			return types.NewCidForTestGetter()(), nil
 		}
 
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.NoError(err)
 	})
 
@@ -267,7 +267,7 @@ func TestMinerSetPrice(t *testing.T) {
 			return types.NewCidForTestGetter()(), nil
 		}
 
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
 		require.NoError(err)
 	})
 
@@ -281,7 +281,7 @@ func TestMinerSetPrice(t *testing.T) {
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 
-		_, err := MinerSetPrice(ctx, plumbing, address.Address{}, address.Address{}, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
+		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(err)
 		assert.Contains(err.Error(), "Test error in MessageWait")
 	})
@@ -303,7 +303,7 @@ func TestMinerSetPrice(t *testing.T) {
 			return messageCid, nil
 		}
 
-		res, err := MinerSetPrice(ctx, plumbing, address.Address{}, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
+		res, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
 		require.NoError(err)
 
 		assert.Equal(price, res.Price)
@@ -344,7 +344,7 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(0)
 
-		usedGas, err := MinerPreviewSetPrice(ctx, plumbing, address.Address{}, address.Address{}, price, big.NewInt(0))
+		usedGas, err := MinerPreviewSetPrice(ctx, plumbing, address.Undef, address.Undef, price, big.NewInt(0))
 
 		require.NoError(err)
 		assert.Equal(types.NewGasUnits(7), usedGas)

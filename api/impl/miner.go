@@ -24,7 +24,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 	nd := nm.api.node
 
 	if err := setDefaultFromAddr(&fromAddr, nd); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	if pid == "" {
@@ -33,7 +33,7 @@ func (nm *nodeMiner) Create(ctx context.Context, fromAddr address.Address, gasPr
 
 	res, err := nd.CreateMiner(ctx, fromAddr, gasPrice, gasLimit, pledge, pid, collateral)
 	if err != nil {
-		return address.Address{}, errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
+		return address.Undef, errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 	}
 
 	return *res, nil

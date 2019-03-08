@@ -72,7 +72,7 @@ func WithMinerAddressGetter(ag func() address.Address) HeartbeatServiceOption {
 }
 
 func defaultMinerAddressGetter() address.Address {
-	return address.Address{}
+	return address.Undef
 }
 
 // NewHeartbeatService returns a HeartbeatService

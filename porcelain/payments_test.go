@@ -176,7 +176,7 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		config := validPaymentsConfig()
-		config.From = address.Address{}
+		config.From = address.Undef
 		_, err := CreatePayments(context.Background(), successPlumbing, config)
 		require.Error(err)
 		assert.Contains(err.Error(), "From")
@@ -187,7 +187,7 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		config := validPaymentsConfig()
-		config.To = address.Address{}
+		config.To = address.Undef
 		_, err := CreatePayments(context.Background(), successPlumbing, config)
 		require.Error(err)
 		assert.Contains(err.Error(), "To")

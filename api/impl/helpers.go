@@ -7,9 +7,9 @@ import (
 )
 
 func setDefaultFromAddr(fromAddr *address.Address, nd *node.Node) error {
-	if *fromAddr == (address.Address{}) {
+	if fromAddr.Empty() {
 		ret, err := nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
-		if (err != nil && err == porcelain.ErrNoDefaultFromAddress) || ret == (address.Address{}) {
+		if (err != nil && err == porcelain.ErrNoDefaultFromAddress) || ret.Empty() {
 			return ErrCouldNotDefaultFromAddress
 		}
 		*fromAddr = ret

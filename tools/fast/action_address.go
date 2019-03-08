@@ -12,7 +12,7 @@ import (
 func (f *Filecoin) AddressNew(ctx context.Context) (address.Address, error) {
 	var newAddress address.Address
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &newAddress, "go-filecoin", "address", "new"); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 	return newAddress, nil
 }

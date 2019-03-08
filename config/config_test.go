@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 func TestDefaults(t *testing.T) {
@@ -307,7 +309,7 @@ path = "mushroom-mushroom"}`
 		//assert.Contains(err.Error(), "invalid")
 
 		err = cfg.Set("wallet.defaultAddress", "corruptandtooshort")
-		assert.Contains(err.Error(), "invalid character")
+		assert.Contains(err.Error(), address.ErrUnknownNetwork.Error())
 	})
 
 	t.Run("setting leaves does not interfere with neighboring leaves", func(t *testing.T) {

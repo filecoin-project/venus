@@ -51,14 +51,20 @@ var (
 )
 
 func init() {
-	minerAddress = address.MakeTestAddress("miner")
-	minerOwnerAddress = address.MakeTestAddress("minerOwner")
+	var err error
+	minerAddress, err = address.NewActorAddress([]byte("miner"))
+	if err != nil {
+		panic(err)
+	}
+	minerOwnerAddress, err = address.NewActorAddress([]byte("minerOwner"))
+	if err != nil {
+		panic(err)
+	}
 	minerPeerID = testhelpers.RequireRandomPeerID()
 
 	// Set up the test chain
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	var err error
 	genesis, err = initGenesis(cst, bs)
 	if err != nil {
 		panic(err)

@@ -22,7 +22,7 @@ type testPaymentChannelLsPlumbing struct {
 }
 
 func (p *testPaymentChannelLsPlumbing) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return address.Address{}, nil
+	return address.Undef, nil
 }
 
 func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
@@ -46,7 +46,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		}
 		ctx := context.Background()
 
-		channels, err := porcelain.PaymentChannelLs(ctx, plumbing, address.Address{}, address.Address{})
+		channels, err := porcelain.PaymentChannelLs(ctx, plumbing, address.Undef, address.Undef)
 		require.NoError(err)
 		assert.Equal(expectedChannels, channels)
 	})
@@ -58,7 +58,7 @@ type testPaymentChannelVoucherPlumbing struct {
 }
 
 func (p *testPaymentChannelVoucherPlumbing) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return address.Address{}, nil
+	return address.Undef, nil
 }
 
 func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
@@ -80,8 +80,8 @@ func TestPaymentChannelVoucher(t *testing.T) {
 
 		expectedVoucher := &paymentbroker.PaymentVoucher{
 			Channel:   *types.NewChannelID(5),
-			Payer:     address.Address{},
-			Target:    address.Address{},
+			Payer:     address.Undef,
+			Target:    address.Undef,
 			Amount:    *types.NewAttoFILFromFIL(10),
 			ValidAt:   *types.NewBlockHeight(0),
 			Signature: []byte{},
@@ -96,7 +96,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 		voucher, err := porcelain.PaymentChannelVoucher(
 			ctx,
 			plumbing,
-			address.Address{},
+			address.Undef,
 			types.NewChannelID(5),
 			types.NewAttoFILFromFIL(10),
 			types.NewBlockHeight(0),

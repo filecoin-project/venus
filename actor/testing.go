@@ -104,10 +104,10 @@ func (ma *FakeActor) Exports() exec.Exports {
 // HasReturnValue is a dummy method that does nothing.
 func (ma *FakeActor) HasReturnValue(ctx exec.VMContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	return address.Address{}, 0, nil
+	return address.Undef, 0, nil
 }
 
 // ChargeGasAndRevertError simply charges gas and returns a revert error
