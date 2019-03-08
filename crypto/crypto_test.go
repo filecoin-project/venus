@@ -20,7 +20,9 @@ func TestGenerateKey(t *testing.T) {
 	assert.Equal(len(sk), 32)
 
 	msg := make([]byte, 32)
-	msg[0] = 1
+	for i := 0; i < len(msg); i++ {
+		msg[0] = byte(i)
+	}
 
 	digest, err := crypto.Sign(sk, msg)
 	assert.NoError(err)
