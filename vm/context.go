@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -127,7 +128,7 @@ func (ctx *Context) BlockHeight() *types.BlockHeight {
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.
 func (ctx *Context) IsFromAccountActor() bool {
-	return ctx.from.Code.Defined() && types.AccountActorCodeCid.Equals(ctx.from.Code)
+	return account.IsAccount(ctx.from)
 }
 
 // Send sends a message to another actor.
@@ -218,7 +219,7 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 		return errors.FaultErrorWrap(err, "Error retrieving or creating actor")
 	}
 
-	if newActor.Code.Defined() {
+	if !newActor.Empty() {
 		return errors.NewRevertErrorf("attempt to create actor at address %s but a non-empty actor is already installed", addr.String())
 	}
 

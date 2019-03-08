@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -44,9 +45,9 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 		return errSelfSend
 	}
 
-	// Sender must be an account actor, or a undefined actor which will be upgraded to an account actor
+	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
 	// when the message is processed.
-	if fromActor.Code.Defined() && !fromActor.Code.Equals(types.AccountActorCodeCid) {
+	if !(fromActor.Empty() || account.IsAccount(fromActor)) {
 		return errNonAccountActor
 	}
 

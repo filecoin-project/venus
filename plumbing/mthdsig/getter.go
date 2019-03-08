@@ -46,7 +46,7 @@ func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method str
 	actor, err := st.GetActor(ctx, actorAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
-	} else if !actor.Code.Defined() {
+	} else if actor.Empty() {
 		return nil, ErrNoActorImpl
 	}
 

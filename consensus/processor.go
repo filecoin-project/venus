@@ -448,7 +448,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	}
 
 	// Processing an external message from an empty actor upgrades it to an account actor.
-	if !fromActor.Code.Defined() {
+	if fromActor.Empty() {
 		err := account.UpgradeActor(fromActor)
 		if err != nil {
 			return nil, errors.FaultErrorWrap(err, "failed to upgrade empty actor")

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
@@ -12,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
 	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -19,8 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
@@ -752,15 +753,15 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	// get all 3 actors
 	act1 = state.MustGetActor(st, addr1)
 	assert.Equal(types.NewAttoFILFromFIL(500), act1.Balance)
-	assert.True(types.AccountActorCodeCid.Equals(act1.Code))
+	assert.True(account.IsAccount(act1))
 
 	act2 := state.MustGetActor(st, addr2)
 	assert.Equal(types.NewAttoFILFromFIL(200), act2.Balance)
-	assert.True(types.AccountActorCodeCid.Equals(act2.Code))
+	assert.True(account.IsAccount(act2))
 
 	act3 := state.MustGetActor(st, addr3)
 	assert.Equal(types.NewAttoFILFromFIL(300), act3.Balance)
-	assert.Equal(act3.Code, cid.Undef)
+	assert.True(act3.Empty())
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
