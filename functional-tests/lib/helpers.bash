@@ -159,11 +159,6 @@ function set_mining_address_in_config {
     --repodir="$2"
 }
 
-function set_blocksigner_address_in_config {
-	./go-filecoin config mining.blockSignerAddress \""$1"\" \
-    --repodir="$2"
-}
-
 function wait_mpool_size {
   ./go-filecoin mpool \
     --wait-for-count="$1" \
