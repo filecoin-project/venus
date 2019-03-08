@@ -58,11 +58,8 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
-	pub := ki.PublicKey()
-	addrHash := address.Hash(pub)
-
 	// TODO: Use the address type we are running on from the config.
-	return address.NewMainnet(addrHash), nil
+	return address.NewSecp256k1Address(ki.PublicKey())
 }
 
 // PublicKey returns the public key part as uncompressed bytes.

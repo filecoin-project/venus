@@ -108,7 +108,7 @@ var storageMarketExports = exec.Exports{
 // miners collateral is set by the value in the message.
 func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -153,7 +153,7 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 		return addr, nil
 	})
 	if err != nil {
-		return address.Address{}, errors.CodeError(err), err
+		return address.Undef, errors.CodeError(err), err
 	}
 
 	return ret.(address.Address), 0, nil

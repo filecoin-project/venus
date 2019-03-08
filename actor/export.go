@@ -146,7 +146,7 @@ func MarshalValue(val interface{}) ([]byte, error) {
 	case string:
 		return []byte(t), nil
 	case address.Address:
-		if t == (address.Address{}) {
+		if t.Empty() {
 			return []byte{}, nil
 		}
 		return t.Bytes(), nil

@@ -629,16 +629,12 @@ func isPermanentError(err error) bool {
 
 // minerOwnerAddress finds the address of the owner of the given miner
 func minerOwnerAddress(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) (address.Address, error) {
-	ret, code, err := CallQueryMethod(ctx, st, vms, minerAddr, "getOwner", []byte{}, address.Address{}, types.NewBlockHeight(0))
+	ret, code, err := CallQueryMethod(ctx, st, vms, minerAddr, "getOwner", []byte{}, address.Undef, types.NewBlockHeight(0))
 	if err != nil {
-		return address.Address{}, errors.FaultErrorWrap(err, "could not get miner owner")
+		return address.Undef, errors.FaultErrorWrap(err, "could not get miner owner")
 	}
 	if code != 0 {
-		return address.Address{}, errors.NewFaultErrorf("could not get miner owner. error code %d", code)
+		return address.Undef, errors.NewFaultErrorf("could not get miner owner. error code %d", code)
 	}
-	minerOwnerAddr, err := address.NewFromBytes(ret[0])
-	if err != nil {
-		return address.Address{}, errors.FaultErrorWrap(err, "miner owner return value could not be decoded as address")
-	}
-	return minerOwnerAddr, nil
+	return address.NewFromBytes(ret[0])
 }

@@ -121,7 +121,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
-	minerOwner := address.MakeTestAddress("mo")
+	minerOwner, err := address.NewActorAddress([]byte("mo"))
+	require.NoError(err)
 	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
@@ -188,7 +189,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 		fromAddr:               act1,
 	})
 
-	minerOwner := address.MakeTestAddress("mo")
+	minerOwner, err := address.NewActorAddress([]byte("mo"))
+	require.NoError(err)
 	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
@@ -252,8 +254,10 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
-	minerAddr := address.MakeTestAddress("miner")
-	minerOwner := address.MakeTestAddress("mo")
+	minerAddr, err := address.NewActorAddress([]byte("miner"))
+	require.NoError(err)
+	minerOwner, err := address.NewActorAddress([]byte("mo"))
+	require.NoError(err)
 	stCid, _ := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
@@ -606,7 +610,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		require.NoError(err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, address.Address{}, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, address.Undef, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(err)
 		assert.Equal("balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})

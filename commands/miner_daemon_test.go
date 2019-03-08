@@ -213,7 +213,7 @@ func TestMinerCreate(t *testing.T) {
 				miner := d.RunSuccess(args...)
 				addr, err = address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 				assert.NoError(err)
-				assert.NotEqual(addr, address.Address{})
+				assert.NotEqual(addr, address.Undef)
 				wg.Done()
 			}()
 
@@ -323,7 +323,7 @@ func TestMinerAddAskSuccess(t *testing.T) {
 		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, address.Address{})
+		assert.NotEqual(addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -354,7 +354,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, address.Address{})
+		assert.NotEqual(addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -404,7 +404,7 @@ func TestMinerAddAskFail(t *testing.T) {
 		)
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
-		assert.NotEqual(addr, address.Address{})
+		assert.NotEqual(addr, address.Undef)
 		minerAddr = addr
 		wg.Done()
 	}()

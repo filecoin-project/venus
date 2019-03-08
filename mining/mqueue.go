@@ -99,7 +99,7 @@ func (pq queueHeap) Less(i, j int) bool {
 		return delta.GreaterThan(types.ZeroAttoFIL)
 	}
 	// Secondarily order by address to give a stable ordering.
-	return bytes.Compare(pq[i][0].From[:], pq[j][0].From[:]) < 0
+	return bytes.Compare(pq[i][0].From.Bytes(), pq[j][0].From.Bytes()) < 0
 }
 
 func (pq queueHeap) Swap(i, j int) {

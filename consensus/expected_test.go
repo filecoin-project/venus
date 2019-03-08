@@ -112,7 +112,8 @@ func requireMakeBlocks(ctx context.Context, require *require.Assertions, pTipSet
 		ownerActor := testhelpers.RequireNewAccountActor(require, types.NewZeroAttoFIL())
 		require.NoError(tree.SetActor(ctx, addr, ownerActor))
 
-		minerAddrs[i] = address.MakeTestAddress(fmt.Sprintf("%s%s", name, "Miner"))
+		minerAddrs[i], err = address.NewActorAddress([]byte(fmt.Sprintf("%s%s", name, "Miner")))
+		require.NoError(err)
 		minerActor := testhelpers.RequireNewMinerActor(require, vms, minerAddrs[i], addr,
 			ownerPubKeys[i], 10000, testhelpers.RequireRandomPeerID(), types.NewZeroAttoFIL())
 		require.NoError(tree.SetActor(ctx, minerAddrs[i], minerActor))

@@ -363,7 +363,7 @@ func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, erro
 // GetOwner returns the miners owner.
 func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -371,12 +371,12 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 		return state.Owner, nil
 	})
 	if err != nil {
-		return address.Address{}, errors.CodeError(err), err
+		return address.Undef, errors.CodeError(err), err
 	}
 
 	a, ok := out.(address.Address)
 	if !ok {
-		return address.Address{}, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
+		return address.Undef, 1, errors.NewFaultErrorf("expected an Address return value from call, but got %T instead", out)
 	}
 
 	return a, 0, nil

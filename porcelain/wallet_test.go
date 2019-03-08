@@ -33,7 +33,7 @@ func TestWalletBalance(t *testing.T) {
 		plumbing := &walletTestPlumbing{
 			balance: expectedBalance,
 		}
-		balance, err := porcelain.WalletBalance(ctx, plumbing, address.Address{})
+		balance, err := porcelain.WalletBalance(ctx, plumbing, address.Undef)
 		require.NoError(err)
 
 		assert.Equal(expectedBalance, balance)

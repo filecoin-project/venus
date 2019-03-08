@@ -142,7 +142,7 @@ func (w *Wallet) Ecrecover(data []byte, sig types.Signature) ([]byte, error) {
 func NewAddress(w *Wallet) (address.Address, error) {
 	backends := w.Backends(DSBackendType)
 	if len(backends) == 0 {
-		return address.Address{}, fmt.Errorf("missing default ds backend")
+		return address.Undef, fmt.Errorf("missing default ds backend")
 	}
 
 	backend := (backends[0]).(*DSBackend)

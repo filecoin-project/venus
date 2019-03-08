@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -34,7 +35,7 @@ func TestMessageSend(t *testing.T) {
 
 	t.Log("[failure] invalid target")
 	d.RunFail(
-		"invalid checksum",
+		address.ErrUnknownNetwork.Error(),
 		"message", "send",
 		"--from", from,
 		"--gas-price", "0", "--gas-limit", "300",

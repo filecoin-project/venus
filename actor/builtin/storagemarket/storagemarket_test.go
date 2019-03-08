@@ -36,6 +36,7 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 
 	outAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
+
 	minerActor, err := st.GetActor(ctx, outAddr)
 	require.NoError(err)
 
@@ -114,7 +115,6 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	createdAddress, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(err)
 	assert.Equal(minerAddr, createdAddress)
-
 	miner, err := st.GetActor(ctx, minerAddr)
 	require.NoError(err)
 
@@ -154,14 +154,12 @@ func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address,
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
-	hash := address.Hash(buf.Bytes())
-
-	return address.NewMainnet(hash), nil
+	return address.NewActorAddress(buf.Bytes())
 }

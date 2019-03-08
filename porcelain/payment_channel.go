@@ -23,14 +23,14 @@ func PaymentChannelLs(
 	fromAddr address.Address,
 	payerAddr address.Address,
 ) (channels map[string]*paymentbroker.PaymentChannel, err error) {
-	if fromAddr == (address.Address{}) {
+	if fromAddr.Empty() {
 		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if payerAddr == (address.Address{}) {
+	if payerAddr.Empty() {
 		payerAddr = fromAddr
 	}
 
@@ -67,7 +67,7 @@ func PaymentChannelVoucher(
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
 ) (voucher *paymentbroker.PaymentVoucher, err error) {
-	if fromAddr == (address.Address{}) {
+	if fromAddr.Empty() {
 		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
 		if err != nil {
 			return nil, err
