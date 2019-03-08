@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"bytes"
 	"testing"
 
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
@@ -44,6 +45,21 @@ func TestWalletSimple(t *testing.T) {
 	t.Log("list all addresses")
 	list := w.Addresses()
 	assert.Len(list, 1)
+	assert.Equal(list[0], addr)
+
+	t.Log("addresses are sorted")
+	addr2, err := fs.NewAddress()
+	assert.NoError(err)
+
+	if bytes.Compare(addr2.Bytes(), addr.Bytes()) < 0 {
+		addr, addr2 = addr2, addr
+	}
+	for i := 0; i < 16; i++ {
+		list := w.Addresses()
+		assert.Len(list, 2)
+		assert.Equal(list[0], addr)
+		assert.Equal(list[1], addr2)
+	}
 }
 
 func TestSimpleSignAndVerify(t *testing.T) {

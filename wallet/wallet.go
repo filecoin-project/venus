@@ -1,8 +1,10 @@
 package wallet
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -67,10 +69,6 @@ func (w *Wallet) Find(addr address.Address) (Backend, error) {
 // Addresses retrieves all stored addresses.
 // Safe for concurrent access.
 // Always sorted in the same order.
-// Note that the Golang runtime randomizes map iteration order, so the order in
-// which addresses appear in the returned list may differ across Addresses()
-// calls for the same wallet.
-// TODO: Should we make this ordering deterministic?
 func (w *Wallet) Addresses() []address.Address {
 	w.lk.Lock()
 	defer w.lk.Unlock()
@@ -81,6 +79,9 @@ func (w *Wallet) Addresses() []address.Address {
 			out = append(out, backend.Addresses()...)
 		}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		return bytes.Compare(out[i].Bytes(), out[j].Bytes()) < 0
+	})
 
 	return out
 }
