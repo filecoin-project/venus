@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+pushd bundle
+
 RELEASE_TAG="${CIRCLE_TAG}"
 
 # make sure we have a token set, api requests won't work otherwise
@@ -41,7 +43,7 @@ fi
 
 RELEASE_UPLOAD_URL=`echo $RELEASE_RESPONSE | jq -r '.upload_url' | cut -d'{' -f1`
 
-bundles=('filecoin-Linux.tar.gz' 'filecoin-Darwin.tar.gz')
+bundles=("filecoin-$RELEASE_TAG-Linux.tar.gz" "filecoin-$RELEASE_TAG-Darwin.tar.gz")
 for RELEASE_FILE in "${bundles[@]}"
 do
   echo "Uploading release bundle: $RELEASE_FILE"
