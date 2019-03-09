@@ -3,8 +3,8 @@ package address
 import (
 	"sort"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
-	"gx/ipfs/QmdBzoMxsBpojBfN1cv5GnKtB7sfYBMoLH7p9qSyEVYXcu/refmt/obj/atlas"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {

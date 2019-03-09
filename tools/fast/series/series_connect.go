@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )

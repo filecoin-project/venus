@@ -4,7 +4,7 @@ package errors
 
 import (
 	"fmt"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/pkg/errors"
 )
 
 // RevertError is an error wrapper that signals that the vm should

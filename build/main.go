@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	gobuild "go/build"
 	"io"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -109,102 +107,12 @@ func deps() {
 	log.Println("Installing dependencies...")
 
 	cmds := []command{
-		cmd("go get -u github.com/whyrusleeping/gx"),
-		cmd("go get -u github.com/whyrusleeping/gx-go"),
-		cmd("gx install"),
-		cmd("gx-go rewrite"),
-		cmd("go get -u github.com/alecthomas/gometalinter"),
-		cmd("gometalinter --install"),
-		cmd("go get -u github.com/stretchr/testify"),
-		cmd("go get -u github.com/xeipuuv/gojsonschema"),
-		cmd("go get -u github.com/ipfs/iptb"),
-		cmd("go get -u github.com/docker/docker/api/types"),
-		cmd("go get -u github.com/docker/docker/api/types/container"),
-		cmd("go get -u github.com/docker/docker/client"),
-		cmd("go get -u github.com/docker/docker/pkg/stdcopy"),
-		cmd("go get -u github.com/ipsn/go-secp256k1"),
-		cmd("go get -u github.com/json-iterator/go"),
-		cmd("go get -u github.com/prometheus/client_golang/prometheus"),
-		cmd("go get -u github.com/prometheus/client_golang/prometheus/promhttp"),
-		cmd("go get -u github.com/jstemmer/go-junit-report"),
-		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
-		cmd("./scripts/install-rust-fil-proofs.sh"),
-		cmd("./scripts/install-bls-signatures.sh"),
-		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
-		cmd("./proofs/bin/paramcache"),
-		cmd("./scripts/copy-groth-params.sh"),
-	}
-
-	for _, c := range cmds {
-		runCmd(c)
-	}
-}
-
-// smartdeps avoids fetching from the network
-func smartdeps() {
-	runCmd(cmd("pkg-config --version"))
-
-	log.Println("Installing dependencies...")
-
-	// commands we need to run
-	cmds := []command{
-		cmd("gx install"),
-		cmd("gx-go rewrite"),
 		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
 		cmd("./proofs/bin/paramcache"),
 		cmd("./scripts/copy-groth-params.sh"),
-	}
-
-	// packages we need to install
-	pkgs := []string{
-		"github.com/alecthomas/gometalinter",
-		"github.com/docker/docker/api/types",
-		"github.com/docker/docker/api/types/container",
-		"github.com/docker/docker/client",
-		"github.com/docker/docker/pkg/stdcopy",
-		"github.com/ipfs/iptb",
-		"github.com/stretchr/testify",
-		"github.com/whyrusleeping/gx",
-		"github.com/whyrusleeping/gx-go",
-		"github.com/xeipuuv/gojsonschema",
-		"github.com/json-iterator/go",
-		"github.com/ipsn/go-secp256k1",
-		"github.com/prometheus/client_golang/prometheus/promhttp",
-		"github.com/prometheus/client_golang/prometheus",
-		"github.com/jstemmer/go-junit-report",
-		"github.com/pmezard/go-difflib/difflib",
-	}
-
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		gopath = gobuild.Default.GOPATH
-	}
-
-	gpbin := filepath.Join(gopath, "bin")
-	var gopathBinFound bool
-	for _, s := range strings.Split(os.Getenv("PATH"), ":") {
-		if s == gpbin {
-			gopathBinFound = true
-		}
-	}
-
-	if !gopathBinFound {
-		fmt.Println("'$GOPATH/bin' is not in your $PATH.")
-		fmt.Println("See https://golang.org/doc/code.html#GOPATH for more information.")
-		return
-	}
-
-	// if the package exists locally install it, else fetch it
-	for _, pkg := range pkgs {
-		pkgpath := filepath.Join(gopath, "src", pkg)
-		if _, err := os.Stat(pkgpath); os.IsNotExist(err) {
-			runCmd(cmd(fmt.Sprintf("go get %s", pkg)))
-		} else {
-			runCmd(cmd(fmt.Sprintf("go install %s", pkg)))
-		}
 	}
 
 	for _, c := range cmds {
@@ -350,8 +258,6 @@ func main() {
 	switch cmd {
 	case "deps":
 		deps()
-	case "smartdeps":
-		smartdeps()
 	case "lint":
 		lint(args[1:]...)
 	case "build-filecoin":

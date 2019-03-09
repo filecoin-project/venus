@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 // PingResult is the data that gets emitted on the Ping channel.

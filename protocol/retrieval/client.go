@@ -6,10 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	host "gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
+	"github.com/ipfs/go-cid"
+	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/pkg/errors"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 )

@@ -1,8 +1,8 @@
 package strgdls_test
 
 import (
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"

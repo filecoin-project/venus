@@ -14,10 +14,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/config"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 	"github.com/ipfs/iptb/testbed/interfaces"

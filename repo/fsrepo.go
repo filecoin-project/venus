@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	badgerds "gx/ipfs/QmTNJogwkhnbHeRmAXWtzvN2KgVko2oNmHHQN1ggHVhF91/go-ds-badger"
-	keystore "gx/ipfs/QmTsgWR7cZQ11NMMSgptZkWXBHsYzcPd712JbPzNeowqXy/go-ipfs-keystore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	lockfile "gx/ipfs/QmdDpQpe8RHu9qBiFWPaBvSAUr2kRLWipEjzDqAMfWqwFQ/go-fs-lock"
-	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
+	badgerds "github.com/ipfs/go-ds-badger"
+	lockfile "github.com/ipfs/go-fs-lock"
+	keystore "github.com/ipfs/go-ipfs-keystore"
+	logging "github.com/ipfs/go-log"
+	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )

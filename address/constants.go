@@ -1,7 +1,7 @@
 package address
 
 import (
-	"gx/ipfs/QmZo5avr9dhVVRzcpKnU9ZGQuPaU62pbufUHXBNB7GwLzQ/go-basex"
+	"github.com/dignifiedquire/go-basex"
 )
 
 // HashLength is the length of an the hash part of the address in bytes.

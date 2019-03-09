@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
