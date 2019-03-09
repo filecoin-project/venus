@@ -9,6 +9,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
+	github.com/gopherjs/gopherjs v0.0.0-20181103185306-d547d1d9531e // indirect
 	github.com/gxed/pubsub v0.0.0-20180201040156-26ebdf44f824
 	github.com/ipfs/go-bitswap v0.0.1
 	github.com/ipfs/go-block-format v0.0.2
@@ -52,6 +53,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.0.1
 	github.com/libp2p/go-libp2p-routing v0.0.1
 	github.com/libp2p/go-libp2p-swarm v0.0.1
+	github.com/mattn/go-isatty v0.0.6 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.0.0-20190131020904-2d45a736cd16
 	github.com/mitchellh/go-homedir v1.1.0
@@ -60,6 +62,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.1
 	github.com/multiformats/go-multihash v0.0.1
 	github.com/multiformats/go-multistream v0.0.1
+	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
@@ -70,4 +73,10 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 // indirect
+	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95 // indirect
+	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 // indirect
+	golang.org/x/sys v0.0.0-20190308023053-584f3b12f43e // indirect
+	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
