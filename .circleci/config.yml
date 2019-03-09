@@ -208,29 +208,30 @@ jobs:
           paths:
             - "/home/circleci/filecoin-proof-parameters/"
 
-      - save_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-          paths:
-            - "/go/pkg"
-            - "/go/src/github.com"
-            - "/go/src/golang.org"
-            - "/home/circleci/.rustup"
-            - "/home/circleci/.cargo"
-
-      - save_cache:
-          key: v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-          paths:
-            - "/go/pkg"
-            - "/go/src/github.com"
-            - "/go/src/golang.org"
-            - "/home/circleci/.rustup"
-            - "/home/circleci/.cargo"
-
-      - go_build:
-          cmd: "lint"
+      #- go_build:
+      #    cmd: "lint"
 
       - go_build:
           cmd: "build"
+            
+      - save_cache:
+          key: v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          paths:
+            - "/go/pkg"
+            - "/go/src/github.com"
+            - "/go/src/golang.org"
+            - "/home/circleci/.rustup"
+            - "/home/circleci/.cargo"
+
+      - save_cache:
+          key: v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          paths:
+            - "/go/pkg"
+            - "/go/src/github.com"
+            - "/go/src/golang.org"
+            - "/home/circleci/.rustup"
+            - "/home/circleci/.cargo"
+
 
       # place the filecoin binary in PATH for IPTB
       - go_build:
