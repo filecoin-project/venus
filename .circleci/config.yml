@@ -72,7 +72,7 @@ jobs:
       - update_submodules
       - rust_fil_proofs_checksum
       - restore_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -86,8 +86,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.11.1.darwin-amd64.pkg && \
-            sudo installer -pkg go1.11.1.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.12.darwin-amd64.pkg && \
+            sudo installer -pkg go1.12.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -114,7 +114,7 @@ jobs:
             - "~/filecoin-proof-parameters/"
 
       - save_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
           paths:
             - "~/go/pkg"
             - "~/go/src/github.com"
@@ -153,7 +153,7 @@ jobs:
 
   build_linux:
     docker:
-      - image: circleci/golang:1.11.1
+      - image: circleci/golang:1.12
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
@@ -182,8 +182,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
         # The second checkout ensures we have the most recent code since the
         # restore_cache step above can override the go-filecoin code with cached code
@@ -290,7 +290,7 @@ jobs:
             ./scripts/publish-release.sh
   build_faucet_and_genesis:
     docker:
-      - image: circleci/golang:1.11.1
+      - image: circleci/golang:1.12
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: small
     steps:
@@ -302,8 +302,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
 
       - checkout
       - run:
