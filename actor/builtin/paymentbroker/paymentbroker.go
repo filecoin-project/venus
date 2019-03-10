@@ -121,7 +121,7 @@ var paymentBrokerExports = exec.Exports{
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
 func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -183,7 +183,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
 func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -233,7 +233,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
 func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -287,7 +287,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channel's lifespan.
 func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -337,7 +337,7 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
 func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -385,7 +385,7 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 // Voucher errors if the channel doesn't exist or contains less than request
 // amount.
 func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) ([]byte, uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -446,7 +446,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
 func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8, error) {
-	if err := vmctx.Charge(100); err != nil {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 

@@ -14,6 +14,8 @@ func init() {
 	cbor.RegisterCborType(Actor{})
 }
 
+const DefaultGasCost = 100
+
 // Actor is the central abstraction of entities in the system.
 //
 // Both individual accounts, as well as contracts (user & system level) are
