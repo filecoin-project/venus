@@ -98,7 +98,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	minerAlive := make(chan error, 1)
 	go func() {
 		defer close(minerAlive)
-		minerAlive <- smc.pingMiner(ctx, pid)
+		minerAlive <- smc.pingMiner(ctx, pid, 15*time.Second)
 	}()
 
 	size, err := smc.node.GetFileSize(ctx, data)
@@ -197,8 +197,8 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	return &response, nil
 }
 
-func (smc *Client) pingMiner(ctx context.Context, pid peer.ID) error {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second) //TODO: better place to (not) hard-code this?
+func (smc *Client) pingMiner(ctx context.Context, pid peer.ID, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	res, err := smc.node.Ping(ctx, pid)
@@ -213,7 +213,7 @@ func (smc *Client) pingMiner(ctx context.Context, pid peer.ID) error {
 		}
 		return nil
 	case <-ctx.Done():
-		return fmt.Errorf("couldn't establish connection to miner: %s", ctx.Err())
+		return fmt.Errorf("couldn't establish connection to miner: %s, timed out after %s", ctx.Err(), timeout.String())
 	}
 }
 
