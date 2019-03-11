@@ -5,6 +5,5 @@ package api
 type API interface {
 	Client() Client
 	Daemon() Daemon
-	Ping() Ping
 	Swarm() Swarm
 }

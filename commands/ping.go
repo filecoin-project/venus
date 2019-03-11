@@ -9,7 +9,7 @@ import (
 	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
-	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 var pingCmd = &cmds.Command{
@@ -35,7 +35,7 @@ trip latency information.
 
 		numPings, _ := req.Options["count"].(uint)
 
-		ch, err := GetAPI(env).Ping().Ping(req.Context, peerID, numPings, time.Second)
+		ch, err := GetPorcelainAPI(env).NetworkPingWithCount(req.Context, peerID, numPings, time.Second)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ trip latency information.
 		return nil
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *api.PingResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, p *porcelain.PingResult) error {
 			if len(p.Text) > 0 {
 				fmt.Fprintln(w, p.Text) // nolint: errcheck
 			} else if p.Success {
@@ -59,5 +59,5 @@ trip latency information.
 			return nil
 		}),
 	},
-	Type: api.PingResult{},
+	Type: porcelain.PingResult{},
 }

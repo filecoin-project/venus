@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -187,4 +188,9 @@ func (a *API) PaymentChannelVoucher(
 	validAt *types.BlockHeight,
 ) (voucher *paymentbroker.PaymentVoucher, err error) {
 	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
+}
+
+// NetworkPingWithCount pings a peer repeatedly returning delay information each time
+func (a *API) NetworkPingWithCount(ctx context.Context, pid peer.ID, count uint, delay time.Duration) (<-chan *PingResult, error) {
+	return NetworkPingWithCount(ctx, a, pid, count, delay)
 }
