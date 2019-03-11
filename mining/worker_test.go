@@ -75,7 +75,7 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
-		assert.Error(r.Err)
+		assert.EqualError(r.Err, "generate flush state tree: boom no flush")
 		assert.True(doSomeWorkCalled)
 		cancel()
 
@@ -90,7 +90,7 @@ func Test_Mine(t *testing.T) {
 		outCh := make(chan mining.Output)
 		go worker.Mine(ctx, input, 0, outCh)
 		r := <-outCh
-		assert.Error(r.Err)
+		assert.EqualError(r.Err, "bad input tipset with no blocks sent to Mine()")
 		assert.False(doSomeWorkCalled)
 		cancel()
 	})

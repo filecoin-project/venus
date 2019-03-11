@@ -476,7 +476,6 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		Ancestors:   ancestors,
 		LookBack:    LookBackParameter,
 	}
-
 	vmCtx := vm.NewVMContext(vmCtxParams)
 
 	ret, exitCode, vmErr := vm.Send(ctx, vmCtx)

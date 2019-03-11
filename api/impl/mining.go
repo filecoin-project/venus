@@ -53,17 +53,17 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nd.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	minerAddressIf, err := nd.PorcelainAPI.ConfigGet("mining.minerAddress")
+	minerAddrIf, err := nd.PorcelainAPI.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return nil, err
 	}
-	minerAddress := minerAddressIf.(address.Address)
-	minerOwnerAddress, err := nd.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddress)
+	minerAddr := minerAddrIf.(address.Address)
+	minerOwnerAddr, err := nd.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	minerPubKey, err := nd.PorcelainAPI.MinerGetKey(ctx, minerAddress)
+	minerPubKey, err := nd.PorcelainAPI.MinerGetKey(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 	}
 
 	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
-		nd.PowerTable, nd.Blockstore, nd.CborStore(), minerAddress, minerOwnerAddress, minerPubKey, nd.Wallet, blockTime)
+		nd.PowerTable, nd.Blockstore, nd.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, nd.Wallet, blockTime)
 
 	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)
 	if err != nil {

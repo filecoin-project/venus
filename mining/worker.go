@@ -219,8 +219,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		copy(proof[:], prChRead[:])
-		signer := w.workerSigner
-		ticket, err = signer.CreateTicket(proof, w.minerPubKey)
+		ticket, err = w.workerSigner.CreateTicket(proof, w.minerPubKey)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)
 			return false

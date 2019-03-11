@@ -88,7 +88,6 @@ func init() {
 	for _, miner := range miners {
 		TestMiners = append(TestMiners, miner.Address)
 	}
-
 }
 
 // KeyFilePaths returns the paths to the wallets of the testaddresses

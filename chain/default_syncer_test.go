@@ -154,7 +154,7 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 	link4blk1.Proof, link4blk1.Ticket, err = chain.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
 	require.NoError(err)
 
-	fakeChildParams.Nonce = uint64(2)
+	fakeChildParams.Nonce = uint64(1)
 	link4blk2 = chain.RequireMkFakeChildWithCon(require, fakeChildParams)
 	link4blk2.Proof, link4blk2.Ticket, err = chain.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
 	require.NoError(err)

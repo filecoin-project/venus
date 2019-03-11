@@ -175,7 +175,7 @@ func TestSignErrorCases(t *testing.T) {
 	assert.Contains(err.Error(), "failed to sign data")
 }
 
-func TestAddressFromPubKey(t *testing.T) {
+func TestGetAddressForPubKeyy(t *testing.T) {
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -191,7 +191,7 @@ func TestAddressFromPubKey(t *testing.T) {
 
 		expectedAddr, _ := ki.Address()
 		pubkey := ki.PublicKey()
-		actualAddr, err := w.AddressFromPubKey(pubkey)
+		actualAddr, err := w.GetAddressForPubKey(pubkey)
 		assert.NoError(err)
 		assert.Equal(expectedAddr, actualAddr)
 	}

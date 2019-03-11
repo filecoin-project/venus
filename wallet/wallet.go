@@ -109,8 +109,8 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 	return backend.SignBytes(data, addr)
 }
 
-// AddressFromPubKey looks up a KeyInfo address associated with a given PublicKey
-func (w *Wallet) AddressFromPubKey(pk []byte) (address.Address, error) {
+// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey
+func (w *Wallet) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 	addrs := w.Addresses()
 	for _, addr = range addrs {
@@ -179,7 +179,7 @@ func (w *Wallet) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (type
 
 	var ticket types.Signature
 
-	signerAddr, err := w.AddressFromPubKey(signerPubKey)
+	signerAddr, err := w.GetAddressForPubKey(signerPubKey)
 	if err != nil {
 		msgString := fmt.Sprintf("addresses: %v", w.Addresses())
 		return ticket, errors.Wrap(err, msgString)

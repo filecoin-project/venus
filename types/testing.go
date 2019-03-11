@@ -76,8 +76,8 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 	return crypto.Sign(ki.Key(), hash[:])
 }
 
-// AddressFromPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
-func (ms MockSigner) AddressFromPubKey(pk []byte) (address.Address, error) {
+// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
+func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 
 	for _, ki := range ms.AddrKeyInfo {
@@ -98,7 +98,7 @@ func (ms MockSigner) AddressFromPubKey(pk []byte) (address.Address, error) {
 func (ms MockSigner) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (Signature, error) {
 	var ticket Signature
 
-	signerAddr, err := ms.AddressFromPubKey(signerPubKey)
+	signerAddr, err := ms.GetAddressForPubKey(signerPubKey)
 	if err != nil {
 		return ticket, err
 	}

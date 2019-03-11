@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
@@ -194,7 +195,11 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPowe
 
 	for {
 		postProof = th.MakeRandomPoSTProofForTest()
-		ticket, _ = signer.CreateTicket(postProof, signerPubKey)
+		ticket, err := signer.CreateTicket(postProof, signerPubKey)
+		if err != nil {
+			errStr := fmt.Sprintf("error creating ticket: %s", err)
+			panic(errStr)
+		}
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
 			return postProof, ticket, nil
 		}

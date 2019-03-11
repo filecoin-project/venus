@@ -2,13 +2,14 @@ package commands_test
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"os"
 	"testing"
 
-	"github.com/xeipuuv/gojsonschema"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/fixtures"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 func requireSchemaConformance(t *testing.T, jsonBytes []byte, schemaName string) { // nolint: deadcode

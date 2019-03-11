@@ -142,7 +142,7 @@ func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr a
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodes(t *testing.T, assertions *assert.Assertions, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	configOpts := []ConfigOpt{RewarderConfigOption(&(ZeroRewarder{}))}
+	configOpts := []ConfigOpt{RewarderConfigOption(&ZeroRewarder{})}
 	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
 		PeerKeyOpt(PeerKeys[0]),
 		AutoSealIntervalSecondsOpt(1),

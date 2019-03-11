@@ -808,13 +808,11 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 		processor := consensus.NewDefaultProcessor()
 
-		queryer := msg.NewQueryer(node.Repo, node.Wallet, node.ChainReader, node.cborStore, node.Blockstore)
-		res, _, err := queryer.Query(ctx, minerOwnerAddr, minerAddr, "getKey")
+		minerPubKey, err := node.PorcelainAPI.MinerGetKey(ctx, minerAddr)
 		if err != nil {
 			log.Errorf("could not getKey from miner actor")
 			return err
 		}
-		minerPubKey := res[0]
 
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
 			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, node.Wallet, blockTime)
@@ -1023,7 +1021,6 @@ func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Addres
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("\n\ncreating a miner for %s with pubkey\n%v\n", minerOwnerAddr.String(), pubKey[:])
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
