@@ -65,10 +65,7 @@ var addrsNewCmd = &cmds.Command{
 
 var addrsLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs, err := GetAPI(env).Address().Addrs().Ls(req.Context)
-		if err != nil {
-			return err
-		}
+		addrs := GetPorcelainAPI(env).WalletAddresses()
 
 		var alr AddressLsResult
 		for _, addr := range addrs {

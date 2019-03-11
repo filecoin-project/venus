@@ -20,6 +20,5 @@ type Address interface {
 // Addrs is the interface that defines method to interact with addresses.
 type Addrs interface {
 	New(ctx context.Context) (address.Address, error)
-	Ls(ctx context.Context) ([]address.Address, error)
 	Lookup(ctx context.Context, addr address.Address) (peer.ID, error)
 }

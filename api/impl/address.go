@@ -49,10 +49,6 @@ func (api *nodeAddrs) New(ctx context.Context) (address.Address, error) {
 	return api.api.node.NewAddress()
 }
 
-func (api *nodeAddrs) Ls(ctx context.Context) ([]address.Address, error) {
-	return api.api.node.Wallet.Addresses(), nil
-}
-
 func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID, error) {
 	id, err := api.api.node.Lookup().GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {
