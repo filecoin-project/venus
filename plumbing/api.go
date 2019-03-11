@@ -130,7 +130,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 }
 
 // ActorLs returns a slice of actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) ([]*actr.ActorView, error) {
+func (api *API) ActorLs(ctx context.Context) ([]string, []*actor.Actor, error) {
 	return api.actor.Ls(ctx)
 }
 
