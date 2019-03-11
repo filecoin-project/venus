@@ -21,7 +21,7 @@ func TestGenerateKey(t *testing.T) {
 
 	msg := make([]byte, 32)
 	for i := 0; i < len(msg); i++ {
-		msg[0] = byte(i)
+		msg[i] = byte(i)
 	}
 
 	digest, err := crypto.Sign(sk, msg)
