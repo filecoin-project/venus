@@ -45,7 +45,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/lookup"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -149,9 +148,6 @@ type Node struct {
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	cborStore *hamt.CborIpldStore
-
-	// A lookup service for mapping on-chain miner address to libp2p identity.
-	lookup lookup.PeerLookupService
 
 	// cancelSubscriptionsCtx is a handle to cancel the block and message subscriptions.
 	cancelSubscriptionsCtx context.CancelFunc
@@ -458,12 +454,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
 	nd.Bootstrapper = net.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Router, minPeerThreshold, period)
-
-	// On-chain lookup service
-	defaultAddressGetter := func() (address.Address, error) {
-		return nd.PorcelainAPI.GetAndMaybeSetDefaultSenderAddress()
-	}
-	nd.lookup = lookup.NewChainLookupService(nd.ChainReader, defaultAddressGetter, bs)
 
 	return nd, nil
 }
@@ -1135,11 +1125,6 @@ func (node *Node) BlockService() bserv.BlockService {
 // CborStore returns the nodes cborStore.
 func (node *Node) CborStore() *hamt.CborIpldStore {
 	return node.cborStore
-}
-
-// Lookup returns the nodes lookup service.
-func (node *Node) Lookup() lookup.PeerLookupService {
-	return node.lookup
 }
 
 // ChainReadStore returns the node's chain store.

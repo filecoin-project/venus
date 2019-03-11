@@ -6,52 +6,25 @@ import (
 	"fmt"
 
 	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 type nodeAddress struct {
 	api *nodeAPI
-
-	addrs *nodeAddrs
 }
 
 func newNodeAddress(api *nodeAPI) *nodeAddress {
 	return &nodeAddress{
-		api:   api,
-		addrs: newNodeAddrs(api),
+		api: api,
 	}
-}
-
-func (api *nodeAddress) Addrs() api.Addrs {
-	return api.addrs
 }
 
 // WalletSerializeResult is the type wallet export and import return and expect.
 type WalletSerializeResult struct {
 	KeyInfo []*types.KeyInfo
-}
-
-type nodeAddrs struct {
-	api *nodeAPI
-}
-
-func newNodeAddrs(api *nodeAPI) *nodeAddrs {
-	return &nodeAddrs{api: api}
-}
-
-func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID, error) {
-	id, err := api.api.node.Lookup().GetPeerIDByMinerAddress(ctx, addr)
-	if err != nil {
-		return peer.ID(""), errors.Wrapf(err, "failed to find miner with address %s", addr.String())
-	}
-
-	return id, nil
 }
 
 func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Address, error) {

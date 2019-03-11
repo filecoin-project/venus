@@ -7,6 +7,7 @@ import (
 
 	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
 	"gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -98,9 +99,9 @@ var addrsLookupCmd = &cmds.Command{
 			return err
 		}
 
-		v, err := GetAPI(env).Address().Addrs().Lookup(req.Context, addr)
+		v, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, addr)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to find miner with address %s", addr.String())
 		}
 		return re.Emit(v.Pretty())
 	},
