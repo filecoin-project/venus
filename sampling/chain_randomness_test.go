@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/sampling"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -20,7 +21,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("happy path", func(t *testing.T) {
 		t.Parallel()
-		chain := requireTipSetChain(t, 20)
+		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(20)), chain)
 		assert.NoError(err)
@@ -37,7 +38,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("faults with height out of range", func(t *testing.T) {
 		t.Parallel()
-		chain := requireTipSetChain(t, 20)
+		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		// edit chain to include null blocks at heights 21 through 24
 		baseBlock := chain[1].ToSlice()[0]
@@ -57,7 +58,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("faults with lookback out of range", func(t *testing.T) {
 		t.Parallel()
-		chain := requireTipSetChain(t, 20)[:5]
+		chain := testhelpers.RequireTipSetChain(t, 20)[:5]
 
 		// ancestor block heights:
 		//
@@ -71,7 +72,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 	t.Run("falls back to genesis block", func(t *testing.T) {
 		t.Parallel()
-		chain := requireTipSetChain(t, 5)
+		chain := testhelpers.RequireTipSetChain(t, 5)
 
 		// ancestor block heights:
 		//
@@ -83,23 +84,4 @@ func TestSamplingChainRandomness(t *testing.T) {
 		assert.NoError(err)
 		assert.Equal([]byte(strconv.Itoa(0)), r)
 	})
-}
-
-func requireTipSetChain(t *testing.T, numTipSets int) []types.TipSet {
-	require := require.New(t)
-
-	var tipSetsDescBlockHeight []types.TipSet
-	// setup ancestor chain
-	head := types.NewBlockForTest(nil, uint64(0))
-	head.Ticket = []byte(strconv.Itoa(0))
-	for i := 0; i < numTipSets; i++ {
-		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
-		newBlock := types.NewBlockForTest(head, uint64(0))
-		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
-		head = newBlock
-	}
-
-	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
-
-	return tipSetsDescBlockHeight
 }

@@ -3,6 +3,8 @@ package testhelpers
 import (
 	"crypto/rand"
 	"math/big"
+	"strconv"
+	"testing"
 	"time"
 
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -10,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
+
+	"github.com/stretchr/testify/require"
 )
 
 // BlockTimeTest is the block time used by workers during testing
@@ -48,4 +52,23 @@ func MakeRandomBytes(size int) []byte {
 	}
 
 	return comm
+}
+
+func RequireTipSetChain(t *testing.T, numTipSets int) []types.TipSet {
+	require := require.New(t)
+
+	var tipSetsDescBlockHeight []types.TipSet
+	// setup ancestor chain
+	head := types.NewBlockForTest(nil, uint64(0))
+	head.Ticket = []byte(strconv.Itoa(0))
+	for i := 0; i < numTipSets; i++ {
+		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
+		newBlock := types.NewBlockForTest(head, uint64(0))
+		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
+		head = newBlock
+	}
+
+	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
+
+	return tipSetsDescBlockHeight
 }

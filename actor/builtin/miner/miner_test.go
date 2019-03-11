@@ -3,7 +3,6 @@ package miner_test
 import (
 	"context"
 	"math/big"
-	"strconv"
 	"testing"
 
 	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -311,7 +310,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	ctx := context.Background()
 	st, vms := core.CreateStorages(ctx, t)
 
-	ancestors := requireAncestors(t, 10)
+	ancestors := th.RequireTipSetChain(t, 10)
 
 	origPid := th.RequireRandomPeerID()
 	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
@@ -346,22 +345,4 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", ancestors, []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
-}
-
-func requireAncestors(t *testing.T, length int) []types.TipSet {
-	require := require.New(t)
-
-	var ancestors []types.TipSet
-	head := types.NewBlockForTest(nil, uint64(0))
-	head.Ticket = []byte(strconv.Itoa(0))
-	for i := 0; i < length; i++ {
-		ancestors = append(ancestors, types.RequireNewTipSet(require, head))
-		newBlock := types.NewBlockForTest(head, uint64(0))
-		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
-		head = newBlock
-	}
-
-	ancestors = append(ancestors, types.RequireNewTipSet(require, head))
-
-	return ancestors
 }
