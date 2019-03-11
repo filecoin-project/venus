@@ -51,6 +51,16 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 		return errNonAccountActor
 	}
 
+	if msg.Value.IsNegative() {
+		log.Info("Cannot transfer negative value", fromActor, msg.Value)
+		return errNegativeValue
+	}
+
+	if msg.GasLimit > types.BlockGasLimit {
+		log.Info("Message gas limit above block limit", fromActor, msg, types.BlockGasLimit)
+		return errGasAboveBlockLimit
+	}
+
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
 		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)

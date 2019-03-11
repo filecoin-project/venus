@@ -586,7 +586,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(err)
-		assert.Equal("cannot transfer negative values", err.(*errors.ApplyErrorPermanent).Cause().Error())
+		assert.Contains("negative value", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
 
 	t.Run("errors when attempting to send to self", func(t *testing.T) {

@@ -112,18 +112,11 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	result := struct{ Messages []interface{} }{}
 
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
-		d.RunSuccess(
+		d.RunFail("block gas limit",
 			"message", "send",
 			"--price", "0", "--limit", doubleTheBlockGasLimit,
 			"--value=10", fixtures.TestAddresses[1],
 		)
-
-		blockCid := d.RunSuccess("mining", "once").ReadStdoutTrimNewlines()
-
-		blockInfo := d.RunSuccess("show", "block", blockCid, "--enc", "json").ReadStdoutTrimNewlines()
-
-		require.NoError(t, json.Unmarshal([]byte(blockInfo), &result))
-		assert.Empty(t, result.Messages, "msg over the block gas limit fails validation and is _NOT_ run in the block")
 	})
 
 	t.Run("when the gas limit is below the block limit, the message succeeds", func(t *testing.T) {
