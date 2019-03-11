@@ -321,8 +321,8 @@ func isConnectionRefused(err error) bool {
 	return syscallErr.Err == syscall.ECONNREFUSED
 }
 
-var priceOption = cmdkit.StringOption("price", "Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message")
-var limitOption = cmdkit.Uint64Option("limit", "Maximum number of GasUnits this message is allowed to consume")
+var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message")
+var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum number of GasUnits this message is allowed to consume")
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {

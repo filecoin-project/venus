@@ -29,7 +29,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
-	args = append(args, "--from", fixtures.TestAddresses[0], "--price", "0", "--limit", "300")
+	args = append(args, "--from", fixtures.TestAddresses[0], "--gas-price", "0", "--gas-limit", "300")
 	args = append(args, fixtures.TestAddresses[1], "10000", "20")
 
 	paymentChannelCmd := d.RunSuccess(args...)
@@ -359,7 +359,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
-	args = append(args, "--from", payerAddress.String(), "--price", "0", "--limit", "300")
+	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 	args = append(args, targetAddress.String(), fundsToLock.String(), eol.String())
 
 	paymentChannelCmd := d.RunSuccess(args...)
@@ -422,7 +422,7 @@ func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelI
 	require := require.New(t)
 
 	args := []string{"paych", "extend"}
-	args = append(args, "--from", payerAddress.String(), "--price", "0", "--limit", "300")
+	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 	args = append(args, channelID.String(), amount.String(), eol.String())
 
 	redeemCmd := d.RunSuccess(args...)
@@ -452,7 +452,7 @@ func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAdd
 	require := require.New(t)
 
 	args := []string{"paych", "redeem", voucher}
-	args = append(args, "--from", targetAddress.String(), "--price", "0", "--limit", "300")
+	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	redeemCmd := d.RunSuccess(args...)
 	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
@@ -481,7 +481,7 @@ func mustCloseChannel(t *testing.T, d *th.TestDaemon, voucher paymentbroker.Paym
 	require := require.New(t)
 
 	args := []string{"paych", "close", mustEncodeVoucherStr(t, voucher)}
-	args = append(args, "--from", targetAddress.String(), "--price", "0", "--limit", "300")
+	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	redeemCmd := d.RunSuccess(args...)
 	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
@@ -510,7 +510,7 @@ func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.Channel
 	require := require.New(t)
 
 	args := []string{"paych", "reclaim", channelID.String()}
-	args = append(args, "--from", payerAddress.String(), "--price", "0", "--limit", "300")
+	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	reclaimCmd := d.RunSuccess(args...)
 	messageCid, err := cid.Parse(strings.Trim(reclaimCmd.ReadStdout(), "\n"))
