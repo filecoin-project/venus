@@ -35,11 +35,10 @@ func (a *Actor) Get(ctx context.Context, addr address.Address) (*actor.Actor, er
 }
 
 // Ls returns a slice of actors from the latest state on the chain
-func (a *Actor) Ls(ctx context.Context) ([]string, []*actor.Actor, error) {
+func (a *Actor) Ls(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	st, err := a.chainReader.LatestState(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	addrs, actors := state.GetAllActors(st)
-	return addrs, actors, nil
+	return state.GetAllActors(st), nil
 }

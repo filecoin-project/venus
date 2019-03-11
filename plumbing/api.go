@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -130,7 +131,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 }
 
 // ActorLs returns a slice of actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) ([]string, []*actor.Actor, error) {
+func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	return api.actor.Ls(ctx)
 }
 

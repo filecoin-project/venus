@@ -243,33 +243,36 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 	}
 }
 
-// GetAllActors returns a slice of all actors in the StateTree, t.
-func GetAllActors(t Tree) ([]string, []*actor.Actor) {
-	st := t.(*tree)
-
-	return st.getActorsFromPointers(st.root.Pointers)
+// GetAllActorsResult is the struct returned via a channel by the GetAllActors
+// method. This struct contains only an address string and the actor itself.
+type GetAllActorsResult struct {
+	Address string
+	Actor   *actor.Actor
 }
 
-// GetAllActorsFromStoreFunc is a function with the signature of GetAllActorsFromStore
-type GetAllActorsFromStoreFunc = func(context.Context, *hamt.CborIpldStore, cid.Cid) ([]string, []*actor.Actor, error)
-
-// GetAllActorsFunc is a function with the signature of GetAllActors
-type GetAllActorsFunc = func(t Tree) ([]string, []*actor.Actor)
+// GetAllActors returns a slice of all actors in the StateTree, t.
+func GetAllActors(t Tree) <-chan GetAllActorsResult {
+	st := t.(*tree)
+	out := make(chan GetAllActorsResult)
+	go func() {
+		st.getActorsFromPointers(out, st.root.Pointers)
+		close(out)
+	}()
+	return out
+}
 
 // GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
 // Third returned value is any error that occurred when loading.
-func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot cid.Cid) ([]string, []*actor.Actor, error) {
+func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot cid.Cid) (<-chan GetAllActorsResult, error) {
 	st, err := LoadStateTree(ctx, store, stateRoot, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	addrs, actors := GetAllActors(st)
-	return addrs, actors, nil
+	return GetAllActors(st), nil
 }
 
 // NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.
-func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, actors []*actor.Actor) {
+func (t *tree) getActorsFromPointers(out chan<- GetAllActorsResult, ps []*hamt.Pointer) {
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
@@ -277,8 +280,10 @@ func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, ac
 				panic(err) // uhm, ignoring errors is bad
 			}
 
-			addresses = append(addresses, kv.Key)
-			actors = append(actors, &a)
+			out <- GetAllActorsResult{
+				Address: kv.Key,
+				Actor:   &a,
+			}
 		}
 		if p.Link.Defined() {
 			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
@@ -287,10 +292,7 @@ func (t *tree) getActorsFromPointers(ps []*hamt.Pointer) (addresses []string, ac
 			if err != nil {
 				continue
 			}
-			moreAddrs, moreActors := t.getActorsFromPointers(n.Pointers)
-			addresses = append(addresses, moreAddrs...)
-			actors = append(actors, moreActors...)
+			t.getActorsFromPointers(out, n.Pointers)
 		}
 	}
-	return
 }

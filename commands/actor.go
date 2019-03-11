@@ -52,32 +52,32 @@ var actorCmd = &cmds.Command{
 
 var actorLsCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addrs, actors, err := GetPorcelainAPI(env).ActorLs(req.Context)
+		results, err := GetPorcelainAPI(env).ActorLs(req.Context)
 		if err != nil {
 			return err
 		}
 
-		for i, a := range actors {
-			var result *ActorView
+		for result := range results {
+			var output *ActorView
 
 			switch {
-			case a.Empty(): // empty (balance only) actors have no Code.
-				result = makeActorView(a, addrs[i], nil)
-			case a.Code.Equals(types.AccountActorCodeCid):
-				result = makeActorView(a, addrs[i], &account.Actor{})
-			case a.Code.Equals(types.StorageMarketActorCodeCid):
-				result = makeActorView(a, addrs[i], &storagemarket.Actor{})
-			case a.Code.Equals(types.PaymentBrokerActorCodeCid):
-				result = makeActorView(a, addrs[i], &paymentbroker.Actor{})
-			case a.Code.Equals(types.MinerActorCodeCid):
-				result = makeActorView(a, addrs[i], &miner.Actor{})
-			case a.Code.Equals(types.BootstrapMinerActorCodeCid):
-				result = makeActorView(a, addrs[i], &miner.Actor{})
+			case result.Actor.Empty(): // empty (balance only) actors have no Code.
+				output = makeActorView(result.Actor, result.Address, nil)
+			case result.Actor.Code.Equals(types.AccountActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &account.Actor{})
+			case result.Actor.Code.Equals(types.StorageMarketActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &storagemarket.Actor{})
+			case result.Actor.Code.Equals(types.PaymentBrokerActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &paymentbroker.Actor{})
+			case result.Actor.Code.Equals(types.MinerActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &miner.Actor{})
+			case result.Actor.Code.Equals(types.BootstrapMinerActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &miner.Actor{})
 			default:
-				result = makeActorView(a, addrs[i], nil)
+				output = makeActorView(result.Actor, result.Address, nil)
 			}
 
-			if err := re.Emit(result); err != nil {
+			if err := re.Emit(output); err != nil {
 				return err
 			}
 		}

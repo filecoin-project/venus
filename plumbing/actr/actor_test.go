@@ -45,18 +45,16 @@ func TestActorLs(t *testing.T) {
 		require.NoError(chainStore.SetHead(ctx, testhelpers.RequireNewTipSet(require, b1)))
 
 		actr := NewActor(chainStore)
-		addrs, actors, err := actr.Ls(ctx)
+		results, err := actr.Ls(ctx)
 		require.NoError(err)
 
 		latestState, err := chainStore.LatestState(ctx)
 		require.NoError(err)
-		expectedAddrs, expectedActors := state.GetAllActors(latestState)
+		expectedResults := state.GetAllActors(latestState)
 
-		assert.Equal(5, len(addrs))
-		assert.Equal(5, len(actors))
-		for i := 0; i < 5; i++ {
-			assert.Equal(expectedAddrs[i], addrs[i])
-			assert.Equal(expectedActors[i], actors[i])
+		for expectedResult := range expectedResults {
+			result := <-results
+			assert.Equal(expectedResult, result)
 		}
 	})
 
@@ -71,7 +69,7 @@ func TestActorLs(t *testing.T) {
 		chainStore := chain.NewDefaultStore(repo.ChainDatastore(), cst, calcGenBlk.Cid())
 		actr := NewActor(chainStore)
 
-		_, _, err := actr.Ls(ctx)
+		_, err := actr.Ls(ctx)
 		require.Error(err)
 	})
 }
