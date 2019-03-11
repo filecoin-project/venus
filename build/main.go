@@ -115,6 +115,7 @@ func deps() {
 		cmd("gx-go rewrite"),
 		cmd("go get -u github.com/alecthomas/gometalinter"),
 		cmd("gometalinter --install"),
+		cmd("go get -u github.com/gobuffalo/packr/v2/packr2"),
 		cmd("go get -u github.com/stretchr/testify"),
 		cmd("go get -u github.com/xeipuuv/gojsonschema"),
 		cmd("go get -u github.com/ipfs/iptb"),
@@ -161,6 +162,7 @@ func smartdeps() {
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",
+		"github.com/gobuffalo/packr/v2/packr2",
 		"github.com/docker/docker/api/types",
 		"github.com/docker/docker/api/types/container",
 		"github.com/docker/docker/client",
@@ -253,19 +255,19 @@ func lint(packages ...string) {
 }
 
 func build() {
-	buildFilecoin()
 	buildGengen()
+	generateGenesis()
+	buildFilecoin()
 	buildFaucet()
 	buildGenesisFileServer()
-	generateGenesis()
 }
 
 func forcebuild() {
-	forceBuildFC()
 	buildGengen()
+	generateGenesis()
+	forceBuildFC()
 	buildFaucet()
 	buildGenesisFileServer()
-	generateGenesis()
 }
 
 func forceBuildFC() {
@@ -297,7 +299,7 @@ func buildFilecoin() {
 	commit := runCapture("git log -n 1 --format=%H")
 
 	runCmd(cmd([]string{
-		"go", "build",
+		"packr2", "build",
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
 	}...))

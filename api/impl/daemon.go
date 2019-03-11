@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/gobuffalo/packr/v2" // GX THIS
 	hamt "gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	blockstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
@@ -24,11 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
-)
-
-const (
-	// SECP256K1 is a curve used to compute private keys
-	SECP256K1 = "secp256k1"
 )
 
 type nodeDaemon struct {
@@ -111,6 +108,16 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		return fmt.Errorf(`cannot use both "--devnet-test" and "--devnet-nightly" options`)
 	}
 
+	if cfg.DevnetUser && cfg.GenesisFile != "" {
+		sourceURL, err := url.Parse(cfg.GenesisFile)
+		if err != nil {
+			return fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
+		}
+		if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
+			return fmt.Errorf(`cannot use both "--devnet-user" and a downloaded genesis file`)
+		}
+	}
+
 	// Setup devnet test specific config options.
 	if cfg.DevnetTest {
 		newConfig := rep.Config()
@@ -144,23 +151,20 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		}
 	}
 
-	switch {
-	case cfg.GenesisFile != "":
-		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-		genCid, err := LoadGenesis(rep, cfg.GenesisFile)
-		if err != nil {
-			return err
+	// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
+	genCid, err := LoadGenesis(rep, cfg.GenesisFile)
+	if err != nil {
+		return err
+	}
+
+	gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+		var blk types.Block
+
+		if err := cst.Get(ctx, genCid, &blk); err != nil {
+			return nil, err
 		}
 
-		gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-			var blk types.Block
-
-			if err := cst.Get(ctx, genCid, &blk); err != nil {
-				return nil, err
-			}
-
-			return &blk, nil
-		}
+		return &blk, nil
 	}
 
 	// TODO: don't create the repo if this fails
@@ -180,26 +184,36 @@ func loadPeerKey(fname string) (crypto.PrivKey, error) {
 func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
 
-	sourceURL, err := url.Parse(sourceName)
-	if err != nil {
-		return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
-	}
-	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
-		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
-		// recently deployed test devnet.
-		response, err := http.Get(sourceName)
+	if sourceName == "" {
+		fmt.Println("WHAT")
+		sourceBytes, err := packr.New("genesis", "../../fixtures").Find("genesis.car")
 		if err != nil {
-			return cid.Undef, err
+			panic(err)
 		}
-		source = response.Body
-	} else if sourceURL.Scheme != "" {
-		return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+		source = ioutil.NopCloser(bytes.NewReader(sourceBytes))
 	} else {
-		file, err := os.Open(sourceName)
+
+		sourceURL, err := url.Parse(sourceName)
 		if err != nil {
-			return cid.Undef, err
+			return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
 		}
-		source = file
+		if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
+			// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
+			// recently deployed test devnet.
+			response, err := http.Get(sourceName)
+			if err != nil {
+				return cid.Undef, err
+			}
+			source = response.Body
+		} else if sourceURL.Scheme != "" {
+			return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+		} else {
+			file, err := os.Open(sourceName)
+			if err != nil {
+				return cid.Undef, err
+			}
+			source = file
+		}
 	}
 
 	defer source.Close() // nolint: errcheck
