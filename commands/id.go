@@ -7,11 +7,20 @@ import (
 	"io"
 	"strings"
 
+	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	cmds "gx/ipfs/QmQtQrtNioesAWtrx8csBvfY37gTe94d6wQ3VikZUjxD39/go-ipfs-cmds"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-
-	"github.com/filecoin-project/go-filecoin/api"
 )
+
+// IDDetails is a collection of information about a node.
+type IDDetails struct {
+	Addresses       []ma.Multiaddr
+	ID              peer.ID
+	AgentVersion    string
+	ProtocolVersion string
+	PublicKey       []byte // raw bytes
+}
 
 var idCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -22,15 +31,28 @@ var idCmd = &cmds.Command{
 		cmdkit.StringOption("format", "f", "Specify an output format"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		details, err := GetAPI(env).ID().Details()
-		if err != nil {
-			return err
+		addrs := GetPorcelainAPI(env).NetworkGetPeerAddresses()
+		hostID := GetPorcelainAPI(env).NetworkGetPeerID()
+
+		details := IDDetails{
+			Addresses: make([]ma.Multiaddr, len(addrs)),
+			ID:        hostID,
+			// TODO: fill out the other details
 		}
-		return re.Emit(details)
+
+		for i, addr := range addrs {
+			subaddr, err := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", hostID.Pretty()))
+			if err != nil {
+				return err
+			}
+			details.Addresses[i] = addr.Encapsulate(subaddr)
+		}
+
+		return re.Emit(&details)
 	},
-	Type: api.IDDetails{},
+	Type: IDDetails{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *api.IDDetails) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, val *IDDetails) error {
 			format, found := req.Options["format"].(string)
 			if found {
 				output := idFormatSubstitute(format, val)
@@ -50,7 +72,7 @@ var idCmd = &cmds.Command{
 	},
 }
 
-func idFormatSubstitute(format string, val *api.IDDetails) string {
+func idFormatSubstitute(format string, val *IDDetails) string {
 	addrStrings := make([]string, len(val.Addresses))
 	for i, addr := range val.Addresses {
 		addrStrings[i] = addr.String()
@@ -64,4 +86,82 @@ func idFormatSubstitute(format string, val *api.IDDetails) string {
 	output = strings.Replace(output, "\\n", "\n", -1)
 	output = strings.Replace(output, "\\t", "\t", -1)
 	return output
+}
+
+// MarshalJSON implements json.Marshaler
+func (idd IDDetails) MarshalJSON() ([]byte, error) {
+	addressStrings := make([]string, len(idd.Addresses))
+	for i, addr := range idd.Addresses {
+		addressStrings[i] = addr.String()
+	}
+
+	v := map[string]interface{}{
+		"Addresses": addressStrings,
+	}
+
+	if idd.ID != "" {
+		v["ID"] = idd.ID.Pretty()
+	}
+	if idd.AgentVersion != "" {
+		v["AgentVersion"] = idd.AgentVersion
+	}
+	if idd.ProtocolVersion != "" {
+		v["ProtocolVersion"] = idd.ProtocolVersion
+	}
+	if idd.PublicKey != nil {
+		// Base64-encode the public key explicitly.
+		// This is what the built-in JSON encoder does to []byte too.
+		v["PublicKey"] = base64.StdEncoding.EncodeToString(idd.PublicKey)
+	}
+	return json.Marshal(v)
+}
+
+// UnmarshalJSON implements Unmarshaler
+func (idd *IDDetails) UnmarshalJSON(data []byte) error {
+	var v map[string]*json.RawMessage
+	var err error
+	if err = json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	var addresses []string
+	if err := decode(v, "Addresses", &addresses); err != nil {
+		return err
+	}
+	idd.Addresses = make([]ma.Multiaddr, len(addresses))
+	for i, addr := range addresses {
+		a, err := ma.NewMultiaddr(addr)
+		if err != nil {
+			return err
+		}
+		idd.Addresses[i] = a
+	}
+
+	var id string
+	if err := decode(v, "ID", &id); err != nil {
+		return err
+	}
+	if idd.ID, err = peer.IDB58Decode(id); err != nil {
+		return err
+	}
+
+	if err := decode(v, "AgentVersion", &idd.AgentVersion); err != nil {
+		return err
+	}
+	if err := decode(v, "ProtocolVersion", &idd.ProtocolVersion); err != nil {
+		return err
+	}
+	if err := decode(v, "PublicKey", &idd.PublicKey); err != nil {
+		return err
+	}
+	return nil
+}
+
+func decode(idd map[string]*json.RawMessage, key string, dest interface{}) error {
+	if raw := idd[key]; raw != nil {
+		if err := json.Unmarshal(*raw, &dest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
