@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	"github.com/stretchr/testify/require"
 )
 
 // BlockTimeTest is the block time used by workers during testing
@@ -54,6 +53,8 @@ func MakeRandomBytes(size int) []byte {
 	return comm
 }
 
+// RequireTipSetChain produces a chain of TipSet of the requested length. The
+// TipSet with greatest height will be at the front of the returned slice.
 func RequireTipSetChain(t *testing.T, numTipSets int) []types.TipSet {
 	require := require.New(t)
 
