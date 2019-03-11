@@ -26,7 +26,7 @@ type mcAPI interface {
 	ConfigSet(dottedPath string, paramJSON string) error
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	NetworkGetPeerID() peer.ID
 	WalletFind(address address.Address) (w.Backend, error)
@@ -41,15 +41,15 @@ type mcAPI interface {
 func MinerCreate(
 	ctx context.Context,
 	plumbing mcAPI,
-	accountAddr address.Address,
+	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
 	pledge uint64,
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
-	if accountAddr == (address.Address{}) {
-		accountAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+	if minerOwnerAddr == (address.Address{}) {
+		minerOwnerAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
 		if err != nil {
 			return nil, err
 		}
@@ -64,29 +64,22 @@ func MinerCreate(
 		log.FinishWithErr(ctx, err)
 	}()
 
-	addrInterface, err := plumbing.ConfigGet("mining.minerAddress")
+	addr, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return nil, err
-	}
-	addr, success := addrInterface.(address.Address)
-	if !success {
-		return nil, fmt.Errorf("failed to read miner address")
 	}
 	if (addr != address.Address{}) {
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	pubKey := []byte{}
-	if plumbing.WalletHasAddress(addr) {
-		pubKey, err = plumbing.WalletGetPubKeyForAddress(addr)
-		if err != nil {
-			return nil, err
-		}
+	pubKey, err := plumbing.WalletGetPubKeyForAddress(minerOwnerAddr)
+	if err != nil {
+		return nil, err
 	}
 
-	smsgCid, err := plumbing.MessageSend(
+	smsgCid, err := plumbing.MessageSendWithDefaultAddress(
 		ctx,
-		accountAddr,
+		minerOwnerAddr,
 		address.StorageMarketAddress,
 		collateral,
 		gasPrice,
@@ -105,7 +98,7 @@ func MinerCreate(
 		return nil, err
 	}
 
-	if err = persistMinerAddress(ctx, plumbing, minerAddr); err != nil {
+	if err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String()); err != nil {
 		return nil, err
 	}
 
@@ -122,34 +115,6 @@ func waitForMinerAddress(ctx context.Context, plumbing mcAPI, smsgCid cid.Cid) (
 		return err
 	})
 	return minerAddr, err
-}
-
-func persistMinerAddress(ctx context.Context, plumbing mcAPI, minerAddr address.Address) error {
-	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1843
-	res, _, err := plumbing.MessageQuery(
-		ctx,
-		address.Address{},
-		minerAddr,
-		"getOwner",
-	)
-	if err != nil {
-		return errors.Wrap(err, "failed to getOwner")
-	}
-
-	blockSignerAddr, err := address.NewFromBytes(res[0])
-	if err != nil {
-		return err
-	}
-
-	if err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String()); err != nil {
-		return err
-	}
-
-	if err = plumbing.ConfigSet("mining.blockSignerAddress", blockSignerAddr.String()); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.

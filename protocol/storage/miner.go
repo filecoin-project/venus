@@ -313,7 +313,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 }
 
 func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-	if !sm.porcelainAPI.SectorBuilderIsRunning() {
+	if sm.node.SectorBuilder() == nil {
 		return nil, errors.New("Mining disabled, can not process proposal")
 	}
 

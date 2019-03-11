@@ -52,7 +52,7 @@ func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, e
 	return wallet.NewAddress(mpc.wallet)
 }
 
-func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
 }
 
