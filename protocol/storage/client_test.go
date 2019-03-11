@@ -221,6 +221,13 @@ func (tcn *testClientNode) MakeProtocolRequest(ctx context.Context, protocol pro
 	return nil
 }
 
+func (tcn *testClientNode) Ping(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
+	out := make(chan time.Duration, 1)
+	out <- 0
+	close(out)
+	return out, nil
+}
+
 func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
 	var results []*storagedeal.Deal
 
