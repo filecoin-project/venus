@@ -8,7 +8,7 @@ import (
 	"time"
 
 	fcapi "github.com/filecoin-project/go-filecoin/api/impl"
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 

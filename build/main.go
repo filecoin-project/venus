@@ -4,6 +4,7 @@ import (
 	"fmt"
 	gobuild "go/build"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/util/version"
 )
 
@@ -257,7 +259,9 @@ func lint(packages ...string) {
 func build() {
 	buildGengen()
 	generateGenesis()
-	buildFilecoin()
+	withGenesisSourceFile(func() {
+		buildFilecoin()
+	})
 	buildFaucet()
 	buildGenesisFileServer()
 }
@@ -293,13 +297,43 @@ func generateGenesis() {
 	}...))
 }
 
+func withGenesisSourceFile(doStuff func()) {
+	genesisSourceFile := testhelpers.ProjectRoot("/fixtures/genesis.go")
+	stubGenesisSourceFileBytes, err := ioutil.ReadFile(genesisSourceFile)
+	if err != nil {
+		panic(err)
+	}
+	genesisAsBytes, err := ioutil.ReadFile(testhelpers.ProjectRoot("/fixtures/genesis.car"))
+	if err != nil {
+		panic(err)
+	}
+	newGenesisSourceFile, err := os.OpenFile(genesisSourceFile, os.O_RDWR, 0755)
+	if err != nil {
+		panic(err)
+	}
+	defer newGenesisSourceFile.Close()
+	fmt.Fprintf(newGenesisSourceFile, `package fixtures
+
+func Genesis() []byte {
+	return %#v
+}`, genesisAsBytes)
+	doStuff()
+	if err := newGenesisSourceFile.Truncate(0); err != nil {
+		panic(err)
+	}
+	if _, err := newGenesisSourceFile.Seek(0, 0); err != nil {
+		panic(err)
+	}
+	fmt.Fprint(newGenesisSourceFile, string(stubGenesisSourceFileBytes))
+}
+
 func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
 	commit := runCapture("git log -n 1 --format=%H")
 
 	runCmd(cmd([]string{
-		"packr2", "build",
+		"go", "build",
 		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
 		"-v", "-o", "go-filecoin", ".",
 	}...))

@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/gobuffalo/packr/v2" // GX THIS
 	hamt "gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	blockstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
@@ -183,16 +182,12 @@ func loadPeerKey(fname string) (crypto.PrivKey, error) {
 // LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
 func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
+	var err error
 
 	if sourceName == "" {
-		fmt.Println("WHAT")
-		sourceBytes, err := packr.New("genesis", "../../fixtures").Find("genesis.car")
-		if err != nil {
-			panic(err)
-		}
+		sourceBytes := fixtures.Genesis()
 		source = ioutil.NopCloser(bytes.NewReader(sourceBytes))
 	} else {
-
 		sourceURL, err := url.Parse(sourceName)
 		if err != nil {
 			return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
