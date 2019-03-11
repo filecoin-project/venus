@@ -475,7 +475,7 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--price", "0", "--limit", "300", "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "0", "--gas-limit", "300", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		require.NoError(err)
 		require.NotEqual(addr, address.Address{})
@@ -489,7 +489,7 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 
 // MinerSetPrice creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain
 func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price string, expiry string) {
-	td.RunSuccess("miner", "set-price", "--from", fromAddr, "--miner", minerAddr, "--price", "0", "--limit", "300", price, expiry)
+	td.RunSuccess("miner", "set-price", "--from", fromAddr, "--miner", minerAddr, "--gas-price", "0", "--gas-limit", "300", price, expiry)
 }
 
 // UpdatePeerID updates a currently mining miner's peer ID
@@ -501,7 +501,7 @@ func (td *TestDaemon) UpdatePeerID() {
 	peerIDJSON := td.RunSuccess("id").ReadStdout()
 	err := json.Unmarshal([]byte(peerIDJSON), &idOutput)
 	require.NoError(err)
-	updateCidStr := td.RunSuccess("miner", "update-peerid", "--price=0", "--limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
+	updateCidStr := td.RunSuccess("miner", "update-peerid", "--gas-price=0", "--gas-limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
 	updateCid, err := cid.Parse(updateCidStr)
 	require.NoError(err)
 	assert.NotNil(updateCid)
