@@ -243,20 +243,7 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 // SampleChainRandomness samples randomness from a block's ancestors at the
 // given height.
 func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
-	ancestorCh := make(chan interface{})
-	go func() {
-		for _, val := range ctx.ancestors {
-			ancestorCh <- val
-		}
-		close(ancestorCh)
-	}()
-
-	bytes, err := miner.SampleChainRandomness(sampleHeight, ancestorCh)
-	if err != nil {
-		return nil, errors.FaultErrorWrap(err, "failed to sample randomness from chain")
-	}
-
-	return bytes, nil
+	return miner.SampleChainRandomness(sampleHeight, ctx.ancestors)
 }
 
 // Dependency injection setup.

@@ -737,51 +737,57 @@ func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (pro
 }
 
 // SampleChainRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height (minus lookback). This is useful for
-// things like PoSt challenge seed generation.
-//
-// If no TipSet exists with the provided height (sampleHeight), we instead
-// sample the genesis block.
-func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetCh <-chan interface{}) ([]byte, error) {
-	// EDGE CASE: for now if ancestors includes the genesis block we take
-	// randomness from the genesis block.
-	// TODO: security, spec, bootstrap implications.
-	// See issue https://github.com/filecoin-project/go-filecoin/issues/1872
-	sampleHeight = sampleHeight.Sub(types.NewBlockHeight(LookbackParameter))
-	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
-		sampleHeight = types.NewBlockHeight(0)
-	}
+// in the provided slice of TipSets at a given height (minus lookback). This
+// function assumes that the tipSets slice is sorted and that the genesis block
+// is at the end of the list.
 
-	var sampleTipSet *types.TipSet
+// SampleChainRandomness is useful for things like PoSt challenge seed
+// generation.
+func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescBlockHeight []types.TipSet) ([]byte, error) {
+	sampleIndex := -1
+	tipSetsLen := len(tipSetsDescBlockHeight)
+	lastIdxInTipSets := tipSetsLen - 1
 
-Loop:
-	for raw := range tipSetCh {
-		switch v := raw.(type) {
-		case error:
-			return nil, xerrors.Wrap(v, "error walking chain")
-		case types.TipSet:
-			height, err := v.Height()
-			if err != nil {
-				return nil, xerrors.Wrap(err, "error obtaining tip set height")
-			}
+	for i := 0; i < tipSetsLen; i++ {
+		height, err := tipSetsDescBlockHeight[i].Height()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "error obtaining tip set height")
+		}
 
-			if sampleHeight.Equal(types.NewBlockHeight(height)) {
-				sampleTipSet = &v
-				break Loop
-			}
-		default:
-			return nil, xerrors.New("unexpected type")
+		if types.NewBlockHeight(height).Equal(sampleHeight) {
+			sampleIndex = i
+			break
 		}
 	}
 
-	if sampleTipSet == nil {
-		return nil, xerrors.Errorf("found no tip set in chain with height %s", sampleHeight)
+	// Produce an error if no tip set exists in `tipSetsDescBlockHeight` with
+	// block height `sampleHeight`.
+	if sampleIndex == -1 {
+		return nil, xerrors.Errorf("sample height out of range: %s", sampleHeight)
 	}
 
-	ticket, err := sampleTipSet.MinTicket()
-	if err != nil {
-		return nil, xerrors.Wrap(err, "error obtaining tip set (min) ticket")
+	// If looking backwards in time Lookback-number of tip sets from the tip set
+	// with `sampleHeight` would put us farther back in time than the genesis
+	// block, choose the last block in `tipSetsDescBlockHeight` for sampling. If
+	// this block isn't the genesis block (because of some programmer error),
+	// produce an error.
+	//
+	// TODO: security, spec, bootstrap implications.
+	// See issue https://github.com/filecoin-project/go-filecoin/issues/1872
+	lookbackIdx := sampleIndex + LookbackParameter
+	if lookbackIdx > lastIdxInTipSets {
+		leastHeightInChain, err := tipSetsDescBlockHeight[lastIdxInTipSets].Height()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "error obtaining tip set height")
+		}
+
+		if leastHeightInChain == uint64(0) {
+			lookbackIdx = lastIdxInTipSets
+		} else {
+			errMsg := "lookbackIdx=%d does not correspond to genesis block (leastHeightInChain=%d)"
+			return nil, xerrors.Errorf(errMsg, lookbackIdx, leastHeightInChain)
+		}
 	}
 
-	return ticket, nil
+	return tipSetsDescBlockHeight[lookbackIdx].MinTicket()
 }

@@ -33,5 +33,18 @@ func ChainBlockHeight(ctx context.Context, plumbing chPlumbing) (*types.BlockHei
 
 // SampleChainRandomness samples randomness from the chain at the given height.
 func SampleChainRandomness(ctx context.Context, plumbing chPlumbing, sampleHeight *types.BlockHeight) ([]byte, error) {
-	return miner.SampleChainRandomness(sampleHeight, plumbing.ChainLs(ctx))
+	var tipSetBuffer []types.TipSet
+
+	for raw := range plumbing.ChainLs(ctx) {
+		switch v := raw.(type) {
+		case error:
+			return nil, errors.Wrap(v, "error walking chain")
+		case types.TipSet:
+			tipSetBuffer = append(tipSetBuffer, v)
+		default:
+			return nil, errors.New("unexpected type")
+		}
+	}
+
+	return miner.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }
