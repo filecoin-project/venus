@@ -9,12 +9,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type chPlumbing interface {
+type chBlockHeightPlumbing interface {
 	ChainLs(ctx context.Context) <-chan interface{}
 }
 
+type chSampleRandomnessPlumbing interface {
+	GetRecentAncestors(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error)
+}
+
 // ChainBlockHeight determines the current block height
-func ChainBlockHeight(ctx context.Context, plumbing chPlumbing) (*types.BlockHeight, error) {
+func ChainBlockHeight(ctx context.Context, plumbing chBlockHeightPlumbing) (*types.BlockHeight, error) {
 	lsCtx, cancelLs := context.WithCancel(ctx)
 	tipSetCh := plumbing.ChainLs(lsCtx)
 	head := <-tipSetCh
@@ -32,18 +36,10 @@ func ChainBlockHeight(ctx context.Context, plumbing chPlumbing) (*types.BlockHei
 }
 
 // SampleChainRandomness samples randomness from the chain at the given height.
-func SampleChainRandomness(ctx context.Context, plumbing chPlumbing, sampleHeight *types.BlockHeight) ([]byte, error) {
-	var tipSetBuffer []types.TipSet
-
-	for raw := range plumbing.ChainLs(ctx) {
-		switch v := raw.(type) {
-		case error:
-			return nil, errors.Wrap(v, "error walking chain")
-		case types.TipSet:
-			tipSetBuffer = append(tipSetBuffer, v)
-		default:
-			return nil, errors.New("unexpected type")
-		}
+func SampleChainRandomness(ctx context.Context, plumbing chSampleRandomnessPlumbing, sampleHeight *types.BlockHeight) ([]byte, error) {
+	tipSetBuffer, err := plumbing.GetRecentAncestors(ctx, sampleHeight)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
 
 	return miner.SampleChainRandomness(sampleHeight, tipSetBuffer)
