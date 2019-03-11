@@ -117,10 +117,6 @@ echo ""
 echo ""
 
 echo ""
-echo "miner mines a block (to include commitSector message)..."
-mine_once "${MN_REPO_DIR}"
-
-echo ""
 echo "miner node starts mining..."
 ./go-filecoin mining start \
   --repodir="$MN_REPO_DIR" \
@@ -158,10 +154,6 @@ echo "client proposes a storage deal, which transfers piece 2 (triggers seal)...
   --repodir="$CL_REPO_DIR" \
 
 echo ""
-echo "miner mines a block (to include commitSector message)..."
-mine_once "${MN_REPO_DIR}"
-
-echo ""
 echo "wait for commitSector sent by miner owner to be included in a block viewable by both nodes..."
 wait_for_message_in_chain_by_method_and_sender commitSector "${MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}"
 
@@ -176,8 +168,6 @@ echo ""
 
 ./go-filecoin retrieval-client retrieve-piece  "${MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" \
   --repodir="${CL_REPO_DIR}" > "${UNSEAL_PATH}"
-
-
 
 GOT=$(shasum < "${UNSEAL_PATH}")
 EXPECTED=$(shasum < "${PIECE_1_PATH}")
