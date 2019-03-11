@@ -57,12 +57,12 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 }
 
 // Address returns the address for this keyinfo
-func (ki *KeyInfo) Address() (address.Address, error) {
+func (ki *KeyInfo) Address() address.Address {
 	pub := ki.PublicKey()
 	addrHash := address.Hash(pub)
 
 	// TODO: Use the address type we are running on from the config.
-	return address.NewMainnet(addrHash), nil
+	return address.NewMainnet(addrHash)
 }
 
 // PublicKey returns the public key part as uncompressed bytes.

@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 
@@ -121,10 +120,10 @@ func (w *Wallet) Ecrecover(data []byte, sig types.Signature) ([]byte, error) {
 }
 
 // NewAddress creates a new account address on the default wallet backend.
-func NewAddress(w *Wallet) (address.Address, error) {
+func NewAddress(w *Wallet) address.Address {
 	backends := w.Backends(DSBackendType)
 	if len(backends) == 0 {
-		return address.Address{}, fmt.Errorf("missing default ds backend")
+		return address.Address{}
 	}
 
 	backend := (backends[0]).(*DSBackend)
@@ -144,12 +143,7 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
 func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
-	newAddr, err := NewAddress(w)
-	if err != nil {
-		return &types.KeyInfo{}, err
-	}
-
-	return w.keyInfoForAddr(newAddr)
+	return w.keyInfoForAddr(NewAddress(w))
 }
 
 func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {

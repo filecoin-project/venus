@@ -45,7 +45,7 @@ func newNodeAddrs(api *nodeAPI) *nodeAddrs {
 	return &nodeAddrs{api: api}
 }
 
-func (api *nodeAddrs) New(ctx context.Context) (address.Address, error) {
+func (api *nodeAddrs) New(ctx context.Context) address.Address {
 	return api.api.node.NewAddress()
 }
 
@@ -91,11 +91,7 @@ func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Add
 			return nil, err
 		}
 
-		a, err := ki.Address()
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, a)
+		out = append(out, ki.Address())
 	}
 	return out, nil
 }

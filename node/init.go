@@ -126,10 +126,5 @@ func newAddress(r repo.Repo) (address.Address, error) {
 		return address.Address{}, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
-	addr, err := backend.NewAddress()
-	if err != nil {
-		return address.Address{}, errors.Wrap(err, "failed to create address")
-	}
-
-	return addr, err
+	return backend.NewAddress(), nil
 }

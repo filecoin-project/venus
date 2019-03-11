@@ -13,10 +13,7 @@ import (
 )
 
 func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
-	addr, err := ki.Address()
-	if err != nil {
-		return err
-	}
+	addr := ki.Address()
 	if !jsonout {
 		fmt.Fprintf(os.Stderr, "key: %s - %s\n", name, addr.String())                                                          // nolint: errcheck
 		fmt.Fprintf(os.Stderr, "run 'go-filecoin wallet import ./%s.key' to add private key for %[1]s to your wallet\n", name) // nolint: errcheck

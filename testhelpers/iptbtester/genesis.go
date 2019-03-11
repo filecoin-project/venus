@@ -62,11 +62,7 @@ func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 		t.Fatal(err)
 	}
 
-	walletAddr, err := info.Keys[0].Address()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	walletAddr := info.Keys[0].Address()
 	minerAddr := info.Miners[0].Address
 
 	return &GenesisInfo{

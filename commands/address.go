@@ -48,10 +48,7 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := GetAPI(env).Address().Addrs().New(req.Context)
-		if err != nil {
-			return err
-		}
+		addr := GetAPI(env).Address().Addrs().New(req.Context)
 		return re.Emit(&addressResult{addr.String()})
 	},
 	Type: &addressResult{},
@@ -209,12 +206,9 @@ var walletExportCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *impl.WalletSerializeResult) error {
 			for _, k := range klr.KeyInfo {
-				a, err := k.Address()
-				if err != nil {
-					return err
-				}
+				a := k.Address()
 				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.Curve)
+				_, err := fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.Curve)
 				if err != nil {
 					return err
 				}

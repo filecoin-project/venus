@@ -224,6 +224,6 @@ func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
 }
 
 // WalletNewAddress generates a new wallet address
-func (api *API) WalletNewAddress() (address.Address, error) {
+func (api *API) WalletNewAddress() address.Address {
 	return wallet.NewAddress(api.wallet)
 }

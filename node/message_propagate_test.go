@@ -25,8 +25,7 @@ func TestMessagePropagation(t *testing.T) {
 
 	// Generate a key and install an account actor at genesis which will be able to send messages.
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())[0]
-	senderAddress, err := ki.Address()
-	require.NoError(err)
+	senderAddress := ki.Address()
 	genesis := consensus.MakeGenesisFunc(
 		consensus.ActorAccount(senderAddress, types.NewAttoFILFromFIL(100)),
 	)
@@ -43,7 +42,7 @@ func TestMessagePropagation(t *testing.T) {
 
 	// Give the sender the private key so it can sign messages.
 	// Note: this is an ugly hack around the Wallet lacking a mutable interface.
-	err = sender.Wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
+	err := sender.Wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
 	require.NoError(err)
 
 	// Initialize other nodes to receive the message.

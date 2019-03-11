@@ -182,11 +182,6 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 	for i, v := range prealloc {
 		ki := keys[i]
 
-		addr, err := ki.Address()
-		if err != nil {
-			return err
-		}
-
 		valint, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
 			return err
@@ -196,7 +191,7 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 		if err != nil {
 			return err
 		}
-		if err := st.SetActor(context.Background(), addr, act); err != nil {
+		if err := st.SetActor(context.Background(), ki.Address(), act); err != nil {
 			return err
 		}
 	}
@@ -214,10 +209,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 	ctx := context.Background()
 
 	for _, m := range miners {
-		addr, err := keys[m.Owner].Address()
-		if err != nil {
-			return nil, err
-		}
+		addr := keys[m.Owner].Address()
 
 		var pid peer.ID
 		if m.PeerID != "" {
@@ -236,7 +228,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// give collateral to account actor
-		_, err = applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
+		_, err := applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
 		if err != nil {
 			return nil, err
 		}

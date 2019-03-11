@@ -100,10 +100,7 @@ func (cs *ChainSeed) GiveKey(t *testing.T, nd *Node, key int) address.Address {
 	kinfo := cs.info.Keys[key]
 	require.NoError(t, dsb.ImportKey(kinfo))
 
-	addr, err := kinfo.Address()
-	require.NoError(t, err)
-
-	return addr
+	return kinfo.Address()
 }
 
 // GiveMiner gives the specified miner to the node. Returns the address and the owner addresss
@@ -115,9 +112,7 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Addre
 	cfg.Mining.MinerAddress = m.Address
 	require.NoError(t, nd.Repo.ReplaceConfig(cfg))
 
-	ownerAddr, err := cs.info.Keys[m.Owner].Address()
-	require.NoError(t, err)
-
+	ownerAddr := cs.info.Keys[m.Owner].Address()
 	return m.Address, ownerAddr
 }
 
@@ -125,13 +120,7 @@ func (cs *ChainSeed) GiveMiner(t *testing.T, nd *Node, which int) (address.Addre
 func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 	t.Helper()
 	k := cs.info.Keys[key]
-
-	a, err := k.Address()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return a
+	return k.Address()
 }
 
 // MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options

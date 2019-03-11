@@ -22,8 +22,7 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.Len(fs.Addresses(), 0)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress()
-	assert.NoError(err)
+	addr := fs.NewAddress()
 
 	t.Log("address is stored")
 	assert.True(fs.HasAddress(addr))
@@ -45,8 +44,7 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	assert.NoError(err)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress()
-	assert.NoError(err)
+	addr := fs.NewAddress()
 
 	t.Log("address is stored")
 	assert.True(fs.HasAddress(addr))
@@ -55,11 +53,8 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	ki, err := fs.GetKeyInfo(addr)
 	assert.NoError(err)
 
-	dAddr, err := ki.Address()
-	assert.NoError(err)
-
 	t.Log("generated address and stored address should match")
-	assert.Equal(addr, dAddr)
+	assert.Equal(addr, ki.Address())
 }
 
 func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
@@ -77,8 +72,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	assert.NoError(err)
 
 	t.Log("can create new address in fs1")
-	addr, err := fs1.NewAddress()
-	assert.NoError(err)
+	addr := fs1.NewAddress()
 
 	t.Log("address is stored fs1")
 	assert.True(fs1.HasAddress(addr))
@@ -111,8 +105,7 @@ func TestDSBackendParallel(t *testing.T) {
 	wg.Add(count)
 	for i := 0; i < count; i++ {
 		go func() {
-			_, err := fs.NewAddress()
-			assert.NoError(err)
+			_ = fs.NewAddress()
 			wg.Done()
 		}()
 	}

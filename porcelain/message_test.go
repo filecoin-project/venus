@@ -3,13 +3,14 @@ package porcelain_test
 import (
 	"testing"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 type fakeGetAndMaybeSetDefaultSenderAddressPlumbing struct {
@@ -39,7 +40,7 @@ func (fgamsdsap *fakeGetAndMaybeSetDefaultSenderAddressPlumbing) WalletAddresses
 	return fgamsdsap.wallet.Addresses()
 }
 
-func (fgamsdsap *fakeGetAndMaybeSetDefaultSenderAddressPlumbing) WalletNewAddress() (address.Address, error) {
+func (fgamsdsap *fakeGetAndMaybeSetDefaultSenderAddressPlumbing) WalletNewAddress() address.Address {
 	return wallet.NewAddress(fgamsdsap.wallet)
 }
 
@@ -52,8 +53,7 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 
 		fp := newFakeGetAndMaybeSetDefaultSenderAddressPlumbing(require)
 
-		addrA, err := fp.WalletNewAddress()
-		require.NoError(err)
+		addrA := fp.WalletNewAddress()
 		fp.ConfigSet("wallet.defaultAddress", addrA.String())
 
 		addrB, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)
@@ -69,9 +69,7 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 
 		addresses := []address.Address{}
 		for i := 0; i < 10; i++ {
-			a, err := fp.WalletNewAddress()
-			require.NoError(err)
-			addresses = append(addresses, a)
+			addresses = append(addresses, fp.WalletNewAddress())
 		}
 
 		expected, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)

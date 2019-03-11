@@ -95,10 +95,10 @@ func (backend *DSBackend) HasAddress(addr address.Address) bool {
 
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
-func (backend *DSBackend) NewAddress() (address.Address, error) {
+func (backend *DSBackend) NewAddress() address.Address {
 	prv, err := crypto.GenerateKey()
 	if err != nil {
-		return address.Address{}, err
+		return address.Address{}
 	}
 
 	// TODO: maybe the above call should just return a keyinfo?
@@ -108,18 +108,14 @@ func (backend *DSBackend) NewAddress() (address.Address, error) {
 	}
 
 	if err := backend.putKeyInfo(ki); err != nil {
-		return address.Address{}, err
+		return address.Address{}
 	}
 
 	return ki.Address()
 }
 
 func (backend *DSBackend) putKeyInfo(ki *types.KeyInfo) error {
-	a, err := ki.Address()
-	if err != nil {
-		return err
-	}
-
+	a := ki.Address()
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 

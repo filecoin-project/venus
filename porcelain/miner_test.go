@@ -53,7 +53,7 @@ func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backe
 }
 
 func (mpc *minerPreviewCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
+	return wallet.NewAddress(mpc.wallet), nil
 }
 
 func TestMinerPreviewCreate(t *testing.T) {

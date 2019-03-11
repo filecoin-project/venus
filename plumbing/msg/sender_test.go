@@ -199,16 +199,14 @@ func (v nullValidator) Validate(ctx context.Context, msg *types.SignedMessage, f
 func setupSendTest(require *require.Assertions) (*wallet.Wallet, *chain.DefaultStore, *core.MessagePool) {
 	// Install an account actor in the genesis block.
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())[0]
-	addr, err := ki.Address()
-	require.NoError(err)
 	genesis := consensus.MakeGenesisFunc(
-		consensus.ActorAccount(addr, types.NewAttoFILFromFIL(100)),
+		consensus.ActorAccount(ki.Address(), types.NewAttoFILFromFIL(100)),
 	)
 
 	d := requiredCommonDeps(require, genesis)
 
 	// Install the key in the wallet for use in signing.
-	err = d.wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
+	err := d.wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
 	require.NoError(err)
 	return d.wallet, d.chainStore, core.NewMessagePool()
 }

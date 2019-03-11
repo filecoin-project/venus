@@ -27,9 +27,7 @@ func requireSignerAddr(require *require.Assertions) (*DSBackend, address.Address
 	fs, err := NewDSBackend(ds)
 	require.NoError(err)
 
-	addr, err := fs.NewAddress()
-	require.NoError(err)
-	return fs, addr
+	return fs, fs.NewAddress()
 }
 
 // Signature is over the data being verified and was signed by the verifying
@@ -85,9 +83,7 @@ func TestInvalidAddress(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(err)
 
-	badAddr, err := fs.NewAddress()
-	require.NoError(err)
-
+	badAddr := fs.NewAddress()
 	assert.False(types.IsValidSignature(data, badAddr, sig))
 }
 
@@ -128,8 +124,7 @@ func TestBadFrom(t *testing.T) {
 	require := require.New(t)
 
 	fs, addr := requireSignerAddr(require)
-	addr2, err := fs.NewAddress()
-	require.NoError(err)
+	addr2 := fs.NewAddress()
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
 	meteredMsg := types.NewMeteredMessage(*msg, types.NewGasPrice(0), types.NewGasUnits(0))

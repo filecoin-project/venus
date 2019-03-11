@@ -367,8 +367,6 @@ type minerTestPorcelain struct {
 func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	mockSigner := types.NewMockSigner(ki)
-	payerAddr, err := ki[0].Address()
-	require.NoError(err, "Could not create payer address")
 
 	addressGetter := address.NewForTestGetter()
 	cidGetter := types.NewCidForTestGetter()
@@ -381,7 +379,7 @@ func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
 	blockHeight := types.NewBlockHeight(773)
 	return &minerTestPorcelain{
 		config:        config,
-		payerAddress:  payerAddr,
+		payerAddress:  ki[0].Address(),
 		targetAddress: addressGetter(),
 		channelID:     types.NewChannelID(73),
 		messageCid:    &messageCid,

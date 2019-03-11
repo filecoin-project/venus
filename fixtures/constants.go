@@ -77,10 +77,7 @@ func init() {
 
 	for _, key := range keys {
 		info := details.Keys[key]
-		addr, err := info.Address()
-		if err != nil {
-			panic(err)
-		}
+		addr := info.Address()
 		TestAddresses = append(TestAddresses, addr.String())
 		testKeys = append(testKeys, fmt.Sprintf("%d.key", key))
 	}

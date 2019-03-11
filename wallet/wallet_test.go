@@ -25,8 +25,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Len(w.Backends(DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress()
-	assert.NoError(err)
+	addr := fs.NewAddress()
 
 	t.Log("test HasAddress")
 	assert.True(w.HasAddress(addr))
@@ -61,8 +60,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.Len(w.Backends(DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress()
-	assert.NoError(err)
+	addr := fs.NewAddress()
 
 	t.Log("test HasAddress")
 	assert.True(w.HasAddress(addr))
@@ -129,10 +127,8 @@ func TestSignErrorCases(t *testing.T) {
 	assert.Len(w2.Backends(DSBackendType), 1)
 
 	t.Log("create a new address each backend")
-	addr1, err := fs1.NewAddress()
-	assert.NoError(err)
-	addr2, err := fs2.NewAddress()
-	assert.NoError(err)
+	addr1 := fs1.NewAddress()
+	addr2 := fs2.NewAddress()
 
 	t.Log("test HasAddress")
 	assert.True(w1.HasAddress(addr1))

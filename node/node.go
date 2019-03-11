@@ -990,7 +990,7 @@ func (node *Node) StopMining(ctx context.Context) {
 }
 
 // NewAddress creates a new account address on the default wallet backend.
-func (node *Node) NewAddress() (address.Address, error) {
+func (node *Node) NewAddress() address.Address {
 	return wallet.NewAddress(node.Wallet)
 }
 
