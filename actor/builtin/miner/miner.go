@@ -671,9 +671,9 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			sectorStoreType = proofs.Test
 		}
 
-		seed, err := ma.currentProvingPeriodPoStChallengeSeed(ctx)
+		seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
 		if err != nil {
-			return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
+			return nil, errors.FaultErrorWrap(err, "failed to sample chain for challenge seed")
 		}
 
 		req := proofs.VerifyPoSTRequest{
@@ -724,17 +724,7 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 	return state.ProvingPeriodStart, 0, nil
 }
 
-func (ma *Actor) currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext) (proofs.PoStChallengeSeed, error) {
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return proofs.PoStChallengeSeed{}, err
-	}
-
-	var state State
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return proofs.PoStChallengeSeed{}, err
-	}
-
+func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (proofs.PoStChallengeSeed, error) {
 	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
 	if err != nil {
 		return proofs.PoStChallengeSeed{}, err
