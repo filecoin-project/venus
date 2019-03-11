@@ -5,7 +5,7 @@ import (
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -42,5 +42,5 @@ func SampleChainRandomness(ctx context.Context, plumbing chSampleRandomnessPlumb
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
 
-	return miner.SampleChainRandomness(sampleHeight, tipSetBuffer)
+	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }

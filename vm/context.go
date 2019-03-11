@@ -9,9 +9,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -243,7 +243,7 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 // SampleChainRandomness samples randomness from a block's ancestors at the
 // given height.
 func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
-	return miner.SampleChainRandomness(sampleHeight, ctx.ancestors)
+	return sampling.SampleChainRandomness(sampleHeight, ctx.ancestors)
 }
 
 // Dependency injection setup.

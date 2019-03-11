@@ -18,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -312,7 +312,7 @@ func TestVMContextRand(t *testing.T) {
 	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
 
 	// set a tripwire
-	require.Equal(miner.LookbackParameter, 3, "these tests assume LookbackParameter=3")
+	require.Equal(sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
 
 	t.Run("happy path", func(t *testing.T) {
 		ctx := NewVMContext(NewContextParams{
