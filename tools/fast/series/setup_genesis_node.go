@@ -41,5 +41,5 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 		return err
 	}
 
-	return node.MiningStart(ctx)
+	return nil
 }

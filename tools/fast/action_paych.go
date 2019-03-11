@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -15,7 +16,7 @@ func (f *Filecoin) PaychCreate(ctx context.Context,
 	target address.Address, amount *types.AttoFIL, eol *types.BlockHeight,
 	options ...ActionOption) (cid.Cid, error) {
 
-	var out cid.Cid
+	var out commands.CreateChannelResult
 	args := []string{"go-filecoin", "paych", "create", target.String(), amount.String(), eol.String()}
 
 	for _, option := range options {
@@ -26,12 +27,12 @@ func (f *Filecoin) PaychCreate(ctx context.Context,
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 }
 
 // PaychClose runs the `paych close` command against the filecoin process.
 func (f *Filecoin) PaychClose(ctx context.Context, voucher string, options ...ActionOption) (cid.Cid, error) {
-	var out cid.Cid
+	var out commands.CloseResult
 	args := []string{"go-filecoin", "paych", "close", voucher}
 
 	for _, option := range options {
@@ -42,16 +43,16 @@ func (f *Filecoin) PaychClose(ctx context.Context, voucher string, options ...Ac
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 
 }
 
 // PaychExtend runs the `paych extend` command against the filecoin process.
 func (f *Filecoin) PaychExtend(ctx context.Context,
-	channel types.ChannelID, amount *types.AttoFIL, eol types.BlockHeight,
+	channel *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight,
 	options ...ActionOption) (cid.Cid, error) {
 
-	var out cid.Cid
+	var out commands.ExtendResult
 	args := []string{"go-filecoin", "paych", "extend", channel.String(), amount.String(), eol.String()}
 
 	for _, option := range options {
@@ -62,7 +63,7 @@ func (f *Filecoin) PaychExtend(ctx context.Context,
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 
 }
 
@@ -84,7 +85,7 @@ func (f *Filecoin) PaychLs(ctx context.Context, options ...ActionOption) (map[st
 
 // PaychReclaim runs the `paych reclaim` command against the filecoin process.
 func (f *Filecoin) PaychReclaim(ctx context.Context, channel *types.ChannelID, options ...ActionOption) (cid.Cid, error) {
-	var out cid.Cid
+	var out commands.ReclaimResult
 	args := []string{"go-filecoin", "paych", "reclaim", channel.String()}
 
 	for _, option := range options {
@@ -95,12 +96,12 @@ func (f *Filecoin) PaychReclaim(ctx context.Context, channel *types.ChannelID, o
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 }
 
 // PaychRedeem runs the `paych redeem` command against the filecoin process.
 func (f *Filecoin) PaychRedeem(ctx context.Context, voucher string, options ...ActionOption) (cid.Cid, error) {
-	var out cid.Cid
+	var out commands.RedeemResult
 	args := []string{"go-filecoin", "paych", "redeem", voucher}
 
 	for _, option := range options {
@@ -111,14 +112,11 @@ func (f *Filecoin) PaychRedeem(ctx context.Context, voucher string, options ...A
 		return cid.Undef, err
 	}
 
-	return out, nil
+	return out.Cid, nil
 }
 
 // PaychVoucher runs the `paych voucher` command against the filecoin process.
-func (f *Filecoin) PaychVoucher(ctx context.Context,
-	channel *types.ChannelID, amount *types.AttoFIL,
-	options ...ActionOption) (string, error) {
-
+func (f *Filecoin) PaychVoucher(ctx context.Context, channel *types.ChannelID, amount *types.AttoFIL, options ...ActionOption) (string, error) {
 	var out string
 
 	args := []string{"go-filecoin", "paych", "voucher", channel.String(), amount.String()}

@@ -22,6 +22,8 @@ func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr addr
 		return err
 	}
 
+	MiningOnceFromCtx(ctx)
+
 	if _, err := node.MessageWait(ctx, mcid); err != nil {
 		return err
 	}

@@ -1,121 +1,214 @@
 package commands_test
 
 import (
-	"fmt"
-	"strings"
-	"sync"
+	"context"
+	"math/big"
 	"testing"
+	"time"
 
-	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/multiformats/go-multibase"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fasting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+func VoucherFromString(data string) (paymentbroker.PaymentVoucher, error) {
+	_, cborVoucher, err := multibase.Decode(data)
+	if err != nil {
+		return paymentbroker.PaymentVoucher{}, err
+	}
+
+	var voucher paymentbroker.PaymentVoucher
+	if err = cbor.DecodeInto(cborVoucher, &voucher); err != nil {
+		return paymentbroker.PaymentVoucher{}, err
+	}
+
+	return voucher, nil
+}
+
 func TestPaymentChannelCreateSuccess(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
+	require := require.New(t)
 
-	d := makeTestDaemonWithMinerAndStart(t)
-	defer d.ShutdownSuccess()
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
 
-	args := []string{"paych", "create"}
-	args = append(args, "--from", fixtures.TestAddresses[0], "--gas-price", "0", "--gas-limit", "300")
-	args = append(args, fixtures.TestAddresses[1], "10000", "20")
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
-	paymentChannelCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(paymentChannelCmd.ReadStdout(), "\n"))
-	require.NoError(t, err)
+	// Teardown after test ends
+	defer env.Teardown(ctx)
 
-	var wg sync.WaitGroup
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
 
-	wg.Add(1)
-	go func() {
-		wait := d.RunSuccess("message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			messageCid.String(),
-		)
-		_, ok := types.NewChannelIDFromString(strings.Trim(wait.ReadStdout(), "\n"), 10)
-		assert.True(ok)
-		wg.Done()
-	}()
+	addrs, err := targetDaemon.AddressLs(ctx)
+	require.NoError(err)
+	targetAddr := addrs[0]
 
-	d.RunSuccess("mining once")
+	addrs, err = payerDaemon.AddressLs(ctx)
+	require.NoError(err)
+	payerAddr := addrs[0]
 
-	wg.Wait()
+	channelExpiry := types.NewBlockHeight(20)
+	channelAmount := types.NewAttoFILFromFIL(1000)
+
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		require.NotNil(chanid)
+	})
+}
+
+// WithPaymentChannel takes a filecoin daemon and constructs a payment channel to the `target` for the `amt` for `eol`, and calls fn with the channel id
+func WithPaymentChannel(t *testing.T, ctx context.Context, p *fast.Filecoin, from, target address.Address, amt *types.AttoFIL, eol *types.BlockHeight, fn func(chanid *types.ChannelID)) {
+	require := require.New(t)
+
+	mcid, err := p.PaychCreate(ctx, target, amt, eol, fast.AOFromAddr(from), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	require.NoError(err)
+
+	series.MiningOnceFromCtx(ctx)
+
+	response, err := p.MessageWait(ctx, mcid)
+	require.NoError(err)
+
+	chanid := types.NewChannelIDFromBytes(response.Receipt.Return[0])
+	fn(chanid)
 }
 
 func TestPaymentChannelLs(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
 
 	t.Run("Works with default payer", func(t *testing.T) {
 		t.Parallel()
+		require := require.New(t)
+		assert := assert.New(t)
 
-		payer, err := address.NewFromString(fixtures.TestAddresses[2])
+		// This test should run in 20 block times
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		defer cancel()
+
+		// Get basic testing environment
+		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+		// Teardown after test ends
+		defer env.Teardown(ctx)
+
+		// Start test
+		targetDaemon := NewNode()
+		payerDaemon := NewNode()
+
+		addrs, err := targetDaemon.AddressLs(ctx)
 		require.NoError(err)
-		target, err := address.NewFromString(fixtures.TestAddresses[1])
+		targetAddr := addrs[0]
+
+		addrs, err = payerDaemon.AddressLs(ctx)
 		require.NoError(err)
+		payerAddr := addrs[0]
 
-		eol := types.NewBlockHeight(20)
-		amt := types.NewAttoFILFromFIL(10000)
+		channelExpiry := types.NewBlockHeight(20)
+		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-			ls := listChannelsAsStrs(d, &payer)[0]
+		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+			channels, err := payerDaemon.PaychLs(ctx)
+			require.NoError(err)
 
-			assert.Equal(fmt.Sprintf("%s: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID, target.String()), ls)
+			assert.Len(channels, 1)
+
+			channel := channels[chanid.String()]
+			assert.Equal(channelAmount, channel.Amount)
+			assert.Equal(channelExpiry, channel.Eol)
+			assert.Equal(targetAddr, channel.Target)
+			assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
 		})
 	})
 
 	t.Run("Works with specified payer", func(t *testing.T) {
 		t.Parallel()
+		require := require.New(t)
+		assert := assert.New(t)
 
-		payer, err := address.NewFromString(fixtures.TestAddresses[2])
+		// This test should run in 20 block times
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		defer cancel()
+
+		// Get basic testing environment
+		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+		// Teardown after test ends
+		defer env.Teardown(ctx)
+
+		// Start test
+		targetDaemon := NewNode()
+		payerDaemon := NewNode()
+
+		addrs, err := targetDaemon.AddressLs(ctx)
 		require.NoError(err)
-		target, err := address.NewFromString(fixtures.TestAddresses[1])
+		targetAddr := addrs[0]
+
+		addrs, err = payerDaemon.AddressLs(ctx)
 		require.NoError(err)
+		payerAddr := addrs[0]
 
-		eol := types.NewBlockHeight(20)
-		amt := types.NewAttoFILFromFIL(10000)
+		channelExpiry := types.NewBlockHeight(20)
+		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-			args := []string{"paych", "ls"}
-			args = append(args, "--from", target.String())
-			args = append(args, "--payer", payer.String())
+		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+			channels, err := payerDaemon.PaychLs(ctx, fast.AOPayer(payerAddr))
+			require.NoError(err)
 
-			ls := th.RunSuccessLines(d, args...)[0]
+			assert.Len(channels, 1)
 
-			assert.Equal(fmt.Sprintf("%s: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID, target.String()), ls)
+			channel := channels[chanid.String()]
+			assert.Equal(channelAmount, channel.Amount)
+			assert.Equal(channelExpiry, channel.Eol)
+			assert.Equal(targetAddr, channel.Target)
+			assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
 		})
 	})
 
-	t.Run("Notifies when channels not found", func(t *testing.T) {
+	t.Run("No results when listing with different from address", func(t *testing.T) {
 		t.Parallel()
+		require := require.New(t)
+		assert := assert.New(t)
 
-		payer, err := address.NewFromString(fixtures.TestAddresses[2])
+		// This test should run in 20 block times
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		defer cancel()
+
+		// Get basic testing environment
+		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+		// Teardown after test ends
+		defer env.Teardown(ctx)
+
+		// Start test
+		targetDaemon := NewNode()
+		payerDaemon := NewNode()
+
+		addrs, err := targetDaemon.AddressLs(ctx)
 		require.NoError(err)
-		target, err := address.NewFromString(fixtures.TestAddresses[1])
+		targetAddr := addrs[0]
+
+		addrs, err = payerDaemon.AddressLs(ctx)
 		require.NoError(err)
+		payerAddr := addrs[0]
 
-		eol := types.NewBlockHeight(20)
-		amt := types.NewAttoFILFromFIL(10000)
+		channelExpiry := types.NewBlockHeight(20)
+		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-			ls := listChannelsAsStrs(d, &target)[0]
+		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+			channels, err := payerDaemon.PaychLs(ctx, fast.AOFromAddr(targetAddr))
+			require.NoError(err)
 
-			assert.Equal("no channels", ls)
+			assert.Len(channels, 0)
 		})
 	})
 }
@@ -123,425 +216,364 @@ func TestPaymentChannelLs(t *testing.T) {
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+	assert := assert.New(t)
 
-	payer, err := address.NewFromString(fixtures.TestAddresses[2])
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
 	require.NoError(err)
-	target, err := address.NewFromString(fixtures.TestAddresses[1])
+	targetAddr := addrs[0]
+
+	addrs, err = payerDaemon.AddressLs(ctx)
 	require.NoError(err)
+	payerAddr := addrs[0]
 
-	eol := types.NewBlockHeight(20)
-	amt := types.NewAttoFILFromFIL(10000)
+	channelExpiry := types.NewBlockHeight(20)
+	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		voucherAmount := types.NewAttoFILFromFIL(10)
+		voucherValidAt := types.NewBlockHeight(0)
+		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
+		require.NoError(err)
 
-		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(100), &payer)
+		voucher, err := VoucherFromString(voucherStr)
+		require.NoError(err)
 
-		assert.Equal(*types.NewAttoFILFromFIL(100), voucher.Amount)
+		assert.Equal(voucherAmount, &voucher.Amount)
 	})
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+	assert := assert.New(t)
 
-	payer, err := address.NewFromString(fixtures.TestAddresses[2])
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
 	require.NoError(err)
-	target, err := address.NewFromString(fixtures.TestAddresses[1])
+	targetAddr := addrs[0]
+
+	addrs, err = payerDaemon.AddressLs(ctx)
 	require.NoError(err)
+	payerAddr := addrs[0]
 
-	eol := types.NewBlockHeight(20)
-	amt := types.NewAttoFILFromFIL(10000)
+	channelExpiry := types.NewBlockHeight(20)
+	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	targetDaemon := th.NewDaemon(
-		t,
-		// must include 0th keyfilepath if using 0th TestMiner
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-	).Start()
-	defer targetDaemon.ShutdownSuccess()
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		voucherAmount := types.NewAttoFILFromFIL(10)
+		voucherValidAt := types.NewBlockHeight(0)
+		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
+		require.NoError(err)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
+		// TODO(tperson) allow setting Price / Limit on process?
+		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-		d.ConnectSuccess(targetDaemon)
+		series.MiningOnceFromCtx(ctx)
 
-		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(0))
+		_, err = targetDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
 
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		channels, err := targetDaemon.PaychLs(ctx, fast.AOFromAddr(payerAddr))
+		require.NoError(err)
 
-		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID.String(), target.String()), ls)
+		channel := channels[chanid.String()]
+		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(voucherAmount, channel.AmountRedeemed)
 	})
 }
 
 func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+	assert := assert.New(t)
 
-	payer, err := address.NewFromString(fixtures.TestAddresses[2])
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
 	require.NoError(err)
-	target, err := address.NewFromString(fixtures.TestAddresses[1])
+	targetAddr := addrs[0]
+
+	addrs, err = payerDaemon.AddressLs(ctx)
 	require.NoError(err)
+	payerAddr := addrs[0]
 
-	eol := types.NewBlockHeight(20)
-	amt := types.NewAttoFILFromFIL(10000)
+	channelExpiry := types.NewBlockHeight(20)
+	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	targetDaemon := th.NewDaemon(
-		t,
-		// must include 0th keyfilepath if using 0th TestMiner
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-	).Start()
-	defer targetDaemon.ShutdownSuccess()
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		voucherAmount := types.NewAttoFILFromFIL(10)
+		voucherValidAt := types.NewBlockHeight(10)
+		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
+		require.NoError(err)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
+		// TODO(tperson) allow setting Price / Limit on process?
+		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-		d.ConnectSuccess(targetDaemon)
+		series.MiningOnceFromCtx(ctx)
 
-		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(8))
+		_, err = targetDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
 
-		// Wait for the voucher message to be processed.
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		channels, err := targetDaemon.PaychLs(ctx, fast.AOFromAddr(payerAddr))
+		require.NoError(err)
 
-		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID.String(), target.String()), ls)
+		channel := channels[chanid.String()]
+		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
 	})
 }
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+	assert := assert.New(t)
 
-	// Initial Balance 10,000
-	payer, err := address.NewFromString(fixtures.TestAddresses[2])
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	env, p, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
 	require.NoError(err)
-	// Initial Balance 50,000
-	target, err := address.NewFromString(fixtures.TestAddresses[1])
+	targetAddr := addrs[0]
+
+	addrs, err = payerDaemon.AddressLs(ctx)
+	require.NoError(err)
+	payerAddr := addrs[0]
+
+	bh, err := series.GetHeadBlockHeight(ctx, p)
 	require.NoError(err)
 
-	// Not used in logic
-	eol := types.NewBlockHeight(5)
-	amt := types.NewAttoFILFromFIL(1000)
+	// Expiry is current height, plus 3
+	// - Setting up the payment channel
+	// - Redeeming one voucher
+	// - Expires on third block
+	channelExpiry := types.NewBlockHeight(3).Add(bh)
+	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	targetDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		// must include 0th keyfilepath if using 0th TestMiner
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.WithMiner(fixtures.TestMiners[0])).Start()
-	defer targetDaemon.ShutdownSuccess()
+	balanceBefore, err := payerDaemon.WalletBalance(ctx, payerAddr)
+	require.NoError(err)
 
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		voucherAmount := types.NewAttoFILFromFIL(10)
+		voucherValidAt := types.NewBlockHeight(0)
+		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
+		require.NoError(err)
 
-		d.ConnectSuccess(targetDaemon)
+		// TODO(tperson) allow setting Price / Limit on process?
+		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(10), &payer, uint64(0))
+		series.MiningOnceFromCtx(ctx)
 
-		// target redeems the voucher (on-chain)
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		_, err = targetDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
 
-		lsStr := listChannelsAsStrs(targetDaemon, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 1000, amt redeemed: 10, eol: %s", channelID, target.String(), eol.String()), lsStr)
+		channels, err := targetDaemon.PaychLs(ctx, fast.AOFromAddr(payerAddr))
+		require.NoError(err)
 
-		d.RunSuccess("mining once")
-		d.RunSuccess("mining once")
+		channel := channels[chanid.String()]
+		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(voucherAmount, channel.AmountRedeemed)
 
-		// payer reclaims channel funds (on-chain)
-		mustReclaimChannel(t, d, channelID, &payer)
+		series.MiningOnceFromCtx(ctx)
 
-		lsStr = listChannelsAsStrs(d, &payer)[0]
-		assert.Contains(lsStr, "no channels")
+		mcid, err = payerDaemon.PaychReclaim(ctx, chanid, fast.AOFromAddr(payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-		args := []string{"wallet", "balance", payer.String()}
-		balStr := th.RunSuccessFirstLine(d, args...)
+		series.MiningOnceFromCtx(ctx)
 
-		// channel's original locked funds minus the redeemed voucher amount
-		// are returned to the payer
-		assert.Equal("999999999990", balStr)
+		_, err = payerDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
+
+		channels, err = payerDaemon.PaychLs(ctx, fast.AOFromAddr(payerAddr))
+		require.NoError(err)
+		require.Len(channels, 0)
+
+		balanceAfter, err := payerDaemon.WalletBalance(ctx, payerAddr)
+		require.NoError(err)
+
+		assert.Equal(balanceBefore, balanceAfter.Add(voucherAmount))
 	})
 }
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
+	t.Parallel()
 	require := require.New(t)
+	assert := assert.New(t)
 
-	// Initial Balance 10,000,000
-	payerA, err := address.NewFromString(fixtures.TestAddresses[2])
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
+	require.NoError(err)
+	targetAddr := addrs[0]
+
+	channelExpiry := types.NewBlockHeight(5)
+	channelAmount := types.NewAttoFILFromFIL(1000)
+
+	addrs, err = payerDaemon.AddressLs(ctx)
+	require.NoError(err)
+	payerAddr := addrs[0]
+
+	payerBalanceBefore, err := payerDaemon.WalletBalance(ctx, payerAddr)
 	require.NoError(err)
 
-	// Initial Balance 10,000,000
-	targetA, err := address.NewFromString(fixtures.TestAddresses[1])
+	targetBalanceBefore, err := targetDaemon.WalletBalance(ctx, targetAddr)
 	require.NoError(err)
-	payer := &payerA
-	target := &targetA
-	eol := types.NewBlockHeight(100)
-	amt := types.NewAttoFILFromFIL(10000)
 
-	targetDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		// must include 0th keyfilepath if using 0th TestMiner
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.WithMiner(fixtures.TestMiners[0])).Start()
-	defer targetDaemon.ShutdownSuccess()
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		voucherAmount := types.NewAttoFILFromFIL(10)
+		voucherValidAt := types.NewBlockHeight(0)
+		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
+		require.NoError(err)
 
-	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
+		// TODO(tperson) allow setting Price / Limit on process?
+		mcid, err := targetDaemon.PaychClose(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-		d.ConnectSuccess(targetDaemon)
+		series.MiningOnceFromCtx(ctx)
 
-		// payer creates a voucher to be redeemed by target (off-chain)
-		voucher := mustCreateVoucher(t, d, channelID, types.NewAttoFILFromFIL(10), payer)
+		_, err = targetDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
 
-		// target redeems the voucher (on-chain) and simultaneously closes the channel
-		mustCloseChannel(t, targetDaemon, voucher, target)
+		channels, err := targetDaemon.PaychLs(ctx, fast.AOFromAddr(payerAddr))
+		require.NoError(err)
+		require.Len(channels, 0)
 
-		// channel has been closed
-		lsStr := listChannelsAsStrs(targetDaemon, payer)[0]
-		assert.Contains(lsStr, "no channels")
+		payerBalanceAfter, err := payerDaemon.WalletBalance(ctx, payerAddr)
+		require.NoError(err)
+		assert.Equal(payerBalanceBefore.Sub(voucherAmount), payerBalanceAfter)
 
-		// channel's original locked funds minus the redeemed voucher amount
-		// are returned to the payer
-		args := []string{"wallet", "balance", payer.String()}
-		balStr := th.RunSuccessFirstLine(targetDaemon, args...)
-		assert.Equal("999999999990", balStr)
-
-		// target's balance reflects redeemed voucher
-		args = []string{"wallet", "balance", target.String()}
-		balStr = th.RunSuccessFirstLine(targetDaemon, args...)
-		assert.Equal("1000000000010", balStr)
+		targetBalanceAfter, err := targetDaemon.WalletBalance(ctx, targetAddr)
+		require.NoError(err)
+		assert.Equal(targetBalanceBefore.Add(voucherAmount), targetBalanceAfter)
 	})
 }
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
-
-	payer, err := address.NewFromString(fixtures.TestAddresses[2])
-	require.NoError(err)
-	target, err := address.NewFromString(fixtures.TestAddresses[1])
-	require.NoError(err)
-
-	eol := types.NewBlockHeight(5)
-	amt := types.NewAttoFILFromFIL(2000)
-
-	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
-		assert := assert.New(t)
-
-		extendedEOL := types.NewBlockHeight(6)
-		extendedAmt := types.NewAttoFILFromFIL(3001)
-
-		lsStr := listChannelsAsStrs(d, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 2000, amt redeemed: 0, eol: %s", channelID.String(), target.String(), eol.String()), lsStr)
-
-		mustExtendChannel(t, d, channelID, extendedAmt, extendedEOL, &payer)
-
-		lsStr = listChannelsAsStrs(d, &payer)[0]
-		assert.Equal(fmt.Sprintf("%v: target: %s, amt: %s, amt redeemed: 0, eol: %s", channelID.String(), target.String(), extendedAmt.Add(amt), extendedEOL), lsStr)
-	})
-}
-
-func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, targetAddress *address.Address,
-	fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*th.TestDaemon, *types.ChannelID)) {
 	assert := assert.New(t)
-	require := require.New(t)
 
-	d := th.NewDaemon(
-		t,
-		// must include 0th keyfilepath with TestMiner 0
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[2]),
-	).Start()
-	defer d.ShutdownSuccess()
+	// This test should run in 20 block times
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
 
-	args := []string{"paych", "create"}
-	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
-	args = append(args, targetAddress.String(), fundsToLock.String(), eol.String())
+	// Get basic testing environment
+	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
-	paymentChannelCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(paymentChannelCmd.ReadStdout(), "\n"))
+	// Teardown after test ends
+	defer env.Teardown(ctx)
+
+	// Start test
+	targetDaemon := NewNode()
+	payerDaemon := NewNode()
+
+	addrs, err := targetDaemon.AddressLs(ctx)
 	require.NoError(err)
+	targetAddr := addrs[0]
 
-	var wg sync.WaitGroup
+	channelExpiry := types.NewBlockHeight(5)
+	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	wg.Add(1)
-	go func() {
-		wait := d.RunSuccess("message", "wait",
-			"--return",
-			"--message=false",
-			"--receipt=false",
-			messageCid.String(),
-		)
-		stdout := strings.Trim(wait.ReadStdout(), "\n")
-		channelID, ok := types.NewChannelIDFromString(stdout, 10)
-		assert.True(ok)
-
-		f(d, channelID)
-
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-	wg.Wait()
-}
-
-func mustCreateVoucher(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, fromAddress *address.Address) paymentbroker.PaymentVoucher {
-	require := require.New(t)
-
-	voucherString := createVoucherStr(t, d, channelID, amount, fromAddress, uint64(0))
-
-	_, cborVoucher, err := multibase.Decode(voucherString)
+	addrs, err = payerDaemon.AddressLs(ctx)
 	require.NoError(err)
+	payerAddr := addrs[0]
 
-	var voucher paymentbroker.PaymentVoucher
-	err = cbor.DecodeInto(cborVoucher, &voucher)
-	require.NoError(err)
+	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		channels, err := payerDaemon.PaychLs(ctx)
+		require.NoError(err)
 
-	return voucher
-}
+		assert.Len(channels, 1)
 
-func createVoucherStr(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, payerAddress *address.Address, validAt uint64) string {
-	args := []string{"paych", "voucher", channelID.String(), amount.String()}
-	args = append(args, "--from", payerAddress.String(), "--validat", fmt.Sprintf("%d", validAt))
+		channel := channels[chanid.String()]
+		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(channelExpiry, channel.Eol)
+		assert.Equal(targetAddr, channel.Target)
+		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
 
-	return th.RunSuccessFirstLine(d, args...)
-}
+		extendAmount := types.NewAttoFILFromFIL(100)
+		extendExpiry := types.NewBlockHeight(100)
 
-func listChannelsAsStrs(d *th.TestDaemon, fromAddress *address.Address) []string {
-	args := []string{"paych", "ls"}
-	args = append(args, "--from", fromAddress.String())
+		mcid, err := payerDaemon.PaychExtend(ctx, chanid, extendAmount, extendExpiry, fast.AOFromAddr(payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+		require.NoError(err)
 
-	return th.RunSuccessLines(d, args...)
-}
+		series.MiningOnceFromCtx(ctx)
 
-func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight, payerAddress *address.Address) {
-	require := require.New(t)
+		_, err = payerDaemon.MessageWait(ctx, mcid)
+		require.NoError(err)
 
-	args := []string{"paych", "extend"}
-	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
-	args = append(args, channelID.String(), amount.String(), eol.String())
+		channels, err = payerDaemon.PaychLs(ctx)
+		require.NoError(err)
 
-	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
-	require.NoError(err)
+		assert.Len(channels, 1)
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		_ = d.RunSuccess("message", "wait",
-			"--return=false",
-			"--message=false",
-			"--receipt=false",
-			messageCid.String(),
-		)
-
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-
-	wg.Wait()
-}
-
-func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAddress *address.Address) {
-	require := require.New(t)
-
-	args := []string{"paych", "redeem", voucher}
-	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
-
-	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
-	require.NoError(err)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		_ = d.RunSuccess("message", "wait",
-			"--return=false",
-			"--message=false",
-			"--receipt=false",
-			messageCid.String(),
-		)
-
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-
-	wg.Wait()
-}
-
-func mustCloseChannel(t *testing.T, d *th.TestDaemon, voucher paymentbroker.PaymentVoucher, targetAddress *address.Address) {
-	require := require.New(t)
-
-	args := []string{"paych", "close", mustEncodeVoucherStr(t, voucher)}
-	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
-
-	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
-	require.NoError(err)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		_ = d.RunSuccess("message", "wait",
-			"--return=false",
-			"--message=false",
-			"--receipt=false",
-			messageCid.String(),
-		)
-
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-
-	wg.Wait()
-}
-
-func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, payerAddress *address.Address) {
-	require := require.New(t)
-
-	args := []string{"paych", "reclaim", channelID.String()}
-	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
-
-	reclaimCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(reclaimCmd.ReadStdout(), "\n"))
-	require.NoError(err)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		_ = d.RunSuccess("message", "wait",
-			"--return=false",
-			"--message=false",
-			"--receipt=true",
-			messageCid.String(),
-		)
-		wg.Done()
-	}()
-
-	d.RunSuccess("mining once")
-
-	wg.Wait()
-}
-
-func mustEncodeVoucherStr(t *testing.T, voucher paymentbroker.PaymentVoucher) string {
-	require := require.New(t)
-
-	bytes, err := cbor.DumpObject(voucher)
-	require.NoError(err)
-
-	encoded, err := multibase.Encode(multibase.Base58BTC, bytes)
-	require.NoError(err)
-
-	return encoded
+		channel = channels[chanid.String()]
+		assert.Equal(channelAmount.Add(extendAmount), channel.Amount)
+		assert.Equal(extendExpiry, channel.Eol)
+		assert.Equal(targetAddr, channel.Target)
+		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
+	})
 }

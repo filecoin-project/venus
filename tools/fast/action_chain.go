@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 )
 
 // ChainHead runs the chain head command against the filecoin process.
