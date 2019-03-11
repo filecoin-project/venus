@@ -45,10 +45,6 @@ func newNodeAddrs(api *nodeAPI) *nodeAddrs {
 	return &nodeAddrs{api: api}
 }
 
-func (api *nodeAddrs) New(ctx context.Context) (address.Address, error) {
-	return api.api.node.NewAddress()
-}
-
 func (api *nodeAddrs) Lookup(ctx context.Context, addr address.Address) (peer.ID, error) {
 	id, err := api.api.node.Lookup().GetPeerIDByMinerAddress(ctx, addr)
 	if err != nil {

@@ -48,7 +48,7 @@ type AddressLsResult struct {
 
 var addrsNewCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		addr, err := GetAPI(env).Address().Addrs().New(req.Context)
+		addr, err := GetPorcelainAPI(env).WalletNewAddress()
 		if err != nil {
 			return err
 		}
