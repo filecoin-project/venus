@@ -108,10 +108,10 @@ func (api *API) ChainHead(ctx context.Context) types.TipSet {
 	return api.chain.Head()
 }
 
-// GetRecentAncestors returns the recent ancestors of the `TipSet` with height
-// `descendantBlockHeight`.
-func (api *API) GetRecentAncestors(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return api.chain.GetRecentAncestors(ctx, descendantBlockHeight)
+// GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
+// `TipSet` with height `descendantBlockHeight` in the heaviest chain.
+func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	return chain.GetRecentAncestorsOfHeaviestChain(ctx, api.chain, descendantBlockHeight)
 }
 
 // ChainLs returns a channel of tipsets from head to genesis

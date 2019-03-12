@@ -42,10 +42,6 @@ type ReadStore interface {
 
 	BlockHistory(ctx context.Context, tips types.TipSet) <-chan interface{}
 
-	// GetRecentAncestors returns the recent ancestors of the `TipSet` with
-	// height `descendantBlockHeight`.
-	GetRecentAncestors(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error)
-
 	GenesisCid() cid.Cid
 }
 

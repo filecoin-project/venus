@@ -14,7 +14,7 @@ type chBlockHeightPlumbing interface {
 }
 
 type chSampleRandomnessPlumbing interface {
-	GetRecentAncestors(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error)
+	GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error)
 }
 
 // ChainBlockHeight determines the current block height
@@ -37,7 +37,7 @@ func ChainBlockHeight(ctx context.Context, plumbing chBlockHeightPlumbing) (*typ
 
 // SampleChainRandomness samples randomness from the chain at the given height.
 func SampleChainRandomness(ctx context.Context, plumbing chSampleRandomnessPlumbing, sampleHeight *types.BlockHeight) ([]byte, error) {
-	tipSetBuffer, err := plumbing.GetRecentAncestors(ctx, sampleHeight)
+	tipSetBuffer, err := plumbing.GetRecentAncestorsOfHeaviestChain(ctx, sampleHeight)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}

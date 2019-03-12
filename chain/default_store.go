@@ -17,9 +17,7 @@ import (
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -419,12 +417,6 @@ func (store *DefaultStore) BlockHistory(ctx context.Context, start types.TipSet)
 		}
 	}()
 	return out
-}
-
-// GetRecentAncestors returns (at most) `LookbackParameter`-number of ancestors
-// of the `TipSet` with height `descendantBlockHeight` from the store.
-func (store *DefaultStore) GetRecentAncestors(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return GetRecentAncestors(ctx, store.head, store, descendantBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 }
 
 // walkChain walks backward through the chain, starting at tips, invoking cb() at each height.
