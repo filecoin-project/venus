@@ -244,7 +244,7 @@ func (ma *Actor) Exports() exec.Exports {
 // AddAsk adds an ask to this miners ask list
 func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -294,7 +294,7 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.In
 // GetAsks returns all the asks for this miner. (TODO: this isnt a great function signature, it returns the asks in a
 // serialized array. Consider doing this some other way)
 func (ma *Actor) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
@@ -323,7 +323,7 @@ func (ma *Actor) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
 
 // GetAsk returns an ask by ID
 func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -362,7 +362,7 @@ func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, erro
 
 // GetOwner returns the miners owner.
 func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -384,7 +384,7 @@ func (ma *Actor) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 
 // GetLastUsedSectorID returns the last used sector id.
 func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return 0, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
@@ -405,7 +405,7 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 
 // GetSectorCommitments returns all sector commitments posted by this miner.
 func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -428,7 +428,7 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
 func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar, proof []byte) (uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	if len(commD) != int(proofs.CommitmentBytesLen) {
@@ -521,7 +521,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 // GetKey returns the public key for this miner.
 func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -543,7 +543,7 @@ func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
 func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return peer.ID(""), exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -563,7 +563,7 @@ func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 
 // UpdatePeerID is used to update the peerID this miner is operating under.
 func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -587,7 +587,7 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 
 // GetPledge returns the number of pledged sectors
 func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -609,7 +609,7 @@ func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // GetPower returns the amount of proven sectors for this miner.
 func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -632,7 +632,7 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
 func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
@@ -698,7 +698,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 
 // GetProvingPeriodStart returns the current ProvingPeriodStart value.
 func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
-	if err := ctx.Charge(100); err != nil {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
