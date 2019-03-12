@@ -37,7 +37,6 @@ var idCmd = &cmds.Command{
 		details := IDDetails{
 			Addresses: make([]ma.Multiaddr, len(addrs)),
 			ID:        hostID,
-			// TODO: fill out the other details
 		}
 
 		for i, addr := range addrs {
