@@ -6,11 +6,11 @@ import (
 
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
-	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/commands"
 )
 
 // Ping runs the `ping` command against the filecoin process
-func (f *Filecoin) Ping(ctx context.Context, pid peer.ID, options ...ActionOption) ([]porcelain.PingResult, error) {
+func (f *Filecoin) Ping(ctx context.Context, pid peer.ID, options ...ActionOption) ([]commands.PingResult, error) {
 	sPid := pid.Pretty()
 
 	args := []string{"go-filecoin", "ping"}
@@ -26,16 +26,16 @@ func (f *Filecoin) Ping(ctx context.Context, pid peer.ID, options ...ActionOptio
 		return nil, err
 	}
 
-	var out []porcelain.PingResult
+	var out []commands.PingResult
 
 	for {
-		var result porcelain.PingResult
+		var result commands.PingResult
 		if err := decoder.Decode(&result); err != nil {
 			if err == io.EOF {
 				break
 			}
 
-			return []porcelain.PingResult{}, err
+			return []commands.PingResult{}, err
 		}
 
 		out = append(out, result)
