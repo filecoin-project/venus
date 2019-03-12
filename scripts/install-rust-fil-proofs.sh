@@ -3,18 +3,13 @@
 install_precompiled() {
   RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-proofs`
   RELEASE_NAME="rust-fil-proofs-`uname`"
+  OLD_RELEASE_NAME="rust-proofs-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
-  if [ -z $GITHUB_TOKEN ]; then
-    echo "\$GITHUB_TOKEN not set"
-    return 1
-  fi
+  RELEASE_RESPONSE=`curl \
+    --location \
+    "https://api.github.com/repos/filecoin-project/rust-fil-proofs/releases/tags/$RELEASE_TAG"`
 
-  RELEASE_RESPONSE=`
-    curl \
-      --header "Authorization: token $GITHUB_TOKEN" \
-      "https://api.github.com/repos/filecoin-project/rust-fil-proofs/releases/tags/$RELEASE_TAG"
-  `
 
   RELEASE_ID=`echo $RELEASE_RESPONSE | jq '.id'`
 
@@ -24,12 +19,11 @@ install_precompiled() {
     return 1
   fi
 
-  RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url"`
+  RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$OLD_RELEASE_NAME\")) | .url"`
 
 
   ASSET_URL=`curl \
       --head \
-      --header "Authorization: token $GITHUB_TOKEN" \
       --header "Accept:application/octet-stream" \
       --location \
       --output /dev/null \
@@ -40,11 +34,11 @@ install_precompiled() {
 
   TAR_NAME="${RELEASE_NAME}_${ASSET_ID}"
   if [ ! -f "/tmp/${TAR_NAME}.tar.gz" ]; then
-      curl --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
-      if [ $? -ne "0" ]; then
-          echo "asset failed to be downloaded"
-          return 1
-      fi
+    curl --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
+    if [ $? -ne "0" ]; then
+      echo "asset failed to be downloaded"
+      return 1
+    fi
   fi
 
   mkdir -p proofs/bin
@@ -80,6 +74,8 @@ install_local() {
   cp proofs/rust-fil-proofs/target/release/libfilecoin_proofs.a ./proofs/lib/
   cp proofs/rust-fil-proofs/target/release/libfilecoin_proofs.pc ./proofs/lib/pkgconfig/
 }
+
+git submodule update --init --recursive proofs/rust-fil-proofs
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
   echo "using local rust-fil-proofs"
