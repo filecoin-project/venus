@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"os"
@@ -57,11 +57,15 @@ func TestWalletBalance(t *testing.T) {
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	assert := assert.New(t)
-	d1 := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
-	defer d1.ShutdownSuccess()
 
-	d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0]), th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
+	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
+
+	d1 := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
+	defer d1.ShutdownSuccess()
 
 	d1.ConnectSuccess(d)
 

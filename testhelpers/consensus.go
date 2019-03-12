@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	"testing"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -14,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-
-	"testing"
 )
 
 // TestView is an implementation of stateView used for testing the chain
@@ -80,10 +79,10 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 }
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
-// to be correct.
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address) *types.Block {
+// to be correct
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
-	ticket := consensus.CreateTicket(postProof, minerAddr)
+	ticket, _ := consensus.CreateTicket(postProof, minerPubKey, signer)
 
 	return &types.Block{
 		Miner:        minerAddr,

@@ -65,7 +65,6 @@ func TestWriteFile(t *testing.T) {
 	},
 	"mining": {
 		"minerAddress": "",
-		"blockSignerAddress": "",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},

@@ -75,11 +75,11 @@ type MessageApplier interface {
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
-	createPoSTFunc  DoSomeWorkFunc
-	minerAddr       address.Address
-	minerOwnerAddr  address.Address
-	blockSignerAddr address.Address
-	blockSigner     types.Signer
+	createPoSTFunc DoSomeWorkFunc
+	minerAddr      address.Address
+	minerOwnerAddr address.Address
+	minerPubKey    []byte
+	workerSigner   consensus.TicketSigner
 
 	// consensus things
 	getStateTree GetStateTree
@@ -106,8 +106,8 @@ func NewDefaultWorker(messageSource MessageSource,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
 	minerOwner address.Address,
-	blockSignerAddr address.Address,
-	blockSigner types.Signer,
+	minerPubKey []byte,
+	workerSigner consensus.TicketSigner,
 	bt time.Duration) *DefaultWorker {
 
 	w := NewDefaultWorkerWithDeps(messageSource,
@@ -120,8 +120,8 @@ func NewDefaultWorker(messageSource MessageSource,
 		cst,
 		miner,
 		minerOwner,
-		blockSignerAddr,
-		blockSigner,
+		minerPubKey,
+		workerSigner,
 		bt,
 		func() {})
 
@@ -143,25 +143,25 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
 	minerOwner address.Address,
-	blockSignerAddr address.Address,
-	blockSigner types.Signer,
+	minerPubKey []byte,
+	workerSigner consensus.TicketSigner,
 	bt time.Duration,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		getStateTree:    getStateTree,
-		getWeight:       getWeight,
-		getAncestors:    getAncestors,
-		messageSource:   messageSource,
-		processor:       processor,
-		powerTable:      powerTable,
-		blockstore:      bs,
-		cstore:          cst,
-		createPoSTFunc:  createPoST,
-		minerAddr:       miner,
-		minerOwnerAddr:  minerOwner,
-		blockTime:       bt,
-		blockSignerAddr: blockSignerAddr,
-		blockSigner:     blockSigner,
+		getStateTree:   getStateTree,
+		getWeight:      getWeight,
+		getAncestors:   getAncestors,
+		messageSource:  messageSource,
+		processor:      processor,
+		powerTable:     powerTable,
+		blockstore:     bs,
+		cstore:         cst,
+		createPoSTFunc: createPoST,
+		minerAddr:      miner,
+		minerOwnerAddr: minerOwner,
+		minerPubKey:    minerPubKey,
+		blockTime:      bt,
+		workerSigner:   workerSigner,
 	}
 }
 
@@ -214,7 +214,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		copy(proof[:], prChRead[:])
-		ticket = consensus.CreateTicket(proof, w.minerAddr)
+		ticket, err = consensus.CreateTicket(proof, w.minerPubKey, w.workerSigner)
+		if err != nil {
+			log.Errorf("failed to create ticket: %s", err)
+			return false
+		}
 	}
 
 	// TODO: Test the interplay of isWinningTicket() and createPoSTFunc()

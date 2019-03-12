@@ -3,7 +3,10 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 
@@ -13,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 // FakeChildParams is a wrapper for all the params needed to create fake child blocks.
@@ -25,6 +27,8 @@ type FakeChildParams struct {
 	NullBlockCount uint64
 	Parent         types.TipSet
 	StateRoot      cid.Cid
+	Signer         consensus.TicketSigner
+	MinerPubKey    []byte
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -68,6 +72,8 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
+		params.MinerPubKey,
+		params.Signer,
 		wFun)
 }
 
@@ -77,7 +83,9 @@ func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
 	nonce uint64,
 	nullBlockCount uint64,
-	minerAddress address.Address,
+	minerAddr address.Address,
+	minerPubKey []byte,
+	signer consensus.TicketSigner,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
@@ -95,12 +103,13 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := th.NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddress)
+	newBlock := th.NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
 	newBlock.Nonce = types.Uint64(nonce)
+	newBlock.StateRoot = stateRoot
 
 	return newBlock, nil
 }
@@ -140,7 +149,14 @@ func RequireMkFakeChildWithCon(require *require.Assertions, params FakeChildPara
 func RequireMkFakeChildCore(require *require.Assertions,
 	params FakeChildParams,
 	wFun func(types.TipSet) (uint64, error)) *types.Block {
-	child, err := MkFakeChildCore(params.Parent, params.StateRoot, params.Nonce, params.NullBlockCount, params.MinerAddr, wFun)
+	child, err := MkFakeChildCore(params.Parent,
+		params.StateRoot,
+		params.Nonce,
+		params.NullBlockCount,
+		params.MinerAddr,
+		params.MinerPubKey,
+		params.Signer,
+		wFun)
 	require.NoError(err)
 	return child
 }
@@ -162,7 +178,8 @@ func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Stor
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, totalPower uint64) (proofs.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPower uint64, signer consensus.TicketSigner) (proofs.PoStProof, types.Signature, error) {
+
 	var postProof proofs.PoStProof
 	var ticket types.Signature
 
@@ -172,7 +189,11 @@ func MakeProofAndWinningTicket(minerAddr address.Address, minerPower uint64, tot
 
 	for {
 		postProof = th.MakeRandomPoSTProofForTest()
-		ticket = consensus.CreateTicket(postProof, minerAddr)
+		ticket, err := consensus.CreateTicket(postProof, signerPubKey, signer)
+		if err != nil {
+			errStr := fmt.Sprintf("error creating ticket: %s", err)
+			panic(errStr)
+		}
 		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
 			return postProof, ticket, nil
 		}

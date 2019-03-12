@@ -117,6 +117,11 @@ func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Addres
 	return MinerGetOwnerAddress(ctx, a, minerAddr)
 }
 
+// MinerGetKey queries for the public key of the given miner
+func (a *API) MinerGetKey(ctx context.Context, minerAddr address.Address) ([]byte, error) {
+	return MinerGetKey(ctx, a, minerAddr)
+}
+
 // MinerGetPeerID queries for the peer id of the given miner
 func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	return MinerGetPeerID(ctx, a, minerAddr)

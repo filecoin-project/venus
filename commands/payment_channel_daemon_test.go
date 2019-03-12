@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"fmt"
@@ -25,11 +25,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	d := th.NewDaemon(
-		t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-	).Start()
+	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 
 	args := []string{"paych", "create"}
@@ -159,7 +155,9 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 	targetDaemon := th.NewDaemon(
 		t,
+		// must include 0th keyfilepath if using 0th TestMiner
 		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
 	).Start()
 	defer targetDaemon.ShutdownSuccess()
@@ -192,7 +190,9 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 
 	targetDaemon := th.NewDaemon(
 		t,
+		// must include 0th keyfilepath if using 0th TestMiner
 		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
 	).Start()
 	defer targetDaemon.ShutdownSuccess()
@@ -227,7 +227,11 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(5)
 	amt := types.NewAttoFILFromFIL(1000)
 
-	targetDaemon := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[1]), th.WithMiner(fixtures.TestMiners[0])).Start()
+	targetDaemon := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		// must include 0th keyfilepath if using 0th TestMiner
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.WithMiner(fixtures.TestMiners[0])).Start()
 	defer targetDaemon.ShutdownSuccess()
 
 	daemonTestWithPaymentChannel(t, &payer, &target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
@@ -277,7 +281,11 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	eol := types.NewBlockHeight(100)
 	amt := types.NewAttoFILFromFIL(10000)
 
-	targetDaemon := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[1]), th.WithMiner(fixtures.TestMiners[0])).Start()
+	targetDaemon := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		// must include 0th keyfilepath if using 0th TestMiner
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.WithMiner(fixtures.TestMiners[0])).Start()
 	defer targetDaemon.ShutdownSuccess()
 
 	daemonTestWithPaymentChannel(t, payer, target, amt, eol, func(d *th.TestDaemon, channelID *types.ChannelID) {
@@ -336,12 +344,16 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	})
 }
 
-func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, targetAddress *address.Address, fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*th.TestDaemon, *types.ChannelID)) {
+func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, targetAddress *address.Address,
+	fundsToLock *types.AttoFIL, eol *types.BlockHeight, f func(*th.TestDaemon, *types.ChannelID)) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	d := th.NewDaemon(
 		t,
+		// must include 0th keyfilepath with TestMiner 0
 		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[2]),
 	).Start()
 	defer d.ShutdownSuccess()
@@ -352,7 +364,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 
 	paymentChannelCmd := d.RunSuccess(args...)
 	messageCid, err := cid.Parse(strings.Trim(paymentChannelCmd.ReadStdout(), "\n"))
-	require.NoError(t, err)
+	require.NoError(err)
 
 	var wg sync.WaitGroup
 

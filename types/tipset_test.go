@@ -21,8 +21,7 @@ func init() {
 	cid1 = cidGetter()
 	cid2 = cidGetter()
 
-	ki := MustGenerateKeyInfo(2, GenerateKeyInfoSeed())
-	mockSignerForTest = NewMockSigner(ki)
+	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
 }
 
 // requireTipSetAdd adds a block to the provided tipset and requires that this

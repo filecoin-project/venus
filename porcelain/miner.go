@@ -211,6 +211,16 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 	return address.NewFromBytes(res[0])
 }
 
+// MinerGetKey queries for the public key of the given miner
+func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
+	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getKey")
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return res[0], nil
+}
+
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)

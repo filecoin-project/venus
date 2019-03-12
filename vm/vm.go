@@ -18,7 +18,6 @@ func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
 	deps := sendDeps{
 		transfer: Transfer,
 	}
-
 	return send(ctx, deps, vmCtx)
 }
 

@@ -1,14 +1,18 @@
-package wallet
+package wallet_test
 
 import (
 	"bytes"
 	"testing"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/address"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWalletSimple(t *testing.T) {
@@ -16,14 +20,14 @@ func TestWalletSimple(t *testing.T) {
 
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds)
+	fs, err := wallet.NewDSBackend(ds)
 	assert.NoError(err)
 
 	t.Log("create a wallet with a single backend")
-	w := New(fs)
+	w := wallet.New(fs)
 
 	t.Log("check backends")
-	assert.Len(w.Backends(DSBackendType), 1)
+	assert.Len(w.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
 	addr, err := fs.NewAddress()
@@ -67,14 +71,14 @@ func TestSimpleSignAndVerify(t *testing.T) {
 
 	t.Log("create a backend")
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds)
+	fs, err := wallet.NewDSBackend(ds)
 	assert.NoError(err)
 
 	t.Log("create a wallet with a single backend")
-	w := New(fs)
+	w := wallet.New(fs)
 
 	t.Log("check backends")
-	assert.Len(w.Backends(DSBackendType), 1)
+	assert.Len(w.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
 	addr, err := fs.NewAddress()
@@ -129,20 +133,20 @@ func TestSignErrorCases(t *testing.T) {
 
 	t.Log("create 2 backends")
 	ds1 := datastore.NewMapDatastore()
-	fs1, err := NewDSBackend(ds1)
+	fs1, err := wallet.NewDSBackend(ds1)
 	assert.NoError(err)
 
 	ds2 := datastore.NewMapDatastore()
-	fs2, err := NewDSBackend(ds2)
+	fs2, err := wallet.NewDSBackend(ds2)
 	assert.NoError(err)
 
 	t.Log("create 2 wallets each with a backend")
-	w1 := New(fs1)
-	w2 := New(fs2)
+	w1 := wallet.New(fs1)
+	w2 := wallet.New(fs2)
 
 	t.Log("check backends")
-	assert.Len(w1.Backends(DSBackendType), 1)
-	assert.Len(w2.Backends(DSBackendType), 1)
+	assert.Len(w1.Backends(wallet.DSBackendType), 1)
+	assert.Len(w2.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address each backend")
 	addr1, err := fs1.NewAddress()
@@ -162,12 +166,64 @@ func TestSignErrorCases(t *testing.T) {
 	t.Log("find backend fails for unknown address")
 	_, err = w1.Find(addr2)
 	assert.Error(err)
-	assert.Contains(ErrUnknownAddress.Error(), err.Error())
+	assert.Contains(wallet.ErrUnknownAddress.Error(), err.Error())
 
 	// data to sign
 	dataA := []byte("Set tab width to '1' and make everyone happy")
 	t.Log("sign content")
 	_, err = w1.SignBytes(dataA, addr2)
 	assert.Error(err)
-	assert.Contains(err.Error(), "failed to sign data")
+	assert.Contains(err.Error(), "could not find address:")
+}
+
+func TestGetAddressForPubKeyy(t *testing.T) {
+	assert := assert.New(t)
+
+	ds := datastore.NewMapDatastore()
+	fs, err := wallet.NewDSBackend(ds)
+	assert.NoError(err)
+	w := wallet.New(fs)
+
+	for range []int{0, 1, 2} {
+		ki, err := w.NewKeyInfo()
+		if err != nil {
+			panic("w.NewKeyInfo failed for this wallet")
+		}
+
+		expectedAddr, _ := ki.Address()
+		pubkey := ki.PublicKey()
+		actualAddr, err := w.GetAddressForPubKey(pubkey)
+		assert.NoError(err)
+		assert.Equal(expectedAddr, actualAddr)
+	}
+
+}
+
+func TestWallet_CreateTicket(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ds := datastore.NewMapDatastore()
+	fs, err := wallet.NewDSBackend(ds)
+	assert.NoError(err)
+	w := wallet.New(fs)
+	addr, err := wallet.NewAddress(w)
+	require.NoError(err)
+	pubKey, err := w.GetPubKeyForAddress(addr)
+	require.NoError(err)
+
+	t.Run("Returns real ticket and nil error with good params", func(t *testing.T) {
+		proof := proofs.PoStProof{0xbb}
+		ticket, err := consensus.CreateTicket(proof, pubKey, w)
+		assert.NoError(err)
+		assert.NotNil(ticket)
+	})
+
+	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
+		proof := proofs.PoStProof{0xc0}
+		badPubKey := []byte{0xf0}
+		ticket, err := consensus.CreateTicket(proof, badPubKey, w)
+		assert.Error(err, "SignBytes error in CreateTicket: public key not found")
+		assert.Equal(types.Signature(nil), ticket)
+	})
 }

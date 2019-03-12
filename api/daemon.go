@@ -97,6 +97,8 @@ func AutoSealIntervalSeconds(autoSealIntervalSeconds uint) DaemonInitOpt {
 }
 
 // DefaultAddress sets the daemons's default address to the provided address.
+// When not used, node/init.go Init generates a new address in the wallet and sets it to
+// the default address. Use this if you want a specific DefaultAddress.
 func DefaultAddress(address address.Address) DaemonInitOpt {
 	return func(dc *DaemonInitConfig) {
 		dc.DefaultAddress = address

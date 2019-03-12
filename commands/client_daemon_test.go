@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"fmt"
@@ -15,11 +15,7 @@ func TestListAsks(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-	).Start()
+	minerDaemon := makeTestDaemonWithMinerAndStart(t)
 	defer minerDaemon.ShutdownSuccess()
 
 	minerDaemon.RunSuccess("mining start")
@@ -109,16 +105,19 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
+	miner1Addr := fixtures.TestMiners[0]
+	minerOwner1 := fixtures.TestAddresses[0]
 	miner1 := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
+		th.WithMiner(miner1Addr),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.DefaultAddress(minerOwner1),
 	).Start()
 	defer miner1.ShutdownSuccess()
 
+	minerOwner2 := fixtures.TestAddresses[1]
 	miner2 := th.NewDaemon(t,
 		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
+		th.DefaultAddress(minerOwner2),
 	).Start()
 	defer miner2.ShutdownSuccess()
 
@@ -131,17 +130,17 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	miner1.ConnectSuccess(client)
 	miner2.ConnectSuccess(client)
 
-	miner2Addr := miner2.CreateMinerAddr(miner1, fixtures.TestAddresses[1])
+	miner2Addr := miner2.CreateMinerAddr(miner1, minerOwner2)
 	miner2.UpdatePeerID()
 
 	miner2.RunSuccess("mining start")
 
-	miner1.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	miner2.MinerSetPrice(miner2Addr.String(), fixtures.TestAddresses[1], "20", "10")
+	miner1.MinerSetPrice(miner1Addr, minerOwner1, "20", "10")
+	miner2.MinerSetPrice(miner2Addr.String(), minerOwner2, "20", "10")
 
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
-	firstDeal := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	firstDeal := client.RunSuccess("client", "propose-storage-deal", miner1Addr, dataCid, "0", "5").ReadStdoutTrimNewlines()
 	assert.Contains(firstDeal, "accepted")
 	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
 	assert.Contains(secondDeal, "accepted")
@@ -151,6 +150,7 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
+	// DefaultAddress required here
 	miner := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
