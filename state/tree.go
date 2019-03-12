@@ -250,7 +250,7 @@ type GetAllActorsResult struct {
 	Actor   *actor.Actor
 }
 
-// GetAllActors returns a slice of all actors in the StateTree, t.
+// GetAllActors returns a channel which provides all actors in the StateTree, t.
 func GetAllActors(t Tree) <-chan GetAllActorsResult {
 	st := t.(*tree)
 	out := make(chan GetAllActorsResult)
@@ -261,8 +261,9 @@ func GetAllActors(t Tree) <-chan GetAllActorsResult {
 	return out
 }
 
-// GetAllActorsFromStore loads a StateTree and returns arrays of addresses and their corresponding actors.
-// Third returned value is any error that occurred when loading.
+// GetAllActorsFromStore loads a StateTree and returns a channel with addresses
+// and their corresponding actors. The second returned value is any error that
+// occurred when loading.
 func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot cid.Cid) (<-chan GetAllActorsResult, error) {
 	st, err := LoadStateTree(ctx, store, stateRoot, nil)
 	if err != nil {
