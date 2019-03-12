@@ -326,7 +326,7 @@ var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum number of GasUnits t
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
-	priceOption := req.Options["price"]
+	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
 		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("price option is required")
 	}
@@ -336,7 +336,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, er
 		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("invalid gas price (specify FIL as a decimal number)")
 	}
 
-	limitOption := req.Options["limit"]
+	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
 		return types.AttoFIL{}, types.NewGasUnits(0), false, errors.New("limit option is required")
 	}
