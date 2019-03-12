@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/project"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
@@ -835,7 +836,7 @@ func GenesisFilePath() string {
 
 // ProjectRoot return the project root joined with any path fragments
 func ProjectRoot(paths ...string) string {
-	gopath, err := GetGoPath()
+	gopath, err := pathhelper.GetGoPath()
 	if err != nil {
 		panic(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
+	"github.com/filecoin-project/go-filecoin/util/project"
 )
 
 // GetFreePort gets a free port from the kernel
@@ -27,21 +27,6 @@ func GetFreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-// GetGoPath returns the current go path for the user.
-func GetGoPath() (string, error) {
-	gp := os.Getenv("GOPATH")
-	if gp != "" {
-		return gp, nil
-	}
-
-	home, err := homedir.Dir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(home, "go"), nil
-}
-
 // MustGetFilecoinBinary returns the path where the filecoin binary will be if it has been built and panics otherwise.
 func MustGetFilecoinBinary() string {
 	path, err := GetFilecoinBinary()
@@ -54,7 +39,7 @@ func MustGetFilecoinBinary() string {
 
 // GetFilecoinBinary returns the path where the filecoin binary will be if it has been built
 func GetFilecoinBinary() (string, error) {
-	gopath, err := GetGoPath()
+	gopath, err := pathhelper.GetGoPath()
 	if err != nil {
 		return "", err
 	}

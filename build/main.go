@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/util/project"
 	"github.com/filecoin-project/go-filecoin/util/version"
 )
 
@@ -299,12 +299,12 @@ func generateGenesis() {
 }
 
 func withGenesisSourceFile(doStuff func()) {
-	genesisSourceFile := testhelpers.ProjectRoot("/fixtures/genesis.go")
+	genesisSourceFile := pathhelper.ProjectRoot("/fixtures/genesis.go")
 	stubGenesisSourceFileBytes, err := ioutil.ReadFile(genesisSourceFile)
 	if err != nil {
 		panic(err)
 	}
-	genesisAsBytes, err := ioutil.ReadFile(testhelpers.ProjectRoot("/fixtures/genesis.car"))
+	genesisAsBytes, err := ioutil.ReadFile(pathhelper.ProjectRoot("/fixtures/genesis.car"))
 	if err != nil {
 		panic(err)
 	}
@@ -312,12 +312,15 @@ func withGenesisSourceFile(doStuff func()) {
 	if err != nil {
 		panic(err)
 	}
-	defer newGenesisSourceFile.Close()
-	fmt.Fprintf(newGenesisSourceFile, `package fixtures
+	defer newGenesisSourceFile.Close() // nolint: errcheck
+	_, err = fmt.Fprintf(newGenesisSourceFile, `package fixtures
 
 func Genesis() []byte {
 	return %#v
 }`, genesisAsBytes)
+	if err != nil {
+		panic(err)
+	}
 	doStuff()
 	if err := newGenesisSourceFile.Truncate(0); err != nil {
 		panic(err)
@@ -325,7 +328,10 @@ func Genesis() []byte {
 	if _, err := newGenesisSourceFile.Seek(0, 0); err != nil {
 		panic(err)
 	}
-	fmt.Fprint(newGenesisSourceFile, string(stubGenesisSourceFileBytes))
+	_, err = fmt.Fprint(newGenesisSourceFile, string(stubGenesisSourceFileBytes))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func buildFilecoin() {

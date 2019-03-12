@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/util/project"
 )
 
 // The file used to build these addresses can be found in:
@@ -43,7 +43,7 @@ type detailsStruct struct {
 }
 
 func init() {
-	gopath, err := th.GetGoPath()
+	gopath, err := pathhelper.GetGoPath()
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +92,7 @@ func init() {
 
 // KeyFilePaths returns the paths to the wallets of the testaddresses
 func KeyFilePaths() []string {
-	gopath, err := th.GetGoPath()
+	gopath, err := pathhelper.GetGoPath()
 	if err != nil {
 		panic(err)
 	}
