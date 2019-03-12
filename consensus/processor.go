@@ -474,7 +474,6 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		GasTracker:  gasTracker,
 		BlockHeight: bh,
 		Ancestors:   ancestors,
-		LookBack:    LookBackParameter,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
 

@@ -146,15 +146,10 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 	return types.Signature{}, nil
 }
 
-// ApplyTestMessage sends a message directly to the vm, bypassing message validation
+// ApplyTestMessage sends a message directly to the vm, bypassing message
+// validation
 func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
-	if err != nil {
-		panic(err)
-	}
-
-	ta := newTestApplier()
-	return newMessageApplier(smsg, ta, st, store, bh, address.Address{})
+	return applyTestMessageWithAncestors(st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the TestBlockRewarder but the default SignedMessageValidator
@@ -166,12 +161,12 @@ func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Mess
 		panic(err)
 	}
 	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder())
-	return newMessageApplier(smsg, applier, st, store, bh, minerOwner)
+	return newMessageApplier(smsg, applier, st, store, bh, minerOwner, nil)
 }
 
 func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
-	bh *types.BlockHeight, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerOwner, bh, nil)
+	bh *types.BlockHeight, minerOwner address.Address, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerOwner, bh, ancestors)
 
 	if len(amr.Results) > 0 {
 		return amr.Results[0], err
@@ -181,12 +176,22 @@ func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultPr
 }
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls ApplyTestMessage
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(address.TestAddress, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-	return ApplyTestMessage(st, vms, msg, types.NewBlockHeight(bh))
+	return applyTestMessageWithAncestors(st, vms, msg, types.NewBlockHeight(bh), ancestors)
+}
+
+func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
+	if err != nil {
+		panic(err)
+	}
+
+	ta := newTestApplier()
+	return newMessageApplier(smsg, ta, st, store, bh, address.Address{}, ancestors)
 }
 
 func newTestApplier() *consensus.DefaultProcessor {
