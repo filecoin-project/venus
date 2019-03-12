@@ -9,7 +9,6 @@ type API interface {
 	Daemon() Daemon
 	Dag() Dag
 	ID() ID
-	Log() Log
 	Miner() Miner
 	Mining() Mining
 	Ping() Ping
