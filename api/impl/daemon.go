@@ -113,13 +113,7 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 	}
 
 	if cfg.DevnetUser && cfg.GenesisFile != "" {
-		sourceURL, err := url.Parse(cfg.GenesisFile)
-		if err != nil {
-			return fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
-		}
-		if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
-			return fmt.Errorf(`cannot use both "--devnet-user" and a downloaded genesis file`)
-		}
+		return fmt.Errorf(`cannot use both "--devnet-user" and "--genesisfile" options`)
 	}
 
 	// Setup devnet test specific config options.
@@ -153,22 +147,39 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 		if err := rep.ReplaceConfig(newConfig); err != nil {
 			return err
 		}
-	}
 
-	// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-	genCid, err := LoadGenesis(rep, cfg.GenesisFile)
-	if err != nil {
-		return err
-	}
-
-	gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-		var blk types.Block
-
-		if err := cst.Get(ctx, genCid, &blk); err != nil {
-			return nil, err
+		genCid, err := useGenesisInBinary(rep)
+		if err != nil {
+			return err
 		}
 
-		return &blk, nil
+		gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+			var blk types.Block
+
+			if err := cst.Get(ctx, genCid, &blk); err != nil {
+				return nil, err
+			}
+
+			return &blk, nil
+		}
+	}
+
+	if cfg.GenesisFile != "" {
+		// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
+		genCid, err := LoadGenesis(rep, cfg.GenesisFile)
+		if err != nil {
+			return err
+		}
+
+		gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+			var blk types.Block
+
+			if err := cst.Get(ctx, genCid, &blk); err != nil {
+				return nil, err
+			}
+
+			return &blk, nil
+		}
 	}
 
 	// TODO: don't create the repo if this fails
@@ -230,4 +241,23 @@ func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	}
 
 	return ch.Roots[0], nil
+}
+
+func useGenesisInBinary(rep repo.Repo) (cid.Cid, error) {
+	sourceBytes := fixtures.Genesis()
+	source := bytes.NewReader(sourceBytes)
+
+	bs := blockstore.NewBlockstore(rep.Datastore())
+
+	ch, err := car.LoadCar(bs, source)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if len(ch.Roots) != 1 {
+		return cid.Undef, fmt.Errorf("expected car with only a single root")
+	}
+
+	return ch.Roots[0], nil
+
 }
