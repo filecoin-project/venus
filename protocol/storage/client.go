@@ -60,12 +60,12 @@ type clientPorcelainAPI interface {
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs() ([]*storagedeal.Deal, error)
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
+	WalletDefaultAddress() (address.Address, error)
 }
 
 // Client is used to make deals directly with storage miners.
@@ -115,7 +115,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	fromAddress, err := smc.api.GetAndMaybeSetDefaultSenderAddress()
+	fromAddress, err := smc.api.WalletDefaultAddress()
 	if err != nil {
 		return nil, err
 	}

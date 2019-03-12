@@ -157,16 +157,15 @@ func (a *API) MinerPreviewSetPrice(
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
 }
 
-// GetAndMaybeSetDefaultSenderAddress returns a default address from which to
-// send messsages. If none is set it picks the first address in the wallet and
-// sets it as the default in the config.
-func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return GetAndMaybeSetDefaultSenderAddress(a)
-}
-
 // WalletBalance returns the current balance of the given wallet address.
 func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)
+}
+
+// WalletDefaultAddress returns a default wallet address from the config.
+// If none is set it picks the first address in the wallet and sets it as the default in the config.
+func (a *API) WalletDefaultAddress() (address.Address, error) {
+	return WalletDefaultAddress(a)
 }
 
 // PaymentChannelLs lists payment channels for a given payer

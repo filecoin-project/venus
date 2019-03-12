@@ -165,6 +165,10 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 	return resp, nil
 }
 
+func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
+	return 1000000000, nil
+}
+
 func (ctp *clientTestAPI) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error) {
 	return miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
@@ -184,24 +188,20 @@ func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.
 	return id, nil
 }
 
-func (ctp *clientTestAPI) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	// always just default address
-	return ctp.payer, nil
+func (ctp *clientTestAPI) NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
+	out := make(chan time.Duration, 1)
+	out <- 0
+	close(out)
+	return out, nil
 }
 
 func (ctp *clientTestAPI) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return testSignature, nil
 }
 
-func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
-	return 1000000000, nil
-}
-
-func (ctp *clientTestAPI) NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
-	out := make(chan time.Duration, 1)
-	out <- 0
-	close(out)
-	return out, nil
+func (ctp *clientTestAPI) WalletDefaultAddress() (address.Address, error) {
+	// always just default address
+	return ctp.payer, nil
 }
 
 type testClientNode struct {
