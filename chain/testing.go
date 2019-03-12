@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -28,13 +27,8 @@ type FakeChildParams struct {
 	NullBlockCount uint64
 	Parent         types.TipSet
 	StateRoot      cid.Cid
-	Signer         ConsensusTestSigner
+	Signer         consensus.TicketSigner
 	MinerPubKey    []byte
-}
-
-// ConsensusTestSigner is an interface for a Test signer that can create tickets.
-type ConsensusTestSigner interface {
-	CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error)
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -91,7 +85,7 @@ func MkFakeChildCore(parent types.TipSet,
 	nullBlockCount uint64,
 	minerAddr address.Address,
 	minerPubKey []byte,
-	signer mining.WorkerSigner,
+	signer consensus.TicketSigner,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
@@ -184,7 +178,7 @@ func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Stor
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPower uint64, signer ConsensusTestSigner) (proofs.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPower uint64, signer consensus.TicketSigner) (proofs.PoStProof, types.Signature, error) {
 
 	var postProof proofs.PoStProof
 	var ticket types.Signature
@@ -195,7 +189,7 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPowe
 
 	for {
 		postProof = th.MakeRandomPoSTProofForTest()
-		ticket, err := signer.CreateTicket(postProof, signerPubKey)
+		ticket, err := consensus.CreateTicket(postProof, signerPubKey, signer)
 		if err != nil {
 			errStr := fmt.Sprintf("error creating ticket: %s", err)
 			panic(errStr)

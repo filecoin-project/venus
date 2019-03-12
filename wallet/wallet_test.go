@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -172,7 +173,7 @@ func TestSignErrorCases(t *testing.T) {
 	t.Log("sign content")
 	_, err = w1.SignBytes(dataA, addr2)
 	assert.Error(err)
-	assert.Contains(err.Error(), "failed to sign data")
+	assert.Contains(err.Error(), "could not find address:")
 }
 
 func TestGetAddressForPubKeyy(t *testing.T) {
@@ -213,7 +214,7 @@ func TestWallet_CreateTicket(t *testing.T) {
 
 	t.Run("Returns real ticket and nil error with good params", func(t *testing.T) {
 		proof := proofs.PoStProof{0xbb}
-		ticket, err := w.CreateTicket(proof, pubKey)
+		ticket, err := consensus.CreateTicket(proof, pubKey, w)
 		assert.NoError(err)
 		assert.NotNil(ticket)
 	})
@@ -221,7 +222,7 @@ func TestWallet_CreateTicket(t *testing.T) {
 	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
 		proof := proofs.PoStProof{0xc0}
 		badPubKey := []byte{0xf0}
-		ticket, err := w.CreateTicket(proof, badPubKey)
+		ticket, err := consensus.CreateTicket(proof, badPubKey, w)
 		assert.Error(err, "SignBytes error in CreateTicket: public key not found")
 		assert.Equal(types.Signature(nil), ticket)
 	})

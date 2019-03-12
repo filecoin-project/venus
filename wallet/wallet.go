@@ -8,10 +8,8 @@ import (
 	"sync"
 
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
@@ -104,7 +102,7 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to sign data with address: %s", addr)
+		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
 }
@@ -170,30 +168,6 @@ func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
 	}
 
 	return w.keyInfoForAddr(newAddr)
-}
-
-// CreateTicket computes a valid ticket.
-// 	params:  proof  []byte, minerAddress address.Address.
-//  returns:  types.Signature ( []byte ), error
-func (w *Wallet) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error) {
-
-	var ticket types.Signature
-
-	signerAddr, err := w.GetAddressForPubKey(signerPubKey)
-	if err != nil {
-		msgString := fmt.Sprintf("addresses: %v", w.Addresses())
-		return ticket, errors.Wrap(err, msgString)
-	}
-
-	buf := append(proof[:], signerAddr.Bytes()...)
-	h := blake2b.Sum256(buf)
-
-	ticket, err = w.SignBytes(h[:], signerAddr)
-	if err != nil {
-		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
-		return ticket, errors.New(errMsg)
-	}
-	return ticket, nil
 }
 
 func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {

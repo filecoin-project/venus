@@ -47,11 +47,6 @@ type Worker interface {
 	Mine(runCtx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool
 }
 
-// WorkerSigner is the interface used for signing blocks and tickets.
-type WorkerSigner interface {
-	CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error)
-}
-
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
 type GetStateTree func(context.Context, types.TipSet) (state.Tree, error)
@@ -84,7 +79,7 @@ type DefaultWorker struct {
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
 	minerPubKey    []byte
-	workerSigner   WorkerSigner
+	workerSigner   consensus.TicketSigner
 
 	// consensus things
 	getStateTree GetStateTree
@@ -112,7 +107,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	miner address.Address,
 	minerOwner address.Address,
 	minerPubKey []byte,
-	workerSigner WorkerSigner,
+	workerSigner consensus.TicketSigner,
 	bt time.Duration) *DefaultWorker {
 
 	w := NewDefaultWorkerWithDeps(messageSource,
@@ -149,7 +144,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	miner address.Address,
 	minerOwner address.Address,
 	minerPubKey []byte,
-	workerSigner WorkerSigner,
+	workerSigner consensus.TicketSigner,
 	bt time.Duration,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
@@ -219,7 +214,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		copy(proof[:], prChRead[:])
-		ticket, err = w.workerSigner.CreateTicket(proof, w.minerPubKey)
+		ticket, err = consensus.CreateTicket(proof, w.minerPubKey, w.workerSigner)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)
 			return false

@@ -46,6 +46,12 @@ var (
 	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
 )
 
+// TicketSigner is an interface for a test signer that can create tickets.
+type TicketSigner interface {
+	GetAddressForPubKey(pk []byte) (address.Address, error)
+	SignBytes(data []byte, signerAddr address.Address) (types.Signature, error)
+}
+
 // TODO none of these parameters are chosen correctly
 // with respect to analysis under a security model:
 // https://github.com/filecoin-project/go-filecoin/issues/1846
@@ -393,4 +399,22 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		return nil, errors.Wrap(err, "error validating tipset")
 	}
 	return st, nil
+}
+
+// CreateTicket computes a valid ticket.
+// 	params:  proof  []byte, the proof to sign
+// 			 signerPubKey []byte, the public key for the signer. Must exist in the signer
+//      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
+//  returns:  types.Signature ( []byte ), error
+func CreateTicket(proof proofs.PoStProof, signerPubKey []byte, signer TicketSigner) (types.Signature, error) {
+
+	var ticket types.Signature
+
+	signerAddr, err := signer.GetAddressForPubKey(signerPubKey)
+	if err != nil {
+		return ticket, errors.Wrap(err, "could not get address for signerPubKey")
+	}
+	buf := append(proof[:], signerAddr.Bytes()...)
+	// Don't hash it here; it gets hashed in walletutil.Sign
+	return signer.SignBytes(buf[:], signerAddr)
 }

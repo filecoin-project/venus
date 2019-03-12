@@ -22,11 +22,6 @@ import (
 // stores 1 byte and all miners store 0 bytes regardless of inputs.
 type TestView struct{}
 
-// WorkerTestSigner is an interface for a test signer that can create tickets.
-type WorkerTestSigner interface {
-	CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (types.Signature, error)
-}
-
 var _ consensus.PowerTableView = &TestView{}
 
 // Total always returns 1.
@@ -85,9 +80,9 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer WorkerTestSigner) *types.Block {
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
 	postProof := MakeRandomPoSTProofForTest()
-	ticket, _ := signer.CreateTicket(postProof, minerPubKey)
+	ticket, _ := consensus.CreateTicket(postProof, minerPubKey, signer)
 
 	return &types.Block{
 		Miner:        minerAddr,
