@@ -198,33 +198,27 @@ func loadPeerKey(fname string) (crypto.PrivKey, error) {
 // LoadGenesis gets the genesis block from either a local car file or an HTTP(S) URL.
 func LoadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	var source io.ReadCloser
-	var err error
 
-	if sourceName == "" {
-		sourceBytes := fixtures.Genesis()
-		source = ioutil.NopCloser(bytes.NewReader(sourceBytes))
-	} else {
-		sourceURL, err := url.Parse(sourceName)
+	sourceURL, err := url.Parse(sourceName)
+	if err != nil {
+		return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
+	}
+	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
+		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
+		// recently deployed test devnet.
+		response, err := http.Get(sourceName)
 		if err != nil {
-			return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
+			return cid.Undef, err
 		}
-		if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
-			// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
-			// recently deployed test devnet.
-			response, err := http.Get(sourceName)
-			if err != nil {
-				return cid.Undef, err
-			}
-			source = response.Body
-		} else if sourceURL.Scheme != "" {
-			return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
-		} else {
-			file, err := os.Open(sourceName)
-			if err != nil {
-				return cid.Undef, err
-			}
-			source = file
+		source = response.Body
+	} else if sourceURL.Scheme != "" {
+		return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+	} else {
+		file, err := os.Open(sourceName)
+		if err != nil {
+			return cid.Undef, err
 		}
+		source = file
 	}
 
 	defer source.Close() // nolint: errcheck

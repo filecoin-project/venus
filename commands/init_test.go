@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/util/project"
+
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
@@ -20,9 +22,9 @@ func TestDownloadGenesis(t *testing.T) {
 
 	exec.CommandContext(
 		ctx,
-		th.ProjectRoot("tools/genesis-file-server/genesis-file-server"),
+		pathhelper.ProjectRoot("tools/genesis-file-server/genesis-file-server"),
 		"--genesis-file-path",
-		th.ProjectRoot("fixtures/genesis.car"),
+		pathhelper.ProjectRoot("fixtures/genesis.car"),
 		"--port",
 		strconv.Itoa(port),
 	).Start()

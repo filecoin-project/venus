@@ -754,7 +754,7 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		init:        true, // we want to init unless told otherwise
 		firstRun:    true,
 		cmdTimeout:  DefaultDaemonCmdTimeout,
-		genesisFile: GenesisFilePath(), // default file includes all test addresses,
+		genesisFile: pathhelper.GenesisFilePath(), // default file includes all test addresses,
 	}
 
 	// configure TestDaemon options
@@ -827,23 +827,6 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 
 	process := exec.Command(filecoinBin, finalArgs...)
 	return process.CombinedOutput()
-}
-
-// GenesisFilePath returns the path of the WalletFile
-func GenesisFilePath() string {
-	return ProjectRoot("/fixtures/genesis.car")
-}
-
-// ProjectRoot return the project root joined with any path fragments
-func ProjectRoot(paths ...string) string {
-	gopath, err := pathhelper.GetGoPath()
-	if err != nil {
-		panic(err)
-	}
-
-	allPaths := append([]string{gopath, "/src/github.com/filecoin-project/go-filecoin"}, paths...)
-
-	return filepath.Join(allPaths...)
 }
 
 func (td *TestDaemon) createNewProcess() {
