@@ -259,5 +259,4 @@ func useGenesisInBinary(rep repo.Repo) (cid.Cid, error) {
 	}
 
 	return ch.Roots[0], nil
-
 }

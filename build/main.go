@@ -313,11 +313,7 @@ func withGenesisSourceFile(doStuff func()) {
 		panic(err)
 	}
 	defer newGenesisSourceFile.Close() // nolint: errcheck
-	_, err = fmt.Fprintf(newGenesisSourceFile, `package fixtures
-
-func Genesis() []byte {
-	return %#v
-}`, genesisAsBytes)
+	_, err = fmt.Fprintf(newGenesisSourceFile, "package fixtures\n\nfunc Genesis() []byte {\n\treturn %#v\n}\n", genesisAsBytes)
 	if err != nil {
 		panic(err)
 	}
