@@ -251,11 +251,11 @@ type GetAllActorsResult struct {
 }
 
 // GetAllActors returns a channel which provides all actors in the StateTree, t.
-func GetAllActors(t Tree) <-chan GetAllActorsResult {
+func GetAllActors(ctx context.Context, t Tree) <-chan GetAllActorsResult {
 	st := t.(*tree)
 	out := make(chan GetAllActorsResult)
 	go func() {
-		st.getActorsFromPointers(out, st.root.Pointers)
+		st.getActorsFromPointers(ctx, out, st.root.Pointers)
 		close(out)
 	}()
 	return out
@@ -269,11 +269,11 @@ func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, state
 	if err != nil {
 		return nil, err
 	}
-	return GetAllActors(st), nil
+	return GetAllActors(ctx, st), nil
 }
 
 // NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.
-func (t *tree) getActorsFromPointers(out chan<- GetAllActorsResult, ps []*hamt.Pointer) {
+func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActorsResult, ps []*hamt.Pointer) {
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
@@ -281,9 +281,15 @@ func (t *tree) getActorsFromPointers(out chan<- GetAllActorsResult, ps []*hamt.P
 				panic(err) // uhm, ignoring errors is bad
 			}
 
-			out <- GetAllActorsResult{
+			result := GetAllActorsResult{
 				Address: kv.Key,
 				Actor:   &a,
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case out <- result:
 			}
 		}
 		if p.Link.Defined() {
@@ -293,7 +299,7 @@ func (t *tree) getActorsFromPointers(out chan<- GetAllActorsResult, ps []*hamt.P
 			if err != nil {
 				continue
 			}
-			t.getActorsFromPointers(out, n.Pointers)
+			t.getActorsFromPointers(ctx, out, n.Pointers)
 		}
 	}
 }

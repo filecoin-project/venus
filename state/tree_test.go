@@ -131,7 +131,7 @@ func TestGetAllActors(t *testing.T) {
 
 	assert.NoError(err)
 
-	results := GetAllActors(tree)
+	results := GetAllActors(ctx, tree)
 
 	for result := range results {
 		assert.Equal(addr.String(), result.Address)

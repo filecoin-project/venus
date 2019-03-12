@@ -136,7 +136,7 @@ func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, e
 	if err != nil {
 		return nil, err
 	}
-	return state.GetAllActors(st), nil
+	return state.GetAllActors(ctx, st), nil
 }
 
 // BlockGet gets a block by CID
