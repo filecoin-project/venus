@@ -39,7 +39,7 @@ func NetworkPingWithCount(ctx context.Context, plumbing pPlumbing, pid peer.ID, 
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	times, err := plumbing.NetworkPing(ctx, pid)
+	timesCh, err := plumbing.NetworkPing(ctx, pid)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -54,7 +54,7 @@ func NetworkPingWithCount(ctx context.Context, plumbing pPlumbing, pid peer.ID, 
 		ch <- &PingResult{Text: fmt.Sprintf("PING %s", pid)}
 		for i := 0; i < int(count); i++ {
 			select {
-			case dur := <-times:
+			case dur := <-timesCh:
 				ch <- &PingResult{Time: dur, Success: true}
 			case <-time.After(pingTimeout):
 				ch <- &PingResult{Text: "error: timeout"}
