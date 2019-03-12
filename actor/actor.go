@@ -46,6 +46,21 @@ type Actor struct {
 	Balance *types.AttoFIL
 }
 
+// NewActor constructs a new actor.
+func NewActor(code cid.Cid, balance *types.AttoFIL) *Actor {
+	return &Actor{
+		Code:    code,
+		Head:    cid.Undef,
+		Nonce:   0,
+		Balance: balance,
+	}
+}
+
+// Empty tests whether the actor's code is defined.
+func (a *Actor) Empty() bool {
+	return !a.Code.Defined()
+}
+
 // IncNonce increments the nonce of this actor by 1.
 func (a *Actor) IncNonce() {
 	a.Nonce = a.Nonce + 1
@@ -60,16 +75,6 @@ func (a *Actor) Cid() (cid.Cid, error) {
 	}
 
 	return obj.Cid(), nil
-}
-
-// NewActor constructs a new actor.
-func NewActor(code cid.Cid, balance *types.AttoFIL) *Actor {
-	return &Actor{
-		Code:    code,
-		Head:    cid.Undef,
-		Nonce:   0,
-		Balance: balance,
-	}
 }
 
 // Unmarshal a actor from the given bytes.
@@ -96,7 +101,7 @@ func NextNonce(actor *Actor) (uint64, error) {
 	if actor == nil {
 		return 0, nil
 	}
-	if actor.Code.Defined() && !actor.Code.Equals(types.AccountActorCodeCid) {
+	if !(actor.Empty() || actor.Code.Equals(types.AccountActorCodeCid)) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return uint64(actor.Nonce), nil

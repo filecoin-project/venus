@@ -177,11 +177,6 @@ function miner_update_pid {
     --repodir="$3"
 }
 
-function mine_once {
-  ./go-filecoin mining once \
-    --repodir="$1"
-}
-
 function fork_message_wait {
   eval "exec $1< <(./go-filecoin message wait $2 --repodir=$3)"
 }

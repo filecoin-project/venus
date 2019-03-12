@@ -41,7 +41,7 @@ func ls(ctx context.Context, fcn *node.Node, actorGetter state.GetAllActorsFunc)
 
 	for i, a := range actors {
 		switch {
-		case !a.Code.Defined(): // empty (balance only) actors have no Code.
+		case a.Empty(): // empty (balance only) actors have no Code.
 			res[i] = makeActorView(a, addrs[i], nil)
 		case a.Code.Equals(types.AccountActorCodeCid):
 			res[i] = makeActorView(a, addrs[i], &account.Actor{})
