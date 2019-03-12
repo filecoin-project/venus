@@ -12,6 +12,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// MessageTimeOut is the number of tipsets we should receive before timing out messages
+const MessageTimeOut = 6
+
+type timedmessage struct {
+	message *types.SignedMessage
+	addedAt uint64
+}
+
+// BlockTimer defines a interface to a struct that can give the current block height.
+type BlockTimer interface {
+	BlockHeight() (uint64, error)
+}
+
 // MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
 // By 'de-duplicated' we mean that insertion of a message by cid that already
 // exists is a nop. We use a MessagePool to store all messages received by this node
@@ -22,26 +35,37 @@ import (
 type MessagePool struct {
 	lk sync.RWMutex
 
-	pending map[cid.Cid]*types.SignedMessage // all pending messages
+	timer   BlockTimer
+	pending map[cid.Cid]*timedmessage // all pending messages
 }
 
 // Add adds a message to the pool.
 func (pool *MessagePool) Add(msg *types.SignedMessage) (cid.Cid, error) {
+	blockTime, err := pool.timer.BlockHeight()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return pool.addTimedMessage(&timedmessage{message: msg, addedAt: blockTime})
+}
+
+func (pool *MessagePool) addTimedMessage(msg *timedmessage) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
-	c, err := msg.Cid()
+	c, err := msg.message.Cid()
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to create CID")
 	}
 
 	// Reject messages with invalid signatires
-	if !msg.VerifySignature() {
+	if !msg.message.VerifySignature() {
 		return cid.Undef, errors.Errorf("failed to add message %s to pool: sig invalid", c.String())
 	}
 
 	pool.pending[c] = msg
 	return c, nil
+
 }
 
 // Pending returns all pending messages.
@@ -50,21 +74,23 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 	defer pool.lk.Unlock()
 	out := make([]*types.SignedMessage, 0, len(pool.pending))
 	for _, msg := range pool.pending {
-		out = append(out, msg)
+		out = append(out, msg.message)
 	}
 
 	return out
 }
 
 // Get retrieves a message from the pool by CID.
-func (pool *MessagePool) Get(c cid.Cid) (value *types.SignedMessage, ok bool) {
+func (pool *MessagePool) Get(c cid.Cid) (*types.SignedMessage, bool) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
-	value, ok = pool.pending[c]
-	if ok && value == nil {
+	value, ok := pool.pending[c]
+	if !ok {
+		return nil, ok
+	} else if value == nil {
 		panic("Found nil message for CID " + c.String())
 	}
-	return
+	return value.message, ok
 }
 
 // Remove removes the message by CID from the pending pool.
@@ -76,9 +102,10 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 }
 
 // NewMessagePool constructs a new MessagePool.
-func NewMessagePool() *MessagePool {
+func NewMessagePool(timer BlockTimer) *MessagePool {
 	return &MessagePool{
-		pending: make(map[cid.Cid]*types.SignedMessage),
+		timer:   timer,
+		pending: make(map[cid.Cid]*timedmessage),
 	}
 }
 
@@ -107,15 +134,17 @@ func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts types.Ti
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet types.TipSet, height uint64) ([]*types.SignedMessage, types.TipSet, error) {
-	var msgs []*types.SignedMessage
+func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet types.TipSet, height uint64) ([]*timedmessage, types.TipSet, error) {
+	var msgs []*timedmessage
 	h, err := curTipSet.Height()
 	if err != nil {
 		return nil, nil, err
 	}
 	for h > height {
 		for _, blk := range curTipSet {
-			msgs = append(msgs, blk.Messages...)
+			for _, msg := range blk.Messages {
+				msgs = append(msgs, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
+			}
 		}
 		parents, err := curTipSet.Parents()
 		if err != nil {
@@ -127,7 +156,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 		default:
 			nextTipSet, err := getParentTipSet(ctx, store, curTipSet)
 			if err != nil {
-				return []*types.SignedMessage{}, types.TipSet{}, err
+				return []*timedmessage{}, types.TipSet{}, err
 			}
 			curTipSet = nextTipSet
 			h, err = curTipSet.Height()
@@ -149,7 +178,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborIpldStore, old, new types.TipSet) error {
+func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store *hamt.CborIpldStore, old, new types.TipSet) error {
 	// Strategy: walk head-of-chain pointers old and new back until they are at the same
 	// height, then walk back in lockstep to find the common ancesetor.
 
@@ -183,11 +212,15 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		for _, blk := range old {
 			// skip genesis block
 			if blk.Height > 0 {
-				addToPool = append(addToPool, blk.Messages...)
+				for _, msg := range blk.Messages {
+					addToPool = append(addToPool, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
+				}
 			}
 		}
 		for _, blk := range new {
-			removeFromPool = append(removeFromPool, blk.Messages...)
+			for _, msg := range blk.Messages {
+				removeFromPool = append(removeFromPool, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
+			}
 		}
 		oldParents, err := old.Parents()
 		if err != nil {
@@ -212,7 +245,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 
 	// Now actually update the pool.
 	for _, m := range addToPool {
-		_, err := pool.Add(m)
+		_, err := pool.addTimedMessage(m)
 		if err != nil {
 			return err
 		}
@@ -220,7 +253,7 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 	// m.Cid() can error, so collect all the Cids before
 	removeCids := make([]cid.Cid, len(removeFromPool))
 	for i, m := range removeFromPool {
-		cid, err := m.Cid()
+		cid, err := m.message.Cid()
 		if err != nil {
 			return err
 		}
@@ -230,12 +263,49 @@ func UpdateMessagePool(ctx context.Context, pool *MessagePool, store *hamt.CborI
 		pool.Remove(cid)
 	}
 
+	// prune all messages that have been in the pool too long
+	return pool.timeoutMessages(ctx, store, new)
+}
+
+// timeoutMessages removes all messages from the pool that arrived more than MessageTimeout tip sets ago.
+// Note that we measure the timeout in the number of tip sets we have received rather than a fixed block
+// height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
+// Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
+// sets than to the expected block time over short timescales.
+func (pool *MessagePool) timeoutMessages(ctx context.Context, store *hamt.CborIpldStore, head types.TipSet) error {
+	var err error
+
+	lowestTipSet := head
+	minimumHeight, err := lowestTipSet.Height()
+	if err != nil {
+		return err
+	}
+
+	// walk back MessageTimeout tip sets to arrive at the lowest viable block height
+	for i := 0; minimumHeight > 0 && i < MessageTimeOut; i++ {
+		lowestTipSet, err = getParentTipSet(ctx, store, lowestTipSet)
+		if err != nil {
+			return err
+		}
+		minimumHeight, err = lowestTipSet.Height()
+		if err != nil {
+			return err
+		}
+	}
+
+	// remove all messages added before minimumHeight
+	for cid, msg := range pool.pending {
+		if msg.addedAt < minimumHeight {
+			pool.Remove(cid)
+		}
+	}
+
 	return nil
 }
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
 // If no messages from address are found, found will be false.
-func LargestNonce(pool *MessagePool, address address.Address) (largest uint64, found bool) {
+func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, found bool) {
 	for _, m := range pool.Pending() {
 		if m.From == address {
 			found = true

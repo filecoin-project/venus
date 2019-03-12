@@ -114,7 +114,7 @@ func TestNextNonce(t *testing.T) {
 
 		address := address.NewForTestGetter()()
 
-		n, err := nextNonce(ctx, st, core.NewMessagePool(), address)
+		n, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.NoError(err)
 		assert.Equal(uint64(0), n)
 	})
@@ -130,7 +130,7 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 		_ = state.MustSetActor(st, address, actor)
 
-		_, err = nextNonce(ctx, st, core.NewMessagePool(), address)
+		_, err = nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.Error(err)
 		assert.Contains(err.Error(), "account or empty")
 	})
@@ -146,7 +146,7 @@ func TestNextNonce(t *testing.T) {
 		actor.Nonce = 42
 		state.MustSetActor(st, address, actor)
 
-		nonce, err := nextNonce(ctx, st, core.NewMessagePool(), address)
+		nonce, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.NoError(err)
 		assert.Equal(uint64(42), nonce)
 	})
@@ -156,7 +156,7 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
-		mp := core.NewMessagePool()
+		mp := core.NewMessagePool(testhelpers.NewTestBlockTimer(0))
 		addr := mockSigner.Addresses[0]
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
@@ -210,5 +210,5 @@ func setupSendTest(require *require.Assertions) (*wallet.Wallet, *chain.DefaultS
 	// Install the key in the wallet for use in signing.
 	err = d.wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
 	require.NoError(err)
-	return d.wallet, d.chainStore, core.NewMessagePool()
+	return d.wallet, d.chainStore, core.NewMessagePool(testhelpers.NewTestBlockTimer(0))
 }

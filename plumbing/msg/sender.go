@@ -113,7 +113,7 @@ func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, addre
 		return 0, err
 	}
 
-	poolNonce, found := core.LargestNonce(pool, address)
+	poolNonce, found := pool.LargestNonce(address)
 	if found && poolNonce >= actorNonce {
 		return poolNonce + 1, nil
 	}

@@ -371,7 +371,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
+	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
 	var processor consensus.Processor
@@ -390,11 +390,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, nodeConsensus, chainStore)
-	chainReader, ok := chainStore.(chain.ReadStore)
-	if !ok {
-		return nil, errors.New("failed to cast chain.Store to chain.ReadStore")
-	}
-	msgPool := core.NewMessagePool()
+	msgPool := core.NewMessagePool(chainStore)
 
 	// Set up libp2p pubsub
 	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
@@ -408,16 +404,16 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:        chainReader,
+		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
-		MsgPreviewer: msg.NewPreviewer(fcWallet, chainReader, &cstOffline, bs),
-		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
-		MsgSender:    msg.NewSender(fcWallet, chainReader, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
-		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
+		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
+		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
+		MsgSender:    msg.NewSender(fcWallet, chainStore, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
+		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker),
-		SigGetter:    mthdsig.NewGetter(chainReader),
+		SigGetter:    mthdsig.NewGetter(chainStore),
 		Wallet:       fcWallet,
 	}))
 
@@ -427,7 +423,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		cborStore:    &cstOffline,
 		OnlineStore:  &cstOnline,
 		Consensus:    nodeConsensus,
-		ChainReader:  chainReader,
+		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PorcelainAPI: PorcelainAPI,
@@ -647,7 +643,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 
 			// When a new best TipSet is promoted we remove messages in it from the
 			// message pool (and add them back in if we have a re-org).
-			if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
+			if err := node.MsgPool.UpdateMessagePool(ctx, node.CborStore(), head, newHead); err != nil {
 				log.Error("error updating message pool for new tipset:", err)
 				continue
 			}
