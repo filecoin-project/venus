@@ -269,6 +269,9 @@ func build() {
 func forcebuild() {
 	buildGengen()
 	generateGenesis()
+	withGenesisSourceFile(func() {
+		buildFilecoin()
+	})
 	forceBuildFC()
 	buildFaucet()
 	buildGenesisFileServer()
