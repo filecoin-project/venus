@@ -9,7 +9,14 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
-// PingResult is the data that gets emitted on the Ping channel.
+// PingResult contains the data returned by the Ping command's channel. It has
+// three fields, Time, Text and Success.
+//
+// * Time represents the elapsed time since the ping was sent until it is returned.
+// * Text contains either "PING" followed by the peer id, an error message or nil
+//   depending on the status of the ping connection.
+// * Success contains a boolean representing whether or not the ping was received
+//   and returned.
 type PingResult struct {
 	Time    time.Duration
 	Text    string
