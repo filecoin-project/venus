@@ -117,7 +117,6 @@ func deps() {
 		cmd("gx-go rewrite"),
 		cmd("go get -u github.com/alecthomas/gometalinter"),
 		cmd("gometalinter --install"),
-		cmd("go get -u github.com/gobuffalo/packr/v2/packr2"),
 		cmd("go get -u github.com/stretchr/testify"),
 		cmd("go get -u github.com/xeipuuv/gojsonschema"),
 		cmd("go get -u github.com/ipfs/iptb"),
@@ -164,7 +163,6 @@ func smartdeps() {
 	// packages we need to install
 	pkgs := []string{
 		"github.com/alecthomas/gometalinter",
-		"github.com/gobuffalo/packr/v2/packr2",
 		"github.com/docker/docker/api/types",
 		"github.com/docker/docker/api/types/container",
 		"github.com/docker/docker/client",

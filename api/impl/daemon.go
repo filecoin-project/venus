@@ -27,6 +27,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+const (
+	// SECP256K1 is a curve used to compute private keys
+	SECP256K1 = "secp256k1"
+)
+
 type nodeDaemon struct {
 	api *nodeAPI
 }
