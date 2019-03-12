@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/util/project"
+	"github.com/filecoin-project/go-filecoin/util/pathhelper"
 	"github.com/filecoin-project/go-filecoin/util/version"
 )
 

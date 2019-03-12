@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/util/project"
+	"github.com/filecoin-project/go-filecoin/util/pathhelper"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )

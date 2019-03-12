@@ -11,7 +11,7 @@ import (
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/util/project"
+	"github.com/filecoin-project/go-filecoin/util/pathhelper"
 )
 
 // The file used to build these addresses can be found in:

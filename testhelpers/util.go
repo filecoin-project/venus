@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/util/project"
+	"github.com/filecoin-project/go-filecoin/util/pathhelper"
 )
 
 // GetFreePort gets a free port from the kernel
