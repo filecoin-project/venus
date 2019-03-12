@@ -14,6 +14,9 @@ func init() {
 	cbor.RegisterCborType(Actor{})
 }
 
+// DefaultGasCost is default gas cost for the actor calls.
+const DefaultGasCost = 100
+
 // Actor is the central abstraction of entities in the system.
 //
 // Both individual accounts, as well as contracts (user & system level) are
