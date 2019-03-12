@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
@@ -371,7 +372,7 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 	output := d.RunSuccess("actor", "ls", "--enc", "json")
 	result := output.ReadStdoutTrimNewlines()
 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
-		var a ActorView
+		var a commands.ActorView
 		err := json.Unmarshal(line, &a)
 		require.NoError(t, err)
 		if a.Address == actorAddr.String() {
