@@ -144,6 +144,11 @@ func (a *API) WalletBalance(ctx context.Context, address address.Address) (*type
 	return WalletBalance(ctx, a, address)
 }
 
+// DefaultWalletAddress returns a default wallet address from the config.
+func (a *API) DefaultWalletAddress() (address.Address, error) {
+	return DefaultWalletAddress(a)
+}
+
 // PaymentChannelLs lists payment channels for a given payer
 func (a *API) PaymentChannelLs(
 	ctx context.Context,

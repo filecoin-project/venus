@@ -16,11 +16,18 @@ import (
 
 type walletTestPlumbing struct {
 	balance *types.AttoFIL
+	addr    address.Address
 }
 
 func (wtp *walletTestPlumbing) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	testActor := actor.NewActor(cid.Undef, wtp.balance)
 	return testActor, nil
+}
+
+func (wtp *walletTestPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	testHash := address.Hash([]byte("test"))
+	return address.NewMainnet(testHash), nil
+
 }
 
 func TestWalletBalance(t *testing.T) {
@@ -37,5 +44,22 @@ func TestWalletBalance(t *testing.T) {
 		require.NoError(err)
 
 		assert.Equal(expectedBalance, balance)
+	})
+}
+
+func TestDefaultWalletAddress(t *testing.T) {
+	t.Run("Returns the correct value for default wallet address", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		testHash := address.Hash([]byte("test"))
+		expectedAddress := address.NewMainnet(testHash)
+		plumbing := &walletTestPlumbing{
+			addr: expectedAddress,
+		}
+		address, err := porcelain.DefaultWalletAddress(plumbing)
+		require.NoError(err)
+
+		assert.Equal(expectedAddress, address)
 	})
 }

@@ -31,9 +31,10 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"ls":     addrsLsCmd,
-		"new":    addrsNewCmd,
-		"lookup": addrsLookupCmd,
+		"ls":      addrsLsCmd,
+		"new":     addrsNewCmd,
+		"lookup":  addrsLookupCmd,
+		"default": defaultWalletAddress,
 	},
 }
 
@@ -111,6 +112,24 @@ var addrsLookupCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pid string) error {
 			_, err := fmt.Fprintln(w, pid)
+			return err
+		}),
+	},
+}
+
+var defaultWalletAddress = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		addr, err := GetPorcelainAPI(env).DefaultWalletAddress()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&addressResult{addr.String()})
+	},
+	Type: &addressResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
+			_, err := fmt.Fprintln(w, a.Address)
 			return err
 		}),
 	},
