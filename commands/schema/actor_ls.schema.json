@@ -178,17 +178,6 @@
             },
             "memory": { "$ref": "#/definitions/MinerMemory" }
           }
-        },
-        {
-          "properties": {
-            "actorType": {
-              "type": "string",
-              "enum": [
-                "BootstrapMinerActor"
-              ]
-            },
-            "memory": { "$ref": "#/definitions/MinerMemory" }
-          }
         }
       ]
     }

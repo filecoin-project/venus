@@ -74,18 +74,7 @@ var Errors = map[uint8]error{
 }
 
 // Actor is the miner actor.
-//
-// If `Bootstrap` is `true`, the miner will not verify seal proofs. This is
-// useful when testing, as miners with non-zero power can be created using bogus
-// commitments. This is a temporary measure; we want to ultimately be able to
-// create a real genesis block whose miners are seeded with real commitments.
-//
-// The `Bootstrap` field must be set to `true` if the miner was created in the
-// genesis block. If the miner was created in any other block, `Bootstrap` must
-// be false.
-type Actor struct {
-	Bootstrap bool
-}
+type Actor struct{}
 
 // Ask is a price advertisement by the miner
 type Ask struct {
@@ -400,6 +389,10 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 		return 0, 1, errors.NewFaultErrorf("expected a uint64 sector id, but got %T instead", out)
 	}
 
+	if a < types.FirstNonGenGenSectorID {
+		a = types.FirstNonGenGenSectorID
+	}
+
 	return a, 0, nil
 }
 
@@ -441,7 +434,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		return 1, errors.NewRevertError("invalid sized commRStar")
 	}
 
-	if !ma.Bootstrap {
+	if sectorID >= types.FirstNonGenGenSectorID {
 		// This unfortunate environment variable-checking needs to happen because
 		// the PoRep verification operation needs to know some things (e.g. size)
 		// about the sector for which the proof was generated in order to verify.
@@ -653,8 +646,15 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 
 		// reach in to actor storage to grab comm-r for each committed sector
 		var commRs []proofs.CommR
-		for _, v := range state.SectorCommitments {
-			commRs = append(commRs, v.CommR)
+		for k, v := range state.SectorCommitments {
+			n, err := strconv.ParseUint(k, 10, 64)
+			if err != nil {
+				return nil, errors.FaultErrorWrap(err, "failed to parse commitment sector id to uint64")
+			}
+
+			if n >= 10000 {
+				commRs = append(commRs, v.CommR)
+			}
 		}
 
 		// See comment above, in CommitSector.

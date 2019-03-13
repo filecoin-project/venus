@@ -22,5 +22,4 @@ func init() {
 	Actors[types.StorageMarketActorCodeCid] = &storagemarket.Actor{}
 	Actors[types.PaymentBrokerActorCodeCid] = &paymentbroker.Actor{}
 	Actors[types.MinerActorCodeCid] = &miner.Actor{}
-	Actors[types.BootstrapMinerActorCodeCid] = &miner.Actor{Bootstrap: true}
 }

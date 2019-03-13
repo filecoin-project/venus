@@ -51,8 +51,6 @@ func ls(ctx context.Context, fcn *node.Node, actorGetter state.GetAllActorsFunc)
 			res[i] = makeActorView(a, addrs[i], &paymentbroker.Actor{})
 		case a.Code.Equals(types.MinerActorCodeCid):
 			res[i] = makeActorView(a, addrs[i], &miner.Actor{})
-		case a.Code.Equals(types.BootstrapMinerActorCodeCid):
-			res[i] = makeActorView(a, addrs[i], &miner.Actor{})
 		default:
 			res[i] = makeActorView(a, addrs[i], nil)
 		}

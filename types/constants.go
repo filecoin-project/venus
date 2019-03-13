@@ -10,6 +10,15 @@ import (
 // DefaultHashFunction represents the default hashing function to use
 const DefaultHashFunction = mh.BLAKE2B_MIN + 31
 
+// FirstNonGenGenSectorID is the id of the first sector to be committed by a
+// miner to the network through non-gengen means. Any sector with id less than
+// FirstNonGenGenSectorID is fake and its commitments (CommR, PoRep proof, etc.)
+// should not be validated.
+//
+// This constant (and the predicates which rely on it) can be safely removed
+// once go-filecoin issue #2270 is complete.
+const FirstNonGenGenSectorID = 10000
+
 // AccountActorCodeObj is the code representation of the builtin account actor.
 var AccountActorCodeObj ipld.Node
 
@@ -34,12 +43,6 @@ var MinerActorCodeObj ipld.Node
 // MinerActorCodeCid is the cid of the above object
 var MinerActorCodeCid cid.Cid
 
-// BootstrapMinerActorCodeObj is the code representation of the bootstrap miner actor.
-var BootstrapMinerActorCodeObj ipld.Node
-
-// BootstrapMinerActorCodeCid is the cid of the above object
-var BootstrapMinerActorCodeCid cid.Cid
-
 // ActorCodeCidTypeNames maps Actor codeCid's to the name of the associated Actor type.
 var ActorCodeCidTypeNames = make(map[cid.Cid]string)
 
@@ -52,8 +55,6 @@ func init() {
 	PaymentBrokerActorCodeCid = PaymentBrokerActorCodeObj.Cid()
 	MinerActorCodeObj = dag.NewRawNode([]byte("mineractor"))
 	MinerActorCodeCid = MinerActorCodeObj.Cid()
-	BootstrapMinerActorCodeObj = dag.NewRawNode([]byte("bootstrapmineractor"))
-	BootstrapMinerActorCodeCid = BootstrapMinerActorCodeObj.Cid()
 
 	// New Actors need to be added here.
 	// TODO: Make this work with reflection -- but note that nasty import cycles lie on that path.
@@ -62,7 +63,6 @@ func init() {
 	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
 	ActorCodeCidTypeNames[PaymentBrokerActorCodeCid] = "PaymentBrokerActor"
 	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
-	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "MinerActor"
 }
 
 // ActorCodeTypeName returns the (string) name of the Go type of the actor with cid, code.

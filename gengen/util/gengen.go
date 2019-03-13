@@ -119,9 +119,6 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
 		return nil, err
 	}
-	if err := cst.Blocks.AddBlock(types.BootstrapMinerActorCodeObj); err != nil {
-		return nil, err
-	}
 	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
 		return nil, err
 	}

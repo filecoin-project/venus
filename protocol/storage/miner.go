@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"math/big"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 
 	dag "gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -656,12 +657,14 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 			return
 		}
 
-		inputs = append(inputs, generatePostInput{
-			commD:     v.CommD,
-			commR:     v.CommR,
-			commRStar: v.CommRStar,
-			sectorID:  n,
-		})
+		if n >= types.FirstNonGenGenSectorID {
+			inputs = append(inputs, generatePostInput{
+				commD:     v.CommD,
+				commR:     v.CommR,
+				commRStar: v.CommRStar,
+				sectorID:  n,
+			})
+		}
 	}
 
 	if len(inputs) == 0 {
