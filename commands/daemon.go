@@ -136,6 +136,8 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		nd.MsgPool,
 		nd.PorcelainAPI,
 		nd.PowerTable,
+		nd.StartMining,
+		nd.StopMining,
 		nd.Syncer,
 		nd.Wallet)
 

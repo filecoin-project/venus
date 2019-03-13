@@ -11,16 +11,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/node"
 )
 
-func TestNew(t *testing.T) {
+func TestTrivialNew(t *testing.T) {
 	assert := ast.New(t)
 	require := req.New(t)
 
 	api, _ := newAPI(t, assert)
 	require.NotNil(t, api)
-
-	assert.NotNil(api.Syncer)
-	assert.NotNil(api.TicketSigner)
-	assert.NotNil(api.OnlineStore)
 }
 
 func TestAPI_MineOnce(t *testing.T) {
@@ -36,6 +32,19 @@ func TestAPI_MineOnce(t *testing.T) {
 	require.Nil(err)
 	require.NotNil(blk)
 	assert.NotNil(blk.Ticket)
+}
+
+func TestAPI_StartStopMining(t *testing.T) {
+	assert := ast.New(t)
+	require := req.New(t)
+	ctx := context.Background()
+
+	api, nd := newAPI(t, assert)
+	require.NoError(nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	require.NoError(api.StartMining(ctx))
+	api.StopMining(ctx)
 }
 
 func newAPI(t *testing.T, assert *ast.Assertions) (protocolapi.API, *node.Node) {
@@ -60,6 +69,8 @@ func newAPI(t *testing.T, assert *ast.Assertions) (protocolapi.API, *node.Node) 
 		nd.MsgPool,
 		nd.PorcelainAPI,
 		nd.PowerTable,
+		nd.StartMining,
+		nd.StopMining,
 		nd.Syncer,
 		nd.Wallet), nd
 }

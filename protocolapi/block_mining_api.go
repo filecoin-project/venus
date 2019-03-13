@@ -25,19 +25,21 @@ type API struct {
 }
 
 type apiDeps struct {
-	AddNewBlockFunc   func(context.Context, *types.Block) (err error)
-	BlockStore        blockstore.Blockstore
-	CBorStore         *hamt.CborIpldStore
-	OnlineStore       *hamt.CborIpldStore
-	ChainReader       chain.ReadStore
-	ConsensusProtocol consensus.Protocol
-	BlockTime         time.Duration
-	MineDelay         time.Duration
-	MsgPool           *core.MessagePool
-	NodePorcelain     *porcelain.API
-	PowerTable        consensus.PowerTableView
-	Syncer            chain.Syncer
-	TicketSigner      consensus.TicketSigner
+	addNewBlockFunc   func(context.Context, *types.Block) (err error)
+	blockStore        blockstore.Blockstore
+	cBorStore         *hamt.CborIpldStore
+	onlineStore       *hamt.CborIpldStore
+	chainReader       chain.ReadStore
+	consensusProtocol consensus.Protocol
+	blockTime         time.Duration
+	mineDelay         time.Duration
+	msgPool           *core.MessagePool
+	nodePorcelain     *porcelain.API
+	powerTable        consensus.PowerTableView
+	startMiningFunc   func(context.Context) error
+	stopMiningFunc    func(context.Context)
+	syncer            chain.Syncer
+	ticketSigner      consensus.TicketSigner
 }
 
 // New creates a new API instance with the provided deps
@@ -51,23 +53,27 @@ func New(
 	msgPool *core.MessagePool,
 	nodePorc *porcelain.API,
 	ptv consensus.PowerTableView,
+	startMiningFunc func(context.Context) error,
+	stopMiningfunc func(context.Context),
 	syncer chain.Syncer,
 	signer consensus.TicketSigner,
 ) API {
 	newDeps := apiDeps{
-		AddNewBlockFunc:   addNewBlockFunc,
-		BlockStore:        bstore,
-		CBorStore:         cborStore,
-		OnlineStore:       onlineStore,
-		ChainReader:       chainReader,
-		ConsensusProtocol: con,
-		BlockTime:         blockTime,
-		MineDelay:         blockMineDelay,
-		MsgPool:           msgPool,
-		NodePorcelain:     nodePorc,
-		PowerTable:        ptv,
-		Syncer:            syncer,
-		TicketSigner:      signer,
+		addNewBlockFunc:   addNewBlockFunc,
+		blockStore:        bstore,
+		cBorStore:         cborStore,
+		onlineStore:       onlineStore,
+		chainReader:       chainReader,
+		consensusProtocol: con,
+		blockTime:         blockTime,
+		mineDelay:         blockMineDelay,
+		msgPool:           msgPool,
+		nodePorcelain:     nodePorc,
+		powerTable:        ptv,
+		startMiningFunc:   startMiningFunc,
+		stopMiningFunc:    stopMiningfunc,
+		syncer:            syncer,
+		ticketSigner:      signer,
 	}
 
 	return API{apiDeps: newDeps}
@@ -77,11 +83,11 @@ func New(
 func (a *API) MineOnce(ctx context.Context) (*types.Block, error) {
 
 	getStateByKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
-		tsas, err := a.ChainReader.GetTipSetAndState(ctx, tsKey)
+		tsas, err := a.chainReader.GetTipSetAndState(ctx, tsKey)
 		if err != nil {
 			return nil, err
 		}
-		return state.LoadStateTree(ctx, a.CBorStore, tsas.TipSetStateRoot, builtin.Actors)
+		return state.LoadStateTree(ctx, a.cBorStore, tsas.TipSetStateRoot, builtin.Actors)
 	}
 
 	getState := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
@@ -94,41 +100,41 @@ func (a *API) MineOnce(ctx context.Context) (*types.Block, error) {
 			return uint64(0), err
 		}
 		if parent.Len() == 0 {
-			return a.ConsensusProtocol.Weight(ctx, ts, nil)
+			return a.consensusProtocol.Weight(ctx, ts, nil)
 		}
 		pSt, err := getStateByKey(ctx, parent.String())
 		if err != nil {
 			return uint64(0), err
 		}
-		return a.ConsensusProtocol.Weight(ctx, ts, pSt)
+		return a.consensusProtocol.Weight(ctx, ts, pSt)
 	}
 
-	minerAddrIf, err := a.NodePorcelain.ConfigGet("mining.minerAddress")
+	minerAddrIf, err := a.nodePorcelain.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return nil, err
 	}
 	minerAddr := minerAddrIf.(address.Address)
-	minerOwnerAddr, err := a.NodePorcelain.MinerGetOwnerAddress(ctx, minerAddr)
+	minerOwnerAddr, err := a.nodePorcelain.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	minerPubKey, err := a.NodePorcelain.MinerGetKey(ctx, minerAddr)
+	minerPubKey, err := a.nodePorcelain.MinerGetKey(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, a.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+		return chain.GetRecentAncestors(ctx, ts, a.chainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 	}
 
 	worker := mining.NewDefaultWorker(
-		a.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
-		a.PowerTable, a.BlockStore, a.CBorStore, minerAddr, minerOwnerAddr, minerPubKey,
-		a.TicketSigner, a.BlockTime)
+		a.msgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
+		a.powerTable, a.blockStore, a.cBorStore, minerAddr, minerOwnerAddr, minerPubKey,
+		a.ticketSigner, a.blockTime)
 
-	ts := a.ChainReader.Head()
-	res, err := mining.MineOnce(ctx, worker, a.MineDelay, ts)
+	ts := a.chainReader.Head()
+	res, err := mining.MineOnce(ctx, worker, a.mineDelay, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +142,19 @@ func (a *API) MineOnce(ctx context.Context) (*types.Block, error) {
 		return nil, res.Err
 	}
 
-	if err := a.AddNewBlockFunc(ctx, res.NewBlock); err != nil {
+	if err := a.addNewBlockFunc(ctx, res.NewBlock); err != nil {
 		return nil, err
 	}
 
 	return res.NewBlock, nil
+}
+
+// StartMining calls the node's StartMining function
+func (a *API) StartMining(ctx context.Context) error {
+	return a.startMiningFunc(ctx)
+}
+
+// StopMining calls the node's StopMining function
+func (a *API) StopMining(ctx context.Context) {
+	a.stopMiningFunc(ctx)
 }
