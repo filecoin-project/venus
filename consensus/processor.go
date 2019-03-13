@@ -332,6 +332,7 @@ var (
 	errNonceTooHigh              = errors.NewRevertError("nonce too high")
 	errNonceTooLow               = errors.NewRevertError("nonce too low")
 	errNonAccountActor           = errors.NewRevertError("message from non-account actor")
+	errNegativeValue             = errors.NewRevertError("negative value")
 	errInsufficientGas           = errors.NewRevertError("balance insufficient to cover transfer+gas")
 	errInvalidSignature          = errors.NewRevertError("invalid signature by sender over message data")
 	// TODO we'll eventually handle sending to self.
@@ -621,6 +622,7 @@ func isPermanentError(err error) bool {
 		err == errInvalidSignature ||
 		err == errNonceTooLow ||
 		err == errNonAccountActor ||
+		err == errNegativeValue ||
 		err == errors.Errors[errors.ErrCannotTransferNegativeValue] ||
 		err == errGasAboveBlockLimit
 }
