@@ -57,7 +57,8 @@ const (
 		"beatPeriod": "3s",
 		"reconnectPeriod": "10s",
 		"nickname": ""
-	}
+	},
+	"net": ""
 }`
 )
 

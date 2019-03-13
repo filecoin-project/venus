@@ -16,7 +16,6 @@ import (
 	car "gx/ipfs/QmUGpiTCKct5s1F7jaAnY9KJmoo7Qm1R2uhSjq5iHDSUMn/go-car"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -91,57 +90,42 @@ func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error
 
 	initopts = append(initopts, node.AutoSealIntervalSecondsOpt(cfg.AutoSealIntervalSeconds))
 
-	if cfg.WithMiner != (address.Address{}) {
-		newConfig := rep.Config()
-		newConfig.Mining.MinerAddress = cfg.WithMiner
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
+	if (cfg.DevnetTest && cfg.DevnetNightly) || (cfg.DevnetTest && cfg.DevnetUser) || (cfg.DevnetNightly && cfg.DevnetUser) {
+		return fmt.Errorf(`cannot specify more than one "devnet-" option`)
 	}
 
-	if cfg.DefaultAddress != (address.Address{}) {
-		newConfig := rep.Config()
-		newConfig.Wallet.DefaultAddress = cfg.DefaultAddress
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
-	}
+	newConfig := rep.Config()
 
-	if cfg.DevnetTest && cfg.DevnetNightly {
-		return fmt.Errorf(`cannot use both "--devnet-test" and "--devnet-nightly" options`)
-	}
+	newConfig.Mining.MinerAddress = cfg.WithMiner
+
+	newConfig.Wallet.DefaultAddress = cfg.DefaultAddress
 
 	// Setup devnet test specific config options.
 	if cfg.DevnetTest {
-		newConfig := rep.Config()
 		newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
+		newConfig.Net = "devnet-test"
 	}
 
 	// Setup devnet nightly specific config options.
 	if cfg.DevnetNightly {
-		newConfig := rep.Config()
 		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
+		newConfig.Net = "devnet-nightly"
 	}
 
 	// Setup devnet user specific config options.
 	if cfg.DevnetUser {
-		newConfig := rep.Config()
 		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
+		newConfig.Net = "devnet-user"
+	}
+
+	if err := rep.ReplaceConfig(newConfig); err != nil {
+		return err
 	}
 
 	switch {

@@ -45,6 +45,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -478,7 +479,7 @@ func (node *Node) Start(ctx context.Context) error {
 			log.Infof("error handling blocks: %s", types.NewSortedCidSet(cids...).String())
 		}
 	}
-	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head)
+	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
 	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host(), node.Ping, node.GetBlockTime())
 	var err error
