@@ -269,6 +269,10 @@ func decode(a string) (Address, error) {
 
 	raw := a[2:]
 	if protocol == ID {
+		// 20 is length of math.MaxUint64 as a string
+		if len(raw) > 20 {
+			return Undef, ErrInvalidLength
+		}
 		id, err := strconv.ParseUint(raw, 10, 64)
 		if err != nil {
 			return Undef, ErrInvalidPayload
