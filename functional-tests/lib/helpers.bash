@@ -165,22 +165,12 @@ function wait_mpool_size {
     --repodir="$2"
 }
 
-function add_ask {
-  ./go-filecoin miner add-ask "$1" "$2" "$3" \
-    --gas-price=0 --gas-limit=300 \
-    --repodir="$4"
+function set_price {
+  ./go-filecoin miner set-price --repodir="$3" --gas-price=0 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
 }
 
 function miner_update_pid {
   ./go-filecoin miner update-peerid "$1" "$2" \
     --gas-price=0 --gas-limit=300 \
     --repodir="$3"
-}
-
-function fork_message_wait {
-  eval "exec $1< <(./go-filecoin message wait $2 --repodir=$3)"
-}
-
-function join {
-  cat <&"$1"
 }

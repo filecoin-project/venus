@@ -34,7 +34,6 @@ func TestMinerHelp(t *testing.T) {
 		t.Parallel()
 
 		expected := []string{
-			"miner add-ask <miner> <price> <expiry>  - DEPRECATED: Use set-price",
 			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
 			"miner owner <miner>                     - Show the actor address of <miner>",
 			"miner pledge <miner>                    - View number of pledged sectors for <miner>",
@@ -59,11 +58,6 @@ func TestMinerHelp(t *testing.T) {
 		t.Parallel()
 		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
 		assert.Contains(result, "Issues a new message to the network to update the miner's libp2p identity.")
-	})
-	t.Run("add-ask --help shows add-ask help", func(t *testing.T) {
-		t.Parallel()
-		result := runHelpSuccess(t, "miner", "add-ask", "--help")
-		assert.Contains(result, "DEPRECATED: Use set-price")
 	})
 
 	t.Run("owner --help shows owner help", func(t *testing.T) {
@@ -307,7 +301,7 @@ func TestMinerSetPrice(t *testing.T) {
 	assert.Equal(`"62"`, configuredPrice.ReadStdoutTrimNewlines())
 }
 
-func TestMinerAddAskSuccess(t *testing.T) {
+func TestMinerCreateSuccess(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
@@ -381,55 +375,6 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 	}
 	t.Fail()
 	return nil
-}
-
-func TestMinerAddAskFail(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	d1 := makeTestDaemonWithMinerAndStart(t)
-	defer d1.ShutdownSuccess()
-	d := th.NewDaemon(t, th.CmdTimeout(time.Second*90), th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-	d1.ConnectSuccess(d)
-	var wg sync.WaitGroup
-	var minerAddr address.Address
-	wg.Add(1)
-	go func() {
-		miner := d.RunSuccess("miner", "create",
-			"--from", fixtures.TestAddresses[2],
-			"--gas-price", "0", "--gas-limit", "300",
-			"--peerid", th.RequireRandomPeerID().Pretty(),
-			"100", "20",
-		)
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Undef)
-		minerAddr = addr
-		wg.Done()
-	}()
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
-	d.RunFail(
-		"invalid from address",
-		"miner", "add-ask", minerAddr.String(), "--gas-price", "0", "--gas-limit", "300", "20", "10",
-		"--from", "hello",
-	)
-	d.RunFail(
-		"invalid miner address",
-		"miner", "add-ask", "hello", "20", "10",
-		"--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300",
-	)
-	d.RunFail(
-		"invalid price",
-		"miner", "add-ask", minerAddr.String(), "2f", "10",
-		"--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300",
-	)
-	d.RunFail(
-		"expiry must be a valid integer",
-		"miner", "add-ask", minerAddr.String(), "10", "3f",
-		"--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300",
-	)
 }
 
 func TestMinerOwner(t *testing.T) {
