@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"sync"
 	"testing"
 
@@ -14,15 +15,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var seed = types.GenerateKeyInfoSeed()
-var ki = types.MustGenerateKeyInfo(10, seed)
-var mockSigner = types.NewMockSigner(ki)
+var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func TestMessagePoolAddRemove(t *testing.T) {
 	assert := assert.New(t)
 
-	pool := NewMessagePool()
+	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 	msg1 := newSignedMessage()
 	msg2 := newSignedMessage()
 
@@ -59,7 +58,7 @@ func TestMessagePoolAddRemove(t *testing.T) {
 func TestMessagePoolAddBadSignature(t *testing.T) {
 	assert := assert.New(t)
 
-	pool := NewMessagePool()
+	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 	smsg := newSignedMessage()
 	smsg.Message.Nonce = types.Uint64(uint64(smsg.Message.Nonce) + uint64(1)) // invalidate message
 
@@ -76,7 +75,7 @@ func TestMessagePoolAddBadSignature(t *testing.T) {
 func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
 
-	pool := NewMessagePool()
+	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 	msg1 := newSignedMessage()
 
 	assert.Len(pool.Pending(), 0)
@@ -95,7 +94,7 @@ func TestMessagePoolAsync(t *testing.T) {
 	count := 400
 	msgs := types.NewSignedMsgs(count, mockSigner)
 
-	pool := NewMessagePool()
+	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 	var wg sync.WaitGroup
 
 	for i := 0; i < 4; i++ {
@@ -165,18 +164,22 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{})
+		parent := types.TipSet{}
+		blk := types.Block{Height: 0}
+		parent[blk.Cid()] = &blk
+
+		oldChain := NewChainWithMessages(store, parent, msgsSet{})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[1]}})
+		newChain := NewChainWithMessages(store, parent, msgsSet{msgs{m[1]}})
 		newTipSet := headOf(newChain)
 
-		assert.NoError(UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet))
+		assert.NoError(p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[0])
 	})
 
@@ -185,7 +188,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0, m1], Chain: b[m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -193,7 +196,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, oldTipSet) // sic
+		p.UpdateMessagePool(ctx, store, oldTipSet, oldTipSet) // sic
 		assertPoolEquals(assert, p, m[0], m[1])
 	})
 
@@ -202,7 +205,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -219,7 +222,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[1])
 	})
 
@@ -228,7 +231,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -243,7 +246,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[1])
 	})
 
@@ -252,7 +255,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1, m2],     Chain: b[m0] -> b[m3] -> b[m4, m5]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -263,7 +266,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[1], m[2])
 	})
 
@@ -272,7 +275,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: b[m0] -> b[m3] -> b[m4] -> b[m5] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -292,7 +295,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[6])
 	})
 
@@ -301,7 +304,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -319,7 +322,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[6])
 	})
 
@@ -328,7 +331,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -345,7 +348,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[3], m[5])
 	})
 
@@ -354,7 +357,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m2, m3],         Chain: b[m0] -> b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 		m := types.NewSignedMsgs(4, mockSigner)
 
 		oldChain := NewChainWithMessages(store, types.TipSet{},
@@ -366,7 +369,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldTipSet := headOf(oldChain)
 
 		oldTipSetPrev := oldChain[1]
-		UpdateMessagePool(ctx, p, store, oldTipSet, oldTipSetPrev)
+		p.UpdateMessagePool(ctx, store, oldTipSet, oldTipSetPrev)
 		assertPoolEquals(assert, p, m[2], m[3])
 	})
 
@@ -375,7 +378,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -386,7 +389,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p, m[0])
 	})
 
@@ -395,7 +398,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -410,8 +413,94 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		UpdateMessagePool(ctx, p, store, oldTipSet, newTipSet)
+		p.UpdateMessagePool(ctx, store, oldTipSet, newTipSet)
 		assertPoolEquals(assert, p)
+	})
+
+	t.Run("Times out old messages", func(t *testing.T) {
+		require := require.New(t)
+
+		var err error
+		store := hamt.NewCborStore()
+		blockTimer := testhelpers.NewTestBlockTimer(0)
+		p := NewMessagePool(blockTimer)
+
+		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
+
+		head := headOf(NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{}}))
+
+		// Add a message at each block height until MessageTimeOut is reached
+		for i := 0; i < MessageTimeOut; i++ {
+
+			MustAdd(p, m[i])
+
+			// update pool with tipset that has no messages
+			next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
+			p.UpdateMessagePool(ctx, store, head, next)
+
+			// assert all added messages still in pool
+			assertPoolEquals(assert, p, m[:i+1]...)
+
+			// blockTimer.Height determines block time at which message is added
+			blockTimer.Height, err = next.Height()
+			require.NoError(err)
+
+			head = next
+		}
+
+		// next tipset times out first message only
+		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
+		p.UpdateMessagePool(ctx, store, head, next)
+		assertPoolEquals(assert, p, m[1:]...)
+	})
+
+	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
+		require := require.New(t)
+
+		var err error
+		store := hamt.NewCborStore()
+		blockTimer := testhelpers.NewTestBlockTimer(0)
+		p := NewMessagePool(blockTimer)
+
+		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
+
+		head := headOf(NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{}}))
+
+		// Add a message at each block height until MessageTimeOut is reached
+		for i := 0; i < MessageTimeOut; i++ {
+			require.NoError(err)
+
+			MustAdd(p, m[i])
+
+			// update pool with tipset that has no messages
+			height, err := head.Height()
+			require.NoError(err)
+
+			// create a tipset at given height with one block containing no messages
+			next := types.TipSet{}
+			nextHeight := types.Uint64(height + 5) // simulate 4 null blocks
+			blk := &types.Block{
+				Height:  nextHeight,
+				Parents: head.ToSortedCidSet(),
+			}
+			MustPut(store, blk)
+			next[blk.Cid()] = blk
+
+			p.UpdateMessagePool(ctx, store, head, next)
+
+			// assert all added messages still in pool
+			assertPoolEquals(assert, p, m[:i+1]...)
+
+			// blockTimer.Height determines block time at which next message is added
+			blockTimer.Height = uint64(nextHeight)
+
+			head = next
+		}
+
+		// next tipset times out first message only
+		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
+		p.UpdateMessagePool(ctx, store, head, next)
+		assertPoolEquals(assert, p, m[1:]...)
 	})
 }
 
@@ -420,17 +509,17 @@ func TestLargestNonce(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("No matches", func(t *testing.T) {
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
 
-		_, found := LargestNonce(p, address.NewForTestGetter()())
+		_, found := p.LargestNonce(address.NewForTestGetter()())
 		assert.False(found)
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
@@ -440,13 +529,13 @@ func TestLargestNonce(t *testing.T) {
 
 		MustAdd(p, sm...)
 
-		largest, found := LargestNonce(p, m[0].From)
+		largest, found := p.LargestNonce(m[0].From)
 		assert.True(found)
 		assert.Equal(uint64(0), largest)
 	})
 
 	t.Run("Match", func(t *testing.T) {
-		p := NewMessagePool()
+		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
 
 		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1
@@ -458,7 +547,7 @@ func TestLargestNonce(t *testing.T) {
 
 		MustAdd(p, sm...)
 
-		largest, found := LargestNonce(p, m[2].From)
+		largest, found := p.LargestNonce(m[2].From)
 		assert.True(found)
 		assert.Equal(uint64(2), largest)
 	})

@@ -373,6 +373,13 @@ func (store *DefaultStore) Head() types.TipSet {
 	return store.head
 }
 
+// BlockHeight returns the chain height of the head tipset.
+// Strictly speaking, the block height is the number of tip sets that appear on chain plus
+// the number of "null blocks" that occur when a mining round fails to produce a block.
+func (store *DefaultStore) BlockHeight() (uint64, error) {
+	return store.Head().Height()
+}
+
 // LatestState returns the state associated with the latest chain head.
 func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
 	h := store.Head()

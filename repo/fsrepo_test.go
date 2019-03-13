@@ -46,7 +46,6 @@ const (
 	},
 	"mining": {
 		"minerAddress": "",
-		"blockSignerAddress": "",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},

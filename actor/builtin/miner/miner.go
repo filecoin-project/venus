@@ -643,6 +643,14 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
+		// Check if we submitted it in time
+		provingPeriodEnd := state.ProvingPeriodStart.Add(ProvingPeriodBlocks)
+		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
+			// Not great.
+			// TODO: charge penalty
+			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
+		}
+
 		// reach in to actor storage to grab comm-r for each committed sector
 		var commRs []proofs.CommR
 		for _, v := range state.SectorCommitments {
@@ -659,8 +667,13 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			sectorStoreType = proofs.Test
 		}
 
+		seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "failed to sample chain for challenge seed")
+		}
+
 		req := proofs.VerifyPoSTRequest{
-			ChallengeSeed: proofs.PoStChallengeSeed{},
+			ChallengeSeed: seed,
 			CommRs:        commRs,
 			Faults:        []uint64{},
 			Proofs:        postProofs,
@@ -675,17 +688,9 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			return nil, Errors[ErrInvalidPoSt]
 		}
 
-		// Check if we submitted it in time
-		provingPeriodEnd := state.ProvingPeriodStart.Add(ProvingPeriodBlocks)
-
-		if ctx.BlockHeight().LessEqual(provingPeriodEnd) {
-			state.ProvingPeriodStart = provingPeriodEnd
-			state.LastPoSt = ctx.BlockHeight()
-		} else {
-			// Not great.
-			// TODO: charge penalty
-			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
-		}
+		// transition to the next proving period
+		state.ProvingPeriodStart = provingPeriodEnd
+		state.LastPoSt = ctx.BlockHeight()
 
 		return nil, nil
 	})
@@ -713,4 +718,16 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 	}
 
 	return state.ProvingPeriodStart, 0, nil
+}
+
+func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (proofs.PoStChallengeSeed, error) {
+	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
+	if err != nil {
+		return proofs.PoStChallengeSeed{}, err
+	}
+
+	seed := proofs.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+
+	return seed, nil
 }

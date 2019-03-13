@@ -46,8 +46,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	newAddress := address.NewForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 	startingNetworkBalance := uint64(10000000)
 
@@ -108,8 +107,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	minerAddr := newAddress()
 
 	toAddr := newAddress()
-	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
+
 	fromAddr1 := mockSigner.Addresses[0]
 	fromAddr2 := mockSigner.Addresses[1]
 
@@ -179,8 +178,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	vms := th.VMStorage()
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000))
@@ -189,7 +188,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 		fromAddr:               act1,
 	})
 
-	vms := th.VMStorage()
 	minerOwner := address.MakeTestAddress("mo")
 	stCid, miner := mustCreateMiner(ctx, require, st, vms, minerAddr, minerOwner)
 
@@ -243,8 +241,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	newAddress := address.NewForTestGetter()
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 	toAddr := newAddress()
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
@@ -336,8 +333,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	defer func() {
 		delete(builtin.Actors, fakeActorCodeCid)
 	}()
-	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
 	fromAddr, toAddr := mockSigner.Addresses[0], mockSigner.Addresses[1]
@@ -449,8 +445,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		ctx := context.Background()
 		cst := hamt.NewCborStore()
 		vms := th.VMStorage()
-		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-		mockSigner := types.NewMockSigner(ki)
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		addr1 := mockSigner.Addresses[0]
 		addr2 := newAddress()
@@ -476,8 +471,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		ctx := context.Background()
 		cst := hamt.NewCborStore()
 		vms := th.VMStorage()
-		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-		mockSigner := types.NewMockSigner(ki)
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		addr1 := mockSigner.Addresses[0]
 		addr2 := newAddress()
@@ -539,8 +533,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		cst := hamt.NewCborStore()
 		vms := th.VMStorage()
-		ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-		mockSigner := types.NewMockSigner(ki)
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 		addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 		act2 := th.RequireNewMinerActor(require, vms, addr2, addr1, []byte{},
@@ -565,8 +558,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		ctx := context.Background()
 		cst := hamt.NewCborStore()
 		vms := th.VMStorage()
-		ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-		mockSigner := types.NewMockSigner(ki)
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		addr1 := mockSigner.Addresses[0]
 		addr2 := newAddress()
@@ -726,8 +718,7 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 
-	ki := types.MustGenerateKeyInfo(3, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(3)
 
 	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
 	addr4 := address.NewForTestGetter()()
@@ -1045,8 +1036,8 @@ func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid
 
 	addressGenerator := address.NewForTestGetter()
 
-	keyInfo := types.MustGenerateKeyInfo(3, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(keyInfo)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(3)
+
 	addresses := []address.Address{
 		mockSigner.Addresses[0], // addr0
 		mockSigner.Addresses[1], // addr1
@@ -1087,8 +1078,7 @@ func mustSetup2Actors(t *testing.T, balance1 *types.AttoFIL, balance2 *types.Att
 
 	cst := hamt.NewCborStore()
 	vms := th.VMStorage()
-	ki := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := th.RequireNewAccountActor(require, balance1)

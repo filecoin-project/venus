@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"encoding/json"
@@ -20,46 +20,48 @@ func TestMessageSend(t *testing.T) {
 
 	d := th.NewDaemon(
 		t,
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		// must include same-index KeyFilePath when configuring with a TestMiner.
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
 	).Start()
 	defer d.ShutdownSuccess()
 
 	d.RunSuccess("mining", "once")
 
+	from := d.GetDefaultAddress() // this should = fixtures.TestAddresses[0]
+
 	t.Log("[failure] invalid target")
 	d.RunFail(
 		"invalid checksum",
 		"message", "send",
-		"--from", fixtures.TestAddresses[0],
+		"--from", from,
 		"--price", "0", "--limit", "300",
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[0],
-		"--price", "0", "--limit", "300",
-		fixtures.TestAddresses[1],
+		"--from", from,
+		"--price", "0",
+		"--limit", "300",
+		fixtures.TestAddresses[3],
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
-		"--from", fixtures.TestAddresses[0],
-		"--price", "0", "--limit", "300",
-		"--value=10", fixtures.TestAddresses[1],
+		"--from", from,
+		"--price", "0",
+		"--limit", "300",
+		"--value=10",
+		fixtures.TestAddresses[3],
 	)
 }
 
 func TestMessageWait(t *testing.T) {
 	t.Parallel()
-
-	d := th.NewDaemon(
-		t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-	).Start()
+	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
@@ -101,6 +103,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	d := th.NewDaemon(
 		t,
+		// default address required
 		th.DefaultAddress(fixtures.TestAddresses[0]),
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),

@@ -53,6 +53,13 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
+// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
+// in the blockchain at a given height, useful for things like PoSt challenge seed
+// generation.
+func (a *API) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	return SampleChainRandomness(ctx, a, sampleHeight)
+}
+
 // DealGet returns a single deal matching a given cid or an error
 func (a *API) DealGet(proposalCid cid.Cid) *storagedeal.Deal {
 	return DealGet(a, proposalCid)
@@ -108,6 +115,11 @@ func (a *API) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID 
 // MinerGetOwnerAddress queries for the owner address of the given miner
 func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
 	return MinerGetOwnerAddress(ctx, a, minerAddr)
+}
+
+// MinerGetKey queries for the public key of the given miner
+func (a *API) MinerGetKey(ctx context.Context, minerAddr address.Address) ([]byte, error) {
+	return MinerGetKey(ctx, a, minerAddr)
 }
 
 // MinerGetPeerID queries for the peer id of the given miner

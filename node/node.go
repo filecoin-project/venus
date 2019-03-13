@@ -62,6 +62,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
@@ -370,7 +371,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	var chainStore chain.Store = chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
+	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
 	var processor consensus.Processor
@@ -389,11 +390,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, nodeConsensus, chainStore)
-	chainReader, ok := chainStore.(chain.ReadStore)
-	if !ok {
-		return nil, errors.New("failed to cast chain.Store to chain.ReadStore")
-	}
-	msgPool := core.NewMessagePool()
+	msgPool := core.NewMessagePool(chainStore)
 
 	// Set up libp2p pubsub
 	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
@@ -407,16 +404,16 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Chain:        chainReader,
+		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
-		MsgPreviewer: msg.NewPreviewer(fcWallet, chainReader, &cstOffline, bs),
-		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainReader, &cstOffline, bs),
-		MsgSender:    msg.NewSender(fcWallet, chainReader, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
-		MsgWaiter:    msg.NewWaiter(chainReader, bs, &cstOffline),
+		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
+		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
+		MsgSender:    msg.NewSender(fcWallet, chainStore, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
+		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker),
-		SigGetter:    mthdsig.NewGetter(chainReader),
+		SigGetter:    mthdsig.NewGetter(chainStore),
 		Wallet:       fcWallet,
 	}))
 
@@ -426,7 +423,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		cborStore:    &cstOffline,
 		OnlineStore:  &cstOnline,
 		Consensus:    nodeConsensus,
-		ChainReader:  chainReader,
+		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PorcelainAPI: PorcelainAPI,
@@ -646,7 +643,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 
 			// When a new best TipSet is promoted we remove messages in it from the
 			// message pool (and add them back in if we have a re-org).
-			if err := core.UpdateMessagePool(ctx, node.MsgPool, node.CborStore(), head, newHead); err != nil {
+			if err := node.MsgPool.UpdateMessagePool(ctx, node.CborStore(), head, newHead); err != nil {
 				log.Error("error updating message pool for new tipset:", err)
 				continue
 			}
@@ -771,7 +768,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	}
 
 	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
-	minerSigningAddress := node.MiningSignerAddress()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
@@ -805,11 +801,18 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return node.Consensus.Weight(ctx, ts, pSt)
 		}
 		getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 		}
 		processor := consensus.NewDefaultProcessor()
+
+		minerPubKey, err := node.PorcelainAPI.MinerGetKey(ctx, minerAddr)
+		if err != nil {
+			log.Errorf("could not getKey from miner actor")
+			return err
+		}
+
 		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
-			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerSigningAddress, node.Wallet, blockTime)
+			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, node.Wallet, blockTime)
 		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
 	}
 
@@ -995,11 +998,11 @@ func (node *Node) NewAddress() (address.Address, error) {
 }
 
 // CreateMiner creates a new miner actor for the given account and returns its address.
-// It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
+// It will wait for the the actor to appear on-chain and add the address to mining.minerAddress in the config.
 // TODO: This should live in a MinerAPI or some such. It's here until we have a proper API layer.
 // TODO: add ability to pass in a KeyInfo to store for signing blocks.
 //       See https://github.com/filecoin-project/go-filecoin/issues/1843
-func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
+func (node *Node) CreateMiner(ctx context.Context, minerOwnerAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, pledge uint64, pid libp2ppeer.ID, collateral *types.AttoFIL) (_ *address.Address, err error) {
 
 	// Only create a miner if we don't already have one.
 	if _, err := node.miningAddress(); err != ErrNoMinerAddress {
@@ -1010,14 +1013,15 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
-	pubKey, err := node.getMinerActorPubKey()
+
+	pubKey, err := node.Wallet.GetPubKeyForAddress(minerOwnerAddr)
 	if err != nil {
 		return nil, err
 	}
 
 	smsgCid, err := node.PorcelainAPI.MessageSendWithDefaultAddress(
 		ctx,
-		accountAddr,
+		minerOwnerAddr,
 		address.StorageMarketAddress,
 		collateral,
 		gasPrice,
@@ -1044,13 +1048,7 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 		return nil, err
 	}
 
-	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1843
-	blockSignerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
-	if err != nil {
-		return &minerAddr, err
-	}
-
-	err = node.saveMinerConfig(minerAddr, blockSignerAddr)
+	err = node.saveMinerConfig(minerAddr)
 	if err != nil {
 		return &minerAddr, err
 	}
@@ -1060,12 +1058,11 @@ func (node *Node) CreateMiner(ctx context.Context, accountAddr address.Address, 
 	return &minerAddr, err
 }
 
-// saveMinerConfig updates the Node Mining config with the MinerAddress and the BlockSignerAddress.
-func (node *Node) saveMinerConfig(minerAddr address.Address, signerAddr address.Address) error {
+// saveMinerConfig updates the Node Mining config with the MinerAddress.
+func (node *Node) saveMinerConfig(minerAddr address.Address) error {
 	r := node.Repo
 	newConfig := r.Config()
 	newConfig.Mining.MinerAddress = minerAddr
-	newConfig.Mining.BlockSignerAddress = signerAddr
 	return r.ReplaceConfig(newConfig)
 }
 
@@ -1085,12 +1082,6 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 	return address.NewFromBytes(res[0])
 }
 
-// MiningSignerAddress returns the signing address for the miner actor to sign blocks and tickets
-func (node *Node) MiningSignerAddress() address.Address {
-	r := node.Repo
-	return r.Config().Mining.BlockSignerAddress
-}
-
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	head := node.ChainReader.Head()
@@ -1102,17 +1093,6 @@ func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 		return nil, err
 	}
 	return types.NewBlockHeight(height), nil
-}
-
-// getMinerActorPubKey gets the miner actor public key
-func (node *Node) getMinerActorPubKey() ([]byte, error) {
-	addr := node.Repo.Config().Mining.MinerAddress
-
-	// this is expected if there is no miner
-	if (addr == address.Address{}) || !node.Wallet.HasAddress(addr) {
-		return nil, nil
-	}
-	return node.Wallet.GetPubKeyForAddress(addr)
 }
 
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {

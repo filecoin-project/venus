@@ -41,6 +41,7 @@ type ReadStore interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 
 	BlockHistory(ctx context.Context, tips types.TipSet) <-chan interface{}
+
 	GenesisCid() cid.Cid
 }
 

@@ -102,9 +102,26 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 	// Check that we are storing the address to sign for.
 	backend, err := w.Find(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to sign data with address: %s", addr)
+		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
+}
+
+// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey
+func (w *Wallet) GetAddressForPubKey(pk []byte) (address.Address, error) {
+	var addr address.Address
+	addrs := w.Addresses()
+	for _, addr = range addrs {
+		testPk, err := w.GetPubKeyForAddress(addr)
+		if err != nil {
+			return addr, errors.New("could not fetch public key")
+		}
+
+		if bytes.Equal(testPk, pk) {
+			return addr, nil
+		}
+	}
+	return addr, errors.New("public key not found in wallet")
 }
 
 // Verify cryptographically verifies that 'sig' is the signed hash of 'data' with

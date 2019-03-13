@@ -2,14 +2,12 @@ package storage
 
 import (
 	"context"
+	"crypto/rand"
 	"testing"
-
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -17,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -364,9 +363,17 @@ type minerTestPorcelain struct {
 	require *require.Assertions
 }
 
+func (mtp *minerTestPorcelain) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	bytes := make([]byte, 42)
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err)
+	}
+
+	return bytes, nil
+}
+
 func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
-	mockSigner := types.NewMockSigner(ki)
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
 	payerAddr, err := ki[0].Address()
 	require.NoError(err, "Could not create payer address")
 

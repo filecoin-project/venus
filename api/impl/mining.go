@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -53,27 +54,27 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return nd.Consensus.Weight(ctx, ts, pSt)
 	}
 
-	miningAddrIf, err := nd.PorcelainAPI.ConfigGet("mining.minerAddress")
+	minerAddrIf, err := nd.PorcelainAPI.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return nil, err
 	}
-	miningAddr := miningAddrIf.(address.Address)
-	miningOwnerAddr, err := nd.PorcelainAPI.MinerGetOwnerAddress(ctx, miningAddr)
+	minerAddr := minerAddrIf.(address.Address)
+	minerOwnerAddr, err := nd.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	blockSignerAddrIf, err := nd.PorcelainAPI.ConfigGet("mining.blockSignerAddress")
+	minerPubKey, err := nd.PorcelainAPI.MinerGetKey(ctx, minerAddr)
 	if err != nil {
 		return nil, err
 	}
-	blockSignerAddr := blockSignerAddrIf.(address.Address)
 
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, consensus.LookBackParameter)
+		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 	}
+
 	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
-		nd.PowerTable, nd.Blockstore, nd.CborStore(), miningAddr, miningOwnerAddr, blockSignerAddr, nd.Wallet, blockTime)
+		nd.PowerTable, nd.Blockstore, nd.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, nd.Wallet, blockTime)
 
 	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)
 	if err != nil {

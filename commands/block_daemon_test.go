@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"encoding/json"
@@ -17,7 +17,7 @@ func TestBlockDaemon(t *testing.T) {
 	t.Run("show block <cid-of-genesis-block> returns human readable output for the filecoin block", func(t *testing.T) {
 		assert := assert.New(t)
 
-		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
 		// mine a block and get its CID
@@ -35,7 +35,9 @@ func TestBlockDaemon(t *testing.T) {
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {
 		require := require.New(t)
 
-		d := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		d := th.NewDaemon(t,
+			th.KeyFile(fixtures.KeyFilePaths()[0]),
+			th.WithMiner(fixtures.TestMiners[0])).Start()
 		defer d.ShutdownSuccess()
 
 		// mine a block and get its CID
@@ -44,7 +46,7 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		blockGetLine := th.RunSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
 		var blockGetBlock types.Block
-		json.Unmarshal([]byte(blockGetLine), &blockGetBlock)
+		require.NoError(json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		// ensure that we were returned the correct block
 

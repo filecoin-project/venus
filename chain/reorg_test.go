@@ -17,8 +17,16 @@ func TestIsReorg(t *testing.T) {
 	// Only need dummy blocks for this test
 	var reorgGen types.Block
 	reorgGenTS := th.RequireNewTipSet(require, &reorgGen)
+
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := mockSigner.PubKeys[0]
+
 	t.Run("if chain is a fork of another chain, IsReorg is true", func(t *testing.T) {
-		params := chain.FakeChildParams{GenesisCid: reorgGen.Cid(), StateRoot: reorgGen.StateRoot}
+		params := chain.FakeChildParams{
+			MinerPubKey: mockSignerPubKey,
+			Signer:      mockSigner,
+			GenesisCid:  reorgGen.Cid(),
+			StateRoot:   reorgGen.StateRoot}
 		chn := chain.RequireMkFakeChain(require, reorgGenTS, 10, params)
 		curHead := chn[len(chn)-1]
 
@@ -29,7 +37,11 @@ func TestIsReorg(t *testing.T) {
 	})
 
 	t.Run("if new chain has existing chain as prefix, IsReorg is false", func(t *testing.T) {
-		params := chain.FakeChildParams{GenesisCid: reorgGen.Cid(), StateRoot: reorgGen.StateRoot}
+		params := chain.FakeChildParams{
+			MinerPubKey: mockSignerPubKey,
+			Signer:      mockSigner,
+			GenesisCid:  reorgGen.Cid(),
+			StateRoot:   reorgGen.StateRoot}
 		chn := chain.RequireMkFakeChain(require, reorgGenTS, 20, params)
 		curHead := chn[10]
 
@@ -37,11 +49,20 @@ func TestIsReorg(t *testing.T) {
 	})
 
 	t.Run("if chain has head that is a subset of new chain head, IsReorg is false", func(t *testing.T) {
-		params := chain.FakeChildParams{GenesisCid: reorgGen.Cid(), StateRoot: reorgGen.StateRoot}
+		params := chain.FakeChildParams{
+			GenesisCid:  reorgGen.Cid(),
+			MinerPubKey: mockSignerPubKey,
+			Signer:      mockSigner,
+			StateRoot:   reorgGen.StateRoot}
 		chn := chain.RequireMkFakeChain(require, reorgGenTS, 10, params)
 		curHead := chn[len(chn)-1]
 		headBlock := curHead.ToSlice()[0]
-		block2 := chain.RequireMkFakeChild(require, chain.FakeChildParams{Parent: chn[len(chn)-2], GenesisCid: reorgGen.Cid(), StateRoot: reorgGen.StateRoot})
+		block2 := chain.RequireMkFakeChild(require, chain.FakeChildParams{
+			Parent:      chn[len(chn)-2],
+			MinerPubKey: mockSignerPubKey,
+			Signer:      mockSigner,
+			GenesisCid:  reorgGen.Cid(),
+			StateRoot:   reorgGen.StateRoot})
 		superset := th.RequireNewTipSet(require, headBlock, block2)
 		chn[len(chn)-1] = superset
 

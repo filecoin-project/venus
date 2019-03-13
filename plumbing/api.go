@@ -3,6 +3,7 @@ package plumbing
 import (
 	"context"
 
+	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -108,6 +109,12 @@ func (api *API) ChainHead(ctx context.Context) types.TipSet {
 	return api.chain.Head()
 }
 
+// GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
+// `TipSet` with height `descendantBlockHeight` in the heaviest chain.
+func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	return chain.GetRecentAncestorsOfHeaviestChain(ctx, api.chain, descendantBlockHeight)
+}
+
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
 	return api.chain.BlockHistory(ctx, api.chain.Head())
@@ -198,7 +205,12 @@ func (api *API) NetworkGetBandwidthStats() metrics.Stats {
 	return api.network.GetBandwidthStats()
 }
 
-// NetworkGetPeerID gets the current peer id from Util
+// NetworkGetPeerAddresses gets the current addresses of the node
+func (api *API) NetworkGetPeerAddresses() []ma.Multiaddr {
+	return api.network.GetPeerAddresses()
+}
+
+// NetworkGetPeerID gets the current peer id of the node
 func (api *API) NetworkGetPeerID() peer.ID {
 	return api.network.GetPeerID()
 }

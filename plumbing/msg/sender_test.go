@@ -6,6 +6,11 @@ import (
 	"sync"
 	"testing"
 
+	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -17,11 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/pkg/errors"
-
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestSend(t *testing.T) {
@@ -114,7 +114,7 @@ func TestNextNonce(t *testing.T) {
 
 		address := address.NewForTestGetter()()
 
-		n, err := nextNonce(ctx, st, core.NewMessagePool(), address)
+		n, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.NoError(err)
 		assert.Equal(uint64(0), n)
 	})
@@ -130,7 +130,7 @@ func TestNextNonce(t *testing.T) {
 		assert.NoError(err)
 		_ = state.MustSetActor(st, address, actor)
 
-		_, err = nextNonce(ctx, st, core.NewMessagePool(), address)
+		_, err = nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.Error(err)
 		assert.Contains(err.Error(), "account or empty")
 	})
@@ -146,7 +146,7 @@ func TestNextNonce(t *testing.T) {
 		actor.Nonce = 42
 		state.MustSetActor(st, address, actor)
 
-		nonce, err := nextNonce(ctx, st, core.NewMessagePool(), address)
+		nonce, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.NoError(err)
 		assert.Equal(uint64(42), nonce)
 	})
@@ -156,7 +156,7 @@ func TestNextNonce(t *testing.T) {
 		assert := assert.New(t)
 		store := hamt.NewCborStore()
 		st := state.NewEmptyStateTree(store)
-		mp := core.NewMessagePool()
+		mp := core.NewMessagePool(testhelpers.NewTestBlockTimer(0))
 		addr := mockSigner.Addresses[0]
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
@@ -210,5 +210,5 @@ func setupSendTest(require *require.Assertions) (*wallet.Wallet, *chain.DefaultS
 	// Install the key in the wallet for use in signing.
 	err = d.wallet.Backends(wallet.DSBackendType)[0].(*wallet.DSBackend).ImportKey(&ki)
 	require.NoError(err)
-	return d.wallet, d.chainStore, core.NewMessagePool()
+	return d.wallet, d.chainStore, core.NewMessagePool(testhelpers.NewTestBlockTimer(0))
 }

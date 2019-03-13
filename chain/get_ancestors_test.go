@@ -23,9 +23,19 @@ func setupGetAncestorTests(require *require.Assertions) (context.Context, *hamt.
 // its head.
 func requireGrowChain(ctx context.Context, require *require.Assertions, cst *hamt.CborIpldStore, chainStore chain.Store, numBlocks int) {
 	link := chainStore.Head()
+
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := ki[0].PublicKey()
+
 	for i := 0; i < numBlocks; i++ {
-		linkBlock := chain.RequireMkFakeChild(require,
-			chain.FakeChildParams{Parent: link, GenesisCid: genCid, StateRoot: genStateRoot})
+		fakeChildParams := chain.FakeChildParams{
+			Parent:      link,
+			GenesisCid:  genCid,
+			Signer:      signer,
+			MinerPubKey: mockSignerPubKey,
+			StateRoot:   genStateRoot,
+		}
+		linkBlock := chain.RequireMkFakeChild(require, fakeChildParams)
 		requirePutBlocks(require, cst, linkBlock)
 		link = testhelpers.RequireNewTipSet(require, linkBlock)
 		linkTsas := &chain.TipSetAndState{
@@ -88,9 +98,22 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	requireGrowChain(ctx, require, cst, chainStore, len1)
 
 	// Now add 10 null blocks and 1 tipset.
+
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := ki[0].PublicKey()
+
 	nullBlocks := uint64(10)
-	afterNullBlock := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{Parent: chainStore.Head(), GenesisCid: genCid, StateRoot: genStateRoot, NullBlockCount: nullBlocks})
+
+	fakeChildParams := chain.FakeChildParams{
+		Parent:         chainStore.Head(),
+		GenesisCid:     genCid,
+		NullBlockCount: nullBlocks,
+		Signer:         signer,
+		MinerPubKey:    mockSignerPubKey,
+		StateRoot:      genStateRoot,
+	}
+
+	afterNullBlock := chain.RequireMkFakeChild(require, fakeChildParams)
 	requirePutBlocks(require, cst, afterNullBlock)
 	afterNull := testhelpers.RequireNewTipSet(require, afterNullBlock)
 	afterNullTsas := &chain.TipSetAndState{
@@ -203,9 +226,20 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	requireGrowChain(ctx, require, cst, chainStore, len1)
 
 	// Now add 10 null blocks and 1 tipset.
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := ki[0].PublicKey()
+
 	nullBlocks := uint64(10)
-	afterNullBlock := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{Parent: chainStore.Head(), GenesisCid: genCid, StateRoot: genStateRoot, NullBlockCount: nullBlocks})
+
+	fakeChildParams := chain.FakeChildParams{
+		Parent:         chainStore.Head(),
+		GenesisCid:     genCid,
+		StateRoot:      genStateRoot,
+		NullBlockCount: nullBlocks,
+		Signer:         signer,
+		MinerPubKey:    mockSignerPubKey,
+	}
+	afterNullBlock := chain.RequireMkFakeChild(require, fakeChildParams)
 	requirePutBlocks(require, cst, afterNullBlock)
 	afterNull := testhelpers.RequireNewTipSet(require, afterNullBlock)
 	afterNullTsas := &chain.TipSetAndState{
