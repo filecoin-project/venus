@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/protocolapi"
 	"net/http"
 	_ "net/http/pprof" // nolint: golint
 	"os"
@@ -122,8 +123,21 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	return repo.OpenFSRepo(getRepoDir(req))
 }
 
-func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, req *cmds.Request) error {
-	api := impl.New(node)
+func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
+	api := impl.New(nd)
+	blockTime, mineDelay := nd.MiningTimes()
+	protocolAPI := protocolapi.New(
+		nd.AddNewBlock,
+		nd.Blockstore,
+		nd.CborStore(), nd.OnlineStore,
+		nd.ChainReader,
+		nd.Consensus,
+		blockTime, mineDelay,
+		nd.MsgPool,
+		nd.PorcelainAPI,
+		nd.PowerTable,
+		nd.Syncer,
+		nd.Wallet)
 
 	if err := api.Daemon().Start(ctx); err != nil {
 		return err
@@ -133,7 +147,8 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 		// TODO: should this be the passed in context?
 		ctx:          context.Background(),
 		api:          api,
-		porcelainAPI: node.PorcelainAPI,
+		porcelainAPI: nd.PorcelainAPI,
+		protocolAPI:  &protocolAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
@@ -176,7 +191,7 @@ func runAPIAndWait(ctx context.Context, node *node.Node, config *config.Config, 
 
 	// write our api address to file
 	// TODO: use api.Repo() once implemented
-	if err := node.Repo.SetAPIAddr(config.API.Address); err != nil {
+	if err := nd.Repo.SetAPIAddr(config.API.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
 

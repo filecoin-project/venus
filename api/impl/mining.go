@@ -73,7 +73,8 @@ func (api *nodeMining) Once(ctx context.Context) (*types.Block, error) {
 		return chain.GetRecentAncestors(ctx, ts, nd.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 	}
 
-	worker := mining.NewDefaultWorker(nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
+	worker := mining.NewDefaultWorker(
+		nd.MsgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
 		nd.PowerTable, nd.Blockstore, nd.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, nd.Wallet, blockTime)
 
 	res, err := mining.MineOnce(ctx, worker, mineDelay, ts)

@@ -22,7 +22,7 @@ var miningCmd = &cmds.Command{
 
 var miningOnceCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		blk, err := GetAPI(env).Mining().Once(req.Context)
+		blk, err := GetProtocolAPI(env).MineOnce(req.Context)
 		if err != nil {
 			return err
 		}
