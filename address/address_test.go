@@ -411,4 +411,9 @@ func TestAddressFormat(t *testing.T) {
 	assert.Equal("t2wvjry4bx6bwj6kkhcmvgu5zafqyi5cjzbtet3va", a.String())
 	assert.Equal("02B5531C7037F06C9F2947132A6A77202C308E8939", fmt.Sprintf("%X", a))
 	assert.Equal("[2 - b5531c7037f06c9f2947132a6a77202c308e8939]", fmt.Sprintf("%v", a))
+
+	assert.Equal("", fmt.Sprintf("%X", Undef))
+	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef.String())) // nolint: staticcheck
+	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef))          // nolint: staticcheck
+	assert.Equal(UndefAddressString, fmt.Sprintf("%v", Undef))
 }

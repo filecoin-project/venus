@@ -152,7 +152,11 @@ func (a Address) MarshalJSON() ([]byte, error) {
 func (a Address) Format(f fmt.State, c rune) {
 	switch c {
 	case 'v':
-		fmt.Fprintf(f, "[%x - %x]", a.Protocol(), a.Payload()) // nolint: errcheck
+		if a.Empty() {
+			fmt.Fprint(f, UndefAddressString) //nolint: errcheck
+		} else {
+			fmt.Fprintf(f, "[%x - %x]", a.Protocol(), a.Payload()) // nolint: errcheck
+		}
 	case 's':
 		fmt.Fprintf(f, "%s", a.String()) // nolint: errcheck
 	default:
