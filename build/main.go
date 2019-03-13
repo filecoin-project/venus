@@ -132,7 +132,6 @@ func deps() {
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
 		cmd("./proofs/bin/paramcache"),
-		cmd("./scripts/copy-groth-params.sh"),
 	}
 
 	for _, c := range cmds {
@@ -155,7 +154,6 @@ func smartdeps() {
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
 		cmd("./proofs/bin/paramcache"),
-		cmd("./scripts/copy-groth-params.sh"),
 	}
 
 	// packages we need to install
