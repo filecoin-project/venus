@@ -656,7 +656,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 
 			// When a new best TipSet is promoted we remove messages in it from the
 			// message pool (and add them back in if we have a re-org).
-			if err := node.MsgPool.UpdateMessagePool(ctx, node.CborStore(), head, newHead); err != nil {
+			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReadStore(), head, newHead); err != nil {
 				log.Error("error updating message pool for new tipset:", err)
 				continue
 			}
