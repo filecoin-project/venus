@@ -334,9 +334,10 @@ func TestInvalidStringAddresses(t *testing.T) {
 		expetErr error
 	}{
 		{"Q2gfvuyh7v2sx3patm5k23wdzmhyhtmqctasbr23y", ErrUnknownNetwork},
-		{"f4gfvuyh7v2sx3patm5k23wdzmhyhtmqctasbr23y", ErrUnknownProtocol},
+		{"t4gfvuyh7v2sx3patm5k23wdzmhyhtmqctasbr23y", ErrUnknownProtocol},
 		{"t2gfvuyh7v2sx3patm5k23wdzmhyhtmqctasbr24y", ErrInvalidChecksum},
-		{"t0bananananananananananananananananananan", ErrInvalidPayload},
+		{"t0banananananannnnnnnnn", ErrInvalidLength},
+		{"t0banananananannnnnnnn", ErrInvalidPayload},
 		{"t2gfvuyh7v2sx3patm1k23wdzmhyhtmqctasbr24y", base32.CorruptInputError(16)}, // '1' is not in base32 alphabet
 		{"t2gfvuyh7v2sx3paTm1k23wdzmhyhtmqctasbr24y", base32.CorruptInputError(14)}, // 'T' is not in base32 alphabet
 		{"t2", ErrInvalidLength},
