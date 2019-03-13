@@ -25,6 +25,7 @@ type Config struct {
 	Wallet    *WalletConfig    `json:"wallet"`
 	Heartbeat *HeartbeatConfig `json:"heartbeat"`
 	Net       string           `json:"net"`
+	Metrics   *MetricsConfig   `json:"metrics"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -148,6 +149,24 @@ func newDefaultHeartbeatConfig() *HeartbeatConfig {
 	}
 }
 
+// MetricsConfig holds all configuration options related to node metrics.
+type MetricsConfig struct {
+	// Enabled will enable prometheus metrics when true.
+	PrometheusEnabled bool `json:"prometheusEnabled"`
+	// ReportInterval represents how frequently filecoin will update its prometheus metrics.
+	ReportInterval string `json:"reportInterval"`
+	// PrometheusEndpoint represents the address filecoin will expose prometheus metrics at.
+	PrometheusEndpoint string `json:"prometheusEndpoint"`
+}
+
+func newDefaultMetricsConfig() *MetricsConfig {
+	return &MetricsConfig{
+		PrometheusEnabled:  false,
+		ReportInterval:     "5s",
+		PrometheusEndpoint: "/ip4/0.0.0.0/tcp/9400",
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -160,6 +179,7 @@ func NewDefaultConfig() *Config {
 		Wallet:    newDefaultWalletConfig(),
 		Heartbeat: newDefaultHeartbeatConfig(),
 		Net:       "",
+		Metrics:   newDefaultMetricsConfig(),
 	}
 }
 

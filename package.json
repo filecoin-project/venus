@@ -194,6 +194,18 @@
       "hash": "QmceTjrpdhYXocRzx9hMEwztLyWUEvyDdRqrkSjLQeq6pE",
       "name": "go-libp2p-autonat-svc",
       "version": "1.0.10"
+    },
+    {
+      "author": "hsanjuan",
+      "hash": "QmNVpHFt7QmabuVQyguf8AbkLDZoFh7ifBYztqijYT1Sd2",
+      "name": "go.opencensus.io",
+      "version": "0.19.0"
+    },
+    {
+      "author": "whyrusleeping",
+      "hash": "QmaQtvgBNGwD4os5VLWtBLR6HM6TY6ApX6xFqSnfjDF2aW",
+      "name": "client_golang",
+      "version": "0.9.2"
     }
   ],
   "gxVersion": "0.12.1",

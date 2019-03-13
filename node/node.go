@@ -472,6 +472,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
+	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Metrics); err != nil {
+		return errors.Wrap(err, "failed to setup metrics")
+	}
+
 	var err error
 	if err = node.ChainReader.Load(ctx); err != nil {
 		return err
