@@ -76,7 +76,8 @@ func TestWriteFile(t *testing.T) {
 		"beatPeriod": "3s",
 		"reconnectPeriod": "10s",
 		"nickname": ""
-	}
+	},
+	"net": ""
 }`,
 		string(content),
 	)

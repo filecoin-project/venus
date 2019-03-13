@@ -31,6 +31,7 @@ type Message struct {
 	HeaviestTipSetCids   []cid.Cid
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
+	CommitSha            string
 }
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
@@ -52,16 +53,21 @@ type Handler struct {
 	// getHeaviestTipSet is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
+
+	net       string
+	commitSha string
 }
 
 // New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc) *Handler {
+func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc, net string, commitSha string) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,
 		chainSyncCB:       syncCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
+		net:               net,
+		commitSha:         commitSha,
 	}
 	h.SetStreamHandler(protocol, hello.handleNewStream)
 
@@ -87,18 +93,28 @@ func (h *Handler) handleNewStream(s net.Stream) {
 		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
 		s.Conn().Close() // nolint: errcheck
 		return
+	case ErrWrongVersion:
+		log.Errorf("code not at same version: %s does not match %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		s.Conn().Close() // nolint: errcheck
+		return
 	case nil: // ok, noop
 	default:
 		log.Error(err)
 	}
 }
 
-// ErrBadGenesis is the error returned when a missmatch in genesis blocks happens.
+// ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
+
+// ErrWrongVersion is the error returned when a mismatch in the code version happens.
+var ErrWrongVersion = fmt.Errorf("code version mismatch")
 
 func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return ErrBadGenesis
+	}
+	if h.net == "devnet-user" && msg.CommitSha != h.commitSha {
+		return ErrWrongVersion
 	}
 
 	h.chainSyncCB(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight)
@@ -116,6 +132,7 @@ func (h *Handler) getOurHelloMessage() *Message {
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
 		HeaviestTipSetHeight: height,
+		CommitSha:            h.commitSha,
 	}
 }
 

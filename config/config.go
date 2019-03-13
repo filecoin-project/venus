@@ -24,6 +24,7 @@ type Config struct {
 	Mining    *MiningConfig    `json:"mining"`
 	Wallet    *WalletConfig    `json:"wallet"`
 	Heartbeat *HeartbeatConfig `json:"heartbeat"`
+	Net       string           `json:"net"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -158,6 +159,7 @@ func NewDefaultConfig() *Config {
 		Mining:    newDefaultMiningConfig(),
 		Wallet:    newDefaultWalletConfig(),
 		Heartbeat: newDefaultHeartbeatConfig(),
+		Net:       "",
 	}
 }
 

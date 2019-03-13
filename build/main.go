@@ -272,6 +272,9 @@ func forceBuildFC() {
 	log.Println("Force building go-filecoin...")
 
 	commit := runCapture("git log -n 1 --format=%H")
+	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
+		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
+	}
 
 	runCmd(cmd([]string{
 		"go", "build",
@@ -295,6 +298,9 @@ func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
 	commit := runCapture("git log -n 1 --format=%H")
+	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
+		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
+	}
 
 	runCmd(cmd([]string{
 		"go", "build",
