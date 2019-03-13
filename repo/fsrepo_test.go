@@ -58,7 +58,12 @@ const (
 		"reconnectPeriod": "10s",
 		"nickname": ""
 	},
-	"net": ""
+	"net": "",
+	"metrics": {
+		"prometheusEnabled": false,
+		"reportInterval": "5s",
+		"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
+	}
 }`
 )
 

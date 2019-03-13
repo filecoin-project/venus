@@ -3,16 +3,24 @@ package consensus
 import (
 	"context"
 	"math/big"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+var pbTimer *metrics.Float64Timer
+var amTimer *metrics.Float64Timer
+
+func init() {
+	amTimer = metrics.NewTimer("consensus/apply_message", "Duration of message application in milliseconds")
+	pbTimer = metrics.NewTimer("consensus/process_block", "Duration of block processing in milliseconds")
+}
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
@@ -95,9 +103,10 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error) {
 	var emptyResults []*ApplicationResult
 
-	processBlkTimer := time.Now()
+	pbsw := pbTimer.Start(ctx)
 	defer func() {
-		log.Infof("[TIMER] DefaultProcessor.ProcessBlock BlkCID: %s - elapsed time: %s", blk.Cid(), time.Since(processBlkTimer).Round(time.Millisecond))
+		dur := pbsw.Stop(ctx)
+		log.Infof("[TIMER] DefaultProcessor.ProcessBlock BlkCID: %s - elapsed time: %s", blk.Cid(), dur)
 	}()
 
 	// find miner's owner address
@@ -267,9 +276,10 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	applyMsgTimer := time.Now()
+	amsw := amTimer.Start(ctx)
 	defer func() {
-		log.Infof("[TIMER] DefaultProcessor.ApplyMessage CID: %s - elapsed time: %s", msgCid.String(), time.Since(applyMsgTimer).Round(time.Millisecond))
+		dur := amsw.Stop(ctx)
+		log.Infof("[TIMER] DefaultProcessor.ApplyMessage CID: %s - elapsed time: %s", msgCid.String(), dur)
 	}()
 
 	cachedStateTree := state.NewCachedStateTree(st)

@@ -124,8 +124,6 @@ func deps() {
 		cmd("go get -u github.com/docker/docker/pkg/stdcopy"),
 		cmd("go get -u github.com/ipsn/go-secp256k1"),
 		cmd("go get -u github.com/json-iterator/go"),
-		cmd("go get -u github.com/prometheus/client_golang/prometheus"),
-		cmd("go get -u github.com/prometheus/client_golang/prometheus/promhttp"),
 		cmd("go get -u github.com/jstemmer/go-junit-report"),
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),

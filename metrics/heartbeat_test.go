@@ -19,7 +19,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -137,7 +136,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	expHeight := types.Uint64(444)
 	expTs := mustMakeTipset(t, expHeight)
 
-	addr, err := address.NewFromString(fixtures.TestAddresses[0])
+	addr, err := address.NewActorAddress([]byte("miner address"))
 	require.NoError(err)
 
 	// The handle method will run the assertions for the test
