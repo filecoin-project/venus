@@ -30,28 +30,6 @@ var addressAtlasEntry = atlas.BuildEntry(Address{}).Transform().
 		})).
 	Complete()
 
-/*
-
-There are 2 ways a filecoin address can be represented. An address appearing on
-chain will always be formatted as raw bytes. An address may also be encoded to
-a string, this encoding includes a checksum and network prefix. An address
-encoded as a string will never appear on chain, this format is used for sharing
-among humans.
-
-Bytes:
-|----------|---------|
-| protocol | payload |
-|----------|---------|
-|  1 byte  | n bytes |
-
-String:
-|------------|----------|---------|----------|
-|  network   | protocol | payload | checksum |
-|------------|----------|---------|----------|
-| 'f' or 't' |  1 byte  | n bytes | 4 bytes  |
-
-*/
-
 // Address is the go type that represents an address in the filecoin network.
 type Address struct{ str string }
 
@@ -110,11 +88,6 @@ func (a Address) String() string {
 		panic(err)
 	}
 	return str
-}
-
-// Equal returns true if address `b` is equal to address.
-func (a Address) Equal(b Address) bool {
-	return a == b
 }
 
 // Empty returns true if the address is empty, false otherwise.

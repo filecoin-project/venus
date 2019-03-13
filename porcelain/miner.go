@@ -159,7 +159,7 @@ type mpspAPI interface {
 // This method accepts all the same arguments as MinerSetPrice.
 func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
 	// get miner address if not provided
-	if miner.Equal(address.Undef) {
+	if miner.Empty() {
 		minerValue, err := plumbing.ConfigGet("mining.minerAddress")
 		if err != nil {
 			return types.NewGasUnits(0), errors.Wrap(err, "Could not get miner address in config")
