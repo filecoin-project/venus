@@ -3,7 +3,6 @@ package testing
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -24,6 +23,10 @@ import (
 // computer, so we need to select a value which works for slow (CircleCI OSX
 // build containers) and fast (developer machines) alike.
 const MaxTimeToSealASector = time.Second * 360
+
+// MaxTimeToGenerateSectorPoSt represents the maximum amount of time the test
+// should wait for a proof-of-spacetime to be generated for a sector.
+const MaxTimeToGenerateSectorPoSt = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
 	if os.Getenv("FILECOIN_RUN_SECTOR_BUILDER_TESTS") != "true" {
@@ -297,9 +300,7 @@ func TestSectorBuilder(t *testing.T) {
 		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
 		require.NoError(t, err)
 
-		// Sealing can take 180+ seconds on an i7 MacBook Pro. We are sealing
-		// but one sector in this test.
-		timeout := time.After(MaxTimeToSealASector)
+		timeout := time.After(MaxTimeToSealASector + MaxTimeToGenerateSectorPoSt)
 
 		select {
 		case val := <-h.SectorBuilder.SectorSealResults():
@@ -317,15 +318,9 @@ func TestSectorBuilder(t *testing.T) {
 			})
 			require.NoError(t, gerr)
 
-			// TODO: Replace these hard-coded values (in rust-fil-proofs) with an
-			// end-to-end PoST test over a small number of replica commitments
-			require.Equal(t, "00101010", fmt.Sprintf("%08b", gres.Proofs[0][0]))
-			require.Equal(t, 1, len(gres.Faults))
-			require.Equal(t, uint64(0), gres.Faults[0])
-
 			// verify the proof-of-spacetime
 			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoSTRequest{
-				ChallengeSeed: proofs.PoStChallengeSeed{},
+				ChallengeSeed: challengeSeed,
 				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
