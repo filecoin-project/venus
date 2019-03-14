@@ -54,10 +54,6 @@ func MinerCreate(
 		}
 	}
 
-	if pid == "" {
-		pid = plumbing.NetworkGetPeerID()
-	}
-
 	ctx = log.Start(ctx, "Node.CreateMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)

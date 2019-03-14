@@ -106,6 +106,9 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 				return errors.Wrap(err, "invalid peer id")
 			}
 		}
+		if pid == "" {
+			pid = GetPorcelainAPI(env).NetworkGetPeerID()
+		}
 
 		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
 		if err != nil {
