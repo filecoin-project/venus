@@ -8,7 +8,7 @@ function finish {
   echo ""
   echo "cleaning up..."
   kill "$BOOTSTRAP_MN_PID" || true
-  kill "$MN_PID" || true
+  kill "$STORAGE_MN_PID" || true
   kill "$CL_PID" || true
 
   # Force KILL after MAX_WAIT seconds if the daemons don't exit
@@ -19,7 +19,7 @@ function finish {
 
   # Force KILL after MAX_WAIT seconds if the daemons don't exit
   (
-    sleep $MAX_WAIT && kill -9 "$MN_PID";
+    sleep $MAX_WAIT && kill -9 "$STORAGE_MN_PID";
     echo "Sent SIGKILL to MN, daemon failed to stop within $MAX_WAIT second at end of test";
   ) & WAITER_MN=$!
 
@@ -30,7 +30,7 @@ function finish {
 
   # Wait for daemons to exit
   wait "$BOOTSTRAP_MN_PID"
-  wait "$MN_PID"
+  wait "$STORAGE_MN_PID"
   wait "$CL_PID"
 
   # Kill watchers
