@@ -109,45 +109,6 @@ func NewMessagePool(timer BlockTimer) *MessagePool {
 	}
 }
 
-// collectChainsMessagesToHeight is a helper that collects all the messages
-// from block `b` down the chain to but not including its ancestor of
-// height `height`.  This function returns the messages collected along with
-// the tipset at the final height.
-// TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(ctx context.Context, store chain.BlockProvider, curTipSet types.TipSet, height uint64) ([]*timedmessage, types.TipSet, error) {
-	var msgs []*timedmessage
-	h, err := curTipSet.Height()
-	if err != nil {
-		return nil, nil, err
-	}
-	for h > height {
-		for _, blk := range curTipSet {
-			for _, msg := range blk.Messages {
-				msgs = append(msgs, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
-			}
-		}
-		parents, err := curTipSet.Parents()
-		if err != nil {
-			return nil, nil, err
-		}
-		switch parents.Len() {
-		case 0:
-			return msgs, curTipSet, nil
-		default:
-			nextTipSet, err := chain.GetParentTipSet(ctx, store, curTipSet)
-			if err != nil {
-				return []*timedmessage{}, types.TipSet{}, err
-			}
-			curTipSet = nextTipSet
-			h, err = curTipSet.Height()
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	return msgs, curTipSet, nil
-}
-
 // UpdateMessagePool brings the message pool into the correct state after
 // we accept a new block. It removes messages from the pool that are
 // found in the newly adopted chain and adds back those from the removed
@@ -158,90 +119,36 @@ func collectChainsMessagesToHeight(ctx context.Context, store chain.BlockProvide
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, old, new types.TipSet) error {
-	// Strategy: walk head-of-chain pointers old and new back until they are at the same
-	// height, then walk back in lockstep to find the common ancestor.
-	newHead := new
+func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, oldHead, newHead types.TipSet) error {
+	oldBlocks, newBlocks, err := CollectBlocksToCommonAncestor(ctx, store, oldHead, newHead)
+	if err != nil {
+		return err
+	}
 
-	// If old is higher/longer than new, collect all the messages
-	// from old's chain down to the height of new.
-	newHeight, err := new.Height()
-	if err != nil {
-		return err
-	}
-	addToPool, old, err := collectChainsMessagesToHeight(ctx, store, old, newHeight)
-	if err != nil {
-		return err
-	}
-	// If new is higher/longer than old, collect all the messages
-	// from new's chain down to the height of old.
-	oldHeight, err := old.Height()
-	if err != nil {
-		return err
-	}
-	removeFromPool, new, err := collectChainsMessagesToHeight(ctx, store, new, oldHeight)
-	if err != nil {
-		return err
-	}
-	// Old and new are now at the same height. Keep walking them down a
-	// tipset at a time in lockstep until they are pointing to the same
-	// tipset, the common ancestor. Collect their messages to add/remove
-	// along the way.
-	//
-	// TODO probably should limit depth here.
-	for !old.Equals(new) {
-		for _, blk := range old {
-			// skip genesis block
-			if blk.Height > 0 {
-				for _, msg := range blk.Messages {
-					addToPool = append(addToPool, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
-				}
+	// Add all message from the old blocks to the message pool, so they can be mined again.
+	for _, blk := range oldBlocks {
+		for _, msg := range blk.Messages {
+			_, err = pool.addTimedMessage(&timedmessage{message: msg, addedAt: uint64(blk.Height)})
+			if err != nil {
+				return err
 			}
-		}
-		for _, blk := range new {
-			for _, msg := range blk.Messages {
-				removeFromPool = append(removeFromPool, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
-			}
-		}
-		oldParents, err := old.Parents()
-		if err != nil {
-			return err
-		}
-		newParents, err := new.Parents()
-		if err != nil {
-			return err
-		}
-		if oldParents.Empty() || newParents.Empty() {
-			break
-		}
-		old, err = chain.GetParentTipSet(ctx, store, old)
-		if err != nil {
-			return err
-		}
-		new, err = chain.GetParentTipSet(ctx, store, new)
-		if err != nil {
-			return err
 		}
 	}
 
-	// Now actually update the pool.
-	for _, m := range addToPool {
-		_, err := pool.addTimedMessage(m)
-		if err != nil {
-			return err
+	// Remove all messages in the new blocks from the pool, now mined.
+	// Cid() can error, so collect all the CIDs up front.
+	var removeCids []cid.Cid
+	for _, blk := range newBlocks {
+		for _, msg := range blk.Messages {
+			cid, err := msg.Cid()
+			if err != nil {
+				return err
+			}
+			removeCids = append(removeCids, cid)
 		}
 	}
-	// m.Cid() can error, so collect all the Cids before
-	removeCids := make([]cid.Cid, len(removeFromPool))
-	for i, m := range removeFromPool {
-		cid, err := m.message.Cid()
-		if err != nil {
-			return err
-		}
-		removeCids[i] = cid
-	}
-	for _, cid := range removeCids {
-		pool.Remove(cid)
+	for _, c := range removeCids {
+		pool.Remove(c)
 	}
 
 	// prune all messages that have been in the pool too long
