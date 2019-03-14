@@ -70,11 +70,11 @@ func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaAPI) (address.Address, e
 		addr := plumbing.WalletAddresses()[0]
 		err := plumbing.ConfigSet("wallet.defaultAddress", addr.String())
 		if err != nil {
-			return address.Address{}, err
+			return address.Undef, err
 		}
 
 		return addr, nil
 	}
 
-	return address.Address{}, ErrNoDefaultFromAddress
+	return address.Undef, ErrNoDefaultFromAddress
 }
