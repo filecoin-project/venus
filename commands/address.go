@@ -208,7 +208,7 @@ var walletExportCmd = &cmds.Command{
 			addrs[i] = addr
 		}
 
-		kis, err := GetAPI(env).Address().Export(req.Context, addrs)
+		kis, err := GetPorcelainAPI(env).WalletExport(addrs)
 		if err != nil {
 			return err
 		}

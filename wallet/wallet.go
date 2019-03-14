@@ -209,3 +209,22 @@ func (w *Wallet) Import(kinfos []*types.KeyInfo) ([]address.Address, error) {
 	}
 	return out, nil
 }
+
+// Export returns the KeyInfos for the given wallet addresses
+func (w *Wallet) Export(addrs []address.Address) ([]*types.KeyInfo, error) {
+	out := make([]*types.KeyInfo, len(addrs))
+	for i, addr := range addrs {
+		bck, err := w.Find(addr)
+		if err != nil {
+			return nil, err
+		}
+
+		ki, err := bck.GetKeyInfo(addr)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = ki
+	}
+
+	return out, nil
+}
