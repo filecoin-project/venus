@@ -451,6 +451,10 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		return 1, errors.NewRevertError("invalid sized commRStar")
 	}
 
+	// As with submitPoSt messages, bootstrap miner actors don't verify
+	// the commitSector messages that they are sent.
+	//
+	// This switching will be removed when issue #2270 is completed.
 	if !ma.Bootstrap {
 		// This unfortunate environment variable-checking needs to happen because
 		// the PoRep verification operation needs to know some things (e.g. size)
@@ -661,41 +665,46 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
 		}
 
-		// reach in to actor storage to grab comm-r for each committed sector
-		var commRs []proofs.CommR
-		for _, v := range state.SectorCommitments {
-			commRs = append(commRs, v.CommR)
-		}
-
-		// See comment above, in CommitSector.
+		// As with commitSector messages, bootstrap miner actors don't verify
+		// the submitPoSt messages that they are sent.
 		//
-		// It is undefined behavior for a miner in "Live" mode to verify a proof
-		// created by a miner in "ProofsTest" mode (and vice-versa).
-		//
-		sectorStoreType := proofs.Live
-		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-			sectorStoreType = proofs.Test
-		}
+		// This switching will be removed when issue #2270 is completed.
+		if !ma.Bootstrap {
+			// See comment above, in CommitSector.
+			//
+			// It is undefined behavior for a miner in "Live" mode to verify a proof
+			// created by a miner in "ProofsTest" mode (and vice-versa).
+			//
+			sectorStoreType := proofs.Live
+			if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
+				sectorStoreType = proofs.Test
+			}
 
-		seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "failed to sample chain for challenge seed")
-		}
+			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
+			if err != nil {
+				return nil, errors.FaultErrorWrap(err, "failed to sample chain for challenge seed")
+			}
 
-		req := proofs.VerifyPoSTRequest{
-			ChallengeSeed: seed,
-			CommRs:        commRs,
-			Faults:        []uint64{},
-			Proofs:        postProofs,
-			StoreType:     sectorStoreType,
-		}
+			var commRs []proofs.CommR
+			for _, v := range state.SectorCommitments {
+				commRs = append(commRs, v.CommR)
+			}
 
-		res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
-		if err != nil {
-			return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
-		}
-		if !res.IsValid {
-			return nil, Errors[ErrInvalidPoSt]
+			req := proofs.VerifyPoSTRequest{
+				ChallengeSeed: seed,
+				CommRs:        commRs,
+				Faults:        []uint64{},
+				Proofs:        postProofs,
+				StoreType:     sectorStoreType,
+			}
+
+			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
+			if err != nil {
+				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
+			}
+			if !res.IsValid {
+				return nil, Errors[ErrInvalidPoSt]
+			}
 		}
 
 		// transition to the next proving period
