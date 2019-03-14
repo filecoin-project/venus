@@ -2,10 +2,7 @@ package impl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-
-	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -22,23 +19,8 @@ func newNodeAddress(api *nodeAPI) *nodeAddress {
 	}
 }
 
-// WalletSerializeResult is the type wallet export and import return and expect.
-type WalletSerializeResult struct {
-	KeyInfo []*types.KeyInfo
-}
-
-func (api *nodeAddress) Import(ctx context.Context, f files.File) ([]address.Address, error) {
+func (api *nodeAddress) Import(ctx context.Context, kinfos []*types.KeyInfo) ([]address.Address, error) {
 	nd := api.api.node
-
-	kinfos, err := parseKeyInfos(f)
-	if err != nil {
-		return nil, err
-	}
-
-	// error if we fail to parse keyinfo from the provided file.
-	if len(kinfos) == 0 {
-		return nil, fmt.Errorf("no keys in wallet file")
-	}
 
 	dsb := nd.Wallet.Backends(wallet.DSBackendType)
 	if len(dsb) != 1 {
@@ -83,12 +65,4 @@ func (api *nodeAddress) Export(ctx context.Context, addrs []address.Address) ([]
 	}
 
 	return out, nil
-}
-
-func parseKeyInfos(f files.File) ([]*types.KeyInfo, error) {
-	var wir *WalletSerializeResult
-	if err := json.NewDecoder(f).Decode(&wir); err != nil {
-		return nil, err
-	}
-	return wir.KeyInfo, nil
 }

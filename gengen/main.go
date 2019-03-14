@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	fcapi "github.com/filecoin-project/go-filecoin/api/impl"
+	"github.com/filecoin-project/go-filecoin/commands"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -27,7 +27,7 @@ func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {
 	}
 	defer fi.Close() // nolint: errcheck
 
-	var wir fcapi.WalletSerializeResult
+	var wir commands.WalletSerializeResult
 	wir.KeyInfo = append(wir.KeyInfo, ki)
 
 	return json.NewEncoder(fi).Encode(wir)
