@@ -31,7 +31,6 @@ type mcAPI interface {
 	NetworkGetPeerID() peer.ID
 	WalletFind(address address.Address) (w.Backend, error)
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
-	WalletHasAddress(addr address.Address) bool
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.

@@ -92,10 +92,6 @@ func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte,
 	return mpc.wallet.GetPubKeyForAddress(addr)
 }
 
-func (mpc *minerCreate) WalletHasAddress(addr address.Address) bool {
-	return mpc.wallet.HasAddress(addr)
-}
-
 func TestMinerCreate(t *testing.T) {
 	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)

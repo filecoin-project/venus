@@ -240,11 +240,6 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 	return api.wallet.GetPubKeyForAddress(addr)
 }
 
-// WalletHasAddress returns true if the wallet has a given address and false otherwise
-func (api *API) WalletHasAddress(addr address.Address) bool {
-	return api.wallet.HasAddress(addr)
-}
-
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress() (address.Address, error) {
 	return wallet.NewAddress(api.wallet)
