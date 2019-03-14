@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/protocolapi"
 	"net/http"
 	_ "net/http/pprof" // nolint: golint
 	"os"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	bapi "github.com/filecoin-project/go-filecoin/protocolapi/block"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -126,7 +126,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
 	api := impl.New(nd)
 	blockTime, mineDelay := nd.MiningTimes()
-	protocolAPI := protocolapi.New(
+	protocolAPI := bapi.New(
 		nd.AddNewBlock,
 		nd.Blockstore,
 		nd.CborStore(), nd.OnlineStore,

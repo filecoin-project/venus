@@ -400,7 +400,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 // CreateTicket computes a valid ticket.
 // 	params:  proof  []byte, the proof to sign
 // 			 signerPubKey []byte, the public key for the signer. Must exist in the signer
-//      	 signer, implements ticketSigner interface. Must have signerPubKey in its keyinfo.
+//      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
 //  returns:  types.Signature ( []byte ), error
 func CreateTicket(proof proofs.PoStProof, signerPubKey []byte, signer TicketSigner) (types.Signature, error) {
 

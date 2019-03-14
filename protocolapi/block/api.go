@@ -1,4 +1,4 @@
-package protocolapi
+package block
 
 import (
 	"context"
@@ -79,8 +79,8 @@ func New(
 	return API{apiDeps: newDeps}
 }
 
-// MineOnce mines a single block in the given context, and returns the new block.
-func (a *API) MineOnce(ctx context.Context) (*types.Block, error) {
+// MiningOnce mines a single block in the given context, and returns the new block.
+func (a *API) MiningOnce(ctx context.Context) (*types.Block, error) {
 
 	getStateByKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
 		tsas, err := a.chainReader.GetTipSetAndState(ctx, tsKey)
@@ -149,12 +149,12 @@ func (a *API) MineOnce(ctx context.Context) (*types.Block, error) {
 	return res.NewBlock, nil
 }
 
-// StartMining calls the node's StartMining function
-func (a *API) StartMining(ctx context.Context) error {
+// MiningStart calls the node's StartMining function
+func (a *API) MiningStart(ctx context.Context) error {
 	return a.startMiningFunc(ctx)
 }
 
-// StopMining calls the node's StopMining function
-func (a *API) StopMining(ctx context.Context) {
+// MiningStop calls the node's StopMining function
+func (a *API) MiningStop(ctx context.Context) {
 	a.stopMiningFunc(ctx)
 }

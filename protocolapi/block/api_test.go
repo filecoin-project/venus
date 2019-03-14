@@ -1,9 +1,9 @@
-package protocolapi_test
+package block_test
 
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/protocolapi"
+	bapi "github.com/filecoin-project/go-filecoin/protocolapi/block"
 	ast "gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	req "gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"testing"
@@ -28,7 +28,7 @@ func TestAPI_MineOnce(t *testing.T) {
 	require.NoError(nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	blk, err := api.MineOnce(ctx)
+	blk, err := api.MiningOnce(ctx)
 	require.Nil(err)
 	require.NotNil(blk)
 	assert.NotNil(blk.Ticket)
@@ -43,11 +43,11 @@ func TestAPI_StartStopMining(t *testing.T) {
 	require.NoError(nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	require.NoError(api.StartMining(ctx))
-	api.StopMining(ctx)
+	require.NoError(api.MiningStart(ctx))
+	api.MiningStop(ctx)
 }
 
-func newAPI(t *testing.T, assert *ast.Assertions) (protocolapi.API, *node.Node) {
+func newAPI(t *testing.T, assert *ast.Assertions) (bapi.API, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	configOpts := []node.ConfigOpt{}
 
@@ -56,10 +56,10 @@ func newAPI(t *testing.T, assert *ast.Assertions) (protocolapi.API, *node.Node) 
 	)
 	bt, md := nd.MiningTimes()
 	seed.GiveKey(t, nd, 0)
-	mineraddr, minerOwnerAddr := seed.GiveMiner(t, nd, 0)
-	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
+	mAddr, moAddr := seed.GiveMiner(t, nd, 0)
+	_, err := storage.NewMiner(mAddr, moAddr, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
 	assert.NoError(err)
-	return protocolapi.New(
+	return bapi.New(
 		nd.AddNewBlock,
 		nd.Blockstore,
 		nd.CborStore(), nd.OnlineStore,
