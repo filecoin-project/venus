@@ -234,6 +234,10 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
+	"isBootstrapMiner": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Boolean},
+	},
 }
 
 // Exports returns the miner actors exported functions.
@@ -401,6 +405,12 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 	}
 
 	return a, 0, nil
+}
+
+// IsBootstrapMiner indicates whether the receiving miner was created in the
+// genesis block, i.e. used to bootstrap the network
+func (ma *Actor) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
+	return ma.Bootstrap, 0, nil
 }
 
 // GetSectorCommitments returns all sector commitments posted by this miner.
