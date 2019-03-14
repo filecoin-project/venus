@@ -28,9 +28,10 @@ type minerCreate struct {
 	config  *cfg.Config
 	wallet  *wallet.Wallet
 	msgCid  cid.Cid
+	msgFail bool
 }
 
-func newMinerCreate(assert *assert.Assertions, require *require.Assertions) *minerCreate {
+func newMinerCreate(assert *assert.Assertions, require *require.Assertions, msgFail bool) *minerCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	require.NoError(err)
@@ -39,6 +40,7 @@ func newMinerCreate(assert *assert.Assertions, require *require.Assertions) *min
 		require: require,
 		config:  cfg.NewConfig(repo),
 		wallet:  wallet.New(backend),
+		msgFail: msgFail,
 	}
 }
 
@@ -55,6 +57,9 @@ func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, e
 }
 
 func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	if mpc.msgFail {
+		return cid.Cid{}, errors.New("Test Error")
+	}
 	mpc.msgCid = types.SomeCid()
 	return mpc.msgCid, nil
 }
@@ -69,12 +74,12 @@ func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte,
 }
 
 func TestMinerCreate(t *testing.T) {
-	t.Run("succeeds", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
 		ctx := context.Background()
-		plumbing := newMinerCreate(assert, require)
+		plumbing := newMinerCreate(assert, require, false)
 		collateral := types.NewAttoFILFromFIL(1)
 
 		addr, err := MinerCreate(
@@ -89,6 +94,27 @@ func TestMinerCreate(t *testing.T) {
 		)
 		require.NoError(err)
 		assert.Equal(addr, &address.Address{})
+	})
+
+	t.Run("failure to send", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		ctx := context.Background()
+		plumbing := newMinerCreate(assert, require, true)
+		collateral := types.NewAttoFILFromFIL(1)
+
+		_, err := MinerCreate(
+			ctx,
+			plumbing,
+			address.Address{},
+			types.NewGasPrice(0),
+			types.NewGasUnits(100),
+			1,
+			"",
+			collateral,
+		)
+		assert.Error(err, "Test Error")
 	})
 }
 

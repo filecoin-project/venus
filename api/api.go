@@ -8,11 +8,6 @@ type API interface {
 	Client() Client
 	Daemon() Daemon
 	Dag() Dag
-<<<<<<< HEAD
-	Miner() Miner
-=======
-	Mining() Mining
->>>>>>> Extracted Miner Create method from the node api to the miner create command
 	Ping() Ping
 	RetrievalClient() RetrievalClient
 	Swarm() Swarm
