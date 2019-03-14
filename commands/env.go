@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	bapi "github.com/filecoin-project/go-filecoin/protocolapi/block"
+	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
 )
 
 // Env is the environment passed to commands. Implements cmds.Environment.
@@ -15,7 +15,7 @@ type Env struct {
 	ctx          context.Context
 	api          api.API
 	porcelainAPI *porcelain.API
-	protocolAPI  *bapi.API
+	blockpAPI    *bapi.API
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -45,5 +45,5 @@ func GetPorcelainAPI(env cmds.Environment) *porcelain.API {
 // GetProtocolAPI returns the protocol api from the given environment
 func GetProtocolAPI(env cmds.Environment) *bapi.API {
 	ce := env.(*Env)
-	return ce.protocolAPI
+	return ce.blockpAPI
 }

@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
-	bapi "github.com/filecoin-project/go-filecoin/protocolapi/block"
+	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -126,7 +126,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
 	api := impl.New(nd)
 	blockTime, mineDelay := nd.MiningTimes()
-	protocolAPI := bapi.New(
+	blockpAPI := bapi.New(
 		nd.AddNewBlock,
 		nd.Blockstore,
 		nd.CborStore(), nd.OnlineStore,
@@ -150,7 +150,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		ctx:          context.Background(),
 		api:          api,
 		porcelainAPI: nd.PorcelainAPI,
-		protocolAPI:  &protocolAPI,
+		blockpAPI:    &blockpAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
