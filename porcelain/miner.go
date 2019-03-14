@@ -28,7 +28,6 @@ type mcAPI interface {
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	NetworkGetPeerID() peer.ID
-	WalletFind(address address.Address) (w.Backend, error)
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
 }
 

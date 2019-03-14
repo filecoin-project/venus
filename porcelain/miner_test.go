@@ -63,10 +63,6 @@ func (mpc *minerCreate) NetworkGetPeerID() peer.ID {
 	return peer.ID("")
 }
 
-func (mpc *minerCreate) WalletFind(addr address.Address) (wallet.Backend, error) {
-	return mpc.wallet.Find(addr)
-}
-
 func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
 	return mpc.wallet.GetPubKeyForAddress(addr)
 }
