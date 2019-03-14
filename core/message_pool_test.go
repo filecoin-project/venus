@@ -453,6 +453,13 @@ func TestUpdateMessagePool(t *testing.T) {
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
 		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
 		assertPoolEquals(assert, p, m[1:]...)
+
+		// adding a chain of multiple tipsets times out based on final state
+		for i := 0; i < 4; i++ {
+			next = headOf(NewChainWithMessages(store, next, msgsSet{msgs{}}))
+		}
+		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+		assertPoolEquals(assert, p, m[5:]...)
 	})
 
 	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
