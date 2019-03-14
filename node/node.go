@@ -14,13 +14,13 @@ import (
 	circuit "gx/ipfs/QmNaXXRfJ93t4HicX8N2WZPhdE8KU39MPGALuH421GFgKA/go-libp2p-circuit"
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmP2g3VxmC7g7fyRJDj1VJ72KHZbJ9UW24YjSWEj1XTb4H/go-ipfs-exchange-interface"
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
 	libp2ppeer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
+	"gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
 	"gx/ipfs/QmXixGGfd98hN2dA5YiPHWANY3sjmHfZBQk3mLiQUo6NLJ/go-bitswap"
 	bsnet "gx/ipfs/QmXixGGfd98hN2dA5YiPHWANY3sjmHfZBQk3mLiQUo6NLJ/go-bitswap/network"
 	dhtprotocol "gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
@@ -34,8 +34,8 @@ import (
 	offroute "gx/ipfs/QmcjqHcsk8E1Gd8RbuaUawWC7ogDtaVcdjLvZF8ysCCiPn/go-ipfs-routing/offline"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 	libp2pps "gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
-	dht "gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
-	dhtopts "gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht/opts"
+	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
+	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht/opts"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -58,6 +58,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -90,6 +91,7 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
+	BlockAPI     *bapi.API
 	PorcelainAPI *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -442,6 +444,26 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
+
+	blockTime, mineDelay := nd.MiningTimes()
+	blockAPI := bapi.New(
+		nd.AddNewBlock,
+		bs,
+		&cstOffline,
+		&cstOnline,
+		chainReader,
+		nodeConsensus,
+		blockTime,
+		mineDelay,
+		msgPool,
+		PorcelainAPI,
+		powerTable,
+		nd.StartMining,
+		nd.StopMining,
+		chainSyncer,
+		fcWallet)
+
+	nd.BlockAPI = &blockAPI
 
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
