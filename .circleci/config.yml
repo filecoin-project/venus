@@ -1,6 +1,6 @@
 version: 2.1
 
-parameters:
+params:
   sector_builder_tests_param: &sector_builder_tests_param
     sector_builder_tests:
       description: "Run the sector builder integration tests"
