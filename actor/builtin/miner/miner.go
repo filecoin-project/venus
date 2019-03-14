@@ -652,7 +652,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 				return nil, errors.FaultErrorWrap(err, "failed to parse commitment sector id to uint64")
 			}
 
-			if n >= 10000 {
+			if n >= types.FirstNonGenGenSectorID {
 				commRs = append(commRs, v.CommR)
 			}
 		}
