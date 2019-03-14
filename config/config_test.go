@@ -66,12 +66,12 @@ func TestWriteFile(t *testing.T) {
 		"address": "/ip4/0.0.0.0/tcp/6000"
 	},
 	"mining": {
-		"minerAddress": "[UNDEFINED_ADDRESS]",
+		"minerAddress": "empty",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},
 	"wallet": {
-		"defaultAddress": "[UNDEFINED_ADDRESS]"
+		"defaultAddress": "empty"
 	},
 	"heartbeat": {
 		"beatTarget": "",
