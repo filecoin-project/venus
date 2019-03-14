@@ -23,19 +23,22 @@ import (
 )
 
 type minerCreate struct {
-	config  *cfg.Config
+	assert  *assert.Assertions
 	require *require.Assertions
+	config  *cfg.Config
 	wallet  *wallet.Wallet
+	msgCid  cid.Cid
 }
 
-func newMinerCreate(require *require.Assertions) *minerCreate {
+func newMinerCreate(assert *assert.Assertions, require *require.Assertions) *minerCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	require.NoError(err)
 	return &minerCreate{
+		assert:  assert,
+		require: require,
 		config:  cfg.NewConfig(repo),
 		wallet:  wallet.New(backend),
-		require: require,
 	}
 }
 
@@ -52,10 +55,12 @@ func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, e
 }
 
 func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return cid.Cid{}, nil
+	mpc.msgCid = types.SomeCid()
+	return mpc.msgCid, nil
 }
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	mpc.assert.Equal(mpc.msgCid, msgCid)
 	return nil
 }
 
@@ -69,7 +74,7 @@ func TestMinerCreate(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		plumbing := newMinerCreate(require)
+		plumbing := newMinerCreate(assert, require)
 		collateral := types.NewAttoFILFromFIL(1)
 
 		addr, err := MinerCreate(
