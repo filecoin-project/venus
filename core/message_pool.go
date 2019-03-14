@@ -160,7 +160,8 @@ func collectChainsMessagesToHeight(ctx context.Context, store chain.BlockProvide
 //      etc.
 func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, old, new types.TipSet) error {
 	// Strategy: walk head-of-chain pointers old and new back until they are at the same
-	// height, then walk back in lockstep to find the common ancesetor.
+	// height, then walk back in lockstep to find the common ancestor.
+	newHead := new
 
 	// If old is higher/longer than new, collect all the messages
 	// from old's chain down to the height of new.
@@ -244,7 +245,7 @@ func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.Bloc
 	}
 
 	// prune all messages that have been in the pool too long
-	return pool.timeoutMessages(ctx, store, new)
+	return pool.timeoutMessages(ctx, store, newHead)
 }
 
 // timeoutMessages removes all messages from the pool that arrived more than MessageTimeout tip sets ago.
