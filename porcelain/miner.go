@@ -27,7 +27,6 @@ type mcAPI interface {
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	NetworkGetPeerID() peer.ID
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
 }
 
@@ -86,7 +85,14 @@ func MinerCreate(
 		return nil, err
 	}
 
-	minerAddr, err := waitForMinerAddress(ctx, plumbing, smsgCid)
+	var minerAddr address.Address
+	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
+		if receipt.ExitCode != uint8(0) {
+			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+		}
+		minerAddr, err = address.NewFromBytes(receipt.Return[0])
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -96,18 +102,6 @@ func MinerCreate(
 	}
 
 	return &minerAddr, nil
-}
-
-func waitForMinerAddress(ctx context.Context, plumbing mcAPI, smsgCid cid.Cid) (address.Address, error) {
-	var minerAddr address.Address
-	err := plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
-		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
-		}
-		minerAddr, err = address.NewFromBytes(receipt.Return[0])
-		return err
-	})
-	return minerAddr, err
 }
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.

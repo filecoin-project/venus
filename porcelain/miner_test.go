@@ -59,10 +59,6 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func
 	return nil
 }
 
-func (mpc *minerCreate) NetworkGetPeerID() peer.ID {
-	return peer.ID("")
-}
-
 func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
 	return mpc.wallet.GetPubKeyForAddress(addr)
 }
