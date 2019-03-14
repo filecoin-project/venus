@@ -168,7 +168,7 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("no keys in wallet file")
 		}
 
-		addrs, err := GetAPI(env).Address().Import(req.Context, keyInfos)
+		addrs, err := GetPorcelainAPI(env).WalletImport(keyInfos)
 		if err != nil {
 			return err
 		}

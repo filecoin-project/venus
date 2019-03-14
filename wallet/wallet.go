@@ -182,3 +182,30 @@ func (w *Wallet) keyInfoForAddr(addr address.Address) (*types.KeyInfo, error) {
 	}
 	return info, nil
 }
+
+// Import adds the given keyinfos to the wallet
+func (w *Wallet) Import(kinfos []*types.KeyInfo) ([]address.Address, error) {
+	dsb := w.Backends(DSBackendType)
+	if len(dsb) != 1 {
+		return nil, fmt.Errorf("expected exactly one datastore wallet backend")
+	}
+
+	imp, ok := dsb[0].(Importer)
+	if !ok {
+		return nil, fmt.Errorf("datastore backend wallets should implement importer")
+	}
+
+	var out []address.Address
+	for _, ki := range kinfos {
+		if err := imp.ImportKey(ki); err != nil {
+			return nil, err
+		}
+
+		a, err := ki.Address()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}

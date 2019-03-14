@@ -9,6 +9,5 @@ import (
 
 // Address is the interface that defines methods to manage Filecoin addresses and wallets.
 type Address interface {
-	Import(context.Context, []*types.KeyInfo) ([]address.Address, error)
 	Export(context.Context, []address.Address) ([]*types.KeyInfo, error)
 }
