@@ -60,7 +60,7 @@ trip latency information.
 				return err
 			}
 			if !pingChOpen {
-				return errors.New("Ping channel closed by receiver")
+				return errors.New("Ping channel closed by sender")
 			}
 		}
 
@@ -68,7 +68,7 @@ trip latency information.
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *PingResult) error {
-			milliseconds := result.Time.Seconds() * 1000
+			milliseconds := result.Time.Milliseconds() * 1000
 			fmt.Fprintf(w, "Pong received: seq=%d time=%.2f ms\n", result.Count, milliseconds) // nolint: errcheck
 			return nil
 		}),
