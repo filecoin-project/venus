@@ -58,6 +58,10 @@ var actorLsCmd = &cmds.Command{
 		}
 
 		for result := range results {
+			if result.Error != nil {
+				return result.Error
+			}
+
 			var output *ActorView
 
 			switch {

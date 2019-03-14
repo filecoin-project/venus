@@ -122,7 +122,6 @@ func TestGetAllActors(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
-
 	addr := address.NewForTestGetter()()
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}

@@ -248,6 +248,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 type GetAllActorsResult struct {
 	Address string
 	Actor   *actor.Actor
+	Error   error
 }
 
 // GetAllActors returns a channel which provides all actors in the StateTree, t.
@@ -281,15 +282,17 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 				panic(err) // uhm, ignoring errors is bad
 			}
 
-			result := GetAllActorsResult{
-				Address: kv.Key,
-				Actor:   &a,
-			}
-
 			select {
 			case <-ctx.Done():
+				out <- GetAllActorsResult{
+					Error: ctx.Err(),
+				}
 				return
-			case out <- result:
+			default:
+				out <- GetAllActorsResult{
+					Address: kv.Key,
+					Actor:   &a,
+				}
 			}
 		}
 		if p.Link.Defined() {
