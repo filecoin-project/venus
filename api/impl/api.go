@@ -5,6 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 type nodeAPI struct {
@@ -29,6 +30,10 @@ func New(node *node.Node) api.API {
 	api := &nodeAPI{
 		node:   node,
 		logger: logging.Logger("api"),
+	}
+	var porcelainAPI *porcelain.API
+	if node != nil {
+		porcelainAPI = node.PorcelainAPI
 	}
 
 	api.actor = newNodeActor(api)
