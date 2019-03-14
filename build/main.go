@@ -130,9 +130,8 @@ func deps() {
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
-		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
+		cmd("./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json"),
 		cmd("./proofs/bin/paramcache"),
-		cmd("./scripts/copy-groth-params.sh"),
 	}
 
 	for _, c := range cmds {
@@ -153,9 +152,8 @@ func smartdeps() {
 		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
-		cmd("./proofs/bin/paramfetch --all --json=./proofs/misc/parameters.json"),
+		cmd("./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json"),
 		cmd("./proofs/bin/paramcache"),
-		cmd("./scripts/copy-groth-params.sh"),
 	}
 
 	// packages we need to install
@@ -272,6 +270,9 @@ func forceBuildFC() {
 	log.Println("Force building go-filecoin...")
 
 	commit := runCapture("git log -n 1 --format=%H")
+	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
+		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
+	}
 
 	runCmd(cmd([]string{
 		"go", "build",
@@ -295,6 +296,9 @@ func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
 	commit := runCapture("git log -n 1 --format=%H")
+	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
+		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
+	}
 
 	runCmd(cmd([]string{
 		"go", "build",

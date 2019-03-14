@@ -44,7 +44,7 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.IntOption("value", "Value to send with message, in AttoFIL"),
+		cmdkit.IntOption("value", "Value to send with message in FIL"),
 		cmdkit.StringOption("from", "Address to send message from"),
 		priceOption,
 		limitOption,

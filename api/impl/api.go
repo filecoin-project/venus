@@ -46,7 +46,7 @@ func New(node *node.Node) api.API {
 	api.miner = newNodeMiner(api, porcelainAPI)
 	api.mining = newNodeMining(api)
 	api.ping = newNodePing(api)
-	api.retrievalClient = newNodeRetrievalClient(api)
+	api.retrievalClient = newNodeRetrievalClient(api, porcelainAPI)
 	api.swarm = newNodeSwarm(api)
 
 	return api

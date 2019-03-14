@@ -177,7 +177,7 @@ var minerSetPriceCmd = &cmds.Command{
 This command waits for the ask to be mined.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("storageprice", true, false, "The new price of storage per sector in FIL"),
+		cmdkit.StringArg("storageprice", true, false, "The new price of storage in FIL per byte per block"),
 		cmdkit.StringArg("expiry", true, false, "How long this ask is valid for in blocks"),
 	},
 	Options: []cmdkit.Option{
