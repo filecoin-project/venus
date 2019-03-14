@@ -23,7 +23,7 @@ var dagGetCmd = &cmds.Command{
 		cmdkit.StringArg("ref", true, false, "CID of object to get"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		out, err := GetAPI(env).Dag().Get(req.Context, req.Arguments[0])
+		out, err := GetPorcelainAPI(env).DAGGet(req.Context, req.Arguments[0])
 		if err != nil {
 			return err
 		}
