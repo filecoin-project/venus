@@ -190,7 +190,7 @@ func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *type
 	}
 
 	ta := newTestApplier()
-	return newMessageApplier(smsg, ta, st, store, bh, address.Address{}, ancestors)
+	return newMessageApplier(smsg, ta, st, store, bh, address.Undef, ancestors)
 }
 
 func newTestApplier() *consensus.DefaultProcessor {

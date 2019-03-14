@@ -213,7 +213,7 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 
 // MinerGetKey queries for the public key of the given miner
 func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getKey")
+	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
 	if err != nil {
 		return []byte{}, err
 	}

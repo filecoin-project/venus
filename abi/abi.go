@@ -144,7 +144,7 @@ func (av *Value) Serialize() ([]byte, error) {
 	case Address:
 		addr, ok := av.Val.(address.Address)
 		if !ok {
-			return nil, &typeError{address.Address{}, av.Val}
+			return nil, &typeError{address.Undef, av.Val}
 		}
 		return addr.Bytes(), nil
 	case AttoFIL:
