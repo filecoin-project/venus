@@ -10,7 +10,6 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -54,26 +53,6 @@ func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, e
 
 func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
-}
-
-func (mpc *minerCreate) MessageQuery(
-	ctx context.Context,
-	optFrom,
-	to address.Address,
-	method string,
-	params ...interface{},
-) ([][]byte, *exec.FunctionSignature, error) {
-	signature := &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.Address},
-	}
-	val := abi.Value{
-		Type: abi.Address,
-		Val:  address.Address{},
-	}
-	ret, err := val.Serialize()
-	mpc.require.NoError(err)
-	return [][]byte{ret}, signature, nil
 }
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
