@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestStatePutGet(t *testing.T) {
@@ -120,11 +119,9 @@ func TestStateGetOrCreate(t *testing.T) {
 
 func TestGetAllActors(t *testing.T) {
 	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
-
 	addr := address.NewForTestGetter()()
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
@@ -133,13 +130,12 @@ func TestGetAllActors(t *testing.T) {
 
 	assert.NoError(err)
 
-	addrs, actors := GetAllActors(tree)
+	results := GetAllActors(ctx, tree)
 
-	require.Equal(1, len(addrs))
-	found := *actors[0]
-
-	assert.Equal(addr.String(), addrs[0])
-	assert.Equal(actor.Code, found.Code)
-	assert.Equal(actor.Nonce, found.Nonce)
-	assert.Equal(actor.Balance, found.Balance)
+	for result := range results {
+		assert.Equal(addr.String(), result.Address)
+		assert.Equal(actor.Code, result.Actor.Code)
+		assert.Equal(actor.Nonce, result.Actor.Nonce)
+		assert.Equal(actor.Balance, result.Actor.Balance)
+	}
 }
