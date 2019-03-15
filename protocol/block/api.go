@@ -28,7 +28,6 @@ type apiDeps struct {
 	addNewBlockFunc   func(context.Context, *types.Block) (err error)
 	blockStore        blockstore.Blockstore
 	cBorStore         *hamt.CborIpldStore
-	onlineStore       *hamt.CborIpldStore
 	chainReader       chain.ReadStore
 	consensusProtocol consensus.Protocol
 	blockTime         time.Duration
@@ -46,7 +45,7 @@ type apiDeps struct {
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
 	bstore blockstore.Blockstore,
-	cborStore, onlineStore *hamt.CborIpldStore,
+	cborStore *hamt.CborIpldStore,
 	chainReader chain.ReadStore,
 	con consensus.Protocol,
 	blockTime, blockMineDelay time.Duration,
@@ -62,7 +61,6 @@ func New(
 		addNewBlockFunc:   addNewBlockFunc,
 		blockStore:        bstore,
 		cBorStore:         cborStore,
-		onlineStore:       onlineStore,
 		chainReader:       chainReader,
 		consensusProtocol: con,
 		blockTime:         blockTime,

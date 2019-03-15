@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	errPkg "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
@@ -48,10 +49,21 @@ func (msg *Message) Marshal() ([]byte, error) {
 	return cbor.DumpObject(msg)
 }
 
+// ToNode converts the Message to an IPLD node.
+func (msg *Message) ToNode() (ipld.Node, error) {
+	// Use 32 byte / 256 bit digest.
+	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	return obj, nil
+}
+
 // Cid returns the canonical CID for the message.
 // TODO: can we avoid returning an error?
 func (msg *Message) Cid() (cid.Cid, error) {
-	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
+	obj, err := msg.ToNode()
 	if err != nil {
 		return cid.Undef, errPkg.Wrap(err, "failed to marshal to cbor")
 	}

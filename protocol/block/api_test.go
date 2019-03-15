@@ -62,7 +62,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.API, *node.Node) {
 	return bapi.New(
 		nd.AddNewBlock,
 		nd.Blockstore,
-		nd.CborStore(), nd.OnlineStore,
+		nd.CborStore(),
 		nd.ChainReader,
 		nd.Consensus,
 		bt, md,
