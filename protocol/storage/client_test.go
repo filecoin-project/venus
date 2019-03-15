@@ -68,14 +68,14 @@ func TestProposeDeal(t *testing.T) {
 	})
 
 	t.Run("and creates proposal with file size", func(t *testing.T) {
-		expectedFileSize, err := testNode.GetFileSize(ctx, dataCid)
+		expectedFileSize, err := testAPI.DAGGetFileSize(ctx, dataCid)
 		require.NoError(err)
 		assert.Equal(types.NewBytesAmount(expectedFileSize), proposal.Size)
 	})
 
 	t.Run("and computes the correct total price", func(t *testing.T) {
 		expectedAskPrice := types.NewAttoFILFromFIL(32) // from test plumbing
-		expectedFileSize, err := testNode.GetFileSize(ctx, dataCid)
+		expectedFileSize, err := testAPI.DAGGetFileSize(ctx, dataCid)
 		require.NoError(err)
 
 		expectedTotalPrice := expectedAskPrice.MulBigInt(big.NewInt(int64(expectedFileSize * duration)))
@@ -193,6 +193,10 @@ func (ctp *clientTestAPI) SignBytes(data []byte, addr address.Address) (types.Si
 	return testSignature, nil
 }
 
+func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
+	return 1000000000, nil
+}
+
 type testClientNode struct {
 	responder func(request interface{}) (interface{}, error)
 }
@@ -205,10 +209,6 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 
 func (tcn *testClientNode) GetBlockTime() time.Duration {
 	return 100 * time.Millisecond
-}
-
-func (tcn *testClientNode) GetFileSize(context.Context, cid.Cid) (uint64, error) {
-	return 1000000000, nil
 }
 
 func (tcn *testClientNode) MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error {

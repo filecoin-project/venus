@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	dag "gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
+	"gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	circuit "gx/ipfs/QmNaXXRfJ93t4HicX8N2WZPhdE8KU39MPGALuH421GFgKA/go-libp2p-circuit"
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -402,6 +403,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
+		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
@@ -500,7 +502,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
-	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host(), node.Ping, node.GetBlockTime())
+	cni := storage.NewClientNodeImpl(node.Host(), node.Ping, node.GetBlockTime())
 	var err error
 	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI)
 	if err != nil {

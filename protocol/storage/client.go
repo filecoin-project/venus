@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
@@ -51,7 +50,6 @@ const (
 )
 
 type clientNode interface {
-	GetFileSize(context.Context, cid.Cid) (uint64, error)
 	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
 	GetBlockTime() time.Duration
 	Ping(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
@@ -61,6 +59,7 @@ type clientPorcelainAPI interface {
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(cid.Cid) *storagedeal.Deal
+	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs() ([]*storagedeal.Deal, error)
 	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
@@ -101,7 +100,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		minerAlive <- smc.pingMiner(ctx, pid, 15*time.Second)
 	}()
 
-	size, err := smc.node.GetFileSize(ctx, data)
+	size, err := smc.api.DAGGetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
@@ -305,16 +304,14 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 
 // ClientNodeImpl implements the client node interface
 type ClientNodeImpl struct {
-	dserv     ipld.DAGService
 	host      host.Host
 	blockTime time.Duration
 	*ping.PingService
 }
 
 // NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(ds ipld.DAGService, host host.Host, ps *ping.PingService, bt time.Duration) *ClientNodeImpl {
+func NewClientNodeImpl(host host.Host, ps *ping.PingService, bt time.Duration) *ClientNodeImpl {
 	return &ClientNodeImpl{
-		dserv:       ds,
 		host:        host,
 		PingService: ps,
 		blockTime:   bt,
@@ -324,11 +321,6 @@ func NewClientNodeImpl(ds ipld.DAGService, host host.Host, ps *ping.PingService,
 // GetBlockTime returns the blocktime this node is configured with.
 func (cni *ClientNodeImpl) GetBlockTime() time.Duration {
 	return cni.blockTime
-}
-
-// GetFileSize returns the size of the file referenced by 'c'
-func (cni *ClientNodeImpl) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
-	return getFileSize(ctx, c, cni.dserv)
 }
 
 // MakeProtocolRequest makes a request and expects a response from the host using the given protocol.
