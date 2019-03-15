@@ -86,7 +86,7 @@ do
 
     # add an ask
     printf "adding ask"
-    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 1 100000 --gas-price=0 --gas-limit=300 # price of one FIL/whatever, ask is valid for 100000 blocks
+    iptb run "$i" -- go-filecoin miner set-price --miner="$newMinerAddr" 1 100000 --gas-price=0 --gas-limit=300 # price of one FIL/whatever, ask is valid for 100000 blocks
 
     # make a deal
     dd if=/dev/random of="$FIXDIR/fake.dat"  bs="$DD_FILE_SIZE"  count=1 # small data file will be autosealed

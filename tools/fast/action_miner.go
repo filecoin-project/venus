@@ -54,28 +54,6 @@ func (f *Filecoin) MinerUpdatePeerid(ctx context.Context, minerAddr address.Addr
 	return out, nil
 }
 
-// MinerAddAsk runs the `miner add-ask` command against the filecoin process
-func (f *Filecoin) MinerAddAsk(ctx context.Context, minerAddr address.Address, fil *big.Float, expiry big.Int, options ...ActionOption) (cid.Cid, error) {
-	var out cid.Cid
-
-	sMinerAddr := minerAddr.String()
-	sExpiry := expiry.String()
-	sFil := fil.Text('f', -1)
-
-	args := []string{"go-filecoin", "miner", "add-ask"}
-
-	for _, option := range options {
-		args = append(args, option()...)
-	}
-
-	args = append(args, sMinerAddr, sFil, sExpiry)
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return cid.Undef, err
-	}
-	return out, nil
-}
-
 // MinerOwner runs the `miner owner` command against the filecoin process
 func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (address.Address, error) {
 	var out address.Address
