@@ -237,7 +237,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(err)
 
 		// commit the change
-		stage.Commit(cid, stage.Head())
+		assert.NoError(stage.Commit(cid, stage.Head()))
 
 		// flush the change
 		err = storage.Flush()
@@ -264,7 +264,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(err)
 
 		// only commit the second change
-		stage.Commit(cid2, stage.Head())
+		assert.NoError(stage.Commit(cid2, stage.Head()))
 
 		// flush the change
 		err = storage.Flush()
@@ -298,7 +298,7 @@ func TestDatastoreBacking(t *testing.T) {
 		require.NoError(err)
 
 		// only commit the second change
-		stage.Commit(cid2, stage.Head())
+		assert.NoError(stage.Commit(cid2, stage.Head()))
 
 		// flush the change
 		err = storage.Flush()
@@ -356,7 +356,7 @@ func TestValidationAndPruning(t *testing.T) {
 		require.NoError(err)
 
 		// only commit the second change
-		stage.Commit(cid2, stage.Head())
+		assert.NoError(stage.Commit(cid2, stage.Head()))
 
 		// Prune the stage
 		err = stage.Prune()

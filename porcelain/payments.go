@@ -95,7 +95,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	// validate that channel expiry gives us enough time
 	lastPayment := currentHeight.Add(types.NewBlockHeight(config.Duration))
 	if config.ChannelExpiry.LessThan(lastPayment) {
-		return nil, fmt.Errorf("channel would expire (%s) before last payment is made (%d)", config.ChannelExpiry.String(), lastPayment)
+		return nil, fmt.Errorf("channel would expire (%s) before last payment is made (%s)", config.ChannelExpiry.String(), lastPayment)
 	}
 
 	response := &CreatePaymentsReturn{

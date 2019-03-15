@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 
@@ -14,6 +15,7 @@ import (
 
 func TestPing(t *testing.T) {
 	t.Parallel()
+	assert := assert.New(t)
 
 	require := require.New(t)
 	ctx := context.Background()
@@ -28,7 +30,8 @@ func TestPing(t *testing.T) {
 	}
 
 	// connect the nodes
-	nodes[0].Host().Connect(ctx, pi1)
+	err := nodes[0].Host().Connect(ctx, pi1)
+	assert.NoError(err)
 
 	ch, err := api0.Ping().Ping(ctx, p1, 5, 10*time.Millisecond)
 	require.NoError(err)

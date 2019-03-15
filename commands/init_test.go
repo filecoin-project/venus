@@ -18,7 +18,7 @@ func TestDownloadGenesis(t *testing.T) {
 	port, err := th.GetFreePort()
 	require.NoError(t, err)
 
-	exec.CommandContext(
+	err = exec.CommandContext(
 		ctx,
 		th.ProjectRoot("tools/genesis-file-server/genesis-file-server"),
 		"--genesis-file-path",
@@ -26,6 +26,7 @@ func TestDownloadGenesis(t *testing.T) {
 		"--port",
 		strconv.Itoa(port),
 	).Start()
+	require.NoError(t, err)
 
 	td := th.NewDaemon(t, th.GenesisFile(fmt.Sprintf("http://127.0.0.1:%d/genesis.car", port))).Start()
 

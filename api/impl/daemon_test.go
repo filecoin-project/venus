@@ -70,7 +70,8 @@ func TestDaemonInitFail(t *testing.T) {
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
-		ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
+		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
+		assert.NoError(err)
 
 		err = New(nil).Daemon().Init(ctx, api.RepoDir(dir))
 		assert.Contains(err.Error(), "repo already initialized")

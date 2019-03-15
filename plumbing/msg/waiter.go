@@ -87,14 +87,12 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 			if !more {
 				return errors.New("wait input channel closed without finding message")
 			}
-			switch raw.(type) { // nolint: staticcheck
+			switch raw := raw.(type) {
 			case error:
-				e := raw.(error)
-				log.Errorf("Waiter.Wait: %s", e)
-				return e
+				log.Errorf("Waiter.Wait: %s", raw)
+				return raw
 			case types.TipSet:
-				ts := raw.(types.TipSet)
-				for _, blk := range ts {
+				for _, blk := range raw {
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
 						if err != nil {
@@ -102,7 +100,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 							return err
 						}
 						if c.Equals(msgCid) {
-							recpt, err := w.receiptFromTipSet(ctx, msgCid, ts)
+							recpt, err := w.receiptFromTipSet(ctx, msgCid, raw)
 							if err != nil {
 								return errors.Wrap(err, "error retrieving receipt from tipset")
 							}

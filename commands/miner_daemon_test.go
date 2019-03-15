@@ -148,7 +148,8 @@ func TestMinerPledge(t *testing.T) {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.Contains(line, "MinerActor") {
-				json.Unmarshal([]byte(line), &addressStruct)
+				err := json.Unmarshal([]byte(line), &addressStruct)
+				assert.NoError(err)
 				break
 			}
 		}
@@ -403,7 +404,8 @@ func TestMinerOwner(t *testing.T) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
-			json.Unmarshal([]byte(line), &addressStruct)
+			err = json.Unmarshal([]byte(line), &addressStruct)
+			assert.NoError(err)
 			break
 		}
 	}
@@ -441,7 +443,8 @@ func TestMinerPower(t *testing.T) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
-			json.Unmarshal([]byte(line), &addressStruct)
+			err = json.Unmarshal([]byte(line), &addressStruct)
+			assert.NoError(err)
 			break
 		}
 	}

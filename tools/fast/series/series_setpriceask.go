@@ -23,7 +23,6 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 	// Use the information about the ask to find it
 	var ask api.Ask
 	found := false
-	eof := false
 	for {
 		// Client lists all of the asks
 		asks, err := miner.ClientListAsks(ctx)
@@ -32,7 +31,7 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		}
 
 		// Look for the ask we want
-		eof = false
+		eof := false
 		for {
 			if err := asks.Decode(&ask); err != nil {
 				if err == io.EOF {

@@ -54,7 +54,7 @@ func TestGetAndMaybeSetDefaultSenderAddress(t *testing.T) {
 
 		addrA, err := fp.WalletNewAddress()
 		require.NoError(err)
-		fp.ConfigSet("wallet.defaultAddress", addrA.String())
+		assert.NoError(fp.ConfigSet("wallet.defaultAddress", addrA.String()))
 
 		addrB, err := porcelain.GetAndMaybeSetDefaultSenderAddress(fp)
 		require.NoError(err)

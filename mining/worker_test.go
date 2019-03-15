@@ -278,10 +278,14 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
-	pool.Add(smsg1)
-	pool.Add(smsg2)
-	pool.Add(smsg3)
-	pool.Add(smsg4)
+	_, err = pool.Add(smsg1)
+	assert.NoError(err)
+	_, err = pool.Add(smsg2)
+	assert.NoError(err)
+	_, err = pool.Add(smsg3)
+	assert.NoError(err)
+	_, err = pool.Add(smsg4)
+	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 4)
 	baseBlock := types.Block{
@@ -407,7 +411,8 @@ func TestGenerateError(t *testing.T) {
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
-	pool.Add(smsg)
+	_, err = pool.Add(smsg)
+	require.NoError(err)
 
 	assert.Len(pool.Pending(), 1)
 	baseBlock := types.Block{

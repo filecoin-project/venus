@@ -58,9 +58,8 @@ var minerPledgeCmd = &cmds.Command{
 		}
 		pledgeSectors := big.NewInt(0).SetBytes(bytes[0])
 
-		str := fmt.Sprintf("%d", pledgeSectors)
-		re.Emit(str) // nolint: errcheck
-		return nil
+		str := fmt.Sprintf("%d", pledgeSectors) // nolint: govet
+		return re.Emit(str)
 	},
 }
 
@@ -449,7 +448,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		}
 		total := big.NewInt(0).SetBytes(bytes[0])
 
-		str := fmt.Sprintf("%d / %d", power, total)
+		str := fmt.Sprintf("%d / %d", power, total) // nolint: govet
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{

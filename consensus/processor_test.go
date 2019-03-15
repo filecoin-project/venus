@@ -1097,7 +1097,7 @@ func mustSetup2Actors(t *testing.T, balance1 *types.AttoFIL, balance2 *types.Att
 
 func mustCreateMiner(ctx context.Context, require *require.Assertions, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
 	miner := th.RequireNewMinerActor(require, vms, minerAddr, minerOwner, []byte{}, 1000, th.RequireRandomPeerID(), types.ZeroAttoFIL)
-	st.SetActor(ctx, minerAddr, miner)
+	_ = st.SetActor(ctx, minerAddr, miner)
 	stCid, err := st.Flush(ctx)
 	require.NoError(err)
 	return stCid, miner

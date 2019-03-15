@@ -312,7 +312,8 @@ func TestCreateChallenge(t *testing.T) {
 		parents := types.TipSet{}
 		for _, t := range c.parentTickets {
 			b := types.Block{Ticket: t}
-			parents.AddBlock(&b)
+			err = parents.AddBlock(&b)
+			assert.NoError(err)
 		}
 		r, err := consensus.CreateChallengeSeed(parents, c.nullBlockCount)
 		assert.NoError(err)

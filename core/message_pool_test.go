@@ -198,7 +198,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSet) // sic
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSet)) // sic
 		assertPoolEquals(assert, p, m[0], m[1])
 	})
 
@@ -224,7 +224,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[1])
 	})
 
@@ -248,7 +248,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[1])
 	})
 
@@ -268,7 +268,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[1], m[2])
 	})
 
@@ -297,7 +297,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[6])
 	})
 
@@ -324,7 +324,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[6])
 	})
 
@@ -350,7 +350,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[3], m[5])
 	})
 
@@ -371,7 +371,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldTipSet := headOf(oldChain)
 
 		oldTipSetPrev := oldChain[1]
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSetPrev)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSetPrev))
 		assertPoolEquals(assert, p, m[2], m[3])
 	})
 
@@ -391,7 +391,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p, m[0])
 	})
 
@@ -415,7 +415,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
 		assertPoolEquals(assert, p)
 	})
 
@@ -441,7 +441,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 			// update pool with tipset that has no messages
 			next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-			p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+			assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 
 			// assert all added messages still in pool
 			assertPoolEquals(assert, p, m[:i+1]...)
@@ -451,14 +451,14 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// next tipset times out first message only
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 		assertPoolEquals(assert, p, m[1:]...)
 
 		// adding a chain of multiple tipsets times out based on final state
 		for i := 0; i < 4; i++ {
 			next = headOf(NewChainWithMessages(store, next, msgsSet{msgs{}}))
 		}
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 		assertPoolEquals(assert, p, m[5:]...)
 	})
 
@@ -496,7 +496,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			MustPut(store, blk)
 			next[blk.Cid()] = blk
 
-			p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+			assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 
 			// assert all added messages still in pool
 			assertPoolEquals(assert, p, m[:i+1]...)
@@ -506,7 +506,7 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// next tipset times out first message only
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 		assertPoolEquals(assert, p, m[1:]...)
 	})
 }

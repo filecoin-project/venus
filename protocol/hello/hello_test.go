@@ -193,8 +193,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
 
-	mn.LinkAll()
-	mn.ConnectAllButSelf()
+	assert.NoError(t, mn.LinkAll())
+	assert.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
