@@ -12,7 +12,6 @@ type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	address         *nodeAddress
 	client          *nodeClient
 	daemon          *nodeDaemon
 	dag             *nodeDag
@@ -35,7 +34,6 @@ func New(node *node.Node) api.API {
 		porcelainAPI = node.PorcelainAPI
 	}
 
-	api.address = newNodeAddress(api)
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.dag = newNodeDag(api)
@@ -44,10 +42,6 @@ func New(node *node.Node) api.API {
 	api.swarm = newNodeSwarm(api)
 
 	return api
-}
-
-func (api *nodeAPI) Address() api.Address {
-	return api.address
 }
 
 func (api *nodeAPI) Client() api.Client {

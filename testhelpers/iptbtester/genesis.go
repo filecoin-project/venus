@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	fcapi "github.com/filecoin-project/go-filecoin/api/impl"
+	"github.com/filecoin-project/go-filecoin/commands"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 )
 
@@ -56,7 +56,7 @@ func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 		t.Fatal(err)
 	}
 
-	var wsr fcapi.WalletSerializeResult
+	var wsr commands.WalletSerializeResult
 	wsr.KeyInfo = append(wsr.KeyInfo, info.Keys[0])
 	if err := json.NewEncoder(keyfile).Encode(wsr); err != nil {
 		t.Fatal(err)

@@ -254,3 +254,13 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 func (api *API) WalletNewAddress() (address.Address, error) {
 	return wallet.NewAddress(api.wallet)
 }
+
+// WalletImport adds a given set of KeyInfos to the wallet
+func (api *API) WalletImport(kinfos []*types.KeyInfo) ([]address.Address, error) {
+	return api.wallet.Import(kinfos)
+}
+
+// WalletExport returns the KeyInfos for the given wallet addresses
+func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) {
+	return api.wallet.Export(addrs)
+}
