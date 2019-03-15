@@ -5,7 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/pkg/errors"
+
+	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 )
 
 // MessageQueue stores an ordered list of messages (per actor) and enforces that their nonces form a contiguous sequence.
