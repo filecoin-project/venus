@@ -187,7 +187,7 @@ func TestWaitConflicting(t *testing.T) {
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,
 	})
-	chainStore.SetHead(ctx, ts)
+	assert.NoError(chainStore.SetHead(ctx, ts))
 	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
 		assert.NotNil(rcp)

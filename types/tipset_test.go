@@ -263,7 +263,7 @@ func TestTipSetEquals(t *testing.T) {
 
 	ts2 := RequireNewTipSet(require, b1, b2)
 	assert.True(!ts2.Equals(ts))
-	ts2.AddBlock(b3)
+	assert.NoError(ts2.AddBlock(b3))
 	assert.True(ts.Equals(ts2))
 }
 

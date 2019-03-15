@@ -47,7 +47,7 @@ func TestDagDaemon(t *testing.T) {
 		// CBOR decode the IPLD node's raw data into a Filecoin block
 
 		var actual types.Block
-		cbor.DecodeInto(ipldnode.RawData(), &actual)
+		cbor.DecodeInto(ipldnode.RawData(), &actual) // nolint: errcheck
 		// assert.NoError(err)
 		// TODO Enable ^^ and debug why Block.Miner isn't being de/encoded properly.
 

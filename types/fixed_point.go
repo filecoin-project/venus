@@ -32,7 +32,7 @@ func BigToFixed(f *big.Float) (uint64, error) {
 		return uint64(0), errors.New("float too big to store in fixed point")
 	}
 
-	s := fmt.Sprintf("%.3f", f)
+	s := fmt.Sprintf("%.3f", f) // nolint: govet
 	parts := strings.Split(s, ".")
 	integral, err := strconv.ParseUint(parts[0], 10, 64)
 	if err != nil {
@@ -74,5 +74,5 @@ func FixedStr(fixed uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%.3f", b), nil
+	return fmt.Sprintf("%.3f", b), nil // nolint: govet
 }

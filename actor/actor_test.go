@@ -184,7 +184,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		exportedFunc := MakeTypedExport(a, "six")
 		assert.Panics(func() {
-			exportedFunc(makeCtx("six"))
+			_, _, _ = exportedFunc(makeCtx("six"))
 		})
 	})
 }
