@@ -115,7 +115,7 @@ func TestChainDaemon(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 
-		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
+		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
 		daemon.RunSuccess("mining", "once", "--enc", "text")
