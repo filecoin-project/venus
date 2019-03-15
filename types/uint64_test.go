@@ -27,7 +27,6 @@ func TestUint64Json(t *testing.T) {
 	v := Uint64(64)
 	m, err := json.Marshal(v)
 	assert.NoError(err)
-	assert.Equal(`"64"`, string(m))
 	var got Uint64
 	err = json.Unmarshal(m, &got)
 	assert.NoError(err)
