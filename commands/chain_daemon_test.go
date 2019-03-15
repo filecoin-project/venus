@@ -110,18 +110,4 @@ func TestChainDaemon(t *testing.T) {
 		assert.Contains(chainLsResult, "1")
 		assert.Contains(chainLsResult, "0")
 	})
-
-	t.Run("chain ls --long with JSON encoding returns integer string block height and nonce", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-
-		daemon := th.NewDaemon(t, th.WithMiner(fixtures.TestMiners[0])).Start()
-		defer daemon.ShutdownSuccess()
-
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
-		assert.Contains(chainLsResult, `"height":"0"`)
-		assert.Contains(chainLsResult, `"height":"1"`)
-		assert.Contains(chainLsResult, `"nonce":"0"`)
-	})
 }

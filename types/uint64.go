@@ -1,7 +1,7 @@
 package types
 
 import (
-	"strconv"
+	"encoding/base64"
 	"strings"
 
 	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
@@ -29,16 +29,17 @@ type Uint64 uint64
 
 // MarshalJSON converts a Uint64 to a json string and returns it.
 func (u Uint64) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + strconv.FormatUint(uint64(u), 10) + `"`), nil
+	encoded := base64.StdEncoding.EncodeToString(leb128.FromUInt64(uint64(u)))
+	return []byte(`"` + encoded + `"`), nil
 }
 
 // UnmarshalJSON converts a json string to a Uint64.
 func (u *Uint64) UnmarshalJSON(b []byte) error {
-	val, err := strconv.ParseUint(strings.Trim(string(b), `"`), 10, 64)
+	jd, err := base64.StdEncoding.DecodeString(strings.Trim(string(b), `"`))
 	if err != nil {
 		return err
 	}
 
-	*u = Uint64(val)
+	*u = Uint64(leb128.ToUInt64(jd))
 	return nil
 }
