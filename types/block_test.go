@@ -245,10 +245,11 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Messages = []*SignedMessage{message}
 	child.MessageReceipts = []*MessageReceipt{receipt}
 
-	marshalled, e1 := json.Marshal(child)
+	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(e1)
 	str := string(marshalled)
 
+	assert.Contains(str, child.Miner.String())
 	assert.Contains(str, parent.Cid().String())
 	assert.Contains(str, message.From.String())
 	assert.Contains(str, message.To.String())

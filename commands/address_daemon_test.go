@@ -83,8 +83,8 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
 		"--from", addr,
-		"--price", "0",
-		"--limit", "300",
+		"--gas-price", "0",
+		"--gas-limit", "300",
 		minerAddr,
 		minerPidForUpdate.Pretty(),
 	)

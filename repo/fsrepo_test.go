@@ -45,12 +45,12 @@ const (
 		"address": "/ip4/0.0.0.0/tcp/6000"
 	},
 	"mining": {
-		"minerAddress": "",
+		"minerAddress": "empty",
 		"autoSealIntervalSeconds": 120,
 		"storagePrice": "0"
 	},
 	"wallet": {
-		"defaultAddress": ""
+		"defaultAddress": "empty"
 	},
 	"heartbeat": {
 		"beatTarget": "",

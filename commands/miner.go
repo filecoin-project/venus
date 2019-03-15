@@ -50,7 +50,7 @@ var minerPledgeCmd = &cmds.Command{
 
 		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
-			address.Address{},
+			address.Undef,
 			minerAddr,
 			"getPledge",
 		)
@@ -134,7 +134,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 				return err
 			}
 			return re.Emit(&MinerCreateResult{
-				Address: address.Address{},
+				Address: address.Undef,
 				GasUsed: usedGas,
 				Preview: true,
 			})
@@ -479,7 +479,7 @@ var minerOwnerCmd = &cmds.Command{
 
 		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
-			address.Address{},
+			address.Undef,
 			minerAddr,
 			"getOwner",
 		)
@@ -518,7 +518,7 @@ Values will be output as a ratio where the first number is the miner power and s
 
 		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
-			address.Address{},
+			address.Undef,
 			minerAddr,
 			"getPower",
 		)
@@ -529,7 +529,7 @@ Values will be output as a ratio where the first number is the miner power and s
 
 		bytes, _, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
-			address.Address{},
+			address.Undef,
 			address.StorageMarketAddress,
 			"getTotalStorage",
 		)

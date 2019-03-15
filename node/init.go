@@ -83,9 +83,9 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 
 	newConfig.Mining.AutoSealIntervalSeconds = cfg.AutoSealIntervalSeconds
 
-	if cfg.DefaultWalletAddress != (address.Address{}) {
+	if cfg.DefaultWalletAddress != (address.Undef) {
 		newConfig.Wallet.DefaultAddress = cfg.DefaultWalletAddress
-	} else if r.Config().Wallet.DefaultAddress == (address.Address{}) {
+	} else if r.Config().Wallet.DefaultAddress == (address.Undef) {
 		// TODO: but behind a config option if this should be generated
 		addr, err := newAddress(r)
 		if err != nil {
@@ -123,12 +123,12 @@ func makePrivateKey(nbits int) (ci.PrivKey, error) {
 func newAddress(r repo.Repo) (address.Address, error) {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	if err != nil {
-		return address.Address{}, errors.Wrap(err, "failed to set up wallet backend")
+		return address.Undef, errors.Wrap(err, "failed to set up wallet backend")
 	}
 
 	addr, err := backend.NewAddress()
 	if err != nil {
-		return address.Address{}, errors.Wrap(err, "failed to create address")
+		return address.Undef, errors.Wrap(err, "failed to create address")
 	}
 
 	return addr, err

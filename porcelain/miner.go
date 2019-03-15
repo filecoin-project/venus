@@ -37,7 +37,7 @@ func MinerPreviewCreate(
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (usedGas types.GasUnits, err error) {
-	if fromAddr == (address.Address{}) {
+	if fromAddr.Empty() {
 		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
 		if err != nil {
 			return types.NewGasUnits(0), err
@@ -203,9 +203,9 @@ type mgoaAPI interface {
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
 func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (address.Address, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getOwner")
+	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	return address.NewFromBytes(res[0])
@@ -213,7 +213,7 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 
 // MinerGetKey queries for the public key of the given miner
 func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getKey")
+	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
 	if err != nil {
 		return []byte{}, err
 	}
@@ -228,7 +228,7 @@ type mgaAPI interface {
 
 // MinerGetAsk queries for an ask of the given miner
 func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	ret, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getAsk", big.NewInt(int64(askID)))
+	ret, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getAsk", big.NewInt(int64(askID)))
 	if err != nil {
 		return minerActor.Ask{}, err
 	}
@@ -248,7 +248,7 @@ type mgpidAPI interface {
 
 // MinerGetPeerID queries for the peer id of the given miner
 func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Address) (peer.ID, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getPeerID")
+	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getPeerID")
 	if err != nil {
 		return "", err
 	}

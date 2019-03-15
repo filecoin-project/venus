@@ -38,9 +38,11 @@ func TestMessageQueue(t *testing.T) {
 	newMessage := func(from address.Address, nonce uint64) *types.SignedMessage {
 		seq := msgSeq
 		msgSeq++
+		to, err := address.NewActorAddress([]byte("destination"))
+		require.NoError(err)
 		msg := types.NewMessage(
 			from,
-			address.NewMainnet([]byte("destination")),
+			to,
 			nonce,
 			types.NewAttoFILFromFIL(0),
 			"method"+fmt.Sprintf("%d", seq),

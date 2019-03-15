@@ -48,7 +48,7 @@ ownerRaw=$(iptb run 0 -- go-filecoin wallet import "$FIXDIR/0.key")
 minerOwner=$(echo $ownerRaw | sed -e 's/^node\[0\] exit 0 //' | jq -r ".")
 # update the peerID to the correct value
 peerID=$(iptb run 0 -- go-filecoin id | tail -n +3 | jq ".ID" -r)
-iptb run 0 -- go-filecoin miner update-peerid --from="$minerOwner" --price=0 --limit=300 "$minerAddr" "$peerID"
+iptb run 0 -- go-filecoin miner update-peerid --from="$minerOwner" --gas-price=0 --gas-limit=300 "$minerAddr" "$peerID"
 # start mining
 iptb run 0 -- go-filecoin mining start
 
@@ -86,7 +86,7 @@ do
 
     # add an ask
     printf "adding ask"
-    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 1 100000 --price=0 --limit=300 # price of one FIL/whatever, ask is valid for 100000 blocks
+    iptb run "$i" -- go-filecoin miner add-ask "$newMinerAddr" 1 100000 --gas-price=0 --gas-limit=300 # price of one FIL/whatever, ask is valid for 100000 blocks
 
     # make a deal
     dd if=/dev/random of="$FIXDIR/fake.dat"  bs="$DD_FILE_SIZE"  count=1 # small data file will be autosealed

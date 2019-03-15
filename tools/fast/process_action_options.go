@@ -15,19 +15,19 @@ import (
 // the actions.
 type ActionOption func() []string
 
-// AOPrice provides the `--price=<fil>` option to actions
+// AOPrice provides the `--gas-price=<fil>` option to actions
 func AOPrice(price *big.Float) ActionOption {
 	sPrice := price.Text('f', -1)
 	return func() []string {
-		return []string{"--price", sPrice}
+		return []string{"--gas-price", sPrice}
 	}
 }
 
-// AOLimit provides the `--limit=<uint64>` option to actions
+// AOLimit provides the `--gas-limit=<uint64>` option to actions
 func AOLimit(limit uint64) ActionOption {
 	sLimit := fmt.Sprintf("%d", limit)
 	return func() []string {
-		return []string{"--limit", sLimit}
+		return []string{"--gas-limit", sLimit}
 	}
 }
 

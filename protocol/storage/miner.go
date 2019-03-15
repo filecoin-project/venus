@@ -295,7 +295,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 
 	payer := p.Payment.Payer
 
-	ret, _, err := sm.porcelainAPI.MessageQuery(ctx, address.Address{}, address.PaymentBrokerAddress, "ls", payer)
+	ret, _, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}
@@ -627,7 +627,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 
 	rets, sig, err := sm.porcelainAPI.MessageQuery(
 		ctx,
-		address.Address{},
+		address.Undef,
 		sm.minerAddr,
 		"getSectorCommitments",
 	)
@@ -715,7 +715,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 	res, _, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
-		address.Address{},
+		address.Undef,
 		sm.minerAddr,
 		"getProvingPeriodStart",
 	)

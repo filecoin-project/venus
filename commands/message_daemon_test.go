@@ -10,6 +10,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -34,26 +35,26 @@ func TestMessageSend(t *testing.T) {
 
 	t.Log("[failure] invalid target")
 	d.RunFail(
-		"invalid checksum",
+		address.ErrUnknownNetwork.Error(),
 		"message", "send",
 		"--from", from,
-		"--price", "0", "--limit", "300",
+		"--gas-price", "0", "--gas-limit", "300",
 		"--value=10", "xyz",
 	)
 
 	t.Log("[success] with from")
 	d.RunSuccess("message", "send",
 		"--from", from,
-		"--price", "0",
-		"--limit", "300",
+		"--gas-price", "0",
+		"--gas-limit", "300",
 		fixtures.TestAddresses[3],
 	)
 
 	t.Log("[success] with from and value")
 	d.RunSuccess("message", "send",
 		"--from", from,
-		"--price", "0",
-		"--limit", "300",
+		"--gas-price", "0",
+		"--gas-limit", "300",
 		"--value=10",
 		fixtures.TestAddresses[3],
 	)
@@ -70,7 +71,7 @@ func TestMessageWait(t *testing.T) {
 		msg := d.RunSuccess(
 			"message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--price", "0", "--limit", "300",
+			"--gas-price", "0", "--gas-limit", "300",
 			"--value=10",
 			fixtures.TestAddresses[1],
 		)
@@ -117,7 +118,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
 		d.RunFail("block gas limit",
 			"message", "send",
-			"--price", "0", "--limit", doubleTheBlockGasLimit,
+			"--gas-price", "0", "--gas-limit", doubleTheBlockGasLimit,
 			"--value=10", fixtures.TestAddresses[1],
 		)
 	})
@@ -125,7 +126,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 	t.Run("when the gas limit is below the block limit, the message succeeds", func(t *testing.T) {
 		d.RunSuccess(
 			"message", "send",
-			"--price", "0", "--limit", halfTheBlockGasLimit,
+			"--gas-price", "0", "--gas-limit", halfTheBlockGasLimit,
 			"--value=10", fixtures.TestAddresses[1],
 		)
 

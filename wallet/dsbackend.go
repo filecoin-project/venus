@@ -98,7 +98,7 @@ func (backend *DSBackend) HasAddress(addr address.Address) bool {
 func (backend *DSBackend) NewAddress() (address.Address, error) {
 	prv, err := crypto.GenerateKey()
 	if err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	// TODO: maybe the above call should just return a keyinfo?
@@ -108,7 +108,7 @@ func (backend *DSBackend) NewAddress() (address.Address, error) {
 	}
 
 	if err := backend.putKeyInfo(ki); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	return ki.Address()

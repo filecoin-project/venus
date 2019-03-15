@@ -36,9 +36,9 @@ func MessageSendWithDefaultAddress(
 	params ...interface{},
 ) (cid.Cid, error) {
 	// If the from address isn't set attempt to use the default address.
-	if from == (address.Address{}) {
+	if from.Empty() {
 		ret, err := plumbing.GetAndMaybeSetDefaultSenderAddress()
-		if (err != nil && err == ErrNoDefaultFromAddress) || ret == (address.Address{}) {
+		if (err != nil && err == ErrNoDefaultFromAddress) || ret.Empty() {
 			return cid.Undef, ErrNoDefaultFromAddress
 		}
 		from = ret
@@ -61,7 +61,7 @@ type gamsdsaAPI interface {
 func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaAPI) (address.Address, error) {
 	ret, err := plumbing.ConfigGet("wallet.defaultAddress")
 	addr := ret.(address.Address)
-	if err != nil || addr != (address.Address{}) {
+	if err != nil || !addr.Empty() {
 		return addr, err
 	}
 
@@ -70,11 +70,11 @@ func GetAndMaybeSetDefaultSenderAddress(plumbing gamsdsaAPI) (address.Address, e
 		addr := plumbing.WalletAddresses()[0]
 		err := plumbing.ConfigSet("wallet.defaultAddress", addr.String())
 		if err != nil {
-			return address.Address{}, err
+			return address.Undef, err
 		}
 
 		return addr, nil
 	}
 
-	return address.Address{}, ErrNoDefaultFromAddress
+	return address.Undef, ErrNoDefaultFromAddress
 }

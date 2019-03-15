@@ -192,16 +192,14 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 	buf := new(bytes.Buffer)
 
 	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
 	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return address.Address{}, err
+		return address.Undef, err
 	}
 
-	hash := address.Hash(buf.Bytes())
-
-	return address.NewMainnet(hash), nil
+	return address.NewActorAddress(buf.Bytes())
 }
 
 // CreateNewActor creates and initializes an actor at the given address.
