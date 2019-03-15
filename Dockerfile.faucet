@@ -1,7 +1,7 @@
 FROM golang:1.11.2-stretch
 MAINTAINER Filecoin Dev Team
 
-RUN apt-get update && apt-get install -y ca-certificates file sudo clang
+RUN apt-get update && apt-get install -y ca-certificates file sudo clang jq
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 
 # This docker file is a modified version of
@@ -9,6 +9,8 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 # Thanks Lars :)
 
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV FILECOIN_USE_PRECOMPILED_RUST_PROOFS true
+ENV FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES true
 
 COPY . $SRC_DIR
 
@@ -45,6 +47,10 @@ COPY --from=0 $SRC_DIR/faucet /usr/local/bin/faucet
 COPY --from=0 /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=0 /tmp/tini /sbin/tini
 COPY --from=0 /etc/ssl/certs /etc/ssl/certs
+COPY --from=0 /lib/x86_64-linux-gnu/libutil.so.1 /lib/libutil.so.1
+COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
+COPY --from=0 /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
+COPY --from=0 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
 
 EXPOSE 9797
 
