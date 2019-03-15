@@ -12,12 +12,97 @@ import (
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	w "github.com/filecoin-project/go-filecoin/wallet"
 )
+
+// mcAPI is the subset of the plumbing.API that MinerCreate uses.
+type mcAPI interface {
+	ConfigGet(dottedPath string) (interface{}, error)
+	ConfigSet(dottedPath string, paramJSON string) error
+	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
+}
+
+// MinerCreate creates a new miner actor for the given account and returns its address.
+// It will wait for the the actor to appear on-chain and add set the address to mining.minerAddress in the config.
+// TODO: add ability to pass in a KeyInfo to store for signing blocks.
+//       See https://github.com/filecoin-project/go-filecoin/issues/1843
+func MinerCreate(
+	ctx context.Context,
+	plumbing mcAPI,
+	minerOwnerAddr address.Address,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+	pledge uint64,
+	pid peer.ID,
+	collateral *types.AttoFIL,
+) (_ *address.Address, err error) {
+	if minerOwnerAddr == (address.Address{}) {
+		minerOwnerAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ctx = log.Start(ctx, "Node.CreateMiner")
+	defer func() {
+		log.FinishWithErr(ctx, err)
+	}()
+
+	addr, err := plumbing.ConfigGet("mining.minerAddress")
+	if err != nil {
+		return nil, err
+	}
+	if (addr != address.Address{}) {
+		return nil, fmt.Errorf("can only have one miner per node")
+	}
+
+	pubKey, err := plumbing.WalletGetPubKeyForAddress(minerOwnerAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	smsgCid, err := plumbing.MessageSendWithDefaultAddress(
+		ctx,
+		minerOwnerAddr,
+		address.StorageMarketAddress,
+		collateral,
+		gasPrice,
+		gasLimit,
+		"createMiner",
+		big.NewInt(int64(pledge)),
+		pubKey,
+		pid,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var minerAddr address.Address
+	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
+		if receipt.ExitCode != uint8(0) {
+			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+		}
+		minerAddr, err = address.NewFromBytes(receipt.Return[0])
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err = plumbing.ConfigSet("mining.minerAddress", minerAddr.String()); err != nil {
+		return nil, err
+	}
+
+	return &minerAddr, nil
+}
 
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
 type mpcAPI interface {

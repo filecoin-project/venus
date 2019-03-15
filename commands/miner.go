@@ -106,6 +106,9 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 				return errors.Wrap(err, "invalid peer id")
 			}
 		}
+		if pid == "" {
+			pid = GetPorcelainAPI(env).NetworkGetPeerID()
+		}
 
 		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
 		if err != nil {
@@ -140,13 +143,21 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			})
 		}
 
-		addr, err := GetAPI(env).Miner().Create(req.Context, fromAddr, gasPrice, gasLimit, pledge, pid, collateral)
+		addr, err := GetPorcelainAPI(env).MinerCreate(
+			req.Context,
+			fromAddr,
+			gasPrice,
+			gasLimit,
+			pledge,
+			pid,
+			collateral,
+		)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "Could not create miner. Please consult the documentation to setup your wallet and genesis block correctly")
 		}
 
 		return re.Emit(&MinerCreateResult{
-			Address: addr,
+			Address: *addr,
 			GasUsed: types.NewGasUnits(0),
 			Preview: false,
 		})

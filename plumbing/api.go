@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -43,8 +44,8 @@ type API struct {
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	sigGetter    *mthdsig.Getter
-	wallet       *wallet.Wallet
 	storagedeals *strgdls.Store
+	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
@@ -76,8 +77,8 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
-		wallet:       deps.Wallet,
 		storagedeals: deps.Deals,
+		wallet:       deps.Wallet,
 	}
 }
 
@@ -127,6 +128,15 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 		return nil, err
 	}
 	return state.GetActor(ctx, addr)
+}
+
+// ActorLs returns a slice of actors from the latest state on the chain
+func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+	st, err := api.chain.LatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return state.GetAllActors(ctx, st), nil
 }
 
 // BlockGet gets a block by CID
@@ -233,6 +243,11 @@ func (api *API) WalletAddresses() []address.Address {
 // WalletFind finds addresses on the wallet
 func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
 	return api.wallet.Find(address)
+}
+
+// WalletGetPubKeyForAddress returns the public key for a given address
+func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
+	return api.wallet.GetPubKeyForAddress(addr)
 }
 
 // WalletNewAddress generates a new wallet address

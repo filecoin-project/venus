@@ -22,6 +22,110 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
+type minerCreate struct {
+	assert  *assert.Assertions
+	require *require.Assertions
+	address address.Address
+	config  *cfg.Config
+	wallet  *wallet.Wallet
+	msgCid  cid.Cid
+	msgFail bool
+}
+
+func newMinerCreate(assert *assert.Assertions, require *require.Assertions, msgFail bool, address address.Address) *minerCreate {
+	repo := repo.NewInMemoryRepo()
+	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
+	require.NoError(err)
+	return &minerCreate{
+		assert:  assert,
+		require: require,
+		address: address,
+		config:  cfg.NewConfig(repo),
+		wallet:  wallet.New(backend),
+		msgFail: msgFail,
+	}
+}
+
+func (mpc *minerCreate) ConfigGet(dottedPath string) (interface{}, error) {
+	return mpc.config.Get(dottedPath)
+}
+
+func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
+	return mpc.config.Set(dottedPath, paramJSON)
+}
+
+func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
+}
+
+func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	if mpc.msgFail {
+		return cid.Cid{}, errors.New("Test Error")
+	}
+	mpc.msgCid = types.SomeCid()
+	return mpc.msgCid, nil
+}
+
+func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+	mpc.assert.Equal(mpc.msgCid, msgCid)
+	receipt := &types.MessageReceipt{
+		Return:   [][]byte{mpc.address.Bytes()},
+		ExitCode: uint8(0),
+	}
+	cb(nil, nil, receipt)
+	return nil
+}
+
+func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
+	return mpc.wallet.GetPubKeyForAddress(addr)
+}
+
+func TestMinerCreate(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		ctx := context.Background()
+		expectedAddress := address.NewForTestGetter()()
+		plumbing := newMinerCreate(assert, require, false, expectedAddress)
+		collateral := types.NewAttoFILFromFIL(1)
+
+		addr, err := MinerCreate(
+			ctx,
+			plumbing,
+			address.Address{},
+			types.NewGasPrice(0),
+			types.NewGasUnits(100),
+			1,
+			"",
+			collateral,
+		)
+		require.NoError(err)
+		assert.Equal(expectedAddress, *addr)
+	})
+
+	t.Run("failure to send", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		ctx := context.Background()
+		plumbing := newMinerCreate(assert, require, true, address.Address{})
+		collateral := types.NewAttoFILFromFIL(1)
+
+		_, err := MinerCreate(
+			ctx,
+			plumbing,
+			address.Address{},
+			types.NewGasPrice(0),
+			types.NewGasUnits(100),
+			1,
+			"",
+			collateral,
+		)
+		assert.Error(err, "Test Error")
+	})
+}
+
 type minerPreviewCreate struct {
 	wallet *wallet.Wallet
 }

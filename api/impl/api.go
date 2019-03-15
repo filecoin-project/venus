@@ -12,12 +12,10 @@ type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	actor           *nodeActor
 	address         *nodeAddress
 	client          *nodeClient
 	daemon          *nodeDaemon
 	dag             *nodeDag
-	miner           *nodeMiner
 	ping            *nodePing
 	retrievalClient *nodeRetrievalClient
 	swarm           *nodeSwarm
@@ -37,21 +35,15 @@ func New(node *node.Node) api.API {
 		porcelainAPI = node.PorcelainAPI
 	}
 
-	api.actor = newNodeActor(api)
 	api.address = newNodeAddress(api)
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.dag = newNodeDag(api)
-	api.miner = newNodeMiner(api, porcelainAPI)
 	api.ping = newNodePing(api)
 	api.retrievalClient = newNodeRetrievalClient(api, porcelainAPI)
 	api.swarm = newNodeSwarm(api)
 
 	return api
-}
-
-func (api *nodeAPI) Actor() api.Actor {
-	return api.actor
 }
 
 func (api *nodeAPI) Address() api.Address {
@@ -68,10 +60,6 @@ func (api *nodeAPI) Daemon() api.Daemon {
 
 func (api *nodeAPI) Dag() api.Dag {
 	return api.dag
-}
-
-func (api *nodeAPI) Miner() api.Miner {
-	return api.miner
 }
 
 func (api *nodeAPI) Ping() api.Ping {
