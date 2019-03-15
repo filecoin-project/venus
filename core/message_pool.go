@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -109,32 +109,12 @@ func NewMessagePool(timer BlockTimer) *MessagePool {
 	}
 }
 
-// getParentTips returns the parent tipset of the provided tipset
-// TODO msgPool should have access to a chain store that can just look this up...
-func getParentTipSet(ctx context.Context, store *hamt.CborIpldStore, ts types.TipSet) (types.TipSet, error) {
-	newTipSet := types.TipSet{}
-	parents, err := ts.Parents()
-	if err != nil {
-		return nil, err
-	}
-	for it := parents.Iter(); !it.Complete() && ctx.Err() == nil; it.Next() {
-		var newBlk types.Block
-		if err := store.Get(ctx, it.Value(), &newBlk); err != nil {
-			return nil, err
-		}
-		if err := newTipSet.AddBlock(&newBlk); err != nil {
-			return nil, err
-		}
-	}
-	return newTipSet, nil
-}
-
 // collectChainsMessagesToHeight is a helper that collects all the messages
 // from block `b` down the chain to but not including its ancestor of
 // height `height`.  This function returns the messages collected along with
 // the tipset at the final height.
 // TODO ripe for optimizing away lots of allocations
-func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStore, curTipSet types.TipSet, height uint64) ([]*timedmessage, types.TipSet, error) {
+func collectChainsMessagesToHeight(ctx context.Context, store chain.BlockProvider, curTipSet types.TipSet, height uint64) ([]*timedmessage, types.TipSet, error) {
 	var msgs []*timedmessage
 	h, err := curTipSet.Height()
 	if err != nil {
@@ -154,7 +134,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 		case 0:
 			return msgs, curTipSet, nil
 		default:
-			nextTipSet, err := getParentTipSet(ctx, store, curTipSet)
+			nextTipSet, err := chain.GetParentTipSet(ctx, store, curTipSet)
 			if err != nil {
 				return []*timedmessage{}, types.TipSet{}, err
 			}
@@ -178,7 +158,7 @@ func collectChainsMessagesToHeight(ctx context.Context, store *hamt.CborIpldStor
 // TODO there is considerable functionality missing here: don't add
 //      messages that have expired, respect nonce, do this efficiently,
 //      etc.
-func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store *hamt.CborIpldStore, old, new types.TipSet) error {
+func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, old, new types.TipSet) error {
 	// Strategy: walk head-of-chain pointers old and new back until they are at the same
 	// height, then walk back in lockstep to find the common ancesetor.
 
@@ -233,11 +213,11 @@ func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store *hamt.Cbor
 		if oldParents.Empty() || newParents.Empty() {
 			break
 		}
-		old, err = getParentTipSet(ctx, store, old)
+		old, err = chain.GetParentTipSet(ctx, store, old)
 		if err != nil {
 			return err
 		}
-		new, err = getParentTipSet(ctx, store, new)
+		new, err = chain.GetParentTipSet(ctx, store, new)
 		if err != nil {
 			return err
 		}
@@ -272,7 +252,7 @@ func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store *hamt.Cbor
 // height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
 // Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
 // sets than to the expected block time over short timescales.
-func (pool *MessagePool) timeoutMessages(ctx context.Context, store *hamt.CborIpldStore, head types.TipSet) error {
+func (pool *MessagePool) timeoutMessages(ctx context.Context, store chain.BlockProvider, head types.TipSet) error {
 	var err error
 
 	lowestTipSet := head
@@ -283,7 +263,7 @@ func (pool *MessagePool) timeoutMessages(ctx context.Context, store *hamt.CborIp
 
 	// walk back MessageTimeout tip sets to arrive at the lowest viable block height
 	for i := 0; minimumHeight > 0 && i < MessageTimeOut; i++ {
-		lowestTipSet, err = getParentTipSet(ctx, store, lowestTipSet)
+		lowestTipSet, err = chain.GetParentTipSet(ctx, store, lowestTipSet)
 		if err != nil {
 			return err
 		}

@@ -93,8 +93,8 @@ func (s *SortedCidSet) Clear() {
 }
 
 // Iter returns an iterator that allows the caller to iterate the set in its sort order.
-func (s SortedCidSet) Iter() sortedCidSetIterator { // nolint
-	return sortedCidSetIterator{
+func (s SortedCidSet) Iter() SortedCidSetIterator {
+	return SortedCidSetIterator{
 		s: s.s,
 		i: 0,
 	}
@@ -174,18 +174,19 @@ func (s SortedCidSet) search(id cid.Cid) int {
 	})
 }
 
-type sortedCidSetIterator struct {
+// SortedCidSetIterator is a iterator over a sorted collection of CIDs.
+type SortedCidSetIterator struct {
 	s []cid.Cid
 	i int
 }
 
 // Complete returns true if the iterator has reached the end of the set.
-func (si *sortedCidSetIterator) Complete() bool {
+func (si *SortedCidSetIterator) Complete() bool {
 	return si.i >= len(si.s)
 }
 
 // Next advances the iterator to the next item and returns true if there is such an item.
-func (si *sortedCidSetIterator) Next() bool {
+func (si *SortedCidSetIterator) Next() bool {
 	switch {
 	case si.i < len(si.s):
 		si.i++
@@ -198,7 +199,7 @@ func (si *sortedCidSetIterator) Next() bool {
 }
 
 // Value returns the current item for the iterator
-func (si sortedCidSetIterator) Value() cid.Cid {
+func (si SortedCidSetIterator) Value() cid.Cid {
 	switch {
 	case si.i < len(si.s):
 		return si.s[si.i]
