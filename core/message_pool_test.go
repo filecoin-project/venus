@@ -433,6 +433,9 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// Add a message at each block height until MessageTimeOut is reached
 		for i := 0; i < MessageTimeOut; i++ {
+			// blockTimer.Height determines block time at which message is added
+			blockTimer.Height, err = head.Height()
+			require.NoError(err)
 
 			MustAdd(p, m[i])
 
@@ -443,10 +446,6 @@ func TestUpdateMessagePool(t *testing.T) {
 			// assert all added messages still in pool
 			assertPoolEquals(assert, p, m[:i+1]...)
 
-			// blockTimer.Height determines block time at which message is added
-			blockTimer.Height, err = next.Height()
-			require.NoError(err)
-
 			head = next
 		}
 
@@ -454,6 +453,13 @@ func TestUpdateMessagePool(t *testing.T) {
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
 		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
 		assertPoolEquals(assert, p, m[1:]...)
+
+		// adding a chain of multiple tipsets times out based on final state
+		for i := 0; i < 4; i++ {
+			next = headOf(NewChainWithMessages(store, next, msgsSet{msgs{}}))
+		}
+		p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next)
+		assertPoolEquals(assert, p, m[5:]...)
 	})
 
 	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
@@ -470,6 +476,8 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// Add a message at each block height until MessageTimeOut is reached
 		for i := 0; i < MessageTimeOut; i++ {
+			// blockTimer.Height determines block time at which message is added
+			blockTimer.Height, err = head.Height()
 			require.NoError(err)
 
 			MustAdd(p, m[i])
@@ -492,9 +500,6 @@ func TestUpdateMessagePool(t *testing.T) {
 
 			// assert all added messages still in pool
 			assertPoolEquals(assert, p, m[:i+1]...)
-
-			// blockTimer.Height determines block time at which next message is added
-			blockTimer.Height = uint64(nextHeight)
 
 			head = next
 		}
