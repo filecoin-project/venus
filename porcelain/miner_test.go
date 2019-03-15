@@ -25,19 +25,21 @@ import (
 type minerCreate struct {
 	assert  *assert.Assertions
 	require *require.Assertions
+	address address.Address
 	config  *cfg.Config
 	wallet  *wallet.Wallet
 	msgCid  cid.Cid
 	msgFail bool
 }
 
-func newMinerCreate(assert *assert.Assertions, require *require.Assertions, msgFail bool) *minerCreate {
+func newMinerCreate(assert *assert.Assertions, require *require.Assertions, msgFail bool, address address.Address) *minerCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	require.NoError(err)
 	return &minerCreate{
 		assert:  assert,
 		require: require,
+		address: address,
 		config:  cfg.NewConfig(repo),
 		wallet:  wallet.New(backend),
 		msgFail: msgFail,
@@ -66,6 +68,11 @@ func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from,
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	mpc.assert.Equal(mpc.msgCid, msgCid)
+	receipt := &types.MessageReceipt{
+		Return:   [][]byte{mpc.address.Bytes()},
+		ExitCode: uint8(0),
+	}
+	cb(nil, nil, receipt)
 	return nil
 }
 
@@ -79,7 +86,8 @@ func TestMinerCreate(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		plumbing := newMinerCreate(assert, require, false)
+		expectedAddress := address.NewForTestGetter()()
+		plumbing := newMinerCreate(assert, require, false, expectedAddress)
 		collateral := types.NewAttoFILFromFIL(1)
 
 		addr, err := MinerCreate(
@@ -93,7 +101,7 @@ func TestMinerCreate(t *testing.T) {
 			collateral,
 		)
 		require.NoError(err)
-		assert.Equal(addr, &address.Address{})
+		assert.Equal(expectedAddress, *addr)
 	})
 
 	t.Run("failure to send", func(t *testing.T) {
@@ -101,7 +109,7 @@ func TestMinerCreate(t *testing.T) {
 		require := require.New(t)
 
 		ctx := context.Background()
-		plumbing := newMinerCreate(assert, require, true)
+		plumbing := newMinerCreate(assert, require, true, address.Address{})
 		collateral := types.NewAttoFILFromFIL(1)
 
 		_, err := MinerCreate(
