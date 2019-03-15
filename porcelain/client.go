@@ -57,41 +57,36 @@ func ClientListAsks(ctx context.Context, plumbing claPlubming) <-chan Ask {
 }
 
 func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorResult state.GetAllActorsResult, out chan Ask) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		if actorResult.Error != nil {
-			return actorResult.Error
-		}
+	if actorResult.Error != nil {
+		return actorResult.Error
+	}
 
-		addr, _ := address.NewFromString(actorResult.Address)
-		actor := actorResult.Actor
+	addr, _ := address.NewFromString(actorResult.Address)
+	actor := actorResult.Actor
 
-		if !types.MinerActorCodeCid.Equals(actor.Code) && !types.BootstrapMinerActorCodeCid.Equals(actor.Code) {
-			return nil
-		}
+	if !types.MinerActorCodeCid.Equals(actor.Code) && !types.BootstrapMinerActorCodeCid.Equals(actor.Code) {
+		return nil
+	}
 
-		// TODO: at some point, we will need to check that the miners are actually part of the storage market
-		// for now, its impossible for them not to be.
-		ret, _, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks")
+	// TODO: at some point, we will need to check that the miners are actually part of the storage market
+	// for now, its impossible for them not to be.
+	ret, _, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks")
+	if err != nil {
+		return err
+	}
+
+	var asksIds []uint64
+	if err := cbor.DecodeInto(ret[0], &asksIds); err != nil {
+		return err
+	}
+
+	for _, id := range asksIds {
+		ask, err := getAskByID(ctx, plumbing, addr, id)
 		if err != nil {
 			return err
 		}
 
-		var asksIds []uint64
-		if err := cbor.DecodeInto(ret[0], &asksIds); err != nil {
-			return err
-		}
-
-		for _, id := range asksIds {
-			ask, err := getAskByID(ctx, plumbing, addr, id)
-			if err != nil {
-				return err
-			}
-
-			out <- ask
-		}
+		out <- ask
 	}
 
 	return nil
