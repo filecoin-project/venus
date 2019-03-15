@@ -57,7 +57,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
+	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -89,7 +89,8 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	BlockAPI     *bapi.API
+	BlockAPI     *block.API
+	RetrievalAPI *retrieval.API
 	PorcelainAPI *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -118,8 +119,7 @@ type Node struct {
 	StorageMiner       *storage.Miner
 
 	// Retrieval Interfaces
-	RetrievalClient *retrieval.Client
-	RetrievalMiner  *retrieval.Miner
+	RetrievalMiner *retrieval.Miner
 
 	// Network Fields
 	BlockSub     pubsub.Subscription
@@ -370,9 +370,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	// set up chainstore
 	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
+	// set up processor
 	var processor consensus.Processor
 	if nc.Rewarder == nil {
 		processor = consensus.NewDefaultProcessor()
@@ -380,6 +382,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
+	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
@@ -439,25 +442,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Router:       router,
 	}
 
-	blockTime, mineDelay := nd.MiningTimes()
-	blockAPI := bapi.New(
-		nd.AddNewBlock,
-		bs,
-		&cstOffline,
-		chainStore,
-		nodeConsensus,
-		blockTime,
-		mineDelay,
-		msgPool,
-		PorcelainAPI,
-		powerTable,
-		nd.StartMining,
-		nd.StopMining,
-		chainSyncer,
-		fcWallet)
-
-	nd.BlockAPI = &blockAPI
-
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
 	period, err := time.ParseDuration(periodStr)
@@ -510,7 +494,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "Could not make new storage client")
 	}
 
-	node.RetrievalClient = retrieval.NewClient(node)
+	node.setupProtocols()
 	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
@@ -754,12 +738,6 @@ func (node *Node) GetBlockTime() time.Duration {
 // SetBlockTime sets the block time.
 func (node *Node) SetBlockTime(blockTime time.Duration) {
 	node.blockTime = blockTime
-}
-
-// StartMining starts the node mining and logs an error if it cannot start.
-// We wrap starting in this free function to ensure an error is logged.
-func StartMining(ctx context.Context, node *Node) error {
-	return node.StartMining(ctx)
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -1053,6 +1031,32 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 			}
 		}
 	}
+}
+
+// setupProtocols creates protocol clients and miners, then sets the node's APIs
+// for each
+func (node *Node) setupProtocols() {
+	blockTime, mineDelay := node.MiningTimes()
+	blockAPI := block.New(
+		node.AddNewBlock,
+		node.Blockstore,
+		node.cborStore,
+		node.ChainReader,
+		node.Consensus,
+		blockTime,
+		mineDelay,
+		node.MsgPool,
+		node.PorcelainAPI,
+		node.PowerTable,
+		node.StartMining,
+		node.StopMining,
+		node.Syncer,
+		node.Wallet)
+
+	node.BlockAPI = &blockAPI
+
+	retapi := retrieval.NewAPI(retrieval.NewClient(node), node.PorcelainAPI)
+	node.RetrievalAPI = &retapi
 }
 
 // -- Accessors

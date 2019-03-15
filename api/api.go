@@ -6,6 +6,5 @@ type API interface {
 	Client() Client
 	Daemon() Daemon
 	Ping() Ping
-	RetrievalClient() RetrievalClient
 	Swarm() Swarm
 }
