@@ -113,8 +113,7 @@ func deps() {
 		cmd("go get -u github.com/whyrusleeping/gx-go"),
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
-		cmd("go get -u github.com/alecthomas/gometalinter"),
-		cmd("gometalinter --install"),
+		cmd("go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"),
 		cmd("go get -u github.com/stretchr/testify"),
 		cmd("go get -u github.com/xeipuuv/gojsonschema"),
 		cmd("go get -u github.com/ipfs/iptb"),
@@ -149,7 +148,6 @@ func smartdeps() {
 	cmds := []command{
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
-		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json"),
@@ -158,7 +156,7 @@ func smartdeps() {
 
 	// packages we need to install
 	pkgs := []string{
-		"github.com/alecthomas/gometalinter",
+		"github.com/golangci/golangci-lint/cmd/golangci-lint",
 		"github.com/docker/docker/api/types",
 		"github.com/docker/docker/api/types/container",
 		"github.com/docker/docker/client",
@@ -210,7 +208,7 @@ func smartdeps() {
 	}
 }
 
-// lint runs linting using gometalinter
+// lint runs linting using golangci-lint
 func lint(packages ...string) {
 	if len(packages) == 0 {
 		packages = []string{"./..."}
@@ -220,9 +218,9 @@ func lint(packages ...string) {
 
 	// Run fast linters batched together
 	configs := []string{
-		"gometalinter",
-		"--skip=sharness",
-		"--skip=vendor",
+		"golangci-lint",
+		"run",
+		"--skip-dirs=sharness,vendor",
 		"--disable-all",
 	}
 
@@ -233,7 +231,6 @@ func lint(packages ...string) {
 		"--enable=goconst",
 		"--enable=golint",
 		"--enable=errcheck",
-		"--min-occurrences=6", // for goconst
 	}
 
 	runCmd(cmd(append(append(configs, fastLinters...), packages...)...))
