@@ -43,8 +43,8 @@ type API struct {
 	msgWaiter    *msg.Waiter
 	network      *net.Network
 	sigGetter    *mthdsig.Getter
-	wallet       *wallet.Wallet
 	storagedeals *strgdls.Store
+	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
@@ -76,8 +76,8 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		sigGetter:    deps.SigGetter,
-		wallet:       deps.Wallet,
 		storagedeals: deps.Deals,
+		wallet:       deps.Wallet,
 	}
 }
 
@@ -233,6 +233,11 @@ func (api *API) WalletAddresses() []address.Address {
 // WalletFind finds addresses on the wallet
 func (api *API) WalletFind(address address.Address) (wallet.Backend, error) {
 	return api.wallet.Find(address)
+}
+
+// WalletGetPubKeyForAddress returns the public key for a given address
+func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
+	return api.wallet.GetPubKeyForAddress(addr)
 }
 
 // WalletNewAddress generates a new wallet address

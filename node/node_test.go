@@ -173,10 +173,8 @@ func TestNodeStartMining(t *testing.T) {
 	})
 	porcelainAPI := porcelain.New(plumbingAPI)
 
-	provisionalOwnerAddr := seed.GiveKey(t, minerNode, 0)
+	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	require.Equal(t, provisionalOwnerAddr, minerOwnerAddr)
-
 	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), porcelainAPI)
 	assert.NoError(err)
 

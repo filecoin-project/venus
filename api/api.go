@@ -8,7 +8,6 @@ type API interface {
 	Client() Client
 	Daemon() Daemon
 	Dag() Dag
-	Miner() Miner
 	Ping() Ping
 	RetrievalClient() RetrievalClient
 	Swarm() Swarm
