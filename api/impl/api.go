@@ -5,18 +5,16 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	client          *nodeClient
-	daemon          *nodeDaemon
-	ping            *nodePing
-	retrievalClient *nodeRetrievalClient
-	swarm           *nodeSwarm
+	client *nodeClient
+	daemon *nodeDaemon
+	ping   *nodePing
+	swarm  *nodeSwarm
 }
 
 // Assert that nodeAPI fullfills the api.API interface.
@@ -28,15 +26,9 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	var porcelainAPI *porcelain.API
-	if node != nil {
-		porcelainAPI = node.PorcelainAPI
-	}
-
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.ping = newNodePing(api)
-	api.retrievalClient = newNodeRetrievalClient(api, porcelainAPI)
 	api.swarm = newNodeSwarm(api)
 
 	return api
@@ -52,10 +44,6 @@ func (api *nodeAPI) Daemon() api.Daemon {
 
 func (api *nodeAPI) Ping() api.Ping {
 	return api.ping
-}
-
-func (api *nodeAPI) RetrievalClient() api.RetrievalClient {
-	return api.retrievalClient
 }
 
 func (api *nodeAPI) Swarm() api.Swarm {
