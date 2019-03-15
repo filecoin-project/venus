@@ -77,7 +77,8 @@ func TestVectorsIDAddress(t *testing.T) {
 			assert.NoError(err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(err)
 			assert.Equal(addr, newAddr)
 		})
 	}
@@ -171,7 +172,8 @@ func TestVectorSecp256k1Address(t *testing.T) {
 			assert.NoError(err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(err)
 			assert.Equal(addr, newAddr)
 		})
 	}
@@ -242,7 +244,8 @@ func TestVectorActorAddress(t *testing.T) {
 			assert.NoError(err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(err)
 			assert.Equal(addr, newAddr)
 		})
 	}
@@ -322,7 +325,8 @@ func TestVectorBLSAddress(t *testing.T) {
 			assert.NoError(err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(err)
 			assert.Equal(addr, newAddr)
 		})
 	}
@@ -414,7 +418,6 @@ func TestAddressFormat(t *testing.T) {
 	assert.Equal("[2 - b5531c7037f06c9f2947132a6a77202c308e8939]", fmt.Sprintf("%v", a))
 
 	assert.Equal("", fmt.Sprintf("%X", Undef))
-	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef.String())) // nolint: staticcheck
-	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef))          // nolint: staticcheck
+	assert.Equal(UndefAddressString, Undef.String())
 	assert.Equal(UndefAddressString, fmt.Sprintf("%v", Undef))
 }

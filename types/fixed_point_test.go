@@ -31,7 +31,8 @@ func TestBigToFixed(t *testing.T) {
 	t.Run("upper limit", func(t *testing.T) {
 		y := "18014398509481983.555"
 		bigY := new(big.Float)
-		bigY.Parse(y, 10)
+		_, _, err := bigY.Parse(y, 10)
+		assert.NoError(err)
 		assert.Equal(uint64(18014398509481983555), MustBigToFixed(bigY, assert))
 	})
 
@@ -54,15 +55,15 @@ func TestFixedToBig(t *testing.T) {
 		x := uint64(81053000)
 		expectedBigX := big.NewFloat(81053.0)
 		// Use strings to forget about precison + rounding error
-		expectedBigXStr := fmt.Sprintf("%.3f", expectedBigX)
-		assert.Equal(expectedBigXStr, fmt.Sprintf("%.3f", MustFixedToBig(x, assert)))
+		expectedBigXStr := fmt.Sprintf("%.3f", expectedBigX)                          // nolint: govet
+		assert.Equal(expectedBigXStr, fmt.Sprintf("%.3f", MustFixedToBig(x, assert))) // nolint: govet
 	})
 
 	t.Run("fractional part and whole number", func(t *testing.T) {
 		y := uint64(75123499)
 		expectedBigY := big.NewFloat(75123.499)
-		expectedBigYStr := fmt.Sprintf("%.3f", expectedBigY)
-		assert.Equal(expectedBigYStr, fmt.Sprintf("%.3f", MustFixedToBig(y, assert)))
+		expectedBigYStr := fmt.Sprintf("%.3f", expectedBigY)                          // nolint: govet
+		assert.Equal(expectedBigYStr, fmt.Sprintf("%.3f", MustFixedToBig(y, assert))) // nolint: govet
 	})
 }
 
@@ -70,8 +71,8 @@ func TestFixedRoundTrip(t *testing.T) {
 	assert := assert.New(t)
 	w := 4000001.530
 	bigW := big.NewFloat(w)
-	expectedWStr := fmt.Sprintf("%.3f", bigW)
-	assert.Equal(expectedWStr, fmt.Sprintf("%.3f", MustFixedToBig(MustBigToFixed(bigW, assert), assert)))
+	expectedWStr := fmt.Sprintf("%.3f", bigW)                                                             // nolint: govet
+	assert.Equal(expectedWStr, fmt.Sprintf("%.3f", MustFixedToBig(MustBigToFixed(bigW, assert), assert))) // nolint: govet
 }
 
 func TestOversized(t *testing.T) {
@@ -80,8 +81,9 @@ func TestOversized(t *testing.T) {
 	t.Run("Oversized *big.Float", func(t *testing.T) {
 		a := "18014398509481986.555"
 		bigA := new(big.Float)
-		bigA.Parse(a, 10)
-		_, err := BigToFixed(bigA)
+		_, _, err := bigA.Parse(a, 10)
+		assert.NoError(err)
+		_, err = BigToFixed(bigA)
 		assert.Error(err)
 	})
 

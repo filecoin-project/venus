@@ -66,7 +66,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		porcelainAPI, miner, proposal := defaultMinerTestSetup(require, VoucherInterval, defaultAmountInc)
 
 		// configure storage price
-		porcelainAPI.config.Set("mining.storagePrice", `".0005"`)
+		assert.NoError(porcelainAPI.config.Set("mining.storagePrice", `".0005"`))
 
 		res, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(err)
@@ -383,7 +383,7 @@ func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
 	messageCid := cidGetter()
 
 	config := cfg.NewConfig(repo.NewInMemoryRepo())
-	config.Set("mining.storagePrice", `".00025"`)
+	require.NoError(config.Set("mining.storagePrice", `".00025"`))
 
 	blockHeight := types.NewBlockHeight(773)
 	return &minerTestPorcelain{

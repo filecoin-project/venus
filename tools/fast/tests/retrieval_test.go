@@ -55,7 +55,9 @@ func TestRetrieval(t *testing.T) {
 	// Teardown will shutdown all running processes the environment knows about
 	// and cleanup anything the evironment setup. This includes the directory
 	// the environment was created to use.
-	defer env.Teardown(ctx)
+	defer func() {
+		require.NoError(env.Teardown(ctx))
+	}()
 
 	// Setup options for nodes.
 	options := make(map[string]string)

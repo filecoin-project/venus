@@ -115,21 +115,20 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 			if !more {
 				return nil, false, nil
 			}
-			switch raw.(type) { // nolint: staticcheck
+			switch raw := raw.(type) {
 			case error:
 				e := raw.(error)
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case types.TipSet:
-				ts := raw.(types.TipSet)
-				for _, blk := range ts {
+				for _, blk := range raw {
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
 						if err != nil {
 							return nil, false, err
 						}
 						if c.Equals(msgCid) {
-							recpt, err := w.receiptFromTipSet(ctx, msgCid, ts)
+							recpt, err := w.receiptFromTipSet(ctx, msgCid, raw)
 							if err != nil {
 								return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 							}

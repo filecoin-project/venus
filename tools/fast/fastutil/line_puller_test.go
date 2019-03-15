@@ -41,7 +41,7 @@ func TestLinePuller(t *testing.T) {
 
 		lp := NewLinePuller(&source, &sink)
 
-		writeLines(0, 1000, &source, &expected)
+		require.NoError(t, writeLines(0, 1000, &source, &expected))
 
 		err := lp.Pull()
 		require.NoError(t, err)

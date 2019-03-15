@@ -31,7 +31,7 @@ func TestStartLogCapture(t *testing.T) {
 	require.True(ok)
 
 	mfc := NewFilecoinProcess(ctx, fc, EnvironmentOpts{})
-	mfc.setupStderrCapturing()
+	err = mfc.setupStderrCapturing()
 	require.NoError(err)
 
 	t.Run("test capture logs", func(t *testing.T) {
@@ -52,6 +52,6 @@ func TestStartLogCapture(t *testing.T) {
 		require.Equal("hello\n", string(bb))
 	})
 
-	mfc.teardownStderrCapturing()
+	err = mfc.teardownStderrCapturing()
 	require.NoError(err)
 }
