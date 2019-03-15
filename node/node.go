@@ -444,7 +444,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		bs,
 		&cstOffline,
 		&cstOnline,
-		chainReader,
+		chainStore,
 		nodeConsensus,
 		blockTime,
 		mineDelay,
