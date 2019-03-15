@@ -26,7 +26,7 @@ func TestMpoolLs(t *testing.T) {
 
 		out := d.RunSuccess("mpool", "ls")
 
-		cids := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+		cids := strings.Split(out.ReadStdout(), "\n")
 		assert.Equal(2, len(cids))
 
 		for _, c := range cids {
@@ -37,7 +37,7 @@ func TestMpoolLs(t *testing.T) {
 
 		// Should return immediately with --wait-for-count equal to message count
 		out = d.RunSuccess("mpool", "ls", "--wait-for-count=2")
-		cids = strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+		cids = strings.Split(out.ReadStdout(), "\n")
 		assert.Equal(2, len(cids))
 	})
 
@@ -53,7 +53,7 @@ func TestMpoolLs(t *testing.T) {
 		go func() {
 			out := d.RunSuccess("mpool", "ls", "--wait-for-count=3")
 			complete = true
-			c := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
+			c := strings.Split(out.ReadStdout(), "\n")
 			assert.Equal(3, len(c))
 			wg.Done()
 		}()
@@ -83,9 +83,9 @@ func TestMpoolShow(t *testing.T) {
 			"--from", fixtures.TestAddresses[0],
 			"--gas-price", "0", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
-		).ReadStdoutTrimNewlines()
+		).ReadStdout()
 
-		out := d.RunSuccess("mpool", "show", msgCid).ReadStdoutTrimNewlines()
+		out := d.RunSuccess("mpool", "show", msgCid).ReadStdout()
 
 		assert.Contains(out, "From:      "+fixtures.TestAddresses[0])
 		assert.Contains(out, "To:        "+fixtures.TestAddresses[2])
@@ -117,11 +117,11 @@ func TestMpoolRm(t *testing.T) {
 			"--from", fixtures.TestAddresses[0],
 			"--gas-price", "0", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
-		).ReadStdoutTrimNewlines()
+		).ReadStdout()
 
 		d.RunSuccess("mpool", "rm", msgCid)
 
-		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
+		out := d.RunSuccess("mpool", "ls").ReadStdout()
 		assert.Equal("", out)
 	})
 }

@@ -41,7 +41,7 @@ func TestSwarmFindPeer(t *testing.T) {
 
 	d2Id := d2.GetID()
 
-	findpeerOutput := d1.RunSuccess("swarm", "findpeer", d2Id).ReadStdoutTrimNewlines()
+	findpeerOutput := d1.RunSuccess("swarm", "findpeer", d2Id).ReadStdout()
 
 	d2Addr := d2.GetAddresses()[0]
 

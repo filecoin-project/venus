@@ -21,7 +21,7 @@ func TestListAsks(t *testing.T) {
 	minerDaemon.RunSuccess("mining start")
 	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 
-	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
+	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdout()
 	assert.Equal(fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
 }
 
@@ -47,9 +47,9 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 	minerDaemon.ConnectSuccess(clientDaemon)
 
 	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdout()
 
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdout()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
@@ -85,7 +85,7 @@ func TestDuplicateDeals(t *testing.T) {
 	miner.ConnectSuccess(client)
 
 	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdout()
 
 	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
 
@@ -138,11 +138,11 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	miner1.MinerSetPrice(miner1Addr, minerOwner1, "20", "10")
 	miner2.MinerSetPrice(miner2Addr.String(), minerOwner2, "20", "10")
 
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdout()
 
-	firstDeal := client.RunSuccess("client", "propose-storage-deal", miner1Addr, dataCid, "0", "5").ReadStdoutTrimNewlines()
+	firstDeal := client.RunSuccess("client", "propose-storage-deal", miner1Addr, dataCid, "0", "5").ReadStdout()
 	assert.Contains(firstDeal, "accepted")
-	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
+	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdout()
 	assert.Contains(secondDeal, "accepted")
 }
 
@@ -167,15 +167,15 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 	miner.ConnectSuccess(client)
 
 	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdout()
 
-	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "3000").ReadStdoutTrimNewlines()
+	proposeDealOutput := client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "3000").ReadStdout()
 
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 
 	dealCid := splitOnSpace[len(splitOnSpace)-1]
 
-	result := client.RunSuccess("client", "payments", dealCid).ReadStdoutTrimNewlines()
+	result := client.RunSuccess("client", "payments", dealCid).ReadStdout()
 
 	assert.Contains(result, "Channel\tAmount\tValidAt\tEncoded Voucher")
 	// Note: in the assertion below the expiration is four digits, but we're only checking

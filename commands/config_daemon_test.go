@@ -31,7 +31,7 @@ func TestConfigDaemon(t *testing.T) {
 
 		op2 := d.RunSuccess("config", "datastore.path")
 		jsonOut = op2.ReadStdout()
-		assert.Equal(fmt.Sprintf("%q\n", config.NewDefaultConfig().Datastore.Path), jsonOut)
+		assert.Equal(fmt.Sprintf("%q", config.NewDefaultConfig().Datastore.Path), jsonOut)
 	})
 
 	t.Run("config <key> simple_value updates config", func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestConfigDaemon(t *testing.T) {
 		// validate output
 		jsonOut := op1.ReadStdout()
 		bootstrapConfig := config.NewDefaultConfig().Bootstrap
-		assert.Equal(fmt.Sprintf("\"%s\"\n", period), jsonOut)
+		assert.Equal(fmt.Sprintf("%q", period), jsonOut)
 
 		// validate config write
 		cfg := d.Config()
@@ -73,7 +73,7 @@ func TestConfigDaemon(t *testing.T) {
 		bootstrapConfig.Addresses = []string{"fake1", "fake2"}
 		someJSON, err := json.MarshalIndent(bootstrapConfig, "", "\t")
 		require.NoError(err)
-		assert.Equal(fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
+		assert.Equal(string(someJSON), jsonOut)
 
 		// validate config write
 		cfg := d.Config()

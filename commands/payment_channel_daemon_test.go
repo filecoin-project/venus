@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 
@@ -33,7 +32,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	args = append(args, fixtures.TestAddresses[1], "10000", "20")
 
 	paymentChannelCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(paymentChannelCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(paymentChannelCmd.ReadStdout())
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -46,7 +45,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 			"--receipt=false",
 			messageCid.String(),
 		)
-		_, ok := types.NewChannelIDFromString(strings.Trim(wait.ReadStdout(), "\n"), 10)
+		_, ok := types.NewChannelIDFromString(wait.ReadStdout(), 10)
 		assert.True(ok)
 		wg.Done()
 	}()
@@ -169,7 +168,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 
 		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(0))
 
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		mustRedeemVoucher(t, targetDaemon, voucher, &target, d)
 
 		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 111, eol: 20", channelID.String(), target.String()), ls)
@@ -205,7 +204,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(111), &payer, uint64(8))
 
 		// Wait for the voucher message to be processed.
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		mustRedeemVoucher(t, targetDaemon, voucher, &target, d)
 
 		ls := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 10000, amt redeemed: 0, eol: 20", channelID.String(), target.String()), ls)
@@ -224,7 +223,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	require.NoError(err)
 
 	// Not used in logic
-	eol := types.NewBlockHeight(5)
+	eol := types.NewBlockHeight(4)
 	amt := types.NewAttoFILFromFIL(1000)
 
 	targetDaemon := th.NewDaemon(t,
@@ -243,7 +242,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		voucher := createVoucherStr(t, d, channelID, types.NewAttoFILFromFIL(10), &payer, uint64(0))
 
 		// target redeems the voucher (on-chain)
-		mustRedeemVoucher(t, targetDaemon, voucher, &target)
+		mustRedeemVoucher(t, targetDaemon, voucher, &target, d)
 
 		lsStr := listChannelsAsStrs(targetDaemon, &payer)[0]
 		assert.Equal(fmt.Sprintf("%v: target: %s, amt: 1000, amt redeemed: 10, eol: %s", channelID, target.String(), eol.String()), lsStr)
@@ -252,7 +251,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		d.RunSuccess("mining once")
 
 		// payer reclaims channel funds (on-chain)
-		mustReclaimChannel(t, d, channelID, &payer)
+		mustReclaimChannel(t, d, channelID, &payer, targetDaemon)
 
 		lsStr = listChannelsAsStrs(d, &payer)[0]
 		assert.Contains(lsStr, "no channels")
@@ -363,7 +362,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 	args = append(args, targetAddress.String(), fundsToLock.String(), eol.String())
 
 	paymentChannelCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(paymentChannelCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(paymentChannelCmd.ReadStdout())
 	require.NoError(err)
 
 	var wg sync.WaitGroup
@@ -376,7 +375,7 @@ func daemonTestWithPaymentChannel(t *testing.T, payerAddress *address.Address, t
 			"--receipt=false",
 			messageCid.String(),
 		)
-		stdout := strings.Trim(wait.ReadStdout(), "\n")
+		stdout := wait.ReadStdout()
 		channelID, ok := types.NewChannelIDFromString(stdout, 10)
 		assert.True(ok)
 
@@ -426,7 +425,7 @@ func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelI
 	args = append(args, channelID.String(), amount.String(), eol.String())
 
 	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(redeemCmd.ReadStdout())
 	require.NoError(err)
 
 	var wg sync.WaitGroup
@@ -448,14 +447,14 @@ func mustExtendChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelI
 	wg.Wait()
 }
 
-func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAddress *address.Address) {
+func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAddress *address.Address, watcher *th.TestDaemon) {
 	require := require.New(t)
 
 	args := []string{"paych", "redeem", voucher}
 	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(redeemCmd.ReadStdout())
 	require.NoError(err)
 
 	var wg sync.WaitGroup
@@ -469,6 +468,16 @@ func mustRedeemVoucher(t *testing.T, d *th.TestDaemon, voucher string, targetAdd
 			messageCid.String(),
 		)
 
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		watcher.RunSuccess("message", "wait",
+			"--return=false",
+			"--message=false",
+			"--receipt=true",
+			messageCid.String(),
+		)
 		wg.Done()
 	}()
 
@@ -484,7 +493,7 @@ func mustCloseChannel(t *testing.T, d *th.TestDaemon, voucher paymentbroker.Paym
 	args = append(args, "--from", targetAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	redeemCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(redeemCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(redeemCmd.ReadStdout())
 	require.NoError(err)
 
 	var wg sync.WaitGroup
@@ -506,21 +515,31 @@ func mustCloseChannel(t *testing.T, d *th.TestDaemon, voucher paymentbroker.Paym
 	wg.Wait()
 }
 
-func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, payerAddress *address.Address) {
+func mustReclaimChannel(t *testing.T, d *th.TestDaemon, channelID *types.ChannelID, payerAddress *address.Address, watcher *th.TestDaemon) {
 	require := require.New(t)
 
 	args := []string{"paych", "reclaim", channelID.String()}
 	args = append(args, "--from", payerAddress.String(), "--gas-price", "0", "--gas-limit", "300")
 
 	reclaimCmd := d.RunSuccess(args...)
-	messageCid, err := cid.Parse(strings.Trim(reclaimCmd.ReadStdout(), "\n"))
+	messageCid, err := cid.Parse(reclaimCmd.ReadStdout())
 	require.NoError(err)
 
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
-		_ = d.RunSuccess("message", "wait",
+		d.RunSuccess("message", "wait",
+			"--return=false",
+			"--message=false",
+			"--receipt=true",
+			messageCid.String(),
+		)
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		watcher.RunSuccess("message", "wait",
 			"--return=false",
 			"--message=false",
 			"--receipt=true",

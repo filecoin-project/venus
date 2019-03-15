@@ -17,5 +17,5 @@ func TestBootstrapList(t *testing.T) {
 
 	bs := d.RunSuccess("bootstrap ls")
 
-	assert.Equal("&{[]}\n", bs.ReadStdout())
+	assert.Equal("&{[]}", bs.ReadStdout())
 }

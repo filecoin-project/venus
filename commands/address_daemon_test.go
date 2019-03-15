@@ -43,16 +43,16 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] not found, zero")
 	balance := d.RunSuccess("wallet", "balance", addr)
-	assert.Equal("0", balance.ReadStdoutTrimNewlines())
+	assert.Equal("0", balance.ReadStdout())
 
 	t.Log("[success] balance 9999900000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal("9999900000", balance.ReadStdoutTrimNewlines())
+	assert.Equal("9999900000", balance.ReadStdout())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("address new")
-	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdoutTrimNewlines())
-	assert.Equal("0", balance.ReadStdoutTrimNewlines())
+	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdout())
+	assert.Equal("0", balance.ReadStdout())
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
@@ -111,7 +111,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 		d.RunSuccess("wallet", "import", p)
 	}
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	dw := d.RunSuccess("address", "ls").ReadStdout()
 
 	for _, addr := range fixtures.TestAddresses {
 		// assert we loaded the test address from the file
@@ -119,7 +119,7 @@ func TestWalletLoadFromFile(t *testing.T) {
 	}
 
 	// assert default amount of funds were allocated to address during genesis
-	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
+	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdout()
 	assert.Contains(wb, "10000")
 }
 
@@ -130,9 +130,9 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	dw := d.RunSuccess("address", "ls").ReadStdout()
 
-	ki := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+	ki := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdout()
 
 	wf, err := os.Create("walletFileTest")
 	require.NoError(err)
@@ -141,7 +141,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	require.NoError(err)
 	require.NoError(wf.Close())
 
-	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
+	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdout()
 	assert.Equal(dw, maybeAddr)
 
 }
@@ -152,13 +152,13 @@ func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	dw := d.RunSuccess("address", "ls").ReadStdoutTrimNewlines()
+	dw := d.RunSuccess("address", "ls").ReadStdout()
 
-	exportText := d.RunSuccess("wallet", "export", dw).ReadStdoutTrimNewlines()
+	exportText := d.RunSuccess("wallet", "export", dw).ReadStdout()
 	exportTextPrivateKeyLine := strings.Split(exportText, "\n")[1]
 	exportTextPrivateKey := strings.Split(exportTextPrivateKeyLine, "\t")[1]
 
-	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
+	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdout()
 
 	assert.Contains(exportJSON, exportTextPrivateKey)
 }

@@ -3,6 +3,7 @@ package commands_test
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -20,7 +21,7 @@ func TestVersion(t *testing.T) {
 	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
 		assert.NoError(err)
 	}
-	commit := string(gitOut)
+	commit := strings.Trim(string(gitOut), "\n")
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()

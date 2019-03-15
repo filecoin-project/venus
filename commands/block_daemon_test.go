@@ -24,7 +24,7 @@ func TestBlockDaemon(t *testing.T) {
 		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
 
 		// get the mined block by its CID
-		output := d.RunSuccess("show", "block", minedBlockCidStr).ReadStdoutTrimNewlines()
+		output := d.RunSuccess("show", "block", minedBlockCidStr).ReadStdout()
 
 		assert.Contains(output, "Block Details")
 		assert.Contains(output, "Weight: 0")

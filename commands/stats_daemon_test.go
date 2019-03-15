@@ -14,7 +14,7 @@ func TestStatsBandwidth(t *testing.T) {
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	stats := d.RunSuccess("stats", "bandwidth").ReadStdoutTrimNewlines()
+	stats := d.RunSuccess("stats", "bandwidth").ReadStdout()
 
 	assert.Equal("{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
 }

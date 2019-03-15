@@ -22,7 +22,7 @@ func TestActorDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("actor", "ls", "--enc", "json")
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.ReadStdout()
 
 		var avs []commands.ActorView
 		for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {

@@ -3,7 +3,6 @@ package commands_test
 import (
 	"encoding/json"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 
@@ -76,7 +75,7 @@ func TestMessageWait(t *testing.T) {
 			fixtures.TestAddresses[1],
 		)
 
-		msgcid := strings.Trim(msg.ReadStdout(), "\n")
+		msgcid := msg.ReadStdout()
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -130,9 +129,9 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 			"--value=10", fixtures.TestAddresses[1],
 		)
 
-		blockCid := d.RunSuccess("mining", "once").ReadStdoutTrimNewlines()
+		blockCid := d.RunSuccess("mining", "once").ReadStdout()
 
-		blockInfo := d.RunSuccess("show", "block", blockCid, "--enc", "json").ReadStdoutTrimNewlines()
+		blockInfo := d.RunSuccess("show", "block", blockCid, "--enc", "json").ReadStdout()
 
 		require.NoError(t, json.Unmarshal([]byte(blockInfo), &result))
 		assert.NotEmpty(t, result.Messages, "msg under the block gas limit passes validation and is run in the block")

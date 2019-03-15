@@ -27,12 +27,12 @@ func TestChainDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.ReadStdout()
 		c, err := cid.Parse(result1)
 		require.NoError(err)
 
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
-		result2 := op2.ReadStdoutTrimNewlines()
+		result2 := op2.ReadStdout()
 
 		var bs [][]types.Block
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
@@ -62,7 +62,7 @@ func TestChainDaemon(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op := d.RunSuccess("chain", "ls", "--enc", "json")
-		result := op.ReadStdoutTrimNewlines()
+		result := op.ReadStdout()
 
 		var b []types.Block
 		err := json.Unmarshal([]byte(result), &b)
@@ -80,16 +80,16 @@ func TestChainDaemon(t *testing.T) {
 		defer daemon.ShutdownSuccess()
 
 		var blocks []types.Block
-		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
+		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdout()
 		err := json.Unmarshal([]byte(blockJSON), &blocks)
 		genesisBlockCid := blocks[0].Cid().String()
 		require.NoError(err)
 
-		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdout()
 
 		expectedOutput := fmt.Sprintf("%s\n%s", newBlockCid, genesisBlockCid)
 
-		chainLsResult := daemon.RunSuccess("chain", "ls").ReadStdoutTrimNewlines()
+		chainLsResult := daemon.RunSuccess("chain", "ls").ReadStdout()
 
 		assert.Equal(chainLsResult, expectedOutput)
 	})
@@ -101,9 +101,9 @@ func TestChainDaemon(t *testing.T) {
 		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
-		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdout()
 
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long").ReadStdoutTrimNewlines()
+		chainLsResult := daemon.RunSuccess("chain", "ls", "--long").ReadStdout()
 
 		assert.Contains(chainLsResult, newBlockCid)
 		assert.Contains(chainLsResult, fixtures.TestMiners[0])
@@ -119,7 +119,7 @@ func TestChainDaemon(t *testing.T) {
 		defer daemon.ShutdownSuccess()
 
 		daemon.RunSuccess("mining", "once", "--enc", "text")
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
+		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "--enc", "json").ReadStdout()
 		assert.Contains(chainLsResult, `"height":"0"`)
 		assert.Contains(chainLsResult, `"height":"1"`)
 		assert.Contains(chainLsResult, `"nonce":"0"`)

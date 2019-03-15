@@ -110,7 +110,7 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 	defer d.ShutdownSuccess()
 
 	op := d.RunSuccess(args...)
-	return op.ReadStdoutTrimNewlines()
+	return op.ReadStdout()
 }
 
 func TestMinerPledge(t *testing.T) {
@@ -154,7 +154,7 @@ func TestMinerPledge(t *testing.T) {
 		}
 
 		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.ReadStdout()
 		assert.Contains(result1, "10000")
 	})
 }
@@ -173,7 +173,7 @@ func TestMinerCreate(t *testing.T) {
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("miner", "create", "--help")
-		result1 := op1.ReadStdoutTrimNewlines()
+		result1 := op1.ReadStdout()
 		assert.Contains(result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
 	})
 
@@ -204,7 +204,7 @@ func TestMinerCreate(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				miner := d.RunSuccess(args...)
-				addr, err = address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+				addr, err = address.NewFromString(miner.ReadStdout())
 				assert.NoError(err)
 				assert.NotEqual(addr, address.Undef)
 				wg.Done()
@@ -294,11 +294,11 @@ func TestMinerSetPrice(t *testing.T) {
 	d1.RunSuccess("mining", "start")
 
 	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "0", "--gas-limit", "300")
-	assert.Contains(setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+	assert.Contains(setPrice.ReadStdout(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
 
-	assert.Equal(`"62"`, configuredPrice.ReadStdoutTrimNewlines())
+	assert.Equal(`"62"`, configuredPrice.ReadStdout())
 }
 
 func TestMinerCreateSuccess(t *testing.T) {
@@ -314,7 +314,7 @@ func TestMinerCreateSuccess(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(miner.ReadStdout())
 		assert.NoError(err)
 		assert.NotEqual(addr, address.Undef)
 		wg.Done()
@@ -345,7 +345,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "300", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(miner.ReadStdout())
 		assert.NoError(err)
 		assert.NotEqual(addr, address.Undef)
 		wg.Done()
@@ -364,7 +364,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 
 func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *types.AttoFIL {
 	output := d.RunSuccess("actor", "ls", "--enc", "json")
-	result := output.ReadStdoutTrimNewlines()
+	result := output.ReadStdout()
 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
 		var a commands.ActorView
 		err := json.Unmarshal(line, &a)
@@ -410,7 +410,7 @@ func TestMinerOwner(t *testing.T) {
 
 	ownerOutput := d.RunSuccess("miner", "owner", addressStruct.Address)
 
-	_, err = address.NewFromString(ownerOutput.ReadStdoutTrimNewlines())
+	_, err = address.NewFromString(ownerOutput.ReadStdout())
 
 	assert.NoError(err)
 }
@@ -448,7 +448,7 @@ func TestMinerPower(t *testing.T) {
 
 	powerOutput := d.RunSuccess("miner", "power", addressStruct.Address)
 
-	power := powerOutput.ReadStdoutTrimNewlines()
+	power := powerOutput.ReadStdout()
 
 	assert.NoError(err)
 	assert.Equal("3 / 6", power)

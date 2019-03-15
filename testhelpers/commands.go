@@ -69,14 +69,8 @@ func (o *Output) ReadStdout() string {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 
-	return string(o.stdout)
-}
-
-// ReadStdoutTrimNewlines returns a string representation of stdout,
-// with trailing line breaks removed.
-func (o *Output) ReadStdoutTrimNewlines() string {
-	// TODO: handle non unix line breaks
-	return strings.Trim(o.ReadStdout(), "\n")
+	outputWithNewlines := string(o.stdout)
+	return strings.Trim(outputWithNewlines, "\n")
 }
 
 // RunSuccessFirstLine executes the given command, asserts success and returns
@@ -89,7 +83,7 @@ func RunSuccessFirstLine(td *TestDaemon, args ...string) string {
 // an array of lines of the stdout.
 func RunSuccessLines(td *TestDaemon, args ...string) []string {
 	output := td.RunSuccess(args...)
-	result := output.ReadStdoutTrimNewlines()
+	result := output.ReadStdout()
 	return strings.Split(result, "\n")
 }
 
@@ -476,7 +470,7 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 	wg.Add(1)
 	go func() {
 		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "0", "--gas-limit", "300", "100", "20")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		addr, err := address.NewFromString(miner.ReadStdout())
 		require.NoError(err)
 		require.NotEqual(addr, address.Undef)
 		minerAddr = addr
@@ -501,7 +495,7 @@ func (td *TestDaemon) UpdatePeerID() {
 	peerIDJSON := td.RunSuccess("id").ReadStdout()
 	err := json.Unmarshal([]byte(peerIDJSON), &idOutput)
 	require.NoError(err)
-	updateCidStr := td.RunSuccess("miner", "update-peerid", "--gas-price=0", "--gas-limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
+	updateCidStr := td.RunSuccess("miner", "update-peerid", "--gas-price=0", "--gas-limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdout()
 	updateCid, err := cid.Parse(updateCidStr)
 	require.NoError(err)
 	assert.NotNil(updateCid)
@@ -513,7 +507,7 @@ func (td *TestDaemon) UpdatePeerID() {
 // block. The receipt is then inspected to ensure that the corresponding message receipt had a 0 exit code.
 func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.MessageReceipt {
 	args := []string{"message", "wait", msgCid.String(), "--receipt=true", "--message=false"}
-	trim := strings.Trim(td.RunSuccess(args...).ReadStdout(), "\n")
+	trim := td.RunSuccess(args...).ReadStdout()
 	rcpt := &types.MessageReceipt{}
 	require.NoError(td.test, json.Unmarshal([]byte(trim), rcpt))
 	require.Equal(td.test, 0, int(rcpt.ExitCode))
@@ -527,7 +521,7 @@ func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.Messag
 func (td *TestDaemon) CreateAddress() string {
 	td.test.Helper()
 	outNew := td.RunSuccess("address", "new")
-	addr := strings.Trim(outNew.ReadStdout(), "\n")
+	addr := outNew.ReadStdout()
 	require.NotEmpty(td.test, addr)
 	return addr
 }
