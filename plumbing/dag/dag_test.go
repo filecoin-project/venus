@@ -31,7 +31,7 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		_, err := dag.Get(ctx, "awful")
+		_, err := dag.GetNode(ctx, "awful")
 		assert.EqualError(err, "invalid 'ipfs ref' path")
 	})
 
@@ -50,7 +50,7 @@ func TestDAGGet(t *testing.T) {
 
 		someCid := types.SomeCid()
 
-		_, err := dag.Get(ctx, someCid.String())
+		_, err := dag.GetNode(ctx, someCid.String())
 		assert.EqualError(err, "merkledag: not found")
 	})
 
@@ -71,7 +71,7 @@ func TestDAGGet(t *testing.T) {
 		// put into out blockservice
 		assert.NoError(blkserv.AddBlock(ipldnode))
 
-		res, err := dag.Get(ctx, ipldnode.Cid().String())
+		res, err := dag.GetNode(ctx, ipldnode.Cid().String())
 		assert.NoError(err)
 
 		nodeBack, ok := res.(format.Node)

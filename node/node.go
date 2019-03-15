@@ -14,7 +14,6 @@ import (
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmP2g3VxmC7g7fyRJDj1VJ72KHZbJ9UW24YjSWEj1XTb4H/go-ipfs-exchange-interface"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	dagFormat "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
 	libp2ppeer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
@@ -147,9 +146,6 @@ type Node struct {
 
 	// Blockservice is a higher level interface for fetching data
 	blockservice bserv.BlockService
-
-	// DAGService is the merkledag service for accessing the merkledag
-	DAGService dagFormat.DAGService
 
 	// CborStore is a temporary interface for interacting with IPLD objects.
 	cborStore *hamt.CborIpldStore
@@ -404,12 +400,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 	fcWallet := wallet.New(backend)
 
-	dagService := merkledag.NewDAGService(bservice)
-
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
-		DAG:          dag.NewDAG(dagService),
+		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
@@ -441,7 +435,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Wallet:       fcWallet,
 		blockTime:    nc.BlockTime,
 		Router:       router,
-		DAGService:   dagService,
 	}
 
 	blockTime, mineDelay := nd.MiningTimes()
@@ -509,7 +502,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
-	cni := storage.NewClientNodeImpl(node.DAG(), node.Host(), node.Ping, node.GetBlockTime())
+	cni := storage.NewClientNodeImpl(node.Host(), node.Ping, node.GetBlockTime())
 	var err error
 	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI)
 	if err != nil {
@@ -1086,9 +1079,4 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // ChainReadStore returns the node's chain store.
 func (node *Node) ChainReadStore() chain.ReadStore {
 	return node.ChainReader
-}
-
-// DAG is the interface that defines methods to interact with IPLD DAG objects.
-func (node *Node) DAG() dagFormat.DAGService {
-	return node.DAGService
 }

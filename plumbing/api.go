@@ -269,7 +269,12 @@ func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) 
 	return api.wallet.Export(addrs)
 }
 
-// DAGGet returns the associated DAG node for the passed in CID.
-func (api *API) DAGGet(ctx context.Context, ref string) (interface{}, error) {
-	return api.dag.Get(ctx, ref)
+// DAGGetNode returns the associated DAG node for the passed in CID.
+func (api *API) DAGGetNode(ctx context.Context, ref string) (interface{}, error) {
+	return api.dag.GetNode(ctx, ref)
+}
+
+// DAGGetFileSize returns the file size for a given Cid
+func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
+	return api.dag.GetFileSize(ctx, c)
 }
