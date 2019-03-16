@@ -3,7 +3,7 @@ package chain
 import (
 	"context"
 
-	"github.com/gxed/pubsub"
+	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 

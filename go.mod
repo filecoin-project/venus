@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
+	github.com/cskr/pubsub v1.0.2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -13,10 +14,9 @@ require (
 	github.com/golang/mock v1.2.0 // indirect
 	github.com/golangci/golangci-lint v1.15.0
 	github.com/gorilla/mux v1.7.0 // indirect
-	github.com/gxed/pubsub v0.0.0-20180201040156-26ebdf44f824
-	github.com/ipfs/go-bitswap v0.0.1
+	github.com/ipfs/go-bitswap v0.0.2
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.0.1
+	github.com/ipfs/go-blockservice v0.0.2
 	github.com/ipfs/go-car v0.0.1
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.1
@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.1
 	github.com/ipfs/go-ipld-format v0.0.1
 	github.com/ipfs/go-log v0.0.1
-	github.com/ipfs/go-merkledag v0.0.1
+	github.com/ipfs/go-merkledag v0.0.2
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.0.1
 	github.com/ipfs/iptb v1.4.0
