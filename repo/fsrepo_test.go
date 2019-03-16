@@ -408,7 +408,8 @@ func TestCreateRepo(t *testing.T) {
 		assert.NoError(err)
 		defer os.RemoveAll(dir)
 
-		ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
+		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
+		assert.NoError(err)
 
 		_, err = CreateRepo(dir, cfg)
 		assert.Contains(err.Error(), "repo already initialized")

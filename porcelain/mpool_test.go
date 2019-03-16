@@ -85,7 +85,7 @@ func TestMessagePoolWait(t *testing.T) {
 				plumbing.pending = types.NewSignedMsgs(1, signer)
 				plumbing.subscription.Post(nil)
 			}
-			callCount += 1
+			callCount++
 		}
 
 		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)

@@ -3,8 +3,6 @@ package series
 import (
 	"context"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
@@ -15,16 +13,7 @@ func Connect(ctx context.Context, from, to *fast.Filecoin) error {
 		return err
 	}
 
-	var addrs []multiaddr.Multiaddr
-	for _, addr := range details.Addresses {
-		if err != nil {
-			return err
-		}
-
-		addrs = append(addrs, addr)
-	}
-
-	if _, err := from.SwarmConnect(ctx, addrs...); err != nil {
+	if _, err := from.SwarmConnect(ctx, details.Addresses...); err != nil {
 		return err
 	}
 

@@ -58,7 +58,10 @@ func TestSectorBuilder(t *testing.T) {
 		for i := 0; i < autoSealsToSchedule; i++ {
 			go func(n int) {
 				time.Sleep(time.Second * time.Duration(n))
-				h.SectorBuilder.SealAllStagedSectors(context.Background())
+				err := h.SectorBuilder.SealAllStagedSectors(context.Background())
+				if err != nil {
+					errs <- err
+				}
 			}(i)
 		}
 
@@ -258,7 +261,10 @@ func TestSectorBuilder(t *testing.T) {
 		sectorIDSet.Store(sectorIDB, true)
 
 		// seal everything
-		hB.SectorBuilder.SealAllStagedSectors(context.Background())
+		err = hB.SectorBuilder.SealAllStagedSectors(context.Background())
+		if err != nil {
+			require.NoError(t, err)
+		}
 
 		timeout := time.After(MaxTimeToSealASector * 2)
 	Loop:

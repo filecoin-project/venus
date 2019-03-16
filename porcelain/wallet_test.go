@@ -84,7 +84,8 @@ func TestWalletDefaultAddress(t *testing.T) {
 
 		addr, err := wdatp.WalletNewAddress()
 		require.NoError(err)
-		wdatp.ConfigSet("wallet.defaultAddress", addr.String())
+		err = wdatp.ConfigSet("wallet.defaultAddress", addr.String())
+		require.NoError(err)
 
 		_, err = porcelain.WalletDefaultAddress(wdatp)
 		require.NoError(err)

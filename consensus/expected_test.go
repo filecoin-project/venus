@@ -342,7 +342,7 @@ func (tv *FailingTestPowerTableView) Total(ctx context.Context, st state.Tree, b
 }
 
 func (tv *FailingTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(tv.minerPower), nil
+	return tv.minerPower, nil
 }
 
 func (tv *FailingTestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
