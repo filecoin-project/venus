@@ -212,36 +212,7 @@ func lint(packages ...string) {
 
 	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
 
-	// Run fast linters batched together
-	configs := []string{
-		"golangci-lint",
-		"run",
-		"--skip-dirs=sharness,vendor",
-		"--disable-all",
-	}
-
-	fastLinters := []string{
-		"--enable=vet",
-		"--enable=gofmt",
-		"--enable=misspell",
-		"--enable=goconst",
-		"--enable=golint",
-		"--enable=errcheck",
-		"--goconst.min-occurrences=6",
-	}
-
-	runCmd(cmd(append(append(configs, fastLinters...), packages...)...))
-
-	slowLinters := []string{
-		"--deadline=10m",
-		"--enable=unconvert",
-		"--enable=staticcheck",
-		"--enable=varcheck",
-		"--enable=structcheck",
-		"--enable=deadcode",
-	}
-
-	runCmd(cmd(append(append(configs, slowLinters...), packages...)...))
+	runCmd(cmd("golangci-lint", "run"))
 }
 
 func build() {
