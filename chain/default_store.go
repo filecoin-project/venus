@@ -9,10 +9,8 @@ import (
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
 	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
 
@@ -29,19 +27,19 @@ var headKey = datastore.NewKey("/chain/heaviestTipSet")
 // DefaultStore is a generic implementation of the Store interface.
 // It works(tm) for now.
 type DefaultStore struct {
-	// privateStore is the on disk storage for blocks.  This is private to
+	// bsPriv is the on disk storage for blocks.  This is private to
 	// the DefaultStore to keep code that adds blocks to the DefaultStore's
 	// underlying storage isolated to this module.  It is important that only
 	// code with access to a DefaultStore can write to this storage to
 	// simplify checking the security guarantee that only tipsets of a
 	// validated chain are stored in the filecoin node's DefaultStore.
-	privateStore *hamt.CborIpldStore
+	bsPriv bstore.Blockstore
 	// stateStore is the on disk storage used for loading states.  It can be
 	// shared with the rest of the filecoin node.
 	stateStore *hamt.CborIpldStore
-	// ds is the datastore backing the privateStore.  It is also accessed
-	// directly to set and get meta information about the chain, specifically
-	// the tipset cidset to state root mapping, and the heaviest tipset cids.
+	// ds is the datastore backing bsPriv.  It is also accessed directly
+	// to set and get chain meta-data, specifically the tipset cidset to
+	// state root mapping, and the heaviest tipset cids.
 	ds repo.Datastore
 
 	// genesis is the CID of the genesis block.
@@ -61,8 +59,6 @@ type DefaultStore struct {
 
 	// Tracks tipsets by height/parentset for use by expected consensus.
 	tipIndex *TipIndex
-
-	// TODO block cache should go here
 }
 
 // Ensure DefaultStore satisfies the Store interface at compile time.
@@ -70,15 +66,14 @@ var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
 func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid cid.Cid) *DefaultStore {
-	bs := bstore.NewBlockstore(ds)
-	priv := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	priv := bstore.NewBlockstore(ds)
 	return &DefaultStore{
-		privateStore: &priv,
-		stateStore:   stateStore,
-		headEvents:   pubsub.New(128),
-		ds:           ds,
-		tipIndex:     NewTipIndex(),
-		genesis:      genesisCid,
+		bsPriv:     priv,
+		stateStore: stateStore,
+		ds:         ds,
+		headEvents: pubsub.New(128),
+		tipIndex:   NewTipIndex(),
+		genesis:    genesisCid,
 	}
 }
 
@@ -201,7 +196,7 @@ func (store *DefaultStore) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 
 // putBlk persists a block to disk.
 func (store *DefaultStore) putBlk(ctx context.Context, block *types.Block) error {
-	if _, err := store.privateStore.Put(ctx, block); err != nil {
+	if err := store.bsPriv.Put(block.ToNode()); err != nil {
 		return errors.Wrap(err, "failed to put block")
 	}
 	return nil
@@ -255,27 +250,26 @@ func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(ctx context.Co
 }
 
 // GetBlocks retrieves the blocks referenced in the input cid set.
-func (store *DefaultStore) GetBlocks(ctx context.Context, ids types.SortedCidSet) ([]*types.Block, error) {
-	var blks []*types.Block
-	for it := ids.Iter(); !it.Complete(); it.Next() {
+func (store *DefaultStore) GetBlocks(ctx context.Context, cids types.SortedCidSet) ([]*types.Block, error) {
+	var blocks []*types.Block
+	for it := cids.Iter(); !it.Complete(); it.Next() {
 		id := it.Value()
-		blk, err := store.GetBlock(ctx, id)
+		block, err := store.GetBlock(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "error fetching block")
 		}
-		blks = append(blks, blk)
+		blocks = append(blocks, block)
 	}
-	return blks, nil
-
+	return blocks, nil
 }
 
 // GetBlock retrieves a block by cid.
 func (store *DefaultStore) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
-	var blk types.Block
-	if err := store.privateStore.Get(ctx, c, &blk); err != nil {
+	data, err := store.bsPriv.Get(c)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
 	}
-	return &blk, nil
+	return types.DecodeBlock(data.RawData())
 }
 
 // HasAllBlocks indicates whether the blocks are in the store.

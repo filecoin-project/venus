@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	dag "gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
+	"gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	circuit "gx/ipfs/QmNaXXRfJ93t4HicX8N2WZPhdE8KU39MPGALuH421GFgKA/go-libp2p-circuit"
 	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
@@ -50,13 +50,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
+	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -88,7 +89,8 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	BlockAPI     *bapi.API
+	BlockAPI     *block.API
+	RetrievalAPI *retrieval.API
 	PorcelainAPI *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -117,8 +119,7 @@ type Node struct {
 	StorageMiner       *storage.Miner
 
 	// Retrieval Interfaces
-	RetrievalClient *retrieval.Client
-	RetrievalMiner  *retrieval.Miner
+	RetrievalMiner *retrieval.Miner
 
 	// Network Fields
 	BlockSub     pubsub.Subscription
@@ -126,7 +127,6 @@ type Node struct {
 	Ping         *ping.PingService
 	HelloSvc     *hello.Handler
 	Bootstrapper *net.Bootstrapper
-	OnlineStore  *hamt.CborIpldStore
 
 	// Data Storage Fields
 
@@ -136,6 +136,9 @@ type Node struct {
 
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
+
+	// Fetcher is the interface for fetching data from nodes.
+	Fetcher *net.Fetcher
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -259,7 +262,7 @@ func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 }
 
 // buildHost determines if we are publically dialable.  If so use public
-// address, if not configure node to announce relay address.
+// Address, if not configure node to announce relay address.
 func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.IpfsRouting, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their
@@ -359,17 +362,19 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
+	fetcher := net.NewFetcher(ctx, bservice)
 
-	cstOnline := hamt.CborIpldStore{Blocks: bservice}
 	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
 	if err != nil {
 		return nil, err
 	}
 
+	// set up chainstore
 	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
 	powerTable := &consensus.MarketView{}
 
+	// set up processor
 	var processor consensus.Processor
 	if nc.Rewarder == nil {
 		processor = consensus.NewDefaultProcessor()
@@ -377,6 +382,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
+	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
@@ -385,7 +391,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOnline, &cstOffline, nodeConsensus, chainStore)
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
 	msgPool := core.NewMessagePool(chainStore)
 
 	// Set up libp2p pubsub
@@ -402,6 +408,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
+		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
@@ -417,12 +424,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockservice: bservice,
 		Blockstore:   bs,
 		cborStore:    &cstOffline,
-		OnlineStore:  &cstOnline,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PorcelainAPI: PorcelainAPI,
+		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
 		MsgPool:      msgPool,
@@ -434,26 +441,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
-
-	blockTime, mineDelay := nd.MiningTimes()
-	blockAPI := bapi.New(
-		nd.AddNewBlock,
-		bs,
-		&cstOffline,
-		&cstOnline,
-		chainStore,
-		nodeConsensus,
-		blockTime,
-		mineDelay,
-		msgPool,
-		PorcelainAPI,
-		powerTable,
-		nd.StartMining,
-		nd.StopMining,
-		chainSyncer,
-		fcWallet)
-
-	nd.BlockAPI = &blockAPI
 
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
@@ -500,14 +487,14 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
-	cni := storage.NewClientNodeImpl(dag.NewDAGService(node.BlockService()), node.Host(), node.Ping, node.GetBlockTime())
+	cni := storage.NewClientNodeImpl(node.Host(), node.Ping, node.GetBlockTime())
 	var err error
 	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI)
 	if err != nil {
 		return errors.Wrap(err, "Could not make new storage client")
 	}
 
-	node.RetrievalClient = retrieval.NewClient(node)
+	node.setupProtocols()
 	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
@@ -751,12 +738,6 @@ func (node *Node) GetBlockTime() time.Duration {
 // SetBlockTime sets the block time.
 func (node *Node) SetBlockTime(blockTime time.Duration) {
 	node.blockTime = blockTime
-}
-
-// StartMining starts the node mining and logs an error if it cannot start.
-// We wrap starting in this free function to ensure an error is logged.
-func StartMining(ctx context.Context, node *Node) error {
-	return node.StartMining(ctx)
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -1050,6 +1031,32 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 			}
 		}
 	}
+}
+
+// setupProtocols creates protocol clients and miners, then sets the node's APIs
+// for each
+func (node *Node) setupProtocols() {
+	blockTime, mineDelay := node.MiningTimes()
+	blockAPI := block.New(
+		node.AddNewBlock,
+		node.Blockstore,
+		node.cborStore,
+		node.ChainReader,
+		node.Consensus,
+		blockTime,
+		mineDelay,
+		node.MsgPool,
+		node.PorcelainAPI,
+		node.PowerTable,
+		node.StartMining,
+		node.StopMining,
+		node.Syncer,
+		node.Wallet)
+
+	node.BlockAPI = &blockAPI
+
+	retapi := retrieval.NewAPI(retrieval.NewClient(node), node.PorcelainAPI)
+	node.RetrievalAPI = &retapi
 }
 
 // -- Accessors

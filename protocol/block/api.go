@@ -21,14 +21,9 @@ import (
 
 // API provides an interface to protocols.
 type API struct {
-	apiDeps
-}
-
-type apiDeps struct {
 	addNewBlockFunc   func(context.Context, *types.Block) (err error)
 	blockStore        blockstore.Blockstore
-	cBorStore         *hamt.CborIpldStore
-	onlineStore       *hamt.CborIpldStore
+	cborStore         *hamt.CborIpldStore
 	chainReader       chain.ReadStore
 	consensusProtocol consensus.Protocol
 	blockTime         time.Duration
@@ -46,7 +41,7 @@ type apiDeps struct {
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
 	bstore blockstore.Blockstore,
-	cborStore, onlineStore *hamt.CborIpldStore,
+	cborStore *hamt.CborIpldStore,
 	chainReader chain.ReadStore,
 	con consensus.Protocol,
 	blockTime, blockMineDelay time.Duration,
@@ -58,11 +53,10 @@ func New(
 	syncer chain.Syncer,
 	signer consensus.TicketSigner,
 ) API {
-	newDeps := apiDeps{
+	return API{
 		addNewBlockFunc:   addNewBlockFunc,
 		blockStore:        bstore,
-		cBorStore:         cborStore,
-		onlineStore:       onlineStore,
+		cborStore:         cborStore,
 		chainReader:       chainReader,
 		consensusProtocol: con,
 		blockTime:         blockTime,
@@ -75,8 +69,6 @@ func New(
 		syncer:            syncer,
 		ticketSigner:      signer,
 	}
-
-	return API{apiDeps: newDeps}
 }
 
 // MiningOnce mines a single block in the given context, and returns the new block.
@@ -87,7 +79,7 @@ func (a *API) MiningOnce(ctx context.Context) (*types.Block, error) {
 		if err != nil {
 			return nil, err
 		}
-		return state.LoadStateTree(ctx, a.cBorStore, tsas.TipSetStateRoot, builtin.Actors)
+		return state.LoadStateTree(ctx, a.cborStore, tsas.TipSetStateRoot, builtin.Actors)
 	}
 
 	getState := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
@@ -130,7 +122,7 @@ func (a *API) MiningOnce(ctx context.Context) (*types.Block, error) {
 
 	worker := mining.NewDefaultWorker(
 		a.msgPool, getState, getWeight, getAncestors, consensus.NewDefaultProcessor(),
-		a.powerTable, a.blockStore, a.cBorStore, minerAddr, minerOwnerAddr, minerPubKey,
+		a.powerTable, a.blockStore, a.cborStore, minerAddr, minerOwnerAddr, minerPubKey,
 		a.ticketSigner, a.blockTime)
 
 	ts := a.chainReader.Head()

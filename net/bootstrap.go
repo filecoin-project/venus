@@ -14,7 +14,7 @@ import (
 	host "gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 )
 
-var log = logging.Logger("bootstrap")
+var logBootstrap = logging.Logger("net.bootstrap")
 
 // Bootstrapper attempts to keep the p2p host connected to the filecoin network
 // by keeping a minimum threshold of connections. If the threshold isn't met it
@@ -110,7 +110,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			b.dhtBootStarted = true
 			err := b.r.Bootstrap(b.ctx)
 			if err != nil {
-				log.Warningf("got error trying to bootstrap DHT: %s. Peer discovery may suffer.", err.Error())
+				logBootstrap.Warningf("got error trying to bootstrap DHT: %s. Peer discovery may suffer.", err.Error())
 			}
 		}
 		cancel()
@@ -127,7 +127,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		wg.Add(1)
 		go func() {
 			if err := b.h.Connect(ctx, pinfo); err != nil {
-				log.Errorf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
+				logBootstrap.Errorf("got error trying to connect to bootstrap node %+v: %s", pinfo, err.Error())
 			}
 			wg.Done()
 		}()
@@ -136,7 +136,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			return
 		}
 	}
-	log.Warningf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
+	logBootstrap.Warningf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
 }
 
 func hasPID(pids []peer.ID, pid peer.ID) bool {

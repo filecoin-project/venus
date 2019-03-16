@@ -36,7 +36,7 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
-		readCloser, err := GetAPI(env).RetrievalClient().RetrievePiece(req.Context, pieceCID, minerAddr)
+		readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, minerAddr)
 		if err != nil {
 			return err
 		}

@@ -133,7 +133,8 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		ctx:          context.Background(),
 		api:          api,
 		porcelainAPI: nd.PorcelainAPI,
-		blockpAPI:    nd.BlockAPI,
+		blockAPI:     nd.BlockAPI,
+		retrievalAPI: nd.RetrievalAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()

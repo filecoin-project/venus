@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -31,12 +32,16 @@ var (
 
 var logSyncer = logging.Logger("chain.syncer")
 
+type syncFetcher interface {
+	GetBlocks(context.Context, []cid.Cid) ([]*types.Block, error)
+}
+
 // DefaultSyncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
 // blocks to traverse during chain collection.  The DefaultSyncer can query the
 // network for blocks.  The DefaultSyncer maintains the following invariant on
 // its store: all tipsets that pass the syncer's validity checks are added to the
-// chain store, and their state is added to cstOffline.
+// chain store, and their state is added to stateStore.
 //
 // Ideally the code that syncs the chain according to consensus rules should
 // be independent of any particular implementation of consensus.  Currently the
@@ -54,10 +59,12 @@ type DefaultSyncer struct {
 	// are not run concurrently with other calls to widen to ensure
 	// that the syncer always finds the heaviest existing tipset.
 	mu sync.Mutex
-	// cstOnline is the online storage for fetching blocks.  It should be connected to the network with bitswap.
-	cstOnline *hamt.CborIpldStore
-	// cstOffline is the node's shared offline storage.
-	cstOffline *hamt.CborIpldStore
+	// fetcher is the networked block fetching service for fetching blocks
+	// and messages.
+	fetcher syncFetcher
+	// stateStore is the cborStore used for reading and writing state root
+	// to ipld object mappings.
+	stateStore *hamt.CborIpldStore
 	// badTipSetCache is used to filter out collections of invalid blocks.
 	badTipSets *badTipSetCache
 	consensus  consensus.Protocol
@@ -67,10 +74,10 @@ type DefaultSyncer struct {
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol, s Store) *DefaultSyncer {
+func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s Store, f syncFetcher) *DefaultSyncer {
 	return &DefaultSyncer{
-		cstOnline:  online,
-		cstOffline: offline,
+		fetcher:    f,
+		stateStore: cst,
 		badTipSets: &badTipSetCache{
 			bad: make(map[string]struct{}),
 		},
@@ -79,51 +86,33 @@ func NewDefaultSyncer(online, offline *hamt.CborIpldStore, c consensus.Protocol,
 	}
 }
 
-// getBlksMaybeFromNet resolves cids of blocks.  It gets blocks from local
-// storage if they are available there, and otherwise resolves blocks over
-// the network.  This function will timeout if blocks are unavailable.
-// This method is all or nothing, it will error if any of the blocks cannot be
-// resolved.
+// getBlksMaybeFromNet resolves cids of blocks.  It gets blocks through the
+// fetcher.  The fetcher wraps a bitswap session which wraps a bitswap exchange,
+// and the bitswap exchange wraps the node's shared blockstore.  So if blocks
+// are available in the node's blockstore they will be resolved locally, and
+// otherwise resolved over the network.  This method will timeout if blocks
+// are unavailable.  This method is all or nothing, it will error if any of the
+// blocks cannot be resolved.
 // WARNING -- this will take one second to error out if blocks are not found.
 // TODO the timeout factor blkWaitTime and maybe the whole timeout mechanism
 // could use some actual thought, this was just a simple first pass.
 func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
-	var blks []*types.Block
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
-	for _, blkCid := range blkCids {
-		// try the chain store
-		blk, err := syncer.chainStore.GetBlock(ctx, blkCid)
-		if err == nil {
-			blks = append(blks, blk)
-			continue
-		}
-		// try the node's local offline storage
-		err = syncer.cstOffline.Get(ctx, blkCid, &blk)
-		if err == nil {
-			blks = append(blks, blk)
-			continue
-		}
-		// try the network
-		if err = syncer.cstOnline.Get(ctx, blkCid, &blk); err != nil {
-			return nil, err
-		}
-		blks = append(blks, blk)
-	}
-	return blks, nil
+
+	return syncer.fetcher.GetBlocks(ctx, blkCids)
 }
 
-// collectChain resolves the cids of the head tipset and its ancestors to blocks
-// until it resolves blocks contained in the Store. collectChain may resolve cids
-// from the Store, the node's local offline cborstore, or the syncer's online
-// cbor store that is networked under the hood. collectChain errors if any
-// set of cids in the chain resolves to blocks that do not form a tipset, if
-// the chain is too long, or if any tipset has already been recorded as the
-// head of an invalid chain.
-//
-// collectChain is the entrypoint to the code that interacts with the network.
-// It does NOT add tipsets to the store.
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, types.TipSet, error) {
+// collectChain resolves the cids of the head tipset and its ancestors to
+// blocks until it resolves a tipset with a parent contained in the Store. It
+// returns the chain of new incompletely validated tipsets and the id of the
+// parent tipset already synced into the store.  collectChain resolves cids
+// from the syncer's fetcher.  In production the fetcher wraps a bitswap
+// session.  collectChain errors if any set of cids in the chain resolves to
+// blocks that do not form a tipset, or if any tipset has already been recorded
+// as the head of an invalid chain.  collectChain is the entrypoint to the code
+// that interacts with the network. It does NOT add tipsets to the chainStore..
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, error) {
 	var chain []types.TipSet
 	defer logSyncer.Info("chain synced")
 	for {
@@ -131,22 +120,27 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 		// check the cache for bad tipsets before doing anything
 		tsKey := types.NewSortedCidSet(blkCids...).String()
 
+		// Finish traversal if the tipset made is tracked in the store.
+		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
+			return chain, nil
+		}
+
 		logSyncer.Debugf("CollectChain next link: %s", tsKey)
 
 		if syncer.badTipSets.Has(tsKey) {
-			return nil, nil, ErrChainHasBadTipSet
+			return nil, ErrChainHasBadTipSet
 		}
 
 		blks, err := syncer.getBlksMaybeFromNet(ctx, blkCids)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		ts, err := syncer.consensus.NewValidTipSet(ctx, blks)
 		if err != nil {
 			syncer.badTipSets.Add(tsKey)
 			syncer.badTipSets.AddChain(chain)
-			return nil, nil, err
+			return nil, err
 		}
 
 		height, _ := ts.Height()
@@ -154,16 +148,11 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 			logSyncer.Infof("syncing the chain, currently at block height %d", height)
 		}
 
-		// Finish traversal if the tipset made is tracked in the store.
-		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
-			return chain, ts, nil
-		}
-
 		// Update values to traverse next tipset
 		chain = append([]types.TipSet{ts}, chain...)
 		parentCidSet, err := ts.Parents()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		blkCids = parentCidSet.ToSlice()
 	}
@@ -179,7 +168,7 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, syncer.cstOffline, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, syncer.stateStore, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +185,7 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 // ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
 	// Lookup parent state. It is guaranteed by the syncer that it is in
-	// the store
+	// the chainStore.
 	st, err := syncer.tipSetState(ctx, parent.String())
 	if err != nil {
 		return err
@@ -337,7 +326,7 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 	// FYI the two biggest concurrency concerns at present would be addressed
 	// by locking after collectChain completes, so my hunch is this can be
 	// fixed by simply moving the lock call below collectChain.
-
+	fmt.Printf("trying to sync %v\n", blkCids)
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
 	// If the store already has all these blocks the syncer is finished.
@@ -348,10 +337,19 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 	// Walk the chain given by the input blocks back to a known tipset in
 	// the store. This is the only code that may go to the network to
 	// resolve cids to blocks.
-	chain, parent, err := syncer.collectChain(ctx, blkCids)
+	chain, err := syncer.collectChain(ctx, blkCids)
 	if err != nil {
 		return err
 	}
+	parentCids, err := chain[0].Parents()
+	if err != nil {
+		return err
+	}
+	parentTsas, err := syncer.chainStore.GetTipSetAndState(ctx, parentCids.String())
+	if err != nil {
+		return err
+	}
+	parent := parentTsas.TipSet
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.

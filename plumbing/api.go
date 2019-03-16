@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -37,6 +38,7 @@ type API struct {
 
 	chain        chain.ReadStore
 	config       *cfg.Config
+	dag          *dag.DAG
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
@@ -52,6 +54,7 @@ type API struct {
 type APIDeps struct {
 	Chain        chain.ReadStore
 	Config       *cfg.Config
+	DAG          *dag.DAG
 	Deals        *strgdls.Store
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
@@ -70,6 +73,7 @@ func New(deps *APIDeps) *API {
 
 		chain:        deps.Chain,
 		config:       deps.Config,
+		dag:          deps.DAG,
 		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
@@ -253,4 +257,24 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress() (address.Address, error) {
 	return wallet.NewAddress(api.wallet)
+}
+
+// WalletImport adds a given set of KeyInfos to the wallet
+func (api *API) WalletImport(kinfos []*types.KeyInfo) ([]address.Address, error) {
+	return api.wallet.Import(kinfos)
+}
+
+// WalletExport returns the KeyInfos for the given wallet addresses
+func (api *API) WalletExport(addrs []address.Address) ([]*types.KeyInfo, error) {
+	return api.wallet.Export(addrs)
+}
+
+// DAGGetNode returns the associated DAG node for the passed in CID.
+func (api *API) DAGGetNode(ctx context.Context, ref string) (interface{}, error) {
+	return api.dag.GetNode(ctx, ref)
+}
+
+// DAGGetFileSize returns the file size for a given Cid
+func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
+	return api.dag.GetFileSize(ctx, c)
 }

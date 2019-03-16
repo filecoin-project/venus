@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -11,7 +12,6 @@ import (
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -138,6 +138,11 @@ var balanceCmd = &cmds.Command{
 	},
 }
 
+// WalletSerializeResult is the type wallet export and import return and expect.
+type WalletSerializeResult struct {
+	KeyInfo []*types.KeyInfo
+}
+
 var walletImportCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
 		cmdkit.FileArg("walletFile", true, false, "File containing wallet data to import").EnableStdin(),
@@ -153,7 +158,17 @@ var walletImportCmd = &cmds.Command{
 			return fmt.Errorf("given file was not a files.File")
 		}
 
-		addrs, err := GetAPI(env).Address().Import(req.Context, fi)
+		var wir *WalletSerializeResult
+		if err := json.NewDecoder(fi).Decode(&wir); err != nil {
+			return err
+		}
+		keyInfos := wir.KeyInfo
+
+		if len(keyInfos) == 0 {
+			return fmt.Errorf("no keys in wallet file")
+		}
+
+		addrs, err := GetPorcelainAPI(env).WalletImport(keyInfos)
 		if err != nil {
 			return err
 		}
@@ -193,19 +208,19 @@ var walletExportCmd = &cmds.Command{
 			addrs[i] = addr
 		}
 
-		kis, err := GetAPI(env).Address().Export(req.Context, addrs)
+		kis, err := GetPorcelainAPI(env).WalletExport(addrs)
 		if err != nil {
 			return err
 		}
 
-		var klr impl.WalletSerializeResult
+		var klr WalletSerializeResult
 		klr.KeyInfo = append(klr.KeyInfo, kis...)
 
 		return re.Emit(klr)
 	},
-	Type: &impl.WalletSerializeResult{},
+	Type: &WalletSerializeResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *impl.WalletSerializeResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, klr *WalletSerializeResult) error {
 			for _, k := range klr.KeyInfo {
 				a, err := k.Address()
 				if err != nil {
