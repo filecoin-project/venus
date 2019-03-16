@@ -265,7 +265,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
+		newChain := NewChainWithMessages(store, oldChain[1], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
 		newTipSet := headOf(newChain)
 
 		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
@@ -289,7 +289,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, oldChain[0],
+		newChain := NewChainWithMessages(store, oldChain[1],
 			msgsSet{msgs{m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5]}},
@@ -317,7 +317,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, oldChain[0],
+		newChain := NewChainWithMessages(store, oldChain[1],
 			msgsSet{msgs{m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5]}, msgs{m[1], m[2]}},
@@ -370,7 +370,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		oldTipSet := headOf(oldChain)
 
-		oldTipSetPrev := oldChain[1]
+		oldTipSetPrev := oldChain[2]
 		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSetPrev))
 		assertPoolEquals(assert, p, m[2], m[3])
 	})
@@ -408,7 +408,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, oldChain[1],
+		newChain := NewChainWithMessages(store, oldChain[2],
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5], m[6]}},

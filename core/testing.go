@@ -69,16 +69,26 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 	tipSets := []types.TipSet{}
 	parents := root
 
-	// only add root to the chain if it is not the zero-valued-tipset
-	if len(parents) != 0 {
-		for _, blk := range parents {
-			MustPut(store, blk)
+	// make a genesis block if we're starting a new chain.
+	if len(parents) == 0 {
+		genesis := &types.Block{
+			Height: types.Uint64(0),
 		}
-		tipSets = append(tipSets, parents)
+		parents = types.TipSet{
+			genesis.Cid(): genesis,
+		}
 	}
 
+	for _, blk := range parents {
+		MustPut(store, blk)
+	}
+
+	tipSets = append(tipSets, parents)
+
 	for _, tsMsgs := range msgSets {
+		// TODO: We shouldn't be ignoring this error...
 		height, _ := parents.Height()
+
 		ts := types.TipSet{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
