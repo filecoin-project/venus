@@ -23,7 +23,7 @@ func Hash(message Message) Digest {
 
 	// prep response
 	var digest Digest
-	digestSlice := C.GoBytes(unsafe.Pointer(&resPtr.digest), DigestBytes)
+	digestSlice := C.GoBytes(unsafe.Pointer(&resPtr.digest), DigestBytes) // nolint: staticcheck
 	copy(digest[:], digestSlice)
 
 	return digest
@@ -84,7 +84,7 @@ func Aggregate(signatures []Signature) Signature {
 
 	// prep response
 	var signature Signature
-	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes)
+	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes) // nolint: staticcheck
 	copy(signature[:], signatureSlice)
 
 	return signature
@@ -98,7 +98,7 @@ func PrivateKeyGenerate() PrivateKey {
 
 	// prep response
 	var privateKey PrivateKey
-	privateKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.private_key), PrivateKeyBytes)
+	privateKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.private_key), PrivateKeyBytes) // nolint: staticcheck
 	copy(privateKey[:], privateKeySlice)
 
 	return privateKey
@@ -122,7 +122,7 @@ func PrivateKeySign(privateKey PrivateKey, message Message) Signature {
 
 	// prep response
 	var signature Signature
-	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes)
+	signatureSlice := C.GoBytes(unsafe.Pointer(&resPtr.signature), SignatureBytes) // nolint: staticcheck
 	copy(signature[:], signatureSlice)
 
 	return signature
@@ -136,12 +136,12 @@ func PrivateKeyPublicKey(privateKey PrivateKey) PublicKey {
 	cPrivateKeyPtr := (*C.uchar)(cPrivateKey)
 
 	// call method
-	resPtr := (*C.PrivateKeyPublicKeyResponse)(unsafe.Pointer(C.private_key_public_key(cPrivateKeyPtr)))
+	resPtr := (*C.PrivateKeyPublicKeyResponse)(unsafe.Pointer(C.private_key_public_key(cPrivateKeyPtr))) // nolint: staticcheck
 	defer C.destroy_private_key_public_key_response(resPtr)
 
 	// prep response
 	var publicKey PublicKey
-	publicKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.public_key), PublicKeyBytes)
+	publicKeySlice := C.GoBytes(unsafe.Pointer(&resPtr.public_key), PublicKeyBytes) // nolint: staticcheck
 	copy(publicKey[:], publicKeySlice)
 
 	return publicKey
