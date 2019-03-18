@@ -46,7 +46,8 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
