@@ -294,8 +294,9 @@ func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 	return api.dag.Cat(ctx, c)
 }
 
-// DAGImportData adds data from an io stream to the merkledag and returns the
-// Cid of the given data
+// DAGImportData adds data from an io reader to the merkledag and returns the
+// Cid of the given data. Once the data is in the DAG, it can fetched from the
+// node via Bitswap and a copy will be kept in the blockstore.
 func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	return api.dag.ImportData(ctx, data)
 }
