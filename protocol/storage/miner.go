@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"math/big"
 	"strconv"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
@@ -602,6 +602,8 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
+// currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
+// the miner actor's current proving period.
 func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (proofs.PoStChallengeSeed, error) {
 	currentProvingPeriodStart, err := sm.getProvingPeriodStart()
 	if err != nil {
@@ -619,31 +621,78 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 	return seed, nil
 }
 
-// OnNewHeaviestTipSet is a callback called by node, everytime the the latest head is updated.
-// It is used to check if we are in a new proving period and need to trigger PoSt submission.
-func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
-	ctx := context.Background()
+// isBootstrapMinerActor is a convenience method used to determine if the miner
+// actor was created when bootstrapping the network. If it was,
+func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
+	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		sm.minerAddr,
+		"isBootstrapMiner",
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "query method failed")
+	}
 
-	rets, sig, err := sm.porcelainAPI.MessageQuery(
+	deserialized, err := abi.Deserialize(returnValues[0], sig.Return[0])
+	if err != nil {
+		return false, errors.Wrap(err, "deserialization failed")
+	}
+
+	isBootstrap, ok := deserialized.Val.(bool)
+	if !ok {
+		return false, errors.Wrap(err, "type assertion failed")
+	}
+
+	return isBootstrap, nil
+}
+
+// getActorSectorCommitments is a convenience method used to obtain miner actor
+// commitments.
+func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]types.Commitments, error) {
+	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Undef,
 		sm.minerAddr,
 		"getSectorCommitments",
 	)
 	if err != nil {
-		log.Errorf("failed to call query method getSectorCommitments: %s", err)
-		return
+		return nil, errors.Wrap(err, "query method failed")
 	}
 
-	commitmentsVal, err := abi.Deserialize(rets[0], sig.Return[0])
+	commitmentsVal, err := abi.Deserialize(returnValues[0], sig.Return[0])
 	if err != nil {
-		log.Errorf("failed to convert returned ABI value: %s", err)
-		return
+		return nil, errors.Wrap(err, "deserialization failed")
 	}
 
 	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
 	if !ok {
-		log.Errorf("failed to convert returned ABI value to miner.Commitments")
+		return nil, errors.Wrap(err, "type assertion failed")
+	}
+
+	return commitments, nil
+}
+
+// OnNewHeaviestTipSet is a callback called by node, every time the the latest
+// head is updated. It is used to check if we are in a new proving period and
+// need to trigger PoSt submission.
+func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
+	ctx := context.Background()
+
+	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
+	if err != nil {
+		log.Errorf("could not determine if actor created for bootstrapping: %s", err)
+		return
+	}
+
+	if isBootstrapMinerActor {
+		log.Info("bootstrap miner actor skips PoSt-generation flow")
+		return
+	}
+
+	commitments, err := sm.getActorSectorCommitments(ctx)
+	if err != nil {
+		log.Errorf("failed to get miner actor commitments: %s", err)
 		return
 	}
 

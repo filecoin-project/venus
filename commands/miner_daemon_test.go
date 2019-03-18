@@ -230,7 +230,7 @@ func TestMinerCreate(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		d.CreateWalletAddr()
+		d.CreateAddress()
 
 		d.RunFail("invalid peer id",
 			"miner", "create",

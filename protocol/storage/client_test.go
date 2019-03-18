@@ -197,6 +197,13 @@ func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, erro
 	return 1000000000, nil
 }
 
+func (ctp *clientTestAPI) NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
+	out := make(chan time.Duration, 1)
+	out <- 0
+	close(out)
+	return out, nil
+}
+
 type testClientNode struct {
 	responder func(request interface{}) (interface{}, error)
 }
@@ -219,13 +226,6 @@ func (tcn *testClientNode) MakeProtocolRequest(ctx context.Context, protocol pro
 	}
 	*dealResponse = *res.(*storagedeal.Response)
 	return nil
-}
-
-func (tcn *testClientNode) Ping(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
-	out := make(chan time.Duration, 1)
-	out <- 0
-	close(out)
-	return out, nil
 }
 
 func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {

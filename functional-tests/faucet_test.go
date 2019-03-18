@@ -80,7 +80,7 @@ func TestFaucetSendFunds(t *testing.T) {
 
 	// Get address for target node
 	var targetAddr commands.AddressLsResult
-	node1.MustRunCmdJSON(ctx, &targetAddr, "go-filecoin", "wallet", "addrs", "ls")
+	node1.MustRunCmdJSON(ctx, &targetAddr, "go-filecoin", "address", "ls")
 
 	// Start Tests
 

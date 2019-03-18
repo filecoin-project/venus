@@ -166,7 +166,7 @@ func TestNodeStartMining(t *testing.T) {
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgSender:    msg.NewSender(minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
-		Network:      net.New(minerNode.Host(), nil, nil, nil, nil),
+		Network:      net.New(minerNode.Host(), nil, nil, nil, nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
 		Deals:        strgdls.New(minerNode.Repo.DealsDatastore()),

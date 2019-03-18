@@ -2,9 +2,13 @@ package plumbing
 
 import (
 	"context"
+	"io"
+	"time"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	uio "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
+	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
@@ -234,6 +238,11 @@ func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, coun
 	return api.network.FindProvidersAsync(ctx, key, count)
 }
 
+// NetworkPing sends echo request packets over the network.
+func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
+	return api.network.PingService.Ping(ctx, pid)
+}
+
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)
@@ -277,4 +286,17 @@ func (api *API) DAGGetNode(ctx context.Context, ref string) (interface{}, error)
 // DAGGetFileSize returns the file size for a given Cid
 func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 	return api.dag.GetFileSize(ctx, c)
+}
+
+// DAGCat returns an iostream with a piece of data stored on the merkeldag with
+// the given cid.
+func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
+	return api.dag.Cat(ctx, c)
+}
+
+// DAGImportData adds data from an io reader to the merkledag and returns the
+// Cid of the given data. Once the data is in the DAG, it can fetched from the
+// node via Bitswap and a copy will be kept in the blockstore.
+func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
+	return api.dag.ImportData(ctx, data)
 }

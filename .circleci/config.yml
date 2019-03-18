@@ -122,8 +122,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.11.1.darwin-amd64.pkg && \
-            sudo installer -pkg go1.11.1.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.12.1.darwin-amd64.pkg && \
+            sudo installer -pkg go1.12.1.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -179,18 +179,18 @@ jobs:
           name: Create macos bundle
           command: ./scripts/build-bundle.sh
       - store_artifacts:
-          path: "~/go/src/github.com/filecoin-project/go-filecoin/filecoin-Darwin.tar.gz"
-          destination: filecoin-Darwin.tar.gz
+          path: "~/go/src/github.com/filecoin-project/go-filecoin/bundle/"
+          destination: bundle
       - store_test_results:
           path: test-results
       - persist_to_workspace:
           root: "."
           paths:
-            - "filecoin-Darwin.tar.gz"
+            - "bundle/"
 
   build_linux:
     docker:
-      - image: circleci/golang:1.11.1
+      - image: circleci/golang:1.12.1
 
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
@@ -294,8 +294,8 @@ jobs:
           command: ./scripts/build-bundle.sh
 
       - store_artifacts:
-          path: "/go/src/github.com/filecoin-project/go-filecoin/filecoin-Linux.tar.gz"
-          destination: filecoin-Linux.tar.gz
+          path: "/go/src/github.com/filecoin-project/go-filecoin/bundle/"
+          destination: bundle
 
       - store_test_results:
           path: test-results
@@ -308,7 +308,7 @@ jobs:
       - persist_to_workspace:
           root: "."
           paths:
-            - "filecoin-Linux.tar.gz"
+            - "bundle/"
             - "gengen/gengen"
             - "fixtures"
 
@@ -334,7 +334,7 @@ jobs:
 
   build_faucet_and_genesis:
     docker:
-      - image: circleci/golang:1.11.1
+      - image: circleci/golang:1.12.1
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: small
     steps:
@@ -466,11 +466,6 @@ jobs:
           command: |
             git config user.email dev-helper@filecoin.io
             git config user.name filecoin-helper
-            git tag -f -a ${FILECOIN_BINARY_VERSION} -m "$(date -uIseconds)"
-            git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git ${FILECOIN_BINARY_VERSION}
-      - trigger_infra_build:
-          job: deploy_nightly_devnet
-          branch: filecoin-nightly
   trigger_user_devnet_deploy:
     docker:
       - image: circleci/golang:latest
@@ -515,6 +510,7 @@ jobs:
           command: |
             sudo apt-get install -y curl jq
             curl -X POST --header "Content-Type: application/json" -d '{"branch":"filecoin-usernet"}' https://circleci.com/api/v1.1/project/github/filecoin-project/go-filecoin-infra/build?circle-token=$CIRCLE_API_TOKEN
+
 workflows:
   version: 2
   test_all:

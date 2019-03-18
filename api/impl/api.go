@@ -13,7 +13,6 @@ type nodeAPI struct {
 
 	client *nodeClient
 	daemon *nodeDaemon
-	ping   *nodePing
 	swarm  *nodeSwarm
 }
 
@@ -28,7 +27,6 @@ func New(node *node.Node) api.API {
 	}
 	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
-	api.ping = newNodePing(api)
 	api.swarm = newNodeSwarm(api)
 
 	return api
@@ -40,10 +38,6 @@ func (api *nodeAPI) Client() api.Client {
 
 func (api *nodeAPI) Daemon() api.Daemon {
 	return api.daemon
-}
-
-func (api *nodeAPI) Ping() api.Ping {
-	return api.ping
 }
 
 func (api *nodeAPI) Swarm() api.Swarm {
