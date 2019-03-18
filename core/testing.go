@@ -68,6 +68,7 @@ func MustConvertParams(params ...interface{}) []byte {
 func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
 	tipSets := []types.TipSet{}
 	parents := root
+	height := uint64(0)
 
 	// only add root to the chain if it is not the zero-valued-tipset
 	if len(parents) != 0 {
@@ -75,16 +76,17 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 			MustPut(store, blk)
 		}
 		tipSets = append(tipSets, parents)
+		height, _ = parents.Height()
+		height++
 	}
 
 	for _, tsMsgs := range msgSets {
-		height, _ := parents.Height()
 		ts := types.TipSet{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
-				Height:  types.Uint64(height + 1),
+				Height:  types.Uint64(height),
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
@@ -94,13 +96,14 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 			child := &types.Block{
 				Messages: msgs,
 				Parents:  parents.ToSortedCidSet(),
-				Height:   types.Uint64(height + 1),
+				Height:   types.Uint64(height),
 			}
 			MustPut(store, child)
 			ts[child.Cid()] = child
 		}
 		tipSets = append(tipSets, ts)
 		parents = ts
+		height++
 	}
 
 	return tipSets
