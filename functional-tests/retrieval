@@ -127,8 +127,6 @@ echo "bootstrap miner node starts mining (so that messages can be processed)..."
 ./go-filecoin mining start \
   --repodir="$BOOTSTRAP_MN_REPO_DIR" \
 
-MINER_ADD_ASK_MSG_CID=$(set_price 10 10000 "${MN_REPO_DIR}")
-
 echo ""
 echo "bootstrap miner shares some funds with the storage miner..."
 SEND_FIL_MSG_CID=$(send_fil "$BOOTSTRAP_MN_MINER_OWNER_FIL_ADDR" 100 "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}")
@@ -154,16 +152,16 @@ STORAGE_MN_MINER_UPDATE_PID_MSG_CID=$(miner_update_pid "${STORAGE_MN_MINER_FIL_A
 
 echo ""
 echo "storage miner adds its ask to the market..."
-STORAGE_MN_MINER_ADD_ASK_MSG_CID=$(add_ask "${STORAGE_MN_MINER_FIL_ADDR}" 10 10000 "${STORAGE_MN_REPO_DIR}")
+STORAGE_MN_MINER_SET_PRICE_MSG_CID=$(set_price 10 10000 "${STORAGE_MN_REPO_DIR}")
 
 echo ""
-echo "block until miner peer id-update message appears in chains..."
+echo "block until miner peer id-update and set price-messages appear in chains..."
 message_wait "${STORAGE_MN_MINER_UPDATE_PID_MSG_CID}" "${BOOTSTRAP_MN_REPO_DIR}"
 message_wait "${STORAGE_MN_MINER_UPDATE_PID_MSG_CID}" "${CL_REPO_DIR}"
 message_wait "${STORAGE_MN_MINER_UPDATE_PID_MSG_CID}" "${STORAGE_MN_REPO_DIR}"
-message_wait "${STORAGE_MN_MINER_ADD_ASK_MSG_CID}" "${BOOTSTRAP_MN_REPO_DIR}"
-message_wait "${STORAGE_MN_MINER_ADD_ASK_MSG_CID}" "${CL_REPO_DIR}"
-message_wait "${STORAGE_MN_MINER_ADD_ASK_MSG_CID}" "${STORAGE_MN_REPO_DIR}"
+message_wait "${STORAGE_MN_MINER_SET_PRICE_MSG_CID}" "${BOOTSTRAP_MN_REPO_DIR}"
+message_wait "${STORAGE_MN_MINER_SET_PRICE_MSG_CID}" "${CL_REPO_DIR}"
+message_wait "${STORAGE_MN_MINER_SET_PRICE_MSG_CID}" "${STORAGE_MN_REPO_DIR}"
 
 echo ""
 echo "client proposes a storage deal, which transfers file 1..."
