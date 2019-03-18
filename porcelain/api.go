@@ -188,3 +188,8 @@ func (a *API) PaymentChannelVoucher(
 ) (voucher *paymentbroker.PaymentVoucher, err error) {
 	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
 }
+
+// ClientListAsks returns a channel with asks from the latest chain state
+func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
+	return ClientListAsks(ctx, a)
+}

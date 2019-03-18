@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
@@ -208,14 +208,11 @@ respectively.
 `,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		asksCh, err := GetAPI(env).Client().ListAsks(req.Context)
-		if err != nil {
-			return err
-		}
+		asksCh := GetPorcelainAPI(env).ClientListAsks(req.Context)
 
 		for a := range asksCh {
 			if a.Error != nil {
-				return err
+				return a.Error
 			}
 			if err := re.Emit(a); err != nil {
 				return err
@@ -223,9 +220,9 @@ respectively.
 		}
 		return nil
 	},
-	Type: api.Ask{},
+	Type: porcelain.Ask{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *api.Ask) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
 			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
 			return nil
 		}),

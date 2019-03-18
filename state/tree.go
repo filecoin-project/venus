@@ -256,8 +256,8 @@ func GetAllActors(ctx context.Context, t Tree) <-chan GetAllActorsResult {
 	st := t.(*tree)
 	out := make(chan GetAllActorsResult)
 	go func() {
+		defer close(out)
 		st.getActorsFromPointers(ctx, out, st.root.Pointers)
-		close(out)
 	}()
 	return out
 }
