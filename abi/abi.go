@@ -49,6 +49,8 @@ const (
 	CommitmentsMap
 	// PoStProofs is an array of proof-of-spacetime proofs
 	PoStProofs
+	// Boolean is a bool
+	Boolean
 )
 
 func (t Type) String() string {
@@ -81,6 +83,8 @@ func (t Type) String() string {
 		return "map[string]types.Commitments"
 	case PoStProofs:
 		return "[]proofs.PoStProof"
+	case Boolean:
+		return "bool"
 	default:
 		return "<unknown type>"
 	}
@@ -122,6 +126,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(map[string]types.Commitments))
 	case PoStProofs:
 		return fmt.Sprint(av.Val.([]proofs.PoStProof))
+	case Boolean:
+		return fmt.Sprint(av.Val.(bool))
 	default:
 		return "<unknown type>"
 	}
@@ -228,6 +234,18 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(m)
+	case Boolean:
+		v, ok := av.Val.(bool)
+		if !ok {
+			return nil, &typeError{false, av.Val}
+		}
+
+		var b byte
+		if v {
+			b = 1
+		}
+
+		return []byte{b}, nil
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -269,6 +287,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: CommitmentsMap, Val: v})
 		case []proofs.PoStProof:
 			out = append(out, &Value{Type: PoStProofs, Val: v})
+		case bool:
+			out = append(out, &Value{Type: Boolean, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -381,6 +401,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  slice,
 		}, nil
+	case Boolean:
+		var b bool
+		if data[0] == 1 {
+			b = true
+		}
+		return &Value{
+			Type: t,
+			Val:  b,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -402,6 +431,7 @@ var typeTable = map[Type]reflect.Type{
 	SectorID:       reflect.TypeOf(uint64(0)),
 	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
 	PoStProofs:     reflect.TypeOf([]proofs.PoStProof{}),
+	Boolean:        reflect.TypeOf(false),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

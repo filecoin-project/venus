@@ -7,12 +7,19 @@ function finish {
 
   echo ""
   echo "cleaning up..."
-  kill "$MN_PID" || true
+  kill "$BOOTSTRAP_MN_PID" || true
+  kill "$STORAGE_MN_PID" || true
   kill "$CL_PID" || true
 
   # Force KILL after MAX_WAIT seconds if the daemons don't exit
   (
-    sleep $MAX_WAIT && kill -9 "$MN_PID";
+    sleep $MAX_WAIT && kill -9 "$BOOTSTRAP_MN_PID";
+    echo "Sent SIGKILL to BOOTSTRAP_MN, daemon failed to stop within $MAX_WAIT second at end of test";
+  ) & WAITER_BOOTSTRAP_MN=$!
+
+  # Force KILL after MAX_WAIT seconds if the daemons don't exit
+  (
+    sleep $MAX_WAIT && kill -9 "$STORAGE_MN_PID";
     echo "Sent SIGKILL to MN, daemon failed to stop within $MAX_WAIT second at end of test";
   ) & WAITER_MN=$!
 
@@ -22,10 +29,12 @@ function finish {
   ) & WAITER_CL=$!
 
   # Wait for daemons to exit
-  wait "$MN_PID"
+  wait "$BOOTSTRAP_MN_PID"
+  wait "$STORAGE_MN_PID"
   wait "$CL_PID"
 
   # Kill watchers
+  kill $WAITER_BOOTSTRAP_MN
   kill $WAITER_MN
   kill $WAITER_CL
 
@@ -33,6 +42,7 @@ function finish {
   rm -f "${PIECE_2_PATH}"
   rm -f "${UNSEAL_PATH}"
   rm -rf "${CL_REPO_DIR}"
+  rm -rf "${BOOTSTRAP_MN_REPO_DIR}"
   rm -rf "${MN_REPO_DIR}"
 }
 
@@ -149,6 +159,23 @@ function wait_for_message_in_chain_by_method_and_sender {
   unset IFS
 }
 
+function create_miner {
+  ./go-filecoin miner create 10 100 \
+    --gas-limit=10000 \
+    --gas-price=0 \
+    --repodir="$1"
+}
+
+function send_fil {
+  ./go-filecoin message send \
+    --from "$1" \
+    --value $2 \
+    --gas-limit=10000 \
+    --gas-price=0 \
+    "$3" \
+    --repodir="$4"
+}
+
 function set_wallet_default_address_in_config {
   ./go-filecoin config wallet.defaultAddress \""$1"\" \
     --repodir="$2"
@@ -173,4 +200,16 @@ function miner_update_pid {
   ./go-filecoin miner update-peerid "$1" "$2" \
     --gas-price=0 --gas-limit=300 \
     --repodir="$3"
+}
+
+function message_wait {
+    ./go-filecoin message wait $1 --repodir=$2
+}
+
+function fork_message_wait {
+  eval "exec $1< <(./go-filecoin message wait $2 --repodir=$3)"
+}
+
+function join {
+  cat <&"$1"
 }
