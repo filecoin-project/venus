@@ -7,6 +7,7 @@ import (
 	"gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs"
+	"gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
 	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	"gx/ipfs/QmVUojkFtcsrVBa8kYZiM6LhxpYXaKDTxE4aF1NFj4RfBv/go-path"
 	"gx/ipfs/QmVUojkFtcsrVBa8kYZiM6LhxpYXaKDTxE4aF1NFj4RfBv/go-path/resolver"
@@ -69,4 +70,14 @@ func (dag *DAG) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 	default:
 		return 0, fmt.Errorf("unrecognized node type: %T", fnode)
 	}
+}
+
+// Cat returns an iostream with a piece of data stored on the merkeldag with
+// the given cid.
+func (dag *DAG) Cat(ctx context.Context, c cid.Cid) (io.DagReader, error) {
+	data, err := dag.dserv.Get(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return io.NewDagReader(ctx, data, dag.dserv)
 }

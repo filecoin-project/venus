@@ -9,7 +9,6 @@ import (
 	dag "gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	imp "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/importer"
-	uio "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
 	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
 	chunk "gx/ipfs/QmXivYDjgMqNQXbEQVC7TMuZnRADCa71ABQUQxWPZPTLbd/go-ipfs-chunker"
 
@@ -27,21 +26,6 @@ func newNodeClient(api *nodeAPI) *nodeClient {
 }
 
 var _ api.Client = &nodeClient{}
-
-func (api *nodeClient) Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
-	// TODO: this goes back to 'how is data stored and referenced'
-	// For now, lets just do things the ipfs way.
-
-	nd := api.api.node
-	ds := dag.NewDAGService(nd.BlockService())
-
-	data, err := ds.Get(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-
-	return uio.NewDagReader(ctx, data, ds)
-}
 
 func (api *nodeClient) ImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	ds := dag.NewDAGService(api.api.node.BlockService())

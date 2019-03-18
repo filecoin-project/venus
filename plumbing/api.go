@@ -6,6 +6,7 @@ import (
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
@@ -283,4 +284,10 @@ func (api *API) DAGGetNode(ctx context.Context, ref string) (interface{}, error)
 // DAGGetFileSize returns the file size for a given Cid
 func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 	return api.dag.GetFileSize(ctx, c)
+}
+
+// DAGCat returns an iostream with a piece of data stored on the merkeldag with
+// the given cid.
+func (api *API) DAGCat(ctx context.Context, c cid.Cid) (io.DagReader, error) {
+	return api.dag.Cat(ctx, c)
 }
