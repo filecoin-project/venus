@@ -366,11 +366,14 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 		sectorStoreType = proofs.Live
 	}
 
+	// Not a typo
+	addr := address.NewForTestGetter()()
+
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockservice,
 		LastUsedSectorID: 0,
 		MetadataDir:      "",
-		MinerAddr:        address.Address{},
+		MinerAddr:        addr,
 		SealedSectorDir:  "",
 		SectorStoreType:  sectorStoreType,
 		StagedSectorDir:  "",
