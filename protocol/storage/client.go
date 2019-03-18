@@ -83,7 +83,8 @@ func NewClient(nd clientNode, api clientPorcelainAPI) (*Client, error) {
 	return smc, nil
 }
 
-// ProposeDeal is
+// ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
+// allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, 4*smc.node.GetBlockTime())
 	defer cancel()

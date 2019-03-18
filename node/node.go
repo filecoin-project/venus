@@ -115,8 +115,7 @@ type Node struct {
 	blockTime          time.Duration
 
 	// Storage Market Interfaces
-	StorageMinerClient *storage.Client
-	StorageMiner       *storage.Miner
+	StorageMiner *storage.Miner
 
 	// Retrieval Interfaces
 	RetrievalMiner *retrieval.Miner
@@ -485,14 +484,10 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
-	cni := storage.NewClientNodeImpl(node.Host(), node.GetBlockTime())
-	var err error
-	node.StorageMinerClient, err = storage.NewClient(cni, node.PorcelainAPI)
+	err := node.setupProtocols()
 	if err != nil {
-		return errors.Wrap(err, "Could not make new storage client")
+		return errors.Wrap(err, "failed to set up protocols:")
 	}
-
-	node.setupProtocols()
 	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
@@ -1033,7 +1028,7 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 
 // setupProtocols creates protocol clients and miners, then sets the node's APIs
 // for each
-func (node *Node) setupProtocols() {
+func (node *Node) setupProtocols() error {
 	blockTime, mineDelay := node.MiningTimes()
 	blockAPI := block.New(
 		node.AddNewBlock,
@@ -1053,8 +1048,19 @@ func (node *Node) setupProtocols() {
 
 	node.BlockAPI = &blockAPI
 
+	// set up retrieval client and api
 	retapi := retrieval.NewAPI(retrieval.NewClient(node), node.PorcelainAPI)
 	node.RetrievalAPI = &retapi
+
+	// set up storage client and api
+	cni := storage.NewClientNodeImpl(node.Host(), node.GetBlockTime())
+	smc, err := storage.NewClient(cni, node.PorcelainAPI)
+	if err != nil {
+		return errors.Wrap(err, "Could not make new storage client")
+	}
+	smcAPI := storage.NewAPI(smc)
+	node.StorageAPI = &smcAPI
+	return nil
 }
 
 // -- Accessors
