@@ -37,11 +37,19 @@ func MustGetNonce(st state.Tree, a address.Address) uint64 {
 	return nonce
 }
 
-// MustAdd adds the given messages to the messagepool or panics if it
-// cannot.
+// MustAdd adds the given messages to the messagepool or panics if it cannot.
 func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
 	for _, m := range msgs {
 		if _, err := p.Add(m); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// MustEnqueue adds the given messages to the messagepool or panics if it cannot.
+func MustEnqueue(q *MessageQueue, stamp uint64, msgs ...*types.SignedMessage) {
+	for _, m := range msgs {
+		if err := q.Enqueue(m, stamp); err != nil {
 			panic(err)
 		}
 	}

@@ -421,7 +421,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
-		MsgSender:    msg.NewSender(fcWallet, chainStore, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
+		MsgSender:    msg.NewSender(fcWallet, chainStore, chainStore, outbox, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, pinger),
 		SigGetter:    mthdsig.NewGetter(chainStore),

@@ -164,7 +164,7 @@ func TestNodeStartMining(t *testing.T) {
 		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:    msg.NewSender(minerNode.Wallet, minerNode.ChainReader, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
+		MsgSender:    msg.NewSender(minerNode.Wallet, nil, nil, minerNode.Outbox, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
 		Network:      net.New(minerNode.Host(), nil, nil, nil, nil, nil),
 		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
