@@ -15,11 +15,11 @@ func Check(version string) bool {
 
 	minorVersion, _ := strconv.Atoi(pieces[1])
 
-	if minorVersion > 11 {
-		return false
+	if minorVersion > 12 {
+		return true
 	}
 
-	if minorVersion < 11 {
+	if minorVersion < 12 {
 		return false
 	}
 
