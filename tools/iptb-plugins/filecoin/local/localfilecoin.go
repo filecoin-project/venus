@@ -106,14 +106,50 @@ func init() {
 			}
 		}
 
+		if err := os.Mkdir(filepath.Join(dir, "bin"), 0755); err != nil {
+			return nil, fmt.Errorf("could not make dir: %s", err)
+		}
+
+		dst := filepath.Join(dir, "bin", filepath.Base(binPath))
+		if err := copyFileContents(binPath, dst); err != nil {
+			return nil, err
+		}
+
+		if err := os.Chmod(dst, 0755); err != nil {
+			return nil, err
+		}
+
 		return &Localfilecoin{
 			dir:             dir,
-			binPath:         binPath,
+			binPath:         dst,
 			logLevel:        logLevel,
 			logJSON:         logJSON,
 			useSmallSectors: useSmallSectors,
 		}, nil
 	}
+}
+
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close() // nolint: errcheck
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
 }
 
 /** Core Interface **/
@@ -351,7 +387,7 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 	}
 
 	if len(os.Getenv("FIL_PATH")) != 0 {
-		// If the users shell sets IPFS_PATH, it will just be overridden by the shell again
+		// If the users shell sets FIL_PATH, it will just be overridden by the shell again
 		return fmt.Errorf("shell has FIL_PATH set, please unset before trying to use iptb shell")
 	}
 
@@ -374,7 +410,25 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 		nenvs = append(nenvs, fmt.Sprintf("NODE%d=%s", i, peerid))
 	}
 
-	return syscall.Exec(shell, []string{shell}, nenvs)
+	pid, err := l.getPID()
+	if err != nil {
+		return err
+	}
+
+	nenvs = filecoin.UpdateOrAppendEnv(nenvs, "FIL_PID", fmt.Sprintf("%d", pid))
+	nenvs = filecoin.UpdateOrAppendEnv(nenvs, "FIL_BINARY", l.binPath)
+
+	cmd := exec.CommandContext(ctx, shell)
+	cmd.Env = nenvs
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	return cmd.Wait()
 }
 
 // Infof writes an info log.
