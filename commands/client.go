@@ -145,7 +145,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			return err
 		}
 
-		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
+		resp, err := GetStorageAPI(env).ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
 		if err != nil {
 			return err
 		}
@@ -181,7 +181,7 @@ format is specified with the --enc flag.
 			return err
 		}
 
-		resp, err := GetAPI(env).Client().QueryStorageDeal(req.Context, propcid)
+		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
 		if err != nil {
 			return err
 		}
@@ -244,7 +244,7 @@ var paymentsCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		vouchers, err := GetAPI(env).Client().Payments(req.Context, dealCid)
+		vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
 		if err != nil {
 			return err
 		}

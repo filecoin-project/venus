@@ -3,12 +3,13 @@ package commands
 import (
 	"context"
 
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
 )
 
 // Env is the environment passed to commands. Implements cmds.Environment.
@@ -18,6 +19,7 @@ type Env struct {
 	porcelainAPI *porcelain.API
 	blockAPI     *block.API
 	retrievalAPI *retrieval.API
+	storageAPI   *storage.API
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -54,4 +56,10 @@ func GetBlockAPI(env cmds.Environment) *block.API {
 func GetRetrievalAPI(env cmds.Environment) *retrieval.API {
 	ce := env.(*Env)
 	return ce.retrievalAPI
+}
+
+// GetStorageAPI returns the storage protocol api from the given environment
+func GetStorageAPI(env cmds.Environment) *storage.API {
+	ce := env.(*Env)
+	return ce.storageAPI
 }

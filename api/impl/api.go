@@ -11,7 +11,6 @@ type nodeAPI struct {
 	node   *node.Node
 	logger logging.EventLogger
 
-	client *nodeClient
 	daemon *nodeDaemon
 	swarm  *nodeSwarm
 }
@@ -25,15 +24,10 @@ func New(node *node.Node) api.API {
 		node:   node,
 		logger: logging.Logger("api"),
 	}
-	api.client = newNodeClient(api)
 	api.daemon = newNodeDaemon(api)
 	api.swarm = newNodeSwarm(api)
 
 	return api
-}
-
-func (api *nodeAPI) Client() api.Client {
-	return api.client
 }
 
 func (api *nodeAPI) Daemon() api.Daemon {
