@@ -466,6 +466,12 @@ jobs:
           command: |
             git config user.email dev-helper@filecoin.io
             git config user.name filecoin-helper
+            git tag -f -a ${FILECOIN_BINARY_VERSION} -m "$(date -uIseconds)"
+            git push -f https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin.git ${FILECOIN_BINARY_VERSION}
+      - trigger_infra_build:
+          job: deploy_nightly_devnet
+          branch: filecoin-nightly
+
   trigger_user_devnet_deploy:
     docker:
       - image: circleci/golang:latest
