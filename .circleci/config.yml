@@ -437,9 +437,9 @@ jobs:
       - run:
           name: build & push image - filecoin
           command: |
-            tar -xf filecoin-Linux.tar.gz
-            mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
+            tar -xf "bundle/filecoin-$SHORT_GIT_SHA-Linux.tar.gz"
+            mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
