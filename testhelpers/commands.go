@@ -520,13 +520,13 @@ func (td *TestDaemon) WaitForMessageRequireSuccess(msgCid cid.Cid) *types.Messag
 	return rcpt
 }
 
-// CreateWalletAddr adds a new address to the daemons wallet and
+// CreateAddress adds a new address to the daemons wallet and
 // returns it.
 // equivalent to:
-//     `go-filecoin wallet addrs new`
-func (td *TestDaemon) CreateWalletAddr() string {
+//     `go-filecoin address new`
+func (td *TestDaemon) CreateAddress() string {
 	td.test.Helper()
-	outNew := td.RunSuccess("wallet", "addrs", "new")
+	outNew := td.RunSuccess("address", "new")
 	addr := strings.Trim(outNew.ReadStdout(), "\n")
 	require.NotEmpty(td.test, addr)
 	return addr
@@ -627,7 +627,7 @@ func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 
 // GetDefaultAddress returns the default sender address for this daemon.
 func (td *TestDaemon) GetDefaultAddress() string {
-	addrs := td.RunSuccess("wallet", "addrs", "ls")
+	addrs := td.RunSuccess("address", "ls")
 	return strings.Split(addrs.ReadStdout(), "\n")[0]
 }
 

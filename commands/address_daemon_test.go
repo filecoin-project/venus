@@ -24,10 +24,10 @@ func TestAddrsNewAndList(t *testing.T) {
 
 	addrs := make([]string, 10)
 	for i := 0; i < 10; i++ {
-		addrs[i] = d.CreateWalletAddr()
+		addrs[i] = d.CreateAddress()
 	}
 
-	list := d.RunSuccess("wallet", "addrs", "ls").ReadStdout()
+	list := d.RunSuccess("address", "ls").ReadStdout()
 	for _, addr := range addrs {
 		assert.Contains(list, addr)
 	}
@@ -39,7 +39,7 @@ func TestWalletBalance(t *testing.T) {
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
-	addr := d.CreateWalletAddr()
+	addr := d.CreateAddress()
 
 	t.Log("[success] not found, zero")
 	balance := d.RunSuccess("wallet", "balance", addr)
@@ -50,7 +50,7 @@ func TestWalletBalance(t *testing.T) {
 	assert.Equal("9999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
-	addrNew := d.RunSuccess("wallet addrs new")
+	addrNew := d.RunSuccess("address new")
 	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdoutTrimNewlines())
 	assert.Equal("0", balance.ReadStdoutTrimNewlines())
 }
