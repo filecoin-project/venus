@@ -86,6 +86,30 @@ commands:
             sudo apt-get install -y curl
             # FILECOIN_BINARY_VERSION must be set in BASH_ENV of job calling this command
             curl -d build_parameters[FILECOIN_BINARY_VERSION]=${FILECOIN_BINARY_VERSION} -d build_parameters[CIRCLE_JOB]=<< parameters.job >> https://circleci.com/api/v1.1/project/github/filecoin-project/go-filecoin-infra/tree/<< parameters.branch >>?circle-token=$CIRCLE_API_TOKEN
+  # updates a badge in https://github.com/filecoin-project/go-filecoin-badges
+  # requires Environment Variable FILECOIN_BINARY_VERSION being set
+  update_badge:
+    parameters:
+      filename:
+        description: "filename of badge to update"
+        type: string
+    steps:
+      - run:
+          name: install jq
+          command: |
+            apt-get update
+            apt-get install -y jq git
+      - run:
+          name: Update badge << parameters.filename >>
+          command: |
+            git config --global user.email dev-helper@filecoin.io
+            git config --global user.name filecoin-helper
+            git clone https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin-badges.git
+            cd go-filecoin-badges
+            cat << parameters.filename >> | jq --arg FILECOIN_BINARY_VERSION "${FILECOIN_BINARY_VERSION}" -r '.message = $FILECOIN_BINARY_VERSION' | tee << parameters.filename >>
+            git add << parameters.filename >>
+            git commit -m "badge update bot: update << parameters.filename >> to ${FILECOIN_BINARY_VERSION}"
+            git push https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin-badges.git
 
 jobs:
   build_macos:
@@ -448,6 +472,7 @@ jobs:
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
               docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
             fi
+
   trigger_nightly_devnet_deploy:
     docker:
       - image: circleci/golang:latest
@@ -471,6 +496,8 @@ jobs:
       - trigger_infra_build:
           job: deploy_nightly_devnet
           branch: filecoin-nightly
+      - update_badge:
+          filename: "nightly-devnet.json"
 
   trigger_user_devnet_deploy:
     docker:
