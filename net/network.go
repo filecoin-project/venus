@@ -4,6 +4,7 @@ import (
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
+	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
@@ -16,6 +17,7 @@ type Network struct {
 	*pubsub.Publisher
 	metrics.Reporter
 	*Router
+	*ping.PingService
 }
 
 // New returns a new Network
@@ -25,13 +27,15 @@ func New(
 	subscriber *pubsub.Subscriber,
 	router *Router,
 	reporter metrics.Reporter,
+	pinger *ping.PingService,
 ) *Network {
 	return &Network{
-		host:       host,
-		Publisher:  publisher,
-		Reporter:   reporter,
-		Router:     router,
-		Subscriber: subscriber,
+		host:        host,
+		PingService: pinger,
+		Publisher:   publisher,
+		Reporter:    reporter,
+		Router:      router,
+		Subscriber:  subscriber,
 	}
 }
 

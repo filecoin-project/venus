@@ -11,7 +11,6 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
-	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -52,7 +51,6 @@ const (
 type clientNode interface {
 	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
 	GetBlockTime() time.Duration
-	Ping(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
 }
 
 type clientPorcelainAPI interface {
@@ -67,6 +65,7 @@ type clientPorcelainAPI interface {
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
+	NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
 }
 
 // Client is used to make deals directly with storage miners.
@@ -200,7 +199,7 @@ func (smc *Client) pingMiner(ctx context.Context, pid peer.ID, timeout time.Dura
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	res, err := smc.node.Ping(ctx, pid)
+	res, err := smc.api.NetworkPing(ctx, pid)
 	if err != nil {
 		return fmt.Errorf("couldn't establish connection to miner: %s", err)
 	}
@@ -306,15 +305,13 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 type ClientNodeImpl struct {
 	host      host.Host
 	blockTime time.Duration
-	*ping.PingService
 }
 
 // NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(host host.Host, ps *ping.PingService, bt time.Duration) *ClientNodeImpl {
+func NewClientNodeImpl(host host.Host, bt time.Duration) *ClientNodeImpl {
 	return &ClientNodeImpl{
-		host:        host,
-		PingService: ps,
-		blockTime:   bt,
+		host:      host,
+		blockTime: bt,
 	}
 }
 
