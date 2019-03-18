@@ -91,6 +91,7 @@ type Node struct {
 
 	BlockAPI     *block.API
 	RetrievalAPI *retrieval.API
+	StorageAPI   *storage.API
 	PorcelainAPI *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -460,7 +461,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
-	if err := node.ChainReader.Load(ctx); err != nil {
+	var err error
+	if err = node.ChainReader.Load(ctx); err != nil {
 		return err
 	}
 
@@ -484,7 +486,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
 
-	err := node.setupProtocols()
+	err = node.setupProtocols()
 	if err != nil {
 		return errors.Wrap(err, "failed to set up protocols:")
 	}
