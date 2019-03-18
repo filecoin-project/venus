@@ -48,7 +48,7 @@ format was provided with the data initially.
 			return err
 		}
 
-		dr, err := GetAPI(env).Client().Cat(req.Context, c)
+		dr, err := GetPorcelainAPI(env).DAGCat(req.Context, c)
 		if err != nil {
 			return err
 		}
