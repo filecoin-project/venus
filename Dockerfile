@@ -1,4 +1,4 @@
-FROM golang:1.11.2-stretch AS builder
+FROM golang:1.12.1-stretch AS builder
 MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates file sudo clang
