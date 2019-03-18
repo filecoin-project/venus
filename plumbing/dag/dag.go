@@ -75,13 +75,9 @@ func (dag *DAG) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 // Cat returns an iostream with a piece of data stored on the merkeldag with
 // the given cid.
 func (dag *DAG) Cat(ctx context.Context, c cid.Cid) (io.DagReader, error) {
-	// TODO: this goes back to 'how is data stored and referenced'
-	// For now, lets just do things the ipfs way.
-
 	data, err := dag.dserv.Get(ctx, c)
 	if err != nil {
 		return nil, err
 	}
-
 	return io.NewDagReader(ctx, data, dag.dserv)
 }
