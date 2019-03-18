@@ -6,7 +6,6 @@ import (
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -18,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -104,33 +102,16 @@ func TestSend(t *testing.T) {
 
 func TestNextNonce(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("account does not exist, should return zero", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-		store := hamt.NewCborStore()
-		st := state.NewEmptyStateTree(store)
-
-		address := address.NewForTestGetter()()
-
-		n, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
-		assert.NoError(err)
-		assert.Equal(uint64(0), n)
-	})
 
 	t.Run("account exists but wrong type", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		store := hamt.NewCborStore()
-		st := state.NewEmptyStateTree(store)
 
 		address := address.NewForTestGetter()()
 		actor, err := storagemarket.NewActor()
 		assert.NoError(err)
-		_ = state.MustSetActor(st, address, actor)
 
-		_, err = nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
+		_, err = nextNonce(actor, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.Error(err)
 		assert.Contains(err.Error(), "account or empty")
 	})
@@ -138,15 +119,12 @@ func TestNextNonce(t *testing.T) {
 	t.Run("account exists, gets correct value", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		store := hamt.NewCborStore()
-		st := state.NewEmptyStateTree(store)
 		address := address.NewForTestGetter()()
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 42
-		state.MustSetActor(st, address, actor)
 
-		nonce, err := nextNonce(ctx, st, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
+		nonce, err := nextNonce(actor, core.NewMessagePool(testhelpers.NewTestBlockTimer(0)), address)
 		assert.NoError(err)
 		assert.Equal(uint64(42), nonce)
 	})
@@ -154,16 +132,13 @@ func TestNextNonce(t *testing.T) {
 	t.Run("gets nonce from highest message pool value", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
-		store := hamt.NewCborStore()
-		st := state.NewEmptyStateTree(store)
 		mp := core.NewMessagePool(testhelpers.NewTestBlockTimer(0))
 		addr := mockSigner.Addresses[0]
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
 		assert.NoError(err)
 		actor.Nonce = 2
-		state.MustSetActor(st, addr, actor)
 
-		nonce, err := nextNonce(ctx, st, mp, addr)
+		nonce, err := nextNonce(actor, mp, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(2), nonce)
 
@@ -171,7 +146,7 @@ func TestNextNonce(t *testing.T) {
 		smsg := testhelpers.MustSign(mockSigner, msg)
 		core.MustAdd(mp, smsg...)
 
-		nonce, err = nextNonce(ctx, st, mp, addr)
+		nonce, err = nextNonce(actor, mp, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(3), nonce)
 
@@ -179,7 +154,7 @@ func TestNextNonce(t *testing.T) {
 		smsg = testhelpers.MustSign(mockSigner, msg)
 		core.MustAdd(mp, smsg...)
 
-		nonce, err = nextNonce(ctx, st, mp, addr)
+		nonce, err = nextNonce(actor, mp, addr)
 		assert.NoError(err)
 		assert.Equal(uint64(4), nonce)
 	})

@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
@@ -66,7 +65,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrapf(err, "no actor at address %s", from)
 	}
 
-	nonce, err := nextNonce(ctx, st, s.msgPool, from)
+	nonce, err := nextNonce(fromActor, s.msgPool, from)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor %s", from)
 	}
@@ -102,12 +101,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
 // of the actor's nonce value, or one greater than the largest nonce from the actor found in the message pool.
-// The address must be the address of an account actor, or be not contained in, in the provided state tree.
-func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, address address.Address) (uint64, error) {
-	act, err := st.GetActor(ctx, address)
-	if err != nil && !state.IsActorNotFoundError(err) {
-		return 0, err
-	}
+func nextNonce(act *actor.Actor, pool *core.MessagePool, address address.Address) (uint64, error) {
 	actorNonce, err := actor.NextNonce(act)
 	if err != nil {
 		return 0, err
