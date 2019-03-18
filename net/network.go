@@ -1,9 +1,6 @@
 package net
 
 import (
-	"context"
-	"time"
-
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
@@ -20,7 +17,7 @@ type Network struct {
 	*pubsub.Publisher
 	metrics.Reporter
 	*Router
-	Pinger *ping.PingService
+	*ping.PingService
 }
 
 // New returns a new Network
@@ -33,12 +30,12 @@ func New(
 	pinger *ping.PingService,
 ) *Network {
 	return &Network{
-		host:       host,
-		Pinger:     pinger,
-		Publisher:  publisher,
-		Reporter:   reporter,
-		Router:     router,
-		Subscriber: subscriber,
+		host:        host,
+		PingService: pinger,
+		Publisher:   publisher,
+		Reporter:    reporter,
+		Router:      router,
+		Subscriber:  subscriber,
 	}
 }
 
@@ -55,9 +52,4 @@ func (network *Network) GetPeerID() peer.ID {
 // GetBandwidthStats gets stats on the current bandwidth usage of the network
 func (network *Network) GetBandwidthStats() metrics.Stats {
 	return network.Reporter.GetBandwidthTotals()
-}
-
-// Ping pings a peer and returns a channel with the amount of time for a response
-func (network *Network) Ping(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
-	return network.Pinger.Ping(ctx, pid)
 }

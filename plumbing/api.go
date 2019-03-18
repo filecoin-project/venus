@@ -237,7 +237,7 @@ func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, coun
 
 // NetworkPing sends echo request packets over the network.
 func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
-	return api.network.Ping(ctx, pid)
+	return api.network.PingService.Ping(ctx, pid)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.
