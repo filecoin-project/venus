@@ -622,7 +622,7 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 }
 
 // isBootstrapMinerActor is a convenience method used to determine if the miner
-// actor was created when bootstrapping the network. It it was,
+// actor was created when bootstrapping the network. If it was,
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
 		ctx,
