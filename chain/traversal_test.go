@@ -6,8 +6,6 @@ import (
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -18,7 +16,7 @@ func TestGetParentTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	store := newBlockStore()
+	store := chain.NewFakeBlockProvider()
 
 	root := store.NewBlock(0)
 	b11 := store.NewBlock(1, root)
@@ -49,7 +47,7 @@ func TestIterAncestors(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	ctx := context.Background()
-	store := newBlockStore()
+	store := chain.NewFakeBlockProvider()
 
 	root := store.NewBlock(0)
 	b11 := store.NewBlock(1, root)
@@ -74,43 +72,6 @@ func TestIterAncestors(t *testing.T) {
 
 	assert.NoError(it.Next())
 	assert.True(it.Complete())
-}
-
-type fakeBlockStore struct {
-	blocks map[cid.Cid]*types.Block
-	seq    int
-}
-
-func newBlockStore() *fakeBlockStore {
-	return &fakeBlockStore{
-		make(map[cid.Cid]*types.Block),
-		0,
-	}
-}
-
-func (bs *fakeBlockStore) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
-	block, ok := bs.blocks[cid]
-	if ok {
-		return block, nil
-	}
-	return nil, errors.New("No such block")
-}
-
-func (bs *fakeBlockStore) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
-	b := &types.Block{
-		Nonce: types.Uint64(nonce),
-	}
-
-	if len(parents) > 0 {
-		b.Height = parents[0].Height + 1
-		b.StateRoot = parents[0].StateRoot
-		for _, p := range parents {
-			b.Parents.Add(p.Cid())
-		}
-	}
-
-	bs.blocks[b.Cid()] = b
-	return b
 }
 
 func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {

@@ -68,7 +68,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-var filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
+const (
+	filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
+)
 
 var log = logging.Logger("node") // nolint: deadcode
 
@@ -98,8 +100,14 @@ type Node struct {
 	HeaviestTipSetCh chan interface{}
 	// HeavyTipSetHandled is a hook for tests because pubsub notifications
 	// arrive async. It's called after handling a new heaviest tipset.
+	// Remove this after replacing the tipset "pubsub" with a synchronous event bus:
+	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	HeaviestTipSetHandled func()
-	MsgPool               *core.MessagePool
+
+	// Incoming messages for block mining.
+	MsgPool *core.MessagePool
+	// Messages sent and not yet mined.
+	Outbox *core.MessageQueue
 
 	Wallet *wallet.Wallet
 
@@ -392,6 +400,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
 	msgPool := core.NewMessagePool(chainStore)
+	outbox := core.NewMessageQueue()
 
 	// Set up libp2p pubsub
 	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
@@ -432,6 +441,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Exchange:     bswap,
 		host:         peerHost,
 		MsgPool:      msgPool,
+		Outbox:       outbox,
 		OfflineMode:  nc.OfflineMode,
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
@@ -512,9 +522,11 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
 	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
+	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReadStore(), core.OutboxMaxAgeRounds)
+
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head())
+	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head(), outboxPolicy)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -616,7 +628,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 
 }
 
-func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet) {
+func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet, outboxPolicy *core.MessageQueuePolicy) {
 	for {
 		select {
 		case ts, ok := <-node.HeaviestTipSetCh:
@@ -633,11 +645,11 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 				continue
 			}
 
-			// When a new best TipSet is promoted we remove messages in it from the
-			// message pool (and add them back in if we have a re-org).
+			if err := outboxPolicy.OnNewHeadTipset(ctx, head, newHead); err != nil {
+				log.Error("updating outbound message queue for new tipset", err)
+			}
 			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReadStore(), head, newHead); err != nil {
-				log.Error("error updating message pool for new tipset:", err)
-				continue
+				log.Error("updating message pool for new tipset", err)
 			}
 			head = newHead
 

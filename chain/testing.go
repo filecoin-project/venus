@@ -199,3 +199,52 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPowe
 		}
 	}
 }
+
+///// Fake traversal block provider implementation
+
+// FakeBlockProvider is a fake block provider.
+type FakeBlockProvider struct {
+	blocks map[cid.Cid]*types.Block
+	seq    int
+}
+
+// NewFakeBlockProvider returns a new, empty fake block provider.
+func NewFakeBlockProvider() *FakeBlockProvider {
+	return &FakeBlockProvider{
+		make(map[cid.Cid]*types.Block),
+		0,
+	}
+}
+
+// GetBlock implements BlockProvider.GetBlock to return a block by CID.
+func (bs *FakeBlockProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
+	block, ok := bs.blocks[cid]
+	if ok {
+		return block, nil
+	}
+	return nil, errors.New("no such block")
+}
+
+// NewBlockWithMessages creates and stores a new block in this provider.
+func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
+	b := &types.Block{
+		Nonce:    types.Uint64(nonce),
+		Messages: messages,
+	}
+
+	if len(parents) > 0 {
+		b.Height = parents[0].Height + 1
+		b.StateRoot = parents[0].StateRoot
+		for _, p := range parents {
+			b.Parents.Add(p.Cid())
+		}
+	}
+
+	bs.blocks[b.Cid()] = b
+	return b
+}
+
+// NewBlock creates and stores a new block in this provider.
+func (bs *FakeBlockProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
+	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
+}

@@ -19,18 +19,19 @@ import (
 type MessageQueue struct {
 	lk sync.RWMutex
 	// Message queues keyed by sending actor address, in nonce order
-	queues map[address.Address][]*queuedMessage
+	queues map[address.Address][]*QueuedMessage
 }
 
-type queuedMessage struct {
-	msg   *types.SignedMessage
-	stamp uint64
+// QueuedMessage is a message an the stamp it was enqueued with.
+type QueuedMessage struct {
+	Msg   *types.SignedMessage
+	Stamp uint64
 }
 
 // NewMessageQueue constructs a new, empty queue.
 func NewMessageQueue() *MessageQueue {
 	return &MessageQueue{
-		queues: make(map[address.Address][]*queuedMessage),
+		queues: make(map[address.Address][]*QueuedMessage),
 	}
 }
 
@@ -43,12 +44,12 @@ func (mq *MessageQueue) Enqueue(msg *types.SignedMessage, stamp uint64) error {
 
 	q := mq.queues[msg.From]
 	if len(q) > 0 {
-		nextNonce := q[len(q)-1].msg.Nonce + 1
+		nextNonce := q[len(q)-1].Msg.Nonce + 1
 		if msg.Nonce != nextNonce {
 			return errors.Errorf("Invalid nonce %d, expected %d", msg.Nonce, nextNonce)
 		}
 	}
-	mq.queues[msg.From] = append(q, &queuedMessage{msg, stamp})
+	mq.queues[msg.From] = append(q, &QueuedMessage{msg, stamp})
 	return nil
 }
 
@@ -64,12 +65,12 @@ func (mq *MessageQueue) RemoveNext(sender address.Address, expectedNonce uint64)
 	q := mq.queues[sender]
 	if len(q) > 0 {
 		head := q[0]
-		if expectedNonce == uint64(head.msg.Nonce) {
+		if expectedNonce == uint64(head.Msg.Nonce) {
 			mq.queues[sender] = q[1:] // pop the head
-			msg = head.msg
+			msg = head.Msg
 			found = true
-		} else if expectedNonce > uint64(head.msg.Nonce) {
-			err = errors.Errorf("Next message for %s has nonce %d, expected %d", sender, head.msg.Nonce, expectedNonce)
+		} else if expectedNonce > uint64(head.Msg.Nonce) {
+			err = errors.Errorf("Next message for %s has nonce %d, expected %d", sender, head.Msg.Nonce, expectedNonce)
 		}
 		// else expected nonce was before the head of the queue, already removed
 	}
@@ -83,7 +84,7 @@ func (mq *MessageQueue) Clear(sender address.Address) bool {
 
 	q := mq.queues[sender]
 	if len(q) > 0 {
-		mq.queues[sender] = []*queuedMessage{}
+		mq.queues[sender] = []*QueuedMessage{}
 		return true
 	}
 	return false
@@ -98,11 +99,11 @@ func (mq *MessageQueue) ExpireBefore(stamp uint64) map[address.Address][]*types.
 	expired := make(map[address.Address][]*types.SignedMessage)
 
 	for sender, q := range mq.queues {
-		if len(q) > 0 && q[0].stamp < stamp {
+		if len(q) > 0 && q[0].Stamp < stamp {
 			for _, m := range q {
-				expired[sender] = append(expired[sender], m.msg)
+				expired[sender] = append(expired[sender], m.Msg)
 			}
-			mq.queues[sender] = []*queuedMessage{}
+			mq.queues[sender] = []*QueuedMessage{}
 		}
 	}
 	return expired
@@ -115,19 +116,20 @@ func (mq *MessageQueue) LargestNonce(sender address.Address) (largest uint64, fo
 	defer mq.lk.RUnlock()
 	q := mq.queues[sender]
 	if len(q) > 0 {
-		return uint64(q[len(q)-1].msg.Nonce), true
+		return uint64(q[len(q)-1].Msg.Nonce), true
 	}
 	return 0, false
 }
 
-// NextStamp returns the stamp for the next message in the queue for an address, or zero if the
-// queue is empty.
-func (mq *MessageQueue) NextStamp(sender address.Address) uint64 {
+// List returns a copy of the list of messages queued for an address.
+func (mq *MessageQueue) List(sender address.Address) []*QueuedMessage {
 	mq.lk.RLock()
 	defer mq.lk.RUnlock()
 	q := mq.queues[sender]
-	if len(q) > 0 {
-		return q[0].stamp
+	out := make([]*QueuedMessage, len(q))
+	for i, qm := range q {
+		out[i] = &QueuedMessage{}
+		*out[i] = *qm
 	}
-	return 0
+	return out
 }
