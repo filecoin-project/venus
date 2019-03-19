@@ -95,10 +95,10 @@ commands:
         type: string
     steps:
       - run:
-          name: install jq
+          name: install jq and git
           command: |
-            apt-get update
-            apt-get install -y jq git
+            sudo apt-get update
+            sudo apt-get install -y jq git
       - run:
           name: Update badge << parameters.filename >>
           command: |
