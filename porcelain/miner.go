@@ -24,9 +24,9 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	WalletDefaultAddress() (address.Address, error)
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
 }
 
@@ -45,7 +45,7 @@ func MinerCreate(
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
 	if minerOwnerAddr == (address.Address{}) {
-		minerOwnerAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		minerOwnerAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return nil, err
 		}
@@ -107,9 +107,9 @@ func MinerCreate(
 // mpcAPI is the subset of the plumbing.API that MinerPreviewCreate uses.
 type mpcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	NetworkGetPeerID() peer.ID
+	WalletDefaultAddress() (address.Address, error)
 	WalletFind(address address.Address) (w.Backend, error)
 }
 
@@ -123,7 +123,7 @@ func MinerPreviewCreate(
 	collateral *types.AttoFIL,
 ) (usedGas types.GasUnits, err error) {
 	if fromAddr.Empty() {
-		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return types.NewGasUnits(0), err
 		}

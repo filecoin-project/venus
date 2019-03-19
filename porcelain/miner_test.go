@@ -54,10 +54,6 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
-}
-
 func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, errors.New("Test Error")
@@ -74,6 +70,10 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func
 	}
 	cb(nil, nil, receipt)
 	return nil
+}
+
+func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
 }
 
 func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
@@ -152,12 +152,12 @@ func (mpc *minerPreviewCreate) NetworkGetPeerID() peer.ID {
 	return peer.ID("")
 }
 
-func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backend, error) {
-	return mpc.wallet.Find(address)
+func (mpc *minerPreviewCreate) WalletDefaultAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
 }
 
-func (mpc *minerPreviewCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
+func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backend, error) {
+	return mpc.wallet.Find(address)
 }
 
 func TestMinerPreviewCreate(t *testing.T) {

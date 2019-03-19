@@ -12,8 +12,8 @@ import (
 )
 
 type pclPlumbing interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	WalletDefaultAddress() (address.Address, error)
 }
 
 // PaymentChannelLs lists payments for a given payer
@@ -24,7 +24,7 @@ func PaymentChannelLs(
 	payerAddr address.Address,
 ) (channels map[string]*paymentbroker.PaymentChannel, err error) {
 	if fromAddr.Empty() {
-		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return nil, err
 		}
@@ -53,9 +53,9 @@ func PaymentChannelLs(
 }
 
 type pcvPlumbing interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
+	WalletDefaultAddress() (address.Address, error)
 }
 
 // PaymentChannelVoucher returns a signed payment channel voucher
@@ -68,7 +68,7 @@ func PaymentChannelVoucher(
 	validAt *types.BlockHeight,
 ) (voucher *paymentbroker.PaymentVoucher, err error) {
 	if fromAddr.Empty() {
-		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return nil, err
 		}
