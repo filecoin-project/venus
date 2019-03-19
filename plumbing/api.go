@@ -253,6 +253,11 @@ func (api *API) NetworkConnect(ctx context.Context, addrs []string) ([]net.Swarm
 	return api.network.Connect(ctx, addrs)
 }
 
+// NetworkPeers lists peers currently available on the network
+func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+	return api.network.Peers(ctx, verbose, latency, streams)
+}
+
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)

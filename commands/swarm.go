@@ -10,7 +10,6 @@ import (
 	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/net"
 )
 
@@ -48,7 +47,7 @@ var swarmPeersCmd = &cmds.Command{
 		latency, _ := req.Options["latency"].(bool)
 		streams, _ := req.Options["streams"].(bool)
 
-		out, err := GetAPI(env).Swarm().Peers(req.Context, verbose, latency, streams)
+		out, err := GetPorcelainAPI(env).NetworkPeers(req.Context, verbose, latency, streams)
 		if err != nil {
 			return err
 		}
@@ -56,7 +55,7 @@ var swarmPeersCmd = &cmds.Command{
 		return re.Emit(&out)
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *api.SwarmConnInfos) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *net.SwarmConnInfos) error {
 			pipfs := ma.ProtocolWithCode(ma.P_IPFS).Name
 			for _, info := range ci.Peers {
 				ids := fmt.Sprintf("/%s/%s", pipfs, info.Peer)
@@ -82,7 +81,7 @@ var swarmPeersCmd = &cmds.Command{
 			return nil
 		}),
 	},
-	Type: api.SwarmConnInfos{},
+	Type: net.SwarmConnInfos{},
 }
 
 var swarmConnectCmd = &cmds.Command{

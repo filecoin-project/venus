@@ -7,7 +7,6 @@ import (
 	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
-	"github.com/filecoin-project/go-filecoin/api"
 	"github.com/filecoin-project/go-filecoin/net"
 )
 
@@ -58,8 +57,8 @@ func (f *Filecoin) SwarmFindpeer(ctx context.Context, pid peer.ID) ([]multiaddr.
 }
 
 // SwarmPeers runs the `swarm peers` command against the filecoin process
-func (f *Filecoin) SwarmPeers(ctx context.Context, options ...ActionOption) ([]api.SwarmConnInfo, error) {
-	var out api.SwarmConnInfos
+func (f *Filecoin) SwarmPeers(ctx context.Context, options ...ActionOption) ([]net.SwarmConnInfo, error) {
+	var out net.SwarmConnInfos
 
 	args := []string{"go-filecoin", "swarm", "peers"}
 
