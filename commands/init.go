@@ -114,19 +114,6 @@ var initCmd = &cmds.Command{
 			} // else err may be set and returned as normal
 		}()
 
-		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		var initopts []node.InitOpt
-		if peerKeyFile != "" {
-			peerKey, err := loadPeerKey(peerKeyFile)
-			if err != nil {
-				return err
-			}
-			initopts = append(initopts, node.PeerKeyOpt(peerKey))
-		}
-
-		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
-		initopts = append(initopts, node.AutoSealIntervalSecondsOpt(autoSealIntervalSeconds))
-
 		genesisFile, _ := req.Options[GenesisFile].(string)
 		gif := consensus.DefaultGenesis
 		if genesisFile != "" {
@@ -145,6 +132,13 @@ var initCmd = &cmds.Command{
 
 				return &blk, nil
 			}
+		}
+
+		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
+		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
+		initopts, err := getNodeInitOpts(autoSealIntervalSeconds, peerKeyFile)
+		if err != nil {
+			return err
 		}
 
 		// TODO: don't create the repo if this fails
@@ -223,4 +217,19 @@ func loadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
 	}
 
 	return ch.Roots[0], nil
+}
+
+func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.InitOpt, error) {
+	var initOpts []node.InitOpt
+	if peerKeyFile != "" {
+		peerKey, err := loadPeerKey(peerKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	initOpts = append(initOpts, node.AutoSealIntervalSecondsOpt(autoSealIntervalSeconds))
+
+	return initOpts, nil
 }
