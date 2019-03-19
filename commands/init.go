@@ -26,27 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// DaemonInitConfig is a helper struct to configure the init process of a daemon.
-type DaemonInitConfig struct {
-	// GenesisFile, path to a file containing archive of genesis block DAG data
-	GenesisFile string
-	// RepoDir, path to the repo of the node on disk.
-	RepoDir string
-	// PeerKeyFile is the path to a file containing a libp2p peer id key
-	PeerKeyFile string
-	// WithMiner, if set, sets the config value for the local miner to this address.
-	WithMiner address.Address
-	// DevnetTest, if set, sets the config to enable bootstrapping to the test devnet.
-	DevnetTest bool
-	// DevnetNightly, if set, sets the config to enable bootstrapping to the nightly devnet.
-	DevnetNightly bool
-	// DevnetUser, if set, sets the config to enable bootstrapping to the user devnet.
-	DevnetUser bool
-	// AutoSealIntervalSeconds, when set, configures the daemon to check for and seal any staged sectors on an interval
-	AutoSealIntervalSeconds uint
-	DefaultAddress          address.Address
-}
-
 var initCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Initialize a filecoin repo",
@@ -62,54 +41,65 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		newConfig := config.NewDefaultConfig()
+
+		if m, ok := req.Options[WithMiner].(string); ok {
+			var err error
+			newConfig.Mining.MinerAddress, err = address.NewFromString(m)
+			if err != nil {
+				return err
+			}
+		}
+
+		if m, ok := req.Options[DefaultAddress].(string); ok {
+			var err error
+			newConfig.Wallet.DefaultAddress, err = address.NewFromString(m)
+			if err != nil {
+				return err
+			}
+		}
+
+		devnetTest, _ := req.Options[DevnetTest].(bool)
+		devnetNightly, _ := req.Options[DevnetNightly].(bool)
+		devnetUser, _ := req.Options[DevnetUser].(bool)
+		if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
+			return fmt.Errorf(`cannot specify more than one "devnet-" option`)
+		}
+
+		// Setup devnet test specific config options.
+		if devnetTest {
+			newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
+			newConfig.Bootstrap.MinPeerThreshold = 1
+			newConfig.Bootstrap.Period = "10s"
+			newConfig.Net = "devnet-test"
+		}
+
+		// Setup devnet nightly specific config options.
+		if devnetNightly {
+			newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
+			newConfig.Bootstrap.MinPeerThreshold = 1
+			newConfig.Bootstrap.Period = "10s"
+			newConfig.Net = "devnet-nightly"
+		}
+
+		// Setup devnet user specific config options.
+		if devnetUser {
+			newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+			newConfig.Bootstrap.MinPeerThreshold = 1
+			newConfig.Bootstrap.Period = "10s"
+			newConfig.Net = "devnet-user"
+		}
+
 		repoDir := getRepoDir(req)
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
 
-		genesisFile, _ := req.Options[GenesisFile].(string)
-		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
-		devnetTest, _ := req.Options[DevnetTest].(bool)
-		devnetNightly, _ := req.Options[DevnetNightly].(bool)
-		devnetUser, _ := req.Options[DevnetUser].(bool)
-
-		var withMiner address.Address
-		if m, ok := req.Options[WithMiner].(string); ok {
-			var err error
-			withMiner, err = address.NewFromString(m)
-			if err != nil {
-				return err
-			}
-		}
-
-		var defaultAddress address.Address
-		if m, ok := req.Options[DefaultAddress].(string); ok {
-			var err error
-			defaultAddress, err = address.NewFromString(m)
-			if err != nil {
-				return err
-			}
-		}
-
-		// load configuration options
-		cfg := &DaemonInitConfig{
-			AutoSealIntervalSeconds: autoSealIntervalSeconds,
-			DefaultAddress:          defaultAddress,
-			DevnetNightly:           devnetNightly,
-			DevnetTest:              devnetTest,
-			DevnetUser:              devnetUser,
-			GenesisFile:             genesisFile,
-			PeerKeyFile:             peerKeyFile,
-			RepoDir:                 repoDir,
-			WithMiner:               withMiner,
-		}
-
-		if err := repo.InitFSRepo(cfg.RepoDir, config.NewDefaultConfig()); err != nil {
+		if err := repo.InitFSRepo(repoDir, newConfig); err != nil {
 			return err
 		}
 
-		rep, err := repo.OpenFSRepo(cfg.RepoDir)
+		rep, err := repo.OpenFSRepo(repoDir)
 		if err != nil {
 			return err
 		}
@@ -124,61 +114,24 @@ var initCmd = &cmds.Command{
 			} // else err may be set and returned as normal
 		}()
 
-		gif := consensus.DefaultGenesis
-
+		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
 		var initopts []node.InitOpt
-		if cfg.PeerKeyFile != "" {
-			peerKey, err := loadPeerKey(cfg.PeerKeyFile)
+		if peerKeyFile != "" {
+			peerKey, err := loadPeerKey(peerKeyFile)
 			if err != nil {
 				return err
 			}
 			initopts = append(initopts, node.PeerKeyOpt(peerKey))
 		}
 
-		initopts = append(initopts, node.AutoSealIntervalSecondsOpt(cfg.AutoSealIntervalSeconds))
+		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
+		initopts = append(initopts, node.AutoSealIntervalSecondsOpt(autoSealIntervalSeconds))
 
-		if (cfg.DevnetTest && cfg.DevnetNightly) || (cfg.DevnetTest && cfg.DevnetUser) || (cfg.DevnetNightly && cfg.DevnetUser) {
-			return fmt.Errorf(`cannot specify more than one "devnet-" option`)
-		}
-
-		newConfig := rep.Config()
-
-		newConfig.Mining.MinerAddress = cfg.WithMiner
-
-		newConfig.Wallet.DefaultAddress = cfg.DefaultAddress
-
-		// Setup devnet test specific config options.
-		if cfg.DevnetTest {
-			newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
-			newConfig.Net = "devnet-test"
-		}
-
-		// Setup devnet nightly specific config options.
-		if cfg.DevnetNightly {
-			newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
-			newConfig.Net = "devnet-nightly"
-		}
-
-		// Setup devnet user specific config options.
-		if cfg.DevnetUser {
-			newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
-			newConfig.Net = "devnet-user"
-		}
-
-		if err := rep.ReplaceConfig(newConfig); err != nil {
-			return err
-		}
-
-		switch {
-		case cfg.GenesisFile != "":
+		genesisFile, _ := req.Options[GenesisFile].(string)
+		gif := consensus.DefaultGenesis
+		if genesisFile != "" {
 			// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-			genCid, err := loadGenesis(rep, cfg.GenesisFile)
+			genCid, err := loadGenesis(rep, genesisFile)
 			if err != nil {
 				return err
 			}
