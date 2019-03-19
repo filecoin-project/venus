@@ -11,6 +11,7 @@ import (
 	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/net"
 )
 
 // swarmCmd contains swarm commands.
@@ -99,16 +100,16 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		out, err := GetAPI(env).Swarm().Connect(req.Context, req.Arguments)
+		out, err := GetPorcelainAPI(env).NetworkConnect(req.Context, req.Arguments)
 		if err != nil {
 			return err
 		}
 
 		return re.Emit(out)
 	},
-	Type: []api.SwarmConnectResult{},
+	Type: []net.SwarmConnectResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]api.SwarmConnectResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]net.SwarmConnectResult) error {
 			for _, a := range *res {
 				fmt.Fprintf(w, "connect %s success\n", a.Peer) // nolint: errcheck
 			}

@@ -248,6 +248,11 @@ func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.Pee
 	return api.network.Router.FindPeer(ctx, peerID)
 }
 
+// NetworkConnect connects to peers at the given addresses
+func (api *API) NetworkConnect(ctx context.Context, addrs []string) ([]net.SwarmConnectResult, error) {
+	return api.network.Connect(ctx, addrs)
+}
+
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)

@@ -8,11 +8,12 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/net"
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process
-func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) ([]api.SwarmConnectResult, error) {
-	var out []api.SwarmConnectResult
+func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) ([]net.SwarmConnectResult, error) {
+	var out []net.SwarmConnectResult
 
 	args := []string{"go-filecoin", "swarm", "connect"}
 

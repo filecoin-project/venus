@@ -2,14 +2,9 @@ package impl
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
-	swarm "gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-
 	"github.com/filecoin-project/go-filecoin/api"
-	"github.com/filecoin-project/go-filecoin/net"
 )
 
 type nodeSwarm struct {
@@ -70,31 +65,4 @@ func (ns *nodeSwarm) Peers(ctx context.Context, verbose, latency, streams bool) 
 
 	sort.Sort(&out)
 	return &out, nil
-}
-
-func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmConnectResult, error) {
-	nd := ns.api.node
-
-	swrm, ok := nd.Host().Network().(*swarm.Swarm)
-	if !ok {
-		return nil, fmt.Errorf("peerhost network was not a swarm")
-	}
-
-	pis, err := net.PeerAddrsToPeerInfos(addrs)
-	if err != nil {
-		return nil, err
-	}
-
-	output := make([]api.SwarmConnectResult, len(pis))
-	for i, pi := range pis {
-		swrm.Backoff().Clear(pi.ID)
-
-		output[i].Peer = pi.ID.Pretty()
-
-		if err := nd.Host().Connect(ctx, pi); err != nil {
-			return nil, errors.Wrapf(err, "peer: %s", output[i].Peer)
-		}
-	}
-
-	return output, nil
 }

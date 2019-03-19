@@ -7,7 +7,6 @@ import (
 // Swarm is the interface that defines methods to interact with the p2p swarm of the node.
 type Swarm interface {
 	Peers(ctx context.Context, verbose, latency, streams bool) (*SwarmConnInfos, error)
-	Connect(ctx context.Context, addrs []string) ([]SwarmConnectResult, error)
 }
 
 // SwarmConnInfo represents details about a single swarm connection.
@@ -51,11 +50,4 @@ func (ci SwarmConnInfos) Len() int {
 
 func (ci SwarmConnInfos) Swap(i, j int) {
 	ci.Peers[i], ci.Peers[j] = ci.Peers[j], ci.Peers[i]
-}
-
-// SwarmConnectResult represents the data generated when trying to connect to another p2p
-// network member.
-type SwarmConnectResult struct {
-	Peer    string
-	Success bool
 }
