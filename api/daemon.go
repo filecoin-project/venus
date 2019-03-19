@@ -8,8 +8,6 @@ import (
 
 // Daemon is the interface that defines methods to change the state of the daemon.
 type Daemon interface {
-	// Start, starts a new daemon process.
-	Start(ctx context.Context) error
 	// Stop, shuts down the daemon and cleans up any resources.
 	Stop(ctx context.Context) error
 	// Init, initializes everything needed to run a daemon, including the disk storage.

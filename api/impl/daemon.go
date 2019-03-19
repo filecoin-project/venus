@@ -38,11 +38,6 @@ func newNodeDaemon(api *nodeAPI) *nodeDaemon {
 	return &nodeDaemon{api: api}
 }
 
-// Start, starts a new daemon process.
-func (nd *nodeDaemon) Start(ctx context.Context) error {
-	return nd.api.node.Start(ctx)
-}
-
 // Stop, shuts down the daemon and cleans up any resources.
 func (nd *nodeDaemon) Stop(ctx context.Context) error {
 	nd.api.node.Stop(ctx)

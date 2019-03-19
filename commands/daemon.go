@@ -124,7 +124,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
 	api := impl.New(nd)
-	if err := api.Daemon().Start(ctx); err != nil {
+	if err := nd.Start(ctx); err != nil {
 		return err
 	}
 
