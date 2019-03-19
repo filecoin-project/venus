@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,7 +10,6 @@ import (
 	"os"
 
 	hamt "gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
 	"gx/ipfs/QmUGpiTCKct5s1F7jaAnY9KJmoo7Qm1R2uhSjq5iHDSUMn/go-car"
@@ -66,27 +66,27 @@ var initCmd = &cmds.Command{
 			return fmt.Errorf(`cannot specify more than one "devnet-" option`)
 		}
 
+		// Setup devnet specific config options.
+		if devnetTest || devnetNightly || devnetUser {
+			newConfig.Bootstrap.MinPeerThreshold = 1
+			newConfig.Bootstrap.Period = "10s"
+		}
+
 		// Setup devnet test specific config options.
 		if devnetTest {
 			newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
 			newConfig.Net = "devnet-test"
 		}
 
 		// Setup devnet nightly specific config options.
 		if devnetNightly {
 			newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
 			newConfig.Net = "devnet-nightly"
 		}
 
 		// Setup devnet user specific config options.
 		if devnetUser {
 			newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
-			newConfig.Bootstrap.MinPeerThreshold = 1
-			newConfig.Bootstrap.Period = "10s"
 			newConfig.Net = "devnet-user"
 		}
 
@@ -114,24 +114,10 @@ var initCmd = &cmds.Command{
 			} // else err may be set and returned as normal
 		}()
 
-		genesisFile, _ := req.Options[GenesisFile].(string)
-		gif := consensus.DefaultGenesis
-		if genesisFile != "" {
-			// TODO: this feels a little wonky, I think the InitGenesis interface might need some tweaking
-			genCid, err := loadGenesis(rep, genesisFile)
-			if err != nil {
-				return err
-			}
-
-			gif = func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-				var blk types.Block
-
-				if err := cst.Get(req.Context, genCid, &blk); err != nil {
-					return nil, err
-				}
-
-				return &blk, nil
-			}
+		genesisFileSource, _ := req.Options[GenesisFile].(string)
+		genesisFile, err := loadGenesis(req.Context, rep, genesisFileSource)
+		if err != nil {
+			return err
 		}
 
 		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
@@ -142,7 +128,7 @@ var initCmd = &cmds.Command{
 		}
 
 		// TODO: don't create the repo if this fails
-		return node.Init(req.Context, rep, gif, initopts...)
+		return node.Init(req.Context, rep, genesisFile, initopts...)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(initTextEncoder),
@@ -178,45 +164,57 @@ func loadPeerKey(fname string) (crypto.PrivKey, error) {
 	return crypto.UnmarshalPrivateKey(data)
 }
 
-func loadGenesis(rep repo.Repo, sourceName string) (cid.Cid, error) {
-	var source io.ReadCloser
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
+	if sourceName == "" {
+		return consensus.DefaultGenesis, nil
+	}
 
 	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
-		return cid.Undef, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
+		return nil, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
 	}
+
+	var source io.ReadCloser
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
 		// recently deployed test devnet.
 		response, err := http.Get(sourceName)
 		if err != nil {
-			return cid.Undef, err
+			return nil, err
 		}
 		source = response.Body
 	} else if sourceURL.Scheme != "" {
-		return cid.Undef, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
+		return nil, fmt.Errorf("unsupported protocol for genesis file: %s", sourceURL.Scheme)
 	} else {
 		file, err := os.Open(sourceName)
 		if err != nil {
-			return cid.Undef, err
+			return nil, err
 		}
 		source = file
 	}
-
 	defer source.Close() // nolint: errcheck
 
 	bs := blockstore.NewBlockstore(rep.Datastore())
-
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
-		return cid.Undef, err
+		return nil, err
 	}
 
 	if len(ch.Roots) != 1 {
-		return cid.Undef, fmt.Errorf("expected car with only a single root")
+		return nil, fmt.Errorf("expected car with only a single root")
 	}
 
-	return ch.Roots[0], nil
+	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+		var blk types.Block
+
+		if err := cst.Get(ctx, ch.Roots[0], &blk); err != nil {
+			return nil, err
+		}
+
+		return &blk, nil
+	}
+
+	return gif, nil
 }
 
 func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.InitOpt, error) {
