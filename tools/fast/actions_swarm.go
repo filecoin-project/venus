@@ -27,9 +27,9 @@ func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiadd
 	return out, nil
 }
 
-// SwarmFindpeer runs the `swarm findpeer` command against the filecoin process
-func (f *Filecoin) SwarmFindpeer(ctx context.Context, pid peer.ID) ([]multiaddr.Multiaddr, error) {
-	decoder, err := f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "swarm", "findpeer", pid.String())
+// DhtFindpeer runs the `dht findpeer` command against the filecoin process
+func (f *Filecoin) DhtFindpeer(ctx context.Context, pid peer.ID) ([]multiaddr.Multiaddr, error) {
+	decoder, err := f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "dht", "findpeer", pid.String())
 	if err != nil {
 		return nil, err
 	}

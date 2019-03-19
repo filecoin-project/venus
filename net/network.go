@@ -9,7 +9,6 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
 	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
@@ -66,7 +65,7 @@ type Network struct {
 	*pubsub.Subscriber
 	*pubsub.Publisher
 	metrics.Reporter
-	Router routing.IpfsRouting
+	*Router
 	*ping.PingService
 }
 
@@ -75,7 +74,7 @@ func New(
 	host host.Host,
 	publisher *pubsub.Publisher,
 	subscriber *pubsub.Subscriber,
-	router routing.IpfsRouting,
+	router *Router,
 	reporter metrics.Reporter,
 	pinger *ping.PingService,
 ) *Network {
@@ -104,7 +103,8 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 	return network.Reporter.GetBandwidthTotals()
 }
 
-// Connect connects to peers at the given addresses
+// Connect connects to peers at the given addresses. Does not retry, and does not
+// try to connect to any more peers if any connection fails.
 func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID, error) {
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
@@ -147,13 +147,6 @@ func (network *Network) Peers(ctx context.Context, verbose, latency, streams boo
 			Addr: addr.String(),
 			Peer: pid.Pretty(),
 		}
-
-		/* FIXME(steb)
-		swcon, ok := c.(*swarm.Conn)
-		if ok {
-			ci.Muxer = fmt.Sprintf("%T", swcon.StreamConn().Conn())
-		}
-		*/
 
 		if verbose || latency {
 			lat := network.host.Peerstore().LatencyEWMA(pid)

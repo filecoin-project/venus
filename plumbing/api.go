@@ -245,7 +245,7 @@ func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Durat
 
 // NetworkFindPeer searches the libp2p router for a given peer id
 func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
-	return api.network.Router.FindPeer(ctx, peerID)
+	return api.network.FindPeer(ctx, peerID)
 }
 
 // NetworkConnect connects to peers at the given addresses

@@ -58,7 +58,7 @@ func TestAskFunctions(t *testing.T) {
 
 	st, vms := core.CreateStorages(ctx, t)
 
-	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte{}, th.RequireRandomPeerID())
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte("abcd123"), th.RequireRandomPeerID())
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))

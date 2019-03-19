@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/net"
 )
@@ -24,9 +24,8 @@ libp2p peers on the internet.
 `,
 	},
 	Subcommands: map[string]*cmds.Command{
-		"connect":  swarmConnectCmd,
-		"peers":    swarmPeersCmd,
-		"findpeer": findPeerDhtCmd,
+		"connect": swarmConnectCmd,
+		"peers":   swarmPeersCmd,
 	},
 }
 
@@ -113,40 +112,6 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 				fmt.Fprintf(w, "connect %s success\n", result.Pretty()) // nolint: errcheck
 			}
 			return nil
-		}),
-	},
-}
-
-var findPeerDhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "Find the multiaddresses associated with a Peer ID.",
-		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
-	},
-	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
-		peerID, err := peer.IDB58Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		out, err := GetPorcelainAPI(env).NetworkFindPeer(req.Context, peerID)
-		if err != nil {
-			return err
-		}
-
-		for _, addr := range out.Addrs {
-			if err := res.Emit(addr.String()); err != nil {
-				return err
-			}
-		}
-		return nil
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
-			_, err := fmt.Fprintln(w, addr)
-			return err
 		}),
 	},
 }

@@ -8,9 +8,10 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	notif "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing/notifications"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 )
 
 const (
@@ -28,6 +29,7 @@ var dhtCmd = &cmds.Command{
 
 	Subcommands: map[string]*cmds.Command{
 		"findprovs": findProvidersDhtCmd,
+		"findpeer":  findPeerDhtCmd,
 	},
 }
 
@@ -172,4 +174,38 @@ func printEvent(obj *notif.QueryEvent, out io.Writer, verbose bool, override pfu
 			fmt.Fprintf(out, "unrecognized event type: %d\n", obj.Type) // nolint: errcheck
 		}
 	}
+}
+
+var findPeerDhtCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Find the multiaddresses associated with a Peer ID.",
+		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
+	},
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
+		peerID, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		out, err := GetPorcelainAPI(env).NetworkFindPeer(req.Context, peerID)
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range out.Addrs {
+			if err := res.Emit(addr.String()); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
+			_, err := fmt.Fprintln(w, addr)
+			return err
+		}),
+	},
 }
