@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	swarm "gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 
@@ -99,8 +97,4 @@ func (ns *nodeSwarm) Connect(ctx context.Context, addrs []string) ([]api.SwarmCo
 	}
 
 	return output, nil
-}
-
-func (ns *nodeSwarm) FindPeer(ctx context.Context, peerID peer.ID) (peerstore.PeerInfo, error) {
-	return ns.api.node.Router.FindPeer(ctx, peerID)
 }

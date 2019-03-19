@@ -131,7 +131,7 @@ var findPeerDhtCmd = &cmds.Command{
 			return err
 		}
 
-		out, err := GetAPI(env).Swarm().FindPeer(req.Context, peerID)
+		out, err := GetPorcelainAPI(env).NetworkFindPeer(req.Context, peerID)
 		if err != nil {
 			return err
 		}

@@ -243,6 +243,11 @@ func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Durat
 	return api.network.PingService.Ping(ctx, pid)
 }
 
+// NetworkFindPeer searches the libp2p router for a given peer id
+func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+	return api.network.Router.FindPeer(ctx, peerID)
+}
+
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)
