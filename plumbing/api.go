@@ -249,7 +249,7 @@ func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.Pee
 }
 
 // NetworkConnect connects to peers at the given addresses
-func (api *API) NetworkConnect(ctx context.Context, addrs []string) ([]net.SwarmConnectResult, error) {
+func (api *API) NetworkConnect(ctx context.Context, addrs []string) ([]peer.ID, error) {
 	return api.network.Connect(ctx, addrs)
 }
 

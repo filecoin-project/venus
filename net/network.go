@@ -17,13 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 )
 
-// SwarmConnectResult represents the data generated when trying to connect to another p2p
-// network member.
-type SwarmConnectResult struct {
-	Peer    string
-	Success bool
-}
-
 // SwarmConnInfo represents details about a single swarm connection.
 type SwarmConnInfo struct {
 	Addr    string
@@ -112,7 +105,7 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 }
 
 // Connect connects to peers at the given addresses
-func (network *Network) Connect(ctx context.Context, addrs []string) ([]SwarmConnectResult, error) {
+func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID, error) {
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
 		return nil, fmt.Errorf("peerhost network was not a swarm")
@@ -123,14 +116,14 @@ func (network *Network) Connect(ctx context.Context, addrs []string) ([]SwarmCon
 		return nil, err
 	}
 
-	output := make([]SwarmConnectResult, len(pis))
+	output := make([]peer.ID, len(pis))
 	for i, pi := range pis {
 		swrm.Backoff().Clear(pi.ID)
 
-		output[i].Peer = pi.ID.Pretty()
+		output[i] = pi.ID
 
 		if err := network.host.Connect(ctx, pi); err != nil {
-			return nil, errors.Wrapf(err, "peer: %s", output[i].Peer)
+			return nil, errors.Wrapf(err, "peer: %s", output[i].Pretty())
 		}
 	}
 

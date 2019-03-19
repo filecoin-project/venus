@@ -11,8 +11,8 @@ import (
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process
-func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) ([]net.SwarmConnectResult, error) {
-	var out []net.SwarmConnectResult
+func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) ([]peer.ID, error) {
+	var out []peer.ID
 
 	args := []string{"go-filecoin", "swarm", "connect"}
 
