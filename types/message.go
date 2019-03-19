@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +38,19 @@ type Message struct {
 
 	Method string `json:"method"`
 	Params []byte `json:"params"`
+	// Pay attention to Equals() if updating this struct.
+}
+
+// NewMessage creates a new message.
+func NewMessage(from, to address.Address, nonce uint64, value *AttoFIL, method string, params []byte) *Message {
+	return &Message{
+		From:   from,
+		To:     to,
+		Nonce:  Uint64(nonce),
+		Value:  value,
+		Method: method,
+		Params: params,
+	}
 }
 
 // Unmarshal a message from the given bytes.
@@ -84,14 +98,12 @@ func (msg *Message) String() string {
 	return fmt.Sprintf("Message cid=[%v]: %s", cid, string(js))
 }
 
-// NewMessage creates a new message.
-func NewMessage(from, to address.Address, nonce uint64, value *AttoFIL, method string, params []byte) *Message {
-	return &Message{
-		From:   from,
-		To:     to,
-		Nonce:  Uint64(nonce),
-		Value:  value,
-		Method: method,
-		Params: params,
-	}
+// Equals tests whether two messages are equal
+func (msg *Message) Equals(other *Message) bool {
+	return msg.To == other.To &&
+		msg.From == other.From &&
+		msg.Nonce == other.Nonce &&
+		msg.Value.Equal(other.Value) &&
+		msg.Method == other.Method &&
+		bytes.Equal(msg.Params, other.Params)
 }

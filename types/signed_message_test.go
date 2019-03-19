@@ -1,20 +1,22 @@
 package types
 
 import (
+	"reflect"
 	"testing"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
-var mockSigner, _ = NewMockSignersAndKeyInfo(10)
-var newSignedMessage = NewSignedMessageForTestGetter(mockSigner)
+var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, GenerateKeyInfoSeed()))
 
 func TestSignedMessageString(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	smsg := newSignedMessage()
+	smsg := makeMessage(t, mockSigner, 42)
 	cid, err := smsg.Cid()
 	require.NoError(err)
 
@@ -25,7 +27,7 @@ func TestSignedMessageString(t *testing.T) {
 func TestSignedMessageRecover(t *testing.T) {
 	assert := assert.New(t)
 
-	smsg := newSignedMessage()
+	smsg := makeMessage(t, mockSigner, 42)
 
 	mockRecoverer := MockRecoverer{}
 
@@ -37,12 +39,14 @@ func TestSignedMessageRecover(t *testing.T) {
 func TestSignedMessageMarshal(t *testing.T) {
 	assert := assert.New(t)
 
-	smsg := newSignedMessage()
+	smsg := makeMessage(t, mockSigner, 42)
 
 	marshalled, err := smsg.Marshal()
 	assert.NoError(err)
 
 	smsgBack := SignedMessage{}
+	assert.False(smsg.Equals(&smsgBack))
+
 	err = smsgBack.Unmarshal(marshalled)
 	assert.NoError(err)
 
@@ -54,13 +58,14 @@ func TestSignedMessageMarshal(t *testing.T) {
 	assert.Equal(smsg.GasPrice, smsgBack.GasPrice)
 	assert.Equal(smsg.GasLimit, smsgBack.GasLimit)
 	assert.Equal(smsg.Signature, smsgBack.Signature)
+	assert.True(smsg.Equals(&smsgBack))
 }
 
 func TestSignedMessageCid(t *testing.T) {
 	assert := assert.New(t)
 
-	smsg1 := newSignedMessage()
-	smsg2 := newSignedMessage()
+	smsg1 := makeMessage(t, mockSigner, 41)
+	smsg2 := makeMessage(t, mockSigner, 42)
 
 	c1, err := smsg1.Cid()
 	assert.NoError(err)
@@ -68,4 +73,25 @@ func TestSignedMessageCid(t *testing.T) {
 	assert.NoError(err)
 
 	assert.NotEqual(c1.String(), c2.String())
+}
+
+func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
+	newAddr, err := address.NewActorAddress([]byte("receiver"))
+	require.NoError(t, err)
+
+	msg := NewMessage(
+		signer.Addresses[0],
+		newAddr,
+		nonce,
+		NewAttoFILFromFIL(2),
+		"method",
+		[]byte("params"))
+	smsg, err := NewSignedMessage(*msg, &signer, NewGasPrice(1000), NewGasUnits(100))
+	require.NoError(t, err)
+
+	// This check requests that you add a non-zero value for new fields above,
+	// then update the field count below.
+	require.Equal(t, 2, reflect.TypeOf(*smsg).NumField())
+
+	return smsg
 }

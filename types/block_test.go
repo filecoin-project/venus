@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestTriangleEncoding(t *testing.T) {
@@ -31,6 +31,7 @@ func TestTriangleEncoding(t *testing.T) {
 	// see: https://github.com/filecoin-project/go-filecoin/issues/599
 
 	newAddress := address.NewForTestGetter()
+	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 
 	// REVIVE AFTER https://github.com/filecoin-project/go-filecoin/issues/599 is fixed.
 	//
@@ -152,6 +153,7 @@ func cidFromString(input string) (cid.Cid, error) {
 }
 
 func TestDecodeBlock(t *testing.T) {
+	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -227,6 +229,7 @@ func TestParanoidPanic(t *testing.T) {
 
 func TestBlockJsonMarshal(t *testing.T) {
 	assert := assert.New(t)
+	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 
 	var parent, child Block
 	child.Miner = address.NewForTestGetter()()
