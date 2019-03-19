@@ -127,6 +127,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	if err := nd.Start(ctx); err != nil {
 		return err
 	}
+	defer nd.Stop(ctx)
 
 	servenv := &Env{
 		// TODO: should this be the passed in context?
@@ -193,5 +194,5 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		fmt.Println("failed to shut down api server:", err)
 	}
 
-	return api.Daemon().Stop(ctx)
+	return nil
 }

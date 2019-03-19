@@ -38,13 +38,6 @@ func newNodeDaemon(api *nodeAPI) *nodeDaemon {
 	return &nodeDaemon{api: api}
 }
 
-// Stop, shuts down the daemon and cleans up any resources.
-func (nd *nodeDaemon) Stop(ctx context.Context) error {
-	nd.api.node.Stop(ctx)
-
-	return nil
-}
-
 // Init, initializes everything needed to run a daemon, including the disk storage.
 func (nd *nodeDaemon) Init(ctx context.Context, opts ...api.DaemonInitOpt) error {
 	// load configuration options
