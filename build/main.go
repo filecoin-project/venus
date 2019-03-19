@@ -130,8 +130,7 @@ func deps() {
 		cmd("go get -u github.com/pmezard/go-difflib/difflib"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
-		cmd("./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json"),
-		cmd("./proofs/bin/paramcache"),
+		cmd("./scripts/install-filecoin-parameters.sh"),
 	}
 
 	for _, c := range cmds {
@@ -152,8 +151,7 @@ func smartdeps() {
 		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
-		cmd("./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json"),
-		cmd("./proofs/bin/paramcache"),
+		cmd("./scripts/install-filecoin-parameters.sh"),
 	}
 
 	// packages we need to install
