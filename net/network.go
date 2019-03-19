@@ -9,6 +9,7 @@ import (
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
 	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
 	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p/p2p/protocol/ping"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
@@ -72,7 +73,7 @@ type Network struct {
 	*pubsub.Subscriber
 	*pubsub.Publisher
 	metrics.Reporter
-	*Router
+	Router routing.IpfsRouting
 	*ping.PingService
 }
 
@@ -81,7 +82,7 @@ func New(
 	host host.Host,
 	publisher *pubsub.Publisher,
 	subscriber *pubsub.Subscriber,
-	router *Router,
+	router routing.IpfsRouting,
 	reporter metrics.Reporter,
 	pinger *ping.PingService,
 ) *Network {
