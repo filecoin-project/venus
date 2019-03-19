@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
+	"os"
 )
 
 var walletCmd = &cmds.Command{
@@ -225,13 +226,36 @@ var walletExportCmd = &cmds.Command{
 				if err != nil {
 					return err
 				}
+
+				// generating the wallet keystore file, use the address as the filename
+				writeKey(k, a.String())
+
 				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
 				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.Curve)
 				if err != nil {
 					return err
 				}
+
 			}
 			return nil
 		}),
 	},
+}
+
+func writeKey(ki *types.KeyInfo, name string) error {
+
+	_, err := ki.Address()
+	if err != nil {
+		return err
+	}
+	fi, err := os.Create(name + ".key")
+	if err != nil {
+		return err
+	}
+	defer fi.Close()
+
+	var wir WalletSerializeResult
+	wir.KeyInfo = append(wir.KeyInfo, ki)
+
+	return json.NewEncoder(fi).Encode(wir)
 }
