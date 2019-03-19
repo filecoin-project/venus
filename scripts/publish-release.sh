@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
+set -ex
 
 pushd bundle
 
-RELEASE_TAG="${CIRCLE_TAG}"
+SHORT_GIT_SHA=${CIRCLE_SHA1:0:6}
+RELEASE_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
+BUNDLE_NAME=$RELEASE_TAG
+PRERELEASE=false
+
+if [ ! -z FILECOIN_BINARY_VERSION ]
+then
+  # nightly-${CIRCLE_BUILD_NUM}-$(echo $CIRCLE_SHA1 | cut -c -6)
+  RELEASE_TAG=$FILECOIN_BINARY_VERSION
+  PRERELEASE=true
+fi
 
 # make sure we have a token set, api requests won't work otherwise
 if [ -z $GITHUB_TOKEN ]; then
@@ -25,7 +36,8 @@ if [ "$RELEASE_ID" = "null" ]; then
     \"tag_name\": \"$RELEASE_TAG\",
     \"target_commitish\": \"$CIRCLE_SHA1\",
     \"name\": \"$RELEASE_TAG\",
-    \"body\": \"\"
+    \"body\": \"\",
+    \"prerelease\": $PRERELEASE
   }"
 
   # create it if it doesn't exist yet
@@ -43,7 +55,7 @@ fi
 
 RELEASE_UPLOAD_URL=`echo $RELEASE_RESPONSE | jq -r '.upload_url' | cut -d'{' -f1`
 
-bundles=("filecoin-$RELEASE_TAG-Linux.tar.gz" "filecoin-$RELEASE_TAG-Darwin.tar.gz")
+bundles=("filecoin-$BUNDLE_NAME-Linux.tar.gz" "filecoin-$BUNDLE_NAME-Darwin.tar.gz")
 for RELEASE_FILE in "${bundles[@]}"
 do
   echo "Uploading release bundle: $RELEASE_FILE"
