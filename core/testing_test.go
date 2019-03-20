@@ -1,125 +1,153 @@
-package core_test
+package core
 
-// FIXME: https://github.com/filecoin-project/go-filecoin/issues/1541
-/*import (
+import (
 	"context"
+	//	"math/big"
+	//	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/chain"
+	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
+	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
+
+	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-func countBlocks(chm *chain.Store) (count int) {
-	for range chm.BlockHistory(context.Background()) {
-		count++
+// MustGetNonce returns the next nonce for an actor at an address or panics.
+func MustGetNonce(st state.Tree, a address.Address) uint64 {
+	ctx := context.Background()
+	actr, err := st.GetActor(ctx, a)
+	if err != nil {
+		panic(err)
 	}
-	return count
+
+	nonce, err := actor.NextNonce(actr)
+	if err != nil {
+		panic(err)
+	}
+	return nonce
 }
 
-func nullBlockExists(require *require.Assertions, cm *ChainManager) bool {
-	historyCh := cm.BlockHistory(context.Background())
-	raw := <-historyCh
-	ts, ok := raw.(TipSet)
-	require.True(ok)
-	height, err := ts.Height()
-	require.NoError(err)
-	prevHeight := uint64(height)
-	for raw := range historyCh {
-		ts, ok := raw.(TipSet)
-		require.True(ok)
-		height, err = ts.Height()
-		require.NoError(err)
-		if prevHeight-uint64(height) > 1 {
-			return true
-		}
-		prevHeight = uint64(height)
-	}
-	return false
-}
-
-func heightsAreOrdered(require *require.Assertions, cm *ChainManager) bool {
-	historyCh := cm.BlockHistory(context.Background())
-	raw := <-historyCh
-	ts, ok := raw.(TipSet)
-	require.True(ok)
-	height, err := ts.Height()
-	require.NoError(err)
-	prevHeight := uint64(height)
-	for raw := range historyCh {
-		ts, ok := raw.(TipSet)
-		require.True(ok)
-		height, err := ts.Height()
-		require.NoError(err)
-
-		if prevHeight < uint64(height) {
-			return false
-		}
-		prevHeight = uint64(height)
-	}
-	return true
-}
-
-func multiBlockTipSetExists(require *require.Assertions, cm *ChainManager) bool {
-	for raw := range cm.BlockHistory(context.Background()) {
-		ts, ok := raw.(TipSet)
-		require.True(ok)
-		if len(ts) > 1 {
-			return true
+// MustAdd adds the given messages to the messagepool or panics if it cannot.
+func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
+	for _, m := range msgs {
+		if _, err := p.Add(m); err != nil {
+			panic(err)
 		}
 	}
-	return false
 }
 
-func TestAddChain(t *testing.T) {
-	assert := assert.New(t)
-	ctx, _, _, cm := newTestUtils()
-	assert.NoError(cm.Genesis(ctx, InitGenesis))
-
-	assert.Equal(1, countBlocks(cm))
-
-	bts := cm.GetHeaviestTipSet()
-	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, error) {
-		return cm.State(ctx, ts.ToSlice())
+// MustEnqueue adds the given messages to the messagepool or panics if it cannot.
+func MustEnqueue(q *MessageQueue, stamp uint64, msgs ...*types.SignedMessage) {
+	for _, m := range msgs {
+		if err := q.Enqueue(m, stamp); err != nil {
+			panic(err)
+		}
 	}
-	_, err := AddChain(ctx, cm.ProcessNewBlock, stateGetter, bts.ToSlice(), 9)
-	assert.NoError(err)
-
-	assert.Equal(10, countBlocks(cm))
 }
 
-func TestAddChainBinomBlocksPerEpoch(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx, _, _, cm := newTestUtils()
-	assert.NoError(cm.Genesis(ctx, InitGenesis))
-
-	assert.Equal(1, countBlocks(cm))
-	hts := cm.GetHeaviestTipSet()
-	startHeight, err := hts.Height()
-	require.NoError(err)
-
-	stateGetter := func(ctx context.Context, ts TipSet) (state.Tree, error) {
-		return cm.State(ctx, ts.ToSlice())
+// MustConvertParams abi encodes the given parameters into a byte array (or panics)
+func MustConvertParams(params ...interface{}) []byte {
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		panic(err)
 	}
-	_, err = AddChainBinomBlocksPerEpoch(ctx, cm.ProcessNewBlock, stateGetter, hts, 100, 199)
-	assert.NoError(err)
-	hts = cm.GetHeaviestTipSet()
-	endHeight, err := hts.Height()
-	require.NoError(err)
 
-	assert.True(countBlocks(cm) <= 200)
-
-	// With overwhelming proability there will be null blocks and tipsets
-	// with multiple blocks
-	assert.True(multiBlockTipSetExists(require, cm))
-	assert.True(nullBlockExists(require, cm))
-
-	// With high probability the last 10 blocks will not be null blocks
-	// so the final height should be within 10 of 200
-	assert.True(uint64(endHeight)-uint64(startHeight) > uint64(190))
-
-	assert.True(heightsAreOrdered(require, cm))
+	out, err := abi.EncodeValues(vals)
+	if err != nil {
+		panic(err)
+	}
+	return out
 }
-*/
+
+// NewChainWithMessages creates a chain of tipsets containing the given messages
+// and stores them in the given store.  Note the msg arguments are slices of
+// slices of messages -- each slice of slices goes into a successive tipset,
+// and each slice within this slice goes into a block of that tipset
+func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
+	tipSets := []types.TipSet{}
+	parents := root
+	height := uint64(0)
+
+	// only add root to the chain if it is not the zero-valued-tipset
+	if len(parents) != 0 {
+		for _, blk := range parents {
+			MustPut(store, blk)
+		}
+		tipSets = append(tipSets, parents)
+		height, _ = parents.Height()
+		height++
+	}
+
+	for _, tsMsgs := range msgSets {
+		ts := types.TipSet{}
+		// If a message set does not contain a slice of messages then
+		// add a tipset with no messages and a single block to the chain
+		if len(tsMsgs) == 0 {
+			child := &types.Block{
+				Height:  types.Uint64(height),
+				Parents: parents.ToSortedCidSet(),
+			}
+			MustPut(store, child)
+			ts[child.Cid()] = child
+		}
+		for _, msgs := range tsMsgs {
+			child := &types.Block{
+				Messages: msgs,
+				Parents:  parents.ToSortedCidSet(),
+				Height:   types.Uint64(height),
+			}
+			MustPut(store, child)
+			ts[child.Cid()] = child
+		}
+		tipSets = append(tipSets, ts)
+		parents = ts
+		height++
+	}
+
+	return tipSets
+}
+
+// MustPut stores the thingy in the store or panics if it cannot.
+func MustPut(store *hamt.CborIpldStore, thingy interface{}) cid.Cid {
+	cid, err := store.Put(context.Background(), thingy)
+	if err != nil {
+		panic(err)
+	}
+	return cid
+}
+
+// MustDecodeCid decodes a string to a Cid pointer, panicking on error
+func MustDecodeCid(cidStr string) cid.Cid {
+	decode, err := cid.Decode(cidStr)
+	if err != nil {
+		panic(err)
+	}
+
+	return decode
+}
+
+// CreateStorages creates an empty state tree and storage map.
+func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
+	cst := hamt.NewCborStore()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+	blk, err := consensus.DefaultGenesis(cst, bs)
+	require.NoError(t, err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	require.NoError(t, err)
+
+	vms := vm.NewStorageMap(bs)
+
+	return st, vms
+}
