@@ -67,6 +67,15 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
+// FSRepoPath is a helper for getting the path to the repodir
+func FSRepoPath() string {
+	envRepoDir := os.Getenv("FIL_PATH")
+	if envRepoDir != "" {
+		return envRepoDir
+	}
+	return "~/.filecoin"
+}
+
 // OpenFSRepo opens an already initialized fsrepo at the given path
 func OpenFSRepo(p string) (*FSRepo, error) {
 	expath, err := homedir.Expand(p)

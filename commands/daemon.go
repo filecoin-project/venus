@@ -119,7 +119,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
-	return repo.OpenFSRepo(getRepoDir(req))
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	if repoDir == "" {
+		repoDir = repo.FSRepoPath()
+	}
+	return repo.OpenFSRepo(repoDir)
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {

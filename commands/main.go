@@ -266,7 +266,11 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
-		rawPath := filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile)
+		repoDir, _ := req.Options[OptionRepoDir].(string)
+		if repoDir == "" {
+			repoDir = repo.FSRepoPath()
+		}
+		rawPath := filepath.Join(filepath.Clean(repoDir), repo.APIFile)
 		apiFilePath, err := homedir.Expand(rawPath)
 		if err != nil {
 			return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", rawPath))

@@ -46,7 +46,10 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		repoDir := getRepoDir(req)
+		repoDir, _ := req.Options[OptionRepoDir].(string)
+		if repoDir == "" {
+			repoDir = repo.FSRepoPath()
+		}
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
@@ -147,21 +150,6 @@ func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
 	_, err := fmt.Fprintf(w, val.(string))
 	return err
-}
-
-func getRepoDir(req *cmds.Request) string {
-	envdir := os.Getenv("FIL_PATH")
-
-	repodir, ok := req.Options[OptionRepoDir].(string)
-	if ok {
-		return repodir
-	}
-
-	if envdir != "" {
-		return envdir
-	}
-
-	return "~/.filecoin"
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
