@@ -36,7 +36,12 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
-		readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, minerAddr)
+		mpid, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, minerAddr)
+		if err != nil {
+			return err
+		}
+
+		readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, mpid, minerAddr)
 		if err != nil {
 			return err
 		}
