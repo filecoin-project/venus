@@ -47,21 +47,10 @@ var initCmd = &cmds.Command{
 		}
 
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		if repoDir == "" {
-			repoDir = repo.FSRepoPath()
-		}
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
-
-		if err := repo.InitFSRepo(repoDir, newConfig); err != nil {
-			return err
-		}
-
-		rep, err := repo.OpenFSRepo(repoDir)
-		if err != nil {
-			return err
-		}
+		rep, err := repo.CreateRepo(repoDir, newConfig)
 
 		defer func() {
 			if closeErr := rep.Close(); closeErr != nil {

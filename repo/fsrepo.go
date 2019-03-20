@@ -76,6 +76,17 @@ func FSRepoPath() string {
 	return "~/.filecoin"
 }
 
+// CreateRepo provides a quick shorthand for initializing and opening a repo
+func CreateRepo(repoDir string, cfg *config.Config) (*FSRepo, error) {
+	if repoDir == "" {
+		repoDir = FSRepoPath()
+	}
+	if err := InitFSRepo(repoDir, cfg); err != nil {
+		return nil, err
+	}
+	return OpenFSRepo(repoDir)
+}
+
 // OpenFSRepo opens an already initialized fsrepo at the given path
 func OpenFSRepo(p string) (*FSRepo, error) {
 	expath, err := homedir.Expand(p)
