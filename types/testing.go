@@ -59,8 +59,8 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 	return ms
 }
 
-// NewMockSignersAndKeyInfo is a convenience function to generate a given number of (mock)
-// signers with their KeyInfo
+// NewMockSignersAndKeyInfo is a convenience function to generate a mock
+// signers with some keys.
 func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
 	ki := MustGenerateKeyInfo(numSigners, GenerateKeyInfoSeed())
 	signer := NewMockSigner(ki)
