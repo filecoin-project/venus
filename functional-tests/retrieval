@@ -175,15 +175,15 @@ echo "client proposes a storage deal, which transfers piece 2..."
 
 echo ""
 echo "wait for commitSector sent by miner owner to be included in a block viewable by all nodes..."
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}"
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}"
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}"
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" 120
 
 echo ""
 echo "wait for submitPoSt, too..."
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}"
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}"
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}"
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" 120
 
 echo ""
 echo ""
