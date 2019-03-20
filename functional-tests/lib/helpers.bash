@@ -140,11 +140,11 @@ function wait_for_message_in_chain_by_method_and_sender {
   local __hodl=""
 
   # set the maximum number of chain polls to FLOOR(seconds/10)
-  local polls_remaining=$(($( printf "%.0f" "$4" )/10))
+  local __polls_remaining=$(($( printf "%.0f" "$4" )/10))
 
   while [ -z $__hodl ]; do
     # dump chain state to stdout if we time out
-    if [ $polls_remaining -eq 0 ]
+    if [ $__polls_remaining -eq 0 ]
     then
         echo "timed out after waiting seconds=$4 for method=$1, sent from address=$2, to be included in repodir=$3 chain..."
         chain_ls "$3"
@@ -154,8 +154,8 @@ function wait_for_message_in_chain_by_method_and_sender {
 
     __hodl=$(echo "$(chain_ls "$3")" | jq ".[] | select(.messages != null) | .messages[].meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
 
-    polls_remaining=$((polls_remaining - 1))
-    local seconds_remaining=$((polls_remaining*10))
+    __polls_remaining=$((__polls_remaining - 1))
+    local seconds_remaining=$((__polls_remaining*10))
     echo "$(date "+%T") - sleeping for 10 seconds ($seconds_remaining seconds remaining - method=$1, sent from address=$2)"
     echo "$__hodl"
     sleep 10
