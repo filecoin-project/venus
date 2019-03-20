@@ -91,6 +91,59 @@ var initCmd = &cmds.Command{
 	},
 }
 
+func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
+	newConfig := config.NewDefaultConfig()
+
+	if m, ok := options[WithMiner].(string); ok {
+		var err error
+		newConfig.Mining.MinerAddress, err = address.NewFromString(m)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if m, ok := options[DefaultAddress].(string); ok {
+		var err error
+		newConfig.Wallet.DefaultAddress, err = address.NewFromString(m)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	devnetTest, _ := options[DevnetTest].(bool)
+	devnetNightly, _ := options[DevnetNightly].(bool)
+	devnetUser, _ := options[DevnetUser].(bool)
+	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
+		return nil, fmt.Errorf(`cannot specify more than one "devnet-" option`)
+	}
+
+	// Setup devnet specific config options.
+	if devnetTest || devnetNightly || devnetUser {
+		newConfig.Bootstrap.MinPeerThreshold = 1
+		newConfig.Bootstrap.Period = "10s"
+	}
+
+	// Setup devnet test specific config options.
+	if devnetTest {
+		newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
+		newConfig.Net = "devnet-test"
+	}
+
+	// Setup devnet nightly specific config options.
+	if devnetNightly {
+		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
+		newConfig.Net = "devnet-nightly"
+	}
+
+	// Setup devnet user specific config options.
+	if devnetUser {
+		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+		newConfig.Net = "devnet-user"
+	}
+
+	return newConfig, nil
+}
+
 func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
 	_, err := fmt.Fprintf(w, val.(string))
 	return err
@@ -109,15 +162,6 @@ func getRepoDir(req *cmds.Request) string {
 	}
 
 	return "~/.filecoin"
-}
-
-func loadPeerKey(fname string) (crypto.PrivKey, error) {
-	data, err := ioutil.ReadFile(fname)
-	if err != nil {
-		return nil, err
-	}
-
-	return crypto.UnmarshalPrivateKey(data)
 }
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
@@ -176,7 +220,11 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
-		peerKey, err := loadPeerKey(peerKeyFile)
+		data, err := ioutil.ReadFile(peerKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		peerKey, err := crypto.UnmarshalPrivateKey(data)
 		if err != nil {
 			return nil, err
 		}
@@ -186,57 +234,4 @@ func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.I
 	initOpts = append(initOpts, node.AutoSealIntervalSecondsOpt(autoSealIntervalSeconds))
 
 	return initOpts, nil
-}
-
-func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
-	newConfig := config.NewDefaultConfig()
-
-	if m, ok := options[WithMiner].(string); ok {
-		var err error
-		newConfig.Mining.MinerAddress, err = address.NewFromString(m)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if m, ok := options[DefaultAddress].(string); ok {
-		var err error
-		newConfig.Wallet.DefaultAddress, err = address.NewFromString(m)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	devnetTest, _ := options[DevnetTest].(bool)
-	devnetNightly, _ := options[DevnetNightly].(bool)
-	devnetUser, _ := options[DevnetUser].(bool)
-	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
-		return nil, fmt.Errorf(`cannot specify more than one "devnet-" option`)
-	}
-
-	// Setup devnet specific config options.
-	if devnetTest || devnetNightly || devnetUser {
-		newConfig.Bootstrap.MinPeerThreshold = 1
-		newConfig.Bootstrap.Period = "10s"
-	}
-
-	// Setup devnet test specific config options.
-	if devnetTest {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
-		newConfig.Net = "devnet-test"
-	}
-
-	// Setup devnet nightly specific config options.
-	if devnetNightly {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-		newConfig.Net = "devnet-nightly"
-	}
-
-	// Setup devnet user specific config options.
-	if devnetUser {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
-		newConfig.Net = "devnet-user"
-	}
-
-	return newConfig, nil
 }
