@@ -146,7 +146,7 @@ function wait_for_message_in_chain_by_method_and_sender {
     # dump chain state to stdout if we time out
     if [ $polls_remaining -eq 0 ]
     then
-        echo "timed out after waiting seconds=$4 for message=$1, sent from address=$2, to be included in repodir=$3 chain..."
+        echo "timed out after waiting seconds=$4 for method=$1, sent from address=$2, to be included in repodir=$3 chain..."
         chain_ls "$3"
         unset IFS
         exit 1
@@ -156,7 +156,7 @@ function wait_for_message_in_chain_by_method_and_sender {
 
     polls_remaining=$((polls_remaining - 1))
     local seconds_remaining=$((polls_remaining*10))
-    echo "$(date "+%T") - sleeping for 10 seconds ($seconds_remaining seconds remaining - message=$1, sent from address=$2)"
+    echo "$(date "+%T") - sleeping for 10 seconds ($seconds_remaining seconds remaining - method=$1, sent from address=$2)"
     echo "$__hodl"
     sleep 10
   done
