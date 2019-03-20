@@ -24,17 +24,14 @@ Here we'll explain some of the mechanics that drive the Filecoin network layer.
 
 ## Peer discovery
 
-We use the libp2p Kademlia Distributed Hashtable (Kad DHT) service to:
+We use the [`go-libp2p-kad-dht`](https://github.com/libp2p/go-libp2p-kad-dht) service to:
 
-1. discover Filecoin peers to interface with upon boot.
-2. lookup the network addresses of a specific peer we need to interact with, starting from a peer ID, for the purposes of storage and retrieval.
+1. Discover Filecoin peers at start up.
+2. Lookup the network addresses of a specific peer ID, for the purposes of Filecoin-related storage and retrieval.
 
-The usage of a DHT promotes decentralisation and resilience, such that the network will continue to function even if some nodes go down.
+`go-libp2p-kad-dht` is a Kademlia-inspired distributed hash table (DHT) implementation that provides a mapping between peer IDs and their [multiaddress(es)](https://github.com/multiformats/multiaddr). The usage of a DHT promotes decentralisation and resilience, such that the network will continue to function even if some nodes go down. Kademlia is described in a [paper](http://www.scs.stanford.edu/~dm/home/papers/kpos.pdf), and exemplified in the BitTorrent implementation described primarily in the approachable [BEP 5](http://www.bittorrent.org/beps/bep_0005.html).
 
-libp2p Kad DHT maintains a _routing table_: a mapping between active peer IDs and the [multiaddress(es)](https://github.com/multiformats/multiaddr) where that peer is reachable.
-Structurally, entries are organised in k-buckets, as per the _distance metric proposed_ in the [Kademlia paper](http://www.scs.stanford.edu/~dm/home/papers/kpos.pdf).
-
-To bootstrap our routing table, and to keep it healthy over time, we traverse the network periodically (and once on startup) by performing random walks.
+`go-libp2p-kad-dht` maintains a data structure of connected peers of varying distances from the local peer (per the distance metric described by Kademlia), known as the routing table. To bootstrap our routing table, and to keep it healthy over time, we currently traverse the network periodically (and once on startup) by performing random walks.
 We kickstart this process by seeding our routing table with a set of trusted bootstrap nodes operated by the Filecoin project.
 This approach will likely evolve in the future.
 
