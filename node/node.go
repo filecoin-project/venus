@@ -747,7 +747,7 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 }
 
 // GetBlockTime returns the current block time.
-// TODO this should be surfaced somewhere in the plumbing MiningAPI.
+// TODO this should be surfaced somewhere in the plumbing API.
 func (node *Node) GetBlockTime() time.Duration {
 	return node.blockTime
 }
