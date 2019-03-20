@@ -235,12 +235,27 @@ func (api *API) NetworkGetPeerID() peer.ID {
 
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
 func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
-	return api.network.FindProvidersAsync(ctx, key, count)
+	return api.network.Router.FindProvidersAsync(ctx, key, count)
 }
 
 // NetworkPing sends echo request packets over the network.
 func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
 	return api.network.PingService.Ping(ctx, pid)
+}
+
+// NetworkFindPeer searches the libp2p router for a given peer id
+func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+	return api.network.FindPeer(ctx, peerID)
+}
+
+// NetworkConnect connects to peers at the given addresses
+func (api *API) NetworkConnect(ctx context.Context, addrs []string) ([]peer.ID, error) {
+	return api.network.Connect(ctx, addrs)
+}
+
+// NetworkPeers lists peers currently available on the network
+func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+	return api.network.Peers(ctx, verbose, latency, streams)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.

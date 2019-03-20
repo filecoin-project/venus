@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
-	"github.com/filecoin-project/go-filecoin/api"
+	"github.com/filecoin-project/go-filecoin/net"
 )
 
 // swarmCmd contains swarm commands.
@@ -24,9 +24,8 @@ libp2p peers on the internet.
 `,
 	},
 	Subcommands: map[string]*cmds.Command{
-		"connect":  swarmConnectCmd,
-		"peers":    swarmPeersCmd,
-		"findpeer": findPeerDhtCmd,
+		"connect": swarmConnectCmd,
+		"peers":   swarmPeersCmd,
 	},
 }
 
@@ -47,7 +46,7 @@ var swarmPeersCmd = &cmds.Command{
 		latency, _ := req.Options["latency"].(bool)
 		streams, _ := req.Options["streams"].(bool)
 
-		out, err := GetAPI(env).Swarm().Peers(req.Context, verbose, latency, streams)
+		out, err := GetPorcelainAPI(env).NetworkPeers(req.Context, verbose, latency, streams)
 		if err != nil {
 			return err
 		}
@@ -55,7 +54,7 @@ var swarmPeersCmd = &cmds.Command{
 		return re.Emit(&out)
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *api.SwarmConnInfos) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ci *net.SwarmConnInfos) error {
 			pipfs := ma.ProtocolWithCode(ma.P_IPFS).Name
 			for _, info := range ci.Peers {
 				ids := fmt.Sprintf("/%s/%s", pipfs, info.Peer)
@@ -81,7 +80,7 @@ var swarmPeersCmd = &cmds.Command{
 			return nil
 		}),
 	},
-	Type: api.SwarmConnInfos{},
+	Type: net.SwarmConnInfos{},
 }
 
 var swarmConnectCmd = &cmds.Command{
@@ -99,54 +98,20 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 		cmdkit.StringArg("address", true, true, "Address of peer to connect to.").EnableStdin(),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		out, err := GetAPI(env).Swarm().Connect(req.Context, req.Arguments)
+		results, err := GetPorcelainAPI(env).NetworkConnect(req.Context, req.Arguments)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(out)
+		return re.Emit(results)
 	},
-	Type: []api.SwarmConnectResult{},
+	Type: []peer.ID{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]api.SwarmConnectResult) error {
-			for _, a := range *res {
-				fmt.Fprintf(w, "connect %s success\n", a.Peer) // nolint: errcheck
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, results *[]peer.ID) error {
+			for _, result := range *results {
+				fmt.Fprintf(w, "connect %s success\n", result.Pretty()) // nolint: errcheck
 			}
 			return nil
-		}),
-	},
-}
-
-var findPeerDhtCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "Find the multiaddresses associated with a Peer ID.",
-		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
-	},
-	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
-		peerID, err := peer.IDB58Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		out, err := GetAPI(env).Swarm().FindPeer(req.Context, peerID)
-		if err != nil {
-			return err
-		}
-
-		for _, addr := range out.Addrs {
-			if err := res.Emit(addr.String()); err != nil {
-				return err
-			}
-		}
-		return nil
-	},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
-			_, err := fmt.Fprintln(w, addr)
-			return err
 		}),
 	},
 }
