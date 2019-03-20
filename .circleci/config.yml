@@ -681,6 +681,7 @@ workflows:
                 - /^testnet\-\d+\.\d+\.\d+$/
 
       - build_docker_img:
+          user_devnet: true
           requires:
             - build_linux
             - build_faucet_and_genesis
