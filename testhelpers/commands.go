@@ -487,9 +487,27 @@ func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address
 	return minerAddr
 }
 
-// MinerSetPrice creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain
-func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price string, expiry string) {
-	td.RunSuccess("miner", "set-price", "--from", fromAddr, "--miner", minerAddr, "--gas-price", "0", "--gas-limit", "300", price, expiry)
+// MinerSetPrice creates an ask for a CURRENTLY MINING test daemon and waits for it to appears on chain. It returns the
+// cid of the AddAsk message so other daemons can `message wait` for it.
+func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price string, expiry string) cid.Cid {
+	setPriceReturn := td.RunSuccess("miner", "set-price",
+		"--from", fromAddr,
+		"--miner", minerAddr,
+		"--gas-price", "0",
+		"--gas-limit", "300",
+		"--enc", "json",
+		price, expiry).ReadStdout()
+
+	resultStruct := struct {
+		MinerSetPriceResponse struct {
+			AddAskCid cid.Cid
+		}
+	}{}
+
+	if err := json.Unmarshal([]byte(setPriceReturn), &resultStruct); err != nil {
+		require.NoError(td.test, err)
+	}
+	return resultStruct.MinerSetPriceResponse.AddAskCid
 }
 
 // UpdatePeerID updates a currently mining miner's peer ID
