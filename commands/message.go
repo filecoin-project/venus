@@ -212,7 +212,7 @@ var msgWaitCmd = &cmds.Command{
 					return errors.Wrap(err, "unable to deserialize return value")
 				}
 
-				marshaled = append(marshaled, []byte(val.Val.(Stringer).String())...)
+				marshaled = append(marshaled, []byte(val.Val.(fmt.Stringer).String())...)
 			}
 
 			_, err = w.Write(marshaled)

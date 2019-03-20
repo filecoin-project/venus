@@ -46,6 +46,7 @@ type API struct {
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
+	outbox       *core.MessageQueue
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
 	network      *net.Network
@@ -66,6 +67,7 @@ type APIDeps struct {
 	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
+	Outbox       *core.MessageQueue
 	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
 }
@@ -84,6 +86,7 @@ func New(deps *APIDeps) *API {
 		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
+		outbox:       deps.Outbox,
 		sigGetter:    deps.SigGetter,
 		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
@@ -160,6 +163,21 @@ func (api *API) DealsLs() ([]*storagedeal.Deal, error) {
 // DealPut puts a given deal in the datastore
 func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
 	return api.storagedeals.Put(storageDeal)
+}
+
+// OutboxQueues lists addresses with non-empty outbox queues (in no particular order).
+func (api *API) OutboxQueues() []address.Address {
+	return api.outbox.Queues()
+}
+
+// OutboxQueueLs lists messages in the queue for an address.
+func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
+	return api.outbox.List(sender)
+}
+
+// OutboxQueueClear clears messages in the queue for an address/
+func (api *API) OutboxQueueClear(sender address.Address) {
+	api.outbox.Clear(sender)
 }
 
 // MessagePoolPending lists messages un-mined in the pool
