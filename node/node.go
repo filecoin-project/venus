@@ -1063,7 +1063,7 @@ func (node *Node) setupProtocols() error {
 	node.BlockAPI = &blockAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node), node.PorcelainAPI)
+	retapi := retrieval.NewAPI(retrieval.NewClient(node))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api

@@ -12,24 +12,15 @@ import (
 
 // API here is the API for a retrieval client.
 type API struct {
-	rc        *Client
-	porcelain retrievalClientPorcelainAPI
-}
-
-type retrievalClientPorcelainAPI interface {
-	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
+	rc *Client
 }
 
 // NewAPI creates a new API for a retrieval client.
-func NewAPI(rc *Client, minerPorc retrievalClientPorcelainAPI) API {
-	return API{rc: rc, porcelain: minerPorc}
+func NewAPI(rc *Client) API {
+	return API{rc: rc}
 }
 
 // RetrievePiece retrieves bytes referenced by CID pieceCID
-func (a *API) RetrievePiece(ctx context.Context, pieceCID cid.Cid, minerAddr address.Address) (io.ReadCloser, error) {
-	mpid, err := a.porcelain.MinerGetPeerID(ctx, minerAddr)
-	if err != nil {
-		return nil, err
-	}
+func (a *API) RetrievePiece(ctx context.Context, pieceCID cid.Cid, mpid peer.ID, minerAddr address.Address) (io.ReadCloser, error) {
 	return a.rc.RetrievePiece(ctx, mpid, pieceCID)
 }
