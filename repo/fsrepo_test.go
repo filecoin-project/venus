@@ -342,6 +342,77 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 }
 
+func TestCreateRepo(t *testing.T) {
+	cfg := config.NewDefaultConfig()
+
+	t.Run("folder exists", func(t *testing.T) {
+		t.Parallel()
+
+		assert := assert.New(t)
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		_, err = CreateRepo(dir, cfg)
+		assert.NoError(err)
+
+		assert.True(ConfigExists(dir))
+	})
+
+	t.Run("folder does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		assert := assert.New(t)
+
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		dir = filepath.Join(dir, "nested")
+
+		_, err = CreateRepo(dir, cfg)
+		assert.NoError(err)
+
+		assert.True(ConfigExists(dir))
+	})
+
+	t.Run("folder is not writable", func(t *testing.T) {
+		t.Parallel()
+
+		assert := assert.New(t)
+		parentDir, err := ioutil.TempDir("", "init")
+		assert.NoError(err)
+		defer os.RemoveAll(parentDir)
+
+		// make read only dir
+		dir := filepath.Join(parentDir, "readonly")
+		err = os.Mkdir(dir, 0444)
+		assert.NoError(err)
+
+		_, err = CreateRepo(dir, cfg)
+		assert.Contains(err.Error(), "permission denied")
+
+		assert.False(ConfigExists(dir))
+	})
+
+	t.Run("config file already exists", func(t *testing.T) {
+		t.Parallel()
+
+		assert := assert.New(t)
+
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
+
+		_, err = CreateRepo(dir, cfg)
+		assert.Contains(err.Error(), "repo already initialized")
+
+		assert.True(ConfigExists(dir))
+	})
+}
+
 func withFSRepo(t *testing.T, f func(*FSRepo)) {
 	require := require.New(t)
 
@@ -370,4 +441,12 @@ func mustGetAPIAddr(t *testing.T, r *FSRepo) string {
 func mustSetAPIAddr(t *testing.T, r *FSRepo, addr string) {
 	require := require.New(t)
 	require.NoError(r.SetAPIAddr(addr))
+}
+
+func ConfigExists(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "config.json"))
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }
