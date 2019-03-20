@@ -55,9 +55,9 @@ func TestDhtFindProvs(t *testing.T) {
 	d1.ConnectSuccess(d3)
 	d2.ConnectSuccess(d3)
 
-	d1.MineAndPropagate(5*time.Second, d2)
-	d2.MineAndPropagate(5*time.Second, d1)
-	d3.MineAndPropagate(5*time.Second, d1, d2)
+	d1.MineAndPropagate(2*time.Second, d2)
+	d2.MineAndPropagate(2*time.Second, d1)
+	d3.MineAndPropagate(2*time.Second, d1, d2)
 
 	op1 := d1.RunSuccess("chain", "ls")
 	results := strings.Split(op1.ReadStdout(), "\n")
@@ -65,21 +65,29 @@ func TestDhtFindProvs(t *testing.T) {
 	genesisKey := results[0]
 
 	t.Run("basic command succeeds", func(t *testing.T) {
-		op1 = d1.Run("dht", "findprovs", genesisKey)
+		op1 = d1.RunSuccess("dht", "findprovs", genesisKey)
 		results = strings.Split(op1.ReadStdoutTrimNewlines(), "\n")
 		// all miners should have the genesis block key
-		assert.Len(results, 3)
+		assert.Len(results, 2)
 	})
 
 	t.Run("verbose option outputs expected info", func(t *testing.T) {
-		op1 = d1.Run("dht", "findprovs", genesisKey, "-v")
-		results = strings.Split(op1.ReadStdoutTrimNewlines(), "\n")
-		// TODO: what's a good test for this?
-		assert.NotEmpty(results)
+		actual := d1.RunSuccess("dht", "findprovs", genesisKey, "-v").ReadStdoutTrimNewlines()
+
+		expectedStrs := []string{
+			"provider: Qm",
+			"querying <peer.ID Qm*",
+			"adding peer to query: <peer.ID Qm*",
+			"/ip4/127.0.0.1/tcp",
+		}
+		for _, expected := range expectedStrs {
+			assert.Contains(actual, expected)
+		}
+
 	})
 
 	t.Run("number of providers option limits the providers found", func(t *testing.T) {
-		op1 = d1.Run("dht", "findprovs", genesisKey, "-n", "1")
+		op1 = d1.RunSuccess("dht", "findprovs", genesisKey, "-n", "1")
 		results = strings.Split(op1.ReadStdoutTrimNewlines(), "\n")
 		assert.Len(results, 1)
 	})
