@@ -47,30 +47,23 @@ func TestAPI_StartStopMining(t *testing.T) {
 	api.MiningStop(ctx)
 }
 
-func newAPI(t *testing.T, assert *ast.Assertions) (bapi.API, *node.Node) {
+func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	configOpts := []node.ConfigOpt{}
 
 	nd := node.MakeNodeWithChainSeed(t, seed, configOpts,
 		node.AutoSealIntervalSecondsOpt(1),
 	)
-	bt, md := nd.MiningTimes()
+	bt := nd.GetBlockTime()
 	seed.GiveKey(t, nd, 0)
 	mAddr, moAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, moAddr, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
 	assert.NoError(err)
 	return bapi.New(
 		nd.AddNewBlock,
-		nd.Blockstore,
-		nd.CborStore(),
 		nd.ChainReader,
-		nd.Consensus,
-		bt, md,
-		nd.MsgPool,
-		nd.PorcelainAPI,
-		nd.PowerTable,
+		bt,
 		nd.StartMining,
 		nd.StopMining,
-		nd.Syncer,
-		nd.Wallet), nd
+		nd.CreateMiningWorker), nd
 }
