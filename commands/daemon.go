@@ -18,7 +18,6 @@ import (
 	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/http"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -127,7 +126,6 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
-	api := impl.New(nd)
 	if err := nd.Start(ctx); err != nil {
 		return err
 	}
@@ -136,7 +134,6 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	servenv := &Env{
 		// TODO: should this be the passed in context?
 		ctx:          context.Background(),
-		api:          api,
 		porcelainAPI: nd.PorcelainAPI,
 		blockAPI:     nd.BlockAPI,
 		retrievalAPI: nd.RetrievalAPI,

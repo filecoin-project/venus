@@ -18,7 +18,6 @@ import (
 	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/cli"
 	cmdhttp "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/http"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -200,7 +199,7 @@ func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
 }
 
 func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
-	return &Env{ctx: ctx, api: impl.New(nil)}, nil
+	return &Env{ctx: ctx}, nil
 }
 
 type executor struct {
