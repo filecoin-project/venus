@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -326,7 +325,7 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 	// FYI the two biggest concurrency concerns at present would be addressed
 	// by locking after collectChain completes, so my hunch is this can be
 	// fixed by simply moving the lock call below collectChain.
-	fmt.Printf("trying to sync %v\n", blkCids)
+	logSyncer.Debugf("trying to sync %v\n", blkCids)
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
 	// If the store already has all these blocks the syncer is finished.
