@@ -62,7 +62,7 @@ func (p *MessageQueuePolicy) OnNewHeadTipset(ctx context.Context, oldHead, newHe
 			if err != nil {
 				return err
 			}
-			if found && minedMsg != removed {
+			if found && !minedMsg.Equals(removed) {
 				log.Errorf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
 			}
 			// Else if not found, the message was not sent by this node, or has already been removed

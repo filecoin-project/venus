@@ -20,6 +20,12 @@ import (
 // Topic is the network pubsub topic identifier on which new messages are announced.
 const Topic = "/fil/msgs"
 
+// Abstracts over a store of blockchain state.
+type chainState interface {
+	// LatestState returns the latest chain state.
+	LatestState(ctx context.Context) (state.Tree, error)
+}
+
 // PublishFunc is a function the Sender calls to publish a message to the network.
 type PublishFunc func(topic string, data []byte) error
 
@@ -27,10 +33,14 @@ type PublishFunc func(topic string, data []byte) error
 type Sender struct {
 	// Signs messages.
 	signer types.Signer
-	// Provides actor state (we could reduce this dependency to only LatestState()).
-	chainReader chain.ReadStore
-	// Pool of existing message, and receiver of the sent message.
-	msgPool *core.MessagePool
+	// Provides actor state
+	chainState chainState
+	// Provides the current block height
+	blockTimer core.BlockTimer
+	// Tracks inbound messages for mining
+	inbox *core.MessagePool
+	// Tracks outbound messages
+	outbox *core.MessageQueue
 	// Validates messages before sending them.
 	validator consensus.SignedMessageValidator
 	// Invoked to publish the new message to the network.
@@ -41,8 +51,18 @@ type Sender struct {
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(signer types.Signer, chainReader chain.ReadStore, msgPool *core.MessagePool, validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
-	return &Sender{signer: signer, chainReader: chainReader, msgPool: msgPool, validator: validator, publish: publish}
+func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer core.BlockTimer,
+	msgQueue *core.MessageQueue, msgPool *core.MessagePool,
+	validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
+	return &Sender{
+		signer:     signer,
+		chainState: chainReader,
+		blockTimer: blockTimer,
+		inbox:      msgPool,
+		outbox:     msgQueue,
+		validator:  validator,
+		publish:    publish,
+	}
 }
 
 // Send sends a message. See api description.
@@ -56,7 +76,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	st, err := s.chainReader.LatestState(ctx)
+	st, err := s.chainState.LatestState(ctx)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
 	}
@@ -66,7 +86,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrapf(err, "no actor at address %s", from)
 	}
 
-	nonce, err := nextNonce(ctx, st, s.msgPool, from)
+	nonce, err := nextNonce(fromActor, s.outbox, from)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor %s", from)
 	}
@@ -87,9 +107,17 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 		return cid.Undef, errors.Wrap(err, "failed to marshal message")
 	}
 
-	// Add to the local message pool at the last possible moment before broadcasting to network.
-	if _, err := s.msgPool.Add(smsg); err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to add message to the message pool")
+	height, err := s.blockTimer.BlockHeight()
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "failed to get block height")
+	}
+
+	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
+	if err := s.outbox.Enqueue(smsg, height); err != nil {
+		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
+	}
+	if _, err := s.inbox.Add(smsg); err != nil {
+		return cid.Undef, errors.Wrap(err, "failed to add message to message pool")
 	}
 
 	if err = s.publish(Topic, smsgdata); err != nil {
@@ -102,18 +130,13 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
 // of the actor's nonce value, or one greater than the largest nonce from the actor found in the message pool.
-// The address must be the address of an account actor, or be not contained in, in the provided state tree.
-func nextNonce(ctx context.Context, st state.Tree, pool *core.MessagePool, address address.Address) (uint64, error) {
-	act, err := st.GetActor(ctx, address)
-	if err != nil && !state.IsActorNotFoundError(err) {
-		return 0, err
-	}
+func nextNonce(act *actor.Actor, outbox *core.MessageQueue, address address.Address) (uint64, error) {
 	actorNonce, err := actor.NextNonce(act)
 	if err != nil {
 		return 0, err
 	}
 
-	poolNonce, found := pool.LargestNonce(address)
+	poolNonce, found := outbox.LargestNonce(address)
 	if found && poolNonce >= actorNonce {
 		return poolNonce + 1, nil
 	}
