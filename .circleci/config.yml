@@ -247,6 +247,11 @@ jobs:
       # The first checkout ensures we have the files needed to restore the cache
       - checkout
 
+      - run:
+          name: Check if any bash script sets xtrace
+          command: |
+            grep -r '^set\ \-\w*[x]\w*' . && exit 1 || exit 0
+
       # Pull in all submodules (inc. rust-fil-proofs)
       - update_submodules
 
