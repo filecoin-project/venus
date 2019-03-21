@@ -217,6 +217,11 @@ func (api *API) MessageSend(ctx context.Context, from, to address.Address, value
 	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
+// MessageFind returns a message and receipt from the blockchain, if it exists.
+func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
+	return api.msgWaiter.Find(ctx, msgCid)
+}
+
 // MessageWait invokes the callback when a message with the given cid appears on chain.
 // It will find the message in both the case that it is already on chain and
 // the case that it appears in a newly mined block. An error is returned if one is

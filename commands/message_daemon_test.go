@@ -138,3 +138,43 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 		assert.NotEmpty(t, result.Messages, "msg under the block gas limit passes validation and is run in the block")
 	})
 }
+
+func TestMessageStatus(t *testing.T) {
+	t.Parallel()
+	d := makeTestDaemonWithMinerAndStart(t)
+	defer d.ShutdownSuccess()
+
+	t.Run("queue then on chain", func(t *testing.T) {
+		assert := assert.New(t)
+
+		msg := d.RunSuccess(
+			"message", "send",
+			"--from", fixtures.TestAddresses[0],
+			"--gas-price", "0", "--gas-limit", "300",
+			"--value=1234",
+			fixtures.TestAddresses[1],
+		)
+
+		msgcid := strings.Trim(msg.ReadStdout(), "\n")
+		status := d.RunSuccess("message", "status", msgcid).ReadStdout()
+
+		assert.Contains(status, "In outbox")
+		assert.Contains(status, "In mpool")
+		assert.NotContains(status, "On chain") // not found on chain (yet)
+		assert.Contains(status, "1234")        // the "value"
+
+		d.RunSuccess("mining once")
+
+		status = d.RunSuccess("message", "status", msgcid).ReadStdout()
+
+		assert.NotContains(status, "In outbox")
+		assert.NotContains(status, "In mpool")
+		assert.Contains(status, "On chain")
+		assert.Contains(status, "1234") // the "value"
+
+		status = d.RunSuccess("message", "status", "QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS").ReadStdout()
+		assert.NotContains(status, "In outbox")
+		assert.NotContains(status, "In mpool")
+		assert.NotContains(status, "On chain")
+	})
+}

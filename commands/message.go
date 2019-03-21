@@ -8,24 +8,26 @@ import (
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
+	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var msgCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		// TODO: better description
-		Tagline: "Manage messages",
+		Tagline: "Send and monitor messages",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"send": msgSendCmd,
-		"wait": msgWaitCmd,
+		"send":   msgSendCmd,
+		"status": msgStatusCmd,
+		"wait":   msgWaitCmd,
 	},
 }
 
@@ -144,7 +146,7 @@ var msgWaitCmd = &cmds.Command{
 		Tagline: "Wait for a message to appear in a mined block",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("cid", true, false, "The cid of the message to wait for"),
+		cmdkit.StringArg("cid", true, false, "CID of the message to wait for"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
@@ -154,7 +156,7 @@ var msgWaitCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
 		if err != nil {
-			return errors.Wrap(err, "invalid message cid")
+			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
 		}
 
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
@@ -217,6 +219,82 @@ var msgWaitCmd = &cmds.Command{
 
 			_, err = w.Write(marshaled)
 			return err
+		}),
+	},
+}
+
+// MessageStatusResult is the status of a message on chain or in the message queue/pool
+type MessageStatusResult struct {
+	InPool    bool // Whether the message is found in the mpool
+	PoolMsg   *types.SignedMessage
+	InOutbox  bool // Whether the message is found in the outbox
+	OutboxMsg *core.QueuedMessage
+	OnChain   bool // Whether the message is found on chain
+	ChainMsg  *msg.ChainMessage
+}
+
+var msgStatusCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show status of a message",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("cid", true, false, "CID of the message to inspect"),
+	},
+	Options: []cmdkit.Option{},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		msgCid, err := cid.Parse(req.Arguments[0])
+		if err != nil {
+			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
+		}
+
+		api := GetPorcelainAPI(env)
+		result := MessageStatusResult{}
+
+		// Look in message pool
+		result.PoolMsg, result.InPool = api.MessagePoolGet(msgCid)
+
+		// Look in outbox
+		for _, addr := range api.OutboxQueues() {
+			for _, qm := range api.OutboxQueueLs(addr) {
+				cid, err := qm.Msg.Cid()
+				if err != nil {
+					return err
+				}
+				if cid.Equals(msgCid) {
+					result.InOutbox = true
+					result.OutboxMsg = qm
+				}
+			}
+		}
+
+		// Look on chain
+		result.ChainMsg, result.OnChain, err = api.MessageFind(req.Context, msgCid)
+		if err != nil {
+			return err
+		}
+		return re.Emit(&result)
+	},
+	Type: &MessageStatusResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageStatusResult) error {
+			sw := NewSilentWriter(w)
+			var msg *types.SignedMessage
+			if res.InOutbox {
+				msg = res.OutboxMsg.Msg
+				sw.Printf("In outbox: %s, sent at height %d\n", res.OutboxMsg.Msg.From, res.OutboxMsg.Stamp)
+			}
+			if res.InPool {
+				msg = res.PoolMsg
+				sw.Printf("In mpool\n")
+			}
+			if res.OnChain {
+				msg = res.ChainMsg.Message
+				sw.Printf("On chain at height %d, receipt %v\n", res.ChainMsg.Block.Height, res.ChainMsg.Receipt)
+			}
+			if msg != nil {
+				sw.Println(msg.String())
+			}
+			return sw.Error()
 		}),
 	},
 }
