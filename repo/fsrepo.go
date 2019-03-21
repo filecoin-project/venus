@@ -67,8 +67,17 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// FSRepoPath is a helper for getting the path to the repodir
-func FSRepoPath() string {
+// GetRepoDir is a helper for either using a user provided repoDir or fetching
+// the repoDir from FSRepoDir
+func GetRepoDir(repoDir string) string {
+	if repoDir == "" {
+		repoDir = FSRepoDir()
+	}
+	return repoDir
+}
+
+// FSRepoDir is a helper for getting the path to the repodir
+func FSRepoDir() string {
 	envRepoDir := os.Getenv("FIL_PATH")
 	if envRepoDir != "" {
 		return envRepoDir
@@ -78,9 +87,7 @@ func FSRepoPath() string {
 
 // CreateRepo provides a quick shorthand for initializing and opening a repo
 func CreateRepo(repoDir string, cfg *config.Config) (*FSRepo, error) {
-	if repoDir == "" {
-		repoDir = FSRepoPath()
-	}
+	repoDir = GetRepoDir(repoDir)
 	if err := InitFSRepo(repoDir, cfg); err != nil {
 		return nil, err
 	}

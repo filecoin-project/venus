@@ -266,9 +266,7 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		if repoDir == "" {
-			repoDir = repo.FSRepoPath()
-		}
+		repoDir = repo.GetRepoDir(repoDir)
 		rawPath := filepath.Join(filepath.Clean(repoDir), repo.APIFile)
 		apiFilePath, err := homedir.Expand(rawPath)
 		if err != nil {
