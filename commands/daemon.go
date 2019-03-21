@@ -18,7 +18,6 @@ import (
 	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 	cmdhttp "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/http"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -119,19 +118,20 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
-	return repo.OpenFSRepo(getRepoDir(req))
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir = repo.GetRepoDir(repoDir)
+	return repo.OpenFSRepo(repoDir)
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
-	api := impl.New(nd)
-	if err := api.Daemon().Start(ctx); err != nil {
+	if err := nd.Start(ctx); err != nil {
 		return err
 	}
+	defer nd.Stop(ctx)
 
 	servenv := &Env{
 		// TODO: should this be the passed in context?
 		ctx:          context.Background(),
-		api:          api,
 		porcelainAPI: nd.PorcelainAPI,
 		blockAPI:     nd.BlockAPI,
 		retrievalAPI: nd.RetrievalAPI,
@@ -177,7 +177,6 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	}()
 
 	// write our api address to file
-	// TODO: use api.Repo() once implemented
 	if err := nd.Repo.SetAPIAddr(config.API.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
@@ -193,5 +192,5 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		fmt.Println("failed to shut down api server:", err)
 	}
 
-	return api.Daemon().Stop(ctx)
+	return nil
 }

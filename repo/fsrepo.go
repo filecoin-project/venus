@@ -67,6 +67,33 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
+// GetRepoDir is a helper for either using a user provided repoDir or fetching
+// the repoDir from FSRepoDir
+func GetRepoDir(repoDir string) string {
+	if repoDir == "" {
+		repoDir = FSRepoDir()
+	}
+	return repoDir
+}
+
+// FSRepoDir is a helper for getting the path to the repodir
+func FSRepoDir() string {
+	envRepoDir := os.Getenv("FIL_PATH")
+	if envRepoDir != "" {
+		return envRepoDir
+	}
+	return "~/.filecoin"
+}
+
+// CreateRepo provides a quick shorthand for initializing and opening a repo
+func CreateRepo(repoDir string, cfg *config.Config) (*FSRepo, error) {
+	repoDir = GetRepoDir(repoDir)
+	if err := InitFSRepo(repoDir, cfg); err != nil {
+		return nil, err
+	}
+	return OpenFSRepo(repoDir)
+}
+
 // OpenFSRepo opens an already initialized fsrepo at the given path
 func OpenFSRepo(p string) (*FSRepo, error) {
 	expath, err := homedir.Expand(p)
