@@ -388,11 +388,10 @@ func TestCreateRepo(t *testing.T) {
 		dir := filepath.Join(parentDir, "readonly")
 		err = os.Mkdir(dir, 0444)
 		assert.NoError(err)
+		assert.False(ConfigExists(dir))
 
 		_, err = CreateRepo(dir, cfg)
 		assert.Contains(err.Error(), "permission denied")
-
-		assert.False(ConfigExists(dir))
 	})
 
 	t.Run("fails with error if config file already exists", func(t *testing.T) {
