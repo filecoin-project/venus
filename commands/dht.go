@@ -30,7 +30,71 @@ var dhtCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"findprovs": findProvidersDhtCmd,
 		"findpeer":  findPeerDhtCmd,
+		"query":     queryDhtCmd,
 	},
+}
+
+var queryDhtCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Find the closest Peer IDs to a given Peer ID by querying the DHT.",
+		ShortDescription: "Outputs a list of newline-delimited Peer IDs.",
+	},
+
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerID", true, false, "The peerID to run the query against."),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
+	},
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
+
+		id, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return cmds.ClientError("invalid peer ID")
+		}
+
+		ctx, cancel := context.WithCancel(req.Context)
+		ctx, events := notif.RegisterForQueryEvents(ctx)
+
+		closestPeers, err := GetPorcelainAPI(env).NetworkGetClosestPeers(ctx, string(id))
+		if err != nil {
+			cancel()
+			return err
+		}
+
+		go func() {
+			defer cancel()
+			for p := range closestPeers {
+				notif.PublishQueryEvent(ctx, &notif.QueryEvent{
+					ID:   p,
+					Type: notif.FinalPeer,
+				})
+			}
+		}()
+
+		for e := range events {
+			if err := res.Emit(e); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *notif.QueryEvent) error {
+			pfm := pfuncMap{
+				notif.PeerResponse: func(obj *notif.QueryEvent, out io.Writer, verbose bool) {
+					for _, p := range obj.Responses {
+						fmt.Fprintf(out, "%s\n", p.ID.Pretty()) // nolint: errcheck
+					}
+				},
+			}
+			verbose, _ := req.Options[dhtVerboseOptionName].(bool)
+			printEvent(out, w, verbose, pfm)
+			return nil
+		}),
+	},
+	Type: notif.QueryEvent{},
 }
 
 var findProvidersDhtCmd = &cmds.Command{

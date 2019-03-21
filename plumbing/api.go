@@ -256,6 +256,11 @@ func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, coun
 	return api.network.Router.FindProvidersAsync(ctx, key, count)
 }
 
+// NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
+func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+	return api.network.GetClosestPeers(ctx, key)
+}
+
 // NetworkPing sends echo request packets over the network.
 func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
 	return api.network.PingService.Ping(ctx, pid)

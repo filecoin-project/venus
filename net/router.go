@@ -2,11 +2,13 @@ package net
 
 import (
 	"context"
+	"errors"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
 	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
+	"gx/ipfs/QmfM7kwroZsKhKFmnJagPvM28MZMyKxG3QV2AqfvZvEEqS/go-libp2p-kad-dht"
 )
 
 // This struct wraps the filecoin nodes router.  This router is a
@@ -44,4 +46,14 @@ func (r *Router) FindProvidersAsync(ctx context.Context, key cid.Cid, count int)
 // FindPeer searches the libp2p router for a given peer id
 func (r *Router) FindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
 	return r.routing.FindPeer(ctx, peerID)
+}
+
+// GetClosestPeers returns a channel of the K closest peers  to the given key,
+// K is the 'K Bucket' parameter of the Kademlia DHT protocol.
+func (r *Router) GetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+	ipfsDHT, ok := r.routing.(*dht.IpfsDHT)
+	if !ok {
+		return nil, errors.New("underlying routing should be pointer of IpfsDHT")
+	}
+	return ipfsDHT.GetClosestPeers(ctx, key)
 }
