@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
+	flg "flag"
 	"fmt"
 	"os"
 	"time"
@@ -60,6 +60,11 @@ The outputted file can be used by go-filecoin during init to
 set the initial genesis block:
 $ go-filecoin init --genesisfile=genesis.car
 */
+
+var (
+	flag = flg.NewFlagSet(os.Args[0], flg.ExitOnError)
+)
+
 func main() {
 	var defaultSeed = time.Now().Unix()
 
@@ -70,7 +75,8 @@ func main() {
 	configFilePath := flag.String("config", "", "reads configuration from this json file, instead of stdin")
 	seed := flag.Int64("seed", defaultSeed, "provides the seed for randomization, defaults to current unix epoch")
 
-	flag.Parse()
+	// ExitOnError is set
+	flag.Parse(os.Args[1:]) // nolint: errcheck
 
 	jsonEnabled := *jsonout || *outJSON != ""
 
