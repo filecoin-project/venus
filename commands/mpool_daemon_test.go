@@ -16,6 +16,14 @@ func TestMpoolLs(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
+	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
+		return d.RunSuccess("message", "send",
+			"--from", from,
+			"--gas-price", "0", "--gas-limit", "300",
+			"--value=10", to,
+		)
+	}
+
 	t.Run("return all messages", func(t *testing.T) {
 		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
@@ -124,12 +132,4 @@ func TestMpoolRm(t *testing.T) {
 		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
 		assert.Equal("", out)
 	})
-}
-
-func sendMessage(d *th.TestDaemon, from string, to string) *th.Output {
-	return d.RunSuccess("message", "send",
-		"--from", from,
-		"--gas-price", "0", "--gas-limit", "300",
-		"--value=10", to,
-	)
 }

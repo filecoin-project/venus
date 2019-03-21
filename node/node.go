@@ -424,6 +424,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgSender:    msg.NewSender(fcWallet, chainStore, chainStore, outbox, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, pinger),
+		Outbox:       outbox,
 		SigGetter:    mthdsig.NewGetter(chainStore),
 		Wallet:       fcWallet,
 	}))
