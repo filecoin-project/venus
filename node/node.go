@@ -1057,7 +1057,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		log.Errorf("could not getKey from miner actor")
+		log.Errorf("could not get owner address of miner actor")
 		return nil, err
 	}
 	return mining.NewDefaultWorker(
