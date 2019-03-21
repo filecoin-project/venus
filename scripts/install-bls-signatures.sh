@@ -12,6 +12,12 @@ install_local() {
     exit 1
   fi
 
+  if ! [ -x "$(command -v rustup)" ] ; then
+    echo 'Error: rustup is not installed.'
+    echo 'Install Rust toolchain installer to resolve this problem.'
+    exit 1
+  fi
+
   git submodule update --init --recursive bls-signatures/bls-signatures
 
   pushd bls-signatures/bls-signatures

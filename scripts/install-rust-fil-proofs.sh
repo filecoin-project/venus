@@ -55,6 +55,12 @@ install_local() {
     exit 1
   fi
 
+  if ! [ -x "$(command -v rustup)" ] ; then
+    echo 'Error: rustup is not installed.'
+    echo 'Install Rust toolchain installer to resolve this problem.'
+    exit 1
+  fi
+
   pushd proofs/rust-fil-proofs
 
   cargo --version
