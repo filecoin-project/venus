@@ -103,9 +103,18 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 	return network.Reporter.GetBandwidthTotals()
 }
 
+// ConnectionResult represents the result of an attempted connection from the
+// Connect method
+type ConnectionResult struct {
+	PeerID peer.ID
+	Err    error
+}
+
 // Connect connects to peers at the given addresses. Does not retry, and does not
 // try to connect to any more peers if any connection fails.
-func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID, error) {
+func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan ConnectionResult, error) {
+	out := make(chan ConnectionResult)
+
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
 		return nil, fmt.Errorf("peerhost network was not a swarm")
@@ -116,18 +125,20 @@ func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID,
 		return nil, err
 	}
 
-	output := make([]peer.ID, len(pis))
-	for i, pi := range pis {
-		swrm.Backoff().Clear(pi.ID)
-
-		output[i] = pi.ID
-
-		if err := network.host.Connect(ctx, pi); err != nil {
-			return nil, errors.Wrapf(err, "peer: %s", output[i].Pretty())
+	go func() {
+		for _, pi := range pis {
+			swrm.Backoff().Clear(pi.ID)
+			err := network.host.Connect(ctx, pi)
+			out <- ConnectionResult{
+				PeerID: pi.ID,
+				Err:    err,
+			}
 		}
-	}
 
-	return output, nil
+		close(out)
+	}()
+
+	return out, nil
 }
 
 // Peers lists peers currently available on the network
