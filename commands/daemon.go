@@ -179,7 +179,6 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	}()
 
 	// write our api address to file
-	// TODO: use api.Repo() once implemented
 	if err := nd.Repo.SetAPIAddr(config.API.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
