@@ -9,13 +9,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"flag"
+	flg "flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -24,13 +26,13 @@ import (
 	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
 	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
 	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -38,6 +40,7 @@ import (
 
 var (
 	workdir         string
+	binpath         string
 	shell           bool
 	blocktime       = 5 * time.Second
 	err             error
@@ -53,6 +56,8 @@ var (
 	sectorSize uint64
 
 	exitcode int
+
+	flag = flg.NewFlagSet(os.Args[0], flg.ExitOnError)
 )
 
 func init() {
@@ -66,8 +71,27 @@ func init() {
 		minerExpiryArg     = minerExpiry.Text(10)
 	)
 
+	// We default to the binary built in the project directory, fallback
+	// to searching path.
+	binpath, err = getFilecoinBinary()
+	if err != nil {
+		// Look for `go-filecoin` in the path to set `binpath` default
+		// If the binary is not found, an error will be returned. If the
+		// error is ErrNotFound we ignore it.
+		// Error is handled after flag parsing so help can be shown without
+		// erroring first
+		binpath, err = exec.LookPath("go-filecoin")
+		if err != nil {
+			xerr, ok := err.(*exec.Error)
+			if ok && xerr.Err == exec.ErrNotFound {
+				err = nil
+			}
+		}
+	}
+
 	flag.StringVar(&workdir, "workdir", workdir, "set the working directory used to store filecoin repos")
-	flag.BoolVar(&shell, "shell", shell, "drop into a shell")
+	flag.StringVar(&binpath, "binpath", binpath, "set the binary used when executing `go-filecoin` commands")
+	flag.BoolVar(&shell, "shell", shell, "setup a filecoin client node and enter into a shell ready to use")
 	flag.BoolVar(&smallSectors, "small-sectors", smallSectors, "enables small sectors")
 	flag.DurationVar(&blocktime, "blocktime", blocktime, "duration for blocktime")
 	flag.IntVar(&minerCount, "miner-count", minerCount, "number of miners")
@@ -75,6 +99,21 @@ func init() {
 	flag.StringVar(&minerCollateralArg, "miner-collateral", minerCollateralArg, "amount of fil each miner will use for collateral")
 	flag.StringVar(&minerPriceArg, "miner-price", minerPriceArg, "price value used when creating ask for miners")
 	flag.StringVar(&minerExpiryArg, "miner-expiry", minerExpiryArg, "expiry value used when creating ask for miners")
+
+	// ExitOnError is set
+	flag.Parse(os.Args[1:]) // nolint: errcheck
+
+	// If we failed to find `go-filecoin` and it was not set, handle the error
+	if len(binpath) == 0 {
+		msg := "failed when checking for `go-filecoin` binary;"
+		if err == nil {
+			err = fmt.Errorf("no binary provided or found")
+			msg = "please install or build `go-filecoin`;"
+		}
+
+		handleError(err, msg)
+		os.Exit(1)
+	}
 
 	_, ok := minerCollateral.SetString(minerCollateralArg, 10)
 	if !ok {
@@ -93,8 +132,6 @@ func init() {
 		handleError(fmt.Errorf("could not parse miner-expiry"))
 		os.Exit(1)
 	}
-
-	flag.Parse()
 
 	// Set the series global sleep delay to our blocktime
 	series.GlobalSleepDelay = blocktime
@@ -152,12 +189,6 @@ func main() {
 
 	// Defer the teardown, this will shuteverything down for us
 	defer env.Teardown(ctx) // nolint: errcheck
-
-	binpath, err := testhelpers.GetFilecoinBinary()
-	if err != nil {
-		exitcode = handleError(err, "no binary was found, please build go-filecoin;")
-		return
-	}
 
 	// Setup localfilecoin plugin options
 	options := make(map[string]string)
@@ -385,4 +416,37 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 	}
 
 	return sb.GetMaxUserBytesPerStagedSector()
+}
+
+func getFilecoinBinary() (string, error) {
+	gopath, err := getGoPath()
+	if err != nil {
+		return "", err
+	}
+
+	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/go-filecoin")
+	_, err = os.Stat(bin)
+	if err != nil {
+		return "", err
+	}
+
+	if os.IsNotExist(err) {
+		return "", err
+	}
+
+	return bin, nil
+}
+
+func getGoPath() (string, error) {
+	gp := os.Getenv("GOPATH")
+	if gp != "" {
+		return gp, nil
+	}
+
+	home, err := homedir.Dir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(home, "go"), nil
 }
