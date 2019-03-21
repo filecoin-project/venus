@@ -75,7 +75,6 @@ var initCmd = &cmds.Command{
 			return err
 		}
 
-		// TODO: don't create the repo if this fails
 		return node.Init(req.Context, rep, genesisFile, initopts...)
 	},
 	Encoders: cmds.EncoderMap{
