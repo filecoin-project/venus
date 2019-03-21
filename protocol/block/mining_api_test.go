@@ -34,17 +34,35 @@ func TestAPI_MineOnce(t *testing.T) {
 	assert.NotNil(blk.Ticket)
 }
 
-func TestAPI_StartStopMining(t *testing.T) {
+func TestMiningAPI_MiningStart(t *testing.T) {
+	t.Parallel()
+
 	assert := ast.New(t)
 	require := req.New(t)
 	ctx := context.Background()
-
 	api, nd := newAPI(t, assert)
 	require.NoError(nd.Start(ctx))
 	defer nd.Stop(ctx)
 
 	require.NoError(api.MiningStart(ctx))
+	assert.True(nd.IsMining())
+	nd.StopMining(ctx)
+}
+
+func TestMiningAPI_MiningStop(t *testing.T) {
+	t.Parallel()
+
+	assert := ast.New(t)
+	require := req.New(t)
+	ctx := context.Background()
+	api, nd := newAPI(t, assert)
+
+	require.NoError(nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	require.NoError(nd.StartMining(ctx))
 	api.MiningStop(ctx)
+	assert.False(nd.IsMining())
 }
 
 func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {

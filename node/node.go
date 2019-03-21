@@ -604,12 +604,6 @@ func (node *Node) setIsMining(isMining bool) {
 	node.mining.isMining = isMining
 }
 
-func (node *Node) isMining() bool {
-	node.mining.Lock()
-	defer node.mining.Unlock()
-	return node.mining.isMining
-}
-
 func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 	defer func() {
 		node.miningDoneWg.Done()
@@ -627,7 +621,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 			} else {
 				node.miningDoneWg.Add(1)
 				go func() {
-					if node.isMining() {
+					if node.IsMining() {
 						node.AddNewlyMinedBlock(node.miningCtx, output.NewBlock)
 					}
 					node.miningDoneWg.Done()
@@ -760,7 +754,7 @@ func (node *Node) SetBlockTime(blockTime time.Duration) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
-	if node.isMining() {
+	if node.IsMining() {
 		return errors.New("Node is already mining")
 	}
 	minerAddr, err := node.miningAddress()
@@ -1127,4 +1121,11 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // ChainReadStore returns the node's chain store.
 func (node *Node) ChainReadStore() chain.ReadStore {
 	return node.ChainReader
+}
+
+// IsMining returns a boolean indicating whether the node is mining blocks.
+func (node *Node) IsMining() bool {
+	node.mining.Lock()
+	defer node.mining.Unlock()
+	return node.mining.isMining
 }
