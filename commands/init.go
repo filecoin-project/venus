@@ -13,7 +13,6 @@ import (
 	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
 	"gx/ipfs/QmUGpiTCKct5s1F7jaAnY9KJmoo7Qm1R2uhSjq5iHDSUMn/go-car"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
@@ -51,16 +50,11 @@ var initCmd = &cmds.Command{
 			return err
 		}
 		rep, err := repo.CreateRepo(repoDir, newConfig)
-
-		defer func() {
-			if closeErr := rep.Close(); closeErr != nil {
-				if err == nil {
-					err = closeErr
-				} else {
-					err = errors.Wrap(err, closeErr.Error())
-				}
-			} // else err may be set and returned as normal
-		}()
+		if err != nil {
+			return err
+		}
+		// The only error Close can return is that the repo has already been closed
+		defer rep.Close() // nolint: errcheck
 
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
 		genesisFile, err := loadGenesis(req.Context, rep, genesisFileSource)
