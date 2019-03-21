@@ -345,7 +345,7 @@ func TestRepoAPIFile(t *testing.T) {
 func TestCreateRepo(t *testing.T) {
 	cfg := config.NewDefaultConfig()
 
-	t.Run("folder exists", func(t *testing.T) {
+	t.Run("successfully creates when directory exists", func(t *testing.T) {
 		t.Parallel()
 
 		assert := assert.New(t)
@@ -359,7 +359,7 @@ func TestCreateRepo(t *testing.T) {
 		assert.True(ConfigExists(dir))
 	})
 
-	t.Run("folder does not exist", func(t *testing.T) {
+	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
 		t.Parallel()
 
 		assert := assert.New(t)
@@ -376,7 +376,7 @@ func TestCreateRepo(t *testing.T) {
 		assert.True(ConfigExists(dir))
 	})
 
-	t.Run("folder is not writable", func(t *testing.T) {
+	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
 		t.Parallel()
 
 		assert := assert.New(t)
@@ -395,7 +395,7 @@ func TestCreateRepo(t *testing.T) {
 		assert.False(ConfigExists(dir))
 	})
 
-	t.Run("config file already exists", func(t *testing.T) {
+	t.Run("fails with error if config file already exists", func(t *testing.T) {
 		t.Parallel()
 
 		assert := assert.New(t)
