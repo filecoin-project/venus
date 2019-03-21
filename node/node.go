@@ -91,10 +91,10 @@ type Node struct {
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
-	BlockAPI     *block.API
-	RetrievalAPI *retrieval.API
-	StorageAPI   *storage.API
-	PorcelainAPI *porcelain.API
+	BlockMiningAPI *block.MiningAPI
+	PorcelainAPI   *porcelain.API
+	RetrievalAPI   *retrieval.API
+	StorageAPI     *storage.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -112,16 +112,20 @@ type Node struct {
 	Wallet *wallet.Wallet
 
 	// Mining stuff.
-	MiningScheduler mining.Scheduler
-	mining          struct {
+	AddNewlyMinedBlock newBlockFunc
+	blockTime          time.Duration
+	cancelMining       context.CancelFunc
+	GetAncestorsFunc   mining.GetAncestors
+	GetStateTreeFunc   mining.GetStateTree
+	GetWeightFunc      mining.GetWeight
+	MiningWorker       mining.Worker
+	MiningScheduler    mining.Scheduler
+	mining             struct {
 		sync.Mutex
 		isMining bool
 	}
-	miningCtx          context.Context
-	cancelMining       context.CancelFunc
-	miningDoneWg       *sync.WaitGroup
-	AddNewlyMinedBlock newBlockFunc
-	blockTime          time.Duration
+	miningCtx    context.Context
+	miningDoneWg *sync.WaitGroup
 
 	// Storage Market Interfaces
 	StorageMiner *storage.Miner
@@ -451,6 +455,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Router:       router,
 	}
 
+	// set up mining worker funcs
+	nd.GetAncestorsFunc = nd.getAncestors
+	nd.GetStateTreeFunc = nd.getStateTree
+	nd.GetWeightFunc = nd.getWeight
+
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
 	period, err := time.ParseDuration(periodStr)
@@ -595,12 +604,6 @@ func (node *Node) setIsMining(isMining bool) {
 	node.mining.isMining = isMining
 }
 
-func (node *Node) isMining() bool {
-	node.mining.Lock()
-	defer node.mining.Unlock()
-	return node.mining.isMining
-}
-
 func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 	defer func() {
 		node.miningDoneWg.Done()
@@ -618,7 +621,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 			} else {
 				node.miningDoneWg.Add(1)
 				go func() {
-					if node.isMining() {
+					if node.IsMining() {
 						node.AddNewlyMinedBlock(node.miningCtx, output.NewBlock)
 					}
 					node.miningDoneWg.Done()
@@ -751,7 +754,7 @@ func (node *Node) SetBlockTime(blockTime time.Duration) {
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
 // the SectorBuilder for the mining address.
 func (node *Node) StartMining(ctx context.Context) error {
-	if node.isMining() {
+	if node.IsMining() {
 		return errors.New("Node is already mining")
 	}
 	minerAddr, err := node.miningAddress()
@@ -771,48 +774,15 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	blockTime, mineDelay := node.MiningTimes()
+	_, mineDelay := node.MiningTimes()
 
-	if node.MiningScheduler == nil {
-		getStateFromKey := func(ctx context.Context, tsKey string) (state.Tree, error) {
-			tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
-			if err != nil {
-				return nil, err
-			}
-			return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
-		}
-		getState := func(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-			return getStateFromKey(ctx, ts.String())
-		}
-		getWeight := func(ctx context.Context, ts types.TipSet) (uint64, error) {
-			parent, err := ts.Parents()
-			if err != nil {
-				return uint64(0), err
-			}
-			// TODO handle genesis cid more gracefully
-			if parent.Len() == 0 {
-				return node.Consensus.Weight(ctx, ts, nil)
-			}
-			pSt, err := getStateFromKey(ctx, parent.String())
-			if err != nil {
-				return uint64(0), err
-			}
-			return node.Consensus.Weight(ctx, ts, pSt)
-		}
-		getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-			return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
-		}
-		processor := consensus.NewDefaultProcessor()
-
-		minerPubKey, err := node.PorcelainAPI.MinerGetKey(ctx, minerAddr)
-		if err != nil {
-			log.Errorf("could not getKey from miner actor")
+	if node.MiningWorker == nil {
+		if node.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
 			return err
 		}
-
-		worker := mining.NewDefaultWorker(node.MsgPool, getState, getWeight, getAncestors, processor, node.PowerTable,
-			node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey, node.Wallet, blockTime)
-		node.MiningScheduler = mining.NewScheduler(worker, mineDelay, node.ChainReader.Head)
+	}
+	if node.MiningScheduler == nil {
+		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, node.ChainReader.Head)
 	}
 
 	// paranoid check
@@ -999,17 +969,11 @@ func (node *Node) NewAddress() (address.Address, error) {
 // miningOwnerAddress returns the owner of miningAddr.
 // TODO: find a better home for this method
 func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	res, _, err := node.PorcelainAPI.MessageQuery(
-		ctx,
-		address.Undef,
-		miningAddr,
-		"getOwner",
-	)
+	ownerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, miningAddr)
 	if err != nil {
-		return address.Undef, errors.Wrap(err, "failed to getOwner")
+		return address.Undef, errors.Wrap(err, "failed to get miner owner address")
 	}
-
-	return address.NewFromBytes(res[0])
+	return ownerAddr, nil
 }
 
 // BlockHeight returns the current block height of the chain.
@@ -1044,24 +1008,16 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 // setupProtocols creates protocol clients and miners, then sets the node's APIs
 // for each
 func (node *Node) setupProtocols() error {
-	blockTime, mineDelay := node.MiningTimes()
-	blockAPI := block.New(
+	_, mineDelay := node.MiningTimes()
+	blockMiningAPI := block.New(
 		node.AddNewBlock,
-		node.Blockstore,
-		node.cborStore,
 		node.ChainReader,
-		node.Consensus,
-		blockTime,
 		mineDelay,
-		node.MsgPool,
-		node.PorcelainAPI,
-		node.PowerTable,
 		node.StartMining,
 		node.StopMining,
-		node.Syncer,
-		node.Wallet)
+		node.CreateMiningWorker)
 
-	node.BlockAPI = &blockAPI
+	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
 	retapi := retrieval.NewAPI(retrieval.NewClient(node))
@@ -1076,6 +1032,68 @@ func (node *Node) setupProtocols() error {
 	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
+}
+
+// CreateMiningWorker creates a mining.Worker for the node using the configured
+// getStateTree, getWeight, and getAncestors functions for the node
+func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error) {
+	processor := consensus.NewDefaultProcessor()
+
+	minerAddr, err := node.miningAddress()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get mining address")
+	}
+
+	minerPubKey, err := node.PorcelainAPI.MinerGetKey(ctx, minerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get key from miner actor")
+	}
+
+	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		log.Errorf("could not get owner address of miner actor")
+		return nil, err
+	}
+	return mining.NewDefaultWorker(
+		node.MsgPool, node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
+		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
+		node.Wallet, node.blockTime), nil
+}
+
+// getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
+func (node *Node) getStateFromKey(ctx context.Context, tsKey string) (state.Tree, error) {
+	tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
+	if err != nil {
+		return nil, err
+	}
+	return state.LoadStateTree(ctx, node.CborStore(), tsas.TipSetStateRoot, builtin.Actors)
+}
+
+// getStateTree is the default GetStateTree function for the mining worker.
+func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree, error) {
+	return node.getStateFromKey(ctx, ts.String())
+}
+
+// getWeight is the default GetWeight function for the mining worker.
+func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error) {
+	parent, err := ts.Parents()
+	if err != nil {
+		return uint64(0), err
+	}
+	// TODO handle genesis cid more gracefully
+	if parent.Len() == 0 {
+		return node.Consensus.Weight(ctx, ts, nil)
+	}
+	pSt, err := node.getStateFromKey(ctx, parent.String())
+	if err != nil {
+		return uint64(0), err
+	}
+	return node.Consensus.Weight(ctx, ts, pSt)
+}
+
+// getAncestors is the default GetAncestors function for the mining worker.
+func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 }
 
 // -- Accessors
@@ -1103,4 +1121,11 @@ func (node *Node) CborStore() *hamt.CborIpldStore {
 // ChainReadStore returns the node's chain store.
 func (node *Node) ChainReadStore() chain.ReadStore {
 	return node.ChainReader
+}
+
+// IsMining returns a boolean indicating whether the node is mining blocks.
+func (node *Node) IsMining() bool {
+	node.mining.Lock()
+	defer node.mining.Unlock()
+	return node.mining.isMining
 }

@@ -131,11 +131,11 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 
 	servenv := &Env{
 		// TODO: should this be the passed in context?
-		ctx:          context.Background(),
-		porcelainAPI: nd.PorcelainAPI,
-		blockAPI:     nd.BlockAPI,
-		retrievalAPI: nd.RetrievalAPI,
-		storageAPI:   nd.StorageAPI,
+		blockMiningAPI: nd.BlockMiningAPI,
+		ctx:            context.Background(),
+		porcelainAPI:   nd.PorcelainAPI,
+		retrievalAPI:   nd.RetrievalAPI,
+		storageAPI:     nd.StorageAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
