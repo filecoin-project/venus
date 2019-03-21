@@ -92,9 +92,9 @@ type Node struct {
 	PowerTable  consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
+	PorcelainAPI   *porcelain.API
 	RetrievalAPI   *retrieval.API
 	StorageAPI     *storage.API
-	PorcelainAPI   *porcelain.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	HeaviestTipSetCh chan interface{}
@@ -112,20 +112,20 @@ type Node struct {
 	Wallet *wallet.Wallet
 
 	// Mining stuff.
-	MiningWorker    mining.Worker
-	MiningScheduler mining.Scheduler
-	mining          struct {
-		sync.Mutex
-		isMining bool
-	}
-	miningCtx          context.Context
-	cancelMining       context.CancelFunc
-	miningDoneWg       *sync.WaitGroup
 	AddNewlyMinedBlock newBlockFunc
 	blockTime          time.Duration
+	cancelMining       context.CancelFunc
 	GetAncestorsFunc   mining.GetAncestors
 	GetStateTreeFunc   mining.GetStateTree
 	GetWeightFunc      mining.GetWeight
+	MiningWorker       mining.Worker
+	MiningScheduler    mining.Scheduler
+	mining             struct {
+		sync.Mutex
+		isMining bool
+	}
+	miningCtx    context.Context
+	miningDoneWg *sync.WaitGroup
 
 	// Storage Market Interfaces
 	StorageMiner *storage.Miner
@@ -1066,8 +1066,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		node.Wallet, node.blockTime), nil
 }
 
-// getStateFromKey is used by getAncestors, getStateTree, and getWeight to get the
-// tipset and state for a given key
+// getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
 func (node *Node) getStateFromKey(ctx context.Context, tsKey string) (state.Tree, error) {
 	tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
 	if err != nil {
