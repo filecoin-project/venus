@@ -16,6 +16,23 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
+func TestChainHead(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	assert := assert.New(t)
+
+	d := th.NewDaemon(t).Start()
+	defer d.ShutdownSuccess()
+
+	op := d.RunSuccess("chain", "head")
+	result := op.ReadStdoutTrimNewlines()
+
+	maybeCid, err := cid.Decode(result)
+	require.NoError(err)
+
+	assert.Equal(result, maybeCid.String())
+}
+
 func TestChainDaemon(t *testing.T) {
 	t.Parallel()
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
