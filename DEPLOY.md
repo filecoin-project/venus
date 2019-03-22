@@ -45,11 +45,6 @@ The nightly release should be tested prior to this.
 	```
 	This will commence the release and deploy process in [CircleCI project](https://circleci.com/gh/filecoin-project/go-filecoin)
 
-3. After the `go-filecoin` build successfully completes in CircleCI, you must manually approve the [Terraform deploy workflow](https://circleci.com/gh/filecoin-project/workflows/go-filecoin-infra/tree/filecoin-testnet).
-View the most recent workflow and approve the `hold` job which will subsequently trigger the `deploy_user_devnet`.
-This manual approval gate is to prevent unintentional destructive deployments of the User Devnet.
-@TODO replace the link above with `filecoin-usernet` branch after testing
-
 That's it! The release and deploy process should be complete.
 
 During release testing, bug fixes or changes should be cherry picked from master in to the release branch as needed.
