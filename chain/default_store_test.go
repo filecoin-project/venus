@@ -16,17 +16,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Note: many of these tests use the test chain defined in the init function of default_syncer_test.
 func initStoreTest(ctx context.Context, require *require.Assertions) {
-	powerTable := &testhelpers.TestView{}
+	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, testhelpers.NewTestProcessor(), powerTable, genCid, proofs.NewFakeVerifier(true, nil))
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), powerTable, genCid, proofs.NewFakeVerifier(true, nil))
 	initSyncTest(require, con, initGenesis, cst, bs, r)
 	requireSetTestChain(require, con, true)
 }
@@ -61,11 +61,11 @@ func requirePutTestChain(require *require.Assertions, chainStore chain.Store) {
 		TipSet:          link4,
 		TipSetStateRoot: link4State,
 	}
-	chain.RequirePutTsas(ctx, require, chainStore, genTsas)
-	chain.RequirePutTsas(ctx, require, chainStore, link1Tsas)
-	chain.RequirePutTsas(ctx, require, chainStore, link2Tsas)
-	chain.RequirePutTsas(ctx, require, chainStore, link3Tsas)
-	chain.RequirePutTsas(ctx, require, chainStore, link4Tsas)
+	th.RequirePutTsas(ctx, require, chainStore, genTsas)
+	th.RequirePutTsas(ctx, require, chainStore, link1Tsas)
+	th.RequirePutTsas(ctx, require, chainStore, link2Tsas)
+	th.RequirePutTsas(ctx, require, chainStore, link3Tsas)
+	th.RequirePutTsas(ctx, require, chainStore, link4Tsas)
 }
 
 func requireGetTsasByParentAndHeight(ctx context.Context, require *require.Assertions, chain chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
@@ -168,7 +168,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
 	mockSignerPubKey := ki[0].PublicKey()
 
-	fakeChildParams := chain.FakeChildParams{
+	fakeChildParams := th.FakeChildParams{
 		Parent:      genTS,
 		GenesisCid:  genCid,
 		StateRoot:   genStateRoot,
@@ -181,14 +181,14 @@ func TestGetMultipleByParent(t *testing.T) {
 	requirePutTestChain(require, chainStore)
 	pk1 := genTS.String()
 	// give one parent multiple children and then query
-	newBlk := chain.RequireMkFakeChild(require, fakeChildParams)
-	newChild := testhelpers.RequireNewTipSet(require, newBlk)
+	newBlk := th.RequireMkFakeChild(require, fakeChildParams)
+	newChild := th.RequireNewTipSet(require, newBlk)
 	newRoot := cidGetter()
 	newChildTsas := &chain.TipSetAndState{
 		TipSet:          newChild,
 		TipSetStateRoot: newRoot,
 	}
-	chain.RequirePutTsas(ctx, require, chainStore, newChildTsas)
+	th.RequirePutTsas(ctx, require, chainStore, newChildTsas)
 	gotNew1 := requireGetTsasByParentAndHeight(ctx, require, chainStore, pk1, uint64(1))
 	require.Equal(2, len(gotNew1))
 	for _, tsas := range gotNew1 {
@@ -430,7 +430,7 @@ func TestUnknownBlockRetrievalError(t *testing.T) {
 	parBlock := types.NewBlockForTest(nil, 0)
 	chlBlock := types.NewBlockForTest(parBlock, 1)
 
-	chlTS := testhelpers.RequireNewTipSet(require, chlBlock)
+	chlTS := th.RequireNewTipSet(require, chlBlock)
 	err := chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          chlTS,
 		TipSetStateRoot: chlBlock.StateRoot,

@@ -1,4 +1,4 @@
-package chain
+package testhelpers
 
 import (
 	"context"
@@ -11,10 +11,10 @@ import (
 	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -51,10 +51,10 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	powerTableView := &th.TestView{}
+	powerTableView := &TestView{}
 	con := consensus.NewExpected(cst,
 		bs,
-		th.NewTestProcessor(),
+		NewTestProcessor(),
 		powerTableView,
 		params.GenesisCid,
 		proofs.NewFakeVerifier(true, nil))
@@ -103,7 +103,7 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := th.NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
+	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
@@ -129,7 +129,7 @@ func RequireMkFakeChain(require *require.Assertions, base types.TipSet, num int,
 	params.Parent = base
 	for i := 0; i < num; i++ {
 		block := RequireMkFakeChild(require, params)
-		ts := th.RequireNewTipSet(require, block)
+		ts := RequireNewTipSet(require, block)
 		ret = append(ret, ts)
 		params.Parent = ts
 	}
@@ -172,8 +172,8 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 
 // RequirePutTsas ensures that the provided tipset and state is placed in the
 // input store.
-func RequirePutTsas(ctx context.Context, require *require.Assertions, chain Store, tsas *TipSetAndState) {
-	err := chain.PutTipSetAndState(ctx, tsas)
+func RequirePutTsas(ctx context.Context, require *require.Assertions, chn chain.Store, tsas *chain.TipSetAndState) {
+	err := chn.PutTipSetAndState(ctx, tsas)
 	require.NoError(err)
 }
 
@@ -188,7 +188,7 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPowe
 	}
 
 	for {
-		postProof = th.MakeRandomPoSTProofForTest()
+		postProof = MakeRandomPoSTProofForTest()
 		ticket, err := consensus.CreateTicket(postProof, signerPubKey, signer)
 		if err != nil {
 			errStr := fmt.Sprintf("error creating ticket: %s", err)
