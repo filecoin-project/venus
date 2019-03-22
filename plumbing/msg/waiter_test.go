@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -69,7 +69,7 @@ func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *r
 	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	})
@@ -93,7 +93,7 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, require *requir
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	})
@@ -137,7 +137,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, testhelpers.RequireRandomPeerID(), types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, th.RequireRandomPeerID(), types.ZeroAttoFIL),
 	)
 	cst, chainStore, waiter := setupTestWithGif(require, testGen)
 
@@ -156,8 +156,8 @@ func TestWaitConflicting(t *testing.T) {
 
 	require.NotNil(chainStore.GenesisCid())
 
-	b1 := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{
+	b1 := th.RequireMkFakeChild(require,
+		th.FakeChildParams{
 			MinerAddr:   minerAddr,
 			Parent:      baseTS,
 			GenesisCid:  chainStore.GenesisCid(),
@@ -169,8 +169,8 @@ func TestWaitConflicting(t *testing.T) {
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(cst, b1)
 
-	b2 := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{
+	b2 := th.RequireMkFakeChild(require,
+		th.FakeChildParams{
 			MinerAddr:   minerAddr,
 			Parent:      baseTS,
 			GenesisCid:  chainStore.GenesisCid(),
@@ -182,8 +182,8 @@ func TestWaitConflicting(t *testing.T) {
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)
 
-	ts := testhelpers.RequireNewTipSet(require, b1, b2)
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	ts := th.RequireNewTipSet(require, b1, b2)
+	th.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,
 	})

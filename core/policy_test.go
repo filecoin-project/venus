@@ -6,8 +6,8 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -33,7 +33,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	}
 
 	t.Run("old block does nothing", func(t *testing.T) {
-		blocks := chain.NewFakeBlockProvider()
+		blocks := th.NewFakeBlockProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(q, blocks, 10)
 
@@ -52,7 +52,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("removes mined messages", func(t *testing.T) {
-		blocks := chain.NewFakeBlockProvider()
+		blocks := th.NewFakeBlockProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(q, blocks, 10)
 
@@ -97,7 +97,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("expires old messages", func(t *testing.T) {
-		blocks := chain.NewFakeBlockProvider()
+		blocks := th.NewFakeBlockProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(q, blocks, 10)
 
@@ -131,7 +131,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("fails when messages out of nonce order", func(t *testing.T) {
-		blocks := chain.NewFakeBlockProvider()
+		blocks := th.NewFakeBlockProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(q, blocks, 10)
 

@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
@@ -221,7 +222,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	oldChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{m[2], m[3]}})
 	newChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
 
-	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
 		TipSet:          oldChain[len(oldChain)-1],
 		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
 	})
@@ -230,11 +231,11 @@ func TestUpdateMessagePool(t *testing.T) {
 	updateMsgPoolDoneCh := make(chan struct{})
 	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
 	// Triggers a notification, node should update the message pool as a result.
-	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
 		TipSet:          newChain[len(newChain)-2],
 		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
 	})
-	chain.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, require, chainForTest, &chain.TipSetAndState{
 		TipSet:          newChain[len(newChain)-1],
 		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
 	})
@@ -313,7 +314,7 @@ func TestNodeConfig(t *testing.T) {
 func repoConfig() node.ConfigOpt {
 	defaultCfg := config.NewDefaultConfig()
 	return func(c *node.Config) error {
-		// overwrite value set with testhelpers.GetFreePort()
+		// overwrite value set with th.GetFreePort()
 		c.Repo.Config().API.Address = defaultCfg.API.Address
 		return nil
 	}

@@ -8,6 +8,7 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/chain"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -16,7 +17,7 @@ func TestGetParentTipSet(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
-	store := chain.NewFakeBlockProvider()
+	store := th.NewFakeBlockProvider()
 
 	root := store.NewBlock(0)
 	b11 := store.NewBlock(1, root)
@@ -47,7 +48,7 @@ func TestIterAncestors(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 	ctx := context.Background()
-	store := chain.NewFakeBlockProvider()
+	store := th.NewFakeBlockProvider()
 
 	root := store.NewBlock(0)
 	b11 := store.NewBlock(1, root)
