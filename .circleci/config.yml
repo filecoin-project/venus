@@ -603,7 +603,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
 
       - build_linux:
           filters:
@@ -614,7 +614,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
       - publish_release:
           requires:
             - build_linux
@@ -627,7 +627,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
 
   build_nightly_devnet:
     triggers:
@@ -671,7 +671,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
 
       - build_faucet_and_genesis:
           requires:
@@ -684,7 +684,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
 
       - build_docker_img:
           user_devnet: true
@@ -699,7 +699,7 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
 
       - trigger_user_devnet_deploy:
           requires:
@@ -712,4 +712,4 @@ workflows:
               only:
                 # - /^\d+\.\d+\.\d+$/
                 # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(testnet\-)*\d+\.\d+\.\d+$/
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
