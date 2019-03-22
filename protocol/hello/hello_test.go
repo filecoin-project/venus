@@ -158,6 +158,40 @@ func TestHelloWrongVersion(t *testing.T) {
 	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
 }
 
+func TestHelloWrongVersionTestDevnet(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	require := require.New(t)
+
+	mn, err := mocknet.WithNPeers(ctx, 2)
+	assert.NoError(t, err)
+
+	a, b := mn.Hosts()[0], mn.Hosts()[1]
+
+	genesisA := &types.Block{Nonce: 451}
+
+	heavy := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+
+	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	hg := &mockHeaviestGetter{heavy}
+
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha1")
+	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
+	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+
+	require.NoError(mn.LinkAll())
+	require.NoError(mn.ConnectAllButSelf())
+
+	time.Sleep(time.Millisecond * 50)
+
+	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
+	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
+}
+
 func TestHelloMultiBlock(t *testing.T) {
 	t.Parallel()
 
