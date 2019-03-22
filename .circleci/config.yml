@@ -395,7 +395,7 @@ jobs:
           keys:
             - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
             - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "package.json" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-
+      - git_fetch_all_tags
       - checkout
       - run:
           name: build faucet and genesis-file-server
