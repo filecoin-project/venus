@@ -106,14 +106,13 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 }
 
 // ConnectionResult represents the result of an attempted connection from the
-// Connect method
+// Connect method.
 type ConnectionResult struct {
 	PeerID peer.ID
 	Err    error
 }
 
-// Connect connects to peers at the given addresses. Does not retry, and does not
-// try to connect to any more peers if any connection fails.
+// Connect connects to peers at the given addresses. Does not retry.
 func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan ConnectionResult, error) {
 	outCh := make(chan ConnectionResult)
 
