@@ -29,11 +29,20 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		headTipset := GetPorcelainAPI(env).ChainHead(req.Context)
-		blocks := headTipset.ToSlice()
-		return re.Emit(blocks)
+		return re.Emit(GetPorcelainAPI(env).ChainHead(req.Context).ToSortedCidSet())
 	},
 	Type: []cid.Cid{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res []cid.Cid) error {
+			for _, r := range res {
+				_, err := fmt.Fprintln(w, r.String())
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+	},
 }
 
 var chainLsCmd = &cmds.Command{
