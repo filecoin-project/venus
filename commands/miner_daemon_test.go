@@ -222,7 +222,7 @@ func TestMinerCreate(t *testing.T) {
 		tf(testAddr, peer.ID(""))
 
 		// Will accept a peer ID if one is provided
-		tf(testAddr, th.RequireRandomPeerID())
+		tf(testAddr, th.RequireRandomPeerID(require))
 	})
 
 	t.Run("validation failure", func(t *testing.T) {

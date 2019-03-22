@@ -71,7 +71,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	addr := fixtures.TestAddresses[0]
 	minerAddr := fixtures.TestMiners[0]
-	minerPidForUpdate := th.RequireRandomPeerID()
+	minerPidForUpdate := th.RequireRandomPeerID(require.New(t))
 
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)

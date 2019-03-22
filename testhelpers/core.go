@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -83,12 +82,9 @@ func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMa
 }
 
 // RequireRandomPeerID returns a new libp2p peer ID or panics.
-func RequireRandomPeerID() peer.ID {
-	pid, err := net.RandPeerID()
-	if err != nil {
-		panic(err)
-	}
-
+func RequireRandomPeerID(require *require.Assertions) peer.ID {
+	pid, err := RandPeerID()
+	require.NoError(err)
 	return pid
 }
 

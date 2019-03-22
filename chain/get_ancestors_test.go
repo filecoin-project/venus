@@ -2,26 +2,25 @@ package chain_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"testing"
 
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // setupGetAncestorTests initializes genesis and chain store for tests.
-func setupGetAncestorTests(require *require.Assertions) (context.Context, *net.TestFetcher, chain.Store) {
+func setupGetAncestorTests(require *require.Assertions) (context.Context, *th.TestFetcher, chain.Store) {
 	_, chainStore, _, blockSource := initSyncTestDefault(require)
 	return context.Background(), blockSource, chainStore
 }
 
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, require *require.Assertions, blockSource *net.TestFetcher, chainStore chain.Store, numBlocks int) {
+func requireGrowChain(ctx context.Context, require *require.Assertions, blockSource *th.TestFetcher, chainStore chain.Store, numBlocks int) {
 	link := chainStore.Head()
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
