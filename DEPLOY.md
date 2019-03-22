@@ -45,6 +45,9 @@ The nightly release should be tested prior to this.
 	```
 	This will commence the release and deploy process in [CircleCI project](https://circleci.com/gh/filecoin-project/go-filecoin)
 
+	NOTE: Github may not deliver webhooks for tags in some circumstances - see the note at the end [Executing Workflows for a Git Tag](https://circleci.com/docs/2.0/workflows/#executing-workflows-for-a-git-tag) CircleCI documentation.
+	You may need to delete the tag in Github and re-push if you notice a build hasn't been triggered.
+
 That's it! The release and deploy process should be complete.
 
 During release testing, bug fixes or changes should be cherry picked from master in to the release branch as needed.
