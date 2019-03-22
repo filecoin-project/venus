@@ -1,4 +1,4 @@
-package storage
+package storage_test
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
@@ -17,10 +16,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	//. "github.com/filecoin-project/go-filecoin/protocol/storage"
+	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
 )
@@ -50,7 +49,7 @@ func TestProposeDeal(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(require)
-	client := NewClient(testNode.GetBlockTime(), makeFakeHost(), testAPI)
+	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
@@ -247,9 +246,4 @@ func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	ctp.deals[storageDeal.Response.ProposalCid] = storageDeal
 	return nil
-}
-
-func makeFakeHost() host.Host {
-	nopfunc := func(_ context.Context, _ peerstore.PeerInfo) error { return nil }
-	return &net.FakeHost{ConnectImpl: nopfunc}
 }

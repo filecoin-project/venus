@@ -1025,11 +1025,12 @@ func (node *Node) setupProtocols() error {
 	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.Host()))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api
-	smcAPI := storage.NewAPI(storage.NewClient(node.blockTime, node.Host(), node.PorcelainAPI))
+	smc := storage.NewClient(node.blockTime, node.host, node.PorcelainAPI)
+	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
 }

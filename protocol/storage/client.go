@@ -196,7 +196,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	if err := smc.recordResponse(&response, miner, proposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
-	smc.log.Debugf("propose deal success for: %s, %v\n", miner.String(), proposal)
+	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
 
 	return &response, nil
 }
