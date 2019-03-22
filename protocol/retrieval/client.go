@@ -5,10 +5,13 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"time"
 
 	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	inet "gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	host "gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -19,31 +22,27 @@ import (
 // succeed.
 const RetrievePieceChunkSize = 256 << 8
 
-// TODO: better name
-type clientNode interface {
-	Host() host.Host
-}
-
 // Client is a client interface to the retrieval market protocols.
 type Client struct {
-	node clientNode
+	host host.Host
+	log  logging.EventLogger
 }
 
 // NewClient produces a new Client.
-func NewClient(nd clientNode) *Client {
+func NewClient(host host.Host, blockTime time.Duration) *Client {
 	return &Client{
-		node: nd,
+		host: host,
+		log:  logging.Logger("retrieval/client"),
 	}
 }
 
 // RetrievePiece connects to a miner and transfers a piece of content.
 func (sc *Client) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceCID cid.Cid) (io.ReadCloser, error) {
-	s, err := sc.node.Host().NewStream(ctx, minerPeerID, retrievalFreeProtocol)
+	s, err := sc.host.NewStream(ctx, minerPeerID, retrievalFreeProtocol)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create stream to retrieval miner")
 	}
-
-	defer s.Close() // nolint: errcheck
+	defer sc.safeCloseStream(s)
 
 	streamReader := cbu.NewMsgReader(s)
 
@@ -82,4 +81,10 @@ func (sc *Client) RetrievePiece(ctx context.Context, minerPeerID peer.ID, pieceC
 	buffered := ioutil.NopCloser(bytes.NewReader(buf))
 
 	return buffered, nil
+}
+
+func (sc *Client) safeCloseStream(stream inet.Stream) {
+	if err := stream.Close(); err != nil {
+		log.Errorf("error closing stream: %s", err)
+	}
 }

@@ -6,19 +6,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
-
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
 	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
+	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
+	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	//. "github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
 )
@@ -28,7 +30,7 @@ var testSignature = types.Signature("<test signature>")
 func TestProposeDeal(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-
+	ctx := context.Background()
 	addressCreator := address.NewForTestGetter()
 
 	var proposal *storagedeal.SignedDealProposal
@@ -48,13 +50,11 @@ func TestProposeDeal(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(require)
-
-	client, err := NewClient(testNode, testAPI)
-	require.NoError(err)
+	client := NewClient(testNode.GetBlockTime(), makeFakeHost(), testAPI)
+	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
 	minerAddr := addressCreator()
-	ctx := context.Background()
 	askID := uint64(67)
 	duration := uint64(10000)
 	dealResponse, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
@@ -218,7 +218,10 @@ func (tcn *testClientNode) GetBlockTime() time.Duration {
 	return 100 * time.Millisecond
 }
 
-func (tcn *testClientNode) MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error {
+// MakeTestProtocolRequest calls the responder set for the testClientNode to provide a test
+// response for a protocol request.
+// It ignores the host param required for the storage client interface.
+func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, _ host.Host, request interface{}, response interface{}) error {
 	dealResponse := response.(*storagedeal.Response)
 	res, err := tcn.responder(request)
 	if err != nil {
@@ -244,4 +247,9 @@ func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	ctp.deals[storageDeal.Response.ProposalCid] = storageDeal
 	return nil
+}
+
+func makeFakeHost() host.Host {
+	nopfunc := func(_ context.Context, _ peerstore.PeerInfo) error { return nil }
+	return &net.FakeHost{ConnectImpl: nopfunc}
 }
