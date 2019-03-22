@@ -113,7 +113,7 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return ErrBadGenesis
 	}
-	if h.net == "devnet-user" && msg.CommitSha != h.commitSha {
+	if (h.net == "devnet-test" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
 		return ErrWrongVersion
 	}
 
