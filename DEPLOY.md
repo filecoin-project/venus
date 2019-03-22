@@ -38,9 +38,9 @@ The nightly release should be tested prior to this.
 
 2. Create and push a git tag conforming to the expected tag schema listed above
 	```
-	git tag -a testnet-0.1.0 <sha1-of-commit>
+	git tag -a testnet-0.1.0 <sha1-of-commit> -m "$(date -u '+%Y-%m-%dT%H:%M:%S%z')"
 	OR
-	git tag -a 0.1.0 <sha1-of-commit>
+	git tag -a 0.1.0 <sha1-of-commit> -m "$(date -u '+%Y-%m-%dT%H:%M:%S%z')"
 	git push origin testnet-0.1.0
 	```
 	This will commence the release and deploy process in [CircleCI project](https://circleci.com/gh/filecoin-project/go-filecoin)
