@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -113,7 +115,7 @@ type ConnectionResult struct {
 // Connect connects to peers at the given addresses. Does not retry, and does not
 // try to connect to any more peers if any connection fails.
 func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan ConnectionResult, error) {
-	out := make(chan ConnectionResult)
+	outCh := make(chan ConnectionResult)
 
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
@@ -126,19 +128,26 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan Con
 	}
 
 	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(pis))
+
 		for _, pi := range pis {
-			swrm.Backoff().Clear(pi.ID)
-			err := network.host.Connect(ctx, pi)
-			out <- ConnectionResult{
-				PeerID: pi.ID,
-				Err:    err,
-			}
+			go func(pi peerstore.PeerInfo) {
+				swrm.Backoff().Clear(pi.ID)
+				err := network.host.Connect(ctx, pi)
+				outCh <- ConnectionResult{
+					PeerID: pi.ID,
+					Err:    err,
+				}
+				wg.Done()
+			}(pi)
 		}
 
-		close(out)
+		wg.Wait()
+		close(outCh)
 	}()
 
-	return out, nil
+	return outCh, nil
 }
 
 // Peers lists peers currently available on the network
