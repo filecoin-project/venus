@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -61,7 +60,10 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	minerPeerID = th.RequireRandomPeerID()
+	minerPeerID, err = th.RandPeerID()
+	if err != nil {
+		panic(err)
+	}
 
 	// Set up the test chain
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
@@ -176,7 +178,7 @@ func requireSetTestChain(require *require.Assertions, con consensus.Protocol, mo
 }
 
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
-func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (*chain.DefaultSyncer, *net.TestFetcher) {
+func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (*chain.DefaultSyncer, *th.TestFetcher) {
 	powerTable := &th.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
@@ -189,7 +191,7 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (*chain.Defaul
 	chainDS := r.ChainDatastore()
 	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
-	blockSource := net.NewTestFetcher()
+	blockSource := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
@@ -200,7 +202,7 @@ func loadSyncerFromRepo(require *require.Assertions, r repo.Repo) (*chain.Defaul
 
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(require *require.Assertions) (*chain.DefaultSyncer, chain.Store, repo.Repo, *net.TestFetcher) {
+func initSyncTestDefault(require *require.Assertions) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -214,7 +216,7 @@ func initSyncTestDefault(require *require.Assertions) (*chain.DefaultSyncer, cha
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensus.PowerTableView) (*chain.DefaultSyncer, chain.Store, consensus.Protocol, *net.TestFetcher) {
+func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensus.PowerTableView) (*chain.DefaultSyncer, chain.Store, consensus.Protocol, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -226,7 +228,7 @@ func initSyncTestWithPowerTable(require *require.Assertions, powerTable consensu
 	return sync, testchain, con, fetcher
 }
 
-func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (*chain.DefaultSyncer, chain.Store, repo.Repo, *net.TestFetcher) {
+func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -235,7 +237,7 @@ func initSyncTest(require *require.Assertions, con consensus.Protocol, genFunc f
 	chainDS := r.ChainDatastore()
 	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
 
-	fetcher := net.NewTestFetcher()
+	fetcher := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain genesis block and state
@@ -324,7 +326,7 @@ func assertHead(assert *assert.Assertions, chain chain.Store, head types.TipSet)
 	assert.Equal(head, gotHead)
 }
 
-func requirePutBlocks(require *require.Assertions, f *net.TestFetcher, blocks ...*types.Block) []cid.Cid {
+func requirePutBlocks(require *require.Assertions, f *th.TestFetcher, blocks ...*types.Block) []cid.Cid {
 	var cids []cid.Cid
 	for _, block := range blocks {
 		c := block.Cid()
@@ -944,7 +946,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	requireTsAdded(require, chainStore, calcGenTS)
 
 	// Setup a fetcher for feeding blocks into the syncer.
-	blockSource := net.NewTestFetcher()
+	blockSource := th.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)

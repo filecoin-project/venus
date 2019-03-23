@@ -58,7 +58,7 @@ func TestAskFunctions(t *testing.T) {
 
 	st, vms := core.CreateStorages(ctx, t)
 
-	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte("abcd123"), th.RequireRandomPeerID())
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, []byte("abcd123"), th.RequireRandomPeerID(require))
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
@@ -122,13 +122,14 @@ func TestAskFunctions(t *testing.T) {
 
 func TestGetKey(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	st, vms := core.CreateStorages(ctx, t)
 
 	signature := []byte("my public key")
-	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, signature, th.RequireRandomPeerID())
+	minerAddr := createTestMiner(assert, st, vms, address.TestAddress, signature, th.RequireRandomPeerID(require))
 
 	// retrieve key
 	result := callQueryMethodSuccess("getKey", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -137,7 +138,8 @@ func TestGetKey(t *testing.T) {
 
 func TestCBOREncodeState(t *testing.T) {
 	assert := assert.New(t)
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(), types.NewZeroAttoFIL())
+	require := require.New(t)
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(require), types.NewZeroAttoFIL())
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     proofs.CommD{},
@@ -159,7 +161,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		origPid := th.RequireRandomPeerID()
+		origPid := th.RequireRandomPeerID(require)
 		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		// retrieve peer ID
@@ -170,7 +172,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		require.Equal(peer.IDB58Encode(origPid), peer.IDB58Encode(pid))
 
 		// update peer ID
-		newPid := th.RequireRandomPeerID()
+		newPid := th.RequireRandomPeerID(require)
 		updatePeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
@@ -188,7 +190,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("other public key"), th.RequireRandomPeerID())
+		minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("other public key"), th.RequireRandomPeerID(require))
 
 		// update peer ID and expect authorization failure (TestAddress2 doesn't owner miner)
 		updatePeerIdMsg := types.NewMessage(
@@ -197,7 +199,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 			core.MustGetNonce(st, address.TestAddress2),
 			types.NewAttoFILFromFIL(0),
 			"updatePeerID",
-			actor.MustConvertParams(th.RequireRandomPeerID()))
+			actor.MustConvertParams(th.RequireRandomPeerID(require)))
 
 		applyMsgResult, err := th.ApplyTestMessage(st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
 		require.NoError(err)
@@ -217,7 +219,7 @@ func TestMinerGetPledge(t *testing.T) {
 		st, vms := core.CreateStorages(ctx, t)
 
 		minerAddr := createTestMinerWith(120, 240, assert.New(t), st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID())
+			[]byte("my public key"), th.RequireRandomPeerID(require))
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPledge", ctx, t, st, vms, address.TestAddress, minerAddr)[0][0]
@@ -237,7 +239,7 @@ func TestMinerGetPower(t *testing.T) {
 		st, vms := core.CreateStorages(ctx, t)
 
 		minerAddr := createTestMinerWith(120, 240, assert.New(t), st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID())
+			[]byte("my public key"), th.RequireRandomPeerID(require))
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -279,7 +281,7 @@ func TestMinerCommitSector(t *testing.T) {
 	ctx := context.Background()
 	st, vms := core.CreateStorages(ctx, t)
 
-	origPid := th.RequireRandomPeerID()
+	origPid := th.RequireRandomPeerID(require)
 	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 	commR := th.MakeCommitment()
@@ -312,7 +314,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	ancestors := th.RequireTipSetChain(t, 10)
 
-	origPid := th.RequireRandomPeerID()
+	origPid := th.RequireRandomPeerID(require)
 	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 	// add a sector

@@ -121,7 +121,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	act1 := th.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
 	act2 := th.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
 	fakeNetAct := th.RequireNewFakeActorWithTokens(require, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
-	minerAct := th.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(), types.NewAttoFILFromFIL(10000))
+	minerAct := th.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(require), types.NewAttoFILFromFIL(10000))
 	minerOwner := th.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
