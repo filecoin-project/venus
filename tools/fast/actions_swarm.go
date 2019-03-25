@@ -11,8 +11,8 @@ import (
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process
-func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) ([]peer.ID, error) {
-	var out []peer.ID
+func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) (*net.ConnectionResult, error) {
+	var out net.ConnectionResult
 
 	args := []string{"go-filecoin", "swarm", "connect"}
 
@@ -24,7 +24,7 @@ func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiadd
 		return nil, err
 	}
 
-	return out, nil
+	return &out, nil
 }
 
 // DhtFindpeer runs the `dht findpeer` command against the filecoin process

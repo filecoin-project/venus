@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
 	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/QmU7iTrsNaJfu1Rf5DrvaJLH9wJtQwmP4Dj8oPduprAU68/go-libp2p-swarm"
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
@@ -103,9 +105,17 @@ func (network *Network) GetBandwidthStats() metrics.Stats {
 	return network.Reporter.GetBandwidthTotals()
 }
 
-// Connect connects to peers at the given addresses. Does not retry, and does not
-// try to connect to any more peers if any connection fails.
-func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID, error) {
+// ConnectionResult represents the result of an attempted connection from the
+// Connect method.
+type ConnectionResult struct {
+	PeerID peer.ID
+	Err    error
+}
+
+// Connect connects to peers at the given addresses. Does not retry.
+func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan ConnectionResult, error) {
+	outCh := make(chan ConnectionResult)
+
 	swrm, ok := network.host.Network().(*swarm.Swarm)
 	if !ok {
 		return nil, fmt.Errorf("peerhost network was not a swarm")
@@ -116,18 +126,27 @@ func (network *Network) Connect(ctx context.Context, addrs []string) ([]peer.ID,
 		return nil, err
 	}
 
-	output := make([]peer.ID, len(pis))
-	for i, pi := range pis {
-		swrm.Backoff().Clear(pi.ID)
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(pis))
 
-		output[i] = pi.ID
-
-		if err := network.host.Connect(ctx, pi); err != nil {
-			return nil, errors.Wrapf(err, "peer: %s", output[i].Pretty())
+		for _, pi := range pis {
+			go func(pi peerstore.PeerInfo) {
+				swrm.Backoff().Clear(pi.ID)
+				err := network.host.Connect(ctx, pi)
+				outCh <- ConnectionResult{
+					PeerID: pi.ID,
+					Err:    err,
+				}
+				wg.Done()
+			}(pi)
 		}
-	}
 
-	return output, nil
+		wg.Wait()
+		close(outCh)
+	}()
+
+	return outCh, nil
 }
 
 // Peers lists peers currently available on the network

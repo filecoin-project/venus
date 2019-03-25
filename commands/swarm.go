@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
 	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
 
@@ -103,13 +102,21 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 			return err
 		}
 
-		return re.Emit(results)
+		for result := range results {
+			if err := re.Emit(result); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	},
-	Type: []peer.ID{},
+	Type: net.ConnectionResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, results *[]peer.ID) error {
-			for _, result := range *results {
-				fmt.Fprintf(w, "connect %s success\n", result.Pretty()) // nolint: errcheck
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result net.ConnectionResult) error {
+			if result.Err != nil {
+				fmt.Fprintf(w, "connect %s failed: %s\n", result.PeerID.Pretty(), result.Err) // nolint: errcheck
+			} else {
+				fmt.Fprintf(w, "connect %s success\n", result.PeerID.Pretty()) // nolint: errcheck
 			}
 			return nil
 		}),
