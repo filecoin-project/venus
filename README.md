@@ -100,7 +100,7 @@ other build and test dependencies (with precompiled proofs, recommended), run:
 
 ```sh
 cd ${GOPATH}/src/github.com/filecoin-project/go-filecoin
-FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build/*.go deps
+FILECOIN_USE_PRECOMPILED_RUST_PROOFS=true go run ./build deps
 ```
 
 Note: The first time you run `deps` can be **slow** as a ~1.6GB parameter file is either downloaded or generated locally in `/tmp/filecoin-proof-parameters`.
@@ -110,35 +110,35 @@ Have patience; future runs will be faster.
 
 ```sh
 # First, build the binary
-go run ./build/*.go build
+go run ./build build
 
 # Install go-filecoin to ${GOPATH}/bin (necessary for tests)
-go run ./build/*.go install
+go run ./build install
 
 # Then, run the tests.
-go run ./build/*.go test
+go run ./build test
 
 # Build and test can be combined!
-go run ./build/*.go best
+go run ./build best
 ```
 
 Other handy build commands include:
 
 ```sh
 # Check the code for style and correctness issues
-go run ./build/*.go lint
+go run ./build lint
 
 # Test with a coverage report
-go run ./build/*.go test -cover
+go run ./build test -cover
 
 # Test with Go's race-condition instrumentation and warnings (see https://blog.golang.org/race-detector)
-go run ./build/*.go test -race
+go run ./build test -race
 
 # Deps, Lint, Build, Test (any args will be passed to `test`)
-go run ./build/*.go all
+go run ./build all
 ```
 
-Note: Any flag passed to `go run ./build/*.go test` (e.g. `-cover`) will be passed on to `go test`.
+Note: Any flag passed to `go run ./build test` (e.g. `-cover`) will be passed on to `go test`.
 
 If you have **problems with the build**, please see the [Troubleshooting & FAQ](https://github.com/filecoin-project/go-filecoin/wiki/Troubleshooting-&-FAQ) Wiki page.
 
