@@ -61,6 +61,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.Zero(nonce)
 
 		assert.Empty(q.List(alice))
+		assert.Empty(q.Size())
 	})
 
 	t.Run("add and remove sequence", func(t *testing.T) {
@@ -71,26 +72,33 @@ func TestMessageQueue(t *testing.T) {
 		}
 
 		q := core.NewMessageQueue()
+		assert.Equal(int64(0), q.Size())
 		requireEnqueue(q, msgs[0], 0)
 		requireEnqueue(q, msgs[1], 0)
 		requireEnqueue(q, msgs[2], 0)
+		assert.Equal(int64(3), q.Size())
 
 		msg := requireRemoveNext(q, alice, 0)
 		assert.Equal(msgs[0], msg)
+		assert.Equal(int64(2), q.Size())
 
 		_, found, err := q.RemoveNext(alice, 0) // Remove first message again
 		assert.False(found)
 		assert.NoError(err)
+		assert.Equal(int64(2), q.Size())
 
 		msg = requireRemoveNext(q, alice, 1)
 		assert.Equal(msgs[1], msg)
+		assert.Equal(int64(1), q.Size())
 
 		_, found, err = q.RemoveNext(alice, 0) // Remove first message yet again
 		assert.False(found)
 		assert.NoError(err)
+		assert.Equal(int64(1), q.Size())
 
 		msg = requireRemoveNext(q, alice, 2)
 		assert.Equal(msgs[2], msg)
+		assert.Equal(int64(0), q.Size())
 	})
 
 	t.Run("invalid nonce sequence", func(t *testing.T) {
@@ -174,8 +182,10 @@ func TestMessageQueue(t *testing.T) {
 		q := core.NewMessageQueue()
 		requireEnqueue(q, msgs[1], 0)
 		requireEnqueue(q, msgs[2], 0)
+		assert.Equal(int64(2), q.Size())
 		assertLargestNonce(q, alice, 2)
 		q.Clear(alice)
+		assert.Equal(int64(0), q.Size())
 		assertNoNonce(q, alice)
 
 		requireEnqueue(q, msgs[0], 0)
@@ -195,31 +205,39 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(bob, 12),
 		}
 		q := core.NewMessageQueue()
+		assert.Equal(int64(0), q.Size())
 
 		requireEnqueue(q, fromAlice[0], 0)
 		assertNoNonce(q, bob)
+		assert.Equal(int64(1), q.Size())
 
 		requireEnqueue(q, fromBob[0], 0)
 		assertLargestNonce(q, alice, 0)
 		assertLargestNonce(q, bob, 10)
+		assert.Equal(int64(2), q.Size())
 
 		requireEnqueue(q, fromBob[1], 0)
 		requireEnqueue(q, fromBob[2], 0)
 		assertLargestNonce(q, bob, 12)
+		assert.Equal(int64(4), q.Size())
 
 		requireEnqueue(q, fromAlice[1], 0)
 		requireEnqueue(q, fromAlice[2], 0)
 		assertLargestNonce(q, alice, 2)
+		assert.Equal(int64(6), q.Size())
 
 		msg := requireRemoveNext(q, alice, 0)
 		assert.Equal(fromAlice[0], msg)
+		assert.Equal(int64(5), q.Size())
 
 		msg = requireRemoveNext(q, bob, 10)
 		assert.Equal(fromBob[0], msg)
+		assert.Equal(int64(4), q.Size())
 
 		q.Clear(bob)
 		assertLargestNonce(q, alice, 2)
 		assertNoNonce(q, bob)
+		assert.Equal(int64(2), q.Size())
 	})
 
 	t.Run("expire before stamp", func(t *testing.T) {

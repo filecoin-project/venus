@@ -8,10 +8,10 @@ import (
 	"go.opencensus.io/stats/view"
 )
 
-// NewTimer creates a Float64Timer that wraps an opencensus flat64 measurement.
+// NewTimer creates a Float64Timer that wraps an opencensus float64 measurement.
 // The time defaults to milliseconds.
 func NewTimer(name, desc string) *Float64Timer {
-	log.Infof("registering timer: %s", name)
+	log.Infof("registering timer: %s - %s", name, desc)
 	fMeasure := stats.Float64(name, desc, stats.UnitMilliseconds)
 	fView := &view.View{
 		Name:        name,

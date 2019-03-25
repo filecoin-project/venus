@@ -9,8 +9,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message pool")
 
 // MessageTimeOut is the number of tipsets we should receive before timing out messages
 const MessageTimeOut = 6
@@ -64,6 +67,7 @@ func (pool *MessagePool) addTimedMessage(msg *timedmessage) (cid.Cid, error) {
 	}
 
 	pool.pending[c] = msg
+	mpSize.Set(context.TODO(), int64(len(pool.pending)))
 	return c, nil
 
 }
@@ -99,6 +103,7 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 	defer pool.lk.Unlock()
 
 	delete(pool.pending, c)
+	mpSize.Set(context.TODO(), int64(len(pool.pending)))
 }
 
 // NewMessagePool constructs a new MessagePool.

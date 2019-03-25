@@ -1,12 +1,19 @@
 package core
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
+)
+
+var (
+	mqSizeGa   = metrics.NewInt64Gauge("message_queue_size", "The size of the message queue")
+	mqExpireCt = metrics.NewInt64Counter("message_queue_expire", "The number messages expired from the queue")
 )
 
 // MessageQueue stores an ordered list of messages (per actor) and enforces that their nonces form a contiguous sequence.
@@ -39,6 +46,10 @@ func NewMessageQueue() *MessageQueue {
 // from same address, the new message's nonce must be exactly one greater than the largest nonce
 // present.
 func (mq *MessageQueue) Enqueue(msg *types.SignedMessage, stamp uint64) error {
+	defer func() {
+		mqSizeGa.Set(context.TODO(), mq.Size())
+	}()
+
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
@@ -59,6 +70,10 @@ func (mq *MessageQueue) Enqueue(msg *types.SignedMessage, stamp uint64) error {
 // Returns an error if the expected nonce is greater than the smallest in the queue.
 // The caller may wish to check that the returned message is equal to that expected (not just in nonce value).
 func (mq *MessageQueue) RemoveNext(sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error) {
+	defer func() {
+		mqSizeGa.Set(context.TODO(), mq.Size())
+	}()
+
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
@@ -80,6 +95,10 @@ func (mq *MessageQueue) RemoveNext(sender address.Address, expectedNonce uint64)
 // Clear removes all messages for a single sender address.
 // Returns whether the queue was non-empty before being cleared.
 func (mq *MessageQueue) Clear(sender address.Address) bool {
+	defer func() {
+		mqSizeGa.Set(context.TODO(), mq.Size())
+	}()
+
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
@@ -91,6 +110,11 @@ func (mq *MessageQueue) Clear(sender address.Address) bool {
 // ExpireBefore clears the queue of any sender where the first message in the queue has a stamp less than `stamp`.
 // Returns a map containing any expired address queues.
 func (mq *MessageQueue) ExpireBefore(stamp uint64) map[address.Address][]*types.SignedMessage {
+	ctx := context.TODO()
+	defer func() {
+		mqSizeGa.Set(ctx, mq.Size())
+	}()
+
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
@@ -98,9 +122,13 @@ func (mq *MessageQueue) ExpireBefore(stamp uint64) map[address.Address][]*types.
 
 	for sender, q := range mq.queues {
 		if len(q) > 0 && q[0].Stamp < stamp {
+
+			// record the number of messages to be expired
+			mqExpireCt.Inc(ctx, int64(len(q)))
 			for _, m := range q {
 				expired[sender] = append(expired[sender], m.Msg)
 			}
+
 			mq.queues[sender] = []*QueuedMessage{}
 		}
 	}
@@ -132,6 +160,18 @@ func (mq *MessageQueue) Queues() []address.Address {
 		i++
 	}
 	return keys
+}
+
+// Size returns the total number of messages in the MessageQueue.
+func (mq *MessageQueue) Size() int64 {
+	mq.lk.RLock()
+	defer mq.lk.RUnlock()
+
+	var l int64
+	for _, q := range mq.queues {
+		l += int64(len(q))
+	}
+	return l
 }
 
 // List returns a copy of the list of messages queued for an address.
