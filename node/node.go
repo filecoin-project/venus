@@ -621,7 +621,8 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 				return
 			}
 			if output.Err != nil {
-				log.Errorf("problem mining a block: %s", output.Err.Error())
+				log.Errorf("stopping mining. error: %s", output.Err.Error())
+				node.StopMining(context.Background())
 			} else {
 				node.miningDoneWg.Add(1)
 				go func() {
