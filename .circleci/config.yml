@@ -16,6 +16,11 @@ params:
       description: "job is being invoked from user devnet workflow"
       type: boolean
       default: false
+  test_devnet_param: &test_devnet_param
+    test_devnet:
+      description: "job is being invoked from test devnet workflow"
+      type: boolean
+      default: false
 
 commands:
   rust_fil_proofs_checksum:
@@ -84,7 +89,12 @@ commands:
           name: read and export user devnet FILECOIN_BINARY_VERSION
           command: |
             echo "export FILECOIN_BINARY_VERSION="${CIRCLE_TAG}"" >> $BASH_ENV
-
+  get_test_devnet_version:
+    steps:
+      - run:
+          name: read and export test devnet FILECOIN_BINARY_VERSION
+          command: |
+            echo "export FILECOIN_BINARY_VERSION="${CIRCLE_TAG}"" >> $BASH_ENV
   trigger_infra_build:
     parameters:
       branch:
@@ -415,6 +425,7 @@ jobs:
     parameters:
       <<: *nightly_param
       <<: *user_devnet_param
+      <<: *test_devnet_param
     working_directory: "~/docker_build"
     steps:
       - add_ssh_keys:
@@ -462,6 +473,11 @@ jobs:
           condition: << parameters.user_devnet >>
           steps:
             - get_user_devnet_version
+
+      - when:
+          condition: << parameters.test_devnet >>
+          steps:
+            - get_test_devnet_version
 
       - run:
           name: build & push image - genesis file server
@@ -530,22 +546,31 @@ jobs:
           filename: "nightly-devnet.json"
 
 
-  trigger_user_devnet_deploy:
+  trigger_devnet_deploy:
+    parameters:
+      network:
+        type: string
+        default: test
+      <<: *user_devnet_param
+      <<: *test_devnet_param
     docker:
       - image: circleci/golang:latest
     resource_class: small
     steps:
       - checkout
-      - get_user_devnet_version
+      - when:
+          condition: << parameters.user_devnet >>
+          steps:
+            - get_user_devnet_version
+      - when:
+          condition: << parameters.test_devnet >>
+          steps:
+            - get_test_devnet_version
       - trigger_infra_build:
-          job: deploy_user_devnet
-          branch: filecoin-testnet
-          # @TODO Remove the line above and uncomment below when testing complete
-          # branch: filecoin-usernet
+          job: deploy_<< parameters.network >>_devnet
+          branch: filecoin-<< parameters.network >>net
       - update_badge:
-          filename: "test-devnet.json"
-          # @TODO Remove the line above and uncomment below when testing complete
-          # filename: "user-devnet.json"
+          filename: "<< parameters.network >>-devnet.json"
 
 workflows:
   version: 2
@@ -592,43 +617,6 @@ workflows:
       - build_linux:
           sector_builder_tests: true
 
-  build_and_publish_release:
-    jobs:
-      - build_macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
-
-      - build_linux:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
-      - publish_release:
-          requires:
-            - build_linux
-            - build_macos
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
-
   build_nightly_devnet:
     triggers:
       - schedule:
@@ -662,6 +650,15 @@ workflows:
 
   build_user_devnet:
     jobs:
+      - build_macos:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
+
       - build_linux:
           filters:
             branches:
@@ -669,9 +666,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^\d+\.\d+\.\d+$/
 
       - build_faucet_and_genesis:
           requires:
@@ -682,9 +677,19 @@ workflows:
                 - /.*/
             tags:
               only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^\d+\.\d+\.\d+$/
+
+      - publish_release:
+          requires:
+            - build_linux
+            - build_macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
 
       - build_docker_img:
           user_devnet: true
@@ -697,11 +702,11 @@ workflows:
                 - /.*/
             tags:
               only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^\d+\.\d+\.\d+$/
 
-      - trigger_user_devnet_deploy:
+      - trigger_devnet_deploy:
+          user_devnet: true
+          network: "user"
           requires:
             - build_docker_img
           filters:
@@ -710,6 +715,73 @@ workflows:
                 - /.*/
             tags:
               only:
-                # - /^\d+\.\d+\.\d+$/
-                # @TODO remove the following line and uncomment above after deploy testing complete
+                - /^\d+\.\d+\.\d+$/
+
+  build_test_devnet:
+    jobs:
+      - build_macos:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+
+      - build_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+
+      - build_faucet_and_genesis:
+          requires:
+            - build_linux
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+
+      - publish_release:
+          requires:
+            - build_linux
+            - build_macos
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+
+      - build_docker_img:
+          test_devnet: true
+          requires:
+            - build_linux
+            - build_faucet_and_genesis
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+
+      - trigger_devnet_deploy:
+          test_devnet: true
+          network: "test"
+          requires:
+            - build_docker_img
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
                 - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
