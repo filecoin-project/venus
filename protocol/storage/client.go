@@ -86,10 +86,10 @@ func NewClient(nd clientNode, api clientPorcelainAPI) (*Client, error) {
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctx, cancel := context.WithTimeout(ctx, 4*smc.node.GetBlockTime())
+	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.node.GetBlockTime())
 	defer cancel()
 
-	pid, err := smc.api.MinerGetPeerID(ctx, miner)
+	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
 	if err != nil {
 		return nil, err
 	}
@@ -97,21 +97,21 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	minerAlive := make(chan error, 1)
 	go func() {
 		defer close(minerAlive)
-		minerAlive <- smc.pingMiner(ctx, pid, 15*time.Second)
+		minerAlive <- smc.pingMiner(ctxSetup, pid, 15*time.Second)
 	}()
 
-	size, err := smc.api.DAGGetFileSize(ctx, data)
+	size, err := smc.api.DAGGetFileSize(ctxSetup, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
 
-	ask, err := smc.api.MinerGetAsk(ctx, miner, askID)
+	ask, err := smc.api.MinerGetAsk(ctxSetup, miner, askID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get ask price")
 	}
 	price := ask.Price
 
-	chainHeight, err := smc.api.ChainBlockHeight(ctx)
+	chainHeight, err := smc.api.ChainBlockHeight(ctxSetup)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	minerOwner, err := smc.api.MinerGetOwnerAddress(ctx, miner)
+	minerOwner, err := smc.api.MinerGetOwnerAddress(ctxSetup, miner)
 	if err != nil {
 		return nil, err
 	}
@@ -146,12 +146,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		if err != nil {
 			return nil, err
 		}
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case <-ctxSetup.Done():
+		return nil, ctxSetup.Err()
 	}
 
 	// create payment information
-	cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
+	cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
 		To:              minerOwner,
 		Value:           *price.MulBigInt(big.NewInt(int64(size * duration))),
@@ -178,6 +178,8 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// send proposal
 	var response storagedeal.Response
+	// We reset the context to not timeout to allow large file transfers
+	// to complete.
 	err = smc.node.MakeProtocolRequest(ctx, makeDealProtocol, pid, signedProposal, &response)
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending proposal")
