@@ -682,7 +682,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 
 			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
 			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "failed to sample chain for challenge seed")
+				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
 
 			var commRs []proofs.CommR
