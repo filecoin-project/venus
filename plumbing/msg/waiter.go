@@ -171,7 +171,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids.String())
+	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids)
 	if err != nil {
 		return nil, err
 	}

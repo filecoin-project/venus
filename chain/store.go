@@ -32,7 +32,7 @@ type ReadStore interface {
 	// GetTipSet retrieves the tipindex value (tipset, state) at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
-	GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error)
+	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*TipSetAndState, error)
 	// GetBlock gets a block by cid.
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 

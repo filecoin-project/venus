@@ -270,7 +270,7 @@ func requireTsAdded(require *require.Assertions, chain chain.Store, ts types.Tip
 	h, err := ts.Height()
 	require.NoError(err)
 	// Tip Index correctly updated
-	gotTsas, err := chain.GetTipSetAndState(ctx, ts.String())
+	gotTsas, err := chain.GetTipSetAndState(ctx, ts.ToSortedCidSet())
 	require.NoError(err)
 	require.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
@@ -290,7 +290,7 @@ func assertTsAdded(assert *assert.Assertions, chainStore chain.Store, ts types.T
 	h, err := ts.Height()
 	assert.NoError(err)
 	// Tip Index correctly updated
-	gotTsas, err := chainStore.GetTipSetAndState(ctx, ts.String())
+	gotTsas, err := chainStore.GetTipSetAndState(ctx, ts.ToSortedCidSet())
 	assert.NoError(err)
 	assert.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
@@ -308,7 +308,7 @@ func assertTsAdded(assert *assert.Assertions, chainStore chain.Store, ts types.T
 func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
-	_, err := chainStore.GetTipSetAndState(ctx, cids.String())
+	_, err := chainStore.GetTipSetAndState(ctx, cids)
 	assert.Error(err)
 	// Blocks exist in store
 	for _, c := range cids.ToSlice() {
@@ -1066,7 +1066,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(expectedWeight, measuredWeight)
 }
 
-func requireGetTsas(ctx context.Context, require *require.Assertions, chain chain.Store, key string) *chain.TipSetAndState {
+func requireGetTsas(ctx context.Context, require *require.Assertions, chain chain.Store, key types.SortedCidSet) *chain.TipSetAndState {
 	tsas, err := chain.GetTipSetAndState(ctx, key)
 	require.NoError(err)
 	return tsas

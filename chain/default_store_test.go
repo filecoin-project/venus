@@ -99,17 +99,12 @@ func TestGetByKey(t *testing.T) {
 	chain := newChainStore()
 
 	requirePutTestChain(require, chain)
-	kg := genTS.String()
-	k1 := link1.String()
-	k2 := link2.String()
-	k3 := link3.String()
-	k4 := link4.String()
 
-	gotG := requireGetTsas(ctx, require, chain, kg)
-	got1 := requireGetTsas(ctx, require, chain, k1)
-	got2 := requireGetTsas(ctx, require, chain, k2)
-	got3 := requireGetTsas(ctx, require, chain, k3)
-	got4 := requireGetTsas(ctx, require, chain, k4)
+	gotG := requireGetTsas(ctx, require, chain, genTS.ToSortedCidSet())
+	got1 := requireGetTsas(ctx, require, chain, link1.ToSortedCidSet())
+	got2 := requireGetTsas(ctx, require, chain, link2.ToSortedCidSet())
+	got3 := requireGetTsas(ctx, require, chain, link3.ToSortedCidSet())
+	got4 := requireGetTsas(ctx, require, chain, link4.ToSortedCidSet())
 
 	assert.Equal(genTS, gotG.TipSet)
 	assert.Equal(link1, got1.TipSet)
@@ -481,7 +476,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check that chain store has index
 	// Get a tipset and state by key
-	got2 := requireGetTsas(ctx, require, rebootChain, link2.String())
+	got2 := requireGetTsas(ctx, require, rebootChain, link2.ToSortedCidSet())
 	assert.Equal(link2, got2.TipSet)
 
 	// Get another by parent key

@@ -70,7 +70,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	// This is needed because CollectTipSetsOfHeightAtLeast necessarily reads out
 	// the first tipset of extraRandomnessAncestors from the channel so historyCh can't
 	// be reused.
-	tsas, err := chainReader.GetTipSetAndState(ctx, firstExtraRandomnessAncestorsCids.String())
+	tsas, err := chainReader.GetTipSetAndState(ctx, firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
 	}

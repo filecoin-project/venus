@@ -228,8 +228,8 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 
 // GetTipSetAndState returns the tipset and state of the tipset whose block
 // cids correspond to the input string.
-func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error) {
-	return store.tipIndex.Get(tsKey)
+func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*TipSetAndState, error) {
+	return store.tipIndex.Get(tsKey.String())
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -382,7 +382,7 @@ func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) 
 	if h == nil {
 		return nil, errors.New("Unset head")
 	}
-	tsas, err := store.GetTipSetAndState(ctx, h.String())
+	tsas, err := store.GetTipSetAndState(ctx, h.ToSortedCidSet())
 	if err != nil {
 		return nil, err
 	}

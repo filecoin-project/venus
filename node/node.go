@@ -1061,7 +1061,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 }
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
-func (node *Node) getStateFromKey(ctx context.Context, tsKey string) (state.Tree, error) {
+func (node *Node) getStateFromKey(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
 	tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
 	if err != nil {
 		return nil, err
@@ -1071,7 +1071,7 @@ func (node *Node) getStateFromKey(ctx context.Context, tsKey string) (state.Tree
 
 // getStateTree is the default GetStateTree function for the mining worker.
 func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-	return node.getStateFromKey(ctx, ts.String())
+	return node.getStateFromKey(ctx, ts.ToSortedCidSet())
 }
 
 // getWeight is the default GetWeight function for the mining worker.
@@ -1084,7 +1084,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	if parent.Len() == 0 {
 		return node.Consensus.Weight(ctx, ts, nil)
 	}
-	pSt, err := node.getStateFromKey(ctx, parent.String())
+	pSt, err := node.getStateFromKey(ctx, parent)
 	if err != nil {
 		return uint64(0), err
 	}
