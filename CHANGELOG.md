@@ -149,7 +149,7 @@ A full list of [all 200 PRs in this release](https://github.com/filecoin-project
 Would you like to contribute to the Filecoin project and don’t know how? Here are a few places you can get started:
 
 - Check out the [Contributing Guidelines](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
-- Look for issues with the `good-first-issue` label in [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- Look for issues with the `good-first-issue` label in [go-filecoin](https://github.com/filecoin-project/go-filecoin/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3A%22e-good-first-issue%22+) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 - Join the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat), introduce yourself in #_fil-lobby, and let us know where you would like to contribute
 
 ### ⁉️ Do you have questions?
