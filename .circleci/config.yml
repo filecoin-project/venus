@@ -726,7 +726,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - build_linux:
           filters:
@@ -735,7 +735,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - build_faucet_and_genesis:
           requires:
@@ -746,7 +746,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - publish_release:
           requires:
@@ -758,7 +758,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - build_docker_img:
           test_devnet: true
@@ -771,7 +771,7 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - trigger_devnet_deploy:
           test_devnet: true
@@ -784,4 +784,4 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^(test\-devnet\-)*\d+\.\d+\.\d+$/
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
