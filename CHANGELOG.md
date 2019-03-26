@@ -60,7 +60,7 @@ A full list of [all 200 PRs in this release](https://github.com/filecoin-project
 
 ### Contributors
 
-❤️ Huge thank you to everyone that made this release possible! By alphabetical order, here are all the humans who contributed to the release via `go-filecoin` and `rust-fil-proofs`:
+❤️ Huge thank you to everyone that made this release possible! By alphabetical order, here are all the humans who contributed issues and commits in `go-filecoin` and `rust-fil-proofs`:
 
 - [@aaronhenshaw](http://github.com/aaronhenshaw)
 - [@aboodman](http://github.com/aboodman)
