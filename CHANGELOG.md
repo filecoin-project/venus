@@ -2,7 +2,7 @@
 
 ## go-filecoin 0.1.4
 
-We're happy to announce go-filecoin 0.1.4. This release contains a better install experience, Proof-of-Spacetime integration, more reliable message sending and networking, and many other improvements. Get pumped! 🎁
+We're happy to announce go-filecoin 0.1.4. This release contains a better install experience, initial Proof-of-Spacetime integration, more reliable message sending and networking, and many other improvements. Get pumped! 🎁
 
 ### Install and Setup
 
@@ -16,13 +16,13 @@ Running secure proofs requires parameter files that are several GB in size. Prev
 
 #### 🦖 Version checking
 
-go-filecoin now checks that it is running the same version (at the same commit) before connecting to a devnet. This is a temporary fix until a model for change is implemented, allowing different versions to interoperate.
+go-filecoin now checks that it is running the same version (at the same commit) while connecting to a devnet. This is a temporary fix until a model for change is implemented, allowing different versions to interoperate.
 
 ### Features
 
 #### 💎 Proof-of-Spacetime Integration
 
-For each storage deal, miners now call `rust-fil-proofs` to periodically generate proofs of continued storage. With this major integration in place, you can expect some follow-up  (for example, storage mining faults do not yet appear on-chain) and continued optimizations to the underlying Proof-of-Spacetime implementation.
+Miners now call `rust-fil-proofs` to periodically generate proofs of continued storage. With this major integration in place, you can expect some follow-up  (for example, storage mining faults do not yet appear on-chain) and continued optimizations to the underlying Proof-of-Spacetime construction and implementation.
 
 ### Performance and Reliability
 
@@ -62,7 +62,7 @@ A full list of [all 82 PRs in this release](https://github.com/filecoin-project/
 
 ❤️ Huge thank you to everyone that made this release possible! By alphabetical order, here are all the humans who contributed to the release:
 
-PENDING
+TODO
 
 ### 🙌🏽 Want to contribute?
 
