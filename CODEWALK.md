@@ -182,11 +182,6 @@ They depend only on the plumbing API, and can coordinate a sequence of actions.
 Porcelain is ephemeral; the lifecycle is the duration of a single porcelain call: something calls into it, it does its thing, and then returns. 
 Porcelain implementations are ideally tested with fakes of the plumbing they use, but can also use full implementations. 
 
-### Protocol Mining APIs
-The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
-[`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
-and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/block/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
-
 ### Commands
 
 The `go-filecoin` binary can run in two different modes, either as a long-running daemon exposing a JSON/HTTP RPC API, 
@@ -225,6 +220,13 @@ Miners win elections in proportion to storage committed.
 This block mining is spread through a few places in the code. 
 Much in mining package, but also a bunch in the node implementation.
 - Chain protocol: protocol for exchange of mined blocks
+
+##### Protocol Mining APIs
+The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
+[`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
+and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/block/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
+
+
 
 More detail on the individual protocols is coming soon.
 
