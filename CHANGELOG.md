@@ -56,7 +56,7 @@ Previously, the node object contained both interfaces and internals for much of 
 
 ### Changelog
 
-A full list of [all 82 PRs in this release](https://github.com/filecoin-project/go-filecoin/pulls?utf8=%E2%9C%93&q=is%3Apr+merged%3A2019-02-14..2019-03-26) can be found on Github.
+A full list of [all 200 PRs in this release](https://github.com/filecoin-project/go-filecoin/pulls?utf8=%E2%9C%93&q=is%3Apr+merged%3A2019-02-14..2019-03-26) can be found on Github.
 
 ### Contributors
 
