@@ -29,7 +29,7 @@
     - [Manage Submodules Manually (optional)](#manage-submodules-manually-optional)
 - [Usage](#usage)
   - [Advanced usage](#advanced-usage)
-    - [Run Multiple Nodes with IPTB](#run-multiple-nodes-with-iptb)
+    - [Setting up a localnet](#setting-up-a-localnet)
 - [Contributing](#contributing)
 - [Community](#community)
 - [Developer Networks](#developer-networks)
