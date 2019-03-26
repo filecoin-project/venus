@@ -79,15 +79,13 @@ Blockchain blocks are stored in block service blocks, but are not the same thing
 ## Architecture overview
 
 ```
-
-                                                                                    | |\/
-                                                                                    |_|/\
-
+                                                                                  | |\/
+                                                                                  |_|/\
                     ╔══════════════════════════════════════════╗      ╔══════════════════════════════╗
                     ║                                          ║      ║                              ║
                     ║                                          ║      ║                              ║
                     ║    NETWORK (gossipsub, bitswap, etc.)    ║      ║     COMMANDS / REST API      ║
-Network             ║                                          ║      ║                              ║
+ Network            ║                                          ║      ║                              ║
                     ║                                          ║      ║                              ║
                     ╚═════════════════════╦════════════════════╝      ╚══════════════════════════════╝
                                           │                                           │
@@ -101,25 +99,22 @@ Network             ║                                          ║      ║   
          │        │              │                 │             │──┐                 │
          │        │   Storage    │    Retrieval    │    Block    │  │                 │
 Internal │        │   Protocol   │    Protocol     │  Protocol   │  │                 │
-  API    │        └──────────────┴────────┬────────┴─────────────┘  │                 │
+   API   │        └──────────────┴────────┬────────┴─────────────┘  │                 │
          │                │               │               │         │                 │
          │                ▼               ▼               ▼         │                 ▼
-         │          ┌───────────────────────────────────────────┐   │  ┌─────────────┬───────────────┐
-         │          │                                           │   │  │             │               │
-         │          │                                           │   │  │             │               │
-         │          │                 Core API                  │   │  │  Porcelain  │    Plumbing   │
-         └─────────▶│                                           │   └─▶│             │               │
-                    │                                           │      ├─────────────┘               │
-                    │                                           │      │                             │
-                    └───────────────────────────────────────────┘      └─────────────────────────────┘
-                                          │                                           │
+         │          ┌───────────────────────────────────────────┐   │  ┌─────────────┬──────────────┐
+         │          │                                           │   │  │             │              │
+         │          │                 Core API                  │   │  │  Porcelain  │   Plumbing   │
+         └─────────▶│                                           │   └─▶├─────────────┘              │
+                    │                                           │      │                            │
+                    └───────────────────────────────────────────┘      └────────────────────────────┘
                                           │                                           │
                    ┌─────────────────┬────┴──────────────┬────────────────┬───────────┴─────┐
                    │                 │                   │                │                 │
                    ▼                 ▼                   ▼                ▼                 ▼
-            ┌─────────────┐   ┌─────────────┐     ┌─────────────┐  ┌─────────────┐   ┌─────────────┐
+ Core       ┌─────────────┐   ┌─────────────┐     ┌─────────────┐  ┌─────────────┐   ┌─────────────┐
             │             │   │             │     │             │  │             │   │             │
-Core        │   Message   │   │ Chain Store │     │  Processor  │  │    Block    │   │   Wallet    │
+            │   Message   │   │ Chain Store │     │  Processor  │  │    Block    │   │   Wallet    │
             │    Pool     │   │             │     │             │  │   Service   │   │             │
             │             │   │             │     │             │  │             │   │             │
             └─────────────┘   └─────────────┘     └─────────────┘  └─────────────┘   └─────────────┘
@@ -141,7 +136,7 @@ The implementation of this API is the `Node`.
 We are migrating away from this `api` package to the plumbing package, see below.
 
 The [`protocol`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol) package contains much of the application-level protocol code. 
-The protocols are implemented in terms of the Node API (old) as well as the new plumbing & porcelain APIs (see below).
+The protocols are implemented in terms of the plumbing & porcelain APIs (see below).
 Currently the hello, retrieval and storage protocols are implemented here. 
 Block mining should move here (from the [`mining`](https://github.com/filecoin-project/go-filecoin/tree/master/mining) top-level package and `Node` internals). 
 Chain syncing may move here too.
@@ -170,7 +165,7 @@ Services include (not exhaustive):
 
 The [`plumbing`](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing) & 
 [`porcelain`](https://github.com/filecoin-project/go-filecoin/tree/master/porcelain) packages are 
-the new API for most non-protocol commands; this pattern has completely replaced the old top-level `api` package and its implementation in `Node`. 
+the API for most non-protocol commands. 
 
 __Plumbing__ is the set of public apis required to implement all user-, tool-, and some protocol-level features. 
 Plumbing implementations depend on the core services they need, but not on the `Node`.
