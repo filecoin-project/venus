@@ -52,7 +52,7 @@ Using FAST, we’ve developed [localnet](https://github.com/filecoin-project/go-
 
 #### 👾 Porcelain/Plumbing refactor for node object
 
-Previously, the node object contained both interfaces and internals for much of the core protocol. It was difficult to unit test due to many dependencies and complicated setup. Following the [porcelain and plumbing pattern from Git](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain), we have now decoupled the node object from many of its dependencies. We have also created a separate API for block storage and retrieval mining.
+Previously, the node object contained both interfaces and internals for much of the core protocol. It was difficult to unit test due to many dependencies and complicated setup. Following the [porcelain and plumbing pattern from Git](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain), we have now decoupled the node object from many of its dependencies. We have also created a separate API for block, storage, and retrieval mining.
 
 ### Changelog
 
