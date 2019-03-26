@@ -178,7 +178,7 @@ To see a full list of commands, run `go-filecoin --help`.
 
 #### Setting up a localnet
 
-The localnet FAST binary tool allows users to quickly, and easily setup a local network on the users computer. Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. The localnet tool is only comptable when built from the same git ref as the targeted `go-filecoin` binary.
+The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. The localnet tool is only compatible when built from the same git ref as the targeted `go-filecoin` binary.
 
 ## Contributing
 
