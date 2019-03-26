@@ -19,7 +19,7 @@ import (
 
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
-var blkWaitTime = time.Second // TODO set this parameter in an informed way too
+var blkWaitTime = 30 * time.Second
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
