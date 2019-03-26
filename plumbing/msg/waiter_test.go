@@ -66,7 +66,10 @@ func TestWait(t *testing.T) {
 
 func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}})
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(1, len(ts))
 	th.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
@@ -84,7 +87,10 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, require *requir
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
 	m3, m4 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m3, m4}})
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, assert, waiter, m3, false, nil)
@@ -114,9 +120,12 @@ func TestWaitError(t *testing.T) {
 
 func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	chain := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
-	err := chainStore.SetHead(ctx, chain[len(chain)-1])
+	err = chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(err)
 
 	testWaitHelp(nil, assert, waiter, m2, true, nil)
@@ -150,7 +159,10 @@ func TestWaitConflicting(t *testing.T) {
 	sm2, err := types.NewSignedMessage(*m2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
-	baseTS := chainStore.Head()
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	baseTS := headTipSetAndState.TipSet
 	require.Equal(1, len(baseTS))
 	baseBlock := baseTS.ToSlice()[0]
 

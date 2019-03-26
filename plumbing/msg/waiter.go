@@ -50,7 +50,12 @@ func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool,
 	defer cancel()
 
 	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
+	head := w.chainReader.GetHead()
+	headTipSetAndState, err := w.chainReader.GetTipSetAndState(ctx, head)
+	if err != nil {
+		return nil, false, err
+	}
+	historyCh := w.chainReader.BlockHistory(ctx, headTipSetAndState.TipSet)
 	return w.waitForMessage(ctx, historyCh, msgCid)
 }
 
@@ -82,7 +87,12 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	defer cancel()
 
 	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
+	head := w.chainReader.GetHead()
+	headTipSetAndState, err := w.chainReader.GetTipSetAndState(ctx, head)
+	if err != nil {
+		return err
+	}
+	historyCh := w.chainReader.BlockHistory(ctx, headTipSetAndState.TipSet)
 
 	// Merge historical and new block Channels.
 	go func() {

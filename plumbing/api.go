@@ -123,7 +123,8 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 
 // ChainHead returns the head tipset
 func (api *API) ChainHead(ctx context.Context) types.TipSet {
-	return api.chain.Head()
+	ts, _ := api.chain.GetTipSetAndState(ctx, api.chain.GetHead())
+	return ts.TipSet
 }
 
 // GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
@@ -134,7 +135,8 @@ func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendan
 
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	return api.chain.BlockHistory(ctx, api.chain.Head())
+	ts, _ := api.chain.GetTipSetAndState(ctx, api.chain.GetHead())
+	return api.chain.BlockHistory(ctx, ts.TipSet)
 }
 
 // ActorGet returns an actor from the latest state on the chain

@@ -55,8 +55,8 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 		return nil, nil, errors.Wrap(err, "unable to determine return type")
 	}
 
-	headTs := q.chainReader.Head()
-	tsas, err := q.chainReader.GetTipSetAndState(ctx, headTs.ToSortedCidSet())
+	headTs := q.chainReader.GetHead()
+	tsas, err := q.chainReader.GetTipSetAndState(ctx, headTs)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "couldnt get latest state root")
 	}
@@ -64,7 +64,7 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "could load tree for latest state root")
 	}
-	h, err := headTs.Height()
+	h, err := tsas.TipSet.Height()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "couldnt get base tipset height")
 	}

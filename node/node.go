@@ -507,7 +507,12 @@ func (node *Node) Start(ctx context.Context) error {
 			log.Infof("error handling blocks: %s", cidSet.String())
 		}
 	}
-	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)
+	getHeaviestTipSetCallBack := func() types.TipSet {
+		head := node.ChainReader.GetHead()
+		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
+		return headTipSetAndState.TipSet
+	}
+	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, getHeaviestTipSetCallBack, node.Repo.Config().Net, flags.Commit)
 
 	err = node.setupProtocols()
 	if err != nil {
@@ -539,7 +544,11 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	go node.handleNewHeaviestTipSet(cctx, node.ChainReader.Head(), outboxPolicy)
+	headTipSetAndState, err := node.ChainReader.GetTipSetAndState(ctx, node.ChainReader.GetHead())
+	if err != nil {
+		return err
+	}
+	go node.handleNewHeaviestTipSet(cctx, headTipSetAndState.TipSet, outboxPolicy)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -563,10 +572,15 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 		}
 		return addr
 	}
+	getHeaviestTipSetCallBack := func() types.TipSet {
+		head := node.ChainReader.GetHead()
+		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
+		return headTipSetAndState.TipSet
+	}
 
 	// start the primary heartbeat service
 	if len(node.Repo.Config().Heartbeat.BeatTarget) > 0 {
-		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
+		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, getHeaviestTipSetCallBack, metrics.WithMinerAddressGetter(mag))
 		go hbs.Start(ctx)
 	}
 
@@ -578,7 +592,7 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 			BeatPeriod:      "10s",
 			ReconnectPeriod: "10s",
 			Nickname:        node.Repo.Config().Heartbeat.Nickname,
-		}, node.ChainReader.Head, metrics.WithMinerAddressGetter(mag))
+		}, getHeaviestTipSetCallBack, metrics.WithMinerAddressGetter(mag))
 		go ahbs.Start(ctx)
 	}
 	return nil
@@ -785,8 +799,13 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return err
 		}
 	}
+	getHeaviestTipSetCallBack := func() types.TipSet {
+		head := node.ChainReader.GetHead()
+		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
+		return headTipSetAndState.TipSet
+	}
 	if node.MiningScheduler == nil {
-		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, node.ChainReader.Head)
+		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, getHeaviestTipSetCallBack)
 	}
 
 	// paranoid check
@@ -982,11 +1001,13 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
-	head := node.ChainReader.Head()
-	if head == nil {
-		return nil, errors.New("invalid nil head")
+	ctx := context.Background()
+	head := node.ChainReader.GetHead()
+	headTipSetAndState, err := node.ChainReader.GetTipSetAndState(ctx, head)
+	if err == nil {
+		return nil, err
 	}
-	height, err := head.Height()
+	height, err := headTipSetAndState.TipSet.Height()
 	if err != nil {
 		return nil, err
 	}

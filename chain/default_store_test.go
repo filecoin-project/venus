@@ -274,19 +274,19 @@ func TestHead(t *testing.T) {
 	requirePutTestChain(require, chain)
 
 	// Head starts as nil
-	assert.Nil(chain.Head())
+	assert.Equal(types.SortedCidSet{}, chain.GetHead())
 
 	// Set Head
 	assertSetHead(assert, chain, genTS)
-	assert.Equal(genTS, chain.Head())
+	assert.Equal(genTS.ToSortedCidSet(), chain.GetHead())
 
 	// Move head forward
 	assertSetHead(assert, chain, link4)
-	assert.Equal(link4, chain.Head())
+	assert.Equal(link4.ToSortedCidSet(), chain.GetHead())
 
 	// Move head back
 	assertSetHead(assert, chain, genTS)
-	assert.Equal(genTS, chain.Head())
+	assert.Equal(genTS.ToSortedCidSet(), chain.GetHead())
 }
 
 // LatestState correctly returns the state of the head.
@@ -379,7 +379,10 @@ func TestBlockHistory(t *testing.T) {
 	assertSetHead(assert, chainStore, genTS) // set the genesis block
 
 	assertSetHead(assert, chainStore, link4)
-	historyCh := chainStore.BlockHistory(ctx, chainStore.Head())
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	historyCh := chainStore.BlockHistory(ctx, headTipSetAndState.TipSet)
 
 	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
 	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
@@ -402,7 +405,10 @@ func TestBlockHistoryCancel(t *testing.T) {
 	assertSetHead(assert, chainStore, genTS) // set the genesis block
 
 	assertSetHead(assert, chainStore, link4)
-	historyCh := chainStore.BlockHistory(ctx, chainStore.Head())
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	historyCh := chainStore.BlockHistory(ctx, headTipSetAndState.TipSet)
 
 	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
 	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
@@ -436,7 +442,10 @@ func TestUnknownBlockRetrievalError(t *testing.T) {
 
 	// parBlock is not known to the chain, which causes the timeout
 	var innerErr error
-	for raw := range chainStore.BlockHistory(ctx, chainStore.Head()) {
+	head := chainStore.GetHead()
+	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	for raw := range chainStore.BlockHistory(ctx, headTipSetAndState.TipSet) {
 		switch v := raw.(type) {
 		case error:
 			innerErr = v

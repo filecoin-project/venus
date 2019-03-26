@@ -361,28 +361,25 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 	return store.ds.Put(key, val)
 }
 
-// Head returns the current head.
-func (store *DefaultStore) Head() types.TipSet {
+// GetHead returns the current head.
+func (store *DefaultStore) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
-	return store.head
+	return store.head.ToSortedCidSet()
 }
 
 // BlockHeight returns the chain height of the head tipset.
 // Strictly speaking, the block height is the number of tip sets that appear on chain plus
 // the number of "null blocks" that occur when a mining round fails to produce a block.
 func (store *DefaultStore) BlockHeight() (uint64, error) {
-	return store.Head().Height()
+	return store.head.Height()
 }
 
 // LatestState returns the state associated with the latest chain head.
 func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
-	h := store.Head()
-	if h == nil {
-		return nil, errors.New("Unset head")
-	}
-	tsas, err := store.GetTipSetAndState(ctx, h.ToSortedCidSet())
+	h := store.GetHead()
+	tsas, err := store.GetTipSetAndState(ctx, h)
 	if err != nil {
 		return nil, err
 	}

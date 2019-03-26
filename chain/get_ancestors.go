@@ -13,7 +13,12 @@ import (
 // GetRecentAncestorsOfHeaviestChain returns the ancestors of a `TipSet` with
 // height `descendantBlockHeight` in the heaviest chain.
 func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return GetRecentAncestors(ctx, chainReader.Head(), chainReader, descendantBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	head := chainReader.GetHead()
+	headTipSetAndState, err := chainReader.GetTipSetAndState(ctx, head)
+	if err != nil {
+		return nil, err
+	}
+	return GetRecentAncestors(ctx, headTipSetAndState.TipSet, chainReader, descendantBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
 }
 
 // GetRecentAncestors returns the ancestors of base as a slice of TipSets.

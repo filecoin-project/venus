@@ -142,7 +142,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(nd.Start(ctx))
 
-	assert.NotNil(nd.ChainReader.Head())
+	assert.NotNil(nd.ChainReader.GetHead())
 	nd.Stop(ctx)
 }
 
@@ -215,7 +215,10 @@ func TestUpdateMessagePool(t *testing.T) {
 	// to
 	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
 	assert.NoError(chainForTest.Load(ctx)) // load up head to get genesis block
-	genTS := chainForTest.Head()
+	head := chainForTest.GetHead()
+	headTipSetAndState, err := chainForTest.GetTipSetAndState(ctx, head)
+	require.NoError(err)
+	genTS := headTipSetAndState.TipSet
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
 

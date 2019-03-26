@@ -37,8 +37,8 @@ type ReadStore interface {
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
 	HeadEvents() *pubsub.PubSub
-	// Head returns the head of the chain tracked by the store.
-	Head() types.TipSet
+	// GetHead returns the head of the chain tracked by the store.
+	GetHead() types.SortedCidSet
 	// LatestState returns the latest state of the head
 	LatestState(ctx context.Context) (state.Tree, error)
 	// ActorFromLatestState tries to get an actor from the latest state

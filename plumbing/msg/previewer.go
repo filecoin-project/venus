@@ -41,8 +41,8 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt encode message params")
 	}
 
-	headTs := p.chainReader.Head()
-	tsas, err := p.chainReader.GetTipSetAndState(ctx, headTs.ToSortedCidSet())
+	headTs := p.chainReader.GetHead()
+	tsas, err := p.chainReader.GetTipSetAndState(ctx, headTs)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get latest state root")
 	}
@@ -50,7 +50,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}
-	h, err := headTs.Height()
+	h, err := tsas.TipSet.Height()
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get base tipset height")
 	}
