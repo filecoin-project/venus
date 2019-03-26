@@ -79,34 +79,50 @@ Blockchain blocks are stored in block service blocks, but are not the same thing
 ## Architecture overview
 
 ```
-           ┌─────────────────────────────────────┐
-           │                                     │
-  Network  │  network (gossipsub, bitswap, etc.) │                 | | \/
-           │                                     │                 |_| /\
-           └─────▲────────────▲────────────▲─────┘
-                 │            │            │           ┌────────────────────────────┐
-           ┌─────▼────┐ ┌─────▼─────┐ ┌────▼─────┐     │                            │
-           │          │ │           │ │          │     │    Commands / REST API     │
-Protocols  │ Storage  │ │  Mining   │ │Retrieval │     │                            │
-           │ Protocol │ │ Protocol  │ │ Protocol │     └────────────────────────────┘
-           │          │ │           │ │          │                    │
-           └──────────┘ └───────────┘ └──────────┘                    │
-                 │            │             │                         │
-                 └──────────┬─┴─────────────┴───────────┐             │
-                            ▼                           ▼             ▼
-           ┌────────────────────────────────┐ ┌───────────────────┬─────────────────┐
- Internal  │            Core API            │ │     Porcelain     │     Plumbing    │
-      API  │                                │ ├───────────────────┘                 │
-           └────────────────────────────────┘ └─────────────────────────────────────┘
-                            │                                    │
-                  ┌─────────┴────┬──────────────┬──────────────┬─┴────────────┐
-                  ▼              ▼              ▼              ▼              ▼
-           ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-           │            │ │            │ │            │ │            │ │            │
-     Core  │  Message   │ │   Chain    │ │ Processor  │ │   Block    │ │   Wallet   │
-           │    Pool    │ │   Store    │ │            │ │  Service   │ │            │
-           │            │ │            │ │            │ │            │ │            │
-           └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘
+
+                                                                                    | |\/
+                                                                                    |_|/\
+
+                    ╔══════════════════════════════════════════╗      ╔══════════════════════════════╗
+                    ║                                          ║      ║                              ║
+                    ║                                          ║      ║                              ║
+                    ║    NETWORK (gossipsub, bitswap, etc.)    ║      ║     COMMANDS / REST API      ║
+Network             ║                                          ║      ║                              ║
+                    ║                                          ║      ║                              ║
+                    ╚═════════════════════╦════════════════════╝      ╚══════════════════════════════╝
+                                          │                                           │
+                          ┌───────────────┼───────────────┐    ┌──────────────────────┤
+                          │               │               │    │                      │
+                          ▼               ▼               ▼    ▼                      │
+                  ┌──────────────┬─────────────────┬─────────────┐                    │
+         ┌───────▶│ Storage API  │  Retrieval API  │  Block API  │                    │
+         │        ├──────────────┼─────────────────┼─────────────┤                    │
+         │        │              │                 │             │                    │
+         │        │              │                 │             │──┐                 │
+         │        │   Storage    │    Retrieval    │    Block    │  │                 │
+Internal │        │   Protocol   │    Protocol     │  Protocol   │  │                 │
+  API    │        └──────────────┴────────┬────────┴─────────────┘  │                 │
+         │                │               │               │         │                 │
+         │                ▼               ▼               ▼         │                 ▼
+         │          ┌───────────────────────────────────────────┐   │  ┌─────────────┬───────────────┐
+         │          │                                           │   │  │             │               │
+         │          │                                           │   │  │             │               │
+         │          │                 Core API                  │   │  │  Porcelain  │    Plumbing   │
+         └─────────▶│                                           │   └─▶│             │               │
+                    │                                           │      ├─────────────┘               │
+                    │                                           │      │                             │
+                    └───────────────────────────────────────────┘      └─────────────────────────────┘
+                                          │                                           │
+                                          │                                           │
+                   ┌─────────────────┬────┴──────────────┬────────────────┬───────────┴─────┐
+                   │                 │                   │                │                 │
+                   ▼                 ▼                   ▼                ▼                 ▼
+            ┌─────────────┐   ┌─────────────┐     ┌─────────────┐  ┌─────────────┐   ┌─────────────┐
+            │             │   │             │     │             │  │             │   │             │
+Core        │   Message   │   │ Chain Store │     │  Processor  │  │    Block    │   │   Wallet    │
+            │    Pool     │   │             │     │             │  │   Service   │   │             │
+            │             │   │             │     │             │  │             │   │             │
+            └─────────────┘   └─────────────┘     └─────────────┘  └─────────────┘   └─────────────┘
 ```
 ## A tour of the code
 
@@ -154,19 +170,22 @@ Services include (not exhaustive):
 
 The [`plumbing`](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing) & 
 [`porcelain`](https://github.com/filecoin-project/go-filecoin/tree/master/porcelain) packages are 
-the new API; 
-over time, this patterns should completely replace the existing top-level `api` package and its implementation in `Node`. 
-The plumbing & porcelain design pattern is explained in more detail below.
+the new API for most non-protocol commands; this pattern has completely replaced the old top-level `api` package and its implementation in `Node`. 
 
-Plumbing is the set of public apis required to implement all user-, tool-, and protocol-level features. 
+__Plumbing__ is the set of public apis required to implement all user-, tool-, and some protocol-level features. 
 Plumbing implementations depend on the core services they need, but not on the `Node`.
 Plumbing is intended to be fairly thin, routing requests and data between core components. 
 Plumbing implementations are often tested with real implementations of the core services they use, but can also be tested with fakes and mocks.
 
-Porcelain implementations are convenience compositions of plumbing. 
+__Porcelain__ implementations are convenience compositions of plumbing. 
 They depend only on the plumbing API, and can coordinate a sequence of actions. 
 Porcelain is ephemeral; the lifecycle is the duration of a single porcelain call: something calls into it, it does its thing, and then returns. 
 Porcelain implementations are ideally tested with fakes of the plumbing they use, but can also use full implementations. 
+
+### Protocol Mining APIs
+The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
+[`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
+and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/block/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
 
 ### Commands
 
