@@ -14,6 +14,8 @@ localnet -shell
 The localnet tool expects that you can already build `go-filecoin`. Please refer
 to the README in the root of this project for details.
 
+localnet is only compatible with `go-filecoin` binaries built from the same git ref.
+
 ```
 go build -o localnet main.go
 ```

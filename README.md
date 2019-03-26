@@ -29,7 +29,7 @@
     - [Manage Submodules Manually (optional)](#manage-submodules-manually-optional)
 - [Usage](#usage)
   - [Advanced usage](#advanced-usage)
-    - [Run Multiple Nodes with IPTB](#run-multiple-nodes-with-iptb)
+    - [Setting up a localnet](#setting-up-a-localnet)
 - [Contributing](#contributing)
 - [Community](#community)
 - [Developer Networks](#developer-networks)
@@ -176,9 +176,9 @@ To see a full list of commands, run `go-filecoin --help`.
 
 ### Advanced usage
 
-#### Run Multiple Nodes with IPTB
+#### Setting up a localnet
 
-The [`localfilecoin` IPTB plugin](https://github.com/filecoin-project/go-filecoin/tree/master/tools/iptb-plugins) provides an automation layer that makes it easy to run multiple filecoin nodes. For example, it enables you to easily start up 10 mining nodes locally on your machine.
+The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. The localnet tool is only compatible when built from the same git ref as the targeted `go-filecoin` binary.
 
 ## Contributing
 

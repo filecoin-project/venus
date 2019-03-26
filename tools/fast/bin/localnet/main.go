@@ -2,7 +2,7 @@ package main
 
 // localnet
 //
-// localnet is a FAST binary tool that quickly, and easily, sets up a local network
+// localnet is a FAST binary tool that quickly and easily, sets up a local network
 // on the users computer. The network will stay standing till the program is closed.
 
 import (
