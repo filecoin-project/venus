@@ -167,6 +167,15 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, err.Error())
 	}
 
+	var sectorSize uint64
+	if sectorSize, err = sm.node.SectorBuilder().GetMaxUserBytesPerStagedSector(); err != nil {
+		return sm.proposalRejector(sm, p, err.Error())
+	}
+
+	if p.Size.GreaterThan(types.NewBytesAmount(sectorSize)) {
+		return sm.proposalRejector(sm, p, fmt.Sprintf("Piece size of %s exceeds sector size of %d", p.Size.String(), sectorSize))
+	}
+
 	// Payment is valid, everything else checks out, let's accept this proposal
 	return sm.proposalAcceptor(sm, p)
 }
