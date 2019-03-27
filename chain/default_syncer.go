@@ -183,6 +183,13 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
+	head := syncer.chainStore.Head()
+
+	// if tipset is already head, we've been here before. do nothing.
+	if head.Equals(next) {
+		return nil
+	}
+
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the chainStore.
 	st, err := syncer.tipSetState(ctx, parent.String())
@@ -226,7 +233,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if err != nil {
 		return err
 	}
-	headParentCids, err := syncer.chainStore.Head().Parents()
+	headParentCids, err := head.Parents()
 	if err != nil {
 		return err
 	}
@@ -238,7 +245,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, syncer.chainStore.Head(), nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, head, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
