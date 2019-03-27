@@ -262,9 +262,7 @@ func TestSectorBuilder(t *testing.T) {
 
 		// seal everything
 		err = hB.SectorBuilder.SealAllStagedSectors(context.Background())
-		if err != nil {
-			require.NoError(t, err)
-		}
+		require.NoError(t, err)
 
 		timeout := time.After(MaxTimeToSealASector * 2)
 	Loop:
