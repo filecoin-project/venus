@@ -13,8 +13,10 @@ export FILECOIN_PROOFS_FAST_DELAY_SECONDS=1
 
 if [ -z "$1" ]; then
     USE_SMALL_SECTORS="true"
+    COMMIT_SECTOR_AND_POST_TIMEOUT=120
 else
     USE_SMALL_SECTORS="$1"
+    COMMIT_SECTOR_AND_POST_TIMEOUT=3600
 fi
 
 export FIL_USE_SMALL_SECTORS=${USE_SMALL_SECTORS}
@@ -175,15 +177,15 @@ echo "client proposes a storage deal, which transfers piece 2..."
 
 echo ""
 echo "wait for commitSector sent by miner owner to be included in a block viewable by all nodes..."
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" 120
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" 120
-wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
+wait_for_message_in_chain_by_method_and_sender commitSector "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
 
 echo ""
 echo "wait for submitPoSt, too..."
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" 120
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" 120
-wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" 120
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
+wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
 
 echo ""
 echo ""
