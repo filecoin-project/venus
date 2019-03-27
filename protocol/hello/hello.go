@@ -94,7 +94,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Errorf("code not at same version: %s does not match %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Errorf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
