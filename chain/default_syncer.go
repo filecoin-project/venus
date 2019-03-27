@@ -317,17 +317,8 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
 func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error {
-	// ********** WARNING **********
-	//
-	// This concurrency model is flawed.  The mutex is held during a possibly
-	// long call to the network.  TODO: re-evaluate / re-design the concurrency
-	// model to allow for collectChain to be called outside the lock.
-	// FYI the two biggest concurrency concerns at present would be addressed
-	// by locking after collectChain completes, so my hunch is this can be
-	// fixed by simply moving the lock call below collectChain.
 	logSyncer.Debugf("trying to sync %v\n", blkCids)
-	syncer.mu.Lock()
-	defer syncer.mu.Unlock()
+
 	// If the store already has all these blocks the syncer is finished.
 	if syncer.chainStore.HasAllBlocks(ctx, blkCids) {
 		return nil
@@ -349,6 +340,11 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 		return err
 	}
 	parent := parentTsas.TipSet
+
+	// Start locking now, so simultaneous calls to this method don't confuse each other about
+	// the state of the chain head.
+	syncer.mu.Lock()
+	defer syncer.mu.Unlock()
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
