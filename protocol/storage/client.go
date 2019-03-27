@@ -11,6 +11,7 @@ import (
 	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
 	"gx/ipfs/QmZNkThpqfVXs9GNbexPrfBbXSLNYeKrE7jwFM2oqHbyqN/go-libp2p-protocol"
 	"gx/ipfs/QmabLh8TrJ3emfAoQk5AbqbLTbMyj7XqumMFmAFxa9epo8/go-multistream"
+	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
 	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -48,11 +49,6 @@ const (
 	CreateChannelGasLimit = 300
 )
 
-type clientNode interface {
-	MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error
-	GetBlockTime() time.Duration
-}
-
 type clientPorcelainAPI interface {
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
@@ -70,23 +66,29 @@ type clientPorcelainAPI interface {
 
 // Client is used to make deals directly with storage miners.
 type Client struct {
-	node clientNode
-	api  clientPorcelainAPI
+	api                 clientPorcelainAPI
+	blockTime           time.Duration
+	host                host.Host
+	log                 logging.EventLogger
+	ProtocolRequestFunc func(ctx context.Context, protocol protocol.ID, peer peer.ID, host host.Host, request interface{}, response interface{}) error
 }
 
 // NewClient creates a new storage client.
-func NewClient(nd clientNode, api clientPorcelainAPI) (*Client, error) {
+func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) *Client {
 	smc := &Client{
-		node: nd,
-		api:  api,
+		api:                 api,
+		blockTime:           blockTime,
+		host:                host,
+		log:                 logging.Logger("storage/client"),
+		ProtocolRequestFunc: MakeProtocolRequest,
 	}
-	return smc, nil
+	return smc
 }
 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.node.GetBlockTime())
+	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.GetBlockTime())
 	defer cancel()
 
 	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
@@ -180,7 +182,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	var response storagedeal.Response
 	// We reset the context to not timeout to allow large file transfers
 	// to complete.
-	err = smc.node.MakeProtocolRequest(ctx, makeDealProtocol, pid, signedProposal, &response)
+	err = smc.ProtocolRequestFunc(ctx, makeDealProtocol, pid, smc.host, signedProposal, &response)
 	if err != nil {
 		return nil, errors.Wrap(err, "error sending proposal")
 	}
@@ -194,6 +196,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	if err := smc.recordResponse(&response, miner, proposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
+	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
 
 	return &response, nil
 }
@@ -260,6 +263,11 @@ func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	return storageDeal.Miner, nil
 }
 
+// GetBlockTime returns the blocktime this node is configured with.
+func (smc *Client) GetBlockTime() time.Duration {
+	return smc.blockTime
+}
+
 // QueryDeal queries an in-progress proposal.
 func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Response, error) {
 	mineraddr, err := smc.minerForProposal(proposalCid)
@@ -274,7 +282,7 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 
 	q := storagedeal.QueryRequest{Cid: proposalCid}
 	var resp storagedeal.Response
-	err = smc.node.MakeProtocolRequest(ctx, queryDealProtocol, minerpid, q, &resp)
+	err = smc.ProtocolRequestFunc(ctx, queryDealProtocol, minerpid, smc.host, q, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying deal")
 	}
@@ -304,28 +312,10 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 	return storageDeal.Proposal.Payment.Vouchers, nil
 }
 
-// ClientNodeImpl implements the client node interface
-type ClientNodeImpl struct {
-	host      host.Host
-	blockTime time.Duration
-}
-
-// NewClientNodeImpl constructs a ClientNodeImpl
-func NewClientNodeImpl(host host.Host, bt time.Duration) *ClientNodeImpl {
-	return &ClientNodeImpl{
-		host:      host,
-		blockTime: bt,
-	}
-}
-
-// GetBlockTime returns the blocktime this node is configured with.
-func (cni *ClientNodeImpl) GetBlockTime() time.Duration {
-	return cni.blockTime
-}
-
 // MakeProtocolRequest makes a request and expects a response from the host using the given protocol.
-func (cni *ClientNodeImpl) MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, request interface{}, response interface{}) error {
-	s, err := cni.host.NewStream(ctx, peer, protocol)
+func MakeProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID,
+	host host.Host, request interface{}, response interface{}) error {
+	s, err := host.NewStream(ctx, peer, protocol)
 	if err != nil {
 		if err == multistream.ErrNotSupported {
 			return errors.New("could not establish connection with peer. Peer does not support protocol")
