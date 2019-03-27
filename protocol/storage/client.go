@@ -76,10 +76,10 @@ type Client struct {
 // NewClient creates a new storage client.
 func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) *Client {
 	smc := &Client{
-		api:       api,
-		blockTime: blockTime,
-		host:      host,
-		log:       logging.Logger("storage/client"),
+		api:                 api,
+		blockTime:           blockTime,
+		host:                host,
+		log:                 logging.Logger("storage/client"),
 		ProtocolRequestFunc: MakeProtocolRequest,
 	}
 	return smc
@@ -88,7 +88,7 @@ func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.node.GetBlockTime())
+	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.GetBlockTime())
 	defer cancel()
 
 	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
