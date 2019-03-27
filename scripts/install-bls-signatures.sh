@@ -1,8 +1,42 @@
 #!/usr/bin/env bash
 
 install_precompiled() {
-  echo "precompiled bls-signatures not supported yet"
-  return 1
+  RELEASE_SHA1=`git rev-parse @:./bls-signatures/bls-signatures`
+  RELEASE_NAME="bls-signatures-`uname`"
+  RELEASE_TAG="${RELEASE_SHA1:0:16}"
+
+  RELEASE_RESPONSE=`curl \
+    --retry 3 \
+    --location \
+    "https://api.github.com/repos/filecoin-project/bls-signatures/releases/tags/$RELEASE_TAG"
+  `
+
+  RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url"`
+
+  ASSET_URL=`curl \
+    --head \
+    --retry 3 \
+    --header "Accept:application/octet-stream" \
+    --location \
+    --output /dev/null \
+    -w %{url_effective} \
+    "$RELEASE_URL"
+  `
+  ASSET_ID=`basename ${RELEASE_URL}`
+
+  TAR_NAME="${RELEASE_NAME}_${ASSET_ID}"
+  if [ ! -f "/tmp/${TAR_NAME}.tar.gz" ]; then
+      curl --retry 3 --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
+      if [ $? -ne "0" ]; then
+          echo "asset failed to be downloaded"
+          return 1
+      fi
+  fi
+
+  mkdir -p bls-signatures/include
+  mkdir -p bls-signatures/lib/pkgconfig
+
+  tar -C bls-signatures -xzf /tmp/${TAR_NAME}.tar.gz
 }
 
 install_local() {
