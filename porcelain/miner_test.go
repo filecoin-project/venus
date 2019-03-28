@@ -69,8 +69,7 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func
 		Return:   [][]byte{mpc.address.Bytes()},
 		ExitCode: uint8(0),
 	}
-	cb(nil, nil, receipt)
-	return nil
+	return cb(nil, nil, receipt)
 }
 
 func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {

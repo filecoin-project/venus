@@ -113,8 +113,7 @@ func deps() {
 		cmd("go get -u github.com/whyrusleeping/gx-go"),
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
-		cmd("go get -u github.com/alecthomas/gometalinter"),
-		cmd("gometalinter --install"),
+		cmd("go get -u github.com/golangci/golangci-lint/cmd/golangci-lint"),
 		cmd("go get -u github.com/stretchr/testify"),
 		cmd("go get -u github.com/xeipuuv/gojsonschema"),
 		cmd("go get -u github.com/ipfs/iptb"),
@@ -146,7 +145,6 @@ func smartdeps() {
 	cmds := []command{
 		cmd("gx install"),
 		cmd("gx-go rewrite"),
-		cmd("gometalinter --install"),
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
@@ -154,7 +152,7 @@ func smartdeps() {
 
 	// packages we need to install
 	pkgs := []string{
-		"github.com/alecthomas/gometalinter",
+		"github.com/golangci/golangci-lint/cmd/golangci-lint",
 		"github.com/docker/docker/api/types",
 		"github.com/docker/docker/api/types/container",
 		"github.com/docker/docker/client",
@@ -206,7 +204,7 @@ func smartdeps() {
 	}
 }
 
-// lint runs linting using gometalinter
+// lint runs linting using golangci-lint
 func lint(packages ...string) {
 	if len(packages) == 0 {
 		packages = []string{"./..."}
@@ -214,36 +212,7 @@ func lint(packages ...string) {
 
 	log.Printf("Linting %s ...\n", strings.Join(packages, " "))
 
-	// Run fast linters batched together
-	configs := []string{
-		"gometalinter",
-		"--skip=sharness",
-		"--skip=vendor",
-		"--disable-all",
-	}
-
-	fastLinters := []string{
-		"--enable=vet",
-		"--enable=gofmt",
-		"--enable=misspell",
-		"--enable=goconst",
-		"--enable=golint",
-		"--enable=errcheck",
-		"--min-occurrences=6", // for goconst
-	}
-
-	runCmd(cmd(append(append(configs, fastLinters...), packages...)...))
-
-	slowLinters := []string{
-		"--deadline=10m",
-		"--enable=unconvert",
-		"--enable=staticcheck",
-		"--enable=varcheck",
-		"--enable=structcheck",
-		"--enable=deadcode",
-	}
-
-	runCmd(cmd(append(append(configs, slowLinters...), packages...)...))
+	runCmd(cmd("golangci-lint", "run"))
 }
 
 func build() {

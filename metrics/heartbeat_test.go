@@ -183,7 +183,7 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 		Ticket:          nil,
 		Parents:         types.SortedCidSet{},
 		ParentWeight:    0,
-		Height:          types.Uint64(height),
+		Height:          height,
 		Nonce:           0,
 		Messages:        nil,
 		MessageReceipts: nil,

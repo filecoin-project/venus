@@ -14,8 +14,10 @@ func (l *Dockerfilecoin) Events() (io.ReadCloser, error) {
 
 // StderrReader provides an io.ReadCloser to the running daemons stderr
 func (l *Dockerfilecoin) StderrReader() (io.ReadCloser, error) {
-	cli, _ := l.GetClient()
-	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
+	cli, err := l.GetClient()
+	if err != nil {
+		return nil, err
+	}
 
 	options := types.ContainerLogsOptions{
 		ShowStdout: false,
@@ -23,13 +25,15 @@ func (l *Dockerfilecoin) StderrReader() (io.ReadCloser, error) {
 		Follow:     true,
 	}
 
-	return cli.ContainerLogs(ctx, l.ID, options)
+	return cli.ContainerLogs(context.Background(), l.ID, options)
 }
 
 // StdoutReader provides an io.ReadCloser to the running daemons stdout
 func (l *Dockerfilecoin) StdoutReader() (io.ReadCloser, error) {
-	cli, _ := l.GetClient()
-	ctx, _ := context.WithCancel(context.Background()) // nolint: vet
+	cli, err := l.GetClient()
+	if err != nil {
+		return nil, err
+	}
 
 	options := types.ContainerLogsOptions{
 		ShowStdout: true,
@@ -37,7 +41,7 @@ func (l *Dockerfilecoin) StdoutReader() (io.ReadCloser, error) {
 		Follow:     true,
 	}
 
-	return cli.ContainerLogs(ctx, l.ID, options)
+	return cli.ContainerLogs(context.Background(), l.ID, options)
 }
 
 // Heartbeat not implemented
