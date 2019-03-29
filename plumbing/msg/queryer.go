@@ -49,7 +49,7 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	// We return the method signature so callers know how to decode the return value.
 	// Probably would be better to do the decoding here since we are after all accepting
 	// golang types.
-	sigGetter := mthdsig.NewGetter(q.chainReader)
+	sigGetter := mthdsig.NewGetter(q.chainReader, q.cst)
 	sig, err := sigGetter.Get(ctx, to, method)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "unable to determine return type")

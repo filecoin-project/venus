@@ -5,10 +5,12 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -25,8 +27,8 @@ const Topic = "/fil/msgs"
 
 // Abstracts over a store of blockchain state.
 type chainState interface {
-	// LatestState returns the latest chain state.
-	LatestState(ctx context.Context) (state.Tree, error)
+	GetHead() types.SortedCidSet
+	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
 }
 
 // BlockClock defines a interface to a struct that can give the current block height.
@@ -43,6 +45,8 @@ type Sender struct {
 	signer types.Signer
 	// Provides actor state
 	chainState chainState
+	// To load the tree for the head tipset state root.
+	cst *hamt.CborIpldStore
 	// Provides the current block height
 	blockTimer BlockClock
 	// Tracks inbound messages for mining
@@ -59,12 +63,13 @@ type Sender struct {
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer BlockClock,
+func NewSender(signer types.Signer, chainReader chain.ReadStore, cst *hamt.CborIpldStore, blockTimer BlockClock,
 	msgQueue *core.MessageQueue, msgPool *core.MessagePool,
 	validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
 	return &Sender{
 		signer:     signer,
 		chainState: chainReader,
+		cst:        cst,
 		blockTimer: blockTimer,
 		inbox:      msgPool,
 		outbox:     msgQueue,
@@ -90,7 +95,12 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	st, err := s.chainState.LatestState(ctx)
+	headTs := s.chainState.GetHead()
+	tsas, err := s.chainState.GetTipSetAndState(ctx, headTs)
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "couldnt get latest state root")
+	}
+	st, err := state.LoadStateTree(ctx, s.cst, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
 	}

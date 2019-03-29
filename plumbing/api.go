@@ -18,15 +18,15 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -42,8 +42,9 @@ import (
 type API struct {
 	logger logging.EventLogger
 
+	actr         *actr.Actr
 	bitswap      exchange.Interface
-	chain        chain.ReadStore
+	chain        *chn.Chain
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
@@ -53,15 +54,15 @@ type API struct {
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
 	network      *net.Network
-	sigGetter    *mthdsig.Getter
 	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
+	Actr         *actr.Actr
 	Bitswap      exchange.Interface
-	Chain        chain.ReadStore
+	Chain        *chn.Chain
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
@@ -72,7 +73,6 @@ type APIDeps struct {
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
 	Outbox       *core.MessageQueue
-	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
 }
 
@@ -81,6 +81,7 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
+		actr:         deps.Actr,
 		bitswap:      deps.Bitswap,
 		chain:        deps.Chain,
 		config:       deps.Config,
@@ -92,17 +93,26 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		outbox:       deps.Outbox,
-		sigGetter:    deps.SigGetter,
 		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
 	}
+}
+
+// ActorGet returns an actor from the latest state on the chain
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	return api.actr.Get(ctx, addr)
 }
 
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
 func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return api.sigGetter.Get(ctx, actorAddr, method)
+	return api.actr.GetSignature(ctx, actorAddr, method)
+}
+
+// ActorLs returns a slice of actors from the latest state on the chain
+func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+	return api.actr.Ls(ctx)
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.
@@ -123,43 +133,23 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 
 // ChainHead returns the head tipset
 func (api *API) ChainHead(ctx context.Context) types.TipSet {
-	ts, _ := api.chain.GetTipSetAndState(ctx, api.chain.GetHead())
-	return ts.TipSet
+	return api.chain.Head(ctx)
+}
+
+// ChainLs returns a channel of tipsets from head to genesis
+func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
+	return api.chain.Ls(ctx)
+}
+
+// ChainGetBlock gets a block by CID
+func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
+	return api.chain.GetBlock(ctx, id)
 }
 
 // GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
 // `TipSet` with height `descendantBlockHeight` in the heaviest chain.
 func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return chain.GetRecentAncestorsOfHeaviestChain(ctx, api.chain, descendantBlockHeight)
-}
-
-// ChainLs returns a channel of tipsets from head to genesis
-func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	ts, _ := api.chain.GetTipSetAndState(ctx, api.chain.GetHead())
-	return api.chain.BlockHistory(ctx, ts.TipSet)
-}
-
-// ActorGet returns an actor from the latest state on the chain
-func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	state, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetActor(ctx, addr)
-}
-
-// ActorLs returns a slice of actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetAllActors(ctx, st), nil
-}
-
-// BlockGet gets a block by CID
-func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return api.chain.GetBlock(ctx, id)
+	return api.chain.GetRecentAncestorsOfHeaviestChain(ctx, descendantBlockHeight)
 }
 
 // DealsLs a slice of all storagedeals in the local datastore and possibly an error

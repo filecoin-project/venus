@@ -15,7 +15,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/actr"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -160,15 +162,15 @@ func TestNodeStartMining(t *testing.T) {
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		Chain:        minerNode.ChainReader,
+		Actr:         actr.NewActr(minerNode.ChainReader, minerNode.CborStore(), mthdsig.NewGetter(minerNode.ChainReader, minerNode.CborStore())),
+		Chain:        chn.NewChain(minerNode.ChainReader, minerNode.CborStore()),
 		Config:       pbConfig.NewConfig(minerNode.Repo),
 		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:    msg.NewSender(minerNode.Wallet, nil, nil, minerNode.Outbox, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
+		MsgSender:    msg.NewSender(minerNode.Wallet, nil, minerNode.CborStore(), nil, minerNode.Outbox, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
 		Network:      net.New(minerNode.Host(), nil, nil, nil, nil, nil),
-		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
 		Deals:        strgdls.New(minerNode.Repo.DealsDatastore()),
 	})

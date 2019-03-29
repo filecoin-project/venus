@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
-
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/types"
+	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -23,22 +26,30 @@ var (
 
 // ChainReadStore is the subset of chain.ReadStore that Getter needs.
 type ChainReadStore interface {
-	LatestState(ctx context.Context) (state.Tree, error)
+	GetHead() types.SortedCidSet
+	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
 }
 
 // Getter knows how to get actor method signatures.
 type Getter struct {
 	chainReader ChainReadStore
+	cst         *hamt.CborIpldStore
 }
 
 // NewGetter returns a new Getter. Shocking.
-func NewGetter(chainReader ChainReadStore) *Getter {
-	return &Getter{chainReader}
+func NewGetter(chainReader ChainReadStore, cst *hamt.CborIpldStore) *Getter {
+	return &Getter{chainReader, cst}
 }
 
 // Get returns the signature for the given actor and method. See api description.
 func (sg *Getter) Get(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	st, err := sg.chainReader.LatestState(ctx)
+	head := sg.chainReader.GetHead()
+	tsas, err := sg.chainReader.GetTipSetAndState(ctx, head)
+	if err != nil {
+		return nil, err
+	}
+
+	st, err := state.LoadStateTree(ctx, sg.cst, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get current state tree")
 	}

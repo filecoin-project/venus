@@ -289,37 +289,6 @@ func TestHead(t *testing.T) {
 	assert.Equal(genTS.ToSortedCidSet(), chain.GetHead())
 }
 
-// LatestState correctly returns the state of the head.
-func TestLatestState(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	require := require.New(t)
-	assert := assert.New(t)
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	bs := bstore.NewBlockstore(ds)
-	cst := hamt.NewCborStore()
-	chain := chain.NewDefaultStore(ds, cst, genCid)
-
-	requirePutTestChain(require, chain)
-
-	// LatestState errors without a set head
-	_, err := chain.LatestState(ctx)
-	assert.Error(err)
-
-	// Call init genesis again to load genesis state into cbor store.
-	// This is required for the chain to access the state in the cbor store.
-	_, err = initGenesis(cst, bs)
-	require.NoError(err)
-
-	assertSetHead(assert, chain, genTS)
-	st, err := chain.LatestState(ctx)
-	require.NoError(err)
-	c, err := st.Flush(ctx)
-	require.NoError(err)
-	assert.Equal(genStateRoot, c)
-}
-
 func assertEmptyCh(assert *assert.Assertions, ch <-chan interface{}) {
 	select {
 	case <-ch:

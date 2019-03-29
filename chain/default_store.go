@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -376,6 +375,7 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 	return store.head.Height()
 }
 
+<<<<<<< HEAD
 // LatestState returns the state associated with the latest chain head.
 func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
 	h := store.GetHead()
@@ -396,6 +396,8 @@ func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr addres
 	return st.GetActor(ctx, addr)
 }
 
+=======
+>>>>>>> Removed LatestState method from Store interface
 // BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
