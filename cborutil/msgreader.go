@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // MaxMessageSize is the maximum message size to read

@@ -3,8 +3,8 @@ package pubsub
 import (
 	"context"
 
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	libp2p "gx/ipfs/QmepvmmYNM6q4RaUiwEikQFhgMFHXg2PLhx2E9iaRd3jmS/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p-peer"
+	libp2p "github.com/libp2p/go-libp2p-pubsub"
 )
 
 // Subscriber subscribes to pubsub topics

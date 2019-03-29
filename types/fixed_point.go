@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/pkg/errors"
 )
 
 // MaxFixedPointIntegralNum is the largest whole number that can be encoded

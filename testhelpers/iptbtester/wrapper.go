@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	logging "github.com/ipfs/go-log"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	iptb "github.com/ipfs/iptb/testbed"

@@ -2,7 +2,7 @@ package types
 
 import (
 	"fmt"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"

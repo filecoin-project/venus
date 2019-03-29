@@ -4,8 +4,8 @@ import (
 	"os"
 	"strconv"
 
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	oldlogging "gx/ipfs/QmcaSwFc5RBg8yCq54QURwEU4nwjfCpjbpmaAm4VbdGLKv/go-logging"
+	logging "github.com/ipfs/go-log"
+	oldlogging "github.com/whyrusleeping/go-logging"
 
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/metrics"

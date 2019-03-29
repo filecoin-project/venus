@@ -3,8 +3,8 @@ package abi
 import (
 	"fmt"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 )
 
 // EncodeValues encodes a set of abi values to raw bytes. Zero length arrays of

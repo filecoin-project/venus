@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // MsgWriter is a length delimited cbor message writer

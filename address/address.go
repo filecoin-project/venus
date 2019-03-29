@@ -9,10 +9,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/bls-signatures"
 
-	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
-	"gx/ipfs/QmdBzoMxsBpojBfN1cv5GnKtB7sfYBMoLH7p9qSyEVYXcu/refmt/obj/atlas"
+	"github.com/filecoin-project/go-leb128"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/minio/blake2b-simd"
+	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {

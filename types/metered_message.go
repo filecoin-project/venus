@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // GasUnits represents number of units of gas consumed

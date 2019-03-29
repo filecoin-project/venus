@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
+	"github.com/mitchellh/go-homedir"
 )
 
 // GetFreePort gets a free port from the kernel

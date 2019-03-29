@@ -2,7 +2,7 @@ package sectorbuilder
 
 import (
 	"fmt"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/pkg/errors"
 )
 
 // ErrPieceTooLarge is an error indicating that a piece cannot be larger than the sector into which it is written.
