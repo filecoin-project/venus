@@ -36,10 +36,10 @@ func init() {
 	series.GlobalSleepDelay = time.Second * 5
 }
 
-// TestRetrieval exercises storing and retreiving with the filecoin protocols
+// TestRetrieval exercises storing and retrieving with the filecoin protocols
 func TestRetrieval(t *testing.T) {
-	// This test should run in 20 block times, with 60 seconds for sealing, and no longer
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay).Add(60*time.Second))
+	// This test should run in 20 block times, with 120 seconds for sealing, and no longer
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay).Add(120*time.Second))
 	defer cancel()
 
 	require := require.New(t)

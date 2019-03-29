@@ -23,11 +23,7 @@ type SectorBuilder interface {
 	// method returns. In the real world this should not happen, as sealing
 	// takes a long time to complete. In tests, where sealing happens
 	// near-instantaneously, it is possible to exercise this race.
-	//
-	// TODO: Replace this method with something that accepts a piece cid and a
-	// value which represents the number of bytes in the piece and returns a
-	// sector id (to which piece bytes will be written) and a Writer.
-	AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error)
+	AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, err error)
 
 	// ReadPieceFromSealedSector produces a Reader used to get original
 	// piece-bytes from a sealed sector.
@@ -38,9 +34,9 @@ type SectorBuilder interface {
 
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the
-	// same channel. Values will be either a *SealedSectorMetadata or an error. A
-	// *SealedSectorMetadata will be sent to the returned channel only once, regardless
-	// of the number of times SectorSealResults is called.
+	// same channel. Values will be either a *SealedSectorMetadata or an error.
+	// A *SealedSectorMetadata will be sent to the returned channel only once,
+	// regardless of the number of times SectorSealResults is called.
 	SectorSealResults() <-chan SectorSealResult
 
 	// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes
