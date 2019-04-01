@@ -54,8 +54,8 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
@@ -109,78 +109,10 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
-
-	time.Sleep(time.Millisecond * 50)
-
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
-}
-
-func TestHelloWrongVersion(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	require := require.New(t)
-
-	mn, err := mocknet.WithNPeers(ctx, 2)
-	assert.NoError(t, err)
-
-	a, b := mn.Hosts()[0], mn.Hosts()[1]
-
-	genesisA := &types.Block{Nonce: 451}
-
-	heavy := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
-	hg := &mockHeaviestGetter{heavy}
-
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg.getHeaviestTipSet, "devnet-user", "sha1")
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-user", "sha2")
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
-
-	time.Sleep(time.Millisecond * 50)
-
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
-}
-
-func TestHelloWrongVersionTestDevnet(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	require := require.New(t)
-
-	mn, err := mocknet.WithNPeers(ctx, 2)
-	assert.NoError(t, err)
-
-	a, b := mn.Hosts()[0], mn.Hosts()[1]
-
-	genesisA := &types.Block{Nonce: 451}
-
-	heavy := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
-	hg := &mockHeaviestGetter{heavy}
-
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha1")
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(mn.LinkAll())
@@ -221,8 +153,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()

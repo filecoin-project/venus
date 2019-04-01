@@ -24,6 +24,8 @@ func init() {
 // Protocol is the libp2p protocol identifier for the hello protocol.
 const protocol = "/fil/hello/1.0.0"
 
+const FilecoinProtocolVersion = "0.0.2"
+
 var log = logging.Logger("/fil/hello")
 
 // Message is the data structure of a single message in the hello protocol.
@@ -31,7 +33,7 @@ type Message struct {
 	HeaviestTipSetCids   []cid.Cid
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
-	CommitSha            string
+	Version              string
 }
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
@@ -54,20 +56,18 @@ type Handler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
-	net       string
-	commitSha string
+	net string
 }
 
 // New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc, net string, commitSha string) *Handler {
+func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc, net string) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,
 		chainSyncCB:       syncCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
 		net:               net,
-		commitSha:         commitSha,
 	}
 	h.SetStreamHandler(protocol, hello.handleNewStream)
 
@@ -94,7 +94,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Errorf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Errorf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.Version, FilecoinProtocolVersion, from)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
@@ -107,13 +107,14 @@ func (h *Handler) handleNewStream(s net.Stream) {
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
 // ErrWrongVersion is the error returned when a mismatch in the code version happens.
-var ErrWrongVersion = fmt.Errorf("code version mismatch")
+var ErrWrongVersion = fmt.Errorf("protocol version mismatch")
 
 func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return ErrBadGenesis
 	}
-	if (h.net == "devnet-test" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
+
+	if msg.Version != FilecoinProtocolVersion {
 		return ErrWrongVersion
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) getOurHelloMessage() *Message {
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
 		HeaviestTipSetHeight: height,
-		CommitSha:            h.commitSha,
+		Version:              FilecoinProtocolVersion,
 	}
 }
 
