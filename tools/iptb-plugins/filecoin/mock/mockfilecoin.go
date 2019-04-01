@@ -106,3 +106,11 @@ func (m *Mockfilecoin) APIAddr() (string, error) {
 func (m *Mockfilecoin) SwarmAddrs() ([]string, error) {
 	panic("not implemented")
 }
+
+func (m *Mockfilecoin) Config() (interface{}, error) {
+	panic("not implemented")
+}
+
+func (m *Mockfilecoin) WriteConfig(interface{}) error {
+	panic("not implemented")
+}

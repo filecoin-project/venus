@@ -163,7 +163,7 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 		return nil, oerr
 	}
 
-	icfg, err := l.GetConfig()
+	icfg, err := l.Config()
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +523,7 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 /** Config Interface **/
 
 // GetConfig returns the nodes config.
-func (l *Localfilecoin) GetConfig() (interface{}, error) {
+func (l *Localfilecoin) Config() (interface{}, error) {
 	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }
 
