@@ -90,7 +90,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input channel.  Precondition, the input
 // channel contains interfaces which may be tipsets or errors.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan interface{}, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan *BlockHistoryResult, minHeight *types.BlockHeight) ([]types.TipSet, error) {
 	var ret []types.TipSet
 	for {
 		select {
@@ -100,29 +100,27 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan interface{}, m
 			if !more {
 				return ret, nil
 			}
-			switch raw := raw.(type) {
-			case error:
-				return nil, raw
-			case types.TipSet:
-				// Add tipset to ancestors.
-				h, err := raw.Height()
-				if err != nil {
-					return nil, err
-				}
-
-				// Check for termination.
-				if types.NewBlockHeight(h).LessThan(minHeight) {
-					return ret, nil
-				}
-				ret = append(ret, raw)
+			if raw.Error != nil {
+				return nil, raw.Error
 			}
+			// Add tipset to ancestors.
+			h, err := raw.TipSet.Height()
+			if err != nil {
+				return nil, err
+			}
+
+			// Check for termination.
+			if types.NewBlockHeight(h).LessThan(minHeight) {
+				return ret, nil
+			}
+			ret = append(ret, raw.TipSet)
 		}
 	}
 }
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, ch <-chan interface{}, n uint) ([]types.TipSet, error) {
+func CollectAtMostNTipSets(ctx context.Context, ch <-chan *BlockHistoryResult, n uint) ([]types.TipSet, error) {
 	var ret []types.TipSet
 	for i := uint(0); i < n; i++ {
 		select {
@@ -132,13 +130,10 @@ func CollectAtMostNTipSets(ctx context.Context, ch <-chan interface{}, n uint) (
 			if !more {
 				return ret, nil
 			}
-			switch raw := raw.(type) {
-			case error:
-				return nil, raw
-			case types.TipSet:
-				// Add tipset to ancestors.
-				ret = append(ret, raw)
+			if raw.Error != nil {
+				return nil, raw.Error
 			}
+			ret = append(ret, raw.TipSet)
 		}
 
 	}

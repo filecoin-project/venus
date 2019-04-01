@@ -55,18 +55,14 @@ var chainLsCmd = &cmds.Command{
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
-			switch v := raw.(type) {
-			case error:
-				return v
-			case types.TipSet:
-				if len(v) == 0 {
-					panic("tipsets from this channel should have at least one member")
-				}
-				if err := re.Emit(v.ToSlice()); err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unexpected type")
+			if raw.Error != nil {
+				return raw.Error
+			}
+			if len(raw.TipSet) == 0 {
+				panic("tipsets from this channel should have at least one member")
+			}
+			if err := re.Emit(raw.TipSet.ToSlice()); err != nil {
+				return err
 			}
 		}
 		return nil

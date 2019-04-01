@@ -39,7 +39,7 @@ func (chn *Chain) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descend
 }
 
 // Ls returns a channel of tipsets from head to genesis
-func (chn *Chain) Ls(ctx context.Context) <-chan interface{} {
+func (chn *Chain) Ls(ctx context.Context) <-chan *chain.BlockHistoryResult {
 	ts, _ := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
 	return chn.reader.BlockHistory(ctx, ts.TipSet)
 }

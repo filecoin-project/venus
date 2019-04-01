@@ -77,7 +77,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 	// Ch will contain a stream of blocks to check for message (or errors).
 	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
-	ch := make(chan (interface{}))
+	ch := make(chan *chain.BlockHistoryResult)
 
 	// New blocks
 	newHeadCh := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
@@ -97,7 +97,16 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	// Merge historical and new block Channels.
 	go func() {
 		for raw := range newHeadCh {
-			ch <- raw
+			switch v := raw.(type) {
+			case error:
+				ch <- &chain.BlockHistoryResult{
+					Error: v,
+				}
+			case types.TipSet:
+				ch <- &chain.BlockHistoryResult{
+					TipSet: v,
+				}
+			}
 		}
 	}()
 	go func() {
@@ -116,7 +125,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // waitForMessage looks for a message CID in a channel of tipsets and returns the message, block and receipt,
 // when it is found. Reads until the channel is closed or the context done.
 // Returns the found message/block (or nil if the channel closed without finding it), whether it was found, or an error.
-func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan *chain.BlockHistoryResult, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -125,29 +134,25 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 			if !more {
 				return nil, false, nil
 			}
-			switch raw := raw.(type) {
-			case error:
-				e := raw.(error)
+			if raw.Error != nil {
+				e := raw.Error
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
-			case types.TipSet:
-				for _, blk := range raw {
-					for _, msg := range blk.Messages {
-						c, err := msg.Cid()
+			}
+			for _, blk := range raw.TipSet {
+				for _, msg := range blk.Messages {
+					c, err := msg.Cid()
+					if err != nil {
+						return nil, false, err
+					}
+					if c.Equals(msgCid) {
+						recpt, err := w.receiptFromTipSet(ctx, msgCid, raw.TipSet)
 						if err != nil {
-							return nil, false, err
+							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 						}
-						if c.Equals(msgCid) {
-							recpt, err := w.receiptFromTipSet(ctx, msgCid, raw)
-							if err != nil {
-								return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-							}
-							return &ChainMessage{msg, blk, recpt}, true, nil
-						}
+						return &ChainMessage{msg, blk, recpt}, true, nil
 					}
 				}
-			default:
-				return nil, false, fmt.Errorf("unexpected type in channel: %T", raw)
 			}
 		}
 	}

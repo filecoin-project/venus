@@ -353,14 +353,18 @@ func TestBlockHistory(t *testing.T) {
 	require.NoError(err)
 	historyCh := chainStore.BlockHistory(ctx, headTipSetAndState.TipSet)
 
-	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link2, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link1, ((<-historyCh).(types.TipSet)))
-	assert.Equal(genTS, ((<-historyCh).(types.TipSet)))
+	result := <-historyCh
+	assert.Equal(link4, result.TipSet)
+	result = <-historyCh
+	assert.Equal(link3, result.TipSet)
+	result = <-historyCh
+	assert.Equal(link2, result.TipSet)
+	result = <-historyCh
+	assert.Equal(link1, result.TipSet)
+	result = <-historyCh
+	assert.Equal(genTS, result.TipSet)
 
-	ts, more := <-historyCh
-	assert.Equal(nil, ts)     // Genesis block has no parent.
+	_, more := <-historyCh
 	assert.Equal(false, more) // Channel is closed
 }
 
@@ -379,15 +383,15 @@ func TestBlockHistoryCancel(t *testing.T) {
 	require.NoError(err)
 	historyCh := chainStore.BlockHistory(ctx, headTipSetAndState.TipSet)
 
-	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
+	result := <-historyCh
+	assert.Equal(link4, result.TipSet)
+	result = <-historyCh
+	assert.Equal(link3, result.TipSet)
 	cancel()
 	time.Sleep(10 * time.Millisecond)
 
-	ts, more := <-historyCh
-	// Channel is closed
-	assert.Equal(nil, ts)
-	assert.Equal(false, more)
+	_, more := <-historyCh
+	assert.Equal(false, more) // Channel is closed
 }
 
 func TestUnknownBlockRetrievalError(t *testing.T) {
@@ -415,13 +419,8 @@ func TestUnknownBlockRetrievalError(t *testing.T) {
 	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
 	require.NoError(err)
 	for raw := range chainStore.BlockHistory(ctx, headTipSetAndState.TipSet) {
-		switch v := raw.(type) {
-		case error:
-			innerErr = v
-		case types.TipSet:
-			// ignore
-		default:
-			require.FailNow("invalid element in ls", v)
+		if raw.Error != nil {
+			innerErr = raw.Error
 		}
 	}
 
