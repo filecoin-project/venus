@@ -1,5 +1,8 @@
 package consensus
 
+// This is to implement Expected Consensus protocol
+// See: https://github.com/filecoin-project/specs/blob/master/expected-consensus.md
+
 import (
 	"bytes"
 	"context"
@@ -32,7 +35,7 @@ var (
 func init() {
 	ticketDomain = &big.Int{}
 	// The size of the ticket domain must equal the size of the Signature (ticket) generated.
-	// Currently this is a secp256.Sign signature, which is 65 bytes.
+	// Currently this is a secp256k1.Sign signature, which is 65 bytes.
 	ticketDomain.Exp(big.NewInt(2), big.NewInt(65*8), nil)
 	ticketDomain.Sub(ticketDomain, big.NewInt(1))
 }
@@ -296,7 +299,8 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 
 // IsWinningTicket fetches miner power & total power, returns true if it's a winning ticket, false if not,
 //    errors out if minerPower or totalPower can't be found.
-//    See https://github.com/filecoin-project/aq/issues/70 for an explanation of the math here.
+//    See https://github.com/filecoin-project/specs/blob/master/expected-consensus.md
+//    for an explanation of the math here.
 func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree,
 	ticket types.Signature, miner address.Address) (bool, error) {
 
