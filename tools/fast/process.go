@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/libp2p/go-libp2p-peer"
 
+	fcconfig "github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -55,6 +56,7 @@ func init() {
 // IPTBCoreExt is an extended interface of the iptb.Core. It defines additional requirement.
 type IPTBCoreExt interface {
 	testbedi.Core
+	testbedi.Config
 
 	// StderrReader is require to gather daemon logs during action execution
 	StderrReader() (io.ReadCloser, error)
@@ -230,4 +232,23 @@ func (f *Filecoin) RunCmdLDJSONWithStdin(ctx context.Context, stdin io.Reader, a
 	}
 
 	return json.NewDecoder(out.Stdout()), nil
+}
+
+// Config return the config file of the FAST process.
+func (f *Filecoin) Config() (*fcconfig.Config, error) {
+	fcc, err := f.core.Config()
+	if err != nil {
+		return nil, err
+	}
+	cfg, ok := fcc.(*fcconfig.Config)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast filecoin config struct")
+	}
+
+	return cfg, nil
+}
+
+// WriteConfig writes the config `cgf` to the FAST process's repo.
+func (f *Filecoin) WriteConfig(cfg *fcconfig.Config) error {
+	return f.core.WriteConfig(cfg)
 }

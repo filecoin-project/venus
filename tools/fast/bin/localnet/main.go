@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -161,6 +162,11 @@ func main() {
 	}()
 
 	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("recovered from panic", r)
+			fmt.Println("stacktrace from panic: \n" + string(debug.Stack()))
+			exitcode = 1
+		}
 		os.Exit(exitcode)
 	}()
 

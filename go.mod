@@ -38,7 +38,7 @@ require (
 	github.com/ipfs/go-merkledag v0.0.2
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.0.1
-	github.com/ipfs/iptb v1.4.0
+	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.0.0-20160826012719-b497e2f366b8
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
