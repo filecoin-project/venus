@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"context"
 
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
@@ -33,6 +34,33 @@ func NewTipSet(blks ...*Block) (TipSet, error) {
 		}
 	}
 	return ts, nil
+}
+
+type blockGetter interface {
+	GetBlock(ctx context.Context, id cid.Cid) (*Block, error)
+}
+
+// GetNext returns the parent tipset of the current tipset
+func (ts TipSet) GetNext(ctx context.Context, store blockGetter) (*TipSet, error) {
+	parentSet, err := ts.Parents()
+	parents := parentSet.ToSlice()
+	if err != nil {
+		return nil, errors.Wrapf(err, "Cannot create tipset")
+	}
+	if len(parents) == 0 {
+		return nil, errors.New("End of chain")
+	}
+	parentTipSet := TipSet{}
+	for _, cid := range parents {
+		block, err := store.GetBlock(ctx, cid)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Cannot create tipset")
+		}
+		if err := parentTipSet.AddBlock(block); err != nil {
+			return nil, errors.Wrapf(err, "Cannot create tipset")
+		}
+	}
+	return &parentTipSet, nil
 }
 
 // AddBlock adds the provided block to this tipset.
