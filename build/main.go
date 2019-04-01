@@ -109,7 +109,13 @@ func deps() {
 	log.Println("Installing dependencies...")
 
 	cmds := []command{
+		// Download all go modules. While not strictly necessary (go
+		// will do this automatically), this:
+		//  1. Makes it easier to cache dependencies in CI.
+		//  2. Makes it possible to fetch all deps ahead of time for
+		//     offline development.
 		cmd("go mod download"),
+		// Download and build proofs.
 		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
