@@ -6,6 +6,7 @@ labels: C-bug, candidate
 assignees: ''
 
 ---
+Please first see README for how to get help before filing a new bug report. 
 
 **Describe the bug**
 A clear and concise description of what the bug is.
