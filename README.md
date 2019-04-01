@@ -176,6 +176,19 @@ To see a full list of commands, run `go-filecoin --help`.
 
 ### Advanced usage
 
+#### Connecting to a devnet with different code
+
+In order to prevent user error, code has been added to filecoin that makes it hard to accidentally connect to the user
+or test devnets without the correct code. If you are actively developing filecoin and would like to check compatibility
+of your code with these devnets, you can still run your node on the devnet. This is done by building filecoin with the
+following command:
+
+```
+FILECOIN_OVERRIDE_BUILD_SHA=<SHA OF CURRENT FILECOIN RELEASE> go run ./build build
+```
+
+This build step will allow your node to present itself as a node on the network with the correct code.
+
 #### Setting up a localnet
 
 The localnet FAST binary tool allows users to quickly and easily setup a local network on the users computer. Please refer to the [localnet README](https://github.com/filecoin-project/go-filecoin/tree/master/tools/fast/bin/localnet#localnet) for more information. The localnet tool is only compatible when built from the same git ref as the targeted `go-filecoin` binary.
