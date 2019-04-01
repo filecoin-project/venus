@@ -144,8 +144,9 @@ var rootCmdDaemon = &cmds.Command{
 
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
-	"daemon": daemonCmd,
-	"init":   initCmd,
+	"daemon":  daemonCmd,
+	"init":    initCmd,
+	"version": versionCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
@@ -171,7 +172,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"show":             showCmd,
 	"stats":            statsCmd,
 	"swarm":            swarmCmd,
-	"version":          versionCmd,
 	"wallet":           walletCmd,
 }
 
@@ -294,14 +294,11 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 }
 
 func requiresDaemon(req *cmds.Request) bool {
-	if req.Command == daemonCmd {
-		return false
+	for _, cmd := range rootSubcmdsLocal {
+		if req.Command == cmd {
+			return false
+		}
 	}
-
-	if req.Command == initCmd {
-		return false
-	}
-
 	return true
 }
 
