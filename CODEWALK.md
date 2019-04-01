@@ -559,7 +559,7 @@ Vanilla `go test` also works, after build scripts have built and installed appro
 
 ## Dependencies
 
-Dependencies in go-filecoin are managed as go modules, go's new dependency system. Please use at least go 1.11.
+Dependencies in go-filecoin are managed as go modules, go's new dependency system.
 
 If you've cloned go-filecoin into your GOPATH, you may need to set the `GO111MODULES` environment variable to `on`. The build system automatically sets this but your favorite editor or IDE may not work without it.
 
