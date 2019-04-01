@@ -53,11 +53,10 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if earliestAncestorHeight.LessThan(types.NewBlockHeight(0)) {
 		earliestAncestorHeight = types.NewBlockHeight(uint64(0))
 	}
-	historyCh := chainReader.BlockHistory(ctx, &base)
 
 	// Step 1 -- gather all tipsets with a height greater than the earliest
 	// possible proving period start still in scope for the given head.
-	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, historyCh, earliestAncestorHeight)
+	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, chainReader, &base, earliestAncestorHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +78,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if err != nil {
 		return nil, err
 	}
-	historyCh = chainReader.BlockHistory(ctx, &tsas.TipSet)
-	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, historyCh, lookback)
+	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, chainReader, &tsas.TipSet, lookback)
 	if err != nil {
 		return nil, err
 	}
@@ -90,52 +88,35 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input channel.  Precondition, the input
 // channel contains interfaces which may be tipsets or errors.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan *BlockHistoryResult, minHeight *types.BlockHeight) ([]types.TipSet, error) {
-	var ret []types.TipSet
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, ts *types.TipSet, minHeight *types.BlockHeight) (ret []types.TipSet, err error) {
+	var h uint64
 	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case raw, more := <-ch:
-			if !more {
-				return ret, nil
-			}
-			if raw.Error != nil {
-				return nil, raw.Error
-			}
-			// Add tipset to ancestors.
-			h, err := raw.TipSet.Height()
-			if err != nil {
-				return nil, err
-			}
-
-			// Check for termination.
-			if types.NewBlockHeight(h).LessThan(minHeight) {
-				return ret, nil
-			}
-			ret = append(ret, *raw.TipSet)
+		ret = append(ret, *ts)
+		ts, err = ts.GetNext(ctx, chainReader)
+		if ts == nil || err != nil {
+			return
+		}
+		// Add tipset to ancestors.
+		h, err = ts.Height()
+		if err != nil {
+			return
+		}
+		// Check for termination.
+		if types.NewBlockHeight(h).LessThan(minHeight) {
+			return
 		}
 	}
 }
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, ch <-chan *BlockHistoryResult, n uint) ([]types.TipSet, error) {
-	var ret []types.TipSet
+func CollectAtMostNTipSets(ctx context.Context, chainReader ReadStore, ts *types.TipSet, n uint) (ret []types.TipSet, err error) {
 	for i := uint(0); i < n; i++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case raw, more := <-ch:
-			if !more {
-				return ret, nil
-			}
-			if raw.Error != nil {
-				return nil, raw.Error
-			}
-			ret = append(ret, *raw.TipSet)
+		ret = append(ret, *ts)
+		ts, err = ts.GetNext(ctx, chainReader)
+		if ts == nil || err != nil {
+			return
 		}
-
 	}
-	return ret, nil
+	return
 }

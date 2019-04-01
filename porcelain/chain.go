@@ -5,13 +5,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type chBlockHeightPlumbing interface {
-	ChainLs(ctx context.Context) <-chan *chain.BlockHistoryResult
+	ChainLs(ctx context.Context) <-chan *chn.ChainLsResult
 }
 
 type chSampleRandomnessPlumbing interface {

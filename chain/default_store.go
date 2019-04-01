@@ -386,39 +386,6 @@ func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr addres
 	return st.GetActor(ctx, addr)
 }
 
-type BlockHistoryResult struct {
-	TipSet *types.TipSet
-	Error  error
-}
-
-// BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
-// followed by each subsequent parent and ending with the genesis block, after which the channel
-// is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (store *DefaultStore) BlockHistory(ctx context.Context, ts *types.TipSet) <-chan *BlockHistoryResult {
-	ctx = logStore.Start(ctx, "BlockHistory")
-	out := make(chan *BlockHistoryResult)
-
-	go func() {
-		defer close(out)
-		defer logStore.Finish(ctx)
-		var err error
-		for ts != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				out <- &BlockHistoryResult{TipSet: ts}
-				ts, err = ts.GetNext(ctx, store)
-				if err != nil {
-					out <- &BlockHistoryResult{Error: err}
-					return
-				}
-			}
-		}
-	}()
-	return out
-}
-
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
 func (store *DefaultStore) GenesisCid() cid.Cid {
 	store.mu.Lock()

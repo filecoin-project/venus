@@ -40,12 +40,11 @@ func New(
 
 // MiningOnce mines a single block in the given context, and returns the new block.
 func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
-	head := a.chainReader.GetHead()
-	headTipSetAndState, err := a.chainReader.GetTipSetAndState(ctx, head)
+	tsas, err := a.chainReader.GetTipSetAndState(ctx, a.chainReader.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	ts := headTipSetAndState.TipSet
+	ts := tsas.TipSet
 
 	miningWorker, err := a.createWorkerFunc(ctx)
 	if err != nil {

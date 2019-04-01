@@ -3,7 +3,6 @@ package chain_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -333,99 +332,6 @@ func TestHeadEvents(t *testing.T) {
 	// No extra notifications
 	assertEmptyCh(assert, chA)
 	assertEmptyCh(assert, chB)
-}
-
-/* Block history */
-
-// Block history reports all ancestors in the chain
-func TestBlockHistory(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	assert := assert.New(t)
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-	assertSetHead(assert, chainStore, genTS) // set the genesis block
-
-	assertSetHead(assert, chainStore, link4)
-	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
-	require.NoError(err)
-	historyCh := chainStore.BlockHistory(ctx, &headTipSetAndState.TipSet)
-
-	result := <-historyCh
-	assert.Equal(link4, *result.TipSet)
-	result = <-historyCh
-	assert.Equal(link3, *result.TipSet)
-	result = <-historyCh
-	assert.Equal(link2, *result.TipSet)
-	result = <-historyCh
-	assert.Equal(link1, *result.TipSet)
-	result = <-historyCh
-	assert.Equal(genTS, *result.TipSet)
-
-	_, more := <-historyCh
-	assert.Equal(false, more) // Channel is closed
-}
-
-func TestBlockHistoryCancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	initStoreTest(ctx, require.New(t))
-	assert := assert.New(t)
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-	assertSetHead(assert, chainStore, genTS) // set the genesis block
-
-	assertSetHead(assert, chainStore, link4)
-	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
-	require.NoError(err)
-	historyCh := chainStore.BlockHistory(ctx, &headTipSetAndState.TipSet)
-
-	result := <-historyCh
-	assert.Equal(link4, *result.TipSet)
-	cancel()
-	result = <-historyCh
-	assert.Equal(link3, *result.TipSet)
-	time.Sleep(time.Second)
-
-	_, more := <-historyCh
-	assert.Equal(false, more) // Channel is closed
-}
-
-func TestUnknownBlockRetrievalError(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-
-	parBlock := types.NewBlockForTest(nil, 0)
-	chlBlock := types.NewBlockForTest(parBlock, 1)
-
-	chlTS := th.RequireNewTipSet(require, chlBlock)
-	err := chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
-		TipSet:          chlTS,
-		TipSetStateRoot: chlBlock.StateRoot,
-	})
-	require.NoError(err)
-	err = chainStore.SetHead(ctx, chlTS)
-	require.NoError(err)
-
-	// parBlock is not known to the chain, which causes the timeout
-	var innerErr error
-	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
-	require.NoError(err)
-	for raw := range chainStore.BlockHistory(ctx, &headTipSetAndState.TipSet) {
-		if raw.Error != nil {
-			innerErr = raw.Error
-		}
-	}
-
-	require.NotNil(innerErr)
-	require.Contains(innerErr.Error(), "failed to get block")
 }
 
 /* Loading  */

@@ -3,11 +3,10 @@ package chn
 import (
 	"context"
 
-	hamt "gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
+	hamt "github.com/ipfs/go-hamt-ipld"
 )
 
 // Chain is a simple decorator for the chain core api
@@ -38,10 +37,32 @@ func (chn *Chain) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descend
 	return chain.GetRecentAncestorsOfHeaviestChain(ctx, chn.reader, descendantBlockHeight)
 }
 
+type ChainLsResult struct {
+	TipSet *types.TipSet
+	Error  error
+}
+
 // Ls returns a channel of tipsets from head to genesis
-func (chn *Chain) Ls(ctx context.Context) <-chan *chain.BlockHistoryResult {
-	ts, _ := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
-	return chn.reader.BlockHistory(ctx, &ts.TipSet)
+func (chn *Chain) Ls(ctx context.Context) <-chan *ChainLsResult {
+	out := make(chan *ChainLsResult)
+	go func() {
+		defer close(out)
+		tsas, err := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
+		ts := &tsas.TipSet
+		for ts != nil {
+			if err != nil {
+				out <- &ChainLsResult{
+					Error: err,
+				}
+				return
+			}
+			out <- &ChainLsResult{
+				TipSet: ts,
+			}
+			ts, err = ts.GetNext(ctx, chn.reader)
+		}
+	}()
+	return out
 }
 
 // GetBlock gets a block by CID

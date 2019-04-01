@@ -253,7 +253,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if heavier {
 		// Gather the entire new chain for reorg comparison.
 		// See Issue #2151 for making this scalable.
-		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, syncer.chainStore.BlockHistory(ctx, &parent), types.NewBlockHeight(uint64(0)))
+		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, syncer.chainStore, &parent, types.NewBlockHeight(uint64(0)))
 		if err != nil {
 			return err
 		}

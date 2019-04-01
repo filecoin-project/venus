@@ -41,8 +41,6 @@ type ReadStore interface {
 	// ActorFromLatestState tries to get an actor from the latest state
 	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 
-	BlockHistory(ctx context.Context, tips *types.TipSet) <-chan *BlockHistoryResult
-
 	GenesisCid() cid.Cid
 }
 

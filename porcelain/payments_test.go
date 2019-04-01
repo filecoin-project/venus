@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -91,14 +91,14 @@ func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
-func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan *chain.BlockHistoryResult {
-	out := make(chan *chain.BlockHistoryResult, len(ptp.tipSets))
+func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan *chn.ChainLsResult {
+	out := make(chan *chn.ChainLsResult, len(ptp.tipSets))
 
 	go func() {
 		defer close(out)
 
 		for _, result := range ptp.tipSets {
-			out <- &chain.BlockHistoryResult{
+			out <- &chn.ChainLsResult{
 				TipSet: result,
 			}
 		}
