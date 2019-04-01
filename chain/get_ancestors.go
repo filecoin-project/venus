@@ -53,7 +53,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if earliestAncestorHeight.LessThan(types.NewBlockHeight(0)) {
 		earliestAncestorHeight = types.NewBlockHeight(uint64(0))
 	}
-	historyCh := chainReader.BlockHistory(ctx, base)
+	historyCh := chainReader.BlockHistory(ctx, &base)
 
 	// Step 1 -- gather all tipsets with a height greater than the earliest
 	// possible proving period start still in scope for the given head.
@@ -79,7 +79,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if err != nil {
 		return nil, err
 	}
-	historyCh = chainReader.BlockHistory(ctx, tsas.TipSet)
+	historyCh = chainReader.BlockHistory(ctx, &tsas.TipSet)
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, historyCh, lookback)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan *BlockHistoryR
 			if types.NewBlockHeight(h).LessThan(minHeight) {
 				return ret, nil
 			}
-			ret = append(ret, raw.TipSet)
+			ret = append(ret, *raw.TipSet)
 		}
 	}
 }
@@ -133,7 +133,7 @@ func CollectAtMostNTipSets(ctx context.Context, ch <-chan *BlockHistoryResult, n
 			if raw.Error != nil {
 				return nil, raw.Error
 			}
-			ret = append(ret, raw.TipSet)
+			ret = append(ret, *raw.TipSet)
 		}
 
 	}

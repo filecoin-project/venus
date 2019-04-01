@@ -55,7 +55,7 @@ func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool,
 	if err != nil {
 		return nil, false, err
 	}
-	historyCh := w.chainReader.BlockHistory(ctx, headTipSetAndState.TipSet)
+	historyCh := w.chainReader.BlockHistory(ctx, &headTipSetAndState.TipSet)
 	return w.waitForMessage(ctx, historyCh, msgCid)
 }
 
@@ -92,7 +92,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	if err != nil {
 		return err
 	}
-	historyCh := w.chainReader.BlockHistory(ctx, headTipSetAndState.TipSet)
+	historyCh := w.chainReader.BlockHistory(ctx, &headTipSetAndState.TipSet)
 
 	// Merge historical and new block Channels.
 	go func() {
@@ -104,7 +104,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 				}
 			case types.TipSet:
 				ch <- &chain.BlockHistoryResult{
-					TipSet: v,
+					TipSet: &v,
 				}
 			}
 		}
@@ -139,14 +139,14 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan *chain.BlockHisto
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			}
-			for _, blk := range raw.TipSet {
+			for _, blk := range *raw.TipSet {
 				for _, msg := range blk.Messages {
 					c, err := msg.Cid()
 					if err != nil {
 						return nil, false, err
 					}
 					if c.Equals(msgCid) {
-						recpt, err := w.receiptFromTipSet(ctx, msgCid, raw.TipSet)
+						recpt, err := w.receiptFromTipSet(ctx, msgCid, *raw.TipSet)
 						if err != nil {
 							return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 						}

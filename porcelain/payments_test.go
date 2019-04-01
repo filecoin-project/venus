@@ -99,7 +99,7 @@ func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan *chain.Bloc
 
 		for _, result := range ptp.tipSets {
 			out <- &chain.BlockHistoryResult{
-				TipSet: *result,
+				TipSet: result,
 			}
 		}
 	}()

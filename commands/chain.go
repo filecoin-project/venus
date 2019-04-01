@@ -58,7 +58,7 @@ var chainLsCmd = &cmds.Command{
 			if raw.Error != nil {
 				return raw.Error
 			}
-			if len(raw.TipSet) == 0 {
+			if len(*raw.TipSet) == 0 {
 				panic("tipsets from this channel should have at least one member")
 			}
 			if err := re.Emit(raw.TipSet.ToSlice()); err != nil {

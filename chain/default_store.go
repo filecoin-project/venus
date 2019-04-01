@@ -117,32 +117,33 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
-	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		if logStatusEvery != 0 && (tips[0].Height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
-		}
-		ts, err := types.NewTipSet(tips...)
+	ts := &headTs
+	for ts != nil {
+		height, err := ts.Height()
 		if err != nil {
-			return false, err
+			return err
 		}
-		stateRoot, err := store.loadStateRoot(ts)
+		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
+			logStore.Infof("load tipset: %s, height: %v", ts.String(), height)
+		}
+		stateRoot, err := store.loadStateRoot(*ts)
 		if err != nil {
-			return false, err
+			return err
 		}
 		err = store.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          ts,
+			TipSet:          *ts,
 			TipSetStateRoot: stateRoot,
 		})
 		if err != nil {
-			return false, err
+			return err
 		}
 		// TODO: we should probably warm up the block cache with the
 		// most recent tipsets traversed here.
-		genesii = ts
-		return true, nil
-	})
-	if err != nil {
-		return err
+		genesii = *ts
+		ts, err = ts.GetNext(ctx, store)
+		if err != nil {
+			return err
+		}
 	}
 	// Check genesis here.
 	if len(genesii) != 1 {
@@ -386,70 +387,36 @@ func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr addres
 }
 
 type BlockHistoryResult struct {
-	TipSet types.TipSet
+	TipSet *types.TipSet
 	Error  error
 }
 
 // BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
 // followed by each subsequent parent and ending with the genesis block, after which the channel
 // is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (store *DefaultStore) BlockHistory(ctx context.Context, start types.TipSet) <-chan *BlockHistoryResult {
+func (store *DefaultStore) BlockHistory(ctx context.Context, ts *types.TipSet) <-chan *BlockHistoryResult {
 	ctx = logStore.Start(ctx, "BlockHistory")
 	out := make(chan *BlockHistoryResult)
 
 	go func() {
 		defer close(out)
 		defer logStore.Finish(ctx)
-		err := store.walkChain(ctx, start.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-			ts, err := types.NewTipSet(tips...)
-			if err != nil {
-				out <- &BlockHistoryResult{Error: err}
-				return true, nil
-			}
+		var err error
+		for ts != nil {
 			select {
 			case <-ctx.Done():
-				return false, nil
-			case out <- &BlockHistoryResult{TipSet: ts}:
-			}
-			return true, nil
-		})
-		if err != nil {
-			select {
-			case <-ctx.Done():
-			case out <- &BlockHistoryResult{Error: err}:
+				return
+			default:
+				out <- &BlockHistoryResult{TipSet: ts}
+				ts, err = ts.GetNext(ctx, store)
+				if err != nil {
+					out <- &BlockHistoryResult{Error: err}
+					return
+				}
 			}
 		}
 	}()
 	return out
-}
-
-// walkChain walks backward through the chain, starting at tips, invoking cb() at each height.
-func (store *DefaultStore) walkChain(ctx context.Context, tips []*types.Block, cb func(tips []*types.Block) (cont bool, err error)) error {
-	for {
-		cont, err := cb(tips)
-		if err != nil {
-			return errors.Wrap(err, "error processing block")
-		}
-		if !cont {
-			return nil
-		}
-		ids := tips[0].Parents
-		if ids.Empty() {
-			break
-		}
-
-		tips = tips[:0]
-		for it := ids.Iter(); !it.Complete(); it.Next() {
-			pid := it.Value()
-			p, err := store.GetBlock(ctx, pid)
-			if err != nil {
-				return errors.Wrap(err, "error retrieving block from store")
-			}
-			tips = append(tips, p)
-		}
-	}
-
-	return nil
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

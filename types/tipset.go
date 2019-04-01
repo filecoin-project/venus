@@ -48,7 +48,7 @@ func (ts TipSet) GetNext(ctx context.Context, store blockGetter) (*TipSet, error
 		return nil, errors.Wrapf(err, "Cannot create tipset")
 	}
 	if len(parents) == 0 {
-		return nil, errors.New("End of chain")
+		return nil, nil
 	}
 	parentTipSet := TipSet{}
 	for _, cid := range parents {
