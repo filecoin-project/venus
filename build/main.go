@@ -234,14 +234,9 @@ func forcebuild() {
 func forceBuildFC() {
 	log.Println("Force building go-filecoin...")
 
-	commit := runCapture("git log -n 1 --format=%H")
-	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
-		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
-	}
-
 	runCmd(cmd([]string{
 		"go", "build",
-		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
+		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha()),
 		"-a", "-v", "-o", "go-filecoin", ".",
 	}...))
 }
@@ -260,14 +255,9 @@ func generateGenesis() {
 func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
-	commit := runCapture("git log -n 1 --format=%H")
-	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
-		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
-	}
-
 	runCmd(cmd([]string{
 		"go", "build",
-		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", commit),
+		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha()),
 		"-v", "-o", "go-filecoin", ".",
 	}...))
 }
@@ -293,7 +283,7 @@ func buildGenesisFileServer() {
 func install() {
 	log.Println("Installing...")
 
-	runCmd(cmd("go install"))
+	runCmd(cmd("go", "install", "-ldflags", fmt.Sprintf(`"-X github.com/filecoin-project/go-filecoin/flags.Commit=%s"`, getCommitSha())))
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
@@ -348,4 +338,12 @@ func main() {
 	default:
 		log.Fatalf("Unknown command: %s\n", cmd)
 	}
+}
+
+func getCommitSha() string {
+	commit := runCapture("git log -n 1 --format=%H")
+	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
+		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
+	}
+	return commit
 }
