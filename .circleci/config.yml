@@ -397,6 +397,12 @@ jobs:
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: small
     steps:
+      - run:
+          name: Configure environment variables
+          command: |
+            echo 'export PATH="/usr/local/go/bin:${HOME}/.cargo/bin:${PATH}:${HOME}/go/bin:${HOME}/.bin"' >> $BASH_ENV
+            echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
+            echo 'export GO111MODULE=on' >> $BASH_ENV
       - add_ssh_keys:
           fingerprints:
             - "1e:73:c5:15:75:e0:e4:98:54:3c:2b:9e:e8:94:14:2e"
