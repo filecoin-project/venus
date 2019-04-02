@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -455,8 +454,8 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 
 type minerGetOwnerPlumbing struct{}
 
-func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	return [][]byte{address.TestAddress.Bytes()}, nil, nil
+func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{address.TestAddress.Bytes()}, nil
 }
 
 func TestMinerGetOwnerAddress(t *testing.T) {
@@ -469,10 +468,10 @@ func TestMinerGetOwnerAddress(t *testing.T) {
 
 type minerGetPeerIDPlumbing struct{}
 
-func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 
 	peerID := requirePeerID()
-	return [][]byte{[]byte(peerID)}, nil, nil
+	return [][]byte{[]byte(peerID)}, nil
 }
 
 func TestMinerGetPeerID(t *testing.T) {
@@ -489,7 +488,7 @@ func TestMinerGetPeerID(t *testing.T) {
 
 type minerGetAskPlumbing struct{}
 
-func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	out, err := cbor.DumpObject(miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
 		Expiry: types.NewBlockHeight(41),
@@ -498,7 +497,7 @@ func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 	if err != nil {
 		panic("Could not encode ask")
 	}
-	return [][]byte{out}, nil, nil
+	return [][]byte{out}, nil
 }
 
 func TestMinerGetAsk(t *testing.T) {

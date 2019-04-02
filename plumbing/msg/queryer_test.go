@@ -51,10 +51,10 @@ func TestQuery(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
 
 		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
-		returnValue, funcSig, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
+		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(err)
 		require.NotNil(returnValue)
-		v, err := abi.Deserialize(returnValue[0], funcSig.Return[0])
+		v, err := abi.Deserialize(returnValue[0], abi.Address)
 		require.NoError(err)
 		_, ok := v.Val.(address.Address)
 		require.True(ok)
@@ -90,7 +90,7 @@ func TestQuery(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
 
 		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
-		_, _, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
+		_, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
 		require.Error(err)
 		assert.Contains(err.Error(), "42")
 	})

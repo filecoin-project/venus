@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -165,7 +164,7 @@ var msgWaitCmd = &cmds.Command{
 		err = GetPorcelainAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
 			sig, err2 := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
-			if err2 != nil && err2 != mthdsig.ErrNoMethod && err2 != mthdsig.ErrNoActorImpl {
+			if err2 != nil && err2.Error() != "no method" && err2.Error() != "failed to load actor code" {
 				return errors.Wrap(err2, "Couldn't get signature for message")
 			}
 

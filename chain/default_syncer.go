@@ -179,10 +179,10 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.Sorted
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
-	head := syncer.chainStore.Head()
+	head := syncer.chainStore.GetHead()
 
 	// if tipset is already head, we've been here before. do nothing.
-	if head.Equals(next) {
+	if head.Equals(next.ToSortedCidSet()) {
 		return nil
 	}
 

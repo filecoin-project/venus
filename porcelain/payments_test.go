@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -31,7 +30,7 @@ type paymentsTestPlumbing struct {
 
 	messageSend  func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
@@ -62,7 +61,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 				GasAttoFIL: types.NewAttoFILFromFIL(9),
 			})
 		},
-		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			voucher := &paymentbroker.PaymentVoucher{
 				Channel: *channelID,
 				Payer:   payer,
@@ -74,7 +73,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 			if err != nil {
 				panic(err)
 			}
-			return [][]byte{voucherBytes}, nil, nil
+			return [][]byte{voucherBytes}, nil
 		},
 	}
 }
@@ -87,7 +86,7 @@ func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid
 	return ptp.messageWait(ctx, msgCid, cb)
 }
 
-func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
@@ -294,8 +293,8 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-			return nil, nil, errors.New("Errors in MessageQuery")
+		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+			return nil, errors.New("Errors in MessageQuery")
 		}
 
 		config := validPaymentsConfig()

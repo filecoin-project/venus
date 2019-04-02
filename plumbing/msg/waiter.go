@@ -71,12 +71,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 
 	// Check old blocks
-	head := w.chainReader.GetHead()
-	headTipSetAndState, err := w.chainReader.GetTipSetAndState(ctx, head)
-	if err != nil {
-		return err
-	}
-	chainMsg, found, err := w.findMessage(ctx, &headTipSetAndState.TipSet, msgCid)
+	chainMsg, found, err := w.Find(ctx, msgCid)
 	if err != nil {
 		return err
 	}

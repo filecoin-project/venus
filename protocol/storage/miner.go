@@ -69,6 +69,8 @@ type Miner struct {
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
 type minerPorcelain interface {
+	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
+
 	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
@@ -78,7 +80,7 @@ type minerPorcelain interface {
 	DealPut(*storagedeal.Deal) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -295,7 +297,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 
 	payer := p.Payment.Payer
 
-	ret, _, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
+	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}
@@ -634,12 +636,16 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 // isBootstrapMinerActor is a convenience method used to determine if the miner
 // actor was created when bootstrapping the network. If it was,
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
-	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
+	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		sm.minerAddr,
 		"isBootstrapMiner",
 	)
+	if err != nil {
+		return false, errors.Wrap(err, "query method failed")
+	}
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "isBootstrapMiner")
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
 	}
@@ -660,12 +666,16 @@ func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 // getActorSectorCommitments is a convenience method used to obtain miner actor
 // commitments.
 func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]types.Commitments, error) {
-	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
+	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Undef,
 		sm.minerAddr,
 		"getSectorCommitments",
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "query method failed")
+	}
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
@@ -771,7 +781,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, _, err := sm.porcelainAPI.MessageQuery(
+	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,

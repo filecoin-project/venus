@@ -14,7 +14,6 @@ import (
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	w "github.com/filecoin-project/go-filecoin/wallet"
@@ -283,12 +282,12 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 
 // mgoaAPI is the subset of the plumbing.API that MinerGetOwnerAddress uses.
 type mgoaAPI interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
 func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (address.Address, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
 	if err != nil {
 		return address.Undef, err
 	}
@@ -298,7 +297,7 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 
 // MinerGetKey queries for the public key of the given miner
 func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
 	if err != nil {
 		return []byte{}, err
 	}
@@ -308,12 +307,12 @@ func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Addres
 
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetAsk queries for an ask of the given miner
 func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	ret, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getAsk", big.NewInt(int64(askID)))
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getAsk", big.NewInt(int64(askID)))
 	if err != nil {
 		return minerActor.Ask{}, err
 	}
@@ -328,12 +327,12 @@ func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address
 
 // mgpidAPI is the subset of the plumbing.API that MinerGetPeerID uses.
 type mgpidAPI interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetPeerID queries for the peer id of the given miner
 func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Address) (peer.ID, error) {
-	res, _, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getPeerID")
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getPeerID")
 	if err != nil {
 		return "", err
 	}

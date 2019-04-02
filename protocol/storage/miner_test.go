@@ -402,11 +402,15 @@ func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
 	}
 }
 
+func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+	return nil, nil
+}
+
 func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
 }
 
-func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	channels := map[string]*paymentbroker.PaymentChannel{}
 
 	if !mtp.noChannels {
@@ -421,7 +425,7 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 
 	channelsBytes, err := actor.MarshalStorage(channels)
 	mtp.require.NoError(err)
-	return [][]byte{channelsBytes}, nil, nil
+	return [][]byte{channelsBytes}, nil
 }
 
 func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error) {

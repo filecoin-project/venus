@@ -887,12 +887,16 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
-	rets, methodSignature, err := node.PorcelainAPI.MessageQuery(
+	rets, err := node.PorcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		minerAddr,
 		"getLastUsedSectorID",
 	)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
+	}
+	methodSignature, err := node.PorcelainAPI.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to call query method getLastUsedSectorID")
 	}
