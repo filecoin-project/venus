@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-multibase"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +19,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+func init() {
+	logging.SetDebugLogging()
+	series.GlobalSleepDelay = 5 * time.Second
+}
 
 func VoucherFromString(data string) (paymentbroker.PaymentVoucher, error) {
 	_, cborVoucher, err := multibase.Decode(data)
@@ -38,7 +44,7 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	require := require.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -74,8 +80,6 @@ func WithPaymentChannel(t *testing.T, ctx context.Context, p *fast.Filecoin, fro
 	mcid, err := p.PaychCreate(ctx, target, amt, eol, fast.AOFromAddr(from), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 	require.NoError(err)
 
-	series.MiningOnceFromCtx(ctx)
-
 	response, err := p.MessageWait(ctx, mcid)
 	require.NoError(err)
 
@@ -92,7 +96,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		assert := assert.New(t)
 
 		// This test should run in 20 block times
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 		defer cancel()
 
 		// Get basic testing environment
@@ -136,7 +140,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		assert := assert.New(t)
 
 		// This test should run in 20 block times
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 		defer cancel()
 
 		// Get basic testing environment
@@ -180,7 +184,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		assert := assert.New(t)
 
 		// This test should run in 20 block times
-		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+		ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 		defer cancel()
 
 		// Get basic testing environment
@@ -219,7 +223,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -262,7 +266,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -296,8 +300,6 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
 
-		series.MiningOnceFromCtx(ctx)
-
 		_, err = targetDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)
 
@@ -316,7 +318,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -350,8 +352,6 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
 
-		series.MiningOnceFromCtx(ctx)
-
 		_, err = targetDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)
 
@@ -370,7 +370,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(40*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -394,11 +394,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	bh, err := series.GetHeadBlockHeight(ctx, p)
 	require.NoError(err)
 
-	// Expiry is current height, plus 3
-	// - Setting up the payment channel
-	// - Redeeming one voucher
-	// - Expires on third block
-	channelExpiry := types.NewBlockHeight(3).Add(bh)
+	channelExpiry := types.NewBlockHeight(10).Add(bh)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
 	balanceBefore, err := payerDaemon.WalletBalance(ctx, payerAddr)
@@ -414,8 +410,6 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		mcid, err := targetDaemon.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
 
-		series.MiningOnceFromCtx(ctx)
-
 		_, err = targetDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)
 
@@ -426,12 +420,10 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		assert.Equal(channelAmount, channel.Amount)
 		assert.Equal(voucherAmount, channel.AmountRedeemed)
 
-		series.MiningOnceFromCtx(ctx)
+		series.WaitForBlockHeight(ctx, payerDaemon, channel.Eol)
 
 		mcid, err = payerDaemon.PaychReclaim(ctx, chanid, fast.AOFromAddr(payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
-
-		series.MiningOnceFromCtx(ctx)
 
 		_, err = payerDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)
@@ -453,7 +445,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -493,8 +485,6 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 		mcid, err := targetDaemon.PaychClose(ctx, voucherStr, fast.AOFromAddr(targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
 
-		series.MiningOnceFromCtx(ctx)
-
 		_, err = targetDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)
 
@@ -518,7 +508,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	assert := assert.New(t)
 
 	// This test should run in 20 block times
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay))
 	defer cancel()
 
 	// Get basic testing environment
@@ -559,8 +549,6 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 		mcid, err := payerDaemon.PaychExtend(ctx, chanid, extendAmount, extendExpiry, fast.AOFromAddr(payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
-
-		series.MiningOnceFromCtx(ctx)
 
 		_, err = payerDaemon.MessageWait(ctx, mcid)
 		require.NoError(err)

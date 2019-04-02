@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
@@ -43,7 +42,7 @@ func BasicFastSetup(ctx context.Context, t *testing.T, fastenvOpts fast.Environm
 
 	fastenvOpts = fast.EnvironmentOpts{
 		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
-		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...),
+		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(series.GlobalSleepDelay)}, fastenvOpts.DaemonOpts...),
 	}
 
 	// Create a node for the test
@@ -53,12 +52,8 @@ func BasicFastSetup(ctx context.Context, t *testing.T, fastenvOpts fast.Environm
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
 	require.NoError(err)
 
-	var MiningOnce series.MiningOnceFunc = func() {
-		_, err := genesis.MiningOnce(ctx)
-		require.NoError(err)
-	}
-
-	ctx = context.WithValue(ctx, series.CKMiningOnce, MiningOnce)
+	err = genesis.MiningStart(ctx)
+	require.NoError(err)
 
 	NewNode := func() *fast.Filecoin {
 		p, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
