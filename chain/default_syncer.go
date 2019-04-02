@@ -92,9 +92,6 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s Store, f 
 // otherwise resolved over the network.  This method will timeout if blocks
 // are unavailable.  This method is all or nothing, it will error if any of the
 // blocks cannot be resolved.
-// WARNING -- this will take one second to error out if blocks are not found.
-// TODO the timeout factor blkWaitTime and maybe the whole timeout mechanism
-// could use some actual thought, this was just a simple first pass.
 func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
@@ -325,6 +322,8 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // help prevent DOS.
 func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error {
 	logSyncer.Debugf("trying to sync %v\n", blkCids)
+	syncer.mu.Lock()
+	defer syncer.mu.Unlock()
 
 	// If the store already has all these blocks the syncer is finished.
 	if syncer.chainStore.HasAllBlocks(ctx, blkCids) {
@@ -347,11 +346,6 @@ func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.
 		return err
 	}
 	parent := parentTsas.TipSet
-
-	// Start locking now, so simultaneous calls to this method don't confuse each other about
-	// the state of the chain head.
-	syncer.mu.Lock()
-	defer syncer.mu.Unlock()
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
