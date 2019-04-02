@@ -510,9 +510,7 @@ func (node *Node) Start(ctx context.Context) error {
 		}
 	}
 	getHeaviestTipSetCallBack := func() types.TipSet {
-		head := node.ChainReader.GetHead()
-		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
-		return headTipSetAndState.TipSet
+		return node.PorcelainAPI.ChainHead(ctx)
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, getHeaviestTipSetCallBack, node.Repo.Config().Net, flags.Commit)
 
@@ -546,11 +544,8 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	headTipSetAndState, err := node.ChainReader.GetTipSetAndState(ctx, node.ChainReader.GetHead())
-	if err != nil {
-		return err
-	}
-	go node.handleNewHeaviestTipSet(cctx, headTipSetAndState.TipSet, outboxPolicy)
+	head := node.PorcelainAPI.ChainHead(ctx)
+	go node.handleNewHeaviestTipSet(cctx, head, outboxPolicy)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -575,9 +570,7 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 		return addr
 	}
 	getHeaviestTipSetCallBack := func() types.TipSet {
-		head := node.ChainReader.GetHead()
-		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
-		return headTipSetAndState.TipSet
+		return node.PorcelainAPI.ChainHead(ctx)
 	}
 
 	// start the primary heartbeat service
@@ -802,9 +795,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 	}
 	getHeaviestTipSetCallBack := func() types.TipSet {
-		head := node.ChainReader.GetHead()
-		headTipSetAndState, _ := node.ChainReader.GetTipSetAndState(ctx, head)
-		return headTipSetAndState.TipSet
+		return node.PorcelainAPI.ChainHead(ctx)
 	}
 	if node.MiningScheduler == nil {
 		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, getHeaviestTipSetCallBack)
@@ -1004,12 +995,7 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
 	ctx := context.Background()
-	head := node.ChainReader.GetHead()
-	headTipSetAndState, err := node.ChainReader.GetTipSetAndState(ctx, head)
-	if err == nil {
-		return nil, err
-	}
-	height, err := headTipSetAndState.TipSet.Height()
+	height, err := node.PorcelainAPI.ChainHead(ctx).Height()
 	if err != nil {
 		return nil, err
 	}
