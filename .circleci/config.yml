@@ -137,7 +137,7 @@ jobs:
   build_macos:
     macos:
       xcode: "10.0.0"
-    working_directory: ~/go/src/github.com/filecoin-project/go-filecoin
+    working_directory: ~/go-filecoin
     resource_class: large
     steps:
       - run:
@@ -239,7 +239,7 @@ jobs:
     docker:
       - image: circleci/golang:1.12.1
 
-    working_directory: /go/src/github.com/filecoin-project/go-filecoin
+    working_directory: ~/go-filecoin
     resource_class: xlarge
     parameters:
       <<: *sector_builder_tests_param
@@ -394,7 +394,7 @@ jobs:
   build_faucet_and_genesis:
     docker:
       - image: circleci/golang:1.12.1
-    working_directory: /go/src/github.com/filecoin-project/go-filecoin
+    working_directory: ~/go-filecoin
     resource_class: small
     steps:
       - add_ssh_keys:
