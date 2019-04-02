@@ -19,7 +19,6 @@ import (
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -162,7 +161,7 @@ func TestNodeStartMining(t *testing.T) {
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		Actr:         actr.NewActr(minerNode.ChainReader, minerNode.CborStore(), mthdsig.NewGetter(minerNode.ChainReader, minerNode.CborStore())),
+		Actr:         actr.NewActr(minerNode.ChainReader, minerNode.CborStore()),
 		Chain:        chn.NewChain(minerNode.ChainReader, minerNode.CborStore()),
 		Config:       pbConfig.NewConfig(minerNode.Repo),
 		MsgPool:      nil,
