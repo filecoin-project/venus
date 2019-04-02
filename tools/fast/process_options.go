@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // ProcessInitOption are options passed to process init.

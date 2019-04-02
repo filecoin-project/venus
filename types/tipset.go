@@ -3,8 +3,8 @@ package types
 import (
 	"bytes"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 )
 
 // Tip is what expected consensus needs from a Block. For now it *is* a

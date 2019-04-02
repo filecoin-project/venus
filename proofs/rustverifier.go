@@ -4,8 +4,8 @@ import (
 	"time"
 	"unsafe"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/lib -lfilecoin_proofs

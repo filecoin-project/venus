@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func parseInt(assert *assert.Assertions, s string) *big.Int {

@@ -3,7 +3,7 @@ package node
 import (
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMakePrivateKey(t *testing.T) {

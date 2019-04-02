@@ -559,17 +559,9 @@ Vanilla `go test` also works, after build scripts have built and installed appro
 
 ## Dependencies
 
-Dependencies in go-filecoin are managed by [gx](https://github.com/whyrusleeping/gx), a content-addressed dependency manager. 
-You’ll notice that the hash of a dependency’s content appears in the import path. 
-Almost all runtime dependencies are managed by gx (mostly being other Protocol Labs-sponsored projects). 
+Dependencies in go-filecoin are managed as go modules, go's new dependency system.
 
-The `gx-go` manages a package.json file. 
-In order to be imported by gx, a package needs to be "gxed". 
-See the [gx-go repo](https://github.com/whyrusleeping/gx-go) for details about preparing a package for gxing and importing it into the project. 
-If you want to depend on a package whos author has not gxed it, we can fork it and gx our fork.
-
-gx came about before Go modules, which aim to solve many of the same problems. 
-The IPFS project and go-filecoin [may migrate to Go modules](https://github.com/ipfs/go-ipfs/issues/5850) in the future.
+If you've cloned go-filecoin into your GOPATH, you may need to set the `GO111MODULES` environment variable to `on`. The build system automatically sets this but your favorite editor or IDE may not work without it.
 
 ## Patterns
 

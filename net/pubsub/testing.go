@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 )
 
 // FakeMessage is a simple pubsub message

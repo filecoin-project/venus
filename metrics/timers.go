@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"gx/ipfs/QmNVpHFt7QmabuVQyguf8AbkLDZoFh7ifBYztqijYT1Sd2/go.opencensus.io/stats"
-	"gx/ipfs/QmNVpHFt7QmabuVQyguf8AbkLDZoFh7ifBYztqijYT1Sd2/go.opencensus.io/stats/view"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 )
 
 // NewTimer creates a Float64Timer that wraps an opencensus flat64 measurement.

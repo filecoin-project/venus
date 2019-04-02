@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmNVpHFt7QmabuVQyguf8AbkLDZoFh7ifBYztqijYT1Sd2/go.opencensus.io/stats/view"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"github.com/stretchr/testify/assert"
+	"go.opencensus.io/stats/view"
 )
 
 func TestTimerSimple(t *testing.T) {

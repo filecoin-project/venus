@@ -225,9 +225,7 @@ We use the following import ordering.
 import (
         [stdlib packages, alpha-sorted]
         <single, empty line>
-        [gx-installed packages]
-        <single, empty line>
-        [go get-installed packages (not part of go-filecoin)]
+        [external packages]
         <single, empty line>
         [go-filecoin packages]
 )
@@ -240,10 +238,9 @@ import (
 	"context"
 	"testing"
 
-	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
-
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/testhelpers"

@@ -4,10 +4,10 @@ import (
 	"context"
 	"io"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing/notifications"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-routing/notifications"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // DHTFindPeer runs the `dht findpeer` command against the filecoin process

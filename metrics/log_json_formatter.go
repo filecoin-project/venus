@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	oldlogging "gx/ipfs/QmcaSwFc5RBg8yCq54QURwEU4nwjfCpjbpmaAm4VbdGLKv/go-logging"
+	oldlogging "github.com/whyrusleeping/go-logging"
 )
 
 // JSONFormatter implements go-logging Formatter for JSON encoded logs

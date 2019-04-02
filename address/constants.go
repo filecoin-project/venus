@@ -3,8 +3,8 @@ package address
 import (
 	"encoding/base32"
 
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
+	"github.com/minio/blake2b-simd"
+	errors "github.com/pkg/errors"
 )
 
 func init() {
