@@ -503,9 +503,10 @@ func (node *Node) Start(ctx context.Context) error {
 		// TODO it is possible the syncer interface should be modified to
 		// make use of the additional context not used here (from addr + height).
 		// To keep things simple for now this info is not used.
-		err := node.Syncer.HandleNewBlocks(context.Background(), cids)
+		cidSet := types.NewSortedCidSet(cids...)
+		err := node.Syncer.HandleNewTipset(context.Background(), cidSet)
 		if err != nil {
-			log.Infof("error handling blocks: %s", types.NewSortedCidSet(cids...).String())
+			log.Infof("error handling blocks: %s", cidSet.String())
 		}
 	}
 	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.ChainReader.Head, node.Repo.Config().Net, flags.Commit)

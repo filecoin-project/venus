@@ -305,13 +305,13 @@ func assertTsAdded(assert *assert.Assertions, chainStore chain.Store, ts types.T
 	}
 }
 
-func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids []cid.Cid) {
+func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
-	_, err := chainStore.GetTipSetAndState(ctx, types.NewSortedCidSet(cids...).String())
+	_, err := chainStore.GetTipSetAndState(ctx, cids.String())
 	assert.Error(err)
 	// Blocks exist in store
-	for _, c := range cids {
+	for _, c := range cids.ToSlice() {
 		assert.False(chainStore.HasBlock(ctx, c))
 	}
 }
@@ -326,14 +326,14 @@ func assertHead(assert *assert.Assertions, chain chain.Store, head types.TipSet)
 	assert.Equal(head, gotHead)
 }
 
-func requirePutBlocks(require *require.Assertions, f *th.TestFetcher, blocks ...*types.Block) []cid.Cid {
+func requirePutBlocks(require *require.Assertions, f *th.TestFetcher, blocks ...*types.Block) types.SortedCidSet {
 	var cids []cid.Cid
 	for _, block := range blocks {
 		c := block.Cid()
 		cids = append(cids, c)
 	}
 	f.AddSourceBlocks(blocks...)
-	return cids
+	return types.NewSortedCidSet(cids...)
 }
 
 /* Regular Degular syncing */
@@ -347,7 +347,7 @@ func TestSyncOneBlock(t *testing.T) {
 	expectedTs := th.RequireNewTipSet(require, link1blk1)
 
 	cids := requirePutBlocks(require, blockSource, link1blk1)
-	err := syncer.HandleNewBlocks(ctx, cids)
+	err := syncer.HandleNewTipset(ctx, cids)
 	assert.NoError(err)
 
 	assertTsAdded(assert, chainStore, expectedTs)
@@ -362,7 +362,7 @@ func TestSyncOneTipSet(t *testing.T) {
 	ctx := context.Background()
 
 	cids := requirePutBlocks(require, blockSource, link1blk1, link1blk2)
-	err := syncer.HandleNewBlocks(ctx, cids)
+	err := syncer.HandleNewTipset(ctx, cids)
 	assert.NoError(err)
 
 	assertTsAdded(assert, chainStore, link1)
@@ -378,14 +378,14 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 	ctx := context.Background()
 	expTs1 := th.RequireNewTipSet(require, link1blk1)
 
-	cids := requirePutBlocks(require, blockSource, link1blk1, link1blk2)
-	err := syncer.HandleNewBlocks(ctx, []cid.Cid{cids[0]})
+	_ = requirePutBlocks(require, blockSource, link1blk1, link1blk2)
+	err := syncer.HandleNewTipset(ctx, types.NewSortedCidSet(link1blk1.Cid()))
 	assert.NoError(err)
 
 	assertTsAdded(assert, chainStore, expTs1)
 	assertHead(assert, chainStore, expTs1)
 
-	err = syncer.HandleNewBlocks(ctx, []cid.Cid{cids[1]})
+	err = syncer.HandleNewTipset(ctx, types.NewSortedCidSet(link1blk2.Cid()))
 	assert.NoError(err)
 
 	assertTsAdded(assert, chainStore, link1)
@@ -404,22 +404,22 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 	cids3 := requirePutBlocks(require, blockSource, link3.ToSlice()...)
 	cids4 := requirePutBlocks(require, blockSource, link4.ToSlice()...)
 
-	err := syncer.HandleNewBlocks(ctx, cids1)
+	err := syncer.HandleNewTipset(ctx, cids1)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link1)
 	assertHead(assert, chainStore, link1)
 
-	err = syncer.HandleNewBlocks(ctx, cids2)
+	err = syncer.HandleNewTipset(ctx, cids2)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link2)
 	assertHead(assert, chainStore, link2)
 
-	err = syncer.HandleNewBlocks(ctx, cids3)
+	err = syncer.HandleNewTipset(ctx, cids3)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link3)
 	assertHead(assert, chainStore, link3)
 
-	err = syncer.HandleNewBlocks(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, cids4)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link4)
 	assertHead(assert, chainStore, link4)
@@ -437,7 +437,7 @@ func TestSyncChainHead(t *testing.T) {
 	_ = requirePutBlocks(require, blockSource, link3.ToSlice()...)
 	cids4 := requirePutBlocks(require, blockSource, link4.ToSlice()...)
 
-	err := syncer.HandleNewBlocks(ctx, cids4)
+	err := syncer.HandleNewTipset(ctx, cids4)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link4)
 	assertTsAdded(assert, chainStore, link3)
@@ -476,13 +476,13 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 	forkCids1 := requirePutBlocks(require, blockSource, forklink1.ToSlice()...)
 
 	// Sync heaviest branch first.
-	err := syncer.HandleNewBlocks(ctx, cids4)
+	err := syncer.HandleNewTipset(ctx, cids4)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link4)
 	assertHead(assert, chainStore, link4)
 
 	// lighter fork should be processed but not change head.
-	assert.NoError(syncer.HandleNewBlocks(ctx, forkCids1))
+	assert.NoError(syncer.HandleNewTipset(ctx, forkCids1))
 	assertTsAdded(assert, chainStore, forklink1)
 	assertHead(assert, chainStore, link4)
 }
@@ -545,13 +545,13 @@ func TestHeavierFork(t *testing.T) {
 	_ = requirePutBlocks(require, blockSource, forklink2.ToSlice()...)
 	forkHead := requirePutBlocks(require, blockSource, forklink3.ToSlice()...)
 
-	err := syncer.HandleNewBlocks(ctx, cids4)
+	err := syncer.HandleNewTipset(ctx, cids4)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link4)
 	assertHead(assert, chainStore, link4)
 
 	// heavier fork updates head
-	err = syncer.HandleNewBlocks(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, forkHead)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, forklink1)
 	assertTsAdded(assert, chainStore, forklink2)
@@ -568,8 +568,8 @@ func TestBlocksNotATipSet(t *testing.T) {
 
 	_ = requirePutBlocks(require, blockSource, link1.ToSlice()...)
 	_ = requirePutBlocks(require, blockSource, link2.ToSlice()...)
-	badCids := []cid.Cid{link1blk1.Cid(), link2blk1.Cid()}
-	err := syncer.HandleNewBlocks(ctx, badCids)
+	badCids := types.NewSortedCidSet(link1blk1.Cid(), link2blk1.Cid())
+	err := syncer.HandleNewTipset(ctx, badCids)
 	assert.Error(err)
 	assertNoAdd(assert, chainStore, badCids)
 }
@@ -586,7 +586,7 @@ func TestLoadFork(t *testing.T) {
 	// Set up chain store to have standard chain up to link2
 	_ = requirePutBlocks(require, blockSource, link1.ToSlice()...)
 	cids2 := requirePutBlocks(require, blockSource, link2.ToSlice()...)
-	err := syncer.HandleNewBlocks(ctx, cids2)
+	err := syncer.HandleNewTipset(ctx, cids2)
 	require.NoError(err)
 
 	// Now sync the store with a heavier fork, forking off link1.
@@ -637,7 +637,7 @@ func TestLoadFork(t *testing.T) {
 	_ = requirePutBlocks(require, blockSource, forklink1.ToSlice()...)
 	_ = requirePutBlocks(require, blockSource, forklink2.ToSlice()...)
 	forkHead := requirePutBlocks(require, blockSource, forklink3.ToSlice()...)
-	err = syncer.HandleNewBlocks(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, forkHead)
 	require.NoError(err)
 	requireHead(require, chainStore, forklink3)
 
@@ -648,7 +648,7 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the repo is trimmed
 	// of non-heaviest chain blocks
 	cids3 := requirePutBlocks(require, blockSource, link3.ToSlice()...)
-	err = loadSyncer.HandleNewBlocks(ctx, cids3)
+	err = loadSyncer.HandleNewTipset(ctx, cids3)
 	assert.Error(err)
 
 	// Test that the syncer can sync a block on the heaviest chain
@@ -657,7 +657,7 @@ func TestLoadFork(t *testing.T) {
 	forklink4blk1 := th.RequireMkFakeChild(require, fakeChildParams)
 	forklink4 := th.RequireNewTipSet(require, forklink4blk1)
 	cidsFork4 := requirePutBlocks(require, blockSource, forklink4.ToSlice()...)
-	err = loadSyncer.HandleNewBlocks(ctx, cidsFork4)
+	err = loadSyncer.HandleNewTipset(ctx, cidsFork4)
 	assert.NoError(err)
 }
 
@@ -684,7 +684,7 @@ func TestSubsetParent(t *testing.T) {
 	// Set up store to have standard chain up to link2
 	_ = requirePutBlocks(require, blockSource, link1.ToSlice()...)
 	cids2 := requirePutBlocks(require, blockSource, link2.ToSlice()...)
-	err := syncer.HandleNewBlocks(ctx, cids2)
+	err := syncer.HandleNewTipset(ctx, cids2)
 	require.NoError(err)
 
 	// Sync one tipset with a parent equal to a subset of an existing
@@ -710,7 +710,7 @@ func TestSubsetParent(t *testing.T) {
 
 	forklink := th.RequireNewTipSet(require, forkblk1, forkblk2)
 	forkHead := requirePutBlocks(require, blockSource, forklink.ToSlice()...)
-	err = syncer.HandleNewBlocks(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, forkHead)
 	assert.NoError(err)
 
 	// Sync another tipset with a parent equal to a subset of the tipset
@@ -722,7 +722,7 @@ func TestSubsetParent(t *testing.T) {
 	newForkblk := th.RequireMkFakeChild(require, fakeChildParams)
 	newForklink := th.RequireNewTipSet(require, newForkblk)
 	newForkHead := requirePutBlocks(require, blockSource, newForklink.ToSlice()...)
-	err = syncer.HandleNewBlocks(ctx, newForkHead)
+	err = syncer.HandleNewTipset(ctx, newForkHead)
 	assert.NoError(err)
 }
 
@@ -758,13 +758,13 @@ func TestWidenChainAncestor(t *testing.T) {
 	intersectCids := requirePutBlocks(require, blockSource, link2intersect.ToSlice()...)
 
 	// Sync the subset of link2 first
-	err := syncer.HandleNewBlocks(ctx, intersectCids)
+	err := syncer.HandleNewTipset(ctx, intersectCids)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link2intersect)
 	assertHead(assert, chainStore, link2intersect)
 
 	// Sync chain with head at link4
-	err = syncer.HandleNewBlocks(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, cids4)
 	assert.NoError(err)
 	assertTsAdded(assert, chainStore, link4)
 	assertHead(assert, chainStore, link4)
@@ -871,11 +871,11 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	forkhead := requirePutBlocks(require, blockSource, forklink3.ToSlice()...)
 
 	// Put testhead
-	err = syncer.HandleNewBlocks(ctx, testhead)
+	err = syncer.HandleNewTipset(ctx, testhead)
 	assert.NoError(err)
 
 	// Put forkhead
-	err = syncer.HandleNewBlocks(ctx, forkhead)
+	err = syncer.HandleNewTipset(ctx, forkhead)
 	assert.NoError(err)
 
 	// Assert that widened chain is the new head
@@ -1003,7 +1003,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(require, blockSource, f1b1, f2b1)
-	err = syncer.HandleNewBlocks(ctx, sharedCids)
+	err = syncer.HandleNewTipset(ctx, sharedCids)
 	require.NoError(err)
 	assertHead(assert, chainStore, tsShared)
 	measuredWeight, err := wFun(chainStore.Head())
@@ -1033,7 +1033,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1 := th.RequireNewTipSet(require, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(require, blockSource, f1.ToSlice()...)
-	err = syncer.HandleNewBlocks(ctx, f1Cids)
+	err = syncer.HandleNewTipset(ctx, f1Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f1)
 	measuredWeight, err = wFun(chainStore.Head())
@@ -1057,7 +1057,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f2 := th.RequireNewTipSet(require, f2b2)
 	f2Cids := requirePutBlocks(require, blockSource, f2.ToSlice()...)
-	err = syncer.HandleNewBlocks(ctx, f2Cids)
+	err = syncer.HandleNewTipset(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f2)
 	measuredWeight, err = wFun(chainStore.Head())
