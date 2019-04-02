@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
+	"golang.org/x/sync/errgroup"
 )
 
 // PluginName is the name of the plugin
@@ -327,13 +328,24 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 		return nil, err
 	}
 
-	stderrbytes, err := ioutil.ReadAll(stderr)
-	if err != nil {
-		return nil, err
-	}
+	g, ctx := errgroup.WithContext(ctx)
 
-	stdoutbytes, err := ioutil.ReadAll(stdout)
-	if err != nil {
+	var stderrbytes []byte
+	var stdoutbytes []byte
+
+	g.Go(func() error {
+		var err error
+		stderrbytes, err = ioutil.ReadAll(stderr)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		stdoutbytes, err = ioutil.ReadAll(stdout)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
