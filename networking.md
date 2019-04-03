@@ -28,6 +28,7 @@ We use the [`go-libp2p-kad-dht`](https://github.com/libp2p/go-libp2p-kad-dht) se
 
 1. Discover Filecoin peers at start up.
 2. Lookup the network addresses of a specific peer ID, for the purposes of Filecoin-related storage and retrieval.
+3. Discover providers of the auto-relay service in the network (see the Autorelay service section).
 
 `go-libp2p-kad-dht` is a Kademlia-inspired distributed hash table (DHT) implementation that provides a mapping between peer IDs and their [multiaddress(es)](https://github.com/multiformats/multiaddr). The usage of a DHT promotes decentralisation and resilience, such that the network will continue to function even if some nodes go down. Kademlia is described in a [paper](http://www.scs.stanford.edu/~dm/home/papers/kpos.pdf), and exemplified in the BitTorrent implementation described primarily in the approachable [BEP 5](http://www.bittorrent.org/beps/bep_0005.html).
 
