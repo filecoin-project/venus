@@ -8,6 +8,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-kad-dht"
 	inet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -15,6 +16,12 @@ import (
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
+var filecoinDHTBootstrapConfig = dht.BootstrapConfig{
+	// Recommended initial options from issu #1947
+	Queries: 2,
+	Period:  5 * time.Minute,
+	Timeout: time.Minute,
+}
 
 // Bootstrapper attempts to keep the p2p host connected to the filecoin network
 // by keeping a minimum threshold of connections. If the threshold isn't met it
@@ -108,9 +115,9 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		// DHT Bootstrap is a persistent process so only do this once.
 		if !b.dhtBootStarted {
 			b.dhtBootStarted = true
-			err := b.r.Bootstrap(b.ctx)
+			err := b.bootstrapIpfsRouting()
 			if err != nil {
-				logBootstrap.Warningf("got error trying to bootstrap DHT: %s. Peer discovery may suffer.", err.Error())
+				logBootstrap.Warningf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
 			}
 		}
 		cancel()
@@ -146,4 +153,14 @@ func hasPID(pids []peer.ID, pid peer.ID) bool {
 		}
 	}
 	return false
+}
+
+func (b *Bootstrapper) bootstrapIpfsRouting() error {
+	dht, ok := b.r.(*dht.IpfsDHT)
+	if !ok {
+		// No bootstrapping to do exit quietly.
+		return nil
+	}
+
+	return dht.BootstrapWithConfig(b.ctx, filecoinDHTBootstrapConfig)
 }
