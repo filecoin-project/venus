@@ -29,6 +29,11 @@ Filecoin, including go-filecoin and all related modules, follows the
   - [Landing Changes](#landing-changes)
   - [Developer Do's and Don'ts](#developer-dos-and-donts)
 - [Good First Issues](#good-first-issues)
+- [Roles](#roles)
+  - [Contributors](#contributors)
+  - [Collaborators](#collaborators)
+  - [Committers](#committers)
+  - [Maintainers](#maintainers)
 - [Additional Developer Notes](#additional-developer-notes)
     - [Error Handling](#error-handling)
     - [Testing](#testing)
@@ -39,11 +44,6 @@ Filecoin, including go-filecoin and all related modules, follows the
       - [Filing / triaging go-filecoin issues](#filing--triaging-go-filecoin-issues)
       - [Picking up issues](#picking-up-issues)
     - [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
-  - [Roles](#roles)
-    - [Contributors](#contributors)
-    - [Collaborators](#collaborators)
-    - [Committers](#committers)
-    - [Maintainers](#maintainers)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -145,6 +145,74 @@ To pick up an issue:
 4. **Create a PR** with your changes, following the [Pull Request and Code Review guidelines]().
 
 For continued adventures, search for issues with the label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted). These are slightly thornier problems that are also reasonably well-prepared.
+
+## Roles
+
+There are four main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Collaborators, Committers, and Maintainers.
+
+### Contributors
+
+Anyone is welcome. If you have created an issue, commented on an issue or discussion forum thread, or submitted a PR, you are a contributor.
+
+Responsibilities:
+
+* Participate in the project, following the [Code of Conduct](https://github.com/filecoin-project/community/blob/master/CODE_OF_CONDUCT.md).
+
+Abilities:
+
+* Open issues and PRs
+* Comment on issues and PRs
+
+### Collaborators
+
+A **Collaborator** is someone who demonstrates helpful contributions to the project.
+
+Responsibilities:
+
+* Make helpful contributions via issues, PRs, and other venues
+
+Abilities:
+* Write to the repo (but cannot merge to master)
+* Manage issues
+
+### Committers
+
+A **Committer** is someone with a broad understanding of the codebase and the judgment and humility to call on others' expertise when needed. They have a consistent track record of quality contributions, regular participation, and enabling others.
+
+Responsibilities:
+
+* Review PRs and guide work to ready-to-merge
+* With maintainer approval, rebase and merge contributor PRs
+* Issue triage and other project stewardship
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+### Maintainers
+
+A **Maintainer** is someone:
+
+1. **who is invested in and broadly familiar with the project**, as demonstrated by a history of significant technical-, process-, and/or project-level contributions;
+2. **who deeply understands the system**, especially knowing when and who to defer to as a reviewer, and with an eye towards unintended consequences;
+3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
+4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
+
+Responsibilities:
+
+* Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
+* Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
+* Make significant, direct technical contributions
+* Backstop for hard problems and general project stewardship (TODO: improve wording)
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an issue {TODO: link to correct repo} pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities decsribed in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
+
 
 ## Additional Developer Notes
 
@@ -285,69 +353,3 @@ Presently (Q1'19) the minimum bar is:
 Integrated means verifying that it works for real in a devnet, not just that it passes tests.
 This higher bar ensures major changes actually work, and reduces surprises/nightmares during release.
 
-### Roles
-
-There are four main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Collaborators, Committers, and Maintainers.
-
-#### Contributors
-
-Anyone is welcome. If you have created an issue, commented on an issue or discussion forum thread, or submitted a PR, you are a contributor.
-
-Responsibilities:
-
-* Participate in the project, following the [Code of Conduct](https://github.com/filecoin-project/community/blob/master/CODE_OF_CONDUCT.md).
-
-Abilities:
-
-* Open issues and PRs
-* Comment on issues and PRs
-
-#### Collaborators
-
-A **Collaborator** is someone who demonstrates helpful contributions to the project.
-
-Responsibilities:
-
-* Make helpful contributions via issues, PRs, and other venues
-
-Abilities:
-* Write to the repo (but cannot merge to master)
-* Manage issues
-
-#### Committers
-
-A **Committer** is someone with a broad understanding of the codebase and the judgment and humility to call on others' expertise when needed. They have a consistent track record of quality contributions, regular participation, and enabling others.
-
-Responsibilities:
-
-* Review PRs and guide work to ready-to-merge
-* With maintainer approval, rebase and merge contributor PRs
-* Issue triage and other project stewardship
-
-Abilities:
-
-* Manage issues
-* Merge PRs
-
-#### Maintainers
-
-A **Maintainer** is someone:
-
-1. **who is invested in and broadly familiar with the project**, as demonstrated by a history of significant technical-, process-, and/or project-level contributions;
-2. **who deeply understands the system**, especially knowing when and who to defer to as a reviewer, and with an eye towards unintended consequences;
-3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
-4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
-
-Responsibilities:
-
-* Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
-* Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
-* Make significant, direct technical contributions
-* Backstop for hard problems and general project stewardship (TODO: improve wording)
-
-Abilities:
-
-* Manage issues
-* Merge PRs
-
-**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an issue {TODO: link to correct repo} pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities decsribed in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
