@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"io"
@@ -52,31 +53,28 @@ func (h Harness) Close() {
 // AddPiece adds the provided bytes to the underlying SectorBuilder and returns
 // the sector id, piece cid, and any error
 func (h Harness) AddPiece(ctx context.Context, pieceData []byte) (uint64, cid.Cid, error) {
-	pieceInfo, err := h.CreatePieceInfo(pieceData)
+	ref, size, reader, err := h.CreateAddPieceArgs(pieceData)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
 
-	sectorID, err := h.SectorBuilder.AddPiece(ctx, pieceInfo)
+	sectorID, err := h.SectorBuilder.AddPiece(ctx, ref, size, reader)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
 
-	return sectorID, pieceInfo.Ref, nil
+	return sectorID, ref, nil
 }
 
-// CreatePieceInfo creates a PieceInfo for the provided bytes
-func (h Harness) CreatePieceInfo(pieceData []byte) (*sb.PieceInfo, error) {
+// CreateAddPieceArgs creates a PieceInfo for the provided bytes
+func (h Harness) CreateAddPieceArgs(pieceData []byte) (cid.Cid, uint64, io.Reader, error) {
 	data := dag.NewRawNode(pieceData)
 
 	if err := h.blockService.AddBlock(data); err != nil {
-		return nil, err
+		return cid.Cid{}, 0, nil, err
 	}
 
-	return &sb.PieceInfo{
-		Ref:  data.Cid(),
-		Size: uint64(len(pieceData)),
-	}, nil
+	return data.Cid(), uint64(len(pieceData)), bytes.NewReader(pieceData), nil
 }
 
 // RequireRandomBytes produces n-number of bytes

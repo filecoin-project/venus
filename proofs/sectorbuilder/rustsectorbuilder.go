@@ -1,3 +1,5 @@
+// +build !windows
+
 package sectorbuilder
 
 import (
@@ -8,15 +10,14 @@ import (
 	"time"
 	"unsafe"
 
+	bserv "github.com/ipfs/go-blockservice"
+	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
-
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
-	dag "github.com/ipfs/go-merkledag"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/pkg/errors"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/bytesink"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs
@@ -29,6 +30,10 @@ var log = logging.Logger("sectorbuilder") // nolint: deadcode
 // MaxNumStagedSectors configures the maximum number of staged sectors which can
 // be open and accepting data at any time.
 const MaxNumStagedSectors = 1
+
+// MaxTimeToWriteBytesToSink configures the maximum amount of time it should
+// take to copy user piece bytes from the provided Reader to the ByteSink.
+const MaxTimeToWriteBytesToSink = time.Second * 30
 
 // stagedSectorMetadata is a sector into which we write user piece-data before
 // sealing. Note: sectorID is unique across all staged and sealed sectors for a
@@ -153,49 +158,107 @@ func (sb *RustSectorBuilder) GetMaxUserBytesPerStagedSector() (numBytes uint64, 
 
 // AddPiece writes the given piece into an unsealed sector and returns the id
 // of that sector.
-func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pi *PieceInfo) (sectorID uint64, err error) {
+func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {
 	defer elapsed("AddPiece")()
 
-	pieceKey := pi.Ref.String()
-	dagService := dag.NewDAGService(sb.blockService)
+	ctx, cancel := context.WithTimeout(ctx, MaxTimeToWriteBytesToSink)
+	defer cancel()
 
-	rootIpldNode, err := dagService.Get(ctx, pi.Ref)
+	sink, err := bytesink.NewFifo()
 	if err != nil {
 		return 0, err
 	}
 
-	r, err := uio.NewDagReader(ctx, rootIpldNode, dagService)
-	if err != nil {
-		return 0, err
+	// errCh holds any error encountered when streaming bytes or making the CGO
+	// call. The channel is buffered so that the goroutines can exit, which will
+	// close the pipe, which unblocks the CGO call.
+	errCh := make(chan error, 2)
+	defer close(errCh)
+
+	// sectorIDCh receives a value if the CGO call indicates that the client
+	// piece has successfully been added to a sector. The channel is buffered
+	// so that the goroutine can exit if a value is sent to errCh before the
+	// CGO call completes.
+	sectorIDCh := make(chan uint64, 1)
+	defer close(sectorIDCh)
+
+	// goroutine attempts to copy bytes from piece's reader to the sink
+	go func() {
+		// opening the sink blocks the goroutine until a reader is opened on the
+		// other end of the FIFO pipe
+		err := sink.Open()
+		if err != nil {
+			errCh <- errors.Wrap(err, "failed to open sink")
+			return
+		}
+
+		// closing the sink signals to the reader that we're done writing, which
+		// unblocks the reader
+		defer func() {
+			err := sink.Close()
+			if err != nil {
+				log.Warningf("failed to close sink: %s", err)
+			}
+		}()
+
+		n, err := io.Copy(sink, pieceReader)
+		if err != nil {
+			errCh <- errors.Wrap(err, "failed to copy to pipe")
+			return
+		}
+
+		if uint64(n) != pieceSize {
+			errCh <- errors.Errorf("expected to write %d bytes but wrote %d", pieceSize, n)
+			return
+		}
+	}()
+
+	// goroutine makes CGO call, which blocks until FIFO pipe opened for writing
+	// from within other goroutine
+	go func() {
+		cPieceKey := C.CString(pieceRef.String())
+		defer C.free(unsafe.Pointer(cPieceKey))
+
+		cSinkPath := C.CString(sink.ID())
+		defer C.free(unsafe.Pointer(cSinkPath))
+
+		resPtr := (*C.AddPieceResponse)(unsafe.Pointer(C.add_piece(
+			(*C.SectorBuilder)(sb.ptr),
+			cPieceKey,
+			C.uint64_t(pieceSize),
+			cSinkPath,
+		)))
+		defer C.destroy_add_piece_response(resPtr)
+
+		if resPtr.status_code != 0 {
+			msg := "CGO add_piece returned an error (error_msg=%s, sinkPath=%s)"
+			log.Errorf(msg, C.GoString(resPtr.error_msg), sink.ID())
+			errCh <- errors.New(C.GoString(resPtr.error_msg))
+			return
+		}
+
+		sectorIDCh <- uint64(resPtr.sector_id)
+	}()
+
+	select {
+	case <-ctx.Done():
+		errStr := "context completed before CGO call could return"
+		strFmt := "%s (sinkPath=%s)"
+		log.Errorf(strFmt, errStr, sink.ID())
+
+		return 0, errors.New(errStr)
+	case err := <-errCh:
+		errStr := "error streaming piece-bytes"
+		strFmt := "%s (sinkPath=%s)"
+		log.Errorf(strFmt, errStr, sink.ID())
+
+		return 0, errors.Wrap(err, errStr)
+	case sectorID := <-sectorIDCh:
+		go sb.sealStatusPoller.addSectorID(sectorID)
+		log.Infof("add piece complete (pieceRef=%s, sectorID=%d, sinkPath=%s)", pieceRef.String(), sectorID, sink.ID())
+
+		return sectorID, nil
 	}
-
-	pieceBytes := make([]byte, pi.Size)
-	_, err = r.Read(pieceBytes)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error reading piece bytes into buffer")
-	}
-
-	cPieceKey := C.CString(pieceKey)
-	defer C.free(unsafe.Pointer(cPieceKey))
-
-	cPieceBytes := C.CBytes(pieceBytes)
-	defer C.free(cPieceBytes)
-
-	resPtr := (*C.AddPieceResponse)(unsafe.Pointer(C.add_piece(
-		(*C.SectorBuilder)(sb.ptr),
-		cPieceKey,
-		(*C.uint8_t)(cPieceBytes),
-		C.size_t(len(pieceBytes)),
-	)))
-	defer C.destroy_add_piece_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return 0, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	go sb.sealStatusPoller.addSectorID(uint64(resPtr.sector_id))
-
-	return uint64(resPtr.sector_id), nil
 }
 
 func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {

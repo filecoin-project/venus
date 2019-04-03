@@ -10,12 +10,13 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
+	cid "github.com/ipfs/go-cid"
+	datastore "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-host"
+	uio "github.com/ipfs/go-unixfs/io"
+	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/pkg/errors"
@@ -425,9 +426,18 @@ func (sm *Miner) processStorageDeal(c cid.Cid) {
 		}
 	}
 
-	pi := &sectorbuilder.PieceInfo{
-		Ref:  d.Proposal.PieceRef,
-		Size: d.Proposal.Size.Uint64(),
+	dagService := dag.NewDAGService(sm.node.BlockService())
+
+	rootIpldNode, err := dagService.Get(ctx, d.Proposal.PieceRef)
+	if err != nil {
+		fail("internal error", fmt.Sprintf("failed to add piece: %s", err))
+		return
+	}
+
+	r, err := uio.NewDagReader(ctx, rootIpldNode, dagService)
+	if err != nil {
+		fail("internal error", fmt.Sprintf("failed to add piece: %s", err))
+		return
 	}
 
 	// There is a race here that requires us to use dealsAwaitingSeal below. If the
@@ -439,7 +449,7 @@ func (sm *Miner) processStorageDeal(c cid.Cid) {
 	//
 	// Also, this pattern of not being able to set up book-keeping ahead of
 	// the call is inelegant.
-	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, pi)
+	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, d.Proposal.PieceRef, d.Proposal.Size.Uint64(), r)
 	if err != nil {
 		fail("failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
 		return
