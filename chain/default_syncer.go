@@ -19,7 +19,7 @@ import (
 
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
-var blkWaitTime = time.Second // TODO set this parameter in an informed way too
+var blkWaitTime = 30 * time.Second
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
@@ -49,12 +49,12 @@ type syncFetcher interface {
 // tipset in the incoming chain, and assumptions regarding the existence of
 // grandparent state in the store.
 type DefaultSyncer struct {
-	// This mutex ensures at most one call to HandleNewBlocks executes at
+	// This mutex ensures at most one call to HandleNewTipset executes at
 	// any time.  This is important because at least two sections of the
 	// code otherwise have races:
 	// 1. syncOne assumes that chainStore.Head() does not change when
 	// comparing tipset weights and updating the store
-	// 2. HandleNewBlocks assumes that calls to widen and then syncOne
+	// 2. HandleNewTipset assumes that calls to widen and then syncOne
 	// are not run concurrently with other calls to widen to ensure
 	// that the syncer always finds the heaviest existing tipset.
 	mu sync.Mutex
@@ -92,9 +92,6 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s Store, f 
 // otherwise resolved over the network.  This method will timeout if blocks
 // are unavailable.  This method is all or nothing, it will error if any of the
 // blocks cannot be resolved.
-// WARNING -- this will take one second to error out if blocks are not found.
-// TODO the timeout factor blkWaitTime and maybe the whole timeout mechanism
-// could use some actual thought, this was just a simple first pass.
 func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
@@ -111,13 +108,13 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // blocks that do not form a tipset, or if any tipset has already been recorded
 // as the head of an invalid chain.  collectChain is the entrypoint to the code
 // that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, error) {
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) ([]types.TipSet, error) {
 	var chain []types.TipSet
 	defer logSyncer.Info("chain synced")
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
-		tsKey := types.NewSortedCidSet(blkCids...).String()
+		tsKey := tipsetCids.String()
 
 		// Finish traversal if the tipset made is tracked in the store.
 		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
@@ -130,7 +127,7 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 			return nil, ErrChainHasBadTipSet
 		}
 
-		blks, err := syncer.getBlksMaybeFromNet(ctx, blkCids)
+		blks, err := syncer.getBlksMaybeFromNet(ctx, tipsetCids.ToSlice())
 		if err != nil {
 			return nil, err
 		}
@@ -149,11 +146,10 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, blkCids []cid.Cid
 
 		// Update values to traverse next tipset
 		chain = append([]types.TipSet{ts}, chain...)
-		parentCidSet, err := ts.Parents()
+		tipsetCids, err = ts.Parents()
 		if err != nil {
 			return nil, err
 		}
-		blkCids = parentCidSet.ToSlice()
 	}
 }
 
@@ -183,6 +179,13 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
+	head := syncer.chainStore.Head()
+
+	// if tipset is already head, we've been here before. do nothing.
+	if head.Equals(next) {
+		return nil
+	}
+
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the chainStore.
 	st, err := syncer.tipSetState(ctx, parent.String())
@@ -226,7 +229,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if err != nil {
 		return err
 	}
-	headParentCids, err := syncer.chainStore.Head().Parents()
+	headParentCids, err := head.Parents()
 	if err != nil {
 		return err
 	}
@@ -238,7 +241,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, syncer.chainStore.Head(), nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, head, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
@@ -312,31 +315,28 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	return wts, nil
 }
 
-// HandleNewBlocks extends the Syncer's chain store by the given blocks if they
+// HandleNewTipset extends the Syncer's chain store with the given tipset if they
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *DefaultSyncer) HandleNewBlocks(ctx context.Context, blkCids []cid.Cid) error {
-	// ********** WARNING **********
-	//
-	// This concurrency model is flawed.  The mutex is held during a possibly
-	// long call to the network.  TODO: re-evaluate / re-design the concurrency
-	// model to allow for collectChain to be called outside the lock.
-	// FYI the two biggest concurrency concerns at present would be addressed
-	// by locking after collectChain completes, so my hunch is this can be
-	// fixed by simply moving the lock call below collectChain.
-	logSyncer.Debugf("trying to sync %v\n", blkCids)
+func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error {
+	logSyncer.Debugf("trying to sync %v\n", tipsetCids)
+
+	// This lock could last a long time as we fetch all the blocks needed to block the chain.
+	// This is justified because the app is pretty useless until it is synced.
+	// It's better for multiple calls to wait here than to try to fetch the chain independently.
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
+
 	// If the store already has all these blocks the syncer is finished.
-	if syncer.chainStore.HasAllBlocks(ctx, blkCids) {
+	if syncer.chainStore.HasAllBlocks(ctx, tipsetCids.ToSlice()) {
 		return nil
 	}
 
 	// Walk the chain given by the input blocks back to a known tipset in
 	// the store. This is the only code that may go to the network to
 	// resolve cids to blocks.
-	chain, err := syncer.collectChain(ctx, blkCids)
+	chain, err := syncer.collectChain(ctx, tipsetCids)
 	if err != nil {
 		return err
 	}

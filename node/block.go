@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
@@ -24,7 +23,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
-	if err := node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blkCid}); err != nil {
+	if err := node.Syncer.HandleNewTipset(ctx, types.NewSortedCidSet(blkCid)); err != nil {
 		return err
 	}
 
@@ -47,7 +46,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	log.Infof("Received new block from network cid: %s", blk.Cid().String())
 	log.Debugf("Received new block from network: %s", blk)
 
-	err = node.Syncer.HandleNewBlocks(ctx, []cid.Cid{blk.Cid()})
+	err = node.Syncer.HandleNewTipset(ctx, types.NewSortedCidSet(blk.Cid()))
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")
 	}
