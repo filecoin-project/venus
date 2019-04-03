@@ -181,10 +181,13 @@ func (pool *MessagePool) timeoutMessages(ctx context.Context, store chain.BlockP
 		}
 	}
 
+	pool.lk.Lock()
+	defer pool.lk.Unlock()
+
 	// remove all messages added before minimumHeight
 	for cid, msg := range pool.pending {
 		if msg.addedAt < minimumHeight {
-			pool.Remove(cid)
+			delete(pool.pending, cid)
 		}
 	}
 
