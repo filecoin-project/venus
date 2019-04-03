@@ -51,6 +51,8 @@ const (
 	PoStProofs
 	// Boolean is a bool
 	Boolean
+	// ProofsMode is an enumeration of possible modes of proof operation
+	ProofsMode
 )
 
 func (t Type) String() string {
@@ -85,6 +87,8 @@ func (t Type) String() string {
 		return "[]proofs.PoStProof"
 	case Boolean:
 		return "bool"
+	case ProofsMode:
+		return "proofs.Mode"
 	default:
 		return "<unknown type>"
 	}
@@ -128,6 +132,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.([]proofs.PoStProof))
 	case Boolean:
 		return fmt.Sprint(av.Val.(bool))
+	case ProofsMode:
+		return fmt.Sprint(av.Val.(proofs.Mode))
 	default:
 		return "<unknown type>"
 	}
@@ -246,6 +252,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte{b}, nil
+	case ProofsMode:
+		v, ok := av.Val.(proofs.Mode)
+		if !ok {
+			return nil, &typeError{proofs.TestMode, av.Val}
+		}
+
+		return []byte{byte(v)}, nil
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -289,6 +302,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: PoStProofs, Val: v})
 		case bool:
 			out = append(out, &Value{Type: Boolean, Val: v})
+		case proofs.Mode:
+			out = append(out, &Value{Type: ProofsMode, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -410,6 +425,11 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  b,
 		}, nil
+	case ProofsMode:
+		return &Value{
+			Type: t,
+			Val:  proofs.Mode(int(data[0])),
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -432,6 +452,7 @@ var typeTable = map[Type]reflect.Type{
 	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
 	PoStProofs:     reflect.TypeOf([]proofs.PoStProof{}),
 	Boolean:        reflect.TypeOf(false),
+	ProofsMode:     reflect.TypeOf(proofs.TestMode),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

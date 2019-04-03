@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"testing"
 
 	bserv "github.com/ipfs/go-blockservice"
@@ -253,8 +252,6 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	require.NoError(t, err)
 	r.Config().API.Address = fmt.Sprintf(":%d", port)
 
-	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
-	err = os.Setenv("FIL_USE_SMALL_SECTORS", "true")
 	require.NoError(t, err)
 
 	if tno.GenesisFunc != nil {

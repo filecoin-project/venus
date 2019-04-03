@@ -848,7 +848,7 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 
 // GenesisFilePath returns the path of the WalletFile
 func GenesisFilePath() string {
-	return ProjectRoot("/fixtures/genesis.car")
+	return ProjectRoot("/fixtures/test/genesis.car")
 }
 
 // ProjectRoot return the project root joined with any path fragments

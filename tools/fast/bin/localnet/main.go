@@ -22,18 +22,12 @@ import (
 	"syscall"
 	"time"
 
-	bserv "github.com/ipfs/go-blockservice"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -53,8 +47,6 @@ var (
 	minerCollateral        = big.NewInt(500)
 	minerPrice             = big.NewFloat(0.000000001)
 	minerExpiry            = big.NewInt(24 * 60 * 60)
-
-	sectorSize uint64
 
 	exitcode int
 
@@ -134,12 +126,6 @@ func init() {
 		os.Exit(1)
 	}
 
-	sectorSize, err = getSectorSize(smallSectors)
-	if err != nil {
-		handleError(err)
-		os.Exit(1)
-	}
-
 	// Set the initial balance
 	balance.SetInt64(int64(100 * fil))
 }
@@ -184,7 +170,7 @@ func main() {
 		return
 	}
 
-	env, err := fast.NewEnvironmentMemoryGenesis(&balance, workdir)
+	env, err := fast.NewEnvironmentMemoryGenesis(&balance, workdir, getProofsMode(smallSectors))
 	if err != nil {
 		exitcode = handleError(err)
 		return
@@ -195,10 +181,9 @@ func main() {
 
 	// Setup localfilecoin plugin options
 	options := make(map[string]string)
-	options[lpfc.AttrLogJSON] = "0"                                     // Disable JSON logs
-	options[lpfc.AttrLogLevel] = "4"                                    // Set log level to Info
-	options[lpfc.AttrUseSmallSectors] = fmt.Sprintf("%t", smallSectors) // Enable small sectors
-	options[lpfc.AttrFilecoinBinary] = binpath                          // Use the repo binary
+	options[lpfc.AttrLogJSON] = "0"            // Disable JSON logs
+	options[lpfc.AttrLogLevel] = "4"           // Set log level to Info
+	options[lpfc.AttrFilecoinBinary] = binpath // Use the repo binary
 
 	genesisURI := env.GenesisCar()
 	genesisMiner, err := env.GenesisMiner()
@@ -295,7 +280,7 @@ func main() {
 		}
 
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(sectorSize))
+		dataReader := io.LimitReader(rand.Reader, int64(proofs.SectorSize(getProofsMode(smallSectors))))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -394,37 +379,11 @@ func isEmpty(name string) (bool, error) {
 	return false, err // Either not empty or error, suits both cases
 }
 
-func getSectorSize(smallSectors bool) (uint64, error) {
-	rp := repo.NewInMemoryRepo()
-	blockstore := bstore.NewBlockstore(rp.Datastore())
-	blockservice := bserv.New(blockstore, offline.Exchange(blockstore))
-
-	var proofsMode proofs.Mode
+func getProofsMode(smallSectors bool) proofs.Mode {
 	if smallSectors {
-		proofsMode = proofs.TestMode
-	} else {
-		proofsMode = proofs.LiveMode
+		return proofs.TestMode
 	}
-
-	// Not a typo
-	addr := address.NewForTestGetter()()
-
-	cfg := sectorbuilder.RustSectorBuilderConfig{
-		BlockService:     blockservice,
-		LastUsedSectorID: 0,
-		MetadataDir:      "",
-		MinerAddr:        addr,
-		ProofsMode:       proofsMode,
-		SealedSectorDir:  "",
-		StagedSectorDir:  "",
-	}
-
-	sb, err := sectorbuilder.NewRustSectorBuilder(cfg)
-	if err != nil {
-		return 0, err
-	}
-
-	return sb.GetMaxUserBytesPerStagedSector()
+	return proofs.LiveMode
 }
 
 func getFilecoinBinary() (string, error) {

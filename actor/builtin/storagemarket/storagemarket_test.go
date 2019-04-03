@@ -7,12 +7,14 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -157,6 +159,29 @@ func TestMinimumCollateral(t *testing.T) {
 	numSectors := big.NewInt(25000)
 	expected := types.NewAttoFILFromFIL(25)
 	assert.Equal(MinimumCollateral(numSectors), expected)
+}
+
+func TestProofsMode(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := core.CreateStorages(ctx, t)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+
+	require.NoError(err)
+	require.NoError(result.ExecutionError)
+
+	proofsModeInterface, err := abi.Deserialize(result.Receipt.Return[0], abi.ProofsMode)
+	require.NoError(err)
+
+	proofsMode, ok := proofsModeInterface.Val.(proofs.Mode)
+	require.True(ok)
+
+	assert.Equal(proofs.TestMode, proofsMode)
 }
 
 // this is used to simulate an attack where someone derives the likely address of another miner's

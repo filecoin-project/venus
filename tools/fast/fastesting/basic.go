@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -42,14 +43,13 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.Envi
 	require.NoError(err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir)
+	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, proofs.TestMode)
 	require.NoError(err)
 
 	// Setup options for nodes.
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "1"                                        // Enable JSON logs
 	options[localplugin.AttrLogLevel] = "5"                                       // Set log level to Debug
-	options[localplugin.AttrUseSmallSectors] = "true"                             // Enable small sectors
 	options[localplugin.AttrFilecoinBinary] = testhelpers.MustGetFilecoinBinary() // Get the filecoin binary
 
 	genesisURI := env.GenesisCar()

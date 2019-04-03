@@ -87,16 +87,13 @@ func (b *Builder) Build() Harness {
 	})
 	require.NoError(b.t, err)
 
-	n, err := sb.GetMaxUserBytesPerStagedSector()
-	require.NoError(b.t, err)
-
 	return Harness{
 		t:                 b.t,
 		repo:              memRepo,
 		blockService:      blockService,
 		SectorBuilder:     sb,
 		MinerAddr:         minerAddr,
-		MaxBytesPerSector: n,
+		MaxBytesPerSector: proofs.SectorSize(proofsMode),
 		ProofsMode:        proofsMode,
 	}
 }

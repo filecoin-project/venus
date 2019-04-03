@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -47,7 +48,7 @@ func TestRetrieval(t *testing.T) {
 	require.NoError(err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir)
+	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, proofs.TestMode)
 	require.NoError(err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -61,7 +62,6 @@ func TestRetrieval(t *testing.T) {
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "0"                               // Disable JSON logs
 	options[localplugin.AttrLogLevel] = "4"                              // Set log level to Info
-	options[localplugin.AttrUseSmallSectors] = "true"                    // Enable small sectors
 	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Enable small sectors
 
 	ctx = series.SetCtxSleepDelay(ctx, blocktime)

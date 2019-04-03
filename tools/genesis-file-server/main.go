@@ -12,7 +12,7 @@ func main() {
 	port := flag.Int("port", 0, "port over which to serve genesis file via HTTP")
 	genesisFilePath := flag.String(
 		"genesis-file-path",
-		filepath.Join(os.Getenv("GOPATH"), "src/github.com/filecoin-project/go-filecoin/fixtures/genesis.car"),
+		filepath.Join(os.Getenv("GOPATH"), "src/github.com/filecoin-project/go-filecoin/fixtures/test/genesis.car"),
 		"port over which to serve genesis file via HTTP\n",
 	)
 	flag.Parse()
