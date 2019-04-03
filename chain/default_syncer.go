@@ -321,6 +321,10 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // help prevent DOS.
 func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error {
 	logSyncer.Debugf("trying to sync %v\n", tipsetCids)
+
+	// This lock could last a long time as we fetch all the blocks needed to block the chain.
+	// This is justified because the app is pretty useless until it is synced.
+	// It's better for multiple calls to wait here than to try to fetch the chain independently.
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
 
