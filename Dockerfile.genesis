@@ -9,6 +9,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 # Thanks Lars :)
 
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
+ENV GO111MODULE on
 
 COPY . $SRC_DIR
 
