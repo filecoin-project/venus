@@ -163,9 +163,9 @@ var msgWaitCmd = &cmds.Command{
 		found := false
 		err = GetPorcelainAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
-			sig, err2 := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
-			if err2 != nil && err2.Error() != "no method" && err2.Error() != "failed to load actor code" {
-				return errors.Wrap(err2, "Couldn't get signature for message")
+			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
+			if err != nil && err.Error() != "no method" && err.Error() != "failed to load actor code" {
+				return errors.Wrap(err, "Couldn't get signature for message")
 			}
 
 			res := WaitResult{

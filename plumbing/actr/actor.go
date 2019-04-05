@@ -66,7 +66,11 @@ func (actr *Actr) Ls(ctx context.Context) (<-chan state.GetAllActorsResult, erro
 // GetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "" {
+		return nil, errors.New("no method")
+	}
+
 	head := actr.chain.GetHead()
 	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
 	if err != nil {
@@ -88,10 +92,6 @@ func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, m
 	executable, err := st.GetBuiltinActorCode(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
-	}
-
-	if method == "" {
-		return nil, errors.New("no method")
 	}
 
 	export, ok := executable.Exports()[method]
