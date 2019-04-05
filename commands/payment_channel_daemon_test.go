@@ -51,7 +51,10 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -68,13 +71,13 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		require.NotNil(chanid)
 	})
 }
 
 // WithPaymentChannel takes a filecoin daemon and constructs a payment channel to the `target` for the `amt` for `eol`, and calls fn with the channel id
-func WithPaymentChannel(t *testing.T, ctx context.Context, p *fast.Filecoin, from, target address.Address, amt *types.AttoFIL, eol *types.BlockHeight, fn func(chanid *types.ChannelID)) {
+func WithPaymentChannel(ctx context.Context, t *testing.T, p *fast.Filecoin, from, target address.Address, amt *types.AttoFIL, eol *types.BlockHeight, fn func(chanid *types.ChannelID)) {
 	require := require.New(t)
 
 	mcid, err := p.PaychCreate(ctx, target, amt, eol, fast.AOFromAddr(from), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
@@ -103,7 +106,10 @@ func TestPaymentChannelLs(t *testing.T) {
 		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 		// Teardown after test ends
-		defer env.Teardown(ctx)
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(err)
+		}()
 
 		// Start test
 		targetDaemon := NewNode()
@@ -120,7 +126,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		channelExpiry := types.NewBlockHeight(20)
 		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 			channels, err := payerDaemon.PaychLs(ctx)
 			require.NoError(err)
 
@@ -147,7 +153,10 @@ func TestPaymentChannelLs(t *testing.T) {
 		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 		// Teardown after test ends
-		defer env.Teardown(ctx)
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(err)
+		}()
 
 		// Start test
 		targetDaemon := NewNode()
@@ -164,7 +173,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		channelExpiry := types.NewBlockHeight(20)
 		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 			channels, err := payerDaemon.PaychLs(ctx, fast.AOPayer(payerAddr))
 			require.NoError(err)
 
@@ -191,7 +200,10 @@ func TestPaymentChannelLs(t *testing.T) {
 		env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 		// Teardown after test ends
-		defer env.Teardown(ctx)
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(err)
+		}()
 
 		// Start test
 		targetDaemon := NewNode()
@@ -208,7 +220,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		channelExpiry := types.NewBlockHeight(20)
 		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+		WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 			channels, err := payerDaemon.PaychLs(ctx, fast.AOFromAddr(targetAddr))
 			require.NoError(err)
 
@@ -230,7 +242,10 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -247,7 +262,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		voucherAmount := types.NewAttoFILFromFIL(10)
 		voucherValidAt := types.NewBlockHeight(0)
 		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
@@ -273,7 +288,10 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -290,7 +308,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		voucherAmount := types.NewAttoFILFromFIL(10)
 		voucherValidAt := types.NewBlockHeight(0)
 		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
@@ -325,7 +343,10 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -342,7 +363,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		voucherAmount := types.NewAttoFILFromFIL(10)
 		voucherValidAt := types.NewBlockHeight(10)
 		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
@@ -377,7 +398,10 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	env, p, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -400,7 +424,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	balanceBefore, err := payerDaemon.WalletBalance(ctx, payerAddr)
 	require.NoError(err)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		voucherAmount := types.NewAttoFILFromFIL(10)
 		voucherValidAt := types.NewBlockHeight(0)
 		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
@@ -420,7 +444,8 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 		assert.Equal(channelAmount, channel.Amount)
 		assert.Equal(voucherAmount, channel.AmountRedeemed)
 
-		series.WaitForBlockHeight(ctx, payerDaemon, channel.Eol)
+		err = series.WaitForBlockHeight(ctx, payerDaemon, channel.Eol)
+		require.NoError(err)
 
 		mcid, err = payerDaemon.PaychReclaim(ctx, chanid, fast.AOFromAddr(payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
 		require.NoError(err)
@@ -452,7 +477,10 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -475,7 +503,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	targetBalanceBefore, err := targetDaemon.WalletBalance(ctx, targetAddr)
 	require.NoError(err)
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		voucherAmount := types.NewAttoFILFromFIL(10)
 		voucherValidAt := types.NewBlockHeight(0)
 		voucherStr, err := payerDaemon.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(payerAddr), fast.AOValidAt(voucherValidAt))
@@ -515,7 +543,10 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	env, _, NewNode, ctx := fasting.BasicFastSetup(ctx, t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
-	defer env.Teardown(ctx)
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
 
 	// Start test
 	targetDaemon := NewNode()
@@ -532,7 +563,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	require.NoError(err)
 	payerAddr := addrs[0]
 
-	WithPaymentChannel(t, ctx, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
+	WithPaymentChannel(ctx, t, payerDaemon, payerAddr, targetAddr, channelAmount, channelExpiry, func(chanid *types.ChannelID) {
 		channels, err := payerDaemon.PaychLs(ctx)
 		require.NoError(err)
 
