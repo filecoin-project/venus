@@ -35,3 +35,30 @@ Usage of ./gengen:
   -seed int
     	provides the seed for randomization, defaults to current unix epoch (default 1553189402)
 ```
+
+#### Configuration File
+
+The gengen configuration file defines the artifacts produced.
+
+- `keys` defines the number of keys which will be produced
+- `preAlloc` is an array defining the amount of FIL for the key
+- `miners` is an array defining miners, the `owner` is the key index, and `powe` is the amount of power the miner will have in the genesis block.
+
+Example
+
+```json
+{
+  "keys": 5,
+  "preAlloc": [
+    "1000000000000",
+    "1000000000000",
+    "1000000000000",
+    "1000000000000",
+    "1000000000000"
+  ],
+  "miners": [{
+    "owner": 0,
+    "power": 1
+  }]
+}
+```
