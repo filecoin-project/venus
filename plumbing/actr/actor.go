@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 )
@@ -35,28 +36,16 @@ func NewActr(chnReader chainReader, cst *hamt.CborIpldStore) *Actr {
 
 // Get returns an actor from the latest state on the chain
 func (actr *Actr) Get(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	head := actr.chain.GetHead()
-	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
+	st, err := actr.getLatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	state, err := state.LoadStateTree(ctx, actr.cst, tsas.TipSetStateRoot, builtin.Actors)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetActor(ctx, addr)
+	return st.GetActor(ctx, addr)
 }
 
 // Ls returns a slice of actors from the latest state on the chain
 func (actr *Actr) Ls(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	head := actr.chain.GetHead()
-	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
-	if err != nil {
-		return nil, err
-	}
-
-	st, err := state.LoadStateTree(ctx, actr.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := actr.getLatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -71,25 +60,14 @@ func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, m
 		return nil, errors.New("no method")
 	}
 
-	head := actr.chain.GetHead()
-	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
-	if err != nil {
-		return nil, err
-	}
-
-	st, err := state.LoadStateTree(ctx, actr.cst, tsas.TipSetStateRoot, builtin.Actors)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldnt get current state tree")
-	}
-
-	actor, err := st.GetActor(ctx, actorAddr)
+	actor, err := actr.Get(ctx, actorAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
 	} else if actor.Empty() {
 		return nil, errors.New("no actor implementation")
 	}
 
-	executable, err := st.GetBuiltinActorCode(actor.Code)
+	executable, err := actr.getExecutable(ctx, actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
@@ -100,4 +78,24 @@ func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, m
 	}
 
 	return export, nil
+}
+
+// getExecutable returns the builtin actor code from the latest state on the chain
+func (actr *Actr) getExecutable(ctx context.Context, code cid.Cid) (exec.ExecutableActor, error) {
+	st, err := actr.getLatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return st.GetBuiltinActorCode(code)
+}
+
+// getExecutable returns the builtin actor code from the latest state on the chain
+func (actr *Actr) getLatestState(ctx context.Context) (state.Tree, error) {
+	head := actr.chain.GetHead()
+	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
+	if err != nil {
+		return nil, err
+	}
+
+	return state.LoadStateTree(ctx, actr.cst, tsas.TipSetStateRoot, builtin.Actors)
 }
