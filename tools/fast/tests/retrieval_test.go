@@ -22,24 +22,19 @@ import (
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
 
-var (
-	SectorSize int64 = 1016
-)
-
 func init() {
 	// Enabling debug logging provides a lot of insight into what commands are
 	// being executed
 	logging.SetDebugLogging()
-
-	// Set the series global sleep delay to 5 seconds, we will also use this as our
-	// block time value.
-	series.GlobalSleepDelay = time.Second * 5
 }
 
 // TestRetrieval exercises storing and retrieving with the filecoin protocols
 func TestRetrieval(t *testing.T) {
+	blocktime := time.Second * 5
+	sectorSize := int64(1016)
+
 	// This test should run in 20 block times, with 120 seconds for sealing, and no longer
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*series.GlobalSleepDelay).Add(120*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*blocktime).Add(120*time.Second))
 	defer cancel()
 
 	require := require.New(t)
@@ -66,13 +61,15 @@ func TestRetrieval(t *testing.T) {
 	options[localplugin.AttrUseSmallSectors] = "true"                    // Enable small sectors
 	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Enable small sectors
 
+	ctx = series.SetSleepDelay(ctx, blocktime)
+
 	genesisURI := env.GenesisCar()
 	genesisMiner, err := env.GenesisMiner()
 	require.NoError(err)
 
 	fastenvOpts := fast.EnvironmentOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(series.GlobalSleepDelay)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
 	}
 
 	// Setup nodes used for the test
@@ -133,7 +130,7 @@ func TestRetrieval(t *testing.T) {
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, SectorSize)
+	dataReader := io.LimitReader(rand.Reader, sectorSize)
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(err)
