@@ -18,22 +18,27 @@ import (
 
 func TestChainHead(t *testing.T) {
 	t.Parallel()
-	require := require.New(t)
 	assert := assert.New(t)
+	require := require.New(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
-	op := d.RunSuccess("chain", "head")
-	result := op.ReadStdoutTrimNewlines()
+	jsonResult := d.RunSuccess("chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
 
-	maybeCid, err := cid.Decode(result)
+	var cidsFromJSON []cid.Cid
+	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
+	assert.NoError(err)
+
+	textResult := d.RunSuccess("chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
+
+	textCid, err := cid.Decode(textResult)
 	require.NoError(err)
 
-	assert.Equal(result, maybeCid.String())
+	assert.Equal(textCid, cidsFromJSON[0])
 }
 
-func TestChainDaemon(t *testing.T) {
+func TestChainLs(t *testing.T) {
 	t.Parallel()
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
 		t.Parallel()
@@ -70,7 +75,7 @@ func TestChainDaemon(t *testing.T) {
 		assert.True(c.Equals(bs[0][0].Cid()))
 	})
 
-	t.Run("chain head with chain of size 1 returns genesis block", func(t *testing.T) {
+	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
 		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
