@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// https://stackoverflow.com/a/21061062
 func copyFileContents(src, dst string) (err error) {
 	in, err := os.Open(src)
 	if err != nil {
