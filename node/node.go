@@ -418,6 +418,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
+		Bitswap:      bswap,
 		Chain:        chainStore,
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),

@@ -5,7 +5,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -40,6 +42,7 @@ import (
 type API struct {
 	logger logging.EventLogger
 
+	bitswap      exchange.Interface
 	chain        chain.ReadStore
 	config       *cfg.Config
 	dag          *dag.DAG
@@ -57,6 +60,7 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
+	Bitswap      exchange.Interface
 	Chain        chain.ReadStore
 	Config       *cfg.Config
 	DAG          *dag.DAG
@@ -77,6 +81,7 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
+		bitswap:      deps.Bitswap,
 		chain:        deps.Chain,
 		config:       deps.Config,
 		dag:          deps.DAG,
@@ -342,4 +347,8 @@ func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 // node via Bitswap and a copy will be kept in the blockstore.
 func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	return api.dag.ImportData(ctx, data)
+}
+
+func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
+	return api.bitswap.(*bitswap.Bitswap).Stat()
 }

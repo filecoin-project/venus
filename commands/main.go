@@ -107,6 +107,7 @@ VIEW DATA STRUCTURES
   go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
+  go-filecoin bitswap                - Explore libp2p bitswap
   go-filecoin bootstrap              - Interact with bootstrap addresses
   go-filecoin dht                    - Interact with the dht
   go-filecoin id                     - Show info about the network peers
@@ -153,6 +154,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"actor":            actorCmd,
 	"address":          addrsCmd,
+	"bitswap":          bitswapCmd,
 	"bootstrap":        bootstrapCmd,
 	"chain":            chainCmd,
 	"config":           configCmd,
