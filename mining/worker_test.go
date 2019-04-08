@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -23,6 +24,12 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+func newTestMessagePoolConfig(limit int) *config.MessagePoolConfig {
+	return &config.MessagePoolConfig{
+		Limit: limit,
+	}
+}
 
 func Test_Mine(t *testing.T) {
 	assert := assert.New(t)
@@ -98,7 +105,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestBlockTimer(0))
+	pool := core.NewMessagePool(newTestMessagePoolConfig(100), th.NewTestBlockTimer(0))
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid

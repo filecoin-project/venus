@@ -403,7 +403,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore)
+	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, chainStore)
 	outbox := core.NewMessageQueue()
 
 	// Set up libp2p pubsub

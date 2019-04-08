@@ -15,12 +15,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
+
+func newTestMessagePoolConfig(limit int) *config.MessagePoolConfig {
+	return &config.MessagePoolConfig{
+		Limit: limit,
+	}
+}
 
 func TestSend(t *testing.T) {
 	t.Parallel()
@@ -33,7 +40,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestBlockTimer(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(newTestMessagePoolConfig(100), timer)
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{rejectMessages: true}, nopPublish)
@@ -49,7 +56,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestBlockTimer(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(newTestMessagePoolConfig(100), timer)
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -78,7 +85,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestBlockTimer(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(newTestMessagePoolConfig(100), timer)
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{}, nopPublish)

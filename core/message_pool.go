@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -40,6 +41,7 @@ type MessagePool struct {
 
 	timer   BlockTimer
 	pending map[cid.Cid]*timedmessage // all pending messages
+	cfg     *config.MessagePoolConfig
 }
 
 // Add adds a message to the pool.
@@ -59,6 +61,10 @@ func (pool *MessagePool) addTimedMessage(msg *timedmessage) (cid.Cid, error) {
 	c, err := msg.message.Cid()
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to create CID")
+	}
+
+	if len(pool.pending) == pool.cfg.Limit {
+		return cid.Undef, errors.Errorf("failed to add message %s to pool: pool size limit reached: %d", c.String(), pool.cfg.Limit)
 	}
 
 	// Reject messages with invalid signatires
@@ -107,10 +113,11 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 }
 
 // NewMessagePool constructs a new MessagePool.
-func NewMessagePool(timer BlockTimer) *MessagePool {
+func NewMessagePool(mpc *config.MessagePoolConfig, timer BlockTimer) *MessagePool {
 	return &MessagePool{
 		timer:   timer,
 		pending: make(map[cid.Cid]*timedmessage),
+		cfg:     mpc,
 	}
 }
 
