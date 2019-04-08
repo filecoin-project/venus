@@ -212,7 +212,7 @@ func main() {
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
 	}
 
-	ctx = series.SetSleepDelay(ctx, blocktime)
+	ctx = series.SetCtxSleepDelay(ctx, blocktime)
 
 	// The genesis process is the filecoin node that loads the miner that is
 	// define with power in the genesis block, and the prefunnded wallet

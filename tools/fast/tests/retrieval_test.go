@@ -61,7 +61,7 @@ func TestRetrieval(t *testing.T) {
 	options[localplugin.AttrUseSmallSectors] = "true"                    // Enable small sectors
 	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Enable small sectors
 
-	ctx = series.SetSleepDelay(ctx, blocktime)
+	ctx = series.SetCtxSleepDelay(ctx, blocktime)
 
 	genesisURI := env.GenesisCar()
 	genesisMiner, err := env.GenesisMiner()
