@@ -37,9 +37,6 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 	}
 
 	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fast.AOFromAddr(wallet[0]), fast.AOPrice(big.NewFloat(300)), fast.AOLimit(300))
-	if err != nil {
-		return err
-	}
 
-	return node.MiningStart(ctx)
+	return err
 }
