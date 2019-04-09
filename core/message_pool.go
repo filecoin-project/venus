@@ -93,8 +93,7 @@ func (pool *MessagePool) addTimedMessage(ctx context.Context, msg *timedmessage)
 		return c, nil
 	}
 
-	err = pool.ValidateMessage(ctx, msg.message)
-	if err != nil {
+	if err = pool.validateMessage(ctx, msg.message); err != nil {
 		return cid.Undef, errors.Wrap(err, "validation error adding message to pool")
 	}
 
@@ -247,9 +246,9 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 	return
 }
 
-// ValidateMessage in message pool is a mechanism for preventing memory based DoS attacks.
+// validateMessage in message pool is a mechanism for preventing memory based DoS attacks.
 // As such, it will often fail silently.
-func (pool *MessagePool) ValidateMessage(ctx context.Context, message *types.SignedMessage) error {
+func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
 	if len(pool.pending) >= MaxMessagePoolSize {
 		return ErrMessagePoolFull
 	}
@@ -279,9 +278,5 @@ func (pool *MessagePool) ValidateMessage(ctx context.Context, message *types.Sig
 		return ErrNonceGapExceeded
 	}
 
-	if err = consensus.NewOutboundMessageValidator().Validate(ctx, message, fromActor); err != nil {
-		return err
-	}
-
-	return nil
+	return consensus.NewOutboundMessageValidator().Validate(ctx, message, fromActor)
 }

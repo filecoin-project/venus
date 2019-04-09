@@ -289,8 +289,8 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	assert.Len(pool.Pending(), 4)
 
-	// Wet actor nonce past nonce of message in pool.
-	// We have to do this here to get a permanent error in the pool.
+	// Set actor nonce past nonce of message in pool.
+	// Have to do this here to get a permanent error in the pool.
 	act, err := st.GetActor(ctx, addrs[1])
 	require.NoError(err)
 
