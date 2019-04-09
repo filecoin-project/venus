@@ -228,8 +228,7 @@ func main() {
 		return
 	}
 
-	err = genesis.MiningStart(ctx)
-	if err != nil {
+	if err := genesis.MiningStart(ctx); err != nil {
 		exitcode = handleError(err, "failed to start mining on genesis node;")
 		return
 	}
