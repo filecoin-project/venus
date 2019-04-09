@@ -73,7 +73,7 @@ type RustSectorBuilderConfig struct {
 	MetadataDir      string
 	MinerAddr        address.Address
 	SealedSectorDir  string
-	SectorStoreType  proofs.SectorStoreType
+	ProofsMode       proofs.Mode
 	StagedSectorDir  string
 }
 
@@ -95,9 +95,9 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	cSealedSectorDir := C.CString(cfg.SealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	scfg, err := proofs.CSectorStoreType(cfg.SectorStoreType)
+	scfg, err := proofs.CProofsMode(cfg.ProofsMode)
 	if err != nil {
-		return nil, errors.Errorf("unknown sector store type: %v", cfg.SectorStoreType)
+		return nil, errors.Errorf("unknown sector store type: %v", cfg.ProofsMode)
 	}
 
 	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(

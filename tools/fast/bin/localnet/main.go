@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	flg "flag"
 	"fmt"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -24,7 +25,6 @@ import (
 
 	bserv "github.com/ipfs/go-blockservice"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
@@ -399,12 +399,11 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 	blockstore := bstore.NewBlockstore(rp.Datastore())
 	blockservice := bserv.New(blockstore, offline.Exchange(blockstore))
 
-	var sectorStoreType proofs.SectorStoreType
-
+	var proofsMode proofs.Mode
 	if smallSectors {
-		sectorStoreType = proofs.Test
+		proofsMode = proofs.Test
 	} else {
-		sectorStoreType = proofs.Live
+		proofsMode = proofs.Live
 	}
 
 	// Not a typo
@@ -415,8 +414,8 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 		LastUsedSectorID: 0,
 		MetadataDir:      "",
 		MinerAddr:        addr,
+		ProofsMode:       proofsMode,
 		SealedSectorDir:  "",
-		SectorStoreType:  sectorStoreType,
 		StagedSectorDir:  "",
 	}
 

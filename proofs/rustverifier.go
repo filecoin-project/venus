@@ -50,14 +50,14 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
-	cfg, err := CSectorStoreType(req.StoreType)
+	mode, err := CProofsMode(req.ProofsMode)
 	if err != nil {
 		return VerifySealResponse{}, err
 	}
 
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
-		cfg,
+		mode,
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
@@ -100,7 +100,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	faultsPtr, faultsSize := cUint64s(req.Faults)
 	defer C.free(unsafe.Pointer(faultsPtr))
 
-	cfg, err := CSectorStoreType(req.StoreType)
+	cfg, err := CProofsMode(req.ProofsMode)
 	if err != nil {
 		return VerifyPoSTResponse{}, err
 	}
@@ -163,9 +163,8 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	return (*C.uint64_t)(cUint64s), srcCSizeT
 }
 
-// CSectorStoreType marshals from SectorStoreType to the FFI type
-// *C.ConfiguredStore.
-func CSectorStoreType(cfg SectorStoreType) (*C.ConfiguredStore, error) {
+// CProofsMode marshals from Mode to the FFI type *C.ConfiguredStore.
+func CProofsMode(cfg Mode) (*C.ConfiguredStore, error) {
 	var scfg C.ConfiguredStore
 	if cfg == Live {
 		scfg = C.ConfiguredStore(C.Live)

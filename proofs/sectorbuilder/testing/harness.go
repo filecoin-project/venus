@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/ipfs/go-cid"
 	"io"
 	"strings"
 	"testing"
 
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -27,7 +27,7 @@ type Harness struct {
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder
-	SectorConfig      proofs.SectorStoreType
+	ProofsMode        proofs.Mode
 	t                 *testing.T
 }
 
