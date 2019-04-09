@@ -30,11 +30,21 @@ Steps to reproduce the behavior:
 <!-- If applicable, add logging output or screenshots to help explain your problem. -->
 
 **Version information**
+<!-- please fill out this information below completely, it will help us solve your issue faster -->
 <!-- if you are trying to build go-filecoin -->
 - Go: <!-- go version -->
 - Rust: <!-- rustc --version -->
 - Cargo: <!-- cargo --version -->
 - Commit: <!--  git rev-parse HEAD -->
+
+_go env_
+```
+<!-- go env -->
+```
+_cc_
+```
+<!-- $(go env | grep -E "^CC" |  sed -e 's/.*\=//' | sed -e 's/^"//' -e 's/"$//') --version -->
+```
 <!-- if you are running go-filecoin -->
 - Version: <!-- go-filecoin version -->
 
