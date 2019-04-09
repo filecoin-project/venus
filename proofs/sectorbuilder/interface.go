@@ -8,6 +8,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -73,22 +74,22 @@ type PieceInfo struct {
 
 // SealedSectorMetadata is a sector that has been sealed by the PoRep setup process
 type SealedSectorMetadata struct {
-	CommD     proofs.CommD
-	CommR     proofs.CommR // deprecated (will be removed soon)
-	CommRStar proofs.CommRStar
+	CommD     types.CommD
+	CommR     types.CommR // deprecated (will be removed soon)
+	CommRStar types.CommRStar
 	Pieces    []*PieceInfo // deprecated (will be removed soon)
-	Proof     proofs.SealProof
+	Proof     types.SealProof
 	SectorID  uint64
 }
 
 // GeneratePoStRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoStRequest struct {
 	SortedCommRs  proofs.SortedCommRs
-	ChallengeSeed proofs.PoStChallengeSeed
+	ChallengeSeed types.PoStChallengeSeed
 }
 
 // GeneratePoStResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoStResponse struct {
 	Faults []uint64
-	Proofs []proofs.PoStProof
+	Proofs []types.PoStProof
 }

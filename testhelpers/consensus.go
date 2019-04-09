@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -97,10 +96,10 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 }
 
 // MakeRandomPoSTProofForTest creates a random proof.
-func MakeRandomPoSTProofForTest() proofs.PoStProof {
+func MakeRandomPoSTProofForTest() types.PoStProof {
 	p := MakeRandomBytes(192)
 	p[0] = 42
-	var postProof proofs.PoStProof
+	var postProof types.PoStProof
 	for idx, elem := range p {
 		postProof[idx] = elem
 	}

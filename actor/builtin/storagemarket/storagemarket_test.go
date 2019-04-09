@@ -14,7 +14,6 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -178,10 +177,10 @@ func TestProofsMode(t *testing.T) {
 	proofsModeInterface, err := abi.Deserialize(result.Receipt.Return[0], abi.ProofsMode)
 	require.NoError(err)
 
-	proofsMode, ok := proofsModeInterface.Val.(proofs.Mode)
+	proofsMode, ok := proofsModeInterface.Val.(types.ProofsMode)
 	require.True(ok)
 
-	assert.Equal(proofs.TestMode, proofsMode)
+	assert.Equal(types.TestProofsMode, proofsMode)
 }
 
 // this is used to simulate an attack where someone derives the likely address of another miner's

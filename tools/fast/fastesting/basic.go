@@ -11,11 +11,11 @@ import (
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // TestEnvironment provides common setup for writing tests using FAST
@@ -43,7 +43,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.Envi
 	require.NoError(err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, proofs.TestMode)
+	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(err)
 
 	// Setup options for nodes.

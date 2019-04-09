@@ -15,13 +15,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -48,7 +48,7 @@ func TestRetrieval(t *testing.T) {
 	require.NoError(err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, proofs.TestMode)
+	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(err)
 
 	// Teardown will shutdown all running processes the environment knows about

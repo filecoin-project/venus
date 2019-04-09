@@ -589,7 +589,7 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 }
 
 func (node *Node) setupMining(ctx context.Context) error {
-	var proofsMode proofs.Mode
+	var proofsMode types.ProofsMode
 	values, err := node.PorcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
@@ -601,7 +601,7 @@ func (node *Node) setupMining(ctx context.Context) error {
 	}
 
 	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
-		return errors.Wrap(err, "could not convert query message result to Mode")
+		return errors.Wrap(err, "could not convert query message result to ProofsMode")
 	}
 
 	// initialize a sector builder
@@ -915,7 +915,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode proofs.Mode) (sectorbuilder.SectorBuilder, error) {
+func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.ProofsMode) (sectorbuilder.SectorBuilder, error) {
 	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
@@ -926,18 +926,24 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode proofs
 		return nil, errors.Wrapf(err, "failed to get last used sector id for miner w/address %s", minerAddr.String())
 	}
 
+	var sectorClass types.SectorClass
+	if proofsMode == types.TestProofsMode {
+		sectorClass = types.NewTestSectorClass()
+	} else {
+		sectorClass = types.NewLiveSectorClass()
+	}
+
 	// TODO: Where should we store the RustSectorBuilder metadata? Currently, we
 	// configure the RustSectorBuilder to store its metadata in the staging
 	// directory.
-
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
 		MetadataDir:      node.Repo.StagingDir(),
 		MinerAddr:        minerAddr,
 		SealedSectorDir:  node.Repo.SealedDir(),
-		ProofsMode:       proofsMode,
 		StagedSectorDir:  node.Repo.StagingDir(),
+		SectorClass:      sectorClass,
 	}
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(cfg)

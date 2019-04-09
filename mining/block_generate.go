@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
@@ -19,7 +18,7 @@ import (
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet types.TipSet,
 	ticket types.Signature,
-	proof proofs.PoStProof,
+	proof types.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
 
 	generateTimer := time.Now()
