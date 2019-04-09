@@ -11,7 +11,6 @@ import (
 	"crypto/rand"
 	flg "flag"
 	"fmt"
-	"github.com/ipfs/go-ipfs-exchange-offline"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -25,6 +24,7 @@ import (
 
 	bserv "github.com/ipfs/go-blockservice"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-ipfs-files"
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
