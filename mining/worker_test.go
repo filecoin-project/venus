@@ -98,7 +98,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestBlockTimer(0))
+	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0))
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid
@@ -269,29 +269,42 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
-	// The following two are sending to self -- errSelfSend, a permanent error.
-	msg3 := types.NewMessage(addrs[0], addrs[0], 1, nil, "", nil)
+	// add the following and then increment the actor nonce at addrs[1], nonceTooLow, a permanent error.
+	msg3 := types.NewMessage(addrs[1], addrs[0], 0, nil, "", nil)
 	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
-	msg4 := types.NewMessage(addrs[1], addrs[1], 0, nil, "", nil)
+	msg4 := types.NewMessage(addrs[1], addrs[2], 1, nil, "", nil)
 	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
 
-	_, err = pool.Add(smsg1)
+	_, err = pool.Add(ctx, smsg1)
 	assert.NoError(err)
-	_, err = pool.Add(smsg2)
+	_, err = pool.Add(ctx, smsg2)
 	assert.NoError(err)
-	_, err = pool.Add(smsg3)
+	_, err = pool.Add(ctx, smsg3)
 	assert.NoError(err)
-	_, err = pool.Add(smsg4)
+	_, err = pool.Add(ctx, smsg4)
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 4)
+
+	// Wet actor nonce past nonce of message in pool.
+	// We have to do this here to get a permanent error in the pool.
+	act, err := st.GetActor(ctx, addrs[1])
+	require.NoError(err)
+
+	act.Nonce = types.Uint64(2)
+	err = st.SetActor(ctx, addrs[1], act)
+	require.NoError(err)
+
+	stateRoot, err := st.Flush(ctx)
+	require.NoError(err)
+
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
-		StateRoot: newCid(),
+		StateRoot: stateRoot,
 		Proof:     proofs.PoStProof{},
 	}
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, proofs.PoStProof{}, 0)
@@ -411,7 +424,7 @@ func TestGenerateError(t *testing.T) {
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(err)
-	_, err = pool.Add(smsg)
+	_, err = pool.Add(ctx, smsg)
 	require.NoError(err)
 
 	assert.Len(pool.Pending(), 1)

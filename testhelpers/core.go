@@ -88,19 +88,29 @@ func RequireRandomPeerID(require *require.Assertions) peer.ID {
 	return pid
 }
 
-// TestBlockTimer provides a simple BlockTimer interface implementation.
-type TestBlockTimer struct {
-	Height uint64
+// TestMessagePoolAPI provides a simple BlockTimer interface implementation.
+type TestMessagePoolAPI struct {
+	Height    uint64
+	ActorAddr address.Address
+	Actor     *actor.Actor
 }
 
-// NewTestBlockTimer creates a new TestBlockTimer.
-func NewTestBlockTimer(h uint64) *TestBlockTimer {
-	return &TestBlockTimer{Height: h}
+// NewTestMessagePoolAPI creates a new TestMessagePoolAPI.
+func NewTestMessagePoolAPI(h uint64) *TestMessagePoolAPI {
+	return &TestMessagePoolAPI{Height: h, Actor: &actor.Actor{}}
 }
 
 // BlockHeight represents the height of the highest tipset.
-func (tbt *TestBlockTimer) BlockHeight() (uint64, error) {
+func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
 	return tbt.Height, nil
+}
+
+// LatestState will be a state tree that only contains the test actor
+func (tbt *TestMessagePoolAPI) LatestState(ctx context.Context) (state.Tree, error) {
+	cst := hamt.NewCborStore()
+	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	st.SetActor(ctx, tbt.ActorAddr, tbt.Actor)
+	return st, nil
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore

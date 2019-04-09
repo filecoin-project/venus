@@ -39,8 +39,9 @@ func MustGetNonce(st state.Tree, a address.Address) uint64 {
 
 // MustAdd adds the given messages to the messagepool or panics if it cannot.
 func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
+	ctx := context.Background()
 	for _, m := range msgs {
-		if _, err := p.Add(m); err != nil {
+		if _, err := p.Add(ctx, m); err != nil {
 			panic(err)
 		}
 	}

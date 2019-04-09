@@ -37,3 +37,10 @@ func GenerateKeyInfoSeed() io.Reader {
 	rand.Read(token)
 	return bytes.NewReader(token)
 }
+
+// GenerateBigKeyInfoSeed returns a really big random to be passed to MustGenerateKeyInfo
+func GenerateBigKeyInfoSeed() io.Reader {
+	token := make([]byte, 262144)
+	rand.Read(token)
+	return bytes.NewReader(token)
+}
