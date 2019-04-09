@@ -109,7 +109,10 @@ func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
 func (tbt *TestMessagePoolAPI) LatestState(ctx context.Context) (state.Tree, error) {
 	cst := hamt.NewCborStore()
 	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
-	st.SetActor(ctx, tbt.ActorAddr, tbt.Actor)
+	err := st.SetActor(ctx, tbt.ActorAddr, tbt.Actor)
+	if err != nil {
+		return nil, err
+	}
 	return st, nil
 }
 
