@@ -461,7 +461,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		// about the sector for which the proof was generated in order to verify.
 		//
 		// It is undefined behavior for a miner in "Live" mode to verify a proof
-		// created by a miner in "ProofsTest" mode (and vice-versa).
+		// created by a miner in "Test" mode (and vice-versa).
 		//
 		proofsMode := proofs.Live
 		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
@@ -673,7 +673,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			// See comment above, in CommitSector.
 			//
 			// It is undefined behavior for a miner in "Live" mode to verify a proof
-			// created by a miner in "ProofsTest" mode (and vice-versa).
+			// created by a miner in "Test" mode (and vice-versa).
 			//
 			proofsMode := proofs.Live
 			if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {

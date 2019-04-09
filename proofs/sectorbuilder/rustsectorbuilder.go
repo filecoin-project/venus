@@ -49,7 +49,7 @@ func elapsed(what string) func() {
 	}
 }
 
-// RustSectorBuilder is a struct which serves as a proxy for a SectorStore in Rust.
+// RustSectorBuilder is a struct which serves as a proxy for a SectorBuilder in Rust.
 type RustSectorBuilder struct {
 	blockService bserv.BlockService
 	ptr          unsafe.Pointer
