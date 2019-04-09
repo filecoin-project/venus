@@ -134,9 +134,6 @@ func init() {
 		os.Exit(1)
 	}
 
-	// Set the series global sleep delay to our blocktime
-	series.GlobalSleepDelay = blocktime
-
 	sectorSize, err = getSectorSize(smallSectors)
 	if err != nil {
 		handleError(err)
@@ -212,8 +209,10 @@ func main() {
 
 	fastenvOpts := fast.EnvironmentOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(series.GlobalSleepDelay)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
 	}
+
+	ctx = series.SetCtxSleepDelay(ctx, blocktime)
 
 	// The genesis process is the filecoin node that loads the miner that is
 	// define with power in the genesis block, and the prefunnded wallet
