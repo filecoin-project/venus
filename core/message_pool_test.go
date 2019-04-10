@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -21,6 +22,8 @@ var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func TestMessagePoolAddRemove(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
@@ -58,6 +61,8 @@ func TestMessagePoolAddRemove(t *testing.T) {
 }
 
 func TestMessagePoolAddBadSignature(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
@@ -75,6 +80,8 @@ func TestMessagePoolAddBadSignature(t *testing.T) {
 }
 
 func TestMessagePoolDedup(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
@@ -91,6 +98,8 @@ func TestMessagePoolDedup(t *testing.T) {
 }
 
 func TestMessagePoolAsync(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	count := 400
@@ -156,6 +165,8 @@ func headOf(chain []types.TipSet) types.TipSet {
 }
 
 func TestUpdateMessagePool(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	type msgs []*types.SignedMessage
@@ -512,6 +523,8 @@ func TestUpdateMessagePool(t *testing.T) {
 }
 
 func TestLargestNonce(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

@@ -9,11 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestMessageQueue(t *testing.T) {
-	t.Parallel() // Individual tests share a MessageMaker so not parallel (but quick)
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
