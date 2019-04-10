@@ -2,7 +2,6 @@ package functional
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,9 +17,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/testhelpers/iptbtester"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
-
-var runFunctionalTests = flag.Bool("functional", false, "Run the functional go tests")
 
 var faucetBinary = "../tools/faucet/faucet"
 
@@ -31,10 +29,8 @@ func init() {
 }
 
 func TestFaucetSendFunds(t *testing.T) {
-	// Only run this test if the "-functional" flag is passed to test command
-	if !*runFunctionalTests {
-		t.SkipNow()
-	}
+	tf.FunctionalTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
