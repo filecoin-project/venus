@@ -52,7 +52,7 @@ type HeartbeatService struct {
 	Config *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
-	HeadGetter func() types.TipSet
+	HeadGetter func(context.Context) types.TipSet
 
 	// A function that returns the miner's address
 	MinerAddressGetter func() address.Address
@@ -76,7 +76,7 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() types.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func(context.Context) types.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
 		Config:             hbc,
@@ -181,7 +181,7 @@ func (hbs *HeartbeatService) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-beatTicker.C:
-			hb := hbs.Beat()
+			hb := hbs.Beat(ctx)
 			if err := encoder.Encode(hb); err != nil {
 				hbs.stream.Conn().Close() // nolint: errcheck
 				return err
@@ -191,9 +191,9 @@ func (hbs *HeartbeatService) Run(ctx context.Context) error {
 }
 
 // Beat will create a heartbeat.
-func (hbs *HeartbeatService) Beat() Heartbeat {
+func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	nick := hbs.Config.Nickname
-	ts := hbs.HeadGetter()
+	ts := hbs.HeadGetter(ctx)
 	tipset := ts.ToSortedCidSet().String()
 	height, err := ts.Height()
 	if err != nil {

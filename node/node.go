@@ -508,10 +508,7 @@ func (node *Node) Start(ctx context.Context) error {
 			log.Infof("error handling blocks: %s", cidSet.String())
 		}
 	}
-	getHeaviestTipSetCallBack := func() types.TipSet {
-		return node.PorcelainAPI.ChainHead(ctx)
-	}
-	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, getHeaviestTipSetCallBack, node.Repo.Config().Net, flags.Commit)
+	node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
 
 	err = node.setupProtocols()
 	if err != nil {
@@ -568,13 +565,10 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 		}
 		return addr
 	}
-	getHeaviestTipSetCallBack := func() types.TipSet {
-		return node.PorcelainAPI.ChainHead(ctx)
-	}
 
 	// start the primary heartbeat service
 	if len(node.Repo.Config().Heartbeat.BeatTarget) > 0 {
-		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, getHeaviestTipSetCallBack, metrics.WithMinerAddressGetter(mag))
+		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
 		go hbs.Start(ctx)
 	}
 
@@ -586,7 +580,7 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 			BeatPeriod:      "10s",
 			ReconnectPeriod: "10s",
 			Nickname:        node.Repo.Config().Heartbeat.Nickname,
-		}, getHeaviestTipSetCallBack, metrics.WithMinerAddressGetter(mag))
+		}, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
 		go ahbs.Start(ctx)
 	}
 	return nil
@@ -793,11 +787,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 			return err
 		}
 	}
-	getHeaviestTipSetCallBack := func() types.TipSet {
-		return node.PorcelainAPI.ChainHead(ctx)
-	}
 	if node.MiningScheduler == nil {
-		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, getHeaviestTipSetCallBack)
+		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, node.PorcelainAPI.ChainHead)
 	}
 
 	// paranoid check

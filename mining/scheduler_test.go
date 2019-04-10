@@ -44,7 +44,7 @@ func TestSchedulerPassesValue(t *testing.T) {
 		return true
 	}
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
@@ -63,7 +63,7 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 		outCh <- Output{}
 		return false
 	}
-	nilHeadFunc := func() types.TipSet {
+	nilHeadFunc := func(_ context.Context) types.TipSet {
 		return nil
 	}
 	worker := NewTestWorkerWithDeps(nothingMine)
@@ -93,7 +93,7 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 		return false
 	}
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 	worker := NewTestWorkerWithDeps(checkNullBlockMine)
@@ -124,7 +124,7 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
 	ts3 := th.RequireNewTipSet(require, blk3)
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 
@@ -160,7 +160,7 @@ func TestSchedulerCollect(t *testing.T) {
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts3 := th.RequireNewTipSet(require, blk3)
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
@@ -218,7 +218,7 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	// the inner context, and closes the output channel.
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 	shouldCancelMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
@@ -244,7 +244,7 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 	var head types.TipSet
-	headFunc := func() types.TipSet {
+	headFunc := func(_ context.Context) types.TipSet {
 		return head
 	}
 	// make tipsets with progressively higher heights
