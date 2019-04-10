@@ -401,9 +401,9 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 
 	var proofsMode proofs.Mode
 	if smallSectors {
-		proofsMode = proofs.Test
+		proofsMode = proofs.TestMode
 	} else {
-		proofsMode = proofs.Live
+		proofsMode = proofs.LiveMode
 	}
 
 	// Not a typo

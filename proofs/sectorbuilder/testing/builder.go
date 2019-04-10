@@ -74,7 +74,7 @@ func (b *Builder) Build() Harness {
 		panic(err)
 	}
 
-	proofsMode := proofs.Test
+	proofsMode := proofs.TestMode
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,

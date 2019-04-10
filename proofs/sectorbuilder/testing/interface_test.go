@@ -327,7 +327,7 @@ func TestSectorBuilder(t *testing.T) {
 				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
-				ProofsMode:    proofs.Test,
+				ProofsMode:    proofs.TestMode,
 			})
 
 			require.NoError(t, verr)

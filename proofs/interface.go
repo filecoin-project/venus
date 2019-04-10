@@ -42,9 +42,9 @@ type Verifier interface {
 type Mode int
 
 const (
-	// Live configures the SectorBuilder to be used by someone operating a real
+	// TestMode configures the SectorBuilder to be used with large sectors, in tests.
+	TestMode = Mode(iota)
+	// LiveMode configures the SectorBuilder to be used by someone operating a real
 	// Filecoin node.
-	Live = Mode(iota)
-	// Test configures the SectorBuilder to be used with large sectors, in tests.
-	Test
+	LiveMode
 )

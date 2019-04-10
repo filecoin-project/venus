@@ -166,9 +166,9 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 // CProofsMode marshals from Mode to the FFI type *C.ConfiguredStore.
 func CProofsMode(cfg Mode) (*C.ConfiguredStore, error) {
 	var scfg C.ConfiguredStore
-	if cfg == Live {
+	if cfg == LiveMode {
 		scfg = C.ConfiguredStore(C.Live)
-	} else if cfg == Test {
+	} else if cfg == TestMode {
 		scfg = C.ConfiguredStore(C.Test)
 	} else {
 		return nil, errors.Errorf("unknown sector store type: %v", cfg)

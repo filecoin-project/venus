@@ -586,9 +586,9 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 
 func (node *Node) setupMining(ctx context.Context) error {
 	// configure the underlying sector store, defaulting to the non-test version
-	proofsMode := proofs.Live
+	proofsMode := proofs.LiveMode
 	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		proofsMode = proofs.Test
+		proofsMode = proofs.TestMode
 	}
 
 	// initialize a sector builder
