@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 type window struct {
@@ -14,6 +16,8 @@ type window struct {
 }
 
 func TestOverlappingWindows(t *testing.T) {
+	tf.UnitTest(t)
+
 	var err error
 
 	require := require.New(t)
@@ -64,6 +68,8 @@ func TestOverlappingWindows(t *testing.T) {
 }
 
 func TestEmbeddedWindows(t *testing.T) {
+	tf.UnitTest(t)
+
 	var err error
 
 	require := require.New(t)

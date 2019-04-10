@@ -7,9 +7,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestLinePuller(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("pull on empty source", func(t *testing.T) {
 		var source bytes.Buffer
 		var sink bytes.Buffer
