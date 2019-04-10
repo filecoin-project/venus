@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,6 +26,8 @@ var (
 )
 
 func TestReceiveStorageProposal(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -220,6 +223,8 @@ func TestReceiveStorageProposal(t *testing.T) {
 }
 
 func TestDealsAwaitingSeal(t *testing.T) {
+	tf.UnitTest(t)
+
 	newCid := types.NewCidForTestGetter()
 	cid0 := newCid()
 	cid1 := newCid()
@@ -232,7 +237,6 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	wantMessage := "boom"
 
 	t.Run("saveDealsAwaitingSeal saves, loadDealsAwaitingSeal loads", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -255,7 +259,6 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add before success", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -278,7 +281,6 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add after success", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -301,7 +303,6 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add before fail", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -324,7 +325,6 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add after fail", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{

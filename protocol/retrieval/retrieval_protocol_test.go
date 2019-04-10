@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -20,7 +21,8 @@ import (
 // See https://github.com/filecoin-project/go-filecoin/pull/1643
 
 func TestRetrievalProtocolPieceNotFound(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	ctx := context.Background()
 

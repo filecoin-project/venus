@@ -2,16 +2,20 @@ package block_test
 
 import (
 	"context"
-	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	ast "github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
 	"testing"
 
+	ast "github.com/stretchr/testify/assert"
+	req "github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/node"
+	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
+	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestTrivialNew(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := ast.New(t)
 	require := req.New(t)
 
@@ -20,6 +24,8 @@ func TestTrivialNew(t *testing.T) {
 }
 
 func TestAPI_MineOnce(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := ast.New(t)
 	require := req.New(t)
 	ctx := context.Background()
@@ -35,7 +41,7 @@ func TestAPI_MineOnce(t *testing.T) {
 }
 
 func TestMiningAPI_MiningStart(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	assert := ast.New(t)
 	require := req.New(t)
@@ -50,7 +56,7 @@ func TestMiningAPI_MiningStart(t *testing.T) {
 }
 
 func TestMiningAPI_MiningStop(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	assert := ast.New(t)
 	require := req.New(t)
